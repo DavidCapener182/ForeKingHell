@@ -1,0 +1,27 @@
+"use client";
+
+import { useEffect } from "react";
+
+export function PwaRegister() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") {
+      return;
+    }
+
+    const registerServiceWorker = () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
+        // A failed service-worker registration should never block the app UI.
+      });
+    };
+
+    if (document.readyState === "complete") {
+      registerServiceWorker();
+      return;
+    }
+
+    window.addEventListener("load", registerServiceWorker, { once: true });
+    return () => window.removeEventListener("load", registerServiceWorker);
+  }, []);
+
+  return null;
+}

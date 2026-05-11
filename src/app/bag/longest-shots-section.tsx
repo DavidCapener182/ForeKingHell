@@ -1,0 +1,415 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Activity, Gauge, Target, Trophy, Wind, type LucideIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatClubType } from "@/lib/club-format";
+import { cn } from "@/lib/utils";
+
+export type LongestShot = {
+  id: string;
+  clubId: string;
+  clubType: string;
+  brandModel: string;
+  accent: string;
+  shotNumber: number | null;
+  shotAt: string;
+  carryYd: number | null;
+  totalYd: number | null;
+  sideCarryYd: number | null;
+  ballSpeedMph: number | null;
+  clubSpeedMph: number | null;
+  launchAngleDeg: number | null;
+  launchDirectionDeg: number | null;
+  apexFt: number | null;
+  descentAngleDeg: number | null;
+  spinRate: number | null;
+  spinAxis: number | null;
+};
+
+const numberFormatter = new Intl.NumberFormat("en-GB", {
+  maximumFractionDigits: 1,
+});
+
+export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
+  const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
+  const selectedShot = shots.find((shot) => shot.id === selectedShotId) ?? shots[0] ?? null;
+
+  if (shots.length === 0 || !selectedShot) {
+    return null;
+  }
+
+  return (
+    <section className="space-y-4">
+      <Card className="premium-card">
+        <CardHeader className="gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl tracking-normal">
+                <Trophy className="size-5 text-amber-500" />
+                Longest shots
+              </CardTitle>
+              <CardDescription>
+                Best total-distance shot recorded for each club.
+              </CardDescription>
+            </div>
+            <Badge variant="outline">{shots.length} clubs</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {shots.map((shot) => (
+              <LongestShotButton
+                key={shot.id}
+                shot={shot}
+                selected={shot.id === selectedShot.id}
+                onClick={() => setSelectedShotId(shot.id)}
+              />
+            ))}
+          </div>
+
+          <ShotSimulator shot={selectedShot} />
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function LongestShotButton({
+  shot,
+  selected,
+  onClick,
+}: {
+  shot: LongestShot;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "flex min-h-28 flex-col gap-3 rounded-[8px] border bg-white p-3 text-left transition-colors hover:bg-[#f9fafb]",
+        selected && "bg-[#f9fafb]",
+      )}
+      style={{
+        borderColor: selected ? shot.accent : "#e5e7eb",
+        boxShadow: selected ? `0 0 0 1px ${shot.accent}` : undefined,
+        outline: "none",
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
+          style={{ background: shot.accent }}
+        >
+          {formatClubType(shot.clubType).slice(0, 2)}
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm text-muted-foreground">{shot.brandModel}</span>
+          <span className="block font-semibold text-foreground">{formatClubType(shot.clubType)}</span>
+        </span>
+      </div>
+      <span className="mt-auto flex items-end justify-between gap-3">
+        <span>
+          <span className="block text-xs text-muted-foreground">Longest total</span>
+          <span className="text-2xl font-semibold tracking-normal text-foreground">
+            {formatMetric(shot.totalYd ?? shot.carryYd)}
+            <span className="ml-1 text-sm text-muted-foreground">yd</span>
+          </span>
+        </span>
+        <span className="text-right text-xs text-muted-foreground">
+          #{shot.shotNumber ?? "-"}
+          <br />
+          {formatDate(shot.shotAt)}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function ShotSimulator({ shot }: { shot: LongestShot }) {
+  const geometry = useMemo(() => buildShotGeometry(shot), [shot]);
+
+  return (
+    <div className="grid overflow-hidden rounded-[8px] border bg-white lg:grid-cols-[1.35fr_0.65fr]">
+      <div className="min-h-[420px] bg-[#143321]">
+        <svg viewBox="0 0 900 540" className="h-full min-h-[420px] w-full" role="img" aria-label="Course shot simulation">
+          <defs>
+            <linearGradient id="courseFairway" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stopColor="#6fa05b" />
+              <stop offset="48%" stopColor="#8dbb69" />
+              <stop offset="100%" stopColor="#5f934f" />
+            </linearGradient>
+            <radialGradient id="courseGreen" cx="50%" cy="44%" r="65%">
+              <stop offset="0%" stopColor="#b7dd82" />
+              <stop offset="100%" stopColor="#75af55" />
+            </radialGradient>
+            <filter id="shotGlowLong" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <style>
+            {`
+              .longest-shot-tracer {
+                stroke-dasharray: 720;
+                stroke-dashoffset: 720;
+                animation: longestShotTrace 2.6s ease-out infinite;
+              }
+              .longest-shot-pulse {
+                transform-origin: center;
+                animation: longestShotPulse 2.6s ease-out infinite;
+              }
+              @keyframes longestShotTrace {
+                0% { stroke-dashoffset: 720; opacity: 0.2; }
+                55% { stroke-dashoffset: 0; opacity: 1; }
+                100% { stroke-dashoffset: 0; opacity: 0.7; }
+              }
+              @keyframes longestShotPulse {
+                0%, 54% { transform: scale(0.75); opacity: 0; }
+                72% { transform: scale(1.35); opacity: 0.55; }
+                100% { transform: scale(1.7); opacity: 0; }
+              }
+            `}
+          </style>
+
+          <rect x="0" y="0" width="900" height="540" fill="#143321" />
+          <path d="M0 0 H900 V540 H0 Z" fill="#183f27" />
+          <path d="M94 540 C156 416 190 330 236 214 C274 120 338 48 451 24 C574 2 672 46 739 129 C811 218 770 320 707 390 C622 486 530 537 420 540 Z" fill="#244f30" />
+          <path d="M352 540 C280 422 280 294 336 188 C392 80 492 34 620 51 C726 65 791 116 816 184 C849 274 790 354 684 391 C579 428 508 475 474 540 Z" fill="#193b28" />
+          <path
+            d="M420 512 C336 438 303 344 329 254 C351 179 418 112 520 90 C623 68 713 107 747 174 C787 254 729 331 635 363 C548 392 491 439 462 512 Z"
+            fill="url(#courseFairway)"
+          />
+          <path
+            d="M427 512 C359 421 336 334 359 261 C382 183 447 131 526 114 C607 97 683 123 713 181 C746 244 701 304 618 334 C534 364 481 421 459 512 Z"
+            fill="#ffffff"
+            opacity="0.08"
+          />
+          <ellipse cx="539" cy="86" rx="84" ry="45" fill="url(#courseGreen)" transform="rotate(-7 539 86)" />
+          <ellipse cx="431" cy="122" rx="45" ry="22" fill="#e8d78c" opacity="0.92" transform="rotate(-21 431 122)" />
+          <ellipse cx="676" cy="155" rx="53" ry="24" fill="#e8d78c" opacity="0.9" transform="rotate(18 676 155)" />
+          <path d="M665 265 C708 248 757 263 779 304 C742 324 690 318 665 265 Z" fill="#5aa0c9" opacity="0.78" />
+          <rect x="392" y="500" width="114" height="20" rx="8" fill="#7a5b33" opacity="0.95" />
+          <line x1="449" x2="449" y1="501" y2="519" stroke="#d7c9a0" strokeWidth="2" opacity="0.5" />
+
+          {[100, 150, 200, 250, 300].map((yard) => {
+            const y = geometry.tee.y - (yard / geometry.maxDistance) * geometry.playHeight;
+            return (
+              <g key={yard} opacity="0.54">
+                <path d={`M 234 ${y} C 370 ${y - 30} 562 ${y - 30} 704 ${y}`} fill="none" stroke="#ffffff" strokeDasharray="7 10" />
+                <text x="724" y={y + 4} fill="#f8fafc" fontSize="12">
+                  {yard}
+                </text>
+              </g>
+            );
+          })}
+
+          <path
+            d={geometry.tracerPath}
+            fill="none"
+            stroke={shot.accent}
+            strokeWidth="6"
+            strokeLinecap="round"
+            className="longest-shot-tracer"
+            filter="url(#shotGlowLong)"
+          />
+          <path
+            d={`M ${geometry.carry.x} ${geometry.carry.y} Q ${geometry.carry.x + geometry.rollControl} ${geometry.carry.y - 10} ${geometry.total.x} ${geometry.total.y}`}
+            fill="none"
+            stroke="#f8fafc"
+            strokeDasharray="8 9"
+            strokeWidth="3"
+            strokeLinecap="round"
+            opacity="0.78"
+          />
+          <circle cx={geometry.tee.x} cy={geometry.tee.y} r="8" fill="#f8fafc" stroke="#111827" strokeWidth="3" />
+          <circle cx={geometry.carry.x} cy={geometry.carry.y} r="10" fill={shot.accent} stroke="#111827" strokeWidth="3" />
+          <circle cx={geometry.total.x} cy={geometry.total.y} r="15" fill="none" stroke={shot.accent} strokeWidth="4" className="longest-shot-pulse" />
+          <circle cx={geometry.total.x} cy={geometry.total.y} r="7" fill="#f8fafc" stroke={shot.accent} strokeWidth="3" />
+
+          <Label x={geometry.carryLabel.x} y={geometry.carryLabel.y} title="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
+          <Label x={geometry.totalLabel.x} y={geometry.totalLabel.y} title="Total" value={`${formatMetric(shot.totalYd ?? shot.carryYd)} yd`} />
+          <Label x={geometry.sideLabel.x} y={geometry.sideLabel.y} title="Offline" value={formatSide(shot.sideCarryYd)} />
+        </svg>
+      </div>
+
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <div>
+          <Badge className="text-white" style={{ background: shot.accent }}>
+            {formatClubType(shot.clubType)}
+          </Badge>
+          <h3 className="mt-3 text-2xl font-semibold tracking-normal">
+            {formatMetric(shot.totalYd ?? shot.carryYd)} yd longest total
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Shot #{shot.shotNumber ?? "-"} on {formatDate(shot.shotAt)}
+          </p>
+        </div>
+
+        <FlightProfile shot={shot} />
+
+        <div className="grid grid-cols-2 gap-2">
+          <SimulationMetric icon={Target} label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
+          <SimulationMetric icon={Activity} label="Launch/loft" value={`${formatMetric(shot.launchAngleDeg)} deg`} />
+          <SimulationMetric icon={Gauge} label="Apex" value={`${formatMetric(shot.apexFt)} ft`} />
+          <SimulationMetric icon={Wind} label="Curve" value={formatSide(shot.sideCarryYd)} />
+          <SimulationMetric icon={Gauge} label="Ball speed" value={`${formatMetric(shot.ballSpeedMph)} mph`} />
+          <SimulationMetric icon={Activity} label="Spin" value={`${formatMetric(shot.spinRate)} rpm`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlightProfile({ shot }: { shot: LongestShot }) {
+  const carry = Math.max(1, shot.carryYd ?? shot.totalYd ?? 1);
+  const apex = Math.max(20, shot.apexFt ?? 80);
+  const endX = 282;
+  const apexX = 58 + (carry / Math.max(carry, 300)) * 118;
+  const apexY = 108 - (apex / Math.max(apex, 150)) * 78;
+
+  return (
+    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+      <p className="mb-2 text-xs font-medium text-muted-foreground">Flight profile</p>
+      <svg viewBox="0 0 320 128" className="h-32 w-full">
+        <rect x="0" y="0" width="320" height="128" rx="8" fill="#eef5ee" />
+        <path d="M24 108 C92 95 206 96 296 106 L296 122 L24 122 Z" fill="#7bb565" opacity="0.5" />
+        <line x1="28" x2="296" y1="108" y2="108" stroke="#94a3b8" strokeDasharray="5 7" />
+        <path
+          d={`M 34 108 Q ${apexX} ${apexY} ${endX} 108`}
+          fill="none"
+          stroke={shot.accent}
+          strokeLinecap="round"
+          strokeWidth="4"
+        />
+        <circle cx={endX} cy="108" r="5" fill={shot.accent} />
+        <text x={apexX + 8} y={Math.max(18, apexY - 8)} fill="#475569" fontSize="12">
+          apex {formatMetric(shot.apexFt)} ft
+        </text>
+        <text x="34" y="28" fill="#475569" fontSize="12">
+          launch {formatMetric(shot.launchAngleDeg)} deg
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+function SimulationMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+      <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
+        <p className="text-xs font-medium">{label}</p>
+        <Icon className="size-4 shrink-0" />
+      </div>
+      <p className="text-lg font-semibold tracking-normal">{value}</p>
+    </div>
+  );
+}
+
+function Label({
+  x,
+  y,
+  title,
+  value,
+}: {
+  x: number;
+  y: number;
+  title: string;
+  value: string;
+}) {
+  return (
+    <g>
+      <rect x={x} y={y} width="104" height="44" rx="8" fill="#0f172a" opacity="0.82" />
+      <text x={x + 10} y={y + 17} fill="#cbd5e1" fontSize="11" fontWeight="600">
+        {title}
+      </text>
+      <text x={x + 10} y={y + 34} fill="#ffffff" fontSize="15" fontWeight="700">
+        {value}
+      </text>
+    </g>
+  );
+}
+
+function buildShotGeometry(shot: LongestShot) {
+  const totalDistance = Math.max(1, shot.totalYd ?? shot.carryYd ?? 1);
+  const carryDistance = Math.min(totalDistance, Math.max(1, shot.carryYd ?? totalDistance));
+  const maxDistance = Math.max(320, Math.ceil((totalDistance * 1.12) / 25) * 25);
+  const playHeight = 420;
+  const side = clamp(shot.sideCarryYd ?? (shot.launchDirectionDeg ?? 0) * 4, -90, 90);
+  const carrySide = totalDistance === 0 ? side : side * (carryDistance / totalDistance);
+  const tee = { x: 450, y: 504 };
+  const carry = pointForShot(carryDistance, carrySide, maxDistance, playHeight, tee);
+  const total = pointForShot(totalDistance, side, maxDistance, playHeight, tee);
+  const curve = clamp((shot.spinAxis ?? side) * 1.2 + (shot.launchDirectionDeg ?? 0) * 7, -150, 150);
+  const controlOne = { x: tee.x + curve * 0.25, y: tee.y - playHeight * 0.42 };
+  const controlTwo = { x: total.x - curve * 0.42, y: total.y + playHeight * 0.3 };
+  const labelDirection = side >= 0 ? 1 : -1;
+
+  return {
+    tee,
+    carry,
+    total,
+    maxDistance,
+    playHeight,
+    rollControl: labelDirection * 34,
+    tracerPath: `M ${tee.x} ${tee.y} C ${controlOne.x} ${controlOne.y} ${controlTwo.x} ${controlTwo.y} ${carry.x} ${carry.y}`,
+    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 780), y: clamp(carry.y - 70, 16, 470) },
+    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 780), y: clamp(total.y - 20, 16, 470) },
+    sideLabel: { x: clamp(total.x - 52, 16, 780), y: clamp(total.y + 36, 16, 470) },
+  };
+}
+
+function pointForShot(distance: number, side: number, maxDistance: number, playHeight: number, tee: { x: number; y: number }) {
+  return {
+    x: tee.x + (side / 90) * 280,
+    y: tee.y - (distance / maxDistance) * playHeight,
+  };
+}
+
+function formatMetric(value: number | null) {
+  return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatSide(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  if (value < 0) {
+    return `${numberFormatter.format(Math.abs(value))}L`;
+  }
+
+  if (value > 0) {
+    return `${numberFormatter.format(value)}R`;
+  }
+
+  return "0";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
