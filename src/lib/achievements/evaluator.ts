@@ -4,6 +4,7 @@ import {
   ACHIEVEMENTS,
   GENERATED_CLUB_MASTERY_BY_CLUB,
   GENERATED_CLUB_METRICS_BY_CLUB,
+  GENERATED_CLUB_PERSONAL_BEST_BY_CLUB,
   GENERATED_CLUB_VOLUME_BY_CLUB,
   type GeneratedClubMasteryMetric,
   getAchievement,
@@ -57,6 +58,7 @@ export function evaluateAllAchievementCandidates(
 
   evaluateRollingSamples(collector, shotCountByClubId);
   evaluateGeneratedClubVolumeSamples(collector, shotsByClubType);
+  evaluateGeneratedClubPersonalBests(collector, shotsByClubType);
   evaluateStockAndGapping(collector, context.clubs, latestStockByClubId);
   evaluateProgress(collector, trackedShots, trackedStocks);
 
@@ -281,16 +283,7 @@ function evaluateGeneratedShotAchievements(collector: Collector, shot: Achieveme
   const generatedAchievements = GENERATED_CLUB_METRICS_BY_CLUB.get(shot.clubType) ?? [];
 
   for (const generated of generatedAchievements) {
-    const value =
-      generated.metric === "carryYd"
-        ? shot.carryYd
-        : generated.metric === "totalYd"
-          ? shot.totalYd
-          : generated.metric === "ballSpeedMph"
-            ? shot.ballSpeedMph
-            : generated.metric === "smashFactor"
-              ? shot.smashFactor
-              : absNumber(shot.sideCarryYd);
+    const value = absNumber(shot.sideCarryYd);
 
     if (value === null) {
       continue;
@@ -359,6 +352,7 @@ function evaluateSession(collector: Collector, session: AchievementSession, sess
 
   evaluateDriverSession(collector, session, driverShots);
   evaluateFiveWoodSession(collector, session, fiveWoodShots);
+  evaluateShortGameSession(collector, session, byClub);
   evaluateConsistencySession(collector, session, byClub);
   evaluateGeneratedClubMasterySession(collector, session, byClub);
   evaluateSessionHidden(collector, session, sessionShots);
@@ -411,6 +405,48 @@ function evaluateFiveWoodSession(collector: Collector, session: AchievementSessi
   if (carryValues.length >= 20 && mean(carryValues) >= 165 && spread(carryValues) <= 20) {
     collector.unlock("fivewood_stock_built", { sourceSessionId: session.id, unlockedAt: session.date });
   }
+}
+
+function evaluateShortGameSession(
+  collector: Collector,
+  session: AchievementSession,
+  byClub: Map<string, AchievementShot[]>,
+) {
+  const swShots = byClub.get("sw") ?? [];
+  const lwShots = byClub.get("lw") ?? [];
+
+  if (countCarryWindow(swShots, 45, 55) >= 5) {
+    collector.unlock("sw_dialled_50", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if (countCarryWindow(swShots, 65, 75) >= 5) {
+    collector.unlock("sw_dialled_70", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if ([
+    countCarryWindow(swShots, 25, 35),
+    countCarryWindow(swShots, 45, 55),
+    countCarryWindow(swShots, 65, 75),
+  ].every((count) => count > 0)) {
+    collector.unlock("sw_wedge_ladder_i", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+
+  if (countCarryWindow(lwShots, 25, 35) >= 5) {
+    collector.unlock("lw_30_yard_touch", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if (countCarryWindow(lwShots, 35, 45) >= 5) {
+    collector.unlock("lw_40_yard_touch", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if ([
+    countCarryWindow(lwShots, 15, 25),
+    countCarryWindow(lwShots, 25, 35),
+    countCarryWindow(lwShots, 35, 45),
+    countCarryWindow(lwShots, 45, 55),
+  ].every((count) => count > 0)) {
+    collector.unlock("lw_lob_ladder", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+}
+
+function countCarryWindow(shots: AchievementShot[], minYd: number, maxYd: number) {
+  return shots.filter((shot) => between(shot.carryYd, minYd, maxYd)).length;
 }
 
 function evaluateConsistencySession(
@@ -549,6 +585,69 @@ function evaluateGeneratedClubVolumeSamples(
       });
     }
   }
+}
+
+function evaluateGeneratedClubPersonalBests(
+  collector: Collector,
+  shotsByClubType: Map<string, AchievementShot[]>,
+) {
+  for (const [clubType, clubShots] of shotsByClubType.entries()) {
+    const generatedAchievements = GENERATED_CLUB_PERSONAL_BEST_BY_CLUB.get(clubType) ?? [];
+
+    if (generatedAchievements.length === 0) {
+      continue;
+    }
+
+    const carryAchievement = generatedAchievements.find((achievement) => achievement.metric === "carryYd");
+    const totalAchievement = generatedAchievements.find((achievement) => achievement.metric === "totalYd");
+    const controlAchievement = generatedAchievements.find((achievement) => achievement.metric === "withControl");
+    let bestCarry: number | null = null;
+    let bestTotal: number | null = null;
+
+    for (const shot of sortShots(clubShots)) {
+      const carryPb = isNewPersonalBest(shot.carryYd, bestCarry);
+      const totalPb = isNewPersonalBest(shot.totalYd, bestTotal);
+      const absOffline = absNumber(shot.sideCarryYd);
+
+      if (carryPb && carryAchievement) {
+        collector.unlock(carryAchievement.id, {
+          sourceSessionId: shot.sessionId,
+          sourceShotId: shot.id,
+          unlockedAt: shot.shotAt,
+          metadata: { clubType, previousBest: bestCarry, value: shot.carryYd },
+        });
+      }
+
+      if (totalPb && totalAchievement) {
+        collector.unlock(totalAchievement.id, {
+          sourceSessionId: shot.sessionId,
+          sourceShotId: shot.id,
+          unlockedAt: shot.shotAt,
+          metadata: { clubType, previousBest: bestTotal, value: shot.totalYd },
+        });
+      }
+
+      if ((carryPb || totalPb) && controlAchievement && absOffline !== null && absOffline <= 15) {
+        collector.unlock(controlAchievement.id, {
+          sourceSessionId: shot.sessionId,
+          sourceShotId: shot.id,
+          unlockedAt: shot.shotAt,
+          metadata: { clubType, carryYd: shot.carryYd, totalYd: shot.totalYd, offlineYd: shot.sideCarryYd },
+        });
+      }
+
+      if (shot.carryYd !== null && (bestCarry === null || shot.carryYd > bestCarry)) {
+        bestCarry = shot.carryYd;
+      }
+      if (shot.totalYd !== null && (bestTotal === null || shot.totalYd > bestTotal)) {
+        bestTotal = shot.totalYd;
+      }
+    }
+  }
+}
+
+function isNewPersonalBest(value: number | null, previousBest: number | null) {
+  return value !== null && previousBest !== null && value > previousBest;
 }
 
 function evaluateGeneratedClubMasterySession(
@@ -913,6 +1012,20 @@ function evaluateRoundStats(collector: Collector, session: AchievementSession, h
     if (scrambleRate >= 0.35) {
       collector.unlock("short_game_sharp", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { scrambleRate } });
     }
+  }
+
+  const sandHoles = holes.filter((hole) => (hole.greensideSandShots ?? 0) > 0);
+  if (sandHoles.length > 0) {
+    collector.unlock("bunker_tool", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if (sandHoles.some((hole) => (hole.putts ?? 99) <= 1 && isNumber(hole.score) && (hole.score ?? 99) <= hole.par)) {
+    collector.unlock("sand_save", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if (missedGirScored.some((hole) => (hole.putts ?? 99) <= 1 && (hole.score ?? 99) <= hole.par)) {
+    collector.unlock("up_and_down", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+  if (saves >= 3) {
+    collector.unlock("scramble_day", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { saves } });
   }
 
   const penaltyHoles = holes.slice(0, 18).filter((hole) => isNumber(hole.penalties));

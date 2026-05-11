@@ -1,6 +1,6 @@
 import type { Achievement, AchievementCategory, AchievementTier, AchievementTriggerType } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-11-club-mastery-v3";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-11-club-identity-v5";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -172,9 +172,20 @@ export const CORE_ACHIEVEMENTS: Achievement[] = ([
   achievement("gir_machine", "GIR Machine", "Hit 8 greens in regulation in a round.", "roundStats", "gold", "roundScorecard", 8),
   achievement("ball_striking_day", "Ball-Striking Day", "Hit 10+ greens in regulation.", "roundStats", "platinum", "roundScorecard", 10),
   achievement("ball_striker_mode", "Ball-Striker Mode", "Hit GIR on 50%+ of completed holes.", "roundStats", "diamond", "roundScorecard", 50),
-  achievement("scramble_upgrade", "Scramble Upgrade", "Scramble at 20%+ in a round.", "roundStats", "gold", "roundScorecard", 20),
-  achievement("short_game_sharp", "Short Game Sharp", "Scramble at 35%+ in a round.", "roundStats", "platinum", "roundScorecard", 35),
+  achievement("scramble_upgrade", "Scramble Upgrade", "Scramble at 20%+ in a round.", "shortGame", "gold", "roundScorecard", 20),
+  achievement("short_game_sharp", "Short Game Sharp", "Scramble at 35%+ in a round.", "shortGame", "platinum", "roundScorecard", 35),
   achievement("penalty_free", "Penalty-Free", "Complete a full round with zero penalties.", "roundStats", "gold", "roundScorecard", 18),
+
+  achievement("sw_dialled_50", "50-Yard Dialled", "Hit 5 SW shots between 45 and 55 yd carry in one session.", "shortGame", "silver", "session", 5, undefined, ["sw"]),
+  achievement("sw_dialled_70", "70-Yard Dialled", "Hit 5 SW shots between 65 and 75 yd carry in one session.", "shortGame", "silver", "session", 5, undefined, ["sw"]),
+  achievement("sw_wedge_ladder_i", "Wedge Ladder I", "Record SW shots in the 30, 50, and 70 yd windows in one session.", "shortGame", "gold", "session", 3, undefined, ["sw"]),
+  achievement("lw_30_yard_touch", "30-Yard Touch", "Hit 5 LW shots between 25 and 35 yd carry in one session.", "shortGame", "silver", "session", 5, undefined, ["lw"]),
+  achievement("lw_40_yard_touch", "40-Yard Touch", "Hit 5 LW shots between 35 and 45 yd carry in one session.", "shortGame", "silver", "session", 5, undefined, ["lw"]),
+  achievement("lw_lob_ladder", "Lob Ladder", "Record LW shots in the 20, 30, 40, and 50 yd windows in one session.", "shortGame", "gold", "session", 4, undefined, ["lw"]),
+  achievement("bunker_tool", "Bunker Tool", "Record a greenside sand shot.", "shortGame", "bronze", "roundScorecard", 1),
+  achievement("sand_save", "Sand Save", "Record a greenside sand shot followed by one putt or better.", "shortGame", "gold", "roundScorecard", 1),
+  achievement("up_and_down", "Up-and-Down", "Miss the green in regulation, then save par or better with one putt.", "shortGame", "gold", "roundScorecard", 1),
+  achievement("scramble_day", "Scramble Day", "Record 3 successful scrambles in a round.", "shortGame", "platinum", "roundScorecard", 3),
 
   achievement("worm_burner", "Worm Burner", "Driver or 5W launch under 5 deg.", "hidden", "hidden", "singleShot", 5, 25),
   achievement("moon_ball", "Moon Ball", "Driver launch over 22 deg.", "hidden", "hidden", "singleShot", 22, 25),
@@ -190,12 +201,7 @@ export const CORE_ACHIEVEMENTS: Achievement[] = ([
   achievement("highlight_reel", "One for the Highlight Reel", "Record the best combined distance and accuracy shot of a session.", "hidden", "hidden", "session", undefined, 150),
 ] satisfies Achievement[]).map(withInferredClubTypes);
 
-export type GeneratedClubMetric =
-  | "carryYd"
-  | "totalYd"
-  | "ballSpeedMph"
-  | "smashFactor"
-  | "offlineYd";
+export type GeneratedClubMetric = "offlineYd";
 
 export type GeneratedClubMetricAchievement = {
   id: string;
@@ -209,6 +215,14 @@ export type GeneratedClubVolumeAchievement = {
   id: string;
   clubType: string;
   shotCount: number;
+};
+
+export type GeneratedClubPersonalBestMetric = "carryYd" | "totalYd" | "withControl";
+
+export type GeneratedClubPersonalBestAchievement = {
+  id: string;
+  clubType: string;
+  metric: GeneratedClubPersonalBestMetric;
 };
 
 export type GeneratedClubMasteryMetric =
@@ -247,27 +261,39 @@ const GENERATED_CLUBS = [
   "lw",
 ];
 
-const GENERATED_VOLUME_CLUBS = [
-  "driver",
-  "3w",
-  "5w",
-  "5h",
-  "5i",
-  "6i",
-  "7i",
-  "8i",
-  "9i",
-  "pw",
-];
+const GENERATED_FULL_SHOT_CLUBS = GENERATED_CLUBS.filter((clubType) => !["sw", "lw"].includes(clubType));
+const GENERATED_VOLUME_CLUBS = GENERATED_CLUBS;
 
-const GENERATED_VOLUME_SHOT_COUNTS = [5, 10, 20, 30, 40, 50, 75, 100, 150, 200];
-const GENERATED_MASTERY_SAMPLE_CLUBS = GENERATED_VOLUME_CLUBS;
+type GeneratedClubMetricConfig = Record<string, { offlineYd: number[] }>;
+
+const GENERATED_CLUB_METRIC_CONFIG: GeneratedClubMetricConfig = {
+  driver: { offlineYd: [30, 25, 20, 15, 10, 5] },
+  "3w": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "5w": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "7w": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "3h": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "4h": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "5h": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "4i": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "5i": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "6i": { offlineYd: [25, 20, 15, 10, 7, 5] },
+  "7i": { offlineYd: [20, 15, 12, 10, 7, 5] },
+  "8i": { offlineYd: [20, 15, 12, 10, 7, 5] },
+  "9i": { offlineYd: [20, 15, 12, 10, 7, 5] },
+  pw: { offlineYd: [15, 12, 10, 7, 5] },
+  gw: { offlineYd: [15, 12, 10, 7, 5] },
+};
+
+const GENERATED_VOLUME_SHOT_COUNTS = [1, 10, 25, 50, 100];
+const GENERATED_MASTERY_SAMPLE_CLUBS = GENERATED_FULL_SHOT_CLUBS;
 const GENERATED_MASTERY_MIN_SHOTS = 10;
 
 export const GENERATED_CLUB_METRIC_ACHIEVEMENTS = buildGeneratedClubMetricAchievements();
 export const GENERATED_CLUB_METRICS_BY_CLUB = new Map<string, GeneratedClubMetricAchievement[]>();
 export const GENERATED_CLUB_VOLUME_ACHIEVEMENTS = buildGeneratedClubVolumeAchievements();
 export const GENERATED_CLUB_VOLUME_BY_CLUB = new Map<string, GeneratedClubVolumeAchievement[]>();
+export const GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS = buildGeneratedClubPersonalBestAchievements();
+export const GENERATED_CLUB_PERSONAL_BEST_BY_CLUB = new Map<string, GeneratedClubPersonalBestAchievement[]>();
 export const GENERATED_CLUB_MASTERY_ACHIEVEMENTS = buildGeneratedClubMasteryAchievements();
 export const GENERATED_CLUB_MASTERY_BY_CLUB = new Map<string, GeneratedClubMasteryAchievement[]>();
 
@@ -283,6 +309,12 @@ for (const generated of GENERATED_CLUB_VOLUME_ACHIEVEMENTS) {
   GENERATED_CLUB_VOLUME_BY_CLUB.set(generated.clubType, existing);
 }
 
+for (const generated of GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS) {
+  const existing = GENERATED_CLUB_PERSONAL_BEST_BY_CLUB.get(generated.clubType) ?? [];
+  existing.push(generated);
+  GENERATED_CLUB_PERSONAL_BEST_BY_CLUB.set(generated.clubType, existing);
+}
+
 for (const generated of GENERATED_CLUB_MASTERY_ACHIEVEMENTS) {
   const existing = GENERATED_CLUB_MASTERY_BY_CLUB.get(generated.clubType) ?? [];
   existing.push(generated);
@@ -293,6 +325,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   ...CORE_ACHIEVEMENTS,
   ...GENERATED_CLUB_METRIC_ACHIEVEMENTS.map(toGeneratedAchievement),
   ...GENERATED_CLUB_VOLUME_ACHIEVEMENTS.map(toGeneratedVolumeAchievement),
+  ...GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS.map(toGeneratedPersonalBestAchievement),
   ...GENERATED_CLUB_MASTERY_ACHIEVEMENTS.map(toGeneratedMasteryAchievement),
 ];
 
@@ -309,50 +342,12 @@ export function getAchievement(achievementId: string) {
 function buildGeneratedClubMetricAchievements(): GeneratedClubMetricAchievement[] {
   const generated: GeneratedClubMetricAchievement[] = [];
 
-  for (const clubType of GENERATED_CLUBS) {
-    for (const threshold of carryThresholdsForClub(clubType)) {
-      generated.push({
-        id: `club_${clubType}_carry_${threshold}`,
-        clubType,
-        metric: "carryYd",
-        threshold,
-        operator: ">=",
-      });
-    }
+  for (const clubType of GENERATED_FULL_SHOT_CLUBS) {
+    const metricConfig = GENERATED_CLUB_METRIC_CONFIG[clubType];
 
-    for (const threshold of totalThresholdsForClub(clubType)) {
+    for (const threshold of metricConfig.offlineYd) {
       generated.push({
-        id: `club_${clubType}_total_${threshold}`,
-        clubType,
-        metric: "totalYd",
-        threshold,
-        operator: ">=",
-      });
-    }
-
-    for (const threshold of range(40, 180, 5)) {
-      generated.push({
-        id: `club_${clubType}_ball_speed_${threshold}`,
-        clubType,
-        metric: "ballSpeedMph",
-        threshold,
-        operator: ">=",
-      });
-    }
-
-    for (const threshold of decimalRange(1, 1.55, 0.01)) {
-      generated.push({
-        id: `club_${clubType}_smash_${Math.round(threshold * 100)}`,
-        clubType,
-        metric: "smashFactor",
-        threshold,
-        operator: ">=",
-      });
-    }
-
-    for (const threshold of [2, 3, 4, 5, 7, 10, 12, 15, 20, 25, 30]) {
-      generated.push({
-        id: `club_${clubType}_offline_${threshold}`,
+        id: generatedClubMetricId(clubType, "offlineYd", threshold),
         clubType,
         metric: "offlineYd",
         threshold,
@@ -373,6 +368,22 @@ function buildGeneratedClubVolumeAchievements(): GeneratedClubVolumeAchievement[
         id: `club_${clubType}_volume_${shotCount}`,
         clubType,
         shotCount,
+      });
+    }
+  }
+
+  return generated;
+}
+
+function buildGeneratedClubPersonalBestAchievements(): GeneratedClubPersonalBestAchievement[] {
+  const generated: GeneratedClubPersonalBestAchievement[] = [];
+
+  for (const clubType of GENERATED_FULL_SHOT_CLUBS) {
+    for (const metric of ["carryYd", "totalYd", "withControl"] satisfies GeneratedClubPersonalBestMetric[]) {
+      generated.push({
+        id: `club_${clubType}_pb_${personalBestMetricId(metric)}`,
+        clubType,
+        metric,
       });
     }
   }
@@ -421,62 +432,6 @@ function toGeneratedAchievement(generated: GeneratedClubMetricAchievement): Achi
   const clubLabel = formatClubLabel(generated.clubType);
   const tier = tierForGeneratedAchievement(generated);
 
-  if (generated.metric === "carryYd") {
-    return achievement(
-      generated.id,
-      `${clubLabel} Carry ${generated.threshold}`,
-      `Carry ${clubLabel} ${generated.threshold}+ yd.`,
-      "power",
-      tier,
-      "singleShot",
-      generated.threshold,
-      undefined,
-      [generated.clubType],
-    );
-  }
-
-  if (generated.metric === "totalYd") {
-    return achievement(
-      generated.id,
-      `${clubLabel} Total ${generated.threshold}`,
-      `Hit ${clubLabel} ${generated.threshold}+ yd total.`,
-      "power",
-      tier,
-      "singleShot",
-      generated.threshold,
-      undefined,
-      [generated.clubType],
-    );
-  }
-
-  if (generated.metric === "ballSpeedMph") {
-    return achievement(
-      generated.id,
-      `${clubLabel} Ball Speed ${generated.threshold}`,
-      `Reach ${generated.threshold}+ mph ball speed with ${clubLabel}.`,
-      "power",
-      tier,
-      "singleShot",
-      generated.threshold,
-      undefined,
-      [generated.clubType],
-    );
-  }
-
-  if (generated.metric === "smashFactor") {
-    return achievement(
-      generated.id,
-      `${clubLabel} Smash ${generated.threshold.toFixed(2)}`,
-      `Record ${generated.threshold.toFixed(2)}+ smash factor with ${clubLabel}.`,
-      "strike",
-      tier,
-      "singleShot",
-      generated.threshold,
-      undefined,
-      [generated.clubType],
-    );
-  }
-
   return achievement(
     generated.id,
     `${clubLabel} Offline ${generated.threshold}`,
@@ -485,6 +440,50 @@ function toGeneratedAchievement(generated: GeneratedClubMetricAchievement): Achi
     tier,
     "singleShot",
     generated.threshold,
+    undefined,
+    [generated.clubType],
+  );
+}
+
+function toGeneratedPersonalBestAchievement(generated: GeneratedClubPersonalBestAchievement): Achievement {
+  const clubLabel = formatClubLabel(generated.clubType);
+
+  if (generated.metric === "carryYd") {
+    return achievement(
+      generated.id,
+      `${clubLabel} Personal Best Carry`,
+      `Beat your previous ${clubLabel} carry personal best.`,
+      "progress",
+      "gold",
+      "progress",
+      undefined,
+      undefined,
+      [generated.clubType],
+    );
+  }
+
+  if (generated.metric === "totalYd") {
+    return achievement(
+      generated.id,
+      `${clubLabel} Personal Best Total`,
+      `Beat your previous ${clubLabel} total-distance personal best.`,
+      "progress",
+      "gold",
+      "progress",
+      undefined,
+      undefined,
+      [generated.clubType],
+    );
+  }
+
+  return achievement(
+    generated.id,
+    `${clubLabel} PB With Control`,
+    `Beat a ${clubLabel} distance personal best while finishing within 15 yd offline.`,
+    "progress",
+    "platinum",
+    "progress",
+    undefined,
     undefined,
     [generated.clubType],
   );
@@ -514,8 +513,8 @@ function toGeneratedVolumeAchievement(generated: GeneratedClubVolumeAchievement)
   return achievement(
     generated.id,
     `${clubLabel} ${volumeNameForShotCount(generated.shotCount)}`,
-    `Log ${generated.shotCount}+ tracked shots with ${clubLabel}.`,
-    "consistency",
+    volumeDescriptionForShotCount(clubLabel, generated.shotCount),
+    isShortGameGeneratedClub(generated.clubType) ? "shortGame" : "consistency",
     tier,
     "rollingWindow",
     generated.shotCount,
@@ -582,10 +581,10 @@ function inferCoreClubTypes(id: string) {
 }
 
 function tierForGeneratedVolumeAchievement(shotCount: number): AchievementTier {
-  if (shotCount >= 150) return "diamond";
-  if (shotCount >= 75) return "platinum";
-  if (shotCount >= 40) return "gold";
-  if (shotCount >= 20) return "silver";
+  if (shotCount >= 100) return "diamond";
+  if (shotCount >= 50) return "platinum";
+  if (shotCount >= 25) return "gold";
+  if (shotCount >= 10) return "silver";
   return "bronze";
 }
 
@@ -610,17 +609,30 @@ function tierForGeneratedMasteryAchievement(generated: GeneratedClubMasteryAchie
   return "bronze";
 }
 
+function personalBestMetricId(metric: GeneratedClubPersonalBestMetric) {
+  if (metric === "carryYd") return "carry";
+  if (metric === "totalYd") return "total";
+  return "with_control";
+}
+
 function volumeNameForShotCount(shotCount: number) {
-  if (shotCount >= 200) return "Master File";
-  if (shotCount >= 150) return "Workload";
-  if (shotCount >= 100) return "Century";
-  if (shotCount >= 75) return "Trusted Sample";
-  if (shotCount >= 50) return "Fifty Logged";
-  if (shotCount >= 40) return "Profile";
-  if (shotCount >= 30) return "Read";
-  if (shotCount >= 20) return "Baseline";
-  if (shotCount >= 10) return "Sample";
-  return "Seen";
+  if (shotCount >= 100) return "Bag Veteran";
+  if (shotCount >= 50) return "Trusted Club";
+  if (shotCount >= 25) return "Proper Sample";
+  if (shotCount >= 10) return "Getting Acquainted";
+  return "First Strike";
+}
+
+function volumeDescriptionForShotCount(clubLabel: string, shotCount: number) {
+  if (shotCount === 1) {
+    return `Log your first tracked shot with ${clubLabel}.`;
+  }
+
+  return `Log ${shotCount}+ tracked shots with ${clubLabel}.`;
+}
+
+function isShortGameGeneratedClub(clubType: string) {
+  return clubType === "sw" || clubType === "lw";
 }
 
 function masteryMetricId(metric: GeneratedClubMasteryMetric) {
@@ -696,62 +708,15 @@ function smashAverageThresholdsForClub(clubType: string) {
   return decimalRange(1.02, 1.29, 0.03);
 }
 
-function carryThresholdsForClub(clubType: string) {
-  if (clubType === "driver") {
-    return range(120, 320, 5);
-  }
-
-  if (clubType.endsWith("w") || clubType.endsWith("h")) {
-    return range(80, 290, 5);
-  }
-
-  if (clubType.endsWith("i")) {
-    return range(40, 240, 5);
-  }
-
-  return range(5, 160, 5);
-}
-
-function totalThresholdsForClub(clubType: string) {
-  if (clubType === "driver") {
-    return range(120, 350, 5);
-  }
-
-  if (clubType.endsWith("w") || clubType.endsWith("h")) {
-    return range(90, 310, 5);
-  }
-
-  if (clubType.endsWith("i")) {
-    return range(50, 260, 5);
-  }
-
-  return range(10, 180, 5);
+function generatedClubMetricId(clubType: string, metric: GeneratedClubMetric, threshold: number) {
+  return `club_${clubType}_${metric === "offlineYd" ? "offline" : metric}_${threshold}`;
 }
 
 function tierForGeneratedAchievement(generated: GeneratedClubMetricAchievement): AchievementTier {
-  if (generated.metric === "offlineYd") {
-    if (generated.threshold <= 3) return "diamond";
-    if (generated.threshold <= 5) return "platinum";
-    if (generated.threshold <= 10) return "gold";
-    if (generated.threshold <= 20) return "silver";
-    return "bronze";
-  }
-
-  const thresholds =
-    generated.metric === "totalYd"
-      ? totalThresholdsForClub(generated.clubType)
-      : generated.metric === "carryYd"
-        ? carryThresholdsForClub(generated.clubType)
-        : generated.metric === "ballSpeedMph"
-          ? range(40, 180, 5)
-          : decimalRange(1, 1.55, 0.01);
-  const index = thresholds.findIndex((threshold) => threshold >= generated.threshold);
-  const percentile = index < 0 ? 1 : index / Math.max(1, thresholds.length - 1);
-
-  if (percentile >= 0.92) return "diamond";
-  if (percentile >= 0.78) return "platinum";
-  if (percentile >= 0.58) return "gold";
-  if (percentile >= 0.32) return "silver";
+  if (generated.threshold <= 3) return "diamond";
+  if (generated.threshold <= 5) return "platinum";
+  if (generated.threshold <= 10) return "gold";
+  if (generated.threshold <= 20) return "silver";
   return "bronze";
 }
 
@@ -769,16 +734,6 @@ function formatClubLabel(clubType: string) {
   }
 
   return clubType.toUpperCase();
-}
-
-function range(start: number, end: number, step: number) {
-  const values: number[] = [];
-
-  for (let value = start; value <= end; value += step) {
-    values.push(value);
-  }
-
-  return values;
 }
 
 function decimalRange(start: number, end: number, step: number) {

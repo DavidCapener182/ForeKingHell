@@ -19,6 +19,7 @@ export type AchievementCategory =
   | "progress"
   | "scoring"
   | "putting"
+  | "shortGame"
   | "roundStats"
   | "hidden";
 

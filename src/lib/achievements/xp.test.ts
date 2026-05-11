@@ -12,14 +12,17 @@ describe("achievement registry", () => {
     expect(ACHIEVEMENTS.length).toBeGreaterThan(1000);
   });
 
-  it("adds 100 club-volume mastery achievements", () => {
-    expect(GENERATED_CLUB_VOLUME_ACHIEVEMENTS).toHaveLength(100);
+  it("adds club-volume identity achievements for every tracked club", () => {
+    expect(GENERATED_CLUB_VOLUME_ACHIEVEMENTS).toHaveLength(85);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_volume_100")).toBe(true);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_volume_200")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_volume_25")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_sw_volume_1")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_lw_volume_100")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_volume_200")).toBe(false);
   });
 
-  it("adds 500 club-session mastery achievements", () => {
-    expect(GENERATED_CLUB_MASTERY_ACHIEVEMENTS).toHaveLength(500);
+  it("adds full-shot club-session mastery achievements", () => {
+    expect(GENERATED_CLUB_MASTERY_ACHIEVEMENTS).toHaveLength(750);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_mastery_carry_spread_12")).toBe(true);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_7i_mastery_launch_spread_25")).toBe(true);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_mastery_smash_average_129")).toBe(true);

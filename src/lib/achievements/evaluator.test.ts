@@ -6,6 +6,7 @@ import {
   evaluateRapsodoSessionAchievements,
   evaluateRoundScorecardAchievements,
 } from "./evaluator";
+import { ACHIEVEMENTS } from "./registry";
 import type { AchievementSession, AchievementShot, RoundScorecardHole } from "./types";
 
 const sessionDate = new Date("2026-05-01T12:00:00.000Z");
@@ -33,10 +34,22 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("driver_launch_window_single");
     expect(ids).toContain("driver_bomb_straight");
     expect(ids).toContain("driver_smash_150");
-    expect(ids).toContain("club_driver_carry_205");
-    expect(ids).toContain("club_driver_total_225");
-    expect(ids).toContain("club_driver_ball_speed_140");
+    expect(ids).toContain("club_driver_volume_1");
     expect(ids).toContain("club_driver_offline_5");
+    expect(ids).not.toContain("club_driver_carry_200");
+    expect(ids).not.toContain("club_driver_total_220");
+    expect(ids).not.toContain("club_driver_ball_speed_140");
+  });
+
+  it("does not register short-game touch clubs or unrealistic wedge power targets as generated metric achievements", () => {
+    const ids = ACHIEVEMENTS.map((achievement) => achievement.id);
+
+    expect(ids.some((id) => /^club_(sw|lw)_(carry|total|ball_speed|smash|offline)_/.test(id))).toBe(false);
+    expect(ids).not.toContain("club_pw_ball_speed_180");
+    expect(ids).not.toContain("club_gw_smash_155");
+    expect(ids).not.toContain("club_9i_carry_130");
+    expect(ids).toContain("club_sw_volume_1");
+    expect(ids).toContain("club_lw_volume_1");
   });
 
   it("unlocks session, consistency, and 5W badges", () => {
@@ -73,13 +86,14 @@ describe("Rapsodo achievement evaluation", () => {
     );
     const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
     const ids = achievementIds(result.unlocks);
-    const baseline = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_20");
+    const firstStrike = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_1");
+    const acquainted = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_10");
 
-    expect(ids).toContain("club_7i_volume_5");
+    expect(ids).toContain("club_7i_volume_1");
     expect(ids).toContain("club_7i_volume_10");
-    expect(ids).toContain("club_7i_volume_20");
-    expect(ids).not.toContain("club_7i_volume_30");
-    expect(baseline?.sourceShotId).toBe("seveniron-19");
+    expect(ids).not.toContain("club_7i_volume_25");
+    expect(firstStrike?.sourceShotId).toBe("seveniron-0");
+    expect(acquainted?.sourceShotId).toBe("seveniron-9");
   });
 
   it("unlocks generated club-session mastery badges from consistent sessions", () => {
@@ -106,6 +120,32 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("club_7i_mastery_smash_average_133");
     expect(ids).not.toContain("club_7i_mastery_smash_average_136");
     expect(carryMastery?.sourceSessionId).toBe("session-1");
+  });
+
+
+  it("unlocks short-game wedge control achievements without distance-power metrics", () => {
+    const shots = [
+      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-50-${index}`, clubType: "sw", carryYd: 50, shotNumber: index + 1 })),
+      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-70-${index}`, clubType: "sw", carryYd: 70, shotNumber: index + 6 })),
+      makeShot({ id: "sw-30", clubType: "sw", carryYd: 30, shotNumber: 11 }),
+      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `lw-30-${index}`, clubType: "lw", carryYd: 30, shotNumber: index + 12 })),
+      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `lw-40-${index}`, clubType: "lw", carryYd: 40, shotNumber: index + 17 })),
+      makeShot({ id: "lw-20", clubType: "lw", carryYd: 20, shotNumber: 22 }),
+      makeShot({ id: "lw-50", clubType: "lw", carryYd: 50, shotNumber: 23 }),
+    ];
+    const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
+    const ids = achievementIds(result.unlocks);
+
+    expect(ids).toContain("sw_dialled_50");
+    expect(ids).toContain("sw_dialled_70");
+    expect(ids).toContain("sw_wedge_ladder_i");
+    expect(ids).toContain("lw_30_yard_touch");
+    expect(ids).toContain("lw_40_yard_touch");
+    expect(ids).toContain("lw_lob_ladder");
+    expect(ids).toContain("club_sw_volume_1");
+    expect(ids).toContain("club_lw_volume_10");
+    expect(ids).not.toContain("club_sw_carry_70");
+    expect(ids).not.toContain("club_lw_total_50");
   });
 
   it("does not unlock generated sand wedge distance badges from round touch shots", () => {
@@ -190,6 +230,8 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("distance_up_10");
     expect(ids).toContain("ball_speed_gain");
     expect(ids).toContain("hook_exorcist");
+    expect(ids).toContain("club_driver_pb_carry");
+    expect(ids).toContain("club_driver_pb_with_control");
   });
 });
 
@@ -255,7 +297,57 @@ describe("round achievement evaluation", () => {
     expect(ids).toContain("driver_trust");
     expect(ids).toContain("gir_machine");
     expect(ids).toContain("scramble_upgrade");
+    expect(ids).toContain("scramble_day");
   });
+
+  it("unlocks round short-game sand and up-and-down achievements", () => {
+    const holes: RoundScorecardHole[] = [
+      {
+        holeNumber: 1,
+        par: 4,
+        yards: 380,
+        score: 4,
+        putts: 1,
+        penalties: 0,
+        fairwayHit: true,
+        gir: false,
+        chipShots: 1,
+        greensideSandShots: 1,
+      },
+      {
+        holeNumber: 2,
+        par: 4,
+        yards: 390,
+        score: 4,
+        putts: 1,
+        penalties: 0,
+        fairwayHit: true,
+        gir: false,
+        chipShots: 1,
+        greensideSandShots: 0,
+      },
+      {
+        holeNumber: 3,
+        par: 4,
+        yards: 395,
+        score: 4,
+        putts: 1,
+        penalties: 0,
+        fairwayHit: true,
+        gir: false,
+        chipShots: 1,
+        greensideSandShots: 0,
+      },
+    ];
+    const result = evaluateRoundScorecardAchievements(makeSession({ scorecardJson: holes }));
+    const ids = achievementIds(result.unlocks);
+
+    expect(ids).toContain("bunker_tool");
+    expect(ids).toContain("sand_save");
+    expect(ids).toContain("up_and_down");
+    expect(ids).toContain("scramble_day");
+  });
+
 });
 
 function achievementIds(candidates: Array<{ achievementId: string }>) {
