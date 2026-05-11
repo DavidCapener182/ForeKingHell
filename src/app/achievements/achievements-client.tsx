@@ -3,7 +3,20 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Award, CalendarDays, CheckCircle2, ExternalLink, EyeOff, Lock, RotateCcw, Search, Trophy, Zap } from "lucide-react";
+import {
+  Award,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  EyeOff,
+  Lock,
+  RotateCcw,
+  Search,
+  Trophy,
+  Zap,
+} from "lucide-react";
 
 import { syncAchievementsAction } from "@/app/achievements/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
@@ -42,6 +55,7 @@ const categoryLabels: Record<string, string> = {
   fiveWood: "5W",
   gapping: "Gapping",
   consistency: "Consistency",
+  coach: "Coach",
   progress: "Progress",
   scoring: "Scoring",
   putting: "Putting",
@@ -109,16 +123,50 @@ const tierLabels: Record<AchievementTier, string> = {
 };
 
 const trophyTiers: AchievementTier[] = ["diamond", "platinum", "gold", "silver", "bronze"];
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+const shortMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const shortWeekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const calendarGridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+  gap: "0.25rem",
+} as const;
+
+const calendarCellStyle = {
+  aspectRatio: "1 / 1",
+  minHeight: "2.5rem",
+  width: "100%",
+} as const;
 
 export function AchievementsClient({ data }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const initialCalendarDay = latestUnlockedDayFromAchievements(data.achievements);
   const [statusFilter, setStatusFilter] = useState("unlocked");
   const [typeFilter, setTypeFilter] = useState("all");
   const [clubFilter, setClubFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
   const [hideCompleted, setHideCompleted] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(initialCalendarDay);
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    monthKeyFromDayKey(initialCalendarDay ?? dayKeyFromDate(new Date())),
+  );
 
   useEffect(() => {
     if (!data.needsSync) {
@@ -135,6 +183,12 @@ export function AchievementsClient({ data }: Props) {
       router.refresh();
     });
   }, [data.needsSync, router]);
+
+  const unlockCalendar = useMemo(
+    () => buildUnlockCalendar(data.achievements),
+    [data.achievements],
+  );
+  const effectiveCalendarDay = selectedCalendarDay ?? unlockCalendar.latestDay;
 
   const typeOptions = useMemo(
     () =>
@@ -363,6 +417,14 @@ export function AchievementsClient({ data }: Props) {
         <Metric label="Completion" value={`${Math.round((data.unlockedCount / Math.max(1, data.totalCount)) * 100)}%`} />
       </section>
 
+      <AchievementUnlockCalendar
+        calendar={unlockCalendar}
+        monthKey={calendarMonth}
+        selectedDay={effectiveCalendarDay}
+        onMonthChange={setCalendarMonth}
+        onSelectedDayChange={setSelectedCalendarDay}
+      />
+
       <Card className="premium-card">
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -482,6 +544,180 @@ export function AchievementsClient({ data }: Props) {
           ) : null}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function AchievementUnlockCalendar({
+  calendar,
+  monthKey,
+  selectedDay,
+  onMonthChange,
+  onSelectedDayChange,
+}: {
+  calendar: UnlockCalendar;
+  monthKey: string;
+  selectedDay: string | null;
+  onMonthChange: (monthKey: string) => void;
+  onSelectedDayChange: (dayKey: string) => void;
+}) {
+  const selectedAchievements = selectedDay ? (calendar.byDay.get(selectedDay) ?? []) : [];
+  const selectedXp = selectedAchievements.reduce((total, achievement) => total + achievement.xpAwarded, 0);
+  const cells = buildCalendarCells(monthKey, calendar.byDay, selectedDay);
+
+  return (
+    <Card className="premium-card">
+      <CardHeader>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle>Unlock calendar</CardTitle>
+            <CardDescription>Select a day to see which achievements were unlocked.</CardDescription>
+          </div>
+          <div className="grid size-11 shrink-0 place-items-center rounded-[8px] bg-emerald-50 text-emerald-700">
+            <CalendarDays className="size-5" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Previous month"
+                onClick={() => onMonthChange(addMonths(monthKey, -1))}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <p className="text-sm font-semibold">{formatMonthLabel(monthKey)}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Next month"
+                onClick={() => onMonthChange(addMonths(monthKey, 1))}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+
+            <div
+              className="pb-2 text-center text-[11px] font-medium uppercase tracking-normal text-muted-foreground"
+              style={calendarGridStyle}
+            >
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div style={calendarGridStyle}>
+              {cells.map((cell) => (
+                <button
+                  key={cell.dayKey}
+                  type="button"
+                  onClick={() => onSelectedDayChange(cell.dayKey)}
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-[8px] border text-sm transition-colors",
+                    cell.isSelected
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : cell.unlockCount > 0
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                        : "border-border bg-white hover:bg-[#f3f4f6]",
+                    !cell.isCurrentMonth && !cell.isSelected && "text-muted-foreground opacity-50",
+                  )}
+                  style={calendarCellStyle}
+                  aria-pressed={cell.isSelected}
+                  aria-label={`${formatDayLabel(cell.dayKey)}: ${cell.unlockCount} achievement${cell.unlockCount === 1 ? "" : "s"} unlocked`}
+                >
+                  <span className="font-medium">{cell.dayNumber}</span>
+                  {cell.unlockCount > 0 ? (
+                    <span
+                      className={cn(
+                        "mt-0.5 rounded-full px-1.5 text-[10px] font-semibold leading-4",
+                        cell.isSelected ? "bg-white text-zinc-900" : "bg-emerald-600 text-white",
+                      )}
+                    >
+                      {cell.unlockCount}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold">
+                  {selectedDay ? formatSelectedDayLabel(selectedDay) : "No day selected"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedAchievements.length > 0
+                    ? `${selectedAchievements.length.toLocaleString("en-GB")} unlocks, ${selectedXp.toLocaleString("en-GB")} XP`
+                    : "Choose a marked day from the calendar."}
+                </p>
+              </div>
+              {calendar.latestDay ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onSelectedDayChange(calendar.latestDay as string);
+                    onMonthChange(monthKeyFromDayKey(calendar.latestDay as string));
+                  }}
+                >
+                  Latest day
+                </Button>
+              ) : null}
+            </div>
+
+            {selectedAchievements.length > 0 ? (
+              <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "28rem" }}>
+                {selectedAchievements.map((achievement) => (
+                  <CalendarUnlockItem key={achievement.id} achievement={achievement} />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[8px] border bg-white p-5 text-sm text-muted-foreground">
+                No achievements unlocked on this day.
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CalendarUnlockItem({ achievement }: { achievement: AchievementView }) {
+  return (
+    <div className="rounded-[8px] border bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold leading-5">{achievement.displayName}</p>
+            <Badge className={cn("border", tierStyles[achievement.tier])}>{tierLabels[achievement.tier]}</Badge>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.displayDescription}</p>
+        </div>
+        <span className="shrink-0 text-sm font-semibold text-emerald-700">
+          {achievement.xpAwarded.toLocaleString("en-GB")} XP
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>{formatUnlockTime(achievement.unlockedAt)}</span>
+        {achievement.source?.href ? (
+          <Link
+            href={achievement.source.href}
+            className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+          >
+            Open source
+            <ExternalLink className="size-3.5" />
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -657,4 +893,150 @@ function Metric({ label, value, dark = false }: { label: string; value: string; 
 function clubSortValue(clubType: string) {
   const index = clubOrder.indexOf(clubType);
   return index === -1 ? clubOrder.length : index;
+}
+
+type UnlockCalendar = {
+  byDay: Map<string, AchievementView[]>;
+  latestDay: string | null;
+};
+
+type CalendarCell = {
+  dayKey: string;
+  dayNumber: number;
+  unlockCount: number;
+  isCurrentMonth: boolean;
+  isSelected: boolean;
+};
+
+function buildUnlockCalendar(achievements: AchievementView[]): UnlockCalendar {
+  const byDay = new Map<string, AchievementView[]>();
+
+  for (const achievement of achievements) {
+    const unlockedDate = unlockedDateForAchievement(achievement);
+
+    if (!unlockedDate) {
+      continue;
+    }
+
+    const dayKey = dayKeyFromDate(unlockedDate);
+    const dayAchievements = byDay.get(dayKey) ?? [];
+    dayAchievements.push(achievement);
+    byDay.set(dayKey, dayAchievements);
+  }
+
+  for (const dayAchievements of byDay.values()) {
+    dayAchievements.sort((left, right) => unlockTime(right) - unlockTime(left));
+  }
+
+  const latestDay = latestUnlockedDayFromAchievements(achievements);
+
+  return { byDay, latestDay };
+}
+
+function buildCalendarCells(
+  monthKey: string,
+  achievementsByDay: Map<string, AchievementView[]>,
+  selectedDay: string | null,
+): CalendarCell[] {
+  const firstOfMonth = parseDayKey(`${monthKey}-01`);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7;
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(firstOfMonth.getDate() - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const dayKey = dayKeyFromDate(date);
+
+    return {
+      dayKey,
+      dayNumber: date.getDate(),
+      unlockCount: achievementsByDay.get(dayKey)?.length ?? 0,
+      isCurrentMonth: monthKeyFromDayKey(dayKey) === monthKey,
+      isSelected: dayKey === selectedDay,
+    };
+  });
+}
+
+function latestUnlockedDayFromAchievements(achievements: AchievementView[]) {
+  let latestTime = Number.NEGATIVE_INFINITY;
+  let latestDay: string | null = null;
+
+  for (const achievement of achievements) {
+    const unlockedDate = unlockedDateForAchievement(achievement);
+
+    if (!unlockedDate) {
+      continue;
+    }
+
+    const time = unlockedDate.getTime();
+
+    if (time > latestTime) {
+      latestTime = time;
+      latestDay = dayKeyFromDate(unlockedDate);
+    }
+  }
+
+  return latestDay;
+}
+
+function unlockedDateForAchievement(achievement: AchievementView) {
+  if (!achievement.unlockedAt) {
+    return null;
+  }
+
+  const date = new Date(achievement.unlockedAt);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function unlockTime(achievement: AchievementView) {
+  const date = unlockedDateForAchievement(achievement);
+  return date?.getTime() ?? 0;
+}
+
+function dayKeyFromDate(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function monthKeyFromDayKey(dayKey: string) {
+  return dayKey.slice(0, 7);
+}
+
+function parseDayKey(dayKey: string) {
+  const [year = "1970", month = "01", day = "01"] = dayKey.split("-");
+  return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+function addMonths(monthKey: string, amount: number) {
+  const date = parseDayKey(`${monthKey}-01`);
+  date.setMonth(date.getMonth() + amount);
+  return monthKeyFromDayKey(dayKeyFromDate(date));
+}
+
+function formatMonthLabel(monthKey: string) {
+  const date = parseDayKey(`${monthKey}-01`);
+  return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function formatSelectedDayLabel(dayKey: string) {
+  const date = parseDayKey(dayKey);
+  return `${weekdayNames[date.getDay()]}, ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function formatDayLabel(dayKey: string) {
+  const date = parseDayKey(dayKey);
+  return `${shortWeekdayNames[date.getDay()]}, ${String(date.getDate()).padStart(2, "0")} ${shortMonthNames[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function formatUnlockTime(value: string | null) {
+  if (!value) {
+    return "--";
+  }
+
+  const date = new Date(value);
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }

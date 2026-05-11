@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { AppNav } from "@/components/app-nav";
 import { PwaRegister } from "@/components/pwa-register";
@@ -46,6 +47,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col antialiased">
+        <DevServiceWorkerResetScript />
         <PwaRegister />
         <AppNav totalXp={totalXp} />
         <AchievementNotificationProvider initialNotifications={achievementNotifications}>
@@ -53,5 +55,57 @@ export default async function RootLayout({
         </AchievementNotificationProvider>
       </body>
     </html>
+  );
+}
+
+function DevServiceWorkerResetScript() {
+  if (process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  return (
+    <Script
+      id="dev-service-worker-reset"
+      strategy="beforeInteractive"
+      dangerouslySetInnerHTML={{
+        __html: `
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+
+  var wasControlled = Boolean(navigator.serviceWorker.controller);
+
+  function clearForeKingHellCaches() {
+    if (!("caches" in window)) return Promise.resolve();
+
+    return caches.keys().then(function (keys) {
+      return Promise.all(
+        keys
+          .filter(function (key) { return key.indexOf("forekinghell-pwa") === 0; })
+          .map(function (key) { return caches.delete(key); })
+      );
+    });
+  }
+
+  navigator.serviceWorker.getRegistrations()
+    .then(function (registrations) {
+      return Promise.all(
+        registrations.map(function (registration) { return registration.unregister(); })
+      );
+    })
+    .then(function (results) {
+      return clearForeKingHellCaches().then(function () {
+        return results.some(Boolean);
+      });
+    })
+    .then(function (didUnregister) {
+      if (!wasControlled || !didUnregister || sessionStorage.getItem("fkh-sw-reset")) return;
+      sessionStorage.setItem("fkh-sw-reset", "1");
+      window.location.reload();
+    })
+    .catch(function () {});
+})();
+        `,
+      }}
+    />
   );
 }

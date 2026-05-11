@@ -16,6 +16,7 @@ export type AchievementCategory =
   | "fiveWood"
   | "gapping"
   | "consistency"
+  | "coach"
   | "progress"
   | "scoring"
   | "putting"

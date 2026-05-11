@@ -147,6 +147,14 @@ export default async function DashboardPage() {
 
   const routeCards = [
     {
+      title: "Today",
+      description: "Review today’s shots, session quality, and better-or-worse signals.",
+      href: "/today",
+      metric: "Practice",
+      icon: CalendarDays,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
       title: "Import CSV",
       description: "Upload Rapsodo range or simulated-course files.",
       href: "/import",

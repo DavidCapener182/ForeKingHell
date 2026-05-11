@@ -22,6 +22,7 @@ export type CoachClubCard = {
   stockCarryYd: number | null;
   usualMiss: ClubAnalytics["accuracy"]["primaryMiss"];
   playableRate: number | null;
+  launchWindow: { low: number; high: number };
   drill: string;
   reason: string;
   tone: "green" | "sky" | "pink" | "amber" | "slate";
@@ -33,6 +34,35 @@ export type CoachSessionBlock = {
   duration: string;
   tone: "green" | "sky" | "pink" | "amber" | "slate";
 };
+
+export type CoachDrillChallenge = {
+  id: string;
+  dateKey: string;
+  clubId: string;
+  clubType: string;
+  clubName: string;
+  issue: CoachFocusArea;
+  issueLabel: string;
+  title: string;
+  detail: string;
+  target: string;
+  winCondition: string;
+  completionTarget: number;
+  winRule: CoachDrillWinRule;
+  completeAchievementId: string;
+  winAchievementId: string;
+  completeXp: number;
+  winXp: number;
+  tone: "green" | "sky" | "pink" | "amber" | "slate";
+};
+
+export type CoachDrillWinRule =
+  | { kind: "clean-shots"; target: number }
+  | { kind: "playable"; target: number }
+  | { kind: "launch-window"; target: number; low: number; high: number }
+  | { kind: "solid-strike"; target: number }
+  | { kind: "delivery-window"; target: number }
+  | { kind: "carry-window"; target: number; setSize: number; maxSpreadYd: number };
 
 export type CoachTrainingImpactMetric = {
   label: string;
@@ -94,6 +124,18 @@ export function buildCoachSummary(clubs: ProgressClub[]): CoachSummary {
   };
 }
 
+export function buildCoachDrillChallenges(
+  coach: CoachSummary,
+  date = new Date(),
+): CoachDrillChallenge[] {
+  const dateKey = localDateKey(date);
+
+  return coach.clubCards
+    .filter((card) => card.sampleSize >= 3 || card.issue === "data")
+    .slice(0, 3)
+    .map((card, index) => buildCoachDrillChallenge(card, dateKey, index));
+}
+
 function buildCoachClubCard(club: ProgressClub): CoachClubCard {
   const analytics = club.analytics;
   const issue = primaryIssue(analytics);
@@ -111,9 +153,111 @@ function buildCoachClubCard(club: ProgressClub): CoachClubCard {
     stockCarryYd,
     usualMiss: analytics.accuracy.primaryMiss,
     playableRate: analytics.accuracy.playableShotRate,
+    launchWindow: analytics.launch.launchWindow,
     drill: coachDrill(analytics, issue),
     reason: coachReason(analytics, issue),
     tone: toneForIssue(issue, analytics),
+  };
+}
+
+function buildCoachDrillChallenge(
+  card: CoachClubCard,
+  dateKey: string,
+  index: number,
+): CoachDrillChallenge {
+  const slug = `${dateKey}-${card.clubType}-${card.issue}`.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const template = drillChallengeTemplate(card);
+
+  return {
+    id: `coach-drill-${slug}`,
+    dateKey,
+    clubId: card.clubId,
+    clubType: card.clubType,
+    clubName: card.clubName,
+    issue: card.issue,
+    issueLabel: card.issueLabel,
+    title: template.title,
+    detail: template.detail,
+    target: template.target,
+    winCondition: template.winCondition,
+    completionTarget: template.completionTarget,
+    winRule: template.winRule,
+    completeAchievementId: `coach_complete_${slug}`,
+    winAchievementId: `coach_win_${slug}`,
+    completeXp: index === 0 ? 60 : 40,
+    winXp: index === 0 ? 160 : 120,
+    tone: card.tone,
+  };
+}
+
+function drillChallengeTemplate(card: CoachClubCard) {
+  if (card.issue === "data") {
+    return {
+      title: `${card.clubName} baseline builder`,
+      detail: "Hit normal stock swings and keep the sample clean: no chips, recoveries, or obvious warm-up swings.",
+      target: "Record 12 full stock shots.",
+      winCondition: "Win it by importing a clean 12-shot sample for this club.",
+      completionTarget: 12,
+      winRule: { kind: "clean-shots" as const, target: 12 },
+    };
+  }
+
+  if (card.issue === "direction") {
+    return {
+      title: `${card.clubName} start-line gate`,
+      detail: card.drill,
+      target: "10 balls. Score one point for every shot inside the playable window.",
+      winCondition: "Win it with 7 or more playable shots.",
+      completionTarget: 10,
+      winRule: { kind: "playable" as const, target: 7 },
+    };
+  }
+
+  if (card.issue === "launch") {
+    return {
+      title: `${card.clubName} launch ladder`,
+      detail: card.drill,
+      target: "12 balls. Score one point for every launch inside the stated window.",
+      winCondition: "Win it with 8 or more launch-window shots.",
+      completionTarget: 12,
+      winRule: {
+        kind: "launch-window" as const,
+        target: 8,
+        low: card.launchWindow.low,
+        high: card.launchWindow.high,
+      },
+    };
+  }
+
+  if (card.issue === "strike") {
+    return {
+      title: `${card.clubName} strike ladder`,
+      detail: card.drill,
+      target: "12 balls at 80% speed. Track stable ball speed and centred contact.",
+      winCondition: "Win it with 8 solid strikes and no obvious speed chase.",
+      completionTarget: 12,
+      winRule: { kind: "solid-strike" as const, target: 8 },
+    };
+  }
+
+  if (card.issue === "delivery") {
+    return {
+      title: `${card.clubName} delivery window`,
+      detail: card.drill,
+      target: "10 balls. Score one point when path is inside +/-5 degrees with a predictable start line.",
+      winCondition: "Win it with 7 or more delivery-window shots.",
+      completionTarget: 10,
+      winRule: { kind: "delivery-window" as const, target: 7 },
+    };
+  }
+
+  return {
+    title: `${card.clubName} repeatable carry`,
+    detail: card.drill,
+    target: "Two five-ball sets. Keep both carry windows tight.",
+    winCondition: "Win it when both sets finish inside an 8-yard carry window.",
+    completionTarget: 10,
+    winRule: { kind: "carry-window" as const, target: 2, setSize: 5, maxSpreadYd: 8 },
   };
 }
 
@@ -585,4 +729,17 @@ function compareLowerIsBetter(value: number | null, threshold: number): CoachTra
 
 function roundOne(value: number | null) {
   return value === null ? null : Math.round(value * 10) / 10;
+}
+
+function localDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
 }

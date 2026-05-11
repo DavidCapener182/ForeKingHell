@@ -19,11 +19,14 @@ import { ACHIEVEMENT_REGISTRY_VERSION, ACHIEVEMENTS, getAchievement } from "./re
 import { evaluateAllAchievementCandidates } from "./evaluator";
 import type {
   Achievement,
+  AchievementCategory,
   AchievementClub,
   AchievementProgressCandidate,
   AchievementSession,
   AchievementShot,
   AchievementStockYardage,
+  AchievementTier,
+  AchievementTriggerType,
   AchievementUnlockCandidate,
   AchievementUnlockNotification,
 } from "./types";
@@ -290,13 +293,21 @@ export async function getAchievementPageData(userId = getDefaultUserId()): Promi
   const sourceByAchievementId = new Map(
     sourceRowsForView
       .map((unlock) => {
-        const achievement = getAchievement(unlock.achievementId);
+        const achievement = achievementForUnlockRow(unlock);
         const source = achievement ? buildAchievementSourceView(achievement, unlock, sourceMaps) : null;
         return source ? ([unlock.achievementId, source] as const) : null;
       })
       .filter((entry): entry is readonly [string, AchievementSourceView] => Boolean(entry)),
   );
   const unlockByAchievementId = new Map(unlockRows.map((row) => [row.achievementId, row]));
+  const dynamicAchievements = unlockRows
+    .map((row) => dynamicAchievementFromUnlockRow(row))
+    .filter((achievement): achievement is Achievement => Boolean(achievement))
+    .sort((left, right) => {
+      const leftUnlockedAt = unlockByAchievementId.get(left.id)?.lastUnlockedAt.getTime() ?? 0;
+      const rightUnlockedAt = unlockByAchievementId.get(right.id)?.lastUnlockedAt.getTime() ?? 0;
+      return rightUnlockedAt - leftUnlockedAt;
+    });
   const progressByAchievementId = new Map(progressRows.map((row) => [row.achievementId, row]));
   const totalXp = ledgerRows.reduce((total, row) => total + row.amount, 0);
   const trackedClubTypes = clubTypeRows
@@ -307,7 +318,8 @@ export async function getAchievementPageData(userId = getDefaultUserId()): Promi
   const visibleAchievementRegistry = ACHIEVEMENTS.filter((achievement) =>
     isAchievementVisibleForTrackedClubs(achievement, trackedClubTypeSet),
   );
-  const achievementViews = visibleAchievementRegistry.map<AchievementView>((achievement) => {
+  const visibleAchievements = [...visibleAchievementRegistry, ...dynamicAchievements];
+  const achievementViews = visibleAchievements.map<AchievementView>((achievement) => {
     const unlock = unlockByAchievementId.get(achievement.id);
     const progress = progressByAchievementId.get(achievement.id);
     const unlocked = Boolean(unlock);
@@ -331,7 +343,7 @@ export async function getAchievementPageData(userId = getDefaultUserId()): Promi
       source: unlock ? (sourceByAchievementId.get(achievement.id) ?? null) : null,
     };
   });
-  const categorySummaries = [...new Set(visibleAchievementRegistry.map((achievement) => achievement.category))].map(
+  const categorySummaries = [...new Set(visibleAchievements.map((achievement) => achievement.category))].map(
     (category) => {
       const categoryAchievements = achievementViews.filter((achievement) => achievement.category === category);
 
@@ -389,6 +401,97 @@ function isAchievementVisibleForTrackedClubs(
   }
 
   return clubTypes.some((clubType) => trackedClubTypes.has(clubType));
+}
+
+function achievementForUnlockRow(unlock: AchievementUnlockRow) {
+  return getAchievement(unlock.achievementId) ?? dynamicAchievementFromUnlockRow(unlock);
+}
+
+function dynamicAchievementFromUnlockRow(unlock: AchievementUnlockRow): Achievement | null {
+  if (!unlock.achievementId.startsWith("coach_") || !unlock.metadataJson) {
+    return null;
+  }
+
+  const metadata = unlock.metadataJson;
+  const tier = achievementTierFromMetadata(metadata.tier);
+  const category = achievementCategoryFromMetadata(metadata.category);
+  const triggerType = achievementTriggerTypeFromMetadata(metadata.triggerType);
+  const name = stringFromMetadata(metadata.name) ?? "Coach drill";
+  const description = stringFromMetadata(metadata.description) ?? "Completed a coach drill.";
+  const clubType = stringFromMetadata(metadata.clubType);
+
+  return {
+    id: unlock.achievementId,
+    name,
+    description,
+    category,
+    tier,
+    xp: unlock.xpAwarded,
+    repeatable: false,
+    hidden: false,
+    triggerType,
+    targetValue: 1,
+    clubTypes: clubType ? [clubType] : undefined,
+  };
+}
+
+function achievementTierFromMetadata(value: unknown): AchievementTier {
+  if (
+    value === "bronze" ||
+    value === "silver" ||
+    value === "gold" ||
+    value === "platinum" ||
+    value === "diamond" ||
+    value === "hidden"
+  ) {
+    return value;
+  }
+
+  return "bronze";
+}
+
+function achievementCategoryFromMetadata(value: unknown): AchievementCategory {
+  if (
+    value === "data" ||
+    value === "power" ||
+    value === "accuracy" ||
+    value === "launch" ||
+    value === "strike" ||
+    value === "driver" ||
+    value === "fiveWood" ||
+    value === "gapping" ||
+    value === "consistency" ||
+    value === "coach" ||
+    value === "progress" ||
+    value === "scoring" ||
+    value === "putting" ||
+    value === "shortGame" ||
+    value === "roundStats" ||
+    value === "hidden"
+  ) {
+    return value;
+  }
+
+  return "coach";
+}
+
+function achievementTriggerTypeFromMetadata(value: unknown): AchievementTriggerType {
+  if (
+    value === "singleShot" ||
+    value === "session" ||
+    value === "stockYardage" ||
+    value === "rollingWindow" ||
+    value === "progress" ||
+    value === "roundScorecard"
+  ) {
+    return value;
+  }
+
+  return "progress";
+}
+
+function stringFromMetadata(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 async function loadAchievementSourceMaps(
@@ -579,6 +682,10 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
   }
 
   const stats = [
+    stat("Club", formatText(metadata.clubName)),
+    stat("Drill", formatText(metadata.drillTitle)),
+    stat("Result", formatText(metadata.result)),
+    stat("Target", formatText(metadata.target)),
     stat("Hole", formatInteger(metadata.holeNumber)),
     stat("Shot", formatInteger(metadata.shotNumber)),
     stat("Score", formatInteger(metadata.score)),
@@ -728,6 +835,10 @@ function formatInteger(value: unknown) {
 function formatMetricValue(value: unknown) {
   const numberValue = finiteNumber(value);
   return numberValue === null ? null : roundOne(numberValue).toString();
+}
+
+function formatText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 function numberFromMetadata(metadata: Record<string, unknown> | null | undefined, key: string) {

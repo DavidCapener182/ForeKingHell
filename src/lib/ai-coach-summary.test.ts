@@ -72,6 +72,7 @@ function fakeCoachSummary() {
         stockCarryYd: 205,
         usualMiss: "Left",
         playableRate: 62,
+        launchWindow: { low: 13, high: 17 },
         drill: "Hit 10 balls with a hard left boundary.",
         reason: "62% playable rate with a left miss tendency.",
         tone: "pink",

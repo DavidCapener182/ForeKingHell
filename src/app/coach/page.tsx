@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 
+import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
 import {
   DataPanel,
   InsightBlock,
@@ -28,10 +29,16 @@ import { Progress } from "@/components/ui/progress";
 import { formatClubType } from "@/lib/club-format";
 import {
   buildCoachSummary,
+  buildCoachDrillChallenges,
+  type CoachDrillChallenge,
   type CoachClubCard,
   type CoachFocusArea,
   type CoachTrainingImpact,
 } from "@/lib/coach";
+import {
+  getCoachDrillAwardStatuses,
+  type CoachDrillAwardStatus,
+} from "@/lib/coach-drill-awards";
 import { getProgressData } from "@/lib/progress-data";
 import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
@@ -46,10 +53,16 @@ export default async function CoachPage() {
   const data = await getProgressData();
   const coach = buildCoachSummary(data.clubs);
   const topClub = coach.clubCards[0] ?? null;
+  const drillChallenges = buildCoachDrillChallenges(coach);
+  const drillStatuses = await getCoachDrillAwardStatuses(drillChallenges);
+  const shouldSyncDrillAwards = Object.values(drillStatuses).some(
+    (status) => (status.completed && !status.completedAwarded) || (status.won && !status.wonAwarded),
+  );
   const aiPayload = buildAiCoachPayload(coach);
 
   return (
     <PageShell>
+      <CoachDrillAutoSync enabled={shouldSyncDrillAwards} />
       <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
@@ -191,7 +204,13 @@ export default async function CoachPage() {
                 description="Decision aid first: issue, evidence, drill sequence, and target."
                 action={<Clock className="size-5 text-emerald-500" />}
               />
-              <CoachPracticePlan topClub={topClub} blocks={coach.sessionPlan} impacts={coach.trainingImpact.slice(0, 2)} />
+              <CoachPracticePlan
+                topClub={topClub}
+                blocks={coach.sessionPlan}
+                impacts={coach.trainingImpact.slice(0, 2)}
+                drillChallenges={drillChallenges}
+                drillStatuses={drillStatuses}
+              />
             </DataPanel>
 
             <DataPanel>
@@ -252,10 +271,14 @@ function CoachPracticePlan({
   topClub,
   blocks,
   impacts,
+  drillChallenges,
+  drillStatuses,
 }: {
   topClub: CoachClubCard | null;
   blocks: Array<{ title: string; detail: string; duration: string; tone: "green" | "sky" | "pink" | "amber" | "slate" }>;
   impacts: CoachTrainingImpact[];
+  drillChallenges: CoachDrillChallenge[];
+  drillStatuses: Record<string, CoachDrillAwardStatus>;
 }) {
   return (
     <CardContent className="space-y-4">
@@ -276,6 +299,26 @@ function CoachPracticePlan({
         </div>
       </div>
 
+      {drillChallenges.length > 0 ? (
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold">Today&apos;s coach drills</p>
+            <p className="text-xs text-muted-foreground">
+              Progress is read from today&apos;s uploaded shots. XP unlocks automatically when the data proves it.
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {drillChallenges.map((challenge) => (
+              <CoachDrillChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                status={drillStatuses[challenge.id] ?? { completed: false, won: false }}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-3">
         {blocks.map((block, index) => (
           <div key={block.title} className="rounded-xl border bg-[#f9fafb] p-4">
@@ -292,6 +335,81 @@ function CoachPracticePlan({
       </div>
       <TrainingFeedback impacts={impacts} />
     </CardContent>
+  );
+}
+
+function CoachDrillChallengeCard({
+  challenge,
+  status,
+}: {
+  challenge: CoachDrillChallenge;
+  status: CoachDrillAwardStatus;
+}) {
+  return (
+    <div className="rounded-xl border bg-[#f9fafb] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{challenge.clubName}</Badge>
+            <StatusPill tone={challenge.tone}>{challenge.issueLabel}</StatusPill>
+          </div>
+          <h3 className="mt-3 text-lg font-semibold tracking-normal">{challenge.title}</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{challenge.detail}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatusPill tone={status.won ? "amber" : status.completed ? "green" : "slate"}>
+            {status.won ? "Won" : status.completed ? "Complete" : "Waiting"}
+          </StatusPill>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <SmallMetric label="Target" value={challenge.target} />
+        <SmallMetric label="Win condition" value={challenge.winCondition} />
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        <DrillProgressTile
+          label="Uploaded today"
+          value={`${status.uploadedShotCount}/${status.completionTarget}`}
+          detail={status.completedAwarded ? `Complete XP awarded (+${challenge.completeXp})` : `Complete unlock: +${challenge.completeXp} XP`}
+          tone={status.completed ? "green" : "slate"}
+        />
+        <DrillProgressTile
+          label="Win progress"
+          value={`${status.winCount}/${status.winTarget}`}
+          detail={status.wonAwarded ? `Win XP awarded (+${challenge.winXp})` : `Win unlock: +${challenge.winXp} XP`}
+          tone={status.won ? "amber" : "slate"}
+        />
+      </div>
+    </div>
+  );
+}
+
+function DrillProgressTile({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "green" | "amber" | "slate";
+}) {
+  const color =
+    tone === "green"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : tone === "amber"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-border bg-white text-foreground";
+
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${color}`}>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold">{value}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p>
+    </div>
   );
 }
 

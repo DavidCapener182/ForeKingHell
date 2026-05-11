@@ -1,4 +1,4 @@
-const CACHE_NAME = "forekinghell-pwa-v1";
+const CACHE_NAME = "forekinghell-pwa-v2";
 const PRECACHE_ASSETS = [
   "/manifest.webmanifest",
   "/icons/favicon-16x16.png",
@@ -40,6 +40,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const isLocalDevelopmentHost =
+    self.location.hostname === "localhost" ||
+    self.location.hostname === "127.0.0.1" ||
+    self.location.hostname === "[::1]";
+
+  if (isLocalDevelopmentHost && url.pathname.startsWith("/_next/")) {
     return;
   }
 

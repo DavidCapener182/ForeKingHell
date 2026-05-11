@@ -7,6 +7,7 @@ import { clubs, importRows, sessions, shots, stockYardages, users } from "@/db/s
 import { getDb } from "@/db/client";
 import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
+import { evaluateCoachDrillAchievementsForDefaultUser } from "@/lib/coach-drill-awards";
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 import { ensureKnownCourseForSession, type CourseSessionLink } from "@/lib/courses";
 import { getDefaultUserId } from "@/lib/current-user";
@@ -130,7 +131,10 @@ export async function saveRapsodoImport(
 
     const achievementUnlockNotifications = result.skipped
       ? []
-      : (await evaluateAchievementsAfterImport(getDefaultUserId())).unlockedAchievements;
+      : [
+          ...(await evaluateAchievementsAfterImport(getDefaultUserId())).unlockedAchievements,
+          ...(await evaluateCoachDrillAchievementsForDefaultUser()).notifications,
+        ];
 
     revalidateImportPages();
 
@@ -708,6 +712,7 @@ function parseSessionDate(value: string) {
 function revalidateImportPages() {
   try {
     revalidatePath("/dashboard");
+    revalidatePath("/today");
     revalidatePath("/import");
     revalidatePath("/bag");
     revalidatePath("/shots");

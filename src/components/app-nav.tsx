@@ -6,9 +6,12 @@ import {
   Award,
   Brain,
   Calculator,
+  CalendarDays,
+  ChevronDown,
   Database,
   Flag,
   Gauge,
+  GitCompareArrows,
   LineChart,
   MapPinned,
   MoreHorizontal,
@@ -24,6 +27,7 @@ const navGroups = [
   {
     label: "Overview",
     items: [
+      { href: "/today", label: "Today", icon: CalendarDays, isActive: (pathname: string) => pathname.startsWith("/today") },
       { href: "/dashboard", label: "Dashboard", icon: Gauge, isActive: (pathname: string) => pathname === "/" || pathname === "/dashboard" },
       { href: "/progress", label: "Progress", icon: LineChart, isActive: (pathname: string) => pathname.startsWith("/progress") },
     ],
@@ -39,6 +43,7 @@ const navGroups = [
   {
     label: "Analyse",
     items: [
+      { href: "/compare", label: "Compare", icon: GitCompareArrows, isActive: (pathname: string) => pathname.startsWith("/compare") },
       { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
       { href: "/shots", label: "Shots", icon: Database, isActive: (pathname: string) => pathname.startsWith("/shots") },
     ],
@@ -53,7 +58,7 @@ const navGroups = [
 ];
 
 const mobilePrimaryItems = [
-  { href: "/dashboard", label: "Today", icon: Gauge, isActive: (pathname: string) => pathname === "/" || pathname === "/dashboard" },
+  { href: "/today", label: "Today", icon: CalendarDays, isActive: (pathname: string) => pathname === "/" || pathname.startsWith("/today") },
   { href: "/import", label: "Import", icon: Upload, isActive: (pathname: string) => pathname.startsWith("/import") },
   { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
   { href: "/rounds", label: "Rounds", icon: Flag, isActive: (pathname: string) => pathname.startsWith("/rounds") },
@@ -61,6 +66,8 @@ const mobilePrimaryItems = [
 ];
 
 const moreItems = [
+  { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/shots", label: "Shots", icon: Database },
   { href: "/courses", label: "Courses", icon: MapPinned },
   { href: "/handicap", label: "Handicap", icon: Calculator },
@@ -94,36 +101,59 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             <span className="truncate sm:hidden">FKH</span>
           </Link>
 
-          <div className="hidden min-w-0 flex-1 items-center gap-2 overflow-x-auto lg:flex">
-            {navGroups.map((group) => (
-              <div key={group.label} className="flex items-center gap-1 rounded-xl border border-white/50 bg-white/35 p-1">
-                <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  {group.label}
-                </span>
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = item.isActive(pathname);
+          <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
+            {navGroups.map((group) => {
+              const groupActive = group.items.some((item) => item.isActive(pathname));
+              const menuId = `desktop-nav-${group.label.toLowerCase()}`;
 
-                  return (
-                    <Button
-                      key={item.href}
-                      asChild
-                      variant={active ? "default" : "ghost"}
-                      className={
-                        active
-                          ? "h-9 shrink-0 rounded-xl bg-[#111827] px-3 text-white shadow-sm hover:bg-[#111827] hover:text-white"
-                          : "h-9 shrink-0 rounded-xl px-3 text-muted-foreground hover:bg-white hover:text-foreground"
-                      }
-                    >
-                      <Link href={item.href} prefetch={false} aria-current={active ? "page" : undefined}>
-                        <Icon className="size-4" />
-                        {item.label}
-                      </Link>
-                    </Button>
-                  );
-                })}
-              </div>
-            ))}
+              return (
+                <div key={group.label} className="group/desktop-nav relative">
+                  <Button
+                    type="button"
+                    variant={groupActive ? "default" : "ghost"}
+                    aria-haspopup="menu"
+                    aria-controls={menuId}
+                    className={
+                      groupActive
+                        ? "h-9 rounded-xl bg-[#111827] px-3 text-white shadow-sm hover:bg-[#111827] hover:text-white focus-visible:bg-[#111827] focus-visible:text-white"
+                        : "h-9 rounded-xl px-3 text-muted-foreground hover:bg-[#111827] hover:text-white focus-visible:bg-[#111827] focus-visible:text-white group-hover/desktop-nav:bg-[#111827] group-hover/desktop-nav:text-white group-focus-within/desktop-nav:bg-[#111827] group-focus-within/desktop-nav:text-white"
+                    }
+                  >
+                    {group.label}
+                    <ChevronDown className="size-4 transition-transform group-hover/desktop-nav:rotate-180 group-focus-within/desktop-nav:rotate-180" />
+                  </Button>
+
+                  <div
+                    id={menuId}
+                    role="menu"
+                    className="pointer-events-none invisible absolute left-0 top-full z-50 grid min-w-52 translate-y-1 gap-1 rounded-2xl border border-white/60 bg-white/95 p-2 opacity-0 shadow-xl shadow-black/10 backdrop-blur transition duration-150 group-hover/desktop-nav:pointer-events-auto group-hover/desktop-nav:visible group-hover/desktop-nav:translate-y-0 group-hover/desktop-nav:opacity-100 group-focus-within/desktop-nav:pointer-events-auto group-focus-within/desktop-nav:visible group-focus-within/desktop-nav:translate-y-0 group-focus-within/desktop-nav:opacity-100"
+                  >
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = item.isActive(pathname);
+
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          prefetch={false}
+                          role="menuitem"
+                          aria-current={active ? "page" : undefined}
+                          className={
+                            active
+                              ? "flex items-center gap-2 rounded-xl bg-[#111827] px-3 py-2 text-sm font-semibold text-white"
+                              : "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                          }
+                        >
+                          <Icon className={active ? "size-4 text-emerald-300" : "size-4 text-muted-foreground"} />
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="hidden min-w-0 flex-1 gap-1 overflow-x-auto sm:flex lg:hidden">

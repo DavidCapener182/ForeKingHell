@@ -27,14 +27,16 @@ import { calculateStockYardage } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
 import { ClubAnalysisTabs, type AnalysisShot } from "./club-analysis-tabs";
 
-type ShotRange = "all" | "month3" | "month2" | "month1" | "week";
+type ShotRange = "all" | "month3" | "month2" | "month1" | "thisMonth" | "week" | "today";
 
 const RANGE_OPTIONS: Array<{ value: ShotRange; label: string; description: string }> = [
   { value: "all", label: "All time", description: "all full shots" },
   { value: "month3", label: "Last 3 months", description: "shots from the last 3 months" },
   { value: "month2", label: "Last 2 months", description: "shots from the last 2 months" },
   { value: "month1", label: "Last month", description: "shots from the last month" },
+  { value: "thisMonth", label: "This month", description: "shots from this month" },
   { value: "week", label: "This week", description: "shots from this week" },
+  { value: "today", label: "Today", description: "shots from today" },
 ];
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -332,13 +334,29 @@ function filterShotsForRange(shots: AnalysisShot[], range: ShotRange, now: Date)
     return shots;
   }
 
-  const start = range === "week" ? startOfWeek(now) : subtractMonths(now, monthsForRange(range));
+  const start = startForRange(range, now);
   const startTime = start.getTime();
 
   return shots.filter((shot) => new Date(shot.shotAt).getTime() >= startTime);
 }
 
-function monthsForRange(range: Exclude<ShotRange, "all" | "week">) {
+function startForRange(range: Exclude<ShotRange, "all">, now: Date) {
+  if (range === "today") {
+    return startOfDay(now);
+  }
+
+  if (range === "week") {
+    return startOfWeek(now);
+  }
+
+  if (range === "thisMonth") {
+    return startOfMonth(now);
+  }
+
+  return subtractMonths(now, monthsForRange(range));
+}
+
+function monthsForRange(range: Extract<ShotRange, "month3" | "month2" | "month1">) {
   if (range === "month3") {
     return 3;
   }
@@ -361,6 +379,12 @@ function startOfWeek(value: Date) {
   const day = date.getDay();
   const daysSinceMonday = day === 0 ? 6 : day - 1;
   date.setDate(date.getDate() - daysSinceMonday);
+  return date;
+}
+
+function startOfMonth(value: Date) {
+  const date = startOfDay(value);
+  date.setDate(1);
   return date;
 }
 
