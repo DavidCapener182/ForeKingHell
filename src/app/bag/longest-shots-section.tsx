@@ -137,17 +137,8 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
   return (
     <div className="grid overflow-hidden rounded-[8px] border bg-white lg:grid-cols-[1.35fr_0.65fr]">
       <div className="min-h-[420px] bg-[#143321]">
-        <svg viewBox="0 0 900 540" className="h-full min-h-[420px] w-full" role="img" aria-label="Course shot simulation">
+        <svg viewBox="0 0 612 1024" className="h-full min-h-[560px] w-full" role="img" aria-label="Course shot simulation on a 350 yard hole">
           <defs>
-            <linearGradient id="courseFairway" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="#6fa05b" />
-              <stop offset="48%" stopColor="#8dbb69" />
-              <stop offset="100%" stopColor="#5f934f" />
-            </linearGradient>
-            <radialGradient id="courseGreen" cx="50%" cy="44%" r="65%">
-              <stop offset="0%" stopColor="#b7dd82" />
-              <stop offset="100%" stopColor="#75af55" />
-            </radialGradient>
             <filter id="shotGlowLong" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur stdDeviation="4" result="blur" />
               <feMerge>
@@ -180,32 +171,22 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             `}
           </style>
 
-          <rect x="0" y="0" width="900" height="540" fill="#143321" />
-          <path d="M0 0 H900 V540 H0 Z" fill="#183f27" />
-          <path d="M94 540 C156 416 190 330 236 214 C274 120 338 48 451 24 C574 2 672 46 739 129 C811 218 770 320 707 390 C622 486 530 537 420 540 Z" fill="#244f30" />
-          <path d="M352 540 C280 422 280 294 336 188 C392 80 492 34 620 51 C726 65 791 116 816 184 C849 274 790 354 684 391 C579 428 508 475 474 540 Z" fill="#193b28" />
-          <path
-            d="M420 512 C336 438 303 344 329 254 C351 179 418 112 520 90 C623 68 713 107 747 174 C787 254 729 331 635 363 C548 392 491 439 462 512 Z"
-            fill="url(#courseFairway)"
-          />
-          <path
-            d="M427 512 C359 421 336 334 359 261 C382 183 447 131 526 114 C607 97 683 123 713 181 C746 244 701 304 618 334 C534 364 481 421 459 512 Z"
-            fill="#ffffff"
-            opacity="0.08"
-          />
-          <ellipse cx="539" cy="86" rx="84" ry="45" fill="url(#courseGreen)" transform="rotate(-7 539 86)" />
-          <ellipse cx="431" cy="122" rx="45" ry="22" fill="#e8d78c" opacity="0.92" transform="rotate(-21 431 122)" />
-          <ellipse cx="676" cy="155" rx="53" ry="24" fill="#e8d78c" opacity="0.9" transform="rotate(18 676 155)" />
-          <path d="M665 265 C708 248 757 263 779 304 C742 324 690 318 665 265 Z" fill="#5aa0c9" opacity="0.78" />
-          <rect x="392" y="500" width="114" height="20" rx="8" fill="#7a5b33" opacity="0.95" />
-          <line x1="449" x2="449" y1="501" y2="519" stroke="#d7c9a0" strokeWidth="2" opacity="0.5" />
+          <image href="/assets/hole-350-aerial.svg" x="0" y="0" width="612" height="1024" preserveAspectRatio="xMidYMid slice" />
+          <rect x="0" y="0" width="612" height="1024" fill="#020617" opacity="0.08" />
 
-          {[100, 150, 200, 250, 300].map((yard) => {
+          {[50, 100, 150, 200, 250, 300, 350].map((yard) => {
             const y = geometry.tee.y - (yard / geometry.maxDistance) * geometry.playHeight;
+            const arcWidth = 70 + (yard / 350) * 248;
             return (
-              <g key={yard} opacity="0.54">
-                <path d={`M 234 ${y} C 370 ${y - 30} 562 ${y - 30} 704 ${y}`} fill="none" stroke="#ffffff" strokeDasharray="7 10" />
-                <text x="724" y={y + 4} fill="#f8fafc" fontSize="12">
+              <g key={yard} opacity="0.58">
+                <path
+                  d={`M ${geometry.tee.x - arcWidth} ${y + 22} Q ${geometry.tee.x} ${y - 24} ${geometry.tee.x + arcWidth} ${y + 22}`}
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeDasharray="10 10"
+                  strokeWidth="2.5"
+                />
+                <text x={Math.min(560, geometry.tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
                   {yard}
                 </text>
               </g>
@@ -349,11 +330,11 @@ function Label({
 function buildShotGeometry(shot: LongestShot) {
   const totalDistance = Math.max(1, shot.totalYd ?? shot.carryYd ?? 1);
   const carryDistance = Math.min(totalDistance, Math.max(1, shot.carryYd ?? totalDistance));
-  const maxDistance = Math.max(320, Math.ceil((totalDistance * 1.12) / 25) * 25);
-  const playHeight = 420;
+  const maxDistance = Math.max(350, Math.ceil((totalDistance * 1.12) / 25) * 25);
+  const playHeight = 830;
   const side = clamp(shot.sideCarryYd ?? (shot.launchDirectionDeg ?? 0) * 4, -90, 90);
   const carrySide = totalDistance === 0 ? side : side * (carryDistance / totalDistance);
-  const tee = { x: 450, y: 504 };
+  const tee = { x: 306, y: 936 };
   const carry = pointForShot(carryDistance, carrySide, maxDistance, playHeight, tee);
   const total = pointForShot(totalDistance, side, maxDistance, playHeight, tee);
   const curve = clamp((shot.spinAxis ?? side) * 1.2 + (shot.launchDirectionDeg ?? 0) * 7, -150, 150);
@@ -369,15 +350,15 @@ function buildShotGeometry(shot: LongestShot) {
     playHeight,
     rollControl: labelDirection * 34,
     tracerPath: `M ${tee.x} ${tee.y} C ${controlOne.x} ${controlOne.y} ${controlTwo.x} ${controlTwo.y} ${carry.x} ${carry.y}`,
-    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 780), y: clamp(carry.y - 70, 16, 470) },
-    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 780), y: clamp(total.y - 20, 16, 470) },
-    sideLabel: { x: clamp(total.x - 52, 16, 780), y: clamp(total.y + 36, 16, 470) },
+    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 492), y: clamp(carry.y - 70, 16, 964) },
+    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 492), y: clamp(total.y - 20, 16, 964) },
+    sideLabel: { x: clamp(total.x - 52, 16, 492), y: clamp(total.y + 36, 16, 964) },
   };
 }
 
 function pointForShot(distance: number, side: number, maxDistance: number, playHeight: number, tee: { x: number; y: number }) {
   return {
-    x: tee.x + (side / 90) * 280,
+    x: tee.x + (side / 90) * 150,
     y: tee.y - (distance / maxDistance) * playHeight,
   };
 }
