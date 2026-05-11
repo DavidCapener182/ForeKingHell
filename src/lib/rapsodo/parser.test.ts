@@ -139,3 +139,53 @@ describe("club normalization", () => {
     expect(buildClubKey("driver", null, "")).toBe("driver:generic:generic");
   });
 });
+
+describe("Rapsodo parser edge cases", () => {
+  it("detects headers when a useful launch metric exists without carry distance", () => {
+    const csv = ["Club Type,Total Distance (yd),Ball Speed,Launch Angle", "7 Iron,156,112,18.5"].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shotCount).toBe(1);
+    expect(result.shots[0]).toMatchObject({ clubType: "7i", totalYd: 156, ballSpeedMph: 112 });
+  });
+
+  it("preserves duplicate column names with stable suffixes", () => {
+    const csv = ["Club Type,Carry Distance,Carry Distance,Total Distance", "Driver,220,221,240"].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shots[0].sourceRawJson["Carry Distance"]).toBe("220");
+    expect(result.shots[0].sourceRawJson["Carry Distance (2)"]).toBe("221");
+  });
+
+  it("warns on malformed quoted CSV", () => {
+    const csv = ['Club Type,Carry Distance', 'Driver,"220'].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.warnings).toContain("CSV contains an unterminated quoted field; parsed results may be incomplete.");
+  });
+
+  it("warns that ambiguous slash dates are interpreted as US month/day/year", () => {
+    const csv = [
+      '"Rapsodo MLM2PRO: Player - 04/05/2026 8:00 AM"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.exportedAtIso).toBe("2026-04-05T08:00:00.000Z");
+    expect(result.warnings).toContain("Export date is ambiguous; slash dates are interpreted as US month/day/year.");
+  });
+
+  it("keeps extreme side-carry values rather than dropping the shot", () => {
+    const csv = ["Club Type,Carry Distance (yd),Side Carry (yd)", "Driver,250,-175"].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shotCount).toBe(1);
+    expect(result.shots[0].sideCarryYd).toBe(-175);
+  });
+});

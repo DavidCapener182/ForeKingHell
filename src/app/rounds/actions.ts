@@ -107,6 +107,7 @@ export async function createManualRoundAction(formData: FormData) {
 
 export async function updateRoundCourseLinkAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const teeSetId = requiredString(formData, "teeSetId");
 
@@ -114,7 +115,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
     db
       .select({ scorecardJson: sessions.scorecardJson })
       .from(sessions)
-      .where(eq(sessions.id, sessionId))
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
       .limit(1)
       .then((rows) => rows[0] ?? null),
     db
@@ -153,7 +154,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
       location: teeSet.courseName,
       scorecardJson: mergeScorecardForTee(session.scorecardJson ?? [], holeRows),
     })
-    .where(eq(sessions.id, sessionId));
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
 
   await recalculateRoundAssignments(sessionId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
@@ -162,6 +163,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
 
 export async function updateShotClubAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const clubId = requiredString(formData, "clubId");
@@ -169,7 +171,7 @@ export async function updateShotClubAction(formData: FormData) {
   const [club] = await db
     .select({ id: clubs.id, type: clubs.type })
     .from(clubs)
-    .where(eq(clubs.id, clubId))
+    .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
     .limit(1);
 
   if (!club) {
@@ -182,7 +184,7 @@ export async function updateShotClubAction(formData: FormData) {
       clubId: club.id,
       clubType: club.type,
     })
-    .where(eq(shots.id, shotId));
+    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
 
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
@@ -190,6 +192,7 @@ export async function updateShotClubAction(formData: FormData) {
 
 export async function updateClubAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const clubId = requiredString(formData, "clubId");
   const clubType = normalizeClubType(requiredString(formData, "clubType"));
@@ -201,7 +204,7 @@ export async function updateClubAction(formData: FormData) {
   const [currentClub] = await db
     .select({ id: clubs.id, userId: clubs.userId })
     .from(clubs)
-    .where(eq(clubs.id, clubId))
+    .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
     .limit(1);
 
   if (!currentClub) {
@@ -225,8 +228,8 @@ export async function updateClubAction(formData: FormData) {
       await tx
         .update(shots)
         .set({ clubId: duplicateClub.id, clubType: duplicateClub.type })
-        .where(eq(shots.clubId, clubId));
-      await tx.update(clubs).set({ active: false, updatedAt: now }).where(eq(clubs.id, clubId));
+        .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
+      await tx.update(clubs).set({ active: false, updatedAt: now }).where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
     });
   } else {
     await db.transaction(async (tx) => {
@@ -240,8 +243,8 @@ export async function updateClubAction(formData: FormData) {
           active: true,
           updatedAt: now,
         })
-        .where(eq(clubs.id, clubId));
-      await tx.update(shots).set({ clubType }).where(eq(shots.clubId, clubId));
+        .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
+      await tx.update(shots).set({ clubType }).where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
     });
   }
 
@@ -251,6 +254,7 @@ export async function updateClubAction(formData: FormData) {
 
 export async function updateRoundHoleAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const holeNumber = numberFromForm(formData, "holeNumber");
 
@@ -261,7 +265,7 @@ export async function updateRoundHoleAction(formData: FormData) {
   const [session] = await db
     .select({ scorecardJson: sessions.scorecardJson })
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .limit(1);
 
   if (!session?.scorecardJson) {
@@ -298,13 +302,14 @@ export async function updateRoundHoleAction(formData: FormData) {
     return updatedHole;
   });
 
-  await db.update(sessions).set({ scorecardJson: holes }).where(eq(sessions.id, sessionId));
+  await db.update(sessions).set({ scorecardJson: holes }).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
 }
 
 export async function moveRoundShotHoleAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const direction = requiredString(formData, "direction");
@@ -316,7 +321,7 @@ export async function moveRoundShotHoleAction(formData: FormData) {
   const [shot] = await db
     .select({ courseHoleNumber: shots.courseHoleNumber })
     .from(shots)
-    .where(eq(shots.id, shotId))
+    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
     .limit(1);
 
   if (!shot?.courseHoleNumber) {
@@ -326,11 +331,20 @@ export async function moveRoundShotHoleAction(formData: FormData) {
   const nextHoleNumber =
     direction === "previous" ? shot.courseHoleNumber - 1 : shot.courseHoleNumber + 1;
 
-  if (nextHoleNumber < 1 || nextHoleNumber > 18) {
+  const [session] = await db
+    .select({ scorecardJson: sessions.scorecardJson })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+
+  if (!session?.scorecardJson?.some((hole) => hole.holeNumber === nextHoleNumber)) {
     throw new Error("Shot cannot be moved past the scorecard.");
   }
 
-  await db.update(shots).set({ courseHoleNumber: nextHoleNumber }).where(eq(shots.id, shotId));
+  await db
+    .update(shots)
+    .set({ courseHoleNumber: nextHoleNumber })
+    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
   await recalculateRoundAssignments(sessionId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
@@ -338,6 +352,7 @@ export async function moveRoundShotHoleAction(formData: FormData) {
 
 export async function moveRoundShotToHoleAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const targetHoleNumber = numberFromForm(formData, "targetHoleNumber");
@@ -349,7 +364,7 @@ export async function moveRoundShotToHoleAction(formData: FormData) {
   const [session] = await db
     .select({ scorecardJson: sessions.scorecardJson })
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .limit(1);
 
   if (!session?.scorecardJson) {
@@ -363,7 +378,7 @@ export async function moveRoundShotToHoleAction(formData: FormData) {
   await db
     .update(shots)
     .set({ courseHoleNumber: targetHoleNumber })
-    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId)));
+    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
   await recalculateRoundAssignments(sessionId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
@@ -371,11 +386,12 @@ export async function moveRoundShotToHoleAction(formData: FormData) {
 
 export async function resplitRoundAction(formData: FormData) {
   const db = getDb();
+  const userId = getDefaultUserId();
   const sessionId = requiredString(formData, "sessionId");
   const [session] = await db
     .select({ scorecardJson: sessions.scorecardJson })
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .limit(1);
 
   if (!session?.scorecardJson) {
@@ -388,7 +404,7 @@ export async function resplitRoundAction(formData: FormData) {
       shotNumber: shots.shotNumber,
     })
     .from(shots)
-    .where(eq(shots.sessionId, sessionId))
+    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
   let cursor = 0;
 
@@ -397,7 +413,10 @@ export async function resplitRoundAction(formData: FormData) {
     const holeShots = sessionShots.slice(cursor, cursor + count);
 
     for (const shot of holeShots) {
-      await db.update(shots).set({ courseHoleNumber: hole.holeNumber }).where(eq(shots.id, shot.id));
+      await db
+        .update(shots)
+        .set({ courseHoleNumber: hole.holeNumber })
+        .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
     }
 
     cursor += count;
@@ -413,7 +432,7 @@ export async function resplitRoundAction(formData: FormData) {
         courseHoleYards: null,
         distanceRemainingYd: null,
       })
-      .where(eq(shots.id, shot.id));
+      .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
   }
 
   await recalculateRoundAssignments(sessionId);
@@ -430,7 +449,7 @@ async function evaluateRoundAchievementsForSessionWithFlash(sessionId: string) {
 async function recalculateRoundAssignments(sessionId: string) {
   const db = getDb();
   const [session] = await db
-    .select({ scorecardJson: sessions.scorecardJson })
+    .select({ scorecardJson: sessions.scorecardJson, userId: sessions.userId })
     .from(sessions)
     .where(eq(sessions.id, sessionId))
     .limit(1);
@@ -450,7 +469,7 @@ async function recalculateRoundAssignments(sessionId: string) {
       courseHoleNumber: shots.courseHoleNumber,
     })
     .from(shots)
-    .where(eq(shots.sessionId, sessionId))
+    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
   const shotsByHole = new Map<number, typeof sessionShots>();
 
@@ -483,7 +502,7 @@ async function recalculateRoundAssignments(sessionId: string) {
               distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
               shotCategory: classifyCourseShot(shot.clubType, shot.totalYd ?? shot.carryYd, index + 1),
             })
-            .where(eq(shots.id, shot.id));
+            .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)));
         }
 
         return {
@@ -499,7 +518,10 @@ async function recalculateRoundAssignments(sessionId: string) {
       }),
   );
 
-  await db.update(sessions).set({ scorecardJson: nextScorecard }).where(eq(sessions.id, sessionId));
+  await db
+    .update(sessions)
+    .set({ scorecardJson: nextScorecard })
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
 }
 
 function mergeScorecardForTee(
@@ -546,7 +568,7 @@ function requiredString(formData: FormData, key: string) {
 
 function dateFromForm(formData: FormData, key: string) {
   const value = requiredString(formData, key);
-  const parsed = new Date(`${value}T12:00:00`);
+  const parsed = new Date(`${value}T12:00:00.000Z`);
 
   if (Number.isNaN(parsed.getTime())) {
     throw new Error(`${key} is not a valid date.`);

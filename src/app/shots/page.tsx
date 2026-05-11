@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, Database, FileText, Flag, Upload } from "lucide-react";
-import { asc, count, desc, eq } from "drizzle-orm";
+import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Upload } from "lucide-react";
+import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,23 @@ import {
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { isTrackedClubType } from "@/lib/club-format";
+import { getDefaultUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+type ShotFilters = {
+  page: number;
+  club: string;
+  sessionId: string;
+  category: string;
+  q: string;
+  from: string;
+  to: string;
+};
+
+const PAGE_SIZE = 50;
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -31,8 +46,11 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
-export default async function ShotsPage() {
-  const { stats, rowTypes, sessionSummaries, savedShots } = await getShotDatabase();
+export default async function ShotsPage({ searchParams }: { searchParams: SearchParams }) {
+  const filters = parseFilters(await searchParams);
+  const { stats, rowTypes, sessionSummaries, savedShots, totalFilteredShots, clubsForFilter, categories } =
+    await getShotDatabase(filters);
+  const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
@@ -64,13 +82,13 @@ export default async function ShotsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl space-y-2">
               <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                Saved data
+                Explorer
               </Badge>
               <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
                 Shot database
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Every saved shot metric, with the source CSV rows retained for parser improvements.
+                Filter the archive by club, session, date, shot category, or file name. Advanced launch metrics stay available without forcing every row into a giant debugging table.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
@@ -82,7 +100,61 @@ export default async function ShotsPage() {
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Find shots</CardTitle>
+            <CardDescription>50 rows per page, scoped to the current player.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+              <label className="grid gap-1 text-sm font-medium">
+                Search file/course
+                <input name="q" defaultValue={filters.q} className="rounded-md border bg-background px-3 py-2 text-sm" placeholder="Session name" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Club
+                <select name="club" defaultValue={filters.club} className="rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="">All clubs</option>
+                  {clubsForFilter.map((club) => (
+                    <option key={club} value={club}>{formatClub(club)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Session
+                <select name="sessionId" defaultValue={filters.sessionId} className="rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="">All sessions</option>
+                  {sessionSummaries.map((session) => (
+                    <option key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                Category
+                <select name="category" defaultValue={filters.category} className="rounded-md border bg-background px-3 py-2 text-sm">
+                  <option value="">All categories</option>
+                  {categories.map((category) => (
+                    <option key={category} value={category}>{formatSessionType(category)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                From
+                <input type="date" name="from" defaultValue={filters.from} className="rounded-md border bg-background px-3 py-2 text-sm" />
+              </label>
+              <label className="grid gap-1 text-sm font-medium">
+                To
+                <input type="date" name="to" defaultValue={filters.to} className="rounded-md border bg-background px-3 py-2 text-sm" />
+              </label>
+              <div className="flex gap-2 md:col-span-3 xl:col-span-6">
+                <Button type="submit">Apply filters</Button>
+                <Button asChild variant="outline"><Link href="/shots">Reset</Link></Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <section className="grid gap-4 lg:grid-cols-[1fr_0.65fr]">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Session imports</CardTitle>
@@ -96,38 +168,24 @@ export default async function ShotsPage() {
                       <TableHead>File</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Course</TableHead>
                       <TableHead className="text-right">Shots</TableHead>
-                      <TableHead className="text-right">Raw rows</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sessionSummaries.map((session) => (
+                    {sessionSummaries.slice(0, 8).map((session) => (
                       <TableRow key={session.id}>
                         <TableCell className="max-w-64 truncate font-medium">
                           {isRoundSession(session.type) ? (
-                            <Link href={`/rounds/${session.id}`} className="hover:underline">
-                              {session.fileName ?? "Untitled import"}
-                            </Link>
-                          ) : (
-                            (session.fileName ?? "Untitled import")
-                          )}
+                            <Link href={`/rounds/${session.id}`} className="hover:underline">{session.fileName ?? "Untitled import"}</Link>
+                          ) : (session.fileName ?? "Untitled import")}
                         </TableCell>
                         <TableCell>{formatDate(session.date)}</TableCell>
                         <TableCell>{formatSessionType(session.type)}</TableCell>
-                        <TableCell className="max-w-48 truncate">{session.courseName ?? "--"}</TableCell>
                         <TableCell className="text-right">{integerFormatter.format(session.shotCount)}</TableCell>
-                        <TableCell className="text-right">
-                          {integerFormatter.format(session.rawRowCount)}
-                        </TableCell>
                       </TableRow>
                     ))}
                     {sessionSummaries.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                          No imported sessions yet.
-                        </TableCell>
-                      </TableRow>
+                      <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No imported sessions yet.</TableCell></TableRow>
                     ) : null}
                   </TableBody>
                 </Table>
@@ -138,36 +196,40 @@ export default async function ShotsPage() {
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Raw CSV archive</CardTitle>
-              <CardDescription>Non-shot rows are stored separately from normalized shots.</CardDescription>
+              <CardDescription>Non-shot rows retained for parser improvements.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               {rowTypes.map((rowType) => (
                 <div key={rowType.rowType} className="rounded-[8px] border bg-[#f9fafb] p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-sm font-medium capitalize">{rowType.rowType}</span>
-                    {rowType.rowType === "shot" ? (
-                      <Database className="size-4 text-emerald-500" />
-                    ) : (
-                      <FileText className="size-4 text-sky-500" />
-                    )}
-                  </div>
-                  <p className="text-3xl font-semibold tracking-normal">
-                    {integerFormatter.format(rowType.count)}
-                  </p>
+                  <span className="text-sm font-medium capitalize">{rowType.rowType}</span>
+                  <p className="mt-3 text-3xl font-semibold tracking-normal">{integerFormatter.format(rowType.count)}</p>
                 </div>
               ))}
+              {rowTypes.length === 0 ? <p className="text-sm text-muted-foreground">No raw rows saved yet.</p> : null}
             </CardContent>
           </Card>
         </section>
 
         <Card className="premium-card">
           <CardHeader>
-            <CardTitle>All saved shot metrics</CardTitle>
-            <CardDescription>{integerFormatter.format(savedShots.length)} rows in yards, feet, mph, and degrees.</CardDescription>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Shot explorer</CardTitle>
+                <CardDescription>{integerFormatter.format(totalFilteredShots)} matching rows. Showing page {filters.page} of {totalPages}.</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button asChild variant="outline" size="sm" aria-disabled={filters.page <= 1}>
+                  <Link href={pageHref(filters, Math.max(1, filters.page - 1))}><ChevronLeft className="size-4" /> Previous</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" aria-disabled={filters.page >= totalPages}>
+                  <Link href={pageHref(filters, Math.min(totalPages, filters.page + 1))}>Next <ChevronRight className="size-4" /></Link>
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-[8px] border">
-              <Table className="min-w-[1700px]">
+            <div className="overflow-x-auto rounded-[8px] border">
+              <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
@@ -175,20 +237,12 @@ export default async function ShotsPage() {
                     <TableHead className="text-right">Shot</TableHead>
                     <TableHead>Hole</TableHead>
                     <TableHead>Club</TableHead>
-                    <TableHead>Brand / model</TableHead>
-                    <TableHead className="text-right">Carry yd</TableHead>
-                    <TableHead className="text-right">Total yd</TableHead>
+                    <TableHead className="text-right">Carry</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Side</TableHead>
+                    <TableHead className="text-right">Launch</TableHead>
                     <TableHead className="text-right">Ball mph</TableHead>
-                    <TableHead className="text-right">Club mph</TableHead>
-                    <TableHead className="text-right">Launch deg</TableHead>
-                    <TableHead className="text-right">Direction deg</TableHead>
-                    <TableHead className="text-right">Apex ft</TableHead>
-                    <TableHead className="text-right">Side yd</TableHead>
-                    <TableHead className="text-right">Attack deg</TableHead>
-                    <TableHead className="text-right">Path deg</TableHead>
-                    <TableHead className="text-right">Descent deg</TableHead>
-                    <TableHead className="text-right">Smash</TableHead>
-                    <TableHead>Est type</TableHead>
+                    <TableHead>Advanced</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -199,30 +253,30 @@ export default async function ShotsPage() {
                       <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
                       <TableCell>{formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}</TableCell>
                       <TableCell className="font-medium">{formatClub(shot.clubType)}</TableCell>
-                      <TableCell className="max-w-64 truncate">
-                        {formatBrandModel(shot.brand, shot.model)}
-                      </TableCell>
                       <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.clubSpeedMph)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.launchAngleDeg)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.launchDirectionDeg)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.apexFt)}</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.attackAngleDeg)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.clubPathDeg)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.descentAngleDeg)}</TableCell>
-                      <TableCell className="text-right">{formatMetric(shot.smashFactor)}</TableCell>
-                      <TableCell>{shot.clubDataEstType ?? "--"}</TableCell>
+                      <TableCell className="text-right">{formatMetric(shot.launchAngleDeg)}</TableCell>
+                      <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
+                      <TableCell>
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-emerald-700">More</summary>
+                          <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
+                            <dt>Club speed</dt><dd>{formatMetric(shot.clubSpeedMph)}</dd>
+                            <dt>Direction</dt><dd>{formatMetric(shot.launchDirectionDeg)}</dd>
+                            <dt>Apex</dt><dd>{formatMetric(shot.apexFt)}</dd>
+                            <dt>Attack</dt><dd>{formatMetric(shot.attackAngleDeg)}</dd>
+                            <dt>Path</dt><dd>{formatMetric(shot.clubPathDeg)}</dd>
+                            <dt>Descent</dt><dd>{formatMetric(shot.descentAngleDeg)}</dd>
+                            <dt>Smash</dt><dd>{formatMetric(shot.smashFactor)}</dd>
+                            <dt>Est</dt><dd>{shot.clubDataEstType ?? "--"}</dd>
+                          </dl>
+                        </details>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {savedShots.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={19} className="h-24 text-center text-muted-foreground">
-                        No saved shots yet.
-                      </TableCell>
-                    </TableRow>
+                    <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">No shots match these filters.</TableCell></TableRow>
                   ) : null}
                 </TableBody>
               </Table>
@@ -234,8 +288,10 @@ export default async function ShotsPage() {
   );
 }
 
-async function getShotDatabase() {
+async function getShotDatabase(filters: ShotFilters) {
   const db = getDb();
+  const userId = getDefaultUserId();
+  const where = buildShotWhere(filters, userId);
 
   const [
     [shotCount],
@@ -246,44 +302,18 @@ async function getShotDatabase() {
     sessionRows,
     shotCountsBySession,
     rawCountsBySession,
+    [filteredCount],
     savedShots,
   ] = await Promise.all([
-    db.select({ value: count() }).from(shots),
-    db.select({ value: count() }).from(importRows),
-    db.select({ value: count() }).from(sessions),
-    db.select({ type: clubs.type }).from(clubs),
-    db
-      .select({
-        rowType: importRows.rowType,
-        count: count(),
-      })
-      .from(importRows)
-      .groupBy(importRows.rowType)
-      .orderBy(asc(importRows.rowType)),
-    db
-      .select({
-        id: sessions.id,
-        fileName: sessions.fileName,
-        type: sessions.type,
-        courseName: sessions.courseName,
-        date: sessions.date,
-      })
-      .from(sessions)
-      .orderBy(desc(sessions.date), asc(sessions.fileName)),
-    db
-      .select({
-        sessionId: shots.sessionId,
-        count: count(),
-      })
-      .from(shots)
-      .groupBy(shots.sessionId),
-    db
-      .select({
-        sessionId: importRows.sessionId,
-        count: count(),
-      })
-      .from(importRows)
-      .groupBy(importRows.sessionId),
+    db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
+    db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
+    db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
+    db.select({ type: clubs.type }).from(clubs).where(eq(clubs.userId, userId)).orderBy(asc(clubs.type)),
+    db.select({ rowType: importRows.rowType, count: count() }).from(importRows).where(eq(importRows.userId, userId)).groupBy(importRows.rowType).orderBy(asc(importRows.rowType)),
+    db.select({ id: sessions.id, fileName: sessions.fileName, type: sessions.type, courseName: sessions.courseName, date: sessions.date }).from(sessions).where(eq(sessions.userId, userId)).orderBy(desc(sessions.date), asc(sessions.fileName)),
+    db.select({ sessionId: shots.sessionId, count: count() }).from(shots).where(eq(shots.userId, userId)).groupBy(shots.sessionId),
+    db.select({ sessionId: importRows.sessionId, count: count() }).from(importRows).where(eq(importRows.userId, userId)).groupBy(importRows.sessionId),
+    db.select({ value: count() }).from(shots).innerJoin(sessions, eq(shots.sessionId, sessions.id)).where(where),
     db
       .select({
         id: shots.id,
@@ -293,8 +323,6 @@ async function getShotDatabase() {
         courseHoleNumber: shots.courseHoleNumber,
         courseHoleShotNumber: shots.courseHoleShotNumber,
         clubType: shots.clubType,
-        brand: clubs.brand,
-        model: clubs.model,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
         ballSpeedMph: shots.ballSpeedMph,
@@ -311,16 +339,14 @@ async function getShotDatabase() {
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .innerJoin(clubs, eq(shots.clubId, clubs.id))
-      .orderBy(desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber)),
+      .where(where)
+      .orderBy(desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber))
+      .limit(PAGE_SIZE)
+      .offset((filters.page - 1) * PAGE_SIZE),
   ]);
 
-  const shotCountBySessionId = new Map(
-    shotCountsBySession.map((row) => [row.sessionId, row.count]),
-  );
-  const rawCountBySessionId = new Map(
-    rawCountsBySession.map((row) => [row.sessionId, row.count]),
-  );
+  const shotCountBySessionId = new Map(shotCountsBySession.map((row) => [row.sessionId, row.count]));
+  const rawCountBySessionId = new Map(rawCountsBySession.map((row) => [row.sessionId, row.count]));
   const sessionSummaries = sessionRows.map((session) => ({
     ...session,
     shotCount: shotCountBySessionId.get(session.id) ?? 0,
@@ -337,50 +363,76 @@ async function getShotDatabase() {
     rowTypes,
     sessionSummaries,
     savedShots,
+    totalFilteredShots: filteredCount?.value ?? 0,
+    clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
+    categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
   };
+}
+
+function buildShotWhere(filters: ShotFilters, userId: string) {
+  const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId)];
+
+  if (filters.club) clauses.push(eq(shots.clubType, filters.club));
+  if (filters.sessionId) clauses.push(eq(shots.sessionId, filters.sessionId));
+  if (filters.category) clauses.push(eq(shots.shotCategory, filters.category));
+  if (filters.q) clauses.push(sql`(${sessions.fileName} ilike ${`%${filters.q}%`} or ${sessions.courseName} ilike ${`%${filters.q}%`})`);
+  if (filters.from) clauses.push(gte(shots.shotAt, new Date(`${filters.from}T00:00:00.000Z`)));
+  if (filters.to) clauses.push(lte(shots.shotAt, new Date(`${filters.to}T23:59:59.999Z`)));
+
+  return and(...clauses);
+}
+
+function parseFilters(params: Awaited<SearchParams>): ShotFilters {
+  const page = Math.max(1, Number(first(params.page)) || 1);
+
+  return {
+    page,
+    club: first(params.club),
+    sessionId: first(params.sessionId),
+    category: first(params.category),
+    q: first(params.q).trim().slice(0, 120),
+    from: dateParam(first(params.from)),
+    to: dateParam(first(params.to)),
+  };
+}
+
+function pageHref(filters: ShotFilters, page: number) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries({ ...filters, page: page.toString() })) {
+    if (value) params.set(key, value.toString());
+  }
+  return `/shots?${params.toString()}`;
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function dateParam(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
 }
 
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-[8px] border bg-[#f9fafb] p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-normal">
-        {integerFormatter.format(value)}
-      </p>
+      <p className="mt-1 text-3xl font-semibold tracking-normal">{integerFormatter.format(value)}</p>
     </div>
   );
 }
 
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(value);
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(value);
 }
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
-function formatBrandModel(brand: string | null, model: string | null) {
-  return [brand, model].filter(Boolean).join(" ") || "--";
-}
-
 function formatSessionType(value: string) {
-  if (value === "real_round") {
-    return "Real round";
-  }
-
-  if (value === "simulated_course") {
-    return "Sim course";
-  }
-
-  return value
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
+  if (value === "real_round") return "Real round";
+  if (value === "simulated_course") return "Sim course";
+  return value.split("_").filter(Boolean).map((part) => part[0]?.toUpperCase() + part.slice(1)).join(" ");
 }
 
 function isRoundSession(value: string) {
@@ -388,25 +440,13 @@ function isRoundSession(value: string) {
 }
 
 function formatHole(holeNumber: number | null, holeShotNumber: number | null) {
-  if (!holeNumber) {
-    return "--";
-  }
-
+  if (!holeNumber) return "--";
   return holeShotNumber ? `${holeNumber}.${holeShotNumber}` : holeNumber.toString();
 }
 
 function formatClub(value: string) {
-  if (value === "driver") {
-    return "Driver";
-  }
-
-  if (/^[1-9][wh]$/.test(value)) {
-    return value.toUpperCase();
-  }
-
-  if (/^[1-9]i$/.test(value)) {
-    return `${value[0]}i`;
-  }
-
+  if (value === "driver") return "Driver";
+  if (/^[1-9][wh]$/.test(value)) return value.toUpperCase();
+  if (/^[1-9]i$/.test(value)) return `${value[0]}i`;
   return value.toUpperCase();
 }

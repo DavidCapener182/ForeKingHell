@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { rejectOversizedDataUrl, rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
 
 export const runtime = "nodejs";
+
+const MAX_REQUEST_BYTES = 7 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 const EXTRACTION_PROMPT = `Extract this golf scorecard image into JSON only.
 
@@ -42,6 +46,20 @@ Important:
 - Do not include markdown, explanation, or code fences.`;
 
 export async function POST(request: NextRequest) {
+  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
+  if (sizeRejection) {
+    return sizeRejection;
+  }
+
+  const rateLimitRejection = rateLimitRequest(request, {
+    keyPrefix: "scorecard-extract",
+    limit: 6,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (rateLimitRejection) {
+    return rateLimitRejection;
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -56,6 +74,11 @@ export async function POST(request: NextRequest) {
 
   if (!imageDataUrl.startsWith("data:image/")) {
     return NextResponse.json({ message: "Send a scorecard image data URL." }, { status: 400 });
+  }
+
+  const imageSizeRejection = rejectOversizedDataUrl(imageDataUrl, MAX_IMAGE_BYTES);
+  if (imageSizeRejection) {
+    return imageSizeRejection;
   }
 
   const upstream = await fetch("https://api.openai.com/v1/responses", {

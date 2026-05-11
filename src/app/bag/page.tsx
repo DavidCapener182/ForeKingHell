@@ -367,7 +367,8 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
           Stock carry by club, with the gap to the next shorter club.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-5">
+        <CarryGappingBars rows={rows} />
         <Table>
           <TableHeader>
             <TableRow>
@@ -416,6 +417,34 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+
+function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
+  const maxCarry = Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
+
+  return (
+    <div className="grid gap-3 rounded-xl border bg-[#f9fafb] p-4">
+      {rows.map((row) => {
+        const carry = row.carryYd ?? 0;
+        const width = Math.max(8, (carry / maxCarry) * 100);
+
+        return (
+          <Link key={row.id} href={`/bag/${row.id}`} className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold">{formatClubType(row.clubType)}</span>
+              <span className="text-muted-foreground">
+                {formatMetric(row.carryYd)} yd carry · {formatMetric(row.playNumberYd)} yd play
+              </span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-white">
+              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${width}%` }} />
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

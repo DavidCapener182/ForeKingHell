@@ -187,25 +187,11 @@ export default async function CoachPage() {
           <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
             <DataPanel>
               <SectionHeader
-                title="Next practice session"
-                description="A compact session plan from the current highest-value signal."
+                title="Practice plan"
+                description="Decision aid first: issue, evidence, drill sequence, and target."
                 action={<Clock className="size-5 text-emerald-500" />}
               />
-              <CardContent className="space-y-3">
-                {coach.sessionPlan.map((block, index) => (
-                  <div key={block.title} className="rounded-xl border bg-[#f9fafb] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <Badge variant="outline">Block {index + 1}</Badge>
-                        <h2 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h2>
-                      </div>
-                      <StatusPill tone={block.tone}>{block.duration}</StatusPill>
-                    </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
-                  </div>
-                ))}
-                <TrainingFeedback impacts={coach.trainingImpact.slice(0, 2)} />
-              </CardContent>
+              <CoachPracticePlan topClub={topClub} blocks={coach.sessionPlan} impacts={coach.trainingImpact.slice(0, 2)} />
             </DataPanel>
 
             <DataPanel>
@@ -258,6 +244,54 @@ export default async function CoachPage() {
         </>
       )}
     </PageShell>
+  );
+}
+
+
+function CoachPracticePlan({
+  topClub,
+  blocks,
+  impacts,
+}: {
+  topClub: CoachClubCard | null;
+  blocks: Array<{ title: string; detail: string; duration: string; tone: "green" | "sky" | "pink" | "amber" | "slate" }>;
+  impacts: CoachTrainingImpact[];
+}) {
+  return (
+    <CardContent className="space-y-4">
+      <div className="rounded-xl border bg-emerald-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Badge className="bg-white text-emerald-700 hover:bg-white">Based on stored shot data</Badge>
+            <h2 className="mt-3 text-2xl font-semibold tracking-normal">
+              {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
+            </h2>
+          </div>
+          <StatusPill tone={topClub?.tone ?? "slate"}>{topClub ? `${topClub.trustIndex}% trust` : "Needs data"}</StatusPill>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
+          <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
+          <SmallMetric label="Target" value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"} />
+        </div>
+      </div>
+
+      <div className="grid gap-3">
+        {blocks.map((block, index) => (
+          <div key={block.title} className="rounded-xl border bg-[#f9fafb] p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <Badge variant="outline">Drill {index + 1}</Badge>
+                <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
+              </div>
+              <StatusPill tone={block.tone}>{block.duration}</StatusPill>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
+          </div>
+        ))}
+      </div>
+      <TrainingFeedback impacts={impacts} />
+    </CardContent>
   );
 }
 
@@ -387,6 +421,18 @@ function toneForFocus(focus: CoachFocusArea) {
   };
 
   return tones[focus];
+}
+
+function targetForCard(card: CoachClubCard) {
+  if (card.playableRate !== null) {
+    return `Push playable rate above ${Math.min(90, Math.round(card.playableRate) + 10)}%`;
+  }
+
+  if (card.sampleSize < 20) {
+    return "Reach 20 clean shots";
+  }
+
+  return "Tighten the primary miss window";
 }
 
 function formatRate(value: number | null) {

@@ -97,6 +97,9 @@ const DISTANCE_FIELDS = new Set<string>([
 
 export function parseRapsodoCsv(csvText: string, options: ParserOptions = {}): ParseRapsodoCsvResult {
   const warnings: string[] = [];
+  if (hasMalformedQuotedCsv(csvText)) {
+    warnings.push("CSV contains an unterminated quoted field; parsed results may be incomplete.");
+  }
   const rows = parseCsvRows(csvText).filter((row) => row.some((cell) => cell.trim() !== ""));
 
   if (rows.length === 0) {
@@ -120,6 +123,10 @@ export function parseRapsodoCsv(csvText: string, options: ParserOptions = {}): P
   const preambleRows = rows.slice(0, headerIndex);
   const sessionTitle = findSessionTitle(preambleRows);
   const exportedAtIso = parseExportedAtIso(sessionTitle);
+
+  if (hasAmbiguousSlashDate(sessionTitle)) {
+    warnings.push("Export date is ambiguous; slash dates are interpreted as US month/day/year.");
+  }
   const headers = rows[headerIndex].map((header) => header.trim());
   const dataRows = rows.slice(headerIndex + 1);
   const rawRows = rows.map((row, index) => parseRawRow(row, index, headers, headerIndex));
@@ -368,11 +375,17 @@ function parseCsvRows(csvText: string) {
 
 function isHeaderRow(row: string[]) {
   const normalizedCells = row.map(normalizeHeader);
-
-  return (
-    normalizedCells.some((cell) => FIELD_ALIASES.clubType.some((alias) => alias === cell)) &&
-    normalizedCells.some((cell) => FIELD_ALIASES.carryDistance.some((alias) => alias === cell))
+  const hasClubType = normalizedCells.some((cell) => FIELD_ALIASES.clubType.some((alias) => alias === cell));
+  const hasLaunchMetric = normalizedCells.some((cell) =>
+    [
+      ...FIELD_ALIASES.carryDistance,
+      ...FIELD_ALIASES.totalDistance,
+      ...FIELD_ALIASES.ballSpeed,
+      ...FIELD_ALIASES.launchAngle,
+    ].some((alias) => alias === cell),
   );
+
+  return hasClubType && hasLaunchMetric;
 }
 
 function isShotDataRow(headers: string[], row: string[]) {
@@ -494,8 +507,14 @@ function parseExportedAtIso(title: string | null) {
 }
 
 function toRawRow(headers: string[], row: string[]) {
+  const seenHeaders = new Map<string, number>();
+
   return headers.reduce<Record<string, string>>((rawRow, header, index) => {
-    rawRow[header] = (row[index] ?? "").trim();
+    const label = header.trim() || `column_${index + 1}`;
+    const seenCount = seenHeaders.get(label) ?? 0;
+    seenHeaders.set(label, seenCount + 1);
+    const key = seenCount === 0 ? label : `${label} (${seenCount + 1})`;
+    rawRow[key] = (row[index] ?? "").trim();
     return rawRow;
   }, {});
 }
@@ -666,4 +685,38 @@ function emptyResult(appliedDistanceUnit: DistanceUnit, warnings: string[]): Par
     rawRows: [],
     warnings,
   };
+}
+
+function hasMalformedQuotedCsv(csvText: string) {
+  let inQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index];
+    const nextChar = csvText[index + 1];
+
+    if (char !== "\"") {
+      continue;
+    }
+
+    if (inQuotes && nextChar === "\"") {
+      index += 1;
+      continue;
+    }
+
+    inQuotes = !inQuotes;
+  }
+
+  return inQuotes;
+}
+
+function hasAmbiguousSlashDate(title: string | null) {
+  const match = title?.match(/(\d{1,2})\/(\d{1,2})\/\d{4}/);
+
+  if (!match) {
+    return false;
+  }
+
+  const first = Number(match[1]);
+  const second = Number(match[2]);
+  return first >= 1 && first <= 12 && second >= 1 && second <= 12;
 }
