@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 1024" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="vignette" cx="50%" cy="48%" r="62%">
+      <stop offset="72%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="100%" stop-color="#f7f5ef" stop-opacity="0.95" />
+    </radialGradient>
+    <linearGradient id="rough" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#365f28" />
+      <stop offset="0.45" stop-color="#477532" />
+      <stop offset="1" stop-color="#24491f" />
+    </linearGradient>
+    <linearGradient id="fairway" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#8fbf58" />
+      <stop offset="0.52" stop-color="#73a846" />
+      <stop offset="1" stop-color="#5d9239" />
+    </linearGradient>
+    <radialGradient id="green" cx="52%" cy="45%" r="58%">
+      <stop offset="0" stop-color="#bce67d" />
+      <stop offset="1" stop-color="#82bd56" />
+    </radialGradient>
+    <pattern id="mow" width="36" height="1024" patternUnits="userSpaceOnUse">
+      <rect width="18" height="1024" fill="#ffffff" opacity="0.07" />
+      <rect x="18" width="18" height="1024" fill="#173a1d" opacity="0.055" />
+    </pattern>
+    <filter id="blurShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#102813" flood-opacity="0.28" />
+    </filter>
+    <filter id="treeTexture" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="3" seed="41" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.05  0 0 0 0 0.20  0 0 0 0 0.04  0 0 0 .42 0" />
+      <feComposite operator="in" in2="SourceGraphic" />
+      <feBlend mode="multiply" in2="SourceGraphic" />
+    </filter>
+    <clipPath id="fairwayClip">
+      <path d="M300 888 C230 825 217 727 238 633 C259 541 212 451 228 350 C243 252 296 199 306 132 C331 199 384 250 388 350 C392 460 351 535 381 633 C411 734 385 828 300 888 Z" />
+    </clipPath>
+  </defs>
+
+  <rect width="612" height="1024" fill="#f7f5ef" />
+  <ellipse cx="306" cy="505" rx="279" ry="505" fill="url(#rough)" />
+
+  <path d="M71 940 C136 865 114 773 141 698 C166 626 179 586 151 521 C120 450 128 379 177 314 C218 259 203 189 151 126 C114 81 93 38 116 0 L0 0 L0 1024 Z" fill="#183b1e" opacity="0.72" />
+  <path d="M541 940 C476 865 498 773 471 698 C446 626 433 586 461 521 C492 450 484 379 435 314 C394 259 409 189 461 126 C498 81 519 38 496 0 L612 0 L612 1024 Z" fill="#17381d" opacity="0.74" />
+
+  <g opacity="0.95" filter="url(#treeTexture)">
+    <g fill="#275823">
+      <circle cx="90" cy="62" r="45"/><circle cx="150" cy="48" r="38"/><circle cx="215" cy="37" r="44"/><circle cx="395" cy="40" r="46"/><circle cx="470" cy="52" r="44"/><circle cx="533" cy="85" r="52"/>
+      <circle cx="68" cy="166" r="50"/><circle cx="124" cy="210" r="58"/><circle cx="55" cy="281" r="51"/><circle cx="99" cy="369" r="62"/><circle cx="64" cy="470" r="58"/><circle cx="95" cy="577" r="63"/><circle cx="70" cy="691" r="58"/><circle cx="117" cy="810" r="66"/><circle cx="83" cy="936" r="62"/>
+      <circle cx="544" cy="179" r="54"/><circle cx="490" cy="241" r="58"/><circle cx="556" cy="336" r="61"/><circle cx="510" cy="445" r="59"/><circle cx="548" cy="555" r="64"/><circle cx="503" cy="674" r="61"/><circle cx="545" cy="803" r="65"/><circle cx="489" cy="923" r="66"/>
+    </g>
+    <g fill="#3f7b2c" opacity="0.8">
+      <circle cx="104" cy="92" r="25"/><circle cx="181" cy="84" r="24"/><circle cx="432" cy="84" r="28"/><circle cx="507" cy="121" r="30"/>
+      <circle cx="94" cy="262" r="31"/><circle cx="128" cy="423" r="31"/><circle cx="104" cy="742" r="32"/><circle cx="130" cy="925" r="32"/>
+      <circle cx="506" cy="302" r="31"/><circle cx="480" cy="524" r="28"/><circle cx="528" cy="722" r="34"/><circle cx="469" cy="852" r="32"/>
+    </g>
+  </g>
+
+  <path d="M122 706 C164 651 144 597 167 537 C193 472 187 416 153 361" fill="none" stroke="#2b302b" stroke-width="17" stroke-linecap="round" opacity="0.45" />
+  <path d="M122 706 C164 651 144 597 167 537 C193 472 187 416 153 361" fill="none" stroke="#6d7468" stroke-width="10" stroke-linecap="round" opacity="0.62" />
+
+  <g filter="url(#blurShadow)">
+    <path d="M300 888 C230 825 217 727 238 633 C259 541 212 451 228 350 C243 252 296 199 306 132 C331 199 384 250 388 350 C392 460 351 535 381 633 C411 734 385 828 300 888 Z" fill="url(#fairway)" />
+  </g>
+  <g clip-path="url(#fairwayClip)">
+    <rect x="205" y="118" width="200" height="782" fill="url(#mow)" />
+    <path d="M258 873 C225 728 273 641 257 535 C238 415 266 312 304 179" fill="none" stroke="#d9f2b8" stroke-width="22" stroke-opacity="0.11" />
+    <path d="M348 868 C389 723 329 647 353 532 C378 417 349 308 311 181" fill="none" stroke="#173719" stroke-width="24" stroke-opacity="0.10" />
+  </g>
+
+  <ellipse cx="306" cy="122" rx="82" ry="58" fill="#6faa47" opacity="0.8" />
+  <ellipse cx="306" cy="112" rx="62" ry="43" fill="url(#green)" />
+  <ellipse cx="217" cy="160" rx="34" ry="20" fill="#f2dfb6" transform="rotate(-14 217 160)" />
+  <ellipse cx="393" cy="160" rx="36" ry="21" fill="#f1dfb6" transform="rotate(16 393 160)" />
+  <path d="M197 162 C218 138 253 144 253 166 C232 183 205 184 197 162 Z" fill="#f5e5c2" />
+  <path d="M366 164 C383 139 421 144 426 168 C405 186 375 185 366 164 Z" fill="#f5e5c2" />
+  <path d="M418 397 C447 374 488 385 495 421 C469 449 421 440 418 397 Z" fill="#f2dfb6" />
+  <path d="M421 398 C445 385 471 397 478 421 C455 438 427 431 421 398 Z" fill="#f5e5c2" />
+
+  <g>
+    <line x1="307" y1="115" x2="307" y2="91" stroke="#f8fafc" stroke-width="2" />
+    <path d="M309 91 L327 98 L309 105 Z" fill="#f8fafc" />
+  </g>
+
+  <rect x="252" y="904" width="108" height="66" rx="28" fill="#5f963c" opacity="0.96" />
+  <rect x="266" y="916" width="80" height="42" rx="20" fill="#86bd58" opacity="0.5" />
+  <circle cx="276" cy="927" r="3" fill="#f8fafc" opacity="0.9" /><circle cx="336" cy="927" r="3" fill="#f8fafc" opacity="0.9" />
+  <circle cx="276" cy="950" r="3" fill="#f8fafc" opacity="0.9" /><circle cx="336" cy="950" r="3" fill="#f8fafc" opacity="0.9" />
+
+  <rect width="612" height="1024" fill="url(#vignette)" />
+</svg>

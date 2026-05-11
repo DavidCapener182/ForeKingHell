@@ -219,10 +219,14 @@ function DispersionPanel({
     .filter((item): item is { shot: AnalysisShot; distance: number; side: number } => item.distance !== null);
   const distanceValues = plottedShots.map((item) => item.distance);
   const sideValues = plottedShots.map((item) => item.side);
-  const maxDistance = Math.max(260, ...distanceValues) * 1.05;
+  const holeYardage = 350;
+  const maxDistance = Math.max(holeYardage, ...distanceValues) * 1.02;
   const maxSide = Math.max(55, ...sideValues.map(Math.abs)) * 1.15;
-  const xFor = (side: number | null) => 450 + ((side ?? 0) / maxSide) * 330;
-  const yFor = (distance: number | null) => 382 - ((distance ?? 0) / maxDistance) * 332;
+  const tee = { x: 306, y: 936 };
+  const playHeight = 830;
+  const sideScale = 150;
+  const xFor = (side: number | null) => tee.x + ((side ?? 0) / maxSide) * sideScale;
+  const yFor = (distance: number | null) => tee.y - ((distance ?? 0) / maxDistance) * playHeight;
   const plottedPoints = plottedShots.map((item) => ({
     id: item.shot.id,
     x: xFor(item.side),
@@ -232,15 +236,15 @@ function DispersionPanel({
     selectStockYardageShots(shots, shots.length, { clubType }).filteredShots.map((shot) => shot.id),
   );
   const ellipse = buildDispersionEllipse(plottedPoints.filter((point) => stockShotIds.has(point.id)));
-  const yardMarkers = [50, 100, 150, 200, 250, 300].filter((yard) => yard < maxDistance);
+  const yardMarkers = [50, 100, 150, 200, 250, 300, 350].filter((yard) => yard <= maxDistance);
+  const coneTopY = yFor(Math.min(holeYardage, maxDistance));
+  const coneLeftX = xFor(-maxSide);
+  const coneRightX = xFor(maxSide);
 
   return (
     <div className="overflow-hidden rounded-[8px] border bg-[#172f1d] shadow-sm">
-      <svg viewBox="0 0 900 430" className="h-[430px] w-full">
+      <svg viewBox="0 0 612 1024" className="h-[620px] w-full max-h-[72vh]">
         <defs>
-          <clipPath id="dispersionFairwayClip">
-            <path d="M 336 430 C 292 350 256 282 240 206 C 218 118 260 42 340 0 L 560 0 C 642 42 684 118 660 206 C 644 282 608 350 564 430 Z" />
-          </clipPath>
           <filter id="shotGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feMerge>
@@ -249,43 +253,54 @@ function DispersionPanel({
             </feMerge>
           </filter>
         </defs>
-        <image href="/assets/fairway-dispersion-bg.svg" x="0" y="0" width="900" height="430" preserveAspectRatio="none" />
-        <rect x="0" y="0" width="900" height="430" fill="#020617" opacity="0.06" />
+        <image href="/assets/hole-350-aerial.svg" x="0" y="0" width="612" height="1024" preserveAspectRatio="xMidYMid slice" />
+        <rect x="0" y="0" width="612" height="1024" fill="#020617" opacity="0.10" />
 
-        <g clipPath="url(#dispersionFairwayClip)">
-          {yardMarkers.map((yard) => {
+        <path
+          d={`M ${tee.x} ${tee.y} L ${coneLeftX} ${coneTopY} Q ${tee.x} ${coneTopY - 48} ${coneRightX} ${coneTopY} Z`}
+          fill={accent}
+          fillOpacity="0.13"
+          stroke={accent}
+          strokeWidth="3"
+          strokeOpacity="0.72"
+          strokeLinejoin="round"
+        />
+        <line x1={tee.x} x2={tee.x} y1={coneTopY} y2={tee.y} stroke="#ffffff" strokeOpacity="0.86" strokeWidth="2.5" />
+        <line x1={tee.x} x2={tee.x} y1={coneTopY} y2={tee.y} stroke="#111827" strokeOpacity="0.16" strokeWidth="6" />
+
+        {yardMarkers.map((yard) => {
           const y = yFor(yard);
+          const arcWidth = 70 + (yard / holeYardage) * 248;
           return (
             <g key={yard}>
-                <path
-                  d={`M 116 ${y + 30} C 308 ${y - 16} 592 ${y - 16} 784 ${y + 30}`}
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeOpacity="0.72"
-                  strokeWidth="2"
-                />
-                <text x="460" y={y + 7} fill="#ffffff" fontSize="14" fontWeight="600" textAnchor="middle">
+              <path
+                d={`M ${tee.x - arcWidth} ${y + 22} Q ${tee.x} ${y - 24} ${tee.x + arcWidth} ${y + 22}`}
+                fill="none"
+                stroke="#ffffff"
+                strokeOpacity="0.74"
+                strokeWidth="2.5"
+                strokeDasharray="10 10"
+              />
+              <text x={Math.min(560, tee.x + arcWidth + 12)} y={y + 12} fill="#ffffff" fontSize="20" fontWeight="700">
                 {yard}
               </text>
             </g>
           );
         })}
-          <line x1="450" x2="450" y1="20" y2="410" stroke="#ffffff" strokeOpacity="0.86" strokeWidth="2" />
-          <line x1="450" x2="450" y1="20" y2="410" stroke="#111827" strokeOpacity="0.18" strokeWidth="5" />
-          {[-40, -20, 20, 40].map((side) => (
-            <line
-              key={side}
-              x1={xFor(side)}
-              x2={xFor(side)}
-              y1="32"
-              y2="412"
-              stroke="#ffffff"
-              strokeDasharray="7 9"
-              strokeOpacity="0.32"
-              strokeWidth="1.5"
-            />
-          ))}
-        </g>
+
+        {[-40, -20, 20, 40].map((side) => (
+          <line
+            key={side}
+            x1={xFor(side)}
+            x2={xFor(side)}
+            y1={coneTopY + 8}
+            y2={tee.y}
+            stroke="#ffffff"
+            strokeDasharray="9 12"
+            strokeOpacity="0.36"
+            strokeWidth="2"
+          />
+        ))}
 
         {ellipse ? (
           <ellipse
@@ -320,16 +335,21 @@ function DispersionPanel({
           );
         })}
 
+        <circle cx={tee.x} cy={tee.y} r="8" fill="#f8fafc" stroke="#111827" strokeWidth="3" />
+        <text x={tee.x} y={tee.y + 34} fill="#ffffff" fontSize="18" fontWeight="700" textAnchor="middle">
+          Tee
+        </text>
+
         <g>
           {[-40, -20, 0, 20, 40].map((side) => (
-            <text key={side} x={xFor(side)} y="418" fill="#e5e7eb" fontSize="12" textAnchor="middle">
+            <text key={side} x={xFor(side)} y="1000" fill="#e5e7eb" fontSize="17" fontWeight="700" textAnchor="middle">
               {side === 0 ? "0" : `${Math.abs(side)}${side < 0 ? "L" : "R"}`}
             </text>
           ))}
-          <text x="28" y="405" fill="#e5e7eb" fontSize="12" transform="rotate(-90 28 405)">
-            Carry yd
+          <text x="28" y="935" fill="#e5e7eb" fontSize="17" fontWeight="700" transform="rotate(-90 28 935)">
+            {distanceView === "carry" ? "Carry yd" : "Total yd"}
           </text>
-          </g>
+        </g>
       </svg>
     </div>
   );
