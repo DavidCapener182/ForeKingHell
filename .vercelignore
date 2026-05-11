@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+.git
+.vercel
+.next
+node_modules
+
+output
+.playwright-mcp
+tmp
+.tmp
+
+*.log
+*.tsbuildinfo
+next-env.d.ts

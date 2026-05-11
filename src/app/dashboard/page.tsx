@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -63,7 +64,48 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 const roundSessionTypes = ["round", "simulator", "simulated_course", "real_round"] as const;
 
+function MissingDatabaseUrlSetup() {
+  return (
+    <PageShell>
+      <PageHeader
+        eyebrow={
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Configuration
+          </span>
+        }
+        title="Database connection required"
+        description="The app needs DATABASE_URL on the server. Add it in Vercel (or your host) under Environment Variables, redeploy, then run Drizzle migrations against the same database."
+      />
+      <Card className="premium-card">
+        <CardContent className="pt-6">
+          <Alert>
+            <Database className="size-4" aria-hidden />
+            <AlertTitle>Set DATABASE_URL</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>
+                Use your Supabase (or other Postgres) connection string. Optionally set{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">DEFAULT_USER_ID</code> to a
+                UUID; otherwise the built-in single-user id is used.
+              </p>
+              <p className="text-muted-foreground">
+                After deploying with env vars, run{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">npm run db:migrate</code>{" "}
+                locally with the same <code className="rounded bg-muted px-1 py-0.5 text-xs">DATABASE_URL</code>
+                .
+              </p>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    </PageShell>
+  );
+}
+
 export default async function DashboardPage() {
+  if (!process.env.DATABASE_URL?.trim()) {
+    return <MissingDatabaseUrlSetup />;
+  }
+
   const data = await getDashboardData();
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel = data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
