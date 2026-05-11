@@ -218,6 +218,16 @@ export default async function DashboardPage() {
         }
       />
 
+      <TodayPlan
+        latestSession={data.recentSessions[0] ?? null}
+        totalShots={data.stats.shotCount}
+        bestClub={data.bagPreview[0] ?? null}
+        biggestProblem={data.coachPreview}
+        firstSignal={data.whatChanged[0] ?? null}
+        primaryAction={primaryAction}
+        primaryActionLabel={primaryActionLabel}
+      />
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <MetricCard
@@ -492,6 +502,63 @@ export default async function DashboardPage() {
           </DataPanel>
         </section>
     </PageShell>
+  );
+}
+
+
+function TodayPlan({
+  latestSession,
+  totalShots,
+  bestClub,
+  biggestProblem,
+  firstSignal,
+  primaryAction,
+  primaryActionLabel,
+}: {
+  latestSession: Awaited<ReturnType<typeof getDashboardData>>["recentSessions"][number] | null;
+  totalShots: number;
+  bestClub: Awaited<ReturnType<typeof getDashboardData>>["bagPreview"][number] | null;
+  biggestProblem: Awaited<ReturnType<typeof getDashboardData>>["coachPreview"];
+  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+  primaryAction: string;
+  primaryActionLabel: string;
+}) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Today"
+        description="Start here: current form, latest change, club costing you shots, and what to practise next."
+        action={<CalendarDays className="size-5 text-emerald-500" />}
+      />
+      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <InsightBlock
+          label="Latest session"
+          value={latestSession ? formatDate(latestSession.date) : "No import yet"}
+          detail={latestSession ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}` : "Import a CSV to build your baseline"}
+          tone="sky"
+        />
+        <InsightBlock
+          label="Your game"
+          value={`${totalShots.toLocaleString("en-GB")} shots`}
+          detail={firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement"}
+          tone={firstSignal?.tone ?? "slate"}
+        />
+        <InsightBlock
+          label="Best club"
+          value={bestClub ? formatClubType(bestClub.type) : "--"}
+          detail={bestClub ? `${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots` : "Need a tracked club sample"}
+          tone="green"
+        />
+        <Link href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction} prefetch={false} className="block">
+          <InsightBlock
+            label="Practise next"
+            value={biggestProblem?.clubName ?? primaryActionLabel}
+            detail={biggestProblem?.drill ?? "Import data or review the latest round"}
+            tone={biggestProblem?.tone ?? "amber"}
+          />
+        </Link>
+      </CardContent>
+    </DataPanel>
   );
 }
 

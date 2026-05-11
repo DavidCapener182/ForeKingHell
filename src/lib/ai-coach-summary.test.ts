@@ -43,6 +43,8 @@ function fakeCoachSummary() {
   return {
     headline: "Driver is the next practice priority.",
     subhead: "Direction control is the main signal.",
+    nextPriority: null,
+    focusArea: "direction",
     signals: [{ label: "Carry", value: "+8 yd", detail: "Latest 30 vs first 30", tone: "green" }],
     sessionPlan: [{ title: "Driver block", detail: "Hit 10 no-left balls.", duration: "20 min", tone: "pink" }],
     trainingImpact: [
@@ -82,6 +84,16 @@ function fakeCoachSummary() {
         trackedCleanShots: 84,
         averageTrust: 64,
         averagePlayableRate: 58,
+      },
+      signals: [],
+      practicePlan: [],
+      clubRows: [],
+      journey: [],
+      rankings: {
+        mostTrusted: null,
+        mostImproved: null,
+        needsWork: null,
+        mostVolatile: null,
       },
     },
   } as CoachSummary;

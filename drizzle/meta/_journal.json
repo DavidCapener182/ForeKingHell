@@ -43,6 +43,13 @@
       "when": 1778445479611,
       "tag": "0005_short_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778449000000,
+      "tag": "0006_raw_csv_hash",
+      "breakpoints": true
     }
   ]
 }

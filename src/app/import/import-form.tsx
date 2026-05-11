@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -540,6 +540,16 @@ export function ImportForm() {
           </div>
         </header>
 
+
+        <ImportStepper
+          isCourseUpload={isCourseUpload}
+          hasFiles={uploadedFiles.length > 0}
+          hasShots={aggregate.shotCount > 0}
+          hasCourseMapping={!isCourseUpload || (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)}
+          hasWarnings={aggregate.warnings.length > 0}
+          canSave={canSave}
+        />
+
         {saveState.status !== "idle" ? (
           <Alert variant={saveState.status === "error" ? "destructive" : "default"}>
             {saveState.status === "error" ? (
@@ -624,8 +634,8 @@ export function ImportForm() {
         <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <Card className="premium-card">
             <CardHeader>
-              <CardTitle>Upload</CardTitle>
-              <CardDescription>CSV data stays raw on each session and normalized on each shot.</CardDescription>
+              <CardTitle>Step 1: Upload CSV</CardTitle>
+              <CardDescription>Drag in one or more Rapsodo files. Obvious parse issues appear before save.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <input
@@ -856,7 +866,14 @@ export function ImportForm() {
                 </div>
               ) : null}
 
-              <div className="space-y-2">
+              <div className="rounded-xl border bg-white p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Step 2: Confirm session</p>
+                    <p className="text-xs text-muted-foreground">Type, date, unit fallback, and course details if needed.</p>
+                  </div>
+                  <Badge variant="outline">Confirm</Badge>
+                </div>
                 <label className="text-sm font-medium">Fallback distance unit</label>
                 <Select value={distanceUnit} onValueChange={(value) => setDistanceUnit(value as DistanceUnit)}>
                   <SelectTrigger className="w-full">
@@ -899,7 +916,7 @@ export function ImportForm() {
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle>Course overlay preview</CardTitle>
+                  <CardTitle>Round mapping step</CardTitle>
                   <CardDescription>
                     Shots are grouped into holes using the scorecard yardage and the CSV shot order.
                   </CardDescription>
@@ -922,7 +939,26 @@ export function ImportForm() {
 
         <Card className="premium-card">
           <CardHeader>
-            <CardTitle>Shot preview</CardTitle>
+            <CardTitle>Step 4: Save import</CardTitle>
+            <CardDescription>Save only when the checklist is green. Successful saves show PBs, achievements, and updated yardages.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid gap-2 text-sm">
+              <ChecklistItem complete={uploadedFiles.length > 0}>CSV file selected</ChecklistItem>
+              <ChecklistItem complete={aggregate.shotCount > 0}>Shots detected</ChecklistItem>
+              <ChecklistItem complete={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}>Round mapping complete</ChecklistItem>
+              <ChecklistItem complete={aggregate.warnings.length === 0}>Warnings reviewed</ChecklistItem>
+            </div>
+            <Button type="button" size="lg" disabled={!canSave} onClick={saveImportBatch} className="bg-[#111827] text-white">
+              <Upload className="size-4" />
+              {isPending ? "Saving..." : "Save import"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Step 3: Review shots</CardTitle>
             <CardDescription>
               Showing the first {previewShots.length} parsed shots across the selected batch. Distance
               values are stored in yards.
@@ -990,6 +1026,66 @@ export function ImportForm() {
         </Card>
       </div>
     </main>
+  );
+}
+
+
+function ImportStepper({
+  isCourseUpload,
+  hasFiles,
+  hasShots,
+  hasCourseMapping,
+  hasWarnings,
+  canSave,
+}: {
+  isCourseUpload: boolean;
+  hasFiles: boolean;
+  hasShots: boolean;
+  hasCourseMapping: boolean;
+  hasWarnings: boolean;
+  canSave: boolean;
+}) {
+  const steps = [
+    { label: "Upload", detail: hasFiles ? "CSV selected" : "Choose CSV", complete: hasFiles },
+    { label: "Confirm", detail: "Session settings", complete: hasFiles },
+    {
+      label: "Review",
+      detail: isCourseUpload ? "Shots + round map" : "Shot preview",
+      complete: hasShots && hasCourseMapping,
+    },
+    { label: "Save", detail: canSave ? "Ready" : hasWarnings ? "Warnings" : "Waiting", complete: canSave },
+  ];
+
+  return (
+    <Card className="premium-card">
+      <CardContent className="grid gap-3 p-4 sm:grid-cols-4">
+        {steps.map((step, index) => (
+          <div key={step.label} className="flex items-center gap-3 rounded-xl border bg-[#f9fafb] p-3">
+            <div
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold",
+                step.complete ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground",
+              )}
+            >
+              {step.complete ? <CheckCircle2 className="size-4" /> : index + 1}
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{step.label}</p>
+              <p className="text-xs text-muted-foreground">{step.detail}</p>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChecklistItem({ complete, children }: { complete: boolean; children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <CheckCircle2 className={cn("size-4", complete ? "text-emerald-600" : "text-muted-foreground")} />
+      <span className={complete ? "font-medium" : "text-muted-foreground"}>{children}</span>
+    </div>
   );
 }
 

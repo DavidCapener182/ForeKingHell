@@ -149,12 +149,14 @@ export const sessions = pgTable(
     rawUploadId: varchar("raw_upload_id", { length: 160 }),
     fileName: varchar("file_name", { length: 260 }),
     fileSizeBytes: integer("file_size_bytes"),
+    rawCsvHash: varchar("raw_csv_hash", { length: 64 }),
     rawCsvText: text("raw_csv_text").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("fkh_sessions_user_date_idx").on(table.userId, table.date),
     index("fkh_sessions_user_source_idx").on(table.userId, table.source),
+    uniqueIndex("fkh_sessions_user_source_raw_hash_idx").on(table.userId, table.source, table.rawCsvHash),
   ],
 );
 

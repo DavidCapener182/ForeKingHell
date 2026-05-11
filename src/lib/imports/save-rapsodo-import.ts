@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -226,6 +228,7 @@ async function persistImport(
   const preferredUnits = "yards";
   const now = new Date();
   const sessionDate = parseSessionDate(input.sessionDate);
+  const rawCsvHash = hashRawCsv(input.rawCsvText);
   const uniqueClubKeys = new Set(input.shots.map((shot) => shot.clubKey));
   const courseShotByRowNumber = new Map(
     (input.coursePlan?.shots ?? []).map((shot) => [shot.sourceShot.rowNumber, shot]),
@@ -255,9 +258,8 @@ async function persistImport(
       .where(
         and(
           eq(sessions.userId, userId),
-          eq(sessions.type, input.sessionType),
-          eq(sessions.fileName, input.fileName),
-          eq(sessions.rawCsvText, input.rawCsvText),
+          eq(sessions.source, input.source),
+          eq(sessions.rawCsvHash, rawCsvHash),
         ),
       )
       .limit(1);
@@ -287,6 +289,7 @@ async function persistImport(
         scorecardJson: input.coursePlan ? buildScorecardSnapshot(input.coursePlan, input.courseHoleScoring) : null,
         fileName: input.fileName,
         fileSizeBytes: input.fileSizeBytes,
+        rawCsvHash,
         rawCsvText: input.rawCsvText,
       })
       .returning({ id: sessions.id });
@@ -512,6 +515,10 @@ export function buildLongestShotNotifications({
     })
     .filter((notification): notification is LongestShotNotification => notification !== null)
     .sort((left, right) => right.shotDistanceYd - left.shotDistanceYd);
+}
+
+function hashRawCsv(rawCsvText: string) {
+  return createHash("sha256").update(rawCsvText, "utf8").digest("hex");
 }
 
 function shotDistanceYd(shot: Pick<ParsedRapsodoShot, "carryYd" | "totalYd">) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
 import {
   buildCoachPrompt,
   parseAiCoachSummary,
@@ -8,7 +9,23 @@ import {
 
 export const runtime = "nodejs";
 
+const MAX_REQUEST_BYTES = 128 * 1024;
+
 export async function POST(request: NextRequest) {
+  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
+  if (sizeRejection) {
+    return sizeRejection;
+  }
+
+  const rateLimitRejection = rateLimitRequest(request, {
+    keyPrefix: "coach-summary",
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (rateLimitRejection) {
+    return rateLimitRejection;
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
