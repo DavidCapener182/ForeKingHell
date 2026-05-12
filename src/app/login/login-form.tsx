@@ -27,9 +27,10 @@ export function LoginForm({ error }: { error?: string | null }) {
             name="email"
             type="email"
             autoComplete="email"
+            inputMode="email"
             placeholder="you@example.com"
             required
-            className="h-11 rounded-xl bg-white"
+            className="h-11 rounded-xl bg-white text-base"
           />
         </label>
         <Button type="submit" size="lg" disabled={pending} className="rounded-xl bg-[#111827] text-white">
@@ -50,14 +51,14 @@ export function LoginForm({ error }: { error?: string | null }) {
       <div className="grid gap-2 border-t pt-4">
         <form action={signInWithOAuthAction}>
           <input type="hidden" name="provider" value="google" />
-          <Button type="submit" variant="outline" className="w-full rounded-xl bg-white">
+          <Button type="submit" variant="outline" size="lg" className="h-11 w-full rounded-xl bg-white">
             <span className="grid size-4 place-items-center rounded-full border text-[10px] font-semibold">G</span>
             Continue with Google
           </Button>
         </form>
         <form action={signInWithOAuthAction}>
           <input type="hidden" name="provider" value="apple" />
-          <Button type="submit" variant="outline" className="w-full rounded-xl bg-white">
+          <Button type="submit" variant="outline" size="lg" className="h-11 w-full rounded-xl bg-white">
             <Apple className="size-4" />
             Continue with Apple
           </Button>
