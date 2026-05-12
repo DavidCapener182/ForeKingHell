@@ -5,15 +5,12 @@ import {
   parsePreferredUnits,
   parsePrivacySettings,
   parseTableDensity,
-  parseThemePreference,
 } from "@/lib/user-settings";
 
 describe("user settings parsing", () => {
   it("normalizes select values to safe defaults", () => {
     expect(parsePreferredUnits("metres")).toBe("metres");
     expect(parsePreferredUnits("feet")).toBe("yards");
-    expect(parseThemePreference("dark")).toBe("dark");
-    expect(parseThemePreference("sepia")).toBe("system");
     expect(parseTableDensity("compact")).toBe("compact");
     expect(parseTableDensity("dense")).toBe("comfortable");
   });

@@ -31,7 +31,6 @@ import {
   dashboardPinOptions,
   preferredUnitOptions,
   tableDensityOptions,
-  themeOptions,
   type PrivacySettings,
 } from "@/lib/user-settings";
 
@@ -150,7 +149,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <DataPanel>
         <SectionHeader
           title="Profile and preferences"
-          description="These settings are stored with your user profile and control dashboard pins, theme, units, and table density."
+          description="These settings are stored with your user profile and control dashboard pins, units, and table density."
           action={<SlidersHorizontal className="size-5 text-sky-600" />}
         />
         <CardContent>
@@ -160,9 +159,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <SelectField label="Preferred units" name="preferredUnits" defaultValue={profile.preferredUnits} values={preferredUnitOptions} />
-              <SelectField label="Theme" name="theme" defaultValue={profile.theme} values={themeOptions} />
               <SelectField label="Table density" name="tableDensity" defaultValue={profile.tableDensity} values={tableDensityOptions} />
             </div>
 

@@ -16,13 +16,13 @@ export type CurrentUser = {
 
 export type CurrentUserPreferences = {
   preferredUnits: "yards" | "metres";
-  theme: "system" | "light" | "dark";
+  theme: "light";
   tableDensity: "comfortable" | "compact";
 };
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "system",
+  theme: "light",
   tableDensity: "comfortable",
 };
 
@@ -80,7 +80,7 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 
   return {
     preferredUnits: profile?.preferredUnits === "metres" ? "metres" : "yards",
-    theme: profile?.theme === "light" || profile?.theme === "dark" ? profile.theme : "system",
+    theme: "light",
     tableDensity: profile?.tableDensity === "compact" ? "compact" : "comfortable",
   };
 }

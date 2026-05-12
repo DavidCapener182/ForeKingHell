@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#111827",
+  themeColor: "#f7f8fa",
 };
 
 export default async function RootLayout({
@@ -58,23 +58,21 @@ export default async function RootLayout({
     getAchievementUnlockFlash().catch(() => []),
     getCurrentUserPreferences().catch(() => ({
       preferredUnits: "yards" as const,
-      theme: "system" as const,
+      theme: "light" as const,
       tableDensity: "comfortable" as const,
     })),
   ]);
-  const themeClass = preferences.theme === "dark" ? "dark" : "";
 
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${themeClass} h-full`}
-      data-theme={preferences.theme}
+      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      data-theme="light"
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
     >
       <body className="min-h-full flex flex-col antialiased">
         <DevServiceWorkerResetScript />
-        <ThemePreferenceScript />
         <PlausibleScript />
         <PwaRegister />
         <AppNav totalXp={totalXp} />
@@ -83,14 +81,6 @@ export default async function RootLayout({
         </AchievementNotificationProvider>
       </body>
     </html>
-  );
-}
-
-function ThemePreferenceScript() {
-  return (
-    <Script id="theme-preference" strategy="beforeInteractive">
-      {`try{var root=document.documentElement;var theme=root.dataset.theme;if(theme==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){root.classList.add("dark");}}catch(error){}`}
-    </Script>
   );
 }
 

@@ -1,5 +1,4 @@
 export const preferredUnitOptions = ["yards", "metres"] as const;
-export const themeOptions = ["system", "light", "dark"] as const;
 export const tableDensityOptions = ["comfortable", "compact"] as const;
 export const dashboardPinOptions = [
   "shots",
@@ -13,7 +12,6 @@ export const dashboardPinOptions = [
 ] as const;
 
 export type PreferredUnits = (typeof preferredUnitOptions)[number];
-export type ThemePreference = (typeof themeOptions)[number];
 export type TableDensity = (typeof tableDensityOptions)[number];
 export type DashboardPin = (typeof dashboardPinOptions)[number];
 
@@ -25,14 +23,6 @@ export type PrivacySettings = {
 
 export function parsePreferredUnits(value: FormDataEntryValue | null): PreferredUnits {
   return value === "metres" ? "metres" : "yards";
-}
-
-export function parseThemePreference(value: FormDataEntryValue | null): ThemePreference {
-  if (value === "light" || value === "dark") {
-    return value;
-  }
-
-  return "system";
 }
 
 export function parseTableDensity(value: FormDataEntryValue | null): TableDensity {
