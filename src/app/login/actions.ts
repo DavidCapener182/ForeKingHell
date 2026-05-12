@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ensureUserProfile } from "@/lib/current-user";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
 
 export type LoginActionState = {
@@ -31,7 +32,7 @@ export async function sendMagicLinkAction(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${await requestOrigin()}/auth/callback`,
+      emailRedirectTo: `${await siteOrigin()}/auth/callback`,
       shouldCreateUser: true,
     },
   });
@@ -44,6 +45,48 @@ export async function sendMagicLinkAction(
     status: "success",
     message: "Check your email for the ForeKingHell sign-in link.",
   };
+}
+
+export async function signInWithPasswordAction(
+  _previousState: LoginActionState,
+  formData: FormData,
+): Promise<LoginActionState> {
+  if (!isSupabaseAuthConfigured()) {
+    return {
+      status: "error",
+      message: "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+    };
+  }
+
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const nextRaw = String(formData.get("next") ?? "");
+  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/dashboard";
+
+  if (!email || !password) {
+    return { status: "error", message: "Enter your email and password." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error || !data.user) {
+    return {
+      status: "error",
+      message: error?.message ?? "Invalid email or password.",
+    };
+  }
+
+  await ensureUserProfile({
+    id: data.user.id,
+    email: data.user.email ?? null,
+    name:
+      stringMetadata(data.user.user_metadata?.name) ??
+      stringMetadata(data.user.user_metadata?.full_name) ??
+      stringMetadata(data.user.user_metadata?.display_name),
+  });
+
+  redirect(next);
 }
 
 export async function signInWithOAuthAction(formData: FormData) {
@@ -61,7 +104,7 @@ export async function signInWithOAuthAction(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${await requestOrigin()}/auth/callback`,
+      redirectTo: `${await siteOrigin()}/auth/callback`,
     },
   });
 
@@ -72,10 +115,19 @@ export async function signInWithOAuthAction(formData: FormData) {
   redirect(data.url);
 }
 
-async function requestOrigin() {
+async function siteOrigin() {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+
   const headerStore = await headers();
   const proto = headerStore.get("x-forwarded-proto") ?? "http";
   const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
 
   return `${proto}://${host}`;
+}
+
+function stringMetadata(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }

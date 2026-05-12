@@ -50,7 +50,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               Use email magic link first, or connect Google/Apple once those providers are enabled in Supabase.
             </p>
           </div>
-          <LoginForm error={first(params.error) || null} />
+          <LoginForm error={first(params.error) || null} next={safeNextPath(first(params.next))} />
         </section>
       </div>
     </PageShell>
