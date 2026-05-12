@@ -45,11 +45,14 @@ export async function queueOfflineAction(record: Omit<OfflineActionRecord, "crea
   });
 
   if ("serviceWorker" in navigator) {
-    const registration = await navigator.serviceWorker.ready;
-    const syncRegistration = registration as ServiceWorkerRegistration & {
-      sync?: { register: (tag: string) => Promise<void> };
-    };
-    await syncRegistration.sync?.register("forekinghell-offline-sync").catch(() => undefined);
+    const registration = await serviceWorkerReadyWithTimeout().catch(() => null);
+
+    if (registration) {
+      const syncRegistration = registration as ServiceWorkerRegistration & {
+        sync?: { register: (tag: string) => Promise<void> };
+      };
+      await syncRegistration.sync?.register("forekinghell-offline-sync").catch(() => undefined);
+    }
   }
 
   notifyOfflineQueueChanged();
@@ -84,6 +87,13 @@ function notifyOfflineQueueChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fkh-offline-queue-changed"));
   }
+}
+
+function serviceWorkerReadyWithTimeout() {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 1500)),
+  ]);
 }
 
 function openOfflineDb() {

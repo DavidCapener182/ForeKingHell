@@ -51,7 +51,8 @@ export function UploadDropzone({
         accept=".csv,text/csv"
         multiple
         onChange={(event) => {
-          void onFilesSelected(event.target.files ?? []);
+          const files = Array.from(event.currentTarget.files ?? []);
+          void onFilesSelected(files);
           event.currentTarget.value = "";
         }}
       />
@@ -88,17 +89,10 @@ export function UploadDropzone({
           <p className="font-medium">Choose CSV files</p>
           <p className="text-sm text-muted-foreground">Click here or drop multiple CSVs at once.</p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={(event) => {
-            event.stopPropagation();
-            fileInputRef.current?.click();
-          }}
-        >
+        <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-sm font-medium text-secondary-foreground shadow-xs">
           <Upload className="size-4" />
           Browse files
-        </Button>
+        </span>
       </div>
 
       {readProgress ? (

@@ -114,6 +114,11 @@ export function PwaRegister() {
   }, [isOnline, refreshOfflineCount, replayOfflineActions]);
 
   useEffect(() => {
+    window.addEventListener("fkh-offline-queue-changed", refreshOfflineCount);
+    return () => window.removeEventListener("fkh-offline-queue-changed", refreshOfflineCount);
+  }, [refreshOfflineCount]);
+
+  useEffect(() => {
     if (!("serviceWorker" in navigator)) {
       return;
     }
@@ -208,10 +213,10 @@ export function PwaRegister() {
   const canInstall = isOnline && pendingOfflineActions === 0 && !updateReady && installPrompt;
   const message = syncMessage
     ? syncMessage
-    : !isOnline
-    ? "Offline mode is active. Previously loaded screens remain available."
     : pendingOfflineActions > 0
       ? `${pendingOfflineActions} pending offline action${pendingOfflineActions === 1 ? "" : "s"} will sync when available.`
+      : !isOnline
+        ? "Offline mode is active. Previously loaded screens remain available."
       : updateReady
         ? "A ForeKingHell update is ready."
         : "Install ForeKingHell for faster access on this device.";

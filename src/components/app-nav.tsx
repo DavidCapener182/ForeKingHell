@@ -200,7 +200,7 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             })}
           </div>
 
-          <Button asChild className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 sm:inline-flex">
+          <Button asChild className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 sm:inline-flex">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
               Import CSV

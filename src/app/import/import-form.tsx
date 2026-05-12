@@ -116,11 +116,13 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   const [scorecardExtractState, setScorecardExtractState] = useState<ScorecardExtractState>({
     status: "idle",
   });
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isOnline, setIsOnline] = useState(true);
   const isCourseUpload = sessionType === "simulated_course";
 
   useEffect(() => {
+    const hydrationTimer = window.setTimeout(() => setIsHydrated(true), 0);
     const updateOnlineStatus = () => setIsOnline(getClientOnlineStatus());
 
     updateOnlineStatus();
@@ -128,6 +130,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
     window.addEventListener("offline", updateOnlineStatus);
 
     return () => {
+      window.clearTimeout(hydrationTimer);
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
@@ -520,7 +523,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   }
 
   return (
-    <section className="px-4 py-6 sm:px-6 lg:px-8">
+    <section className="px-4 py-6 sm:px-6 lg:px-8" data-import-ready={isHydrated ? "true" : "false"}>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">

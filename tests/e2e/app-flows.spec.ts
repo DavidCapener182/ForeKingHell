@@ -32,6 +32,7 @@ test.describe("authenticated app flows", () => {
 
     await page.goto("/import");
     await expectPageReady(page, /Import launch monitor shots/i);
+    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
     const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "manual-column-map.csv");
     await page.setInputFiles("#csv-file", fixturePath);
@@ -47,6 +48,7 @@ test.describe("authenticated app flows", () => {
 
     await page.goto("/import");
     await expectPageReady(page, /Import launch monitor shots/i);
+    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
     const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "standard-rapsodo.csv");
     await page.setInputFiles("#csv-file", fixturePath);
@@ -66,7 +68,7 @@ test.describe("authenticated app flows", () => {
     await page.goto("/shots");
 
     await expectPageReady(page, /Shot explorer/i);
-    await expect(page.getByRole("button", { name: /import/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /import/i }).first()).toBeVisible();
   });
 
   test("coach chat UI is ready without generating a paid response", async ({ page }) => {
