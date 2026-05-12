@@ -647,7 +647,7 @@ function AchievementUnlockCalendar({
                       : cell.unlockCount > 0
                         ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
                         : "border-border bg-white hover:bg-[#f3f4f6]",
-                    !cell.isCurrentMonth && !cell.isSelected && "text-muted-foreground opacity-50",
+                    !cell.isCurrentMonth && !cell.isSelected && "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100",
                   )}
                   style={calendarCellStyle}
                   aria-pressed={cell.isSelected}
@@ -658,7 +658,7 @@ function AchievementUnlockCalendar({
                     <span
                       className={cn(
                         "mt-0.5 rounded-full px-1.5 text-[10px] font-semibold leading-4",
-                        cell.isSelected ? "bg-white text-zinc-900" : "bg-emerald-600 text-white",
+                        cell.isSelected ? "bg-white text-zinc-900" : "bg-emerald-800 text-white",
                       )}
                     >
                       {cell.unlockCount}
