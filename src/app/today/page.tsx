@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import {
+  CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
@@ -470,29 +471,16 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
           {highlights.length}
         </Badge>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {highlights.map((highlight) => (
-          <HighlightTile key={highlight.id} highlight={highlight} />
-        ))}
-      </div>
+      <CompactReadoutGrid
+        columnsClassName="md:grid-cols-2 xl:grid-cols-3"
+        items={highlights.map((highlight) => ({
+          label: highlight.clubLabel,
+          value: `${highlight.metricLabel}: ${highlight.value}`,
+          detail: highlight.target ? `${highlight.detail} ${highlight.target}` : highlight.detail,
+          tone: highlightTone(highlight.kind),
+        }))}
+      />
     </section>
-  );
-}
-
-function HighlightTile({ highlight }: { highlight: ClubHighlight }) {
-  return (
-    <div className="apple-panel-strong p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">{highlight.clubLabel}</p>
-          <p className="text-xs text-muted-foreground">{highlight.metricLabel}</p>
-        </div>
-        <Badge className={highlightBadgeClass(highlight.kind)}>{highlightBadgeLabel(highlight.kind)}</Badge>
-      </div>
-      <p className="mt-3 text-3xl font-semibold tracking-normal">{highlight.value}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{highlight.detail}</p>
-      {highlight.target ? <p className="mt-2 text-sm font-medium text-emerald-700">{highlight.target}</p> : null}
-    </div>
   );
 }
 
@@ -500,6 +488,10 @@ function buildClubHighlights(stats: ClubMainStats[]) {
   return stats
     .flatMap((stat) => statHighlightDescriptors(stat).flatMap((descriptor) => buildMetricHighlights(stat, descriptor)))
     .sort((left, right) => left.priority - right.priority || left.closeness - right.closeness);
+}
+
+function highlightTone(kind: HighlightKind) {
+  return kind === "record" ? "green" : kind === "tie" ? "sky" : "amber";
 }
 
 function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[] {
@@ -633,18 +625,6 @@ function improvementOverPrevious(metric: ClubMainStatMetric, direction: Highligh
   const improvement =
     direction === "higher" ? metric.todayBest - metric.previousBest : metric.previousBest - metric.todayBest;
   return improvement > 0 ? Math.round(improvement * 100) / 100 : null;
-}
-
-function highlightBadgeLabel(kind: HighlightKind) {
-  if (kind === "record") return "New PB";
-  if (kind === "tie") return "Tied PB";
-  return "Close";
-}
-
-function highlightBadgeClass(kind: HighlightKind) {
-  if (kind === "record") return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
-  if (kind === "tie") return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50";
-  return "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50";
 }
 
 function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {

@@ -139,6 +139,30 @@ export type CompareData = {
   };
 };
 
+export type ClubCompareFilters = {
+  clubAId: string;
+  clubBId: string;
+};
+
+export type ClubCompareClubOption = CompareClubOption & {
+  active: boolean;
+};
+
+export type ClubCompareSide = CompareSampleSummary & {
+  clubId: string;
+  clubType: string;
+  active: boolean;
+  dateRange: string;
+};
+
+export type ClubCompareData = {
+  filters: ClubCompareFilters;
+  clubs: ClubCompareClubOption[];
+  clubA: ClubCompareSide | null;
+  clubB: ClubCompareSide | null;
+  delta: CompareDelta;
+};
+
 export type DispersionPoint = {
   id: string;
   clubType: string;
@@ -278,6 +302,114 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
   };
 }
 
+export async function getClubCompareData(filters: ClubCompareFilters): Promise<ClubCompareData> {
+  const db = getDb();
+  const userId = getDefaultUserId();
+
+  const [clubRows, shotRows] = await Promise.all([
+    db
+      .select({
+        id: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        active: clubs.active,
+      })
+      .from(clubs)
+      .where(eq(clubs.userId, userId))
+      .orderBy(asc(clubs.type), asc(clubs.brand), asc(clubs.model)),
+    db
+      .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
+        sessionDate: sessions.date,
+        sessionCreatedAt: sessions.createdAt,
+        sessionType: sessions.type,
+        sessionFileName: sessions.fileName,
+        sessionCourseName: sessions.courseName,
+        sessionLocation: sessions.location,
+        clubId: shots.clubId,
+        clubType: shots.clubType,
+        shotAt: shots.shotAt,
+        shotNumber: shots.shotNumber,
+        carryYd: shots.carryYd,
+        totalYd: shots.totalYd,
+        sideCarryYd: shots.sideCarryYd,
+        ballSpeedMph: shots.ballSpeedMph,
+        clubSpeedMph: shots.clubSpeedMph,
+        launchAngleDeg: shots.launchAngleDeg,
+        launchDirectionDeg: shots.launchDirectionDeg,
+        apexFt: shots.apexFt,
+        attackAngleDeg: shots.attackAngleDeg,
+        clubPathDeg: shots.clubPathDeg,
+        descentAngleDeg: shots.descentAngleDeg,
+        smashFactor: shots.smashFactor,
+        spinRate: shots.spinRate,
+        spinAxis: shots.spinAxis,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
+        clubDataEstType: shots.clubDataEstType,
+        courseHoleNumber: shots.courseHoleNumber,
+      })
+      .from(shots)
+      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+      .where(eq(shots.userId, userId))
+      .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
+  ]);
+
+  const allShots: CompareShot[] = shotRows
+    .filter((shot) => isTrackedClubType(shot.clubType))
+    .map((shot) => ({
+      ...shot,
+      sessionLabel:
+        shot.sessionCourseName ??
+        shot.sessionFileName ??
+        shot.sessionLocation ??
+        `${formatSessionType(shot.sessionType)} session`,
+    }));
+  const trackedClubs = clubRows
+    .filter((club) => isTrackedClubType(club.type))
+    .sort(
+      (left, right) =>
+        clubSortValue(left.type) - clubSortValue(right.type) ||
+        Number(right.active) - Number(left.active) ||
+        formatCompareClubLabel(left).localeCompare(formatCompareClubLabel(right)),
+    );
+  const shotCountByClubId = new Map<string, number>();
+
+  for (const shot of allShots) {
+    shotCountByClubId.set(shot.clubId, (shotCountByClubId.get(shot.clubId) ?? 0) + 1);
+  }
+
+  const clubOptions: ClubCompareClubOption[] = trackedClubs.map((club) => ({
+    id: club.id,
+    type: club.type,
+    label: formatCompareClubLabel(club),
+    shotCount: shotCountByClubId.get(club.id) ?? 0,
+    active: club.active,
+  }));
+  const clubsWithShots = clubOptions.filter((club) => club.shotCount > 0);
+  const selectedA = clubOptions.find((club) => club.id === filters.clubAId) ?? clubsWithShots[0] ?? clubOptions[0] ?? null;
+  const selectedB =
+    clubOptions.find((club) => club.id === filters.clubBId && club.id !== selectedA?.id) ??
+    clubsWithShots.find((club) => club.id !== selectedA?.id) ??
+    clubOptions.find((club) => club.id !== selectedA?.id) ??
+    null;
+  const clubA = selectedA ? buildClubCompareSide(selectedA, allShots.filter((shot) => shot.clubId === selectedA.id)) : null;
+  const clubB = selectedB ? buildClubCompareSide(selectedB, allShots.filter((shot) => shot.clubId === selectedB.id)) : null;
+
+  return {
+    filters: {
+      clubAId: selectedA?.id ?? "",
+      clubBId: selectedB?.id ?? "",
+    },
+    clubs: clubOptions,
+    clubA,
+    clubB,
+    delta: clubA && clubB ? buildDelta(clubA, clubB) : emptyDelta(),
+  };
+}
+
 export function defaultCompareFilters(): CompareFilters {
   return {
     focus: "today",
@@ -291,6 +423,13 @@ export function defaultCompareFilters(): CompareFilters {
     to: "",
     baselineFrom: "",
     baselineTo: "",
+  };
+}
+
+export function defaultClubCompareFilters(): ClubCompareFilters {
+  return {
+    clubAId: "",
+    clubBId: "",
   };
 }
 
@@ -610,6 +749,53 @@ function buildDelta(focus: CompareSampleSummary, baseline: CompareSampleSummary)
     playableRateDelta: diff(focus.playableRate, baseline.playableRate),
     bigMissRateDelta: diff(focus.bigMissRate, baseline.bigMissRate),
   };
+}
+
+function emptyDelta(): CompareDelta {
+  return {
+    carryDeltaYd: null,
+    ballSpeedDeltaMph: null,
+    launchDeltaDeg: null,
+    offlineDeltaYd: null,
+    coneDeltaYd: null,
+    playableRateDelta: null,
+    bigMissRateDelta: null,
+  };
+}
+
+function buildClubCompareSide(club: ClubCompareClubOption, clubShots: CompareShot[]): ClubCompareSide {
+  const start = minDate(clubShots.map((shot) => shot.shotAt));
+  const end = maxDate(clubShots.map((shot) => shot.shotAt));
+  const summary = summarizeSelection({
+    label: club.label,
+    detail: dateRangeLabel(start, end),
+    shots: clubShots,
+    start,
+    end,
+  });
+
+  return {
+    ...summary,
+    clubId: club.id,
+    clubType: club.type,
+    active: club.active,
+    dateRange: dateRangeLabel(start, end),
+  };
+}
+
+function formatCompareClubLabel(club: { type: string; brand: string | null; model: string | null; active: boolean }) {
+  const label = [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" - ");
+  return club.active ? label : `${label} (retired)`;
+}
+
+function dateRangeLabel(start: Date | null, end: Date | null) {
+  if (!start || !end) {
+    return "No shots";
+  }
+
+  const startLabel = formatDate(start);
+  const endLabel = formatDate(end);
+  return startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`;
 }
 
 function buildBenefit(focus: CompareSampleSummary, baseline: CompareSampleSummary, delta: CompareDelta): CompareData["benefit"] {

@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  CompactReadoutGrid,
   DataPair,
   DataTableFrame,
   MobileDataCard,
@@ -509,20 +510,18 @@ function GappingRecommendations({ rows, targetGapYd }: { rows: GappingRow[]; tar
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {priorities.length > 0 ? (
-          priorities.map((row) => (
-            <Link
-              key={row.id}
-              href={`/bag/${row.id}`}
-              className="apple-panel-strong p-4 transition-colors hover:border-emerald-300"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-lg font-semibold">{formatClubType(row.clubType)}</p>
-                <WorkOnBadge workOnYd={row.workOnYd} />
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">Target carry</p>
-              <p className="text-2xl font-semibold tracking-normal">{numberFormatter.format(row.targetCarryYd)} yd</p>
-            </Link>
-          ))
+          <div className="md:col-span-3">
+            <CompactReadoutGrid
+              columnsClassName="md:grid-cols-3"
+              items={priorities.map((row) => ({
+                label: formatClubType(row.clubType),
+                value: `${numberFormatter.format(row.targetCarryYd)} yd target`,
+                detail: workOnText(row.workOnYd),
+                tone: Math.abs(row.workOnYd) > 10 ? "pink" : "amber",
+                href: `/bag/${row.id}`,
+              }))}
+            />
+          </div>
         ) : (
           <div className="apple-panel-strong p-4 md:col-span-3">
             <p className="font-semibold">Gaps are already close</p>
@@ -534,6 +533,15 @@ function GappingRecommendations({ rows, targetGapYd }: { rows: GappingRow[]; tar
       </div>
     </div>
   );
+}
+
+function workOnText(workOnYd: number) {
+  const absoluteYards = numberFormatter.format(Math.abs(workOnYd));
+  if (Math.abs(workOnYd) <= 2) {
+    return "Hold the current carry window.";
+  }
+
+  return `${workOnYd > 0 ? "Add" : "Take off"} ${absoluteYards} yd to close the ladder.`;
 }
 
 

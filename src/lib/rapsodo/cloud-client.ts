@@ -426,7 +426,7 @@ function normalizeSession(
     providerSessionMode,
     title,
     dateIso,
-    shotCount: numberValue(value, ["shotCount", "shotcount", "shotsCount", "totalShots", "count"]),
+    shotCount: numberValue(value, ["shotCount", "shotcount", "shotsCount", "totalShots", "numberOfShots"]),
     courseName,
     raw: value,
   };

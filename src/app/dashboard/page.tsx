@@ -14,7 +14,6 @@ import {
   Target,
   Trophy,
   Upload,
-  type LucideIcon,
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
@@ -22,13 +21,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  DataPair,
+  CompactLinkGrid,
+  CompactReadoutGrid,
   DataPanel,
-  DataTableFrame,
-  InsightBlock,
   MetricCard,
-  MobileDataCard,
-  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -37,14 +33,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { clubs, importRows, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
@@ -305,7 +293,7 @@ export default async function DashboardPage() {
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <DataPanel>
           <SectionHeader
             title="What changed?"
@@ -319,16 +307,8 @@ export default async function DashboardPage() {
               </Button>
             }
           />
-          <CardContent className="grid gap-3 md:grid-cols-3">
-            {data.whatChanged.map((insight) => (
-              <InsightBlock
-                key={insight.label}
-                label={insight.label}
-                value={insight.value}
-                detail={insight.detail}
-                tone={insight.tone}
-              />
-            ))}
+          <CardContent>
+            <CompactReadoutGrid items={data.whatChanged} columnsClassName="md:grid-cols-3" />
           </CardContent>
         </DataPanel>
 
@@ -377,220 +357,136 @@ export default async function DashboardPage() {
         </DataPanel>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Quick routes"
-              description="Direct links into the working parts of the app."
-            />
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              {routeCards.map((route) => (
-                <RouteCard key={route.title} route={route} />
-              ))}
-            </CardContent>
-          </DataPanel>
+      <section className="grid gap-4">
+        <DataPanel>
+          <SectionHeader
+            title="Quick routes"
+            description="Direct links into the working parts of the app."
+          />
+          <CardContent>
+            <CompactLinkGrid items={routeCards} />
+          </CardContent>
+        </DataPanel>
+      </section>
 
-          <DataPanel>
-            <SectionHeader
-              title="Recent imports"
-              description="Open saved round imports or inspect the full shot database."
-            />
-            <CardContent>
-              <DataTableFrame
-                mobile={
-                  <MobileDataList>
-                    {data.recentSessions.length > 0 ? (
-                      data.recentSessions.map((session) => (
-                        <MobileDataCard
-                          key={session.id}
-                          href={isRoundSession(session.type) ? `/rounds/${session.id}` : "/shots"}
-                          title={session.fileName ?? session.courseName ?? "Untitled import"}
-                          subtitle={formatDate(session.date)}
-                          action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
-                        >
-                          <DataPair label="Shots" value={integerFormatter.format(session.shotCount)} />
-                          <DataPair label="Raw rows" value={integerFormatter.format(session.rawRowCount)} />
-                        </MobileDataCard>
-                      ))
-                    ) : (
-                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                        No imports yet. Start with the CSV import flow.
-                      </div>
-                    )}
-                  </MobileDataList>
-                }
+      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <DataPanel>
+          <SectionHeader
+            title="Bag snapshot"
+            description="Active clubs with current stock-yardage confidence."
+            action={
+              <Button asChild variant="outline">
+                <Link href="/bag" prefetch={false}>
+                  <Target className="size-4" />
+                  Full bag
+                </Link>
+              </Button>
+            }
+          />
+          <CardContent className="space-y-3">
+            {data.bagPreview.map((club) => (
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
               >
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>File</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Shots</TableHead>
-                      <TableHead className="text-right">Raw rows</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.recentSessions.map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell className="max-w-56 truncate font-medium">
-                          {isRoundSession(session.type) ? (
-                            <Link
-                              href={`/rounds/${session.id}`}
-                              prefetch={false}
-                              className="hover:underline"
-                            >
-                              {session.fileName ?? session.courseName ?? "Untitled import"}
-                            </Link>
-                          ) : (
-                            <Link href="/shots" prefetch={false} className="hover:underline">
-                              {session.fileName ?? "Untitled import"}
-                            </Link>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatDate(session.date)}</TableCell>
-                        <TableCell>{formatSessionType(session.type)}</TableCell>
-                        <TableCell className="text-right">
-                          {integerFormatter.format(session.shotCount)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {integerFormatter.format(session.rawRowCount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {data.recentSessions.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          No imports yet. Start with the CSV import flow.
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </DataTableFrame>
-            </CardContent>
-          </DataPanel>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Bag snapshot"
-              description="Active clubs with current stock-yardage confidence."
-              action={
-                <Button asChild variant="outline">
-                  <Link href="/bag" prefetch={false}>
-                    <Target className="size-4" />
-                    Full bag
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-semibold tracking-normal">
+                      {formatClubType(club.type)}
+                    </p>
+                    <Badge variant="outline">{club.stock.label}</Badge>
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">{club.brandModel}</p>
+                </div>
+                <div className="grid min-w-48 grid-cols-2 gap-3">
+                  <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+                  <MiniMetric label="Shots" value={integerFormatter.format(club.shotCount)} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Progress value={club.stock.confidenceScore} />
+                </div>
+              </Link>
+            ))}
+            {data.bagPreview.length === 0 ? (
+              <div className="apple-panel p-6 text-center">
+                <p className="font-medium">No active clubs yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Import a Rapsodo CSV and the bag map will build automatically.
+                </p>
+                <Button asChild className="mt-4">
+                  <Link href="/import" prefetch={false}>
+                    <Upload className="size-4" />
+                    Import CSV
                   </Link>
                 </Button>
-              }
-            />
-            <CardContent className="space-y-3">
-              {data.bagPreview.map((club) => (
-                <Link
-                  key={club.id}
-                  href={`/bag/${club.id}`}
-                  prefetch={false}
-                  className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-semibold tracking-normal">
-                        {formatClubType(club.type)}
-                      </p>
-                      <Badge variant="outline">{club.stock.label}</Badge>
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground">{club.brandModel}</p>
-                  </div>
-                  <div className="grid min-w-48 grid-cols-2 gap-3">
-                    <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
-                    <MiniMetric label="Shots" value={integerFormatter.format(club.shotCount)} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Progress value={club.stock.confidenceScore} />
-                  </div>
-                </Link>
-              ))}
-              {data.bagPreview.length === 0 ? (
-                <div className="apple-panel p-6 text-center">
-                  <p className="font-medium">No active clubs yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Import a Rapsodo CSV and the bag map will build automatically.
-                  </p>
-                  <Button asChild className="mt-4">
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import CSV
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-            </CardContent>
-          </DataPanel>
+              </div>
+            ) : null}
+          </CardContent>
+        </DataPanel>
 
-          <DataPanel>
-            <SectionHeader
-              title="Latest round"
-              description="Newest round, simulator, or simulated-course file."
-              action={<Flag className="size-5 text-sky-500" />}
-            />
-            <CardContent>
-              {data.latestRound ? (
-                <div className="space-y-4">
-                  <div className="apple-panel-strong p-4">
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(data.latestRound.date)} - {formatSessionType(data.latestRound.type)}
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tracking-normal">
-                      {data.latestRound.courseName ?? data.latestRound.fileName ?? "Untitled round"}
-                    </p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <RoundMetric label="Score" value={data.latestRound.totalScore} />
-                    <RoundMetric label="Par" value={data.latestRound.totalPar} />
-                    <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
-                    <RoundMetric
-                      label="Diff"
-                      value={formatHandicapValue(data.latestRound.handicapDifferential)}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button asChild className="flex-1">
-                      <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
-                        <Flag className="size-4" />
-                        Review round
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1">
-                      <Link href="/rounds" prefetch={false}>
-                        All rounds
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="apple-panel p-6">
-                  <p className="font-medium">No round imports yet</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
+        <DataPanel>
+          <SectionHeader
+            title="Latest round"
+            description="Newest round, simulator, or simulated-course file."
+            action={<Flag className="size-5 text-sky-500" />}
+          />
+          <CardContent>
+            {data.latestRound ? (
+              <div className="space-y-4">
+                <div className="apple-panel-strong p-4">
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(data.latestRound.date)} - {formatSessionType(data.latestRound.type)}
                   </p>
-                  <Button asChild variant="outline" className="mt-4">
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import round CSV
+                  <p className="mt-1 text-2xl font-semibold tracking-normal">
+                    {data.latestRound.courseName ?? data.latestRound.fileName ?? "Untitled round"}
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <RoundMetric label="Score" value={data.latestRound.totalScore} />
+                  <RoundMetric label="Par" value={data.latestRound.totalPar} />
+                  <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
+                  <RoundMetric
+                    label="Diff"
+                    value={formatHandicapValue(data.latestRound.handicapDifferential)}
+                  />
+                </div>
+                <Separator />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button asChild className="flex-1">
+                    <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
+                      <Flag className="size-4" />
+                      Review round
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link href="/rounds" prefetch={false}>
+                      All rounds
                     </Link>
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </DataPanel>
-        </section>
+              </div>
+            ) : (
+              <div className="apple-panel p-6">
+                <p className="font-medium">No round imports yet</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
+                </p>
+                <Button asChild variant="outline" className="mt-4">
+                  <Link href="/import" prefetch={false}>
+                    <Upload className="size-4" />
+                    Import round CSV
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </DataPanel>
+      </section>
     </PageShell>
   );
 }
-
 
 function TodayPlan({
   latestSession,
@@ -616,70 +512,43 @@ function TodayPlan({
         description="Start here: current form, latest change, club costing you shots, and what to practise next."
         action={<CalendarDays className="size-5 text-emerald-500" />}
       />
-      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <InsightBlock
-          label="Latest session"
-          value={latestSession ? formatDate(latestSession.date) : "No import yet"}
-          detail={latestSession ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}` : "Import a CSV to build your baseline"}
-          tone="sky"
+      <CardContent>
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-2 xl:grid-cols-4"
+          items={[
+            {
+              label: "Latest session",
+              value: latestSession ? formatDate(latestSession.date) : "No import yet",
+              detail: latestSession
+                ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}`
+                : "Import a CSV to build your baseline",
+              tone: "sky",
+            },
+            {
+              label: "Your game",
+              value: `${totalShots.toLocaleString("en-GB")} shots`,
+              detail: firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement",
+              tone: firstSignal?.tone ?? "slate",
+            },
+            {
+              label: "Best club",
+              value: bestClub ? formatClubType(bestClub.type) : "--",
+              detail: bestClub
+                ? `${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots`
+                : "Need a tracked club sample",
+              tone: "green",
+            },
+            {
+              label: "Practise next",
+              value: biggestProblem?.clubName ?? primaryActionLabel,
+              detail: biggestProblem?.drill ?? "Import data or review the latest round",
+              tone: biggestProblem?.tone ?? "amber",
+              href: biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction,
+            },
+          ]}
         />
-        <InsightBlock
-          label="Your game"
-          value={`${totalShots.toLocaleString("en-GB")} shots`}
-          detail={firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement"}
-          tone={firstSignal?.tone ?? "slate"}
-        />
-        <InsightBlock
-          label="Best club"
-          value={bestClub ? formatClubType(bestClub.type) : "--"}
-          detail={bestClub ? `${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots` : "Need a tracked club sample"}
-          tone="green"
-        />
-        <Link href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction} prefetch={false} className="block">
-          <InsightBlock
-            label="Practise next"
-            value={biggestProblem?.clubName ?? primaryActionLabel}
-            detail={biggestProblem?.drill ?? "Import data or review the latest round"}
-            tone={biggestProblem?.tone ?? "amber"}
-          />
-        </Link>
       </CardContent>
     </DataPanel>
-  );
-}
-
-function RouteCard({
-  route,
-}: {
-  route: {
-    title: string;
-    description: string;
-    href: string;
-    metric: string;
-    icon: LucideIcon;
-    accent: string;
-  };
-}) {
-  return (
-    <Link
-      href={route.href}
-      prefetch={false}
-      className="apple-panel-strong group grid min-h-36 gap-4 p-4 transition-colors hover:border-emerald-300"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className={`grid size-10 place-items-center rounded-lg ${route.accent}`}>
-          <route.icon className="size-5" />
-        </div>
-        <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-      </div>
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-semibold">{route.title}</p>
-          <Badge variant="outline">{route.metric}</Badge>
-        </div>
-        <p className="text-sm leading-6 text-muted-foreground">{route.description}</p>
-      </div>
-    </Link>
   );
 }
 
@@ -1185,8 +1054,4 @@ function formatSessionType(value: string) {
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function isRoundSession(value: string) {
-  return roundSessionTypes.some((sessionType) => sessionType === value);
 }

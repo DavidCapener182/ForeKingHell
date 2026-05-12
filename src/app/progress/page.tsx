@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 
 import {
+  CompactReadoutGrid,
   DataPanel,
-  InsightBlock,
   MetricCard,
   PageHeader,
   PageShell,
@@ -186,22 +186,17 @@ export default async function ProgressPage() {
                 description="The highest-signal changes across the bag."
                 action={<StatusPill tone="green">Personal baseline</StatusPill>}
               />
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                {summary.signals.map((signal) => (
-                  <Link
-                    key={`${signal.label}-${signal.value}`}
-                    href={signal.clubId ? `/bag/${signal.clubId}/analytics` : "/bag"}
-                    prefetch={false}
-                    className="block"
-                  >
-                    <InsightBlock
-                      label={signal.label}
-                      value={signal.value}
-                      detail={signal.detail}
-                      tone={signal.tone}
-                    />
-                  </Link>
-                ))}
+              <CardContent>
+                <CompactReadoutGrid
+                  columnsClassName="md:grid-cols-2"
+                  items={summary.signals.map((signal) => ({
+                    label: signal.label,
+                    value: signal.value,
+                    detail: signal.detail,
+                    tone: signal.tone,
+                    href: signal.clubId ? `/bag/${signal.clubId}/analytics` : "/bag",
+                  }))}
+                />
               </CardContent>
             </DataPanel>
 

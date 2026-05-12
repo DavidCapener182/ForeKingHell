@@ -6,6 +6,9 @@ export type RapsodoClubChoice = {
   clubLabel: string;
   clubBrand: string | null;
   clubModel: string | null;
+  active?: boolean;
+  firstShotAt?: string | null;
+  lastShotAt?: string | null;
   stockCarryYd: number | null;
   stockTotalYd: number | null;
   averageBallSpeedMph: number | null;
@@ -25,6 +28,10 @@ export type RapsodoClubSuggestion = {
   }>;
 };
 
+type RapsodoClubSuggestionOptions = {
+  preferredClubKey?: string | null;
+};
+
 const TRUSTED_DISTANCE_GAP_YD = 18;
 const HIGH_CONFIDENCE_SCORE = 78;
 const MEDIUM_CONFIDENCE_SCORE = 58;
@@ -32,8 +39,11 @@ const MEDIUM_CONFIDENCE_SCORE = 58;
 export function suggestRapsodoClub(
   shot: ParsedRapsodoShot,
   candidates: RapsodoClubChoice[],
+  options: RapsodoClubSuggestionOptions = {},
 ): RapsodoClubSuggestion {
-  const reportedChoice = reportedRapsodoClubChoice(shot, candidates);
+  const preferredChoice = preferredRapsodoClubChoice(shot, candidates, options.preferredClubKey);
+  const reportedChoice = reportedRapsodoClubChoice(shot, candidates, options);
+  const isEquipmentHistoryMatch = preferredChoice?.clubKey === reportedChoice.clubKey;
   const scoredCandidates = candidates
     .map((candidate) => ({
       candidate,
@@ -65,8 +75,9 @@ export function suggestRapsodoClub(
       choice: reportedChoice,
       confidenceScore: Math.max(70, confidenceFromScore(reportedScore)),
       confidence: "trusted",
-      reason:
-        reportedChoice.clubKey === best.candidate.clubKey
+      reason: isEquipmentHistoryMatch
+        ? "This club matches the session date in your equipment history."
+        : reportedChoice.clubKey === best.candidate.clubKey
           ? "Rapsodo's reported club matches the closest stock-yardage profile."
           : "Rapsodo reported a tracked club and the stock-yardage data is not different enough to override it.",
       alternatives: alternatives(scoredCandidates),
@@ -101,7 +112,13 @@ export function uniqueClubChoices(choices: RapsodoClubChoice[]) {
 export function reportedRapsodoClubChoice(
   shot: ParsedRapsodoShot,
   candidates: RapsodoClubChoice[],
+  options: RapsodoClubSuggestionOptions = {},
 ): RapsodoClubChoice {
+  const preferred = preferredRapsodoClubChoice(shot, candidates, options.preferredClubKey);
+  if (preferred) {
+    return preferred;
+  }
+
   const exact = candidates.find((candidate) => candidate.clubKey === shot.clubKey);
   if (exact) {
     return exact;
@@ -124,6 +141,20 @@ export function reportedRapsodoClubChoice(
     sampleSize: 0,
     rapsodoClubId: null,
   };
+}
+
+function preferredRapsodoClubChoice(
+  shot: ParsedRapsodoShot,
+  candidates: RapsodoClubChoice[],
+  preferredClubKey: string | null | undefined,
+) {
+  if (!preferredClubKey || shot.clubBrand || shot.clubModel) {
+    return null;
+  }
+
+  return candidates.find(
+    (candidate) => candidate.clubKey === preferredClubKey && candidate.clubType === shot.clubType,
+  ) ?? null;
 }
 
 function clubDistanceScore(shot: ParsedRapsodoShot, candidate: RapsodoClubChoice) {

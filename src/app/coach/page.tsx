@@ -14,8 +14,8 @@ import {
 
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
 import {
+  CompactReadoutGrid,
   DataPanel,
-  InsightBlock,
   MetricCard,
   PageHeader,
   PageShell,
@@ -197,7 +197,7 @@ export default async function CoachPage() {
             />
           </section>
 
-          <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.85fr)] xl:items-start">
             <DataPanel>
               <SectionHeader
                 title="Practice plan"
@@ -213,40 +213,37 @@ export default async function CoachPage() {
               />
             </DataPanel>
 
-            <DataPanel>
-              <SectionHeader
-                title="What changed"
-                description="The strongest movement signals in the current personal baseline."
-                action={<LineChart className="size-5 text-sky-500" />}
-              />
-              <CardContent className="grid gap-3 md:grid-cols-2">
-                {coach.signals.map((signal) => (
-                  <Link
-                    key={`${signal.label}-${signal.value}`}
-                    href={signal.clubId ? `/bag/${signal.clubId}/analytics` : "/progress"}
-                    prefetch={false}
-                    className="block"
-                  >
-                    <InsightBlock
-                      label={signal.label}
-                      value={signal.value}
-                      detail={signal.detail}
-                      tone={signal.tone}
-                    />
-                  </Link>
-                ))}
-              </CardContent>
-            </DataPanel>
-          </section>
+            <div className="grid gap-4 xl:sticky xl:top-24">
+              <DataPanel>
+                <SectionHeader
+                  title="What changed"
+                  description="The strongest movement signals in the current personal baseline."
+                  action={<LineChart className="size-5 text-sky-500" />}
+                />
+                <CardContent>
+                  <CompactReadoutGrid
+                    columnsClassName="sm:grid-cols-2"
+                    items={coach.signals.map((signal) => ({
+                      label: signal.label,
+                      value: signal.value,
+                      detail: signal.detail,
+                      tone: signal.tone,
+                      href: signal.clubId ? `/bag/${signal.clubId}/analytics` : "/progress",
+                    }))}
+                  />
+                </CardContent>
+              </DataPanel>
 
-          <DataPanel>
-            <SectionHeader
-              title="AI coach note"
-              description="Optional AI layer for a sharper plain-English readout."
-              action={<Sparkles className="size-5 text-sky-500" />}
-            />
-            <AiCoachCard payload={aiPayload} />
-          </DataPanel>
+              <DataPanel>
+                <SectionHeader
+                  title="AI coach note"
+                  description="Optional AI layer for a sharper plain-English readout."
+                  action={<Sparkles className="size-5 text-sky-500" />}
+                />
+                <AiCoachCard payload={aiPayload} />
+              </DataPanel>
+            </div>
+          </section>
 
           <DataPanel>
             <SectionHeader

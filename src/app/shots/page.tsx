@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  CompactReadoutGrid,
   DataPair,
   DataTableFrame,
   MobileDataCard,
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { isTrackedClubType } from "@/lib/club-format";
+import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { getDefaultUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
@@ -122,7 +123,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                 <select name="club" defaultValue={filters.club} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
                   <option value="">All clubs</option>
                   {clubsForFilter.map((club) => (
-                    <option key={club} value={club}>{formatClub(club)}</option>
+                    <option key={club} value={club}>{formatClubType(club)}</option>
                   ))}
                 </select>
               </label>
@@ -223,18 +224,24 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </Card>
 
           <Card className="premium-card">
-            <CardHeader>
-              <CardTitle>Raw CSV archive</CardTitle>
+          <CardHeader>
+            <CardTitle>Raw CSV archive</CardTitle>
             <CardDescription>Non-shot rows retained for parser improvements.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            {rowTypes.map((rowType) => (
-                <div key={rowType.rowType} className="apple-panel-strong p-4">
-                  <span className="text-sm font-medium capitalize">{rowType.rowType}</span>
-                  <p className="mt-3 text-3xl font-semibold tracking-normal">{integerFormatter.format(rowType.count)}</p>
-                </div>
-              ))}
-              {rowTypes.length === 0 ? <p className="text-sm text-muted-foreground">No raw rows saved yet.</p> : null}
+          <CardContent>
+            {rowTypes.length > 0 ? (
+              <CompactReadoutGrid
+                columnsClassName="sm:grid-cols-2"
+                items={rowTypes.map((rowType) => ({
+                  label: rowType.rowType,
+                  value: integerFormatter.format(rowType.count),
+                  detail: "Raw rows retained",
+                  tone: "slate",
+                }))}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">No raw rows saved yet.</p>
+            )}
             </CardContent>
           </Card>
         </section>
@@ -264,7 +271,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     savedShots.map((shot) => (
                       <MobileDataCard
                         key={shot.id}
-                        title={`${formatClub(shot.clubType)} ${formatMetric(shot.carryYd)} carry`}
+                        title={`${formatShotClub(shot)} ${formatMetric(shot.carryYd)} carry`}
                         subtitle={`${formatDate(shot.shotAt)} - ${shot.fileName ?? "No file"}`}
                         action={<Badge variant="outline">{formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}</Badge>}
                       >
@@ -307,7 +314,16 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       <TableCell className="max-w-48 truncate">{shot.fileName ?? "--"}</TableCell>
                       <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
                       <TableCell>{formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}</TableCell>
-                      <TableCell className="font-medium">{formatClub(shot.clubType)}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="max-w-48">
+                          <p className="truncate">{formatShotClub(shot)}</p>
+                          {formatShotClub(shot) !== formatClubType(shot.clubType) ? (
+                            <p className="truncate text-xs font-normal text-muted-foreground">
+                              {formatClubType(shot.clubType)}
+                            </p>
+                          ) : null}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
@@ -377,6 +393,8 @@ async function getShotDatabase(filters: ShotFilters) {
         courseHoleNumber: shots.courseHoleNumber,
         courseHoleShotNumber: shots.courseHoleShotNumber,
         clubType: shots.clubType,
+        clubBrand: clubs.brand,
+        clubModel: clubs.model,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
         ballSpeedMph: shots.ballSpeedMph,
@@ -393,6 +411,7 @@ async function getShotDatabase(filters: ShotFilters) {
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+      .innerJoin(clubs, eq(shots.clubId, clubs.id))
       .where(where)
       .orderBy(desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber))
       .limit(PAGE_SIZE)
@@ -498,9 +517,6 @@ function formatHole(holeNumber: number | null, holeShotNumber: number | null) {
   return holeShotNumber ? `${holeNumber}.${holeShotNumber}` : holeNumber.toString();
 }
 
-function formatClub(value: string) {
-  if (value === "driver") return "Driver";
-  if (/^[1-9][wh]$/.test(value)) return value.toUpperCase();
-  if (/^[1-9]i$/.test(value)) return `${value[0]}i`;
-  return value.toUpperCase();
+function formatShotClub(shot: { clubType: string; clubBrand: string | null; clubModel: string | null }) {
+  return formatClubModelName({ type: shot.clubType, brand: shot.clubBrand, model: shot.clubModel });
 }

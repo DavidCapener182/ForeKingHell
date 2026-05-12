@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import type { LucideIcon } from "lucide-react";
+import { ArrowRight, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -116,7 +116,34 @@ const toneClasses = {
   slate: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
-type Tone = keyof typeof toneClasses;
+export type Tone = keyof typeof toneClasses;
+
+const compactToneClasses: Record<Tone, string> = {
+  green: "bg-emerald-500 ring-emerald-100",
+  sky: "bg-sky-500 ring-sky-100",
+  pink: "bg-pink-500 ring-pink-100",
+  amber: "bg-amber-500 ring-amber-100",
+  slate: "bg-slate-400 ring-slate-200",
+};
+
+export type CompactReadoutItem = {
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+  tone?: Tone;
+  href?: string;
+  title?: string;
+  ariaLabel?: string;
+};
+
+export type CompactLinkGridItem = {
+  title: string;
+  description?: string;
+  href: string;
+  metric?: ReactNode;
+  icon: LucideIcon;
+  accent: string;
+};
 
 export function MetricCard({
   label,
@@ -229,6 +256,128 @@ export function InsightBlock({
       {detail ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
     </div>
   );
+}
+
+export function CompactReadoutGrid({
+  items,
+  columnsClassName = "md:grid-cols-2 xl:grid-cols-4",
+  className,
+}: {
+  items: CompactReadoutItem[];
+  columnsClassName?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]", className)}>
+      <div className={cn("grid", columnsClassName)}>
+        {items.map((item, index) => (
+          <CompactReadoutCell key={readoutKey(item, index)} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
+  const tone = item.tone ?? "green";
+  const content = (
+    <>
+      <span className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-4", compactToneClasses[tone])} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {item.label}
+        </span>
+        <span className="mt-1 block truncate text-base font-semibold tracking-normal text-slate-950">
+          {item.value}
+        </span>
+        {item.detail ? (
+          <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+            {item.detail}
+          </span>
+        ) : null}
+      </span>
+      {item.href ? (
+        <ArrowRight
+          className="mt-5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700"
+          aria-hidden
+        />
+      ) : null}
+    </>
+  );
+  const baseClassName =
+    "flex min-h-20 min-w-0 items-start gap-3 border-b border-slate-200/70 px-3 py-2.5 md:border-r";
+  const title = item.title ?? stringValue(item.detail);
+
+  if (item.href) {
+    return (
+      <Link
+        href={item.href}
+        prefetch={false}
+        title={title}
+        aria-label={item.ariaLabel ?? [stringValue(item.label), stringValue(item.value), stringValue(item.detail)].filter(Boolean).join(". ")}
+        className={cn(baseClassName, "group transition-colors hover:bg-emerald-50/70")}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div title={title} className={baseClassName}>
+      {content}
+    </div>
+  );
+}
+
+export function CompactLinkGrid({
+  items,
+  columnsClassName = "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+  className,
+}: {
+  items: CompactLinkGridItem[];
+  columnsClassName?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]", className)}>
+      <div className={cn("grid", columnsClassName)}>
+        {items.map((item) => (
+          <Link
+            key={item.title}
+            href={item.href}
+            prefetch={false}
+            title={item.description}
+            aria-label={item.description ? `${item.title}: ${item.description}` : item.title}
+            className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-slate-200/70 px-3 py-2 transition-colors hover:bg-emerald-50/70 sm:border-r"
+          >
+            <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", item.accent)}>
+              <item.icon className="size-4" aria-hidden />
+            </span>
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="truncate font-semibold">{item.title}</span>
+              {item.metric ? (
+                <Badge variant="outline" className="shrink-0 bg-white/70 px-1.5 py-0 text-[11px]">
+                  {item.metric}
+                </Badge>
+              ) : null}
+            </span>
+            <ArrowRight
+              className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700"
+              aria-hidden
+            />
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function readoutKey(item: CompactReadoutItem, index: number) {
+  return `${stringValue(item.label) || "item"}-${stringValue(item.value) || index}`;
+}
+
+function stringValue(value: ReactNode) {
+  return typeof value === "string" || typeof value === "number" ? String(value) : undefined;
 }
 
 export function PageActions({ children, className }: { children: ReactNode; className?: string }) {

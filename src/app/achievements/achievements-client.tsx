@@ -340,28 +340,30 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-5">
             {trophyCabinet.map((tier) => (
               <button
                 key={tier.id}
                 type="button"
                 onClick={() => setTierFilter(tier.id)}
                 className={cn(
-                  "apple-panel-strong p-3 text-left transition-colors hover:border-amber-300",
-                  tierFilter === tier.id ? "border-zinc-900 ring-2 ring-zinc-900/10" : "border-border",
+                  "min-w-0 border-b border-slate-200/70 px-3 py-2.5 text-left transition-colors hover:bg-amber-50/70 sm:border-r",
+                  tierFilter === tier.id && "bg-amber-50/80 ring-2 ring-zinc-900/10",
                 )}
               >
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center justify-between gap-3">
                   <Badge className={cn("border", tierStyles[tier.id])}>{tier.label}</Badge>
                   <span className="text-xs text-muted-foreground">{tier.completion}%</span>
                 </div>
-                <p className="mt-3 text-2xl font-semibold tracking-normal">
+                <p className="mt-1 text-base font-semibold tracking-normal">
                   {tier.unlocked.toLocaleString("en-GB")}
                   <span className="text-sm font-medium text-muted-foreground">/{tier.total.toLocaleString("en-GB")}</span>
                 </p>
-                <Progress value={tier.completion} className="mt-3 h-1.5" />
+                <Progress value={tier.completion} className="mt-2 h-1.5" />
               </button>
             ))}
+            </div>
           </div>
         </CardContent>
       </Card>

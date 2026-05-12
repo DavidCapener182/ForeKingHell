@@ -17,6 +17,7 @@ import {
 import { and, asc, desc, eq } from "drizzle-orm";
 
 import {
+  CompactReadoutGrid,
   DataPanel,
   InsightBlock,
   MetricCard,
@@ -150,16 +151,14 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2">
-              {analytics.insights.slice(0, 4).map((insight) => (
-                <InsightBlock
-                  key={insight.title}
-                  label={insight.title}
-                  value={insight.body}
-                  tone={insight.tone}
-                />
-              ))}
-            </div>
+            <CompactReadoutGrid
+              columnsClassName="md:grid-cols-2"
+              items={analytics.insights.slice(0, 4).map((insight) => ({
+                label: insight.title,
+                value: insight.body,
+                tone: insight.tone,
+              }))}
+            />
           </CardContent>
         </DataPanel>
 

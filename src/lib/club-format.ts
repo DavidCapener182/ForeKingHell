@@ -46,6 +46,14 @@ export function formatClubType(value: string) {
     .join(" ");
 }
 
+export function formatClubModelName(club: {
+  type: string;
+  brand?: string | null;
+  model?: string | null;
+}) {
+  return [club.brand, club.model].map((part) => part?.trim()).filter(Boolean).join(" ") || formatClubType(club.type);
+}
+
 export function clubSortValue(value: string) {
   if (value === "driver") {
     return 10;

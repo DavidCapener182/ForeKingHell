@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Activity, BarChart3, Gauge, Target, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { clubAccent, formatClubType } from "@/lib/club-format";
+import { clubAccent } from "@/lib/club-format";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +42,13 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 export function ClubAnalysisTabs({
   clubType,
+  clubModelName,
+  clubTypeLabel,
   shots,
 }: {
   clubType: string;
+  clubModelName: string;
+  clubTypeLabel: string;
   shots: AnalysisShot[];
 }) {
   const accent = clubAccent(clubType);
@@ -65,11 +69,14 @@ export function ClubAnalysisTabs({
       <div className="premium-card p-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="grid size-10 place-items-center rounded-full text-sm font-semibold text-white" style={{ background: accent }}>
-            {formatClubType(clubType).slice(0, 2)}
+            {clubTypeLabel.slice(0, 2)}
           </div>
           <div>
             <p className="text-sm text-muted-foreground">David Capener</p>
-            <p className="font-medium">{formatClubType(clubType)}</p>
+            <p className="font-medium">{clubModelName}</p>
+            {clubModelName !== clubTypeLabel ? (
+              <p className="text-xs text-muted-foreground">{clubTypeLabel}</p>
+            ) : null}
           </div>
           <div className="apple-panel ml-auto flex p-1">
             <Button
@@ -154,7 +161,12 @@ export function ClubAnalysisTabs({
             <span className="grid size-8 place-items-center rounded-full border font-semibold">
               {shot.shotNumber ?? "-"}
             </span>
-            <span className="font-medium text-foreground">{formatClubType(clubType)}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium text-foreground">{clubModelName}</span>
+              {clubModelName !== clubTypeLabel ? (
+                <span className="block truncate text-xs text-muted-foreground">{clubTypeLabel}</span>
+              ) : null}
+            </span>
             <span className="ml-auto text-muted-foreground">{formatDate(shot.shotAt)}</span>
             <span className="hidden min-w-20 text-right font-medium text-foreground sm:block">
               {formatMetric(shot.carryYd)} yd

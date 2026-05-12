@@ -21,7 +21,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { clubAccent, formatClubType, isShortGameTouchClubType } from "@/lib/club-format";
+import {
+  clubAccent,
+  formatClubModelName,
+  formatClubType,
+  isShortGameTouchClubType,
+} from "@/lib/club-format";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
@@ -29,14 +34,14 @@ import { ClubAnalysisTabs, type AnalysisShot } from "./club-analysis-tabs";
 
 type ShotRange = "all" | "month3" | "month2" | "month1" | "thisMonth" | "week" | "today";
 
-const RANGE_OPTIONS: Array<{ value: ShotRange; label: string; description: string }> = [
-  { value: "all", label: "All time", description: "all full shots" },
-  { value: "month3", label: "Last 3 months", description: "shots from the last 3 months" },
-  { value: "month2", label: "Last 2 months", description: "shots from the last 2 months" },
-  { value: "month1", label: "Last month", description: "shots from the last month" },
-  { value: "thisMonth", label: "This month", description: "shots from this month" },
-  { value: "week", label: "This week", description: "shots from this week" },
-  { value: "today", label: "Today", description: "shots from today" },
+const RANGE_OPTIONS: Array<{ value: ShotRange; label: string; compactLabel: string; description: string }> = [
+  { value: "all", label: "All time", compactLabel: "All", description: "all full shots" },
+  { value: "month3", label: "Last 3 months", compactLabel: "3 mo", description: "shots from the last 3 months" },
+  { value: "month2", label: "Last 2 months", compactLabel: "2 mo", description: "shots from the last 2 months" },
+  { value: "month1", label: "Last month", compactLabel: "1 mo", description: "shots from the last month" },
+  { value: "thisMonth", label: "This month", compactLabel: "Month", description: "shots from this month" },
+  { value: "week", label: "This week", compactLabel: "Week", description: "shots from this week" },
+  { value: "today", label: "Today", compactLabel: "Today", description: "shots from today" },
 ];
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -54,6 +59,8 @@ export function ClubDetailClient({
   };
 }) {
   const accent = clubAccent(club.type);
+  const clubModelName = formatClubModelName(club);
+  const clubTypeLabel = formatClubType(club.type);
   const [shotRange, setShotRange] = useState<ShotRange>("month1");
   const selectedRange = RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
@@ -90,46 +97,51 @@ export function ClubDetailClient({
   return (
     <>
       <header className="premium-hero p-5 sm:p-7">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
-                Club analysis
-              </Badge>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
+              Club analysis
+            </Badge>
+            <div className="w-full max-w-3xl lg:flex-1">
               <RangeToggle value={shotRange} onChange={setShotRange} />
-              <Button asChild variant="outline" size="sm" className="rounded-xl bg-white/70">
-                <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
-                  <Brain className="size-4" />
-                  Advanced analytics
-                </Link>
-              </Button>
             </div>
-            <div className="space-y-2">
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                {formatClubType(club.type)}
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                {[club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model"}
-              </p>
-            </div>
+            <Button asChild variant="outline" size="sm" className="w-fit rounded-xl bg-white/70">
+              <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
+                <Brain className="size-4" />
+                Advanced analytics
+              </Link>
+            </Button>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[680px]">
-            <StatTile
-              label={isShortGameTouch ? "Touch median" : "Stock carry"}
-              value={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
-              icon={Target}
-            />
-            <StatTile
-              label={isShortGameTouch ? "Full stock" : "Play number"}
-              value={formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd")}
-              icon={Gauge}
-            />
-            <StatTile label="Shots" value={shotCount} icon={Database} />
-            <StatTile
-              label={isShortGameTouch ? "Under 30" : "Confidence"}
-              value={isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`}
-              icon={BarChart3}
-            />
+
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl space-y-2">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+                  {clubModelName}
+                </h1>
+                <p className="text-base leading-7 text-muted-foreground">
+                  {clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[680px]">
+              <StatTile
+                label={isShortGameTouch ? "Touch median" : "Stock carry"}
+                value={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
+                icon={Target}
+              />
+              <StatTile
+                label={isShortGameTouch ? "Full stock" : "Play number"}
+                value={formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd")}
+                icon={Gauge}
+              />
+              <StatTile label="Shots" value={shotCount} icon={Database} />
+              <StatTile
+                label={isShortGameTouch ? "Under 30" : "Confidence"}
+                value={isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`}
+                icon={BarChart3}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -228,7 +240,12 @@ export function ClubDetailClient({
       </section>
 
       {selectedShots.length > 0 ? (
-        <ClubAnalysisTabs clubType={club.type} shots={selectedShots} />
+        <ClubAnalysisTabs
+          clubType={club.type}
+          clubModelName={clubModelName}
+          clubTypeLabel={clubTypeLabel}
+          shots={selectedShots}
+        />
       ) : (
         <Card className="premium-card">
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -258,23 +275,30 @@ function RangeToggle({
   onChange: (value: ShotRange) => void;
 }) {
   return (
-    <div className="apple-panel flex flex-wrap gap-1 p-1">
-      {RANGE_OPTIONS.map((option) => (
-        <Button
-          key={option.value}
-          type="button"
-          size="sm"
-          variant={value === option.value ? "default" : "ghost"}
-          aria-pressed={value === option.value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            "h-8 px-2.5 text-xs sm:px-3 sm:text-sm",
-            value === option.value && "bg-[#111827] text-white",
-          )}
-        >
-          {option.label}
-        </Button>
-      ))}
+    <div
+      aria-label="Shot date range"
+      className="apple-panel w-full max-w-full p-1"
+    >
+      <div className="grid min-w-0 grid-cols-7 gap-1">
+        {RANGE_OPTIONS.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            size="sm"
+            variant={value === option.value ? "default" : "ghost"}
+            aria-pressed={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "h-8 min-w-0 rounded-lg px-1 text-xs sm:px-1.5 lg:px-2",
+              value === option.value && "bg-[#111827] text-white",
+            )}
+            title={option.label}
+          >
+            <span className="truncate sm:hidden">{option.compactLabel}</span>
+            <span className="hidden truncate sm:inline">{option.label}</span>
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

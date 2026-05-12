@@ -49,6 +49,34 @@ describe("suggestRapsodoClub", () => {
     expect(suggestion.alternatives[0]).toMatchObject({ clubLabel: "7 Iron" });
   });
 
+  it("prefers the same-type club that matches the session date history", () => {
+    const suggestion = suggestRapsodoClub(
+      shot("5 Iron", 154, 162, 110),
+      [
+        club("5i", "5 Iron", 158, 164, 112, 19, {
+          clubKey: "5i:taylormade:qi",
+          clubBrand: "TaylorMade",
+          clubModel: "Qi",
+          active: true,
+          firstShotAt: "2026-05-03T00:00:00.000Z",
+          lastShotAt: "2026-05-11T00:00:00.000Z",
+        }),
+        club("5i", "5 Iron", 154, 162, 110, 14, {
+          clubKey: "5i:macgreggor:generic",
+          clubBrand: "MacGreggor",
+          active: false,
+          firstShotAt: "2026-04-24T00:00:00.000Z",
+          lastShotAt: "2026-05-01T00:00:00.000Z",
+        }),
+      ],
+      { preferredClubKey: "5i:macgreggor:generic" },
+    );
+
+    expect(suggestion.choice.clubKey).toBe("5i:macgreggor:generic");
+    expect(suggestion.confidence).toBe("trusted");
+    expect(suggestion.reason).toContain("equipment history");
+  });
+
   it("falls back to low confidence when there is no stock-yardage candidate", () => {
     const suggestion = suggestRapsodoClub(shot("Other", 151, 161, 113), []);
 
@@ -65,6 +93,7 @@ function club(
   stockTotalYd: number,
   averageBallSpeedMph: number,
   sampleSize: number,
+  override: Partial<RapsodoClubChoice> = {},
 ): RapsodoClubChoice {
   return {
     clubKey: `${clubType}:generic:generic`,
@@ -76,6 +105,7 @@ function club(
     stockTotalYd,
     averageBallSpeedMph,
     sampleSize,
+    ...override,
   };
 }
 

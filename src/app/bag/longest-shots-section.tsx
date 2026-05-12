@@ -92,7 +92,7 @@ function LongestShotButton({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "apple-panel-strong flex min-h-28 flex-col gap-3 p-3 text-left transition-colors hover:border-emerald-300",
+        "apple-panel-strong flex min-h-14 items-center gap-3 p-2.5 text-left transition-colors hover:border-emerald-300",
         selected && "border-emerald-300 bg-white",
       )}
       style={{
@@ -101,30 +101,22 @@ function LongestShotButton({
         outline: "none",
       }}
     >
-      <div className="flex items-start gap-3">
-        <span
-          className="grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
-          style={{ background: shot.accent }}
-        >
-          {formatClubType(shot.clubType).slice(0, 2)}
+      <span
+        className="grid size-8 shrink-0 place-items-center rounded-md text-xs font-semibold text-white"
+        style={{ background: shot.accent }}
+      >
+        {formatClubType(shot.clubType).slice(0, 2)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold text-foreground">{formatClubType(shot.clubType)}</span>
+        <span className="block truncate text-xs text-muted-foreground">{shot.brandModel}</span>
+      </span>
+      <span className="shrink-0 text-right">
+        <span className="block text-sm font-semibold text-foreground">
+          {formatMetric(shot.totalYd ?? shot.carryYd)} yd
         </span>
-        <span className="min-w-0">
-          <span className="block text-sm text-muted-foreground">{shot.brandModel}</span>
-          <span className="block font-semibold text-foreground">{formatClubType(shot.clubType)}</span>
-        </span>
-      </div>
-      <span className="mt-auto flex items-end justify-between gap-3">
-        <span>
-          <span className="block text-xs text-muted-foreground">Longest total</span>
-          <span className="text-2xl font-semibold tracking-normal text-foreground">
-            {formatMetric(shot.totalYd ?? shot.carryYd)}
-            <span className="ml-1 text-sm text-muted-foreground">yd</span>
-          </span>
-        </span>
-        <span className="text-right text-xs text-muted-foreground">
-          #{shot.shotNumber ?? "-"}
-          <br />
-          {formatDate(shot.shotAt)}
+        <span className="block text-xs text-muted-foreground">
+          #{shot.shotNumber ?? "-"} / {formatDate(shot.shotAt)}
         </span>
       </span>
     </button>

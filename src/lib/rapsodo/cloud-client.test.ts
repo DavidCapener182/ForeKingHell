@@ -85,6 +85,7 @@ describe("RapsodoCloudClient", () => {
                 type: "practice",
                 startDate: "2026-05-01T10:00:00Z",
                 shotCount: 12,
+                count: 99,
               },
             ],
           },
@@ -94,12 +95,12 @@ describe("RapsodoCloudClient", () => {
       if (url.includes("gameType=1")) {
         return jsonResponse({
           simulations: [
-            {
-              simulationId: "sim-1",
-              gameType: "range",
-              createdAt: "2026-05-02T10:00:00Z",
-              totalShots: "7",
-            },
+              {
+                simulationId: "sim-1",
+                gameType: "range",
+                createdAt: "2026-05-02T10:00:00Z",
+                numberOfShots: "7",
+              },
           ],
         });
       }
@@ -112,6 +113,7 @@ describe("RapsodoCloudClient", () => {
               coursename: "Pebble Beach",
               startdate: "2026-05-03T10:00:00Z",
               shotcount: 9,
+              count: 99,
             },
           ],
         });

@@ -11,10 +11,10 @@ import {
 import { asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
+  CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
-  InsightBlock,
   MobileDataCard,
   MobileDataList,
   PageHeader,
@@ -138,38 +138,47 @@ export default async function HandicapPage() {
             description="What the current scorecards are saying."
             action={<Info className="size-5 text-sky-500" />}
           />
-          <CardContent className="grid gap-3">
-            <InsightBlock
-              label="Trend"
-              value={trendSentence(combinedHandicap)}
-              detail="Lower is better. Trend compares the current estimate with the estimate before the newest eligible round."
-              tone={combinedHandicap.trend.direction === "down" ? "green" : combinedHandicap.trend.direction === "up" ? "amber" : "slate"}
-            />
-            <InsightBlock
-              label="Data quality"
-              value={`${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`}
-              detail="Simulator rounds can fall back to par and 113 slope, but real-course estimates become stronger with course rating and slope."
-              tone={missingRatingRounds.length > 0 ? "amber" : "green"}
-            />
-            <InsightBlock
-              label="Latest round"
-              value={
-                latestRound
-                  ? `${latestRound.totalScore ?? "--"} at ${latestRound.courseName ?? latestRound.fileName ?? "latest round"}`
-                  : "No scorecards yet"
-              }
-              detail={latestRound ? `${formatDate(latestRound.date)} / differential ${formatHandicapValue(latestRound.handicapDifferential)}` : "Import or create a scorecard to start."}
-              tone="sky"
-            />
-            <InsightBlock
-              label="Range priority"
-              value={topCoachCard ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}` : "No club priority yet"}
-              detail={
-                topCoachCard
-                  ? topCoachCard.drill
-                  : "Import more launch monitor sessions to separate range performance from scorecards."
-              }
-              tone={topCoachCard ? topCoachCard.tone : "slate"}
+          <CardContent>
+            <CompactReadoutGrid
+              columnsClassName="md:grid-cols-2"
+              items={[
+                {
+                  label: "Trend",
+                  value: trendSentence(combinedHandicap),
+                  detail: "Lower is better. Trend compares the current estimate with the estimate before the newest eligible round.",
+                  tone:
+                    combinedHandicap.trend.direction === "down"
+                      ? "green"
+                      : combinedHandicap.trend.direction === "up"
+                        ? "amber"
+                        : "slate",
+                },
+                {
+                  label: "Data quality",
+                  value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
+                  detail: "Simulator rounds can fall back to par and 113 slope; real-course estimates are stronger with rating and slope.",
+                  tone: missingRatingRounds.length > 0 ? "amber" : "green",
+                },
+                {
+                  label: "Latest round",
+                  value: latestRound
+                    ? `${latestRound.totalScore ?? "--"} at ${latestRound.courseName ?? latestRound.fileName ?? "latest round"}`
+                    : "No scorecards yet",
+                  detail: latestRound
+                    ? `${formatDate(latestRound.date)} / differential ${formatHandicapValue(latestRound.handicapDifferential)}`
+                    : "Import or create a scorecard to start.",
+                  tone: "sky",
+                },
+                {
+                  label: "Range priority",
+                  value: topCoachCard ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}` : "No club priority yet",
+                  detail: topCoachCard
+                    ? topCoachCard.drill
+                    : "Import more launch monitor sessions to separate range performance from scorecards.",
+                  tone: topCoachCard ? topCoachCard.tone : "slate",
+                  href: topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach",
+                },
+              ]}
             />
           </CardContent>
         </DataPanel>

@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  CompactReadoutGrid,
   DataPair,
   DataTableFrame,
   MobileDataCard,
@@ -1153,23 +1154,16 @@ function ImportStepper({
 
   return (
     <Card className="premium-card">
-      <CardContent className="grid gap-3 p-4 sm:grid-cols-4">
-        {steps.map((step, index) => (
-          <div key={step.label} className="apple-panel-strong flex items-center gap-3 p-3">
-            <div
-              className={cn(
-                "grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold",
-                step.complete ? "bg-emerald-600 text-white" : "bg-white text-muted-foreground",
-              )}
-            >
-              {step.complete ? <CheckCircle2 className="size-4" /> : index + 1}
-            </div>
-            <div>
-              <p className="text-sm font-semibold">{step.label}</p>
-              <p className="text-xs text-muted-foreground">{step.detail}</p>
-            </div>
-          </div>
-        ))}
+      <CardContent className="p-4">
+        <CompactReadoutGrid
+          columnsClassName="sm:grid-cols-4"
+          items={steps.map((step, index) => ({
+            label: `Step ${index + 1}`,
+            value: step.label,
+            detail: step.detail,
+            tone: step.complete ? "green" : "slate",
+          }))}
+        />
       </CardContent>
     </Card>
   );
