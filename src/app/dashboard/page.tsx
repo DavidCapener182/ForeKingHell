@@ -1008,8 +1008,8 @@ function buildWhatChangedInsights({
     });
   }
 
-  while (insights.length < 3) {
-    insights.push({
+  const fillerOptions: Array<{ label: string; value: string; detail: string; tone: "slate" }> = [
+    {
       label: "Data depth",
       value: bagPreview.length > 0 ? `${integerFormatter.format(bagPreview.length)} clubs mapped` : "Import needed",
       detail:
@@ -1017,7 +1017,28 @@ function buildWhatChangedInsights({
           ? "Keep adding shots to unlock stronger trend comparisons."
           : "Upload a Rapsodo CSV to start building the personal baseline.",
       tone: "slate",
-    });
+    },
+    {
+      label: "Next step",
+      value: "Log a session",
+      detail: "More recent shots produce sharper insight cards on this dashboard.",
+      tone: "slate",
+    },
+    {
+      label: "Coverage",
+      value: bagPreview.length > 0 ? "Bag mapped" : "Bag not mapped",
+      detail:
+        bagPreview.length > 0
+          ? "Refresh stock yardages from the bag page after each range session."
+          : "Map every club so on-course distances become trustworthy.",
+      tone: "slate",
+    },
+  ];
+
+  let fillerIndex = 0;
+  while (insights.length < 3 && fillerIndex < fillerOptions.length) {
+    insights.push(fillerOptions[fillerIndex]);
+    fillerIndex += 1;
   }
 
   return insights.slice(0, 3);

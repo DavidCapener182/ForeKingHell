@@ -70,6 +70,7 @@ export default async function RootLayout({
       data-theme="light"
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
         <DevServiceWorkerResetScript />

@@ -373,7 +373,9 @@ export function CompactLinkGrid({
 }
 
 function readoutKey(item: CompactReadoutItem, index: number) {
-  return `${stringValue(item.label) || "item"}-${stringValue(item.value) || index}`;
+  const label = stringValue(item.label) || "item";
+  const value = stringValue(item.value) || "";
+  return `${label}-${value}-${index}`;
 }
 
 function stringValue(value: ReactNode) {
