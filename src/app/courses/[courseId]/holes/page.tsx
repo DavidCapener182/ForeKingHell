@@ -266,7 +266,7 @@ function HoleForm({
   hole: (typeof holes.$inferSelect) | null;
 }) {
   return (
-    <form action={upsertHoleAction} className="rounded-xl border bg-[#f9fafb] p-4">
+    <form action={upsertHoleAction} className="apple-panel-strong p-4">
       <input type="hidden" name="courseId" value={courseId} />
       <input type="hidden" name="teeSetId" value={teeSetId} />
       <input type="hidden" name="holeNumber" value={holeNumber} />

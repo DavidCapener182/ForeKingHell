@@ -21,6 +21,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+  PageHeader,
+  PageShell,
+  StatusPill,
+} from "@/components/premium";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -82,8 +91,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
   const hasMap = round.mapHoles.length > 0;
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <PageShell>
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/rounds">
@@ -107,35 +115,21 @@ export default async function RoundDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-2">
-              <Badge className="w-fit bg-sky-100 text-sky-700 hover:bg-sky-100">
-                {formatSessionType(round.session.type)}
-              </Badge>
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                {round.session.courseName ?? round.session.fileName ?? "Round review"}
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                {formatDate(round.session.date)} -{" "}
-                {isRealRound
-                  ? "Scorecard-only real round with no club data."
-                  : `${round.session.fileName ?? "CSV import"} - ${integerFormatter.format(
-                      round.shots.length,
-                    )} launch monitor shots.`}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[560px]">
-              <StatTile label="Score" value={round.totalScore} />
-              <StatTile label="Par" value={round.totalPar} />
-              <StatTile label="Putts" value={round.totalPutts} />
-              <StatTile
-                label="Diff"
-                value={formatHandicapValue(round.handicapDifferential)}
-              />
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>}
+          title={round.session.courseName ?? round.session.fileName ?? "Round review"}
+          description={`${formatDate(round.session.date)} - ${
+            isRealRound
+              ? "Scorecard-only real round with no club data."
+              : `${round.session.fileName ?? "CSV import"} - ${integerFormatter.format(round.shots.length)} launch monitor shots.`
+          }`}
+          metrics={[
+            { label: "Score", value: formatNullableInteger(round.totalScore) },
+            { label: "Par", value: formatNullableInteger(round.totalPar) },
+            { label: "Putts", value: formatNullableInteger(round.totalPutts) },
+            { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
+          ]}
+        />
 
         <Card className="premium-card">
           <CardHeader>
@@ -219,7 +213,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                 <input type="hidden" name="sessionId" value={round.session.id} />
                 <div className="grid gap-2 sm:grid-cols-6 lg:grid-cols-9">
                   {round.holes.map((hole) => (
-                    <label key={hole.holeNumber} className="rounded-[8px] border bg-[#f9fafb] p-2">
+                    <label key={hole.holeNumber} className="apple-panel-strong p-2">
                       <span className="text-xs text-muted-foreground">Hole {hole.holeNumber}</span>
                       <Input
                         name={`holeCount-${hole.holeNumber}`}
@@ -232,7 +226,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                     </label>
                   ))}
                 </div>
-                <div className="flex flex-col justify-between gap-3 rounded-[8px] border bg-[#f9fafb] p-3 sm:flex-row sm:items-center">
+                <div className="apple-panel flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center">
                   <p className="text-sm text-muted-foreground">
                     Current split assigns {integerFormatter.format(round.shots.length - round.unmappedShots.length)}
                     /{integerFormatter.format(round.shots.length)} CSV shots.
@@ -280,7 +274,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                   <form
                     key={hole.holeNumber}
                     action={updateRoundHoleAction}
-                    className="rounded-[8px] border bg-[#f9fafb] p-3"
+                    className="apple-panel-strong p-3"
                   >
                     <input type="hidden" name="sessionId" value={round.session.id} />
                     <input type="hidden" name="holeNumber" value={hole.holeNumber} />
@@ -306,7 +300,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                         <RoundNumberInput label="Sand" name="greensideSandShots" value={hole.greensideSandShots} />
                       </div>
                     ) : null}
-                    <div className="mt-2 grid grid-cols-3 gap-2 rounded-[8px] border bg-white p-2">
+                    <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-white/85 p-2 ring-1 ring-slate-200/80">
                       {isRealRound ? (
                         <>
                           <MiniMetric label="Net" value={formatNullableInteger(hole.netScore)} />
@@ -348,7 +342,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {round.roundClubs.map((club) => (
-                  <form key={club.id} action={updateClubAction} className="rounded-[8px] border bg-[#f9fafb] p-3">
+                  <form key={club.id} action={updateClubAction} className="apple-panel-strong p-3">
                     <input type="hidden" name="sessionId" value={round.session.id} />
                     <input type="hidden" name="clubId" value={club.id} />
                     <div className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_auto]">
@@ -405,7 +399,68 @@ export default async function RoundDetailPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-[8px] border">
+            <DataTableFrame
+              mobile={
+                <MobileDataList>
+                  {round.shots.length > 0 ? (
+                    round.shots.map((shot) => (
+                      <MobileDataCard
+                        key={shot.id}
+                        title={clubLabel(shot)}
+                        subtitle={`Hole ${formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}`}
+                        action={<Badge variant="outline">Shot {shot.shotNumber ?? "--"}</Badge>}
+                      >
+                        <DataPair label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
+                        <DataPair label="Total" value={`${formatMetric(shot.totalYd)} yd`} />
+                        <DataPair label="Side" value={`${formatMetric(shot.sideCarryYd)} yd`} />
+                        <div className="flex gap-2">
+                          <MoveShotButton
+                            sessionId={round.session.id}
+                            shotId={shot.id}
+                            direction="previous"
+                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber <= 1}
+                          />
+                          <MoveShotButton
+                            sessionId={round.session.id}
+                            shotId={shot.id}
+                            direction="next"
+                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber >= round.holes.length}
+                          />
+                        </div>
+                        <MoveShotToHoleForm
+                          sessionId={round.session.id}
+                          shotId={shot.id}
+                          currentHoleNumber={shot.courseHoleNumber}
+                          holeNumbers={round.holes.map((hole) => hole.holeNumber)}
+                        />
+                        <form action={updateShotClubAction} className="grid gap-2">
+                          <input type="hidden" name="sessionId" value={round.session.id} />
+                          <input type="hidden" name="shotId" value={shot.id} />
+                          <select
+                            name="clubId"
+                            defaultValue={shot.clubId}
+                            className="h-9 rounded-lg border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                          >
+                            {round.allClubs.map((club) => (
+                              <option key={club.id} value={club.id}>
+                                {clubLabel(club)}
+                              </option>
+                            ))}
+                          </select>
+                          <Button type="submit" size="sm" variant="outline">
+                            Save club
+                          </Button>
+                        </form>
+                      </MobileDataCard>
+                    ))
+                  ) : (
+                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                      No shots are linked to this round.
+                    </div>
+                  )}
+                </MobileDataList>
+              }
+            >
               <Table className="min-w-[1120px]">
                 <TableHeader>
                   <TableRow>
@@ -484,7 +539,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                   ) : null}
                 </TableBody>
               </Table>
-            </div>
+            </DataTableFrame>
           </CardContent>
         </Card>
         ) : null}
@@ -503,8 +558,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
         ) : null}
-      </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -884,17 +938,6 @@ function ClubTypeSelect({ name, value }: { name: string; value: string }) {
         </option>
       ))}
     </select>
-  );
-}
-
-function StatTile({ label, value }: { label: string; value: number | string | null }) {
-  return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-normal">
-        {typeof value === "number" ? integerFormatter.format(value) : value ?? "--"}
-      </p>
-    </div>
   );
 }
 

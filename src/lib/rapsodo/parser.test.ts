@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { applyRapsodoShotOverridesForImport } from "@/lib/imports/save-rapsodo-import";
 import {
   buildClubKey,
   normalizeClubType,
@@ -187,5 +188,39 @@ describe("Rapsodo parser edge cases", () => {
 
     expect(result.shotCount).toBe(1);
     expect(result.shots[0].sideCarryYd).toBe(-175);
+  });
+});
+
+describe("Rapsodo import shot overrides", () => {
+  it("applies confirmed clubs by CSV row number while preserving the raw Rapsodo row", () => {
+    const parsed = parseRapsodoCsv(
+      [
+        "Shot Number,Club Type,Club Brand,Club Model,Carry Distance (yd),Total Distance (yd)",
+        "1,Other,,,151,162",
+        "2,Driver,TaylorMade,Qi10,238,260",
+      ].join("\n"),
+    );
+
+    const overridden = applyRapsodoShotOverridesForImport(parsed.shots, [
+      {
+        rowNumber: parsed.shots[0].rowNumber,
+        clubType: "7 Iron",
+        clubBrand: "Mizuno",
+        clubModel: "JPX 923",
+        qualityTag: "mishit",
+      },
+    ]);
+
+    expect(overridden[0]).toMatchObject({
+      rowNumber: parsed.shots[0].rowNumber,
+      clubType: "7i",
+      clubLabel: "7i",
+      clubBrand: "Mizuno",
+      clubModel: "JPX 923",
+      clubKey: "7i:mizuno:jpx923",
+      qualityTag: "mishit",
+    });
+    expect(overridden[0].sourceRawJson["Club Type"]).toBe("Other");
+    expect(overridden[1]).toBe(parsed.shots[1]);
   });
 });

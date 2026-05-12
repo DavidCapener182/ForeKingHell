@@ -248,7 +248,7 @@ export function CourseHoleMapEditor({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
-      <div className="rounded-2xl border bg-[#f9fafb] p-4">
+      <div className="apple-panel p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{teeSetName}</Badge>
@@ -334,8 +334,8 @@ export function CourseHoleMapEditor({
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border bg-[#0f172a] shadow-sm">
-        <div ref={setMapContainerRef} className="h-[620px] min-h-[460px] w-full" />
+      <div className="map-frame relative">
+        <div ref={setMapContainerRef} className="h-[68vh] min-h-[360px] w-full lg:h-[620px] lg:min-h-[460px]" />
         <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/92 px-3 py-2 text-sm font-semibold shadow-sm">
           Hole {selectedHoleNumber} - click {placementTarget}
         </div>

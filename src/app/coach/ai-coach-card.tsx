@@ -76,7 +76,7 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
             detail={summary.coachNote}
             tone={summary.confidence === "high" ? "green" : summary.confidence === "low" ? "amber" : "sky"}
           />
-          <div className="rounded-xl border bg-[#f9fafb] p-4">
+          <div className="apple-panel-strong p-4">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Practice steps
             </p>

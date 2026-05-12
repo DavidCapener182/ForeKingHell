@@ -330,8 +330,8 @@ export function RoundShotMap({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[0.78fr_1.22fr]">
-      <div className="space-y-4 rounded-[8px] border bg-[#f9fafb] p-4">
+    <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
+      <div className="apple-panel space-y-4 p-4">
         <div className="space-y-1">
           <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
             {isEstimated ? "Estimated shot overlay" : "Actual hole overlay"}
@@ -345,7 +345,7 @@ export function RoundShotMap({
         </div>
         {selectedHole ? (
           <>
-            <div className="rounded-[8px] border bg-white p-3">
+            <div className="apple-panel-strong p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -405,7 +405,7 @@ export function RoundShotMap({
               variant={hole.holeNumber === selectedHoleNumber ? "default" : "outline"}
               size="sm"
               className={cn(
-                "h-11 rounded-[8px] text-sm font-semibold",
+                "h-11 rounded-lg text-sm font-semibold",
                 hole.holeNumber === selectedHoleNumber && "bg-[#111827] text-white",
               )}
               onClick={() => setSelectedHoleNumber(hole.holeNumber)}
@@ -419,7 +419,7 @@ export function RoundShotMap({
             <div
               key={shot.id}
               className={cn(
-                "rounded-[8px] border bg-white p-3",
+                "apple-panel-strong p-3",
                 shot.id === selectedShot?.id && "border-[#111827] shadow-sm",
               )}
             >
@@ -450,7 +450,7 @@ export function RoundShotMap({
             </div>
           ))}
           {selectedShots.length === 0 ? (
-            <div className="rounded-[8px] border border-dashed bg-white px-3 py-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed bg-white/80 px-3 py-6 text-center text-sm text-muted-foreground">
               {isEstimated
                 ? "No scorecard strokes are available to estimate for this hole yet."
                 : "No launch monitor shots are assigned to this hole yet."}
@@ -459,7 +459,7 @@ export function RoundShotMap({
         </div>
       </div>
       <div className="space-y-3">
-        <div className="relative h-[560px] min-h-[420px] overflow-hidden rounded-[8px] border bg-[#111827] shadow-sm">
+        <div className="map-frame relative h-[68vh] min-h-[360px] lg:h-[560px] lg:min-h-[420px]">
           {selectedHole ? (
             <HoleVectorFallback
               hole={selectedHole}
@@ -486,11 +486,11 @@ export function RoundShotMap({
             )}
           />
           <div className="absolute left-3 right-3 top-3 z-20 flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-            <div className="w-fit rounded-[8px] bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
+            <div className="w-fit rounded-lg bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
               {selectedHole ? `Hole ${selectedHole.holeNumber} - ${selectedHole.yards} yd` : "Hole map"}
             </div>
             <div className="flex flex-wrap gap-2">
-              <div className="flex w-fit rounded-[8px] border bg-white/92 p-1 shadow-sm backdrop-blur">
+              <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
                 <Button
                   type="button"
                   size="sm"
@@ -515,7 +515,7 @@ export function RoundShotMap({
                 size="sm"
                 variant={showAllHoleShots ? "default" : "secondary"}
                 className={cn(
-                  "h-10 rounded-[8px] bg-white/92 shadow-sm backdrop-blur",
+                  "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
                   showAllHoleShots && "bg-[#111827] text-white",
                 )}
                 onClick={() => setShowAllHoleShots((current) => !current)}
@@ -527,14 +527,14 @@ export function RoundShotMap({
                 size="sm"
                 variant={showShotNumbers ? "default" : "secondary"}
                 className={cn(
-                  "h-10 rounded-[8px] bg-white/92 shadow-sm backdrop-blur",
+                  "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
                   showShotNumbers && "bg-[#111827] text-white",
                 )}
                 onClick={() => setShowShotNumbers((current) => !current)}
               >
                 Numbers
               </Button>
-              <div className="flex w-fit rounded-[8px] border bg-white/92 p-1 shadow-sm backdrop-blur">
+              <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
                 <Button
                   type="button"
                   size="sm"
@@ -558,7 +558,7 @@ export function RoundShotMap({
           </div>
         </div>
         {selectedShot ? (
-          <div className="rounded-[8px] border bg-white p-3 text-[#111827] shadow-sm">
+          <div className="apple-panel-strong p-3 text-[#111827]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected shot</p>
@@ -757,7 +757,7 @@ function HoleVectorFallback({
         </text>
       </svg>
       {showSatelliteHint ? (
-        <div className="absolute bottom-3 left-3 rounded-[8px] bg-black/55 px-3 py-2 text-xs text-white">
+        <div className="absolute bottom-3 left-3 rounded-lg bg-black/55 px-3 py-2 text-xs text-white">
           Satellite tiles are still loading. Showing course view.
         </div>
       ) : null}
@@ -767,7 +767,7 @@ function HoleVectorFallback({
 
 function MapMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-white p-3">
+    <div className="rounded-lg bg-white/88 p-3 ring-1 ring-slate-200/80">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold tracking-normal">{value}</p>
     </div>

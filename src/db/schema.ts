@@ -346,6 +346,38 @@ export const achievementSyncState = pgTable(
   ],
 );
 
+export const rapsodoSyncSessions = pgTable(
+  "fkh_rapsodo_sync_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    providerSessionId: varchar("provider_session_id", { length: 180 }).notNull(),
+    providerSessionType: varchar("provider_session_type", { length: 80 }),
+    providerSessionMode: varchar("provider_session_mode", { length: 80 }),
+    sessionDate: timestamp("session_date", { withTimezone: true }),
+    title: varchar("title", { length: 260 }),
+    rawMetadataJson: jsonb("raw_metadata_json").$type<Record<string, unknown>>().notNull(),
+    exportRawCsvHash: varchar("export_raw_csv_hash", { length: 64 }),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastImportedAt: timestamp("last_imported_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_rapsodo_sync_user_provider_idx").on(
+      table.userId,
+      table.providerKind,
+      table.providerSessionId,
+    ),
+    index("fkh_rapsodo_sync_user_seen_idx").on(table.userId, table.lastSeenAt),
+    index("fkh_rapsodo_sync_imported_session_idx").on(table.importedSessionId),
+  ],
+);
+
 export type NewUser = typeof users.$inferInsert;
 export type NewClub = typeof clubs.$inferInsert;
 export type NewSession = typeof sessions.$inferInsert;
@@ -358,3 +390,4 @@ export type NewUserAchievement = typeof userAchievements.$inferInsert;
 export type NewXpLedger = typeof xpLedger.$inferInsert;
 export type NewAchievementProgress = typeof achievementProgress.$inferInsert;
 export type NewAchievementSyncState = typeof achievementSyncState.$inferInsert;
+export type NewRapsodoSyncSession = typeof rapsodoSyncSessions.$inferInsert;

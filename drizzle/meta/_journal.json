@@ -50,6 +50,13 @@
       "when": 1778449000000,
       "tag": "0006_raw_csv_hash",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778585603830,
+      "tag": "0007_shiny_otto_octavius",
+      "breakpoints": true
     }
   ]
 }

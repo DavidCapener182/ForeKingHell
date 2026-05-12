@@ -11,8 +11,13 @@ import {
 } from "lucide-react";
 
 import {
+  ChartFrame,
+  DataPair,
   DataPanel,
+  DataTableFrame,
   InsightBlock,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -50,7 +55,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 const focusModes: Array<{ value: CompareFocusMode; label: string }> = [
-  { value: "today", label: "Today / latest day" },
+  { value: "today", label: "Today / latest session" },
   { value: "latest-session", label: "Latest session" },
   { value: "session", label: "Selected session" },
   { value: "last-7", label: "Last 7 days" },
@@ -237,7 +242,32 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
                 action={<TrendingUp className="size-5 text-emerald-500" />}
               />
               <CardContent>
-                <div className="overflow-x-auto rounded-[8px] border">
+                <DataTableFrame
+                  mobile={
+                    <MobileDataList>
+                      {data.clubRows.length > 0 ? (
+                        data.clubRows.map((row) => (
+                          <MobileDataCard
+                            key={row.clubId}
+                            title={row.label}
+                            subtitle={`${integerFormatter.format(row.focus.stockShots)} focus shots`}
+                            action={<StatusPill tone={row.benefitScore >= 62 ? "green" : row.benefitScore >= 48 ? "amber" : "pink"}>{row.benefitScore}</StatusPill>}
+                          >
+                            <DataPair label="Carry" value={<span className={deltaClass(goodCarry(row.delta))}>{formatSignedYards(row.delta.carryDeltaYd)}</span>} />
+                            <DataPair label="Offline" value={<span className={deltaClass(row.delta.offlineDeltaYd !== null ? row.delta.offlineDeltaYd <= 0 : null)}>{formatSignedYards(row.delta.offlineDeltaYd)}</span>} />
+                            <DataPair label="Cone" value={<span className={deltaClass(row.delta.coneDeltaYd !== null ? row.delta.coneDeltaYd <= 0 : null)}>{formatSignedYards(row.delta.coneDeltaYd)}</span>} />
+                            <DataPair label="Playable" value={<span className={deltaClass(row.delta.playableRateDelta !== null ? row.delta.playableRateDelta >= 0 : null)}>{formatSignedRate(row.delta.playableRateDelta)}</span>} />
+                            <DataPair label="Big miss" value={<span className={deltaClass(row.delta.bigMissRateDelta !== null ? row.delta.bigMissRateDelta <= 0 : null)}>{formatSignedRate(row.delta.bigMissRateDelta)}</span>} />
+                          </MobileDataCard>
+                        ))
+                      ) : (
+                        <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                          No club-level comparison for this filter.
+                        </div>
+                      )}
+                    </MobileDataList>
+                  }
+                >
                   <Table className="min-w-[980px]">
                     <TableHeader>
                       <TableRow>
@@ -273,7 +303,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
                       ) : null}
                     </TableBody>
                   </Table>
-                </div>
+                </DataTableFrame>
               </CardContent>
             </DataPanel>
 
@@ -289,7 +319,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
                     key={session.id}
                     href={`/shots?sessionId=${session.id}`}
                     prefetch={false}
-                    className="flex items-center justify-between gap-4 rounded-xl border bg-[#f9fafb] px-4 py-3 transition-colors hover:border-emerald-300"
+                    className="apple-panel-strong flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:border-emerald-300"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{session.label}</p>
@@ -319,7 +349,7 @@ function CompareFiltersForm({ data }: { data: CompareData }) {
         action={<GitCompareArrows className="size-5 text-muted-foreground" />}
       />
       <CardContent>
-        <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <form className="apple-panel grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-6">
           <SelectField label="Focus" name="focus" defaultValue={data.filters.focus}>
             {focusModes.map((mode) => (
               <option key={mode.value} value={mode.value}>{mode.label}</option>
@@ -394,7 +424,7 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <select name={name} defaultValue={defaultValue} className="h-10 rounded-md border bg-background px-3 text-sm">
+      <select name={name} defaultValue={defaultValue} className="h-10 rounded-lg border bg-white/90 px-3 text-sm">
         {children}
       </select>
     </label>
@@ -405,7 +435,7 @@ function DateField({ label, name, defaultValue }: { label: string; name: string;
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <input type="date" name={name} defaultValue={defaultValue} className="h-10 rounded-md border bg-background px-3 text-sm" />
+      <input type="date" name={name} defaultValue={defaultValue} className="h-10 rounded-lg border bg-white/90 px-3 text-sm" />
     </label>
   );
 }
@@ -424,7 +454,7 @@ function CompareMetric({
   good: boolean | null;
 }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-normal">{focus}</p>
       <div className="mt-2 flex items-center justify-between gap-3 text-sm">
@@ -437,7 +467,7 @@ function CompareMetric({
 
 function ClubCompareCard({ row }: { row: CompareData["clubRows"][number] }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{formatClubType(row.clubType)}</p>
@@ -464,7 +494,7 @@ function ClubCompareCard({ row }: { row: CompareData["clubRows"][number] }) {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-white px-3 py-2">
+    <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
     </div>
@@ -491,7 +521,7 @@ function DispersionPlot({
 
   if (points.length === 0) {
     return (
-      <div className="grid aspect-[2/1] place-items-center rounded-xl border bg-[#f9fafb] text-sm text-muted-foreground">
+      <div className="apple-panel grid aspect-[2/1] place-items-center text-sm text-muted-foreground">
         No dispersion points for this comparison.
       </div>
     );
@@ -507,7 +537,7 @@ function DispersionPlot({
   });
 
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-3">
+    <ChartFrame className="p-3">
       <svg viewBox="0 0 720 360" role="img" aria-label="Shot dispersion comparison" className="aspect-[2/1] w-full">
         <rect x="0" y="0" width="720" height="360" rx="12" fill="#ffffff" />
         <line x1="360" x2="360" y1="36" y2="320" stroke="#94a3b8" strokeDasharray="5 5" />
@@ -530,7 +560,7 @@ function DispersionPlot({
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-600" /> Focus</span>
         <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-slate-400" /> Baseline</span>
       </div>
-    </div>
+    </ChartFrame>
   );
 }
 

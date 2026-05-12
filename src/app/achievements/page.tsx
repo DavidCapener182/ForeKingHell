@@ -2,18 +2,20 @@ import Link from "next/link";
 import { ArrowLeft, Flag, Target, Upload } from "lucide-react";
 
 import { AchievementsClient } from "@/app/achievements/achievements-client";
-import { Badge } from "@/components/ui/badge";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getAchievementPageData } from "@/lib/achievements/service";
 
 export const dynamic = "force-dynamic";
 
-export default async function AchievementsPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default async function AchievementsPage({ searchParams }: { searchParams: SearchParams }) {
+  const focusAchievementId = first((await searchParams).achievement).trim().slice(0, 140);
   const data = await getAchievementPageData();
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <PageShell>
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
@@ -43,22 +45,17 @@ export default async function AchievementsPage() {
           </div>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
-          <div className="max-w-3xl space-y-2">
-            <Badge className="w-fit bg-zinc-900 text-white hover:bg-zinc-900">
-              Achievement system
-            </Badge>
-            <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-              Progress worth tracking
-            </h1>
-            <p className="text-base leading-7 text-muted-foreground">
-              Rapsodo metrics and completed round scorecards unlock XP, major badges, and generated club mastery ladders.
-            </p>
-          </div>
-        </header>
+        <PageHeader
+          eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
+          title="Progress worth tracking"
+          description="Rapsodo metrics and completed round scorecards unlock XP, major badges, and generated club mastery ladders."
+        />
 
-        <AchievementsClient data={data} />
-      </div>
-    </main>
+        <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
+    </PageShell>
   );
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }

@@ -321,7 +321,7 @@ function CoachPracticePlan({
 
       <div className="grid gap-3">
         {blocks.map((block, index) => (
-          <div key={block.title} className="rounded-xl border bg-[#f9fafb] p-4">
+          <div key={block.title} className="apple-panel-strong p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge variant="outline">Drill {index + 1}</Badge>
@@ -346,7 +346,7 @@ function CoachDrillChallengeCard({
   status: CoachDrillAwardStatus;
 }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -435,7 +435,7 @@ function TrainingFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
             key={impact.clubId}
             href={`/bag/${impact.clubId}/analytics`}
             prefetch={false}
-            className="rounded-xl border bg-white p-4 transition-colors hover:border-emerald-300"
+            className="apple-panel-strong p-4 transition-colors hover:border-emerald-300"
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -450,7 +450,7 @@ function TrainingFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-4">
               {impact.metrics.map((metric) => (
-                <div key={metric.label} className="rounded-lg border bg-[#f9fafb] px-3 py-2">
+                <div key={metric.label} className="rounded-lg bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
                   <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
                   <p className="mt-1 text-sm font-semibold">{metric.after}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -471,7 +471,7 @@ function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
     <Link
       href={`/bag/${card.clubId}/analytics`}
       prefetch={false}
-      className="grid gap-4 rounded-xl border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300"
+      className="apple-panel-strong grid gap-4 p-4 transition-colors hover:border-emerald-300"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -505,7 +505,7 @@ function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
 
 function SmallMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-2">
+    <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-sm font-semibold">{value}</p>
     </div>

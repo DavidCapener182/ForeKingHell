@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   ACHIEVEMENT_UNLOCK_FLASH_COOKIE,
 } from "@/lib/achievements/notification-cookie";
+import { achievementUnlockHref } from "@/lib/alert-links";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import { cn } from "@/lib/utils";
 
@@ -173,15 +174,19 @@ function AchievementToastCard({
       </div>
       <div className="space-y-2 px-4 py-3">
         {toast.notifications.map((notification) => (
-          <div
+          <Link
             key={notificationKey(notification)}
-            className="rounded-[8px] border border-white/10 bg-white/5 px-3 py-2"
+            href={achievementUnlockHref(notification.achievementId)}
+            className="block rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
           >
             <div className="flex items-center justify-between gap-3">
               <p className="truncate text-sm font-medium">{notification.name}</p>
-              <Badge className={cn("shrink-0 border capitalize", tierToastStyles[notification.tier])}>
-                {notification.tier}
-              </Badge>
+              <div className="flex shrink-0 items-center gap-2">
+                <Badge className={cn("border capitalize", tierToastStyles[notification.tier])}>
+                  {notification.tier}
+                </Badge>
+                <ExternalLink className="size-3.5 text-slate-300" />
+              </div>
             </div>
             <div className="mt-1 flex items-center justify-between gap-3 text-xs text-slate-300">
               <span className="truncate">{notification.description}</span>
@@ -189,7 +194,7 @@ function AchievementToastCard({
                 +{notification.xpAwarded.toLocaleString("en-GB")} XP
               </span>
             </div>
-          </div>
+          </Link>
         ))}
         {hiddenCount > 0 ? (
           <p className="px-1 text-xs text-slate-300">

@@ -174,7 +174,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
             <ScoreBar label="Direction stability" value={analytics.consistency.directionConsistencyScore} />
             <ScoreBar label="Strike stability" value={analytics.consistency.strikeConsistencyScore} />
             <ScoreBar label="Flight stability" value={analytics.consistency.flightConsistencyScore} />
-            <div className="rounded-xl border bg-[#f9fafb] p-4">
+            <div className="apple-panel-strong p-4">
               <p className="text-sm text-muted-foreground">Confidence label</p>
               <p className="mt-1 text-3xl font-semibold tracking-normal">
                 {analytics.consistency.confidenceLabel}
@@ -360,7 +360,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
               const shape = classifyShotShape(shot);
 
               return (
-                <div key={shot.id} className="rounded-xl border bg-[#f9fafb] p-3">
+                <div key={shot.id} className="apple-panel-strong p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-medium">Shot #{shot.shotNumber ?? "--"}</p>
                     <p className="text-sm text-muted-foreground">{formatDate(shot.shotAt)}</p>
@@ -574,7 +574,7 @@ function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics;
           <SmallDecisionMetric label="Max number" value={formatYards(analytics.decision.maxNumberYd)} />
           <SmallDecisionMetric label="Do not force" value={formatYards(analytics.decision.doNotForceOverYd)} />
         </div>
-        <div className="rounded-xl border bg-[#f9fafb] p-4">
+        <div className="apple-panel-strong p-4">
           <div className="flex items-center gap-2">
             <ClipboardCheck className="size-4 text-emerald-600" />
             <p className="font-medium">Pressure rule</p>
@@ -669,7 +669,7 @@ function ProfileCard({
       <SectionHeader title={title} action={<Icon className="size-5 text-muted-foreground" />} />
       <CardContent className="grid gap-2">
         {metrics.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between rounded-xl border bg-[#f9fafb] px-3 py-2">
+          <div key={label} className="flex items-center justify-between rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
             <span className="text-sm text-muted-foreground">{label}</span>
             <span className="text-right font-semibold">{value}</span>
           </div>
@@ -701,111 +701,117 @@ function ShotCloud({
   accent: string;
 }) {
   const plotted = shots.filter((shot) => shot.carryYd !== null);
-  const maxDistance = Math.max(240, ...plotted.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.05;
-  const maxSide = Math.max(45, ...plotted.map((shot) => Math.abs(shot.sideCarryYd ?? 0))) * 1.2;
-  const xFor = (side: number | null) => 450 + ((side ?? 0) / maxSide) * 330;
-  const yFor = (distance: number | null) => 382 - ((distance ?? 0) / maxDistance) * 332;
+  const holeYardage = 350;
+  const maxDistance = Math.max(holeYardage, ...plotted.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.02;
+  const maxSide = Math.max(55, ...plotted.map((shot) => Math.abs(shot.sideCarryYd ?? 0))) * 1.15;
+  const tee = { x: 322, y: 936 };
+  const playHeight = 830;
+  const sideScale = 158;
+  const xFor = (side: number | null) => tee.x + ((side ?? 0) / maxSide) * sideScale;
+  const yFor = (distance: number | null) => tee.y - ((distance ?? 0) / maxDistance) * playHeight;
   const stockY = yFor(analytics.distance.stockCarryYd);
   const coneCenterX = xFor(analytics.accuracy.averageSideCarryYd);
   const coneCenterY = yFor(analytics.distance.stockCarryYd);
-  const coneRadiusX = Math.max(34, ((analytics.accuracy.shotConeWidthYd ?? 0) / maxSide) * 150);
-  const coneRadiusY = Math.max(30, ((analytics.distance.carrySpreadYd ?? 0) / maxDistance) * 260);
+  const coneRadiusX = Math.max(34, ((analytics.accuracy.shotConeWidthYd ?? 0) / maxSide) * sideScale);
+  const coneRadiusY = Math.max(30, ((analytics.distance.carrySpreadYd ?? 0) / maxDistance) * 280);
+  const yardMarkers = [100, 150, 200, 250].filter((yard) => yard <= maxDistance);
 
   return (
-    <svg viewBox="0 0 900 430" className="h-[360px] w-full rounded-2xl border bg-[#0b1411] shadow-inner">
-      <defs>
-        <linearGradient id="analyticsFairway" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#3f8f50" />
-          <stop offset="0.52" stopColor="#1f6f3c" />
-          <stop offset="1" stopColor="#14532d" />
-        </linearGradient>
-        <pattern id="analyticsFairwayStripe" width="48" height="48" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-          <rect width="24" height="48" fill="#ffffff" opacity="0.07" />
-        </pattern>
-        <filter id="analyticsGlow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-      <rect width="900" height="430" fill="#0f172a" />
-      <path
-        d="M320 430 C270 330 250 210 294 78 C330 -18 570 -18 606 78 C650 210 630 330 580 430 Z"
-        fill="url(#analyticsFairway)"
-        opacity="0.94"
-      />
-      <path
-        d="M320 430 C270 330 250 210 294 78 C330 -18 570 -18 606 78 C650 210 630 330 580 430 Z"
-        fill="url(#analyticsFairwayStripe)"
-      />
-      <path
-        d="M300 430 C242 326 224 192 270 60"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.1"
-        strokeWidth="28"
-      />
-      <path
-        d="M600 430 C660 326 678 192 630 60"
-        fill="none"
-        stroke="#020617"
-        strokeOpacity="0.16"
-        strokeWidth="34"
-      />
-      {[50, 100, 150, 200, 250, 300].filter((yard) => yard < maxDistance).map((yard) => (
-        <g key={yard}>
-          <path
-            d={`M120 ${yFor(yard) + 26} C320 ${yFor(yard) - 18} 580 ${yFor(yard) - 18} 780 ${yFor(yard) + 26}`}
-            fill="none"
+    <div className="grid h-[420px] min-h-[340px] max-h-[62vh] place-items-center overflow-hidden rounded-2xl border bg-[#0b1411] shadow-inner">
+      <svg
+        viewBox="60 290 560 480"
+        preserveAspectRatio="xMidYMid slice"
+        className="h-full w-full"
+        role="img"
+        aria-label="Shot cloud on a 350 yard hole"
+      >
+        <defs>
+          <filter id="analyticsGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+        <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.14" />
+
+        {yardMarkers.map((yard) => {
+          const y = yFor(yard);
+          const arcWidth = 70 + (yard / holeYardage) * 248;
+          return (
+            <g key={yard}>
+              <path
+                d={`M ${tee.x - arcWidth} ${y + 22} Q ${tee.x} ${y - 24} ${tee.x + arcWidth} ${y + 22}`}
+                fill="none"
+                stroke="#ffffff"
+                strokeOpacity="0.68"
+                strokeWidth="2.5"
+                strokeDasharray="10 10"
+              />
+              <text x={Math.min(592, tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
+                {yard}
+              </text>
+            </g>
+          );
+        })}
+
+        {[-40, -20, 20, 40].map((side) => (
+          <line
+            key={side}
+            x1={xFor(side)}
+            x2={xFor(side)}
+            y1={290}
+            y2={770}
             stroke="#ffffff"
-            strokeOpacity="0.35"
+            strokeDasharray="9 12"
+            strokeOpacity="0.34"
+            strokeWidth="2"
           />
-          <text x="456" y={yFor(yard) + 7} fill="#e5e7eb" fontSize="13" textAnchor="middle">
-            {yard}
-          </text>
-        </g>
-      ))}
-      <line x1="450" x2="450" y1="24" y2="406" stroke="#ffffff" strokeOpacity="0.7" />
-      <text x="118" y="38" fill="#cbd5e1" fontSize="12">Left</text>
-      <text x="752" y="38" fill="#cbd5e1" fontSize="12">Right</text>
-      {analytics.distance.stockCarryYd ? (
-        <>
-          <ellipse
-            cx={coneCenterX}
-            cy={coneCenterY}
-            rx={coneRadiusX}
-            ry={coneRadiusY}
-            fill="none"
-            stroke={accent}
-            strokeOpacity="0.72"
-            strokeWidth="3"
-            filter="url(#analyticsGlow)"
-          />
-          <line x1="170" x2="730" y1={stockY} y2={stockY} stroke={accent} strokeWidth="3" strokeDasharray="8 8" />
-        </>
-      ) : null}
-      {plotted.map((shot) => {
-        const shape = classifyShotShape(shot);
-        const missTags = likelyMishitTags({ clubType: analytics.clubType, shot, stockCarryYd: analytics.distance.stockCarryYd });
-        return (
-          <circle
-            key={shot.id}
-            cx={xFor(shot.sideCarryYd)}
-            cy={yFor(shot.carryYd)}
-            r={missTags.length > 0 ? 4 : 5}
-            fill={shape === "straight" ? "#ffffff" : accent}
-            opacity={missTags.length > 0 ? 0.42 : 0.82}
-            stroke="#020617"
-            strokeOpacity="0.35"
-          />
-        );
-      })}
-      <text x="24" y="410" fill="#e5e7eb" fontSize="12">
-        Side carry / carry
-      </text>
-    </svg>
+        ))}
+        <line x1={tee.x} x2={tee.x} y1={290} y2={770} stroke="#ffffff" strokeOpacity="0.72" strokeWidth="2.5" />
+        <text x={xFor(-40)} y="318" fill="#e5e7eb" fontSize="18" fontWeight="700" textAnchor="middle">
+          Left
+        </text>
+        <text x={xFor(40)} y="318" fill="#e5e7eb" fontSize="18" fontWeight="700" textAnchor="middle">
+          Right
+        </text>
+
+        {analytics.distance.stockCarryYd ? (
+          <>
+            <ellipse
+              cx={coneCenterX}
+              cy={coneCenterY}
+              rx={coneRadiusX}
+              ry={coneRadiusY}
+              fill="none"
+              stroke={accent}
+              strokeOpacity="0.72"
+              strokeWidth="3"
+              filter="url(#analyticsGlow)"
+            />
+            <line x1="92" x2="552" y1={stockY} y2={stockY} stroke={accent} strokeWidth="3" strokeDasharray="8 8" />
+          </>
+        ) : null}
+        {plotted.map((shot) => {
+          const shape = classifyShotShape(shot);
+          const missTags = likelyMishitTags({ clubType: analytics.clubType, shot, stockCarryYd: analytics.distance.stockCarryYd });
+          return (
+            <circle
+              key={shot.id}
+              cx={xFor(shot.sideCarryYd)}
+              cy={yFor(shot.carryYd)}
+              r={missTags.length > 0 ? 4 : 5}
+              fill={shape === "straight" ? "#ffffff" : accent}
+              opacity={missTags.length > 0 ? 0.42 : 0.82}
+              stroke="#020617"
+              strokeOpacity="0.35"
+            />
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -871,7 +877,7 @@ function LaunchWindowChart({ analytics, accent }: { analytics: ClubAnalytics; ac
 
 function DeltaPanel({ title, delta }: { title: string; delta: ClubAnalytics["progress"]["baselineDelta"] }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium">{title}</p>
         <Badge variant="outline">{delta ? "Compared" : "Needs data"}</Badge>

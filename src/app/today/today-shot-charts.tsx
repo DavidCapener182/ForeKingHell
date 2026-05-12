@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ChartFrame } from "@/components/premium";
 import { cn } from "@/lib/utils";
 
 export type TodayChartShot = {
@@ -142,8 +143,8 @@ export function TodayShotCharts({ shots }: { shots: TodayChartShot[] }) {
                 aria-pressed={!hidden}
                 onClick={() => toggleClub(club.clubType)}
                 className={cn(
-                  "inline-flex h-8 items-center gap-2 rounded-[8px] border px-2.5 text-sm font-medium transition-colors",
-                  hidden ? "bg-white text-muted-foreground opacity-55" : "bg-[#f9fafb] text-foreground",
+                  "inline-flex h-8 items-center gap-2 rounded-lg border px-2.5 text-sm font-medium transition-colors",
+                  hidden ? "bg-white text-muted-foreground opacity-55" : "bg-slate-50/90 text-foreground",
                 )}
               >
                 <span
@@ -161,7 +162,7 @@ export function TodayShotCharts({ shots }: { shots: TodayChartShot[] }) {
             <button
               type="button"
               onClick={() => setHiddenClubs(new Set())}
-              className="inline-flex h-8 items-center gap-2 rounded-[8px] border bg-white px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-[#f3f4f6]"
+              className="inline-flex h-8 items-center gap-2 rounded-lg border bg-white px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-[#f3f4f6]"
             >
               <RotateCcw className="size-3.5" />
               Show all
@@ -202,7 +203,7 @@ function ChartPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel min-w-0 p-3">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">{title}</h2>
@@ -210,13 +211,13 @@ function ChartPanel({
         </div>
       </div>
       {empty ? (
-        <div className="grid min-h-[18rem] place-items-center rounded-[8px] border bg-white text-sm text-muted-foreground">
+        <div className="apple-panel-strong grid min-h-[18rem] place-items-center text-sm text-muted-foreground">
           No chartable shots for the visible clubs.
         </div>
       ) : (
-        <div className="w-full overflow-x-auto rounded-[8px] border bg-white">
+        <ChartFrame>
           {children}
-        </div>
+        </ChartFrame>
       )}
     </div>
   );
@@ -234,7 +235,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   return (
     <svg
       viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-      className="block w-full min-w-[650px]"
+      className="block h-auto w-full"
       role="img"
       aria-label="Dispersion chart"
     >
@@ -310,7 +311,7 @@ function TrajectoryChart({ shots }: { shots: ChartPoint[] }) {
   return (
     <svg
       viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-      className="block w-full min-w-[650px]"
+      className="block h-auto w-full"
       role="img"
       aria-label="Trajectory chart"
     >

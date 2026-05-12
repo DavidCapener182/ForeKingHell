@@ -14,8 +14,12 @@ import {
 } from "lucide-react";
 
 import {
+  DataPair,
   DataPanel,
+  DataTableFrame,
   MetricCard,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -171,14 +175,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           action={<CalendarDays className="size-5 text-emerald-600" />}
         />
         <CardContent>
-          <form className="grid gap-3 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto]">
+          <form className="apple-panel grid gap-3 p-3 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto]">
             <label className="grid gap-1 text-sm font-medium">
               Date
               <input
                 type="date"
                 name="date"
                 defaultValue={data.dateKey}
-                className="h-10 rounded-[8px] border bg-background px-3 text-sm"
+                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
               />
             </label>
             <label className="grid gap-1 text-sm font-medium">
@@ -186,7 +190,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               <select
                 name="session"
                 defaultValue={data.filters.sessionId}
-                className="h-10 rounded-[8px] border bg-background px-3 text-sm"
+                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
               >
                 <option value="">All sessions today</option>
                 {data.sessions.map((session) => (
@@ -201,7 +205,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               <select
                 name="club"
                 defaultValue={data.filters.club}
-                className="h-10 rounded-[8px] border bg-background px-3 text-sm"
+                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
               >
                 <option value="">All clubs</option>
                 {data.clubs.map((club) => (
@@ -212,12 +216,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               </select>
             </label>
             <div className="flex items-end">
-              <Button type="submit" className="h-10 w-full rounded-[8px] bg-[#111827] text-white">
+              <Button type="submit" className="h-10 w-full rounded-lg bg-[#111827] text-white">
                 Analyse
               </Button>
             </div>
             <div className="flex items-end">
-              <Button asChild variant="outline" className="h-10 w-full rounded-[8px]">
+              <Button asChild variant="outline" className="h-10 w-full rounded-lg">
                 <Link href="/today" prefetch={false}>Reset</Link>
               </Button>
             </div>
@@ -272,7 +276,28 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                 action={<StatusPill tone={verdictTone(data.overall.verdict)}>{data.overall.title}</StatusPill>}
               />
               <CardContent>
-                <div className="overflow-x-auto rounded-[8px] border">
+                <DataTableFrame
+                  mobile={
+                    <MobileDataList>
+                      {data.clubComparisons.map((comparison) => (
+                        <MobileDataCard
+                          key={comparison.clubType}
+                          title={comparison.clubLabel}
+                          subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
+                          action={<Badge className={verdictBadgeClass(comparison.verdict)}>{verdictLabel(comparison.verdict)}</Badge>}
+                        >
+                          <DataPair label="Carry" value={formatDeltaPair(comparison.today.carryAverageYd, comparison.carryDeltaYd, "yd", true)} />
+                          <DataPair label="Offline" value={formatDeltaPair(comparison.today.offlineAverageYd, comparison.offlineDeltaYd, "yd", false)} />
+                          <DataPair label="Straight" value={formatDeltaPair(comparison.today.straightRate, comparison.straightRateDelta, "pp", true)} />
+                          <DataPair label="Playable" value={formatDeltaPair(comparison.today.playableRate, comparison.playableRateDelta, "pp", true)} />
+                          <p className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm leading-5 text-muted-foreground">
+                            {comparison.summary}
+                          </p>
+                        </MobileDataCard>
+                      ))}
+                    </MobileDataList>
+                  }
+                >
                   <Table className="min-w-[980px]">
                     <TableHeader>
                       <TableRow>
@@ -292,7 +317,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                       ))}
                     </TableBody>
                   </Table>
-                </div>
+                </DataTableFrame>
               </CardContent>
             </DataPanel>
 
@@ -317,7 +342,28 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               action={<StatusPill tone="slate">{integerFormatter.format(data.shots.length)} shots</StatusPill>}
             />
             <CardContent>
-              <div className="overflow-x-auto rounded-[8px] border">
+              <DataTableFrame
+                mobile={
+                  <MobileDataList>
+                    {data.shots.map((shot) => (
+                      <MobileDataCard
+                        key={shot.id}
+                        title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
+                        subtitle={shot.fileName ?? shot.courseName ?? "Session"}
+                        action={<Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>}
+                      >
+                        <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
+                        <DataPair label="Total" value={formatYards(shot.totalYd)} />
+                        <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
+                        <DataPair label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+                        <DataPair label="Launch" value={formatDegrees(shot.launchAngleDeg)} />
+                        <DataPair label="Ball" value={formatMph(shot.ballSpeedMph)} />
+                        <DataPair label="Smash" value={formatNumber(shot.smashFactor)} />
+                      </MobileDataCard>
+                    ))}
+                  </MobileDataList>
+                }
+              >
                 <Table className="min-w-[1040px]">
                   <TableHeader>
                     <TableRow>
@@ -352,7 +398,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </DataTableFrame>
             </CardContent>
           </DataPanel>
         </>
@@ -397,7 +443,7 @@ function ClubMainStatsPanel({ stats }: { stats: ClubMainStats[] }) {
       />
       <CardContent className="space-y-5">
         {stats.length === 0 || highlights.length === 0 ? (
-          <div className="rounded-[8px] border bg-[#f9fafb] p-4 text-sm text-muted-foreground">
+          <div className="apple-panel p-4 text-sm text-muted-foreground">
             No PBs or close calls for this selection.
           </div>
         ) : (
@@ -435,7 +481,7 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
 
 function HighlightTile({ highlight }: { highlight: ClubHighlight }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{highlight.clubLabel}</p>
@@ -643,6 +689,22 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
   );
 }
 
+function formatDeltaPair(
+  value: number | null,
+  delta: number | null,
+  unit: "yd" | "pp",
+  higherIsGood: boolean,
+) {
+  const direction = higherIsGood ? "higher" : "lower";
+
+  return (
+    <span className="inline-flex flex-col items-end leading-tight">
+      <span>{unit === "pp" ? formatRate(value) : formatYards(value)}</span>
+      <span className={deltaClass(delta, direction)}>{deltaText(delta, unit, true)}</span>
+    </span>
+  );
+}
+
 function MetricDeltaCell({
   value,
   delta,
@@ -666,7 +728,7 @@ function MetricDeltaCell({
 
 function StraightShotCard({ shot }: { shot: TodayPracticeShot }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold">

@@ -8,6 +8,7 @@ import {
   Crosshair,
   Database,
   Flag,
+  GitCompareArrows,
   LineChart,
   MapPinned,
   Target,
@@ -21,9 +22,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DataPair,
   DataPanel,
+  DataTableFrame,
   InsightBlock,
   MetricCard,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -169,6 +174,14 @@ export default async function DashboardPage() {
       metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
       icon: Database,
       accent: "text-sky-600 bg-sky-50",
+    },
+    {
+      title: "Compare",
+      description: "Compare a focused session against the previous-session baseline.",
+      href: "/compare",
+      metric: "Session delta",
+      icon: GitCompareArrows,
+      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Bag map",
@@ -330,7 +343,7 @@ export default async function DashboardPage() {
               <Link
                 href={`/bag/${data.coachPreview.clubId}/analytics`}
                 prefetch={false}
-                className="block rounded-xl border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300"
+                className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -347,7 +360,7 @@ export default async function DashboardPage() {
                 <Progress value={data.coachPreview.trustIndex} className="mt-4" />
               </Link>
             ) : (
-              <div className="rounded-xl border bg-[#f9fafb] p-5">
+              <div className="apple-panel-strong p-5">
                 <p className="font-semibold">No coach priority yet</p>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
                   Import a range session to unlock club-specific practice recommendations.
@@ -383,7 +396,30 @@ export default async function DashboardPage() {
               description="Open saved round imports or inspect the full shot database."
             />
             <CardContent>
-              <div className="overflow-hidden rounded-xl border bg-white/80">
+              <DataTableFrame
+                mobile={
+                  <MobileDataList>
+                    {data.recentSessions.length > 0 ? (
+                      data.recentSessions.map((session) => (
+                        <MobileDataCard
+                          key={session.id}
+                          href={isRoundSession(session.type) ? `/rounds/${session.id}` : "/shots"}
+                          title={session.fileName ?? session.courseName ?? "Untitled import"}
+                          subtitle={formatDate(session.date)}
+                          action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
+                        >
+                          <DataPair label="Shots" value={integerFormatter.format(session.shotCount)} />
+                          <DataPair label="Raw rows" value={integerFormatter.format(session.rawRowCount)} />
+                        </MobileDataCard>
+                      ))
+                    ) : (
+                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                        No imports yet. Start with the CSV import flow.
+                      </div>
+                    )}
+                  </MobileDataList>
+                }
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -431,7 +467,7 @@ export default async function DashboardPage() {
                     ) : null}
                   </TableBody>
                 </Table>
-              </div>
+              </DataTableFrame>
             </CardContent>
           </DataPanel>
         </section>
@@ -456,7 +492,7 @@ export default async function DashboardPage() {
                   key={club.id}
                   href={`/bag/${club.id}`}
                   prefetch={false}
-                  className="grid gap-3 rounded-[8px] border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -477,7 +513,7 @@ export default async function DashboardPage() {
                 </Link>
               ))}
               {data.bagPreview.length === 0 ? (
-                <div className="rounded-[8px] border bg-[#f9fafb] p-6 text-center">
+                <div className="apple-panel p-6 text-center">
                   <p className="font-medium">No active clubs yet</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Import a Rapsodo CSV and the bag map will build automatically.
@@ -502,7 +538,7 @@ export default async function DashboardPage() {
             <CardContent>
               {data.latestRound ? (
                 <div className="space-y-4">
-                  <div className="rounded-[8px] border bg-[#f9fafb] p-4">
+                  <div className="apple-panel-strong p-4">
                     <p className="text-sm text-muted-foreground">
                       {formatDate(data.latestRound.date)} - {formatSessionType(data.latestRound.type)}
                     </p>
@@ -535,7 +571,7 @@ export default async function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-[8px] border bg-[#f9fafb] p-6">
+                <div className="apple-panel p-6">
                   <p className="font-medium">No round imports yet</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
                     Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
@@ -628,10 +664,10 @@ function RouteCard({
     <Link
       href={route.href}
       prefetch={false}
-      className="group grid min-h-36 gap-4 rounded-[8px] border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300"
+      className="apple-panel-strong group grid min-h-36 gap-4 p-4 transition-colors hover:border-emerald-300"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className={`grid size-10 place-items-center rounded-[8px] ${route.accent}`}>
+        <div className={`grid size-10 place-items-center rounded-lg ${route.accent}`}>
           <route.icon className="size-5" />
         </div>
         <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
@@ -649,7 +685,7 @@ function RouteCard({
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-white px-3 py-2">
+    <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-lg font-semibold tracking-normal">{value}</p>
     </div>
@@ -658,7 +694,7 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
-    <div className="flex items-center justify-between rounded-[8px] border bg-[#f9fafb] px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">
         {typeof value === "number" ? integerFormatter.format(value) : value ?? "--"}

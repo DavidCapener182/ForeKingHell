@@ -19,6 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+  PageShell,
+} from "@/components/premium";
 import { sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
@@ -43,8 +50,7 @@ export default async function RoundsPage() {
   const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+    <PageShell size="6xl">
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
@@ -107,7 +113,49 @@ export default async function RoundsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-[8px] border">
+              <DataTableFrame
+                mobile={
+                  <MobileDataList>
+                    {rounds.length > 0 ? (
+                      rounds.map((round) => (
+                        <MobileDataCard
+                          key={round.id}
+                          href={`/rounds/${round.id}`}
+                          title={round.courseName ?? round.fileName ?? "Untitled round"}
+                          subtitle={formatDate(round.date)}
+                          action={
+                            <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                              {formatSessionType(round.type)}
+                            </Badge>
+                          }
+                        >
+                          <DataPair
+                            label="Score"
+                            value={round.totalScore === null ? "--" : integerFormatter.format(round.totalScore)}
+                          />
+                          <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
+                          <DataPair
+                            label="Putts"
+                            value={round.totalPutts === null ? "--" : integerFormatter.format(round.totalPutts)}
+                          />
+                          <DataPair
+                            label="Data"
+                            value={
+                              round.type === "real_round"
+                                ? "Scorecard only"
+                                : `${integerFormatter.format(round.shotCount)} shots`
+                            }
+                          />
+                        </MobileDataCard>
+                      ))
+                    ) : (
+                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                        No saved rounds yet. Import a simulated-course CSV or add a real scorecard.
+                      </div>
+                    )}
+                  </MobileDataList>
+                }
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -159,7 +207,7 @@ export default async function RoundsPage() {
                     ) : null}
                   </TableBody>
                 </Table>
-              </div>
+              </DataTableFrame>
             </CardContent>
           </Card>
 
@@ -171,7 +219,7 @@ export default async function RoundsPage() {
             <CardContent>
               {latestRound ? (
                 <div className="space-y-4">
-                  <div className="rounded-[8px] border bg-[#f9fafb] p-4">
+                  <div className="apple-panel-strong p-4">
                     <p className="text-sm text-muted-foreground">
                       {formatDate(latestRound.date)} - {formatSessionType(latestRound.type)}
                     </p>
@@ -203,8 +251,7 @@ export default async function RoundsPage() {
             </CardContent>
           </Card>
         </section>
-      </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -262,7 +309,7 @@ async function getRounds() {
 
 function StatTile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-3xl font-semibold tracking-normal">
         {typeof value === "number" ? integerFormatter.format(value) : value}
@@ -273,7 +320,7 @@ function StatTile({ label, value }: { label: string; value: number | string }) {
 
 function HandicapStatTile({ label, summary }: { label: string; summary: HandicapSummary }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-3xl font-semibold tracking-normal">
         {formatHandicapValue(summary.value)}
@@ -313,7 +360,7 @@ function HandicapTrend({ summary }: { summary: HandicapSummary }) {
 
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
-    <div className="flex items-center justify-between rounded-[8px] border bg-[#f9fafb] px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">
         {typeof value === "number" ? integerFormatter.format(value) : value ?? "--"}

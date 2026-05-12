@@ -141,58 +141,72 @@ type ShotRow = TodayPracticeShot & {
   clubSort: number;
 };
 
+const practiceShotSelect = {
+  id: shots.id,
+  sessionId: shots.sessionId,
+  fileName: sessions.fileName,
+  sessionType: sessions.type,
+  courseName: sessions.courseName,
+  sessionDate: sessions.date,
+  shotAt: shots.shotAt,
+  shotNumber: shots.shotNumber,
+  clubType: shots.clubType,
+  shotCategory: shots.shotCategory,
+  carryYd: shots.carryYd,
+  totalYd: shots.totalYd,
+  sideCarryYd: shots.sideCarryYd,
+  launchDirectionDeg: shots.launchDirectionDeg,
+  launchAngleDeg: shots.launchAngleDeg,
+  ballSpeedMph: shots.ballSpeedMph,
+  clubSpeedMph: shots.clubSpeedMph,
+  smashFactor: shots.smashFactor,
+  apexFt: shots.apexFt,
+  descentAngleDeg: shots.descentAngleDeg,
+  attackAngleDeg: shots.attackAngleDeg,
+  clubPathDeg: shots.clubPathDeg,
+};
+
 export async function getTodayPracticeData(
   filters: TodayPracticeFilters = {},
 ): Promise<TodayPracticeData> {
   const db = getDb();
   const userId = getDefaultUserId();
   const requestedDate = filters.date;
-  const dateKey = validDateKey(requestedDate) ? requestedDate : localDateKey(new Date());
-  const bounds = dayBounds(dateKey);
+  const hasExplicitDate = validDateKey(requestedDate);
+  let dateKey = hasExplicitDate ? requestedDate : localDateKey(new Date());
+  let defaultSessionId = "";
 
-  const todayRows = await db
-    .select({
-      id: shots.id,
-      sessionId: shots.sessionId,
-      fileName: sessions.fileName,
-      sessionType: sessions.type,
-      courseName: sessions.courseName,
-      sessionDate: sessions.date,
-      shotAt: shots.shotAt,
-      shotNumber: shots.shotNumber,
-      clubType: shots.clubType,
-      shotCategory: shots.shotCategory,
-      carryYd: shots.carryYd,
-      totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
-      launchDirectionDeg: shots.launchDirectionDeg,
-      launchAngleDeg: shots.launchAngleDeg,
-      ballSpeedMph: shots.ballSpeedMph,
-      clubSpeedMph: shots.clubSpeedMph,
-      smashFactor: shots.smashFactor,
-      apexFt: shots.apexFt,
-      descentAngleDeg: shots.descentAngleDeg,
-      attackAngleDeg: shots.attackAngleDeg,
-      clubPathDeg: shots.clubPathDeg,
-    })
-    .from(shots)
-    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-    .innerJoin(clubs, eq(shots.clubId, clubs.id))
-    .where(
-      and(
-        eq(shots.userId, userId),
-        eq(sessions.userId, userId),
-        eq(clubs.userId, userId),
-        gte(shots.shotAt, bounds.start),
-        lt(shots.shotAt, bounds.end),
-      ),
-    )
-    .orderBy(asc(sessions.date), asc(sessions.fileName), asc(shots.shotNumber));
+  if (!hasExplicitDate && filters.sessionId) {
+    const sessionDateKey = await findSessionDateKey(db, userId, filters.sessionId);
 
-  const allTodayRows = toShotRows(todayRows);
+    if (sessionDateKey) {
+      dateKey = sessionDateKey;
+      defaultSessionId = filters.sessionId;
+    }
+  }
+
+  let bounds = dayBounds(dateKey);
+  let allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
+
+  if (!hasExplicitDate && !filters.sessionId && allTodayRows.length === 0) {
+    const latestSession = await findLatestImportedSession(db, userId, filters.club);
+
+    if (latestSession) {
+      dateKey = localDateKey(latestSession.date);
+      defaultSessionId = latestSession.id;
+      bounds = dayBounds(dateKey);
+      allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
+    }
+  }
+
   const sessionIds = new Set(allTodayRows.map((shot) => shot.sessionId));
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
-  const sessionId = filters.sessionId && sessionIds.has(filters.sessionId) ? filters.sessionId : "";
+  const sessionId =
+    defaultSessionId && sessionIds.has(defaultSessionId)
+      ? defaultSessionId
+      : filters.sessionId && sessionIds.has(filters.sessionId)
+        ? filters.sessionId
+        : "";
   const club = filters.club && clubTypes.has(filters.club) ? filters.club : "";
   const filteredTodayRows = allTodayRows.filter((shot) => {
     if (sessionId && shot.sessionId !== sessionId) {
@@ -209,30 +223,7 @@ export async function getTodayPracticeData(
   const previousRows =
     comparisonClubTypes.length > 0
       ? await db
-          .select({
-            id: shots.id,
-            sessionId: shots.sessionId,
-            fileName: sessions.fileName,
-            sessionType: sessions.type,
-            courseName: sessions.courseName,
-            sessionDate: sessions.date,
-            shotAt: shots.shotAt,
-            shotNumber: shots.shotNumber,
-            clubType: shots.clubType,
-            shotCategory: shots.shotCategory,
-            carryYd: shots.carryYd,
-            totalYd: shots.totalYd,
-            sideCarryYd: shots.sideCarryYd,
-            launchDirectionDeg: shots.launchDirectionDeg,
-            launchAngleDeg: shots.launchAngleDeg,
-            ballSpeedMph: shots.ballSpeedMph,
-            clubSpeedMph: shots.clubSpeedMph,
-            smashFactor: shots.smashFactor,
-            apexFt: shots.apexFt,
-            descentAngleDeg: shots.descentAngleDeg,
-            attackAngleDeg: shots.attackAngleDeg,
-            clubPathDeg: shots.clubPathDeg,
-          })
+          .select(practiceShotSelect)
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
           .where(
@@ -255,6 +246,65 @@ export async function getTodayPracticeData(
     previousRows: previousShotRows,
     filters: { sessionId, club },
   });
+}
+
+async function fetchPracticeRowsForBounds(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  bounds: { start: Date; end: Date },
+) {
+  return db
+    .select(practiceShotSelect)
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .innerJoin(clubs, eq(shots.clubId, clubs.id))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(sessions.userId, userId),
+        eq(clubs.userId, userId),
+        gte(shots.shotAt, bounds.start),
+        lt(shots.shotAt, bounds.end),
+      ),
+    )
+    .orderBy(asc(sessions.date), asc(sessions.fileName), asc(shots.shotNumber));
+}
+
+async function findSessionDateKey(db: ReturnType<typeof getDb>, userId: string, sessionId: string) {
+  const [session] = await db
+    .select({ date: sessions.date })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.id, sessionId)))
+    .limit(1);
+
+  return session ? localDateKey(session.date) : null;
+}
+
+async function findLatestImportedSession(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  clubFilter: string | undefined,
+) {
+  const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId), eq(clubs.userId, userId)];
+  const club = clubFilter && isTrackedClubType(clubFilter) ? clubFilter : "";
+
+  if (club) {
+    clauses.push(eq(shots.clubType, club));
+  }
+
+  const [session] = await db
+    .select({
+      id: sessions.id,
+      date: sessions.date,
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .innerJoin(clubs, eq(shots.clubId, clubs.id))
+    .where(and(...clauses))
+    .orderBy(desc(sessions.createdAt), desc(sessions.date), desc(shots.shotAt), desc(shots.shotNumber))
+    .limit(1);
+
+  return session ?? null;
 }
 
 function buildTodayPracticeData({

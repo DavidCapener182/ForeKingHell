@@ -2,17 +2,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
-  BarChart3,
-  Database,
-  Gauge,
   Trophy,
   Target,
   Upload,
-  type LucideIcon,
 } from "lucide-react";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +16,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+  PageHeader,
+  PageShell,
+  StatusPill,
+} from "@/components/premium";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -64,8 +68,7 @@ export default async function BagPage() {
         );
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <PageShell>
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
@@ -81,26 +84,12 @@ export default async function BagPage() {
           </Button>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                Bag map
-              </Badge>
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                Stock yardages
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                Rolling median carry, outlier filtering, dispersion, and confidence by club.
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-3 lg:min-w-[520px]">
-              <StatTile label="Clubs" value={bag.length.toString()} icon={Database} />
-              <StatTile label="Shots" value={totalShots.toString()} icon={BarChart3} />
-              <StatTile label="Confidence" value={`${averageConfidence}%`} icon={Gauge} />
-            </div>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
+        <PageHeader
+          eyebrow={<StatusPill>Bag map</StatusPill>}
+          title="Stock yardages"
+          description="Rolling median carry, outlier filtering, dispersion, and confidence by club."
+          actions={
+            <>
             <Button asChild variant="outline">
               <Link href="/bag/longest">
                 <Trophy className="size-4" />
@@ -113,8 +102,14 @@ export default async function BagPage() {
                 Achievements
               </Link>
             </Button>
-          </div>
-        </header>
+            </>
+          }
+          metrics={[
+            { label: "Clubs", value: bag.length.toString(), detail: "Tracked active clubs" },
+            { label: "Shots", value: totalShots.toString(), detail: "Saved launch monitor rows" },
+            { label: "Confidence", value: `${averageConfidence}%`, detail: "Average stock confidence" },
+          ]}
+        />
 
         {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
 
@@ -198,7 +193,7 @@ export default async function BagPage() {
                   </div>
 
                   {club.isShortGameTouch ? (
-                    <p className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
                       Round chips and pitches are shown as touch data, not full-swing stock yardage.
                     </p>
                   ) : null}
@@ -233,8 +228,7 @@ export default async function BagPage() {
             </CardContent>
           </Card>
         ) : null}
-      </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -327,6 +321,10 @@ type GappingRow = {
   carryYd: number | null;
   playNumberYd: number | null;
   gapToNextYd: number | null;
+  targetCarryYd: number | null;
+  targetPlayNumberYd: number | null;
+  workOnYd: number | null;
+  targetGapYd: number | null;
   sampleSize: number;
   confidenceScore: number;
   confidenceLabel: string;
@@ -335,7 +333,7 @@ type GappingRow = {
 function buildGappingRows(bag: BagClub[]): GappingRow[] {
   const stockBag = bag.filter((club) => !club.isShortGameTouch);
 
-  return stockBag.map((club, index) => {
+  const baseRows: GappingRow[] = stockBag.map((club, index) => {
     const nextClub = stockBag
       .slice(index + 1)
       .find((candidate) => candidate.stock.carryMedianYd !== null);
@@ -351,72 +349,190 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
       carryYd: club.stock.carryMedianYd,
       playNumberYd: club.stock.recommendedPlayNumberYd,
       gapToNextYd: gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
+      targetCarryYd: null,
+      targetPlayNumberYd: null,
+      workOnYd: null,
+      targetGapYd: null,
       sampleSize: club.stock.sampleSize,
       confidenceScore: club.stock.confidenceScore,
       confidenceLabel: club.stock.label,
     };
   });
+
+  const rowsWithCarry = baseRows
+    .map((row, index) => ({ row, index }))
+    .filter((entry): entry is { row: GappingRow & { carryYd: number }; index: number } => entry.row.carryYd !== null);
+  const first = rowsWithCarry[0];
+  const last = rowsWithCarry[rowsWithCarry.length - 1];
+
+  if (!first || !last || first.index === last.index) {
+    return baseRows;
+  }
+
+  const targetGapYd = roundOne((first.row.carryYd - last.row.carryYd) / (last.index - first.index));
+
+  if (targetGapYd <= 0) {
+    return baseRows;
+  }
+
+  return baseRows.map((row, index) => {
+    const targetCarryYd = roundOne(first.row.carryYd - targetGapYd * (index - first.index));
+
+    return {
+      ...row,
+      targetCarryYd,
+      targetPlayNumberYd: roundToNearestFive(targetCarryYd),
+      workOnYd: row.carryYd === null ? null : roundOne(targetCarryYd - row.carryYd),
+      targetGapYd,
+    };
+  });
 }
 
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
+  const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
+
   return (
     <Card className="premium-card">
       <CardHeader>
         <CardTitle className="text-2xl tracking-normal">Carry gapping</CardTitle>
         <CardDescription>
-          Stock carry by club, with the gap to the next shorter club.
+          Stock carry by club, with target carry numbers to make the gaps more consistent.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {targetGapYd !== null ? <GappingRecommendations rows={rows} targetGapYd={targetGapYd} /> : null}
         <CarryGappingBars rows={rows} />
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Club</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead className="text-right">Carry</TableHead>
-              <TableHead className="text-right">Play</TableHead>
-              <TableHead className="text-right">Gap</TableHead>
-              <TableHead className="text-right">Sample</TableHead>
-              <TableHead className="text-right">Confidence</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>
-                  <Link
-                    href={`/bag/${row.id}`}
-                    className="font-semibold text-foreground underline-offset-4 hover:underline"
-                  >
-                    {formatClubType(row.clubType)}
-                  </Link>
-                </TableCell>
-                <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
-                  {row.brandModel}
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {formatMetric(row.carryYd)}
-                  {row.carryYd === null ? "" : " yd"}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatMetric(row.playNumberYd)}
-                  {row.playNumberYd === null ? "" : " yd"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <GapBadge gapYd={row.gapToNextYd} />
-                </TableCell>
-                <TableCell className="text-right">{row.sampleSize}</TableCell>
-                <TableCell className="text-right">
-                  <span className="font-medium">{row.confidenceScore}%</span>
-                  <span className="ml-2 text-muted-foreground">{row.confidenceLabel}</span>
-                </TableCell>
+        <DataTableFrame
+          mobile={
+            <MobileDataList>
+              {rows.map((row) => (
+                <MobileDataCard
+                  key={row.id}
+                  href={`/bag/${row.id}`}
+                  title={formatClubType(row.clubType)}
+                  subtitle={row.brandModel}
+                  action={<GapBadge gapYd={row.gapToNextYd} />}
+                >
+                  <DataPair label="Carry" value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`} />
+                  <DataPair label="Play" value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`} />
+                  <DataPair label="Target" value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`} />
+                  <DataPair label="Work on" value={<WorkOnBadge workOnYd={row.workOnYd} />} />
+                  <DataPair label="Confidence" value={`${row.confidenceScore}% ${row.confidenceLabel}`} />
+                </MobileDataCard>
+              ))}
+            </MobileDataList>
+          }
+        >
+          <Table className="min-w-[980px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Club</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead className="text-right">Carry</TableHead>
+                <TableHead className="text-right">Play</TableHead>
+                <TableHead className="text-right">Gap</TableHead>
+                <TableHead className="text-right">Target</TableHead>
+                <TableHead className="text-right">Work on</TableHead>
+                <TableHead className="text-right">Sample</TableHead>
+                <TableHead className="text-right">Confidence</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Link
+                      href={`/bag/${row.id}`}
+                      className="font-semibold text-foreground underline-offset-4 hover:underline"
+                    >
+                      {formatClubType(row.clubType)}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                    {row.brandModel}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {formatMetric(row.carryYd)}
+                    {row.carryYd === null ? "" : " yd"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatMetric(row.playNumberYd)}
+                    {row.playNumberYd === null ? "" : " yd"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <GapBadge gapYd={row.gapToNextYd} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="font-medium">
+                      {formatMetric(row.targetCarryYd)}
+                      {row.targetCarryYd === null ? "" : " yd"}
+                    </span>
+                    {row.targetPlayNumberYd === null ? null : (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {row.targetPlayNumberYd} play
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <WorkOnBadge workOnYd={row.workOnYd} />
+                  </TableCell>
+                  <TableCell className="text-right">{row.sampleSize}</TableCell>
+                  <TableCell className="text-right">
+                    <span className="font-medium">{row.confidenceScore}%</span>
+                    <span className="ml-2 text-muted-foreground">{row.confidenceLabel}</span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
       </CardContent>
     </Card>
+  );
+}
+
+function GappingRecommendations({ rows, targetGapYd }: { rows: GappingRow[]; targetGapYd: number }) {
+  const priorities = rows
+    .filter((row): row is GappingRow & { workOnYd: number; targetCarryYd: number } => row.workOnYd !== null && row.targetCarryYd !== null)
+    .filter((row) => Math.abs(row.workOnYd) > 2)
+    .sort((left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd))
+    .slice(0, 3);
+
+  return (
+    <div className="apple-panel grid gap-3 p-4 lg:grid-cols-[0.7fr_1.3fr]">
+      <div className="apple-panel-strong p-4">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Target gap</p>
+        <p className="mt-2 text-4xl font-semibold tracking-normal">{numberFormatter.format(targetGapYd)} yd</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Straight-line ladder from your longest full club to your shortest full club.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {priorities.length > 0 ? (
+          priorities.map((row) => (
+            <Link
+              key={row.id}
+              href={`/bag/${row.id}`}
+              className="apple-panel-strong p-4 transition-colors hover:border-emerald-300"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-lg font-semibold">{formatClubType(row.clubType)}</p>
+                <WorkOnBadge workOnYd={row.workOnYd} />
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">Target carry</p>
+              <p className="text-2xl font-semibold tracking-normal">{numberFormatter.format(row.targetCarryYd)} yd</p>
+            </Link>
+          ))
+        ) : (
+          <div className="apple-panel-strong p-4 md:col-span-3">
+            <p className="font-semibold">Gaps are already close</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Every club with a target is within 2 yd of the current carry ladder.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -425,13 +541,13 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
   const maxCarry = Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
 
   return (
-    <div className="grid gap-3 rounded-xl border bg-[#f9fafb] p-4">
+    <div className="apple-panel grid gap-3 p-4">
       {rows.map((row) => {
         const carry = row.carryYd ?? 0;
         const width = Math.max(8, (carry / maxCarry) * 100);
 
         return (
-          <Link key={row.id} href={`/bag/${row.id}`} className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white">
+          <Link key={row.id} href={`/bag/${row.id}`} className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/80">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold">{formatClubType(row.clubType)}</span>
               <span className="text-muted-foreground">
@@ -467,23 +583,31 @@ function GapBadge({ gapYd }: { gapYd: number | null }) {
   );
 }
 
-function StatTile({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  icon: LucideIcon;
-}) {
+function WorkOnBadge({ workOnYd }: { workOnYd: number | null }) {
+  if (workOnYd === null) {
+    return <span className="text-muted-foreground">--</span>;
+  }
+
+  const absoluteYards = Math.abs(workOnYd);
+
+  if (absoluteYards <= 2) {
+    return (
+      <span className="inline-flex min-w-24 justify-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+        Hold window
+      </span>
+    );
+  }
+
+  const tone =
+    absoluteYards > 10
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+  const direction = workOnYd > 0 ? "Add" : "Take off";
+
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
-      <div className="mb-2 flex items-center justify-between text-muted-foreground">
-        <p className="text-xs font-medium">{label}</p>
-        <Icon className="size-4" />
-      </div>
-      <p className="text-3xl font-semibold tracking-normal">{value}</p>
-    </div>
+    <span className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>
+      {direction} {numberFormatter.format(absoluteYards)} yd
+    </span>
   );
 }
 
@@ -516,7 +640,7 @@ function MiniDispersion({
   const maxSide = Math.max(45, ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)));
 
   return (
-    <svg viewBox="0 0 360 150" className="h-36 w-full rounded-[8px] border bg-[#f9fafb]">
+    <svg viewBox="0 0 360 150" className="h-36 w-full rounded-xl border bg-white/80">
       <rect x="0" y="0" width="360" height="150" fill="#f9fafb" />
       {[60, 120, 180, 240].map((yard) => {
         const y = 140 - (yard / maxCarry) * 120;
@@ -552,7 +676,7 @@ function MiniDispersion({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
     </div>
@@ -561,4 +685,12 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function roundToNearestFive(value: number) {
+  return Math.round(value / 5) * 5;
 }

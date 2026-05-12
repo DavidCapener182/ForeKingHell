@@ -46,6 +46,7 @@ const navGroups = [
       { href: "/compare", label: "Compare", icon: GitCompareArrows, isActive: (pathname: string) => pathname.startsWith("/compare") },
       { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
       { href: "/shots", label: "Shots", icon: Database, isActive: (pathname: string) => pathname.startsWith("/shots") },
+      { href: "/rapsodo", label: "Rapsodo", icon: Upload, isActive: (pathname: string) => pathname.startsWith("/rapsodo") },
     ],
   },
   {
@@ -68,6 +69,7 @@ const mobilePrimaryItems = [
 const moreItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/compare", label: "Compare", icon: GitCompareArrows },
+  { href: "/rapsodo", label: "Rapsodo", icon: Upload },
   { href: "/shots", label: "Shots", icon: Database },
   { href: "/courses", label: "Courses", icon: MapPinned },
   { href: "/handicap", label: "Handicap", icon: Calculator },

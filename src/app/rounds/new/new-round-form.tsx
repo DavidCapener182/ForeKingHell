@@ -52,7 +52,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
 
   if (!selectedTeeSet) {
     return (
-      <div className="rounded-2xl border bg-[#f9fafb] p-6 text-center">
+      <div className="apple-panel p-6 text-center">
         <p className="font-semibold">No courses with tee sets yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Create or seed a course first, then come back to add a real round.
@@ -65,7 +65,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
     <form action={createRoundAction} className="grid gap-5">
       <input type="hidden" name="holeCount" value={holes.length} />
 
-      <div className="grid gap-4 rounded-2xl border bg-[#f9fafb] p-4 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className="apple-panel grid gap-4 p-4 lg:grid-cols-[1.2fr_0.8fr]">
         <label className="grid gap-2 text-sm font-medium">
           <span>Course / tee</span>
           <select
@@ -112,7 +112,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
 
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {holes.map((hole, index) => (
-            <div key={hole.holeNumber} className="rounded-xl border bg-[#f9fafb] p-3">
+            <div key={hole.holeNumber} className="apple-panel-strong p-3">
               <input type="hidden" name={`holeNumber-${index}`} value={hole.holeNumber} />
               <input type="hidden" name={`par-${index}`} value={hole.par} />
               <input type="hidden" name={`yards-${index}`} value={hole.yards} />

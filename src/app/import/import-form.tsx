@@ -9,8 +9,10 @@ import {
   Award,
   CheckCircle2,
   Database,
+  ExternalLink,
   Flag,
   FileText,
+  GitCompareArrows,
   ImageIcon,
   Loader2,
   MapPinned,
@@ -26,6 +28,12 @@ import { notifyAchievementUnlocks } from "@/components/achievement-notifications
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+} from "@/components/premium";
 import {
   Card,
   CardContent,
@@ -49,6 +57,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  achievementUnlockHref,
+  clubHref,
+  shotRowsHref,
+} from "@/lib/alert-links";
 import { cn } from "@/lib/utils";
 import {
   type CourseInferenceResult,
@@ -77,6 +90,7 @@ type SaveState =
   | {
       status: "success";
       message: string;
+      savedSessionId: string | null;
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
     }
@@ -481,6 +495,7 @@ export function ImportForm() {
           message: `Saved ${result.shotCount} shots and ${result.rawRowCount} raw rows from ${result.sessionCount} CSV ${
             result.sessionCount === 1 ? "file" : "files"
           } across ${result.clubCount} detected clubs.${skippedText}`,
+          savedSessionId: result.savedSessionId,
           longestShotNotifications: result.longestShotNotifications,
           achievementUnlockNotifications: result.achievementUnlockNotifications,
         });
@@ -572,30 +587,74 @@ export function ImportForm() {
             </AlertTitle>
             <AlertDescription>
               <p>{saveState.message}</p>
+              {saveState.status === "success" ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {saveState.savedSessionId ? (
+                    <Button asChild size="sm" className="bg-[#111827] text-white">
+                      <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
+                        <GitCompareArrows className="size-4" />
+                        Compare this session
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/achievements">
+                      <Award className="size-4" />
+                      View achievements
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               {saveState.status === "success" && saveState.longestShotNotifications.length > 0 ? (
-                <div className="mt-3 rounded-[8px] border bg-[#f9fafb] p-3 text-foreground">
+                <div className="apple-panel mt-3 p-3 text-foreground">
                   <p className="text-sm font-medium">
                     {saveState.longestShotNotifications.length === 1
                       ? "Personal best beaten"
                       : "Personal bests beaten"}
                   </p>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
                     {saveState.longestShotNotifications.map((notification) => (
-                      <li key={`${notification.clubId}-${notification.shotDistanceYd}-${notification.fileName}`}>
-                        <span className="font-medium text-foreground">{notification.clubLabel}</span>
-                        {": "}
-                        {formatMetric(notification.shotDistanceYd)} yd {notification.distanceType}
-                        {" beat "}
-                        {formatMetric(notification.previousDistanceYd)} yd
-                        {notification.shotNumber === null ? "" : ` on shot ${notification.shotNumber}`}
-                        {"."}
+                      <li
+                        key={`${notification.clubId}-${notification.shotDistanceYd}-${notification.fileName}`}
+                        className="flex flex-col gap-2 rounded-lg bg-white/90 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span>
+                          <Link
+                            href={clubHref(notification)}
+                            className="font-medium text-foreground underline-offset-4 hover:underline"
+                          >
+                            {notification.clubLabel}
+                          </Link>
+                          {": "}
+                          {formatMetric(notification.shotDistanceYd)} yd {notification.distanceType}
+                          {" beat "}
+                          {formatMetric(notification.previousDistanceYd)} yd
+                          {notification.shotNumber === null ? "" : ` on shot ${notification.shotNumber}`}
+                          {"."}
+                        </span>
+                        <span className="flex shrink-0 flex-wrap gap-2">
+                          <Link
+                            href={clubHref(notification)}
+                            className="inline-flex h-8 items-center gap-1 rounded-lg border bg-white/80 px-2 text-xs font-medium text-foreground hover:bg-white"
+                          >
+                            Club page
+                            <ExternalLink className="size-3.5" />
+                          </Link>
+                          <Link
+                            href={shotRowsHref(notification)}
+                            className="inline-flex h-8 items-center gap-1 rounded-lg border bg-white/80 px-2 text-xs font-medium text-foreground hover:bg-white"
+                          >
+                            Shot rows
+                            <ExternalLink className="size-3.5" />
+                          </Link>
+                        </span>
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : null}
               {saveState.status === "success" && saveState.achievementUnlockNotifications.length > 0 ? (
-                <div className="mt-3 rounded-[8px] border bg-emerald-50 p-3 text-foreground">
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-foreground">
                   <p className="text-sm font-medium">
                     {saveState.achievementUnlockNotifications.length === 1
                       ? "Achievement unlocked"
@@ -603,34 +662,30 @@ export function ImportForm() {
                   </p>
                   <ul className="mt-2 space-y-2 text-sm">
                     {saveState.achievementUnlockNotifications.map((achievement) => (
-                      <li
-                        key={`${achievement.achievementId}-${achievement.unlockedAt}`}
-                        className="flex flex-col gap-1 rounded-[8px] bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span>
-                          <span className="font-medium">{achievement.name}</span>
-                          <span className="text-muted-foreground"> - {achievement.description}</span>
-                        </span>
-                        <Badge className="w-fit bg-[#111827] text-white hover:bg-[#111827]">
-                          +{achievement.xpAwarded.toLocaleString("en-GB")} XP
-                        </Badge>
+                      <li key={`${achievement.achievementId}-${achievement.unlockedAt}`}>
+                        <Link
+                          href={achievementUnlockHref(achievement.achievementId)}
+                          className="flex flex-col gap-1 rounded-lg bg-white/90 px-3 py-2 transition-colors hover:bg-emerald-100/60 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <span>
+                            <span className="font-medium">{achievement.name}</span>
+                            <span className="text-muted-foreground"> - {achievement.description}</span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-2">
+                            <Badge className="w-fit bg-[#111827] text-white hover:bg-[#111827]">
+                              +{achievement.xpAwarded.toLocaleString("en-GB")} XP
+                            </Badge>
+                            <ExternalLink className="size-3.5 text-emerald-700" />
+                          </span>
+                        </Link>
                       </li>
                     ))}
                   </ul>
                 </div>
               ) : null}
-              {saveState.status === "success" ? (
-                <Button asChild variant="outline" size="sm" className="mt-3">
-                  <Link href="/achievements">
-                    <Award className="size-4" />
-                    View achievements
-                  </Link>
-                </Button>
-              ) : null}
             </AlertDescription>
           </Alert>
         ) : null}
-
         <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
           <Card className="premium-card">
             <CardHeader>
@@ -653,7 +708,7 @@ export function ImportForm() {
 
               <div
                 className={cn(
-                  "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed bg-[#f9fafb] px-4 py-8 text-center transition-colors",
+                  "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 px-4 py-8 text-center transition-colors",
                   isDragging ? "border-emerald-500 bg-emerald-50" : "border-border hover:border-emerald-400",
                 )}
                 onClick={() => fileInputRef.current?.click()}
@@ -708,7 +763,7 @@ export function ImportForm() {
                     {parsedFiles.map((file) => (
                       <div
                         key={file.id}
-                        className="flex items-center justify-between gap-3 rounded-[8px] border bg-white px-3 py-2"
+                        className="flex items-center justify-between gap-3 rounded-lg bg-white/90 px-3 py-2 ring-1 ring-slate-200/80"
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <FileText className="size-4 shrink-0 text-sky-500" />
@@ -767,7 +822,7 @@ export function ImportForm() {
               </div>
 
               {isCourseUpload ? (
-                <div className="space-y-4 rounded-[8px] border bg-[#f9fafb] p-4">
+                <div className="apple-panel space-y-4 p-4">
                   <div className="flex items-start gap-3">
                     <MapPinned className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                     <div className="flex-1 space-y-3">
@@ -792,7 +847,7 @@ export function ImportForm() {
                           event.currentTarget.value = "";
                         }}
                       />
-                      <div className="flex flex-col gap-2 rounded-[8px] border bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="text-sm font-medium">Scorecard screenshot</p>
                           <p className="text-xs leading-5 text-muted-foreground">
@@ -852,7 +907,7 @@ export function ImportForm() {
                         value={scorecardText}
                         onChange={(event) => setScorecardText(event.target.value)}
                         placeholder={"1,4,423,Opening\n2,5,532\n3,3,177"}
-                        className="min-h-28 w-full resize-y rounded-[8px] border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                        className="min-h-28 w-full resize-y rounded-lg border border-input bg-white/90 px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                       />
                       <p className="text-xs text-muted-foreground">
                         {scorecard.holes.length > 0
@@ -965,7 +1020,47 @@ export function ImportForm() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-[8px] border">
+            <DataTableFrame
+              mobile={
+                <MobileDataList>
+                  {previewShots.length > 0 ? (
+                    previewShots.map((shot) => (
+                      <MobileDataCard
+                        key={`${shot.fileName}-${shot.rowNumber}-${shot.clubKey}`}
+                        title={`${shot.clubLabel} shot ${shot.fileShotNumber}`}
+                        subtitle={shot.fileName}
+                        action={
+                          isCourseUpload ? (
+                            <Badge variant="outline">
+                              {shot.courseShot
+                                ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}`
+                                : "No hole"}
+                            </Badge>
+                          ) : null
+                        }
+                      >
+                        <DataPair label="Brand" value={shot.clubBrand ?? "--"} />
+                        <DataPair label="Carry yd" value={formatMetric(shot.carryYd)} />
+                        <DataPair label="Total yd" value={formatMetric(shot.totalYd)} />
+                        <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
+                        <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
+                        <DataPair label="Side yd" value={formatMetric(shot.sideCarryYd)} />
+                        {isCourseUpload ? (
+                          <DataPair
+                            label="Remain"
+                            value={formatMetric(shot.courseShot?.distanceRemainingYd ?? null)}
+                          />
+                        ) : null}
+                      </MobileDataCard>
+                    ))
+                  ) : (
+                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                      Select one or more CSV files to preview shots.
+                    </div>
+                  )}
+                </MobileDataList>
+              }
+            >
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1021,7 +1116,7 @@ export function ImportForm() {
                   )}
                 </TableBody>
               </Table>
-            </div>
+            </DataTableFrame>
           </CardContent>
         </Card>
       </div>
@@ -1060,7 +1155,7 @@ function ImportStepper({
     <Card className="premium-card">
       <CardContent className="grid gap-3 p-4 sm:grid-cols-4">
         {steps.map((step, index) => (
-          <div key={step.label} className="flex items-center gap-3 rounded-xl border bg-[#f9fafb] p-3">
+          <div key={step.label} className="apple-panel-strong flex items-center gap-3 p-3">
             <div
               className={cn(
                 "grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold",
@@ -1106,7 +1201,7 @@ function CourseOverlay({
 }) {
   if (!inference) {
     return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed bg-[#f9fafb] p-6 text-center">
+      <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 p-6 text-center">
         <MapPinned className="size-8 text-emerald-600" />
         <div className="space-y-1">
           <p className="font-medium">Waiting for a CSV and scorecard</p>
@@ -1133,7 +1228,7 @@ function CourseOverlay({
         <CourseMetric label="Holes" value={inference.completedHoleCount.toString()} />
         <CourseMetric label="Scorecard" value={`${inference.totalScorecardYards.toLocaleString("en-GB")} yd`} />
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[8px] border bg-[#f9fafb] p-3">
+      <div className="apple-panel flex flex-wrap items-center justify-between gap-3 p-3">
         <p className="text-sm text-muted-foreground">
           Edit CSV shots to move the boundary between holes. Enter score and penalties to calculate putts.
         </p>
@@ -1165,7 +1260,7 @@ function CourseMetric({
   tone?: "default" | "warning";
 }) {
   return (
-    <div className={cn("rounded-[8px] border bg-[#f9fafb] p-3", tone === "warning" && "border-amber-300 bg-amber-50")}>
+    <div className={cn("apple-panel p-3", tone === "warning" && "border-amber-300 bg-amber-50")}>
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-normal">{value}</p>
     </div>
@@ -1198,8 +1293,8 @@ function HoleOverlay({
     (score === null ? null : Math.max(0, score - hole.shots.length - penalties));
 
   return (
-    <div className="overflow-hidden rounded-[8px] border bg-white">
-      <div className="flex items-start justify-between gap-3 border-b bg-[#f9fafb] px-3 py-2">
+    <div className="apple-panel-strong overflow-hidden">
+      <div className="flex items-start justify-between gap-3 border-b bg-slate-50/80 px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">
             Hole {hole.holeNumber}
@@ -1256,7 +1351,7 @@ function HoleOverlay({
         <span className="text-center font-medium">{formatMetric(hole.progressYd)} yd</span>
         <span className="text-right text-muted-foreground">{formatMetric(hole.distanceRemainingYd)} left</span>
       </div>
-      <div className="grid gap-2 border-t bg-[#f9fafb] p-3 text-sm sm:grid-cols-3">
+      <div className="grid gap-2 border-t bg-slate-50/80 p-3 text-sm sm:grid-cols-3">
         <NumberField
           label="CSV shots"
           value={hole.shots.length}
@@ -1287,7 +1382,7 @@ function HoleOverlay({
           max={8}
           onChange={(value) => onUpdate({ penalties: value })}
         />
-        <div className="rounded-[8px] border bg-white p-2">
+        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
           <p className="text-xs text-muted-foreground">Fairway</p>
           <p className="mt-1 text-lg font-semibold tracking-normal">
             {review?.fairwayHit === null || review?.fairwayHit === undefined
@@ -1297,7 +1392,7 @@ function HoleOverlay({
                 : "Miss"}
           </p>
         </div>
-        <div className="rounded-[8px] border bg-white p-2">
+        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
           <p className="text-xs text-muted-foreground">GIR</p>
           <p className="mt-1 text-lg font-semibold tracking-normal">
             {review?.gir === null || review?.gir === undefined ? "-" : review.gir ? "Hit" : "Miss"}
@@ -1324,7 +1419,7 @@ function NumberField({
   onChange: (value: number | null) => void;
 }) {
   return (
-    <label className="rounded-[8px] border bg-white p-2">
+    <label className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
       <span className="text-xs text-muted-foreground">{label}</span>
       <Input
         type="number"
@@ -1392,6 +1487,16 @@ function formatDate(value: string) {
 
 function aggregateShotCount(parsedFiles: Array<{ parsed: { shotCount: number } }>) {
   return parsedFiles.reduce((total, file) => total + file.parsed.shotCount, 0);
+}
+
+function compareSessionHref(sessionId: string) {
+  const params = new URLSearchParams({
+    focus: "session",
+    sessionId,
+    baseline: "previous-session",
+  });
+
+  return `/compare?${params.toString()}`;
 }
 
 function readFileAsDataUrl(file: File) {

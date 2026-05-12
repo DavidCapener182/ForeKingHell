@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { AppNav } from "@/components/app-nav";
@@ -6,6 +7,18 @@ import { PwaRegister } from "@/components/pwa-register";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { getTotalXpForDefaultUser } from "@/lib/achievements/service";
 import "./globals.css";
+
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ForeKingHell",
@@ -45,7 +58,7 @@ export default async function RootLayout({
   ]);
 
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
       <body className="min-h-full flex flex-col antialiased">
         <DevServiceWorkerResetScript />
         <PwaRegister />

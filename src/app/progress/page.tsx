@@ -217,7 +217,7 @@ export default async function ProgressPage() {
                     key={priority.clubId}
                     href={`/bag/${priority.clubId}/analytics`}
                     prefetch={false}
-                    className="block rounded-xl border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300"
+                    className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -262,7 +262,7 @@ export default async function ProgressPage() {
                     key={`${event.title}-${index}`}
                     href={`/bag/${event.clubId}/analytics`}
                     prefetch={false}
-                    className="grid grid-cols-[auto_1fr] gap-3 rounded-xl border bg-[#f9fafb] p-4 hover:border-emerald-300"
+                    className="apple-panel-strong grid grid-cols-[auto_1fr] gap-3 p-4 hover:border-emerald-300"
                   >
                     <div className="mt-1 size-3 rounded-full bg-[#111827] ring-4 ring-emerald-100" />
                     <div>
@@ -288,7 +288,7 @@ function ClubMovementRow({ row }: { row: ProgressClubRow }) {
     <Link
       href={`/bag/${row.clubId}/analytics`}
       prefetch={false}
-      className="grid gap-4 rounded-xl border bg-[#f9fafb] p-4 transition-colors hover:border-emerald-300 lg:grid-cols-[1fr_1.25fr]"
+      className="apple-panel-strong grid gap-4 p-4 transition-colors hover:border-emerald-300 lg:grid-cols-[1fr_1.25fr]"
     >
       <div>
         <div className="flex flex-wrap items-center gap-2">
@@ -330,7 +330,7 @@ function DeltaTile({
     (goodWhen === "positive" ? value >= 0 : goodWhen === "negative" ? value <= 0 : Math.abs(value) <= 2);
 
   return (
-    <div className="rounded-xl border bg-white p-3">
+    <div className="rounded-xl bg-white/85 p-3 ring-1 ring-slate-200/80">
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{label}</span>
         <Icon className="size-3.5" />

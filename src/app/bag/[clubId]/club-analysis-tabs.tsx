@@ -71,7 +71,7 @@ export function ClubAnalysisTabs({
             <p className="text-sm text-muted-foreground">David Capener</p>
             <p className="font-medium">{formatClubType(clubType)}</p>
           </div>
-          <div className="ml-auto flex rounded-[8px] border bg-[#f9fafb] p-1">
+          <div className="apple-panel ml-auto flex p-1">
             <Button
               type="button"
               size="sm"
@@ -94,7 +94,7 @@ export function ClubAnalysisTabs({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 overflow-hidden rounded-[8px] border bg-white shadow-sm">
+      <div className="apple-panel-strong grid grid-cols-3 overflow-hidden">
         <TabButton
           active={activeTab === "dispersion"}
           accent={accent}
@@ -146,7 +146,7 @@ export function ClubAnalysisTabs({
             type="button"
             onClick={() => setSelectedShotId(shot.id)}
             className={cn(
-              "flex w-full items-center gap-3 rounded-[8px] border bg-white px-4 py-3 text-left text-sm transition-colors hover:bg-[#f9fafb]",
+              "flex w-full items-center gap-3 rounded-lg bg-white/85 px-4 py-3 text-left text-sm ring-1 ring-slate-200/80 transition-colors hover:bg-slate-50",
               selectedShot?.id === shot.id && "border-current",
             )}
             style={selectedShot?.id === shot.id ? { color: accent } : undefined}
@@ -185,7 +185,7 @@ function TabButton({
       onClick={onClick}
       className={cn(
         "flex h-14 items-center justify-center gap-2 border-r text-sm font-medium last:border-r-0 sm:text-base",
-        active ? "text-white" : "text-foreground hover:bg-[#f9fafb]",
+        active ? "text-white" : "text-foreground hover:bg-slate-50",
       )}
       style={active ? { background: accent } : undefined}
     >
@@ -222,9 +222,9 @@ function DispersionPanel({
   const holeYardage = 350;
   const maxDistance = Math.max(holeYardage, ...distanceValues) * 1.02;
   const maxSide = Math.max(55, ...sideValues.map(Math.abs)) * 1.15;
-  const tee = { x: 306, y: 936 };
+  const tee = { x: 322, y: 936 };
   const playHeight = 830;
-  const sideScale = 150;
+  const sideScale = 158;
   const xFor = (side: number | null) => tee.x + ((side ?? 0) / maxSide) * sideScale;
   const yFor = (distance: number | null) => tee.y - ((distance ?? 0) / maxDistance) * playHeight;
   const plottedPoints = plottedShots.map((item) => ({
@@ -242,8 +242,8 @@ function DispersionPanel({
   const coneRightX = xFor(maxSide);
 
   return (
-    <div className="overflow-hidden rounded-[8px] border bg-[#172f1d] shadow-sm">
-      <svg viewBox="0 0 612 1024" className="h-[620px] w-full max-h-[72vh]">
+    <div className="overflow-hidden rounded-xl border bg-[#172f1d] shadow-sm">
+      <svg viewBox="0 0 644 1024" className="h-[620px] w-full max-h-[72vh]">
         <defs>
           <filter id="shotGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -253,8 +253,8 @@ function DispersionPanel({
             </feMerge>
           </filter>
         </defs>
-        <image href="/assets/hole-350-aerial.svg" x="0" y="0" width="612" height="1024" preserveAspectRatio="xMidYMid slice" />
-        <rect x="0" y="0" width="612" height="1024" fill="#020617" opacity="0.10" />
+        <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+        <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.10" />
 
         <path
           d={`M ${tee.x} ${tee.y} L ${coneLeftX} ${coneTopY} Q ${tee.x} ${coneTopY - 48} ${coneRightX} ${coneTopY} Z`}
@@ -281,7 +281,7 @@ function DispersionPanel({
                 strokeWidth="2.5"
                 strokeDasharray="10 10"
               />
-              <text x={Math.min(560, tee.x + arcWidth + 12)} y={y + 12} fill="#ffffff" fontSize="20" fontWeight="700">
+              <text x={Math.min(592, tee.x + arcWidth + 12)} y={y + 12} fill="#ffffff" fontSize="20" fontWeight="700">
                 {yard}
               </text>
             </g>
@@ -370,7 +370,7 @@ function TrajectoryPanel({
   const yForApex = (apex: number | null) => 300 - ((apex ?? 0) / maxApex) * 245;
 
   return (
-    <div className="rounded-[8px] border bg-[#f7f8fb] p-3 shadow-sm">
+    <div className="apple-panel p-3 shadow-sm">
       <svg viewBox="0 0 900 330" className="h-[320px] w-full">
         <rect x="0" y="0" width="900" height="330" fill="#f7f8fb" />
         <path d="M40 260 C250 225 520 230 860 250 L860 300 L40 300 Z" fill="#22c55e" opacity="0.38" />
@@ -488,7 +488,7 @@ function ClubGraphicCard({
   selectedShot: AnalysisShot | null;
 }) {
   return (
-    <div className="relative min-h-[390px] overflow-hidden rounded-[8px] border bg-white p-5 shadow-sm">
+    <div className="apple-panel-strong relative min-h-[390px] overflow-hidden p-5 shadow-sm">
       <div className="flex justify-between gap-6">
         <MetricCorner label={titleLeft} value={valueLeft} accent={accent} />
         <MetricCorner label={titleRight} value={valueRight} accent={accent} align="right" />
@@ -999,7 +999,7 @@ function ShotMetricStrip({ shot, accent }: { shot: AnalysisShot | null; accent: 
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {metrics.map(([label, value, unit]) => (
-          <div key={label} className="rounded-[8px] border bg-white p-3 text-center" style={{ borderColor: accent }}>
+          <div key={label} className="rounded-lg bg-white/90 p-3 text-center ring-1 ring-slate-200/80" style={{ borderColor: accent }}>
             <p className="border-b pb-2 text-sm font-medium" style={{ color: accent }}>
               {label}
             </p>

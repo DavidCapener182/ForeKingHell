@@ -37,12 +37,14 @@ import {
   SelectItem,
   SelectTrigger,
 } from "@/components/ui/select";
+import { achievementDomId } from "@/lib/alert-links";
 import type { AchievementPageData, AchievementView } from "@/lib/achievements/service";
 import type { AchievementTier } from "@/lib/achievements/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
   data: AchievementPageData;
+  focusAchievementId: string | null;
 };
 
 const categoryLabels: Record<string, string> = {
@@ -153,7 +155,7 @@ const calendarCellStyle = {
   width: "100%",
 } as const;
 
-export function AchievementsClient({ data }: Props) {
+export function AchievementsClient({ data, focusAchievementId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const initialCalendarDay = latestUnlockedDayFromAchievements(data.achievements);
@@ -163,6 +165,8 @@ export function AchievementsClient({ data }: Props) {
   const [tierFilter, setTierFilter] = useState("all");
   const [hideCompleted, setHideCompleted] = useState(false);
   const [query, setQuery] = useState("");
+  const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
+  const focusedAchievementId = focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(initialCalendarDay);
   const [calendarMonth, setCalendarMonth] = useState(() =>
     monthKeyFromDayKey(initialCalendarDay ?? dayKeyFromDate(new Date())),
@@ -250,11 +254,18 @@ export function AchievementsClient({ data }: Props) {
     ...tier,
     completion: Math.round((tier.unlocked / Math.max(1, tier.total)) * 100),
   }));
+  const focusedAchievement = focusedAchievementId
+    ? data.achievements.find((achievement) => achievement.id === focusedAchievementId)
+    : null;
 
   const filteredAchievements = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return data.achievements.filter((achievement) => {
+      if (focusedAchievementId) {
+        return achievement.id === focusedAchievementId;
+      }
+
       if (hideCompleted && achievement.unlocked) {
         return false;
       }
@@ -287,8 +298,8 @@ export function AchievementsClient({ data }: Props) {
         .toLowerCase()
         .includes(normalizedQuery);
     });
-  }, [clubFilter, data.achievements, hideCompleted, query, statusFilter, tierFilter, typeFilter]);
-  const isFiltered = statusFilter !== "unlocked" || typeFilter !== "all" || clubFilter !== "all" || tierFilter !== "all" || hideCompleted || Boolean(query.trim());
+  }, [clubFilter, data.achievements, focusedAchievementId, hideCompleted, query, statusFilter, tierFilter, typeFilter]);
+  const isFiltered = statusFilter !== "unlocked" || typeFilter !== "all" || clubFilter !== "all" || tierFilter !== "all" || hideCompleted || Boolean(query.trim()) || Boolean(focusedAchievementId);
   const selectedTypeLabel =
     typeFilter === "all"
       ? "All types"
@@ -305,6 +316,7 @@ export function AchievementsClient({ data }: Props) {
     !query.trim() && filteredAchievements.length > 360 ? filteredAchievements.slice(0, 360) : filteredAchievements;
 
   function clearFilters() {
+    setDismissedFocusId(focusAchievementId);
     setStatusFilter("unlocked");
     setTypeFilter("all");
     setClubFilter("all");
@@ -314,7 +326,7 @@ export function AchievementsClient({ data }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Card className="premium-card">
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
@@ -322,7 +334,7 @@ export function AchievementsClient({ data }: Props) {
               <CardTitle>Trophy cabinet</CardTitle>
               <CardDescription>Unlocked achievement tiers from Rapsodo and round data.</CardDescription>
             </div>
-            <div className="grid size-11 shrink-0 place-items-center rounded-[8px] bg-amber-50 text-amber-600">
+            <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-600">
               <Trophy className="size-5" />
             </div>
           </div>
@@ -335,7 +347,7 @@ export function AchievementsClient({ data }: Props) {
                 type="button"
                 onClick={() => setTierFilter(tier.id)}
                 className={cn(
-                  "rounded-[8px] border bg-[#f9fafb] p-3 text-left transition-colors hover:bg-white",
+                  "apple-panel-strong p-3 text-left transition-colors hover:border-amber-300",
                   tierFilter === tier.id ? "border-zinc-900 ring-2 ring-zinc-900/10" : "border-border",
                 )}
               >
@@ -364,7 +376,7 @@ export function AchievementsClient({ data }: Props) {
                   Level {data.level.level}
                 </CardTitle>
               </div>
-              <div className="grid size-12 place-items-center rounded-[8px] bg-white/10">
+              <div className="grid size-12 place-items-center rounded-lg bg-white/10">
                 <Zap className="size-6 text-emerald-300" />
               </div>
             </div>
@@ -402,7 +414,7 @@ export function AchievementsClient({ data }: Props) {
               ))}
             </div>
             {data.recentUnlocks.length === 0 ? (
-              <div className="rounded-[8px] border bg-[#f9fafb] p-4 text-sm text-muted-foreground">
+              <div className="apple-panel p-4 text-sm text-muted-foreground">
                 Import Rapsodo sessions or complete round scorecards to start unlocking.
               </div>
             ) : null}
@@ -446,7 +458,7 @@ export function AchievementsClient({ data }: Props) {
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-10 w-full rounded-[8px]" aria-label="Achievement type">
+              <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Achievement type">
                 <span className="truncate">{selectedTypeLabel}</span>
               </SelectTrigger>
               <SelectContent position="popper" align="start" className="z-[80]">
@@ -459,7 +471,7 @@ export function AchievementsClient({ data }: Props) {
               </SelectContent>
             </Select>
             <Select value={clubFilter} onValueChange={setClubFilter}>
-              <SelectTrigger className="h-10 w-full rounded-[8px]" aria-label="Club">
+              <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Club">
                 <span className="truncate">{selectedClubLabel}</span>
               </SelectTrigger>
               <SelectContent position="popper" align="start" className="z-[80]">
@@ -472,7 +484,7 @@ export function AchievementsClient({ data }: Props) {
               </SelectContent>
             </Select>
             <Select value={tierFilter} onValueChange={setTierFilter}>
-              <SelectTrigger className="h-10 w-full rounded-[8px]" aria-label="Tier">
+              <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Tier">
                 <span className="truncate">{selectedTierLabel}</span>
               </SelectTrigger>
               <SelectContent position="popper" align="start" className="z-[80]">
@@ -487,7 +499,7 @@ export function AchievementsClient({ data }: Props) {
             <Button
               type="button"
               variant={hideCompleted ? "default" : "outline"}
-              className="h-10 justify-center rounded-[8px]"
+              className="h-10 justify-center rounded-lg"
               onClick={() => setHideCompleted((current) => !current)}
             >
               <EyeOff className="size-4" />
@@ -495,6 +507,11 @@ export function AchievementsClient({ data }: Props) {
             </Button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {focusedAchievement ? (
+              <Badge className="border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-50">
+                Focused unlock: {focusedAchievement.displayName}
+              </Badge>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -526,19 +543,23 @@ export function AchievementsClient({ data }: Props) {
         </CardHeader>
         <CardContent>
           {!query.trim() && filteredAchievements.length > shownAchievements.length ? (
-            <div className="mb-4 rounded-[8px] border bg-[#f9fafb] px-3 py-2 text-sm text-muted-foreground">
+            <div className="apple-panel mb-4 px-3 py-2 text-sm text-muted-foreground">
               Showing the first {shownAchievements.length.toLocaleString("en-GB")} achievements. Use search, club, type, or tier filters to narrow the full {filteredAchievements.length.toLocaleString("en-GB")} set.
             </div>
           ) : null}
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {shownAchievements.map((achievement) => (
-              <AchievementCard key={achievement.id} achievement={achievement} />
+              <AchievementCard
+                key={achievement.id}
+                achievement={achievement}
+                focused={achievement.id === focusedAchievementId}
+              />
             ))}
           </div>
 
           {shownAchievements.length === 0 ? (
-            <div className="rounded-[8px] border bg-[#f9fafb] p-8 text-center text-sm text-muted-foreground">
+            <div className="apple-panel p-8 text-center text-sm text-muted-foreground">
               No achievements match this filter.
             </div>
           ) : null}
@@ -573,14 +594,14 @@ function AchievementUnlockCalendar({
             <CardTitle>Unlock calendar</CardTitle>
             <CardDescription>Select a day to see which achievements were unlocked.</CardDescription>
           </div>
-          <div className="grid size-11 shrink-0 place-items-center rounded-[8px] bg-emerald-50 text-emerald-700">
+          <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
             <CalendarDays className="size-5" />
           </div>
         </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-          <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+          <div className="apple-panel p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <Button
                 type="button"
@@ -618,7 +639,7 @@ function AchievementUnlockCalendar({
                   type="button"
                   onClick={() => onSelectedDayChange(cell.dayKey)}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-[8px] border text-sm transition-colors",
+                    "flex flex-col items-center justify-center rounded-lg border text-sm transition-colors",
                     cell.isSelected
                       ? "border-zinc-900 bg-zinc-900 text-white"
                       : cell.unlockCount > 0
@@ -646,7 +667,7 @@ function AchievementUnlockCalendar({
             </div>
           </div>
 
-          <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+          <div className="apple-panel p-3">
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold">
@@ -680,7 +701,7 @@ function AchievementUnlockCalendar({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[8px] border bg-white p-5 text-sm text-muted-foreground">
+              <div className="rounded-lg bg-white/90 p-5 text-sm text-muted-foreground ring-1 ring-slate-200/80">
                 No achievements unlocked on this day.
               </div>
             )}
@@ -693,7 +714,7 @@ function AchievementUnlockCalendar({
 
 function CalendarUnlockItem({ achievement }: { achievement: AchievementView }) {
   return (
-    <div className="rounded-[8px] border bg-white p-3">
+    <div className="apple-panel-strong p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -726,7 +747,7 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
   const source = achievement.source;
 
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -744,7 +765,7 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded-[8px] border bg-white px-3 py-2">
+      <div className="mt-3 rounded-lg bg-white/90 px-3 py-2 ring-1 ring-slate-200/80">
         {source ? (
           <div className="space-y-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -758,7 +779,7 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
               {source.href ? (
                 <Link
                   href={source.href}
-                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-[8px] border px-2 text-xs font-medium text-foreground hover:bg-[#f3f4f6]"
+                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-medium text-foreground hover:bg-[#f3f4f6]"
                 >
                   Open source
                   <ExternalLink className="size-3.5" />
@@ -770,7 +791,7 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
                 {source.stats.map((stat) => (
                   <span
                     key={`${achievement.id}-${stat.label}`}
-                    className="inline-flex min-h-7 items-center gap-1 rounded-[8px] border bg-[#f9fafb] px-2 text-xs"
+                    className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-slate-50/90 px-2 text-xs ring-1 ring-slate-200/80"
                   >
                     <span className="text-muted-foreground">{stat.label}</span>
                     <span className="font-medium">{stat.value}</span>
@@ -789,17 +810,25 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
   );
 }
 
-function AchievementCard({ achievement }: { achievement: AchievementView }) {
+function AchievementCard({
+  achievement,
+  focused,
+}: {
+  achievement: AchievementView;
+  focused: boolean;
+}) {
   return (
     <div
+      id={achievementDomId(achievement.id)}
       className={cn(
-        "flex min-h-48 flex-col justify-between rounded-[8px] border bg-white p-4 shadow-sm",
+        "apple-panel-strong flex min-h-40 flex-col justify-between p-4",
         achievement.unlocked ? "border-emerald-300" : "border-border",
+        focused && "ring-2 ring-emerald-500/40",
       )}
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className={cn("grid size-10 shrink-0 place-items-center rounded-[8px]", achievement.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500")}>
+          <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg", achievement.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500")}>
             {achievement.hidden && !achievement.unlocked ? (
               <Lock className="size-5" />
             ) : achievement.unlocked ? (
@@ -818,7 +847,7 @@ function AchievementCard({ achievement }: { achievement: AchievementView }) {
 
       <div className="mt-4 space-y-3">
         {achievement.unlocked ? (
-          <div className="flex items-center justify-between rounded-[8px] bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             <span>Unlocked</span>
             <span>{achievement.xpAwarded.toLocaleString("en-GB")} XP</span>
           </div>
@@ -831,7 +860,7 @@ function AchievementCard({ achievement }: { achievement: AchievementView }) {
             <Progress value={achievement.progressPercent} />
           </div>
         ) : (
-          <div className="flex items-center justify-between rounded-[8px] bg-[#f9fafb] px-3 py-2 text-sm text-muted-foreground">
+          <div className="flex items-center justify-between rounded-lg bg-slate-50/90 px-3 py-2 text-sm text-muted-foreground">
             <span>{categoryLabels[achievement.category] ?? achievement.category}</span>
             <span>{achievement.xp} XP</span>
           </div>
@@ -880,7 +909,7 @@ function formatUnlockDate(value: string | null) {
 
 function Metric({ label, value, dark = false }: { label: string; value: string; dark?: boolean }) {
   return (
-    <div className={cn("rounded-[8px] border p-3", dark ? "border-white/10 bg-white/5" : "bg-[#f9fafb]")}>
+    <div className={cn("rounded-lg border p-3", dark ? "border-white/10 bg-white/5" : "bg-white/80")}>
       <p className={cn("text-xs font-medium", dark ? "text-zinc-300" : "text-muted-foreground")}>{label}</p>
       <p className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-normal">
         {label === "Catalog" ? <Trophy className="size-5 text-amber-500" /> : null}

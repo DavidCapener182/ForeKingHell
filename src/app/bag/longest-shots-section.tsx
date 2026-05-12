@@ -92,8 +92,8 @@ function LongestShotButton({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "flex min-h-28 flex-col gap-3 rounded-[8px] border bg-white p-3 text-left transition-colors hover:bg-[#f9fafb]",
-        selected && "bg-[#f9fafb]",
+        "apple-panel-strong flex min-h-28 flex-col gap-3 p-3 text-left transition-colors hover:border-emerald-300",
+        selected && "border-emerald-300 bg-white",
       )}
       style={{
         borderColor: selected ? shot.accent : "#e5e7eb",
@@ -135,9 +135,15 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
   const geometry = useMemo(() => buildShotGeometry(shot), [shot]);
 
   return (
-    <div className="grid overflow-hidden rounded-[8px] border bg-white lg:grid-cols-[1.35fr_0.65fr]">
-      <div className="min-h-[420px] bg-[#143321]">
-        <svg viewBox="0 0 612 1024" className="h-full min-h-[560px] w-full" role="img" aria-label="Course shot simulation on a 350 yard hole">
+    <div className="apple-panel-strong grid overflow-hidden lg:grid-cols-[minmax(320px,560px)_minmax(320px,1fr)]">
+      <div className="grid h-[58vh] min-h-[420px] max-h-[600px] place-items-center bg-[#143321] p-3">
+        <svg
+          viewBox="0 0 644 1024"
+          preserveAspectRatio="xMidYMid meet"
+          className="h-full w-full"
+          role="img"
+          aria-label="Course shot simulation on a 350 yard hole"
+        >
           <defs>
             <filter id="shotGlowLong" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur stdDeviation="4" result="blur" />
@@ -171,8 +177,8 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             `}
           </style>
 
-          <image href="/assets/hole-350-aerial.svg" x="0" y="0" width="612" height="1024" preserveAspectRatio="xMidYMid slice" />
-          <rect x="0" y="0" width="612" height="1024" fill="#020617" opacity="0.08" />
+          <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+          <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.08" />
 
           {[50, 100, 150, 200, 250, 300, 350].map((yard) => {
             const y = geometry.tee.y - (yard / geometry.maxDistance) * geometry.playHeight;
@@ -186,7 +192,7 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
                   strokeDasharray="10 10"
                   strokeWidth="2.5"
                 />
-                <text x={Math.min(560, geometry.tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
+                <text x={Math.min(592, geometry.tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
                   {yard}
                 </text>
               </g>
@@ -258,7 +264,7 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
   const apexY = 108 - (apex / Math.max(apex, 150)) * 78;
 
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel p-3">
       <p className="mb-2 text-xs font-medium text-muted-foreground">Flight profile</p>
       <svg viewBox="0 0 320 128" className="h-32 w-full">
         <rect x="0" y="0" width="320" height="128" rx="8" fill="#eef5ee" />
@@ -293,7 +299,7 @@ function SimulationMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <div className="mb-2 flex items-center justify-between gap-2 text-muted-foreground">
         <p className="text-xs font-medium">{label}</p>
         <Icon className="size-4 shrink-0" />
@@ -334,7 +340,7 @@ function buildShotGeometry(shot: LongestShot) {
   const playHeight = 830;
   const side = clamp(shot.sideCarryYd ?? (shot.launchDirectionDeg ?? 0) * 4, -90, 90);
   const carrySide = totalDistance === 0 ? side : side * (carryDistance / totalDistance);
-  const tee = { x: 306, y: 936 };
+  const tee = { x: 322, y: 936 };
   const carry = pointForShot(carryDistance, carrySide, maxDistance, playHeight, tee);
   const total = pointForShot(totalDistance, side, maxDistance, playHeight, tee);
   const curve = clamp((shot.spinAxis ?? side) * 1.2 + (shot.launchDirectionDeg ?? 0) * 7, -150, 150);
@@ -350,15 +356,15 @@ function buildShotGeometry(shot: LongestShot) {
     playHeight,
     rollControl: labelDirection * 34,
     tracerPath: `M ${tee.x} ${tee.y} C ${controlOne.x} ${controlOne.y} ${controlTwo.x} ${controlTwo.y} ${carry.x} ${carry.y}`,
-    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 492), y: clamp(carry.y - 70, 16, 964) },
-    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 492), y: clamp(total.y - 20, 16, 964) },
-    sideLabel: { x: clamp(total.x - 52, 16, 492), y: clamp(total.y + 36, 16, 964) },
+    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 524), y: clamp(carry.y - 70, 16, 964) },
+    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 524), y: clamp(total.y - 20, 16, 964) },
+    sideLabel: { x: clamp(total.x - 52, 16, 524), y: clamp(total.y + 36, 16, 964) },
   };
 }
 
 function pointForShot(distance: number, side: number, maxDistance: number, playHeight: number, tee: { x: number; y: number }) {
   return {
-    x: tee.x + (side / 90) * 150,
+    x: tee.x + (side / 90) * 158,
     y: tee.y - (distance / maxDistance) * playHeight,
   };
 }

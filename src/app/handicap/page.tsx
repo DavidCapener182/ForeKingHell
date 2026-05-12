@@ -11,8 +11,12 @@ import {
 import { asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
+  DataPair,
   DataPanel,
+  DataTableFrame,
   InsightBlock,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -213,7 +217,37 @@ export default async function HandicapPage() {
           description="WHS-style estimate is calculated from score differentials, newest scorecards first."
         />
         <CardContent>
-          <div className="overflow-hidden rounded-xl border bg-white/80">
+          <DataTableFrame
+            mobile={
+              <MobileDataList>
+                {rounds.length > 0 ? (
+                  rounds.map((round) => (
+                    <MobileDataCard
+                      key={round.id}
+                      href={`/rounds/${round.id}`}
+                      title={round.courseName ?? round.fileName ?? "Untitled round"}
+                      subtitle={formatDate(round.date)}
+                      action={
+                        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                          {formatSessionType(round.type)}
+                        </Badge>
+                      }
+                    >
+                      <DataPair label="Score" value={round.totalScore ?? "--"} />
+                      <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
+                      <DataPair label="Slope" value={round.slopeRating ?? "--"} />
+                      <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
+                      <DataPair label="Shots" value={integerFormatter.format(round.shotCount)} />
+                    </MobileDataCard>
+                  ))
+                ) : (
+                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                    No scorecards yet. Import a simulated course or add a real round.
+                  </div>
+                )}
+              </MobileDataList>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -259,7 +293,7 @@ export default async function HandicapPage() {
                 ) : null}
               </TableBody>
             </Table>
-          </div>
+          </DataTableFrame>
         </CardContent>
       </DataPanel>
     </PageShell>
@@ -382,7 +416,7 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
 
   if (points.length === 0) {
     return (
-      <div className="grid h-72 place-items-center rounded-2xl border bg-[#f9fafb] text-sm text-muted-foreground">
+      <div className="apple-panel grid h-72 place-items-center text-sm text-muted-foreground">
         No eligible score differentials yet.
       </div>
     );
@@ -428,7 +462,7 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold leading-5">{value}</p>
     </div>

@@ -111,7 +111,7 @@ export default function NewCoursePage() {
                 the green point using total distance and side carry.
               </AlertDescription>
             </Alert>
-            <div className="rounded-xl border bg-[#f9fafb] p-4">
+            <div className="apple-panel-strong p-4">
               <p className="font-semibold">Good enough for MVP</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 You only need tee and green coordinates to get useful overlays. The centreline can

@@ -12,6 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+  PageShell,
+} from "@/components/premium";
+import {
   Table,
   TableBody,
   TableCell,
@@ -53,8 +60,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
   const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <PageShell>
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
@@ -106,14 +112,14 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             <CardDescription>50 rows per page, scoped to the current player.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <form className="apple-panel grid gap-3 p-3 md:grid-cols-3 xl:grid-cols-6">
               <label className="grid gap-1 text-sm font-medium">
                 Search file/course
-                <input name="q" defaultValue={filters.q} className="rounded-md border bg-background px-3 py-2 text-sm" placeholder="Session name" />
+                <input name="q" defaultValue={filters.q} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" placeholder="Session name" />
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 Club
-                <select name="club" defaultValue={filters.club} className="rounded-md border bg-background px-3 py-2 text-sm">
+                <select name="club" defaultValue={filters.club} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
                   <option value="">All clubs</option>
                   {clubsForFilter.map((club) => (
                     <option key={club} value={club}>{formatClub(club)}</option>
@@ -122,7 +128,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 Session
-                <select name="sessionId" defaultValue={filters.sessionId} className="rounded-md border bg-background px-3 py-2 text-sm">
+                <select name="sessionId" defaultValue={filters.sessionId} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
                   <option value="">All sessions</option>
                   {sessionSummaries.map((session) => (
                     <option key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</option>
@@ -131,7 +137,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 Category
-                <select name="category" defaultValue={filters.category} className="rounded-md border bg-background px-3 py-2 text-sm">
+                <select name="category" defaultValue={filters.category} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
                   <option value="">All categories</option>
                   {categories.map((category) => (
                     <option key={category} value={category}>{formatSessionType(category)}</option>
@@ -140,11 +146,11 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 From
-                <input type="date" name="from" defaultValue={filters.from} className="rounded-md border bg-background px-3 py-2 text-sm" />
+                <input type="date" name="from" defaultValue={filters.from} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 To
-                <input type="date" name="to" defaultValue={filters.to} className="rounded-md border bg-background px-3 py-2 text-sm" />
+                <input type="date" name="to" defaultValue={filters.to} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
               </label>
               <div className="flex gap-2 md:col-span-3 xl:col-span-6">
                 <Button type="submit">Apply filters</Button>
@@ -161,7 +167,30 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               <CardDescription>Saved files, CSV dates, shot rows, and retained raw rows.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-[8px] border">
+              <DataTableFrame
+                mobile={
+                  <MobileDataList>
+                    {sessionSummaries.slice(0, 8).length > 0 ? (
+                      sessionSummaries.slice(0, 8).map((session) => (
+                        <MobileDataCard
+                          key={session.id}
+                          href={isRoundSession(session.type) ? `/rounds/${session.id}` : undefined}
+                          title={session.fileName ?? "Untitled import"}
+                          subtitle={formatDate(session.date)}
+                          action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
+                        >
+                          <DataPair label="Shots" value={integerFormatter.format(session.shotCount)} />
+                          <DataPair label="Raw rows" value={integerFormatter.format(session.rawRowCount)} />
+                        </MobileDataCard>
+                      ))
+                    ) : (
+                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                        No imported sessions yet.
+                      </div>
+                    )}
+                  </MobileDataList>
+                }
+              >
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -189,18 +218,18 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     ) : null}
                   </TableBody>
                 </Table>
-              </div>
+              </DataTableFrame>
             </CardContent>
           </Card>
 
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Raw CSV archive</CardTitle>
-              <CardDescription>Non-shot rows retained for parser improvements.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
-              {rowTypes.map((rowType) => (
-                <div key={rowType.rowType} className="rounded-[8px] border bg-[#f9fafb] p-4">
+            <CardDescription>Non-shot rows retained for parser improvements.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {rowTypes.map((rowType) => (
+                <div key={rowType.rowType} className="apple-panel-strong p-4">
                   <span className="text-sm font-medium capitalize">{rowType.rowType}</span>
                   <p className="mt-3 text-3xl font-semibold tracking-normal">{integerFormatter.format(rowType.count)}</p>
                 </div>
@@ -228,7 +257,33 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-[8px] border">
+            <DataTableFrame
+              mobile={
+                <MobileDataList>
+                  {savedShots.length > 0 ? (
+                    savedShots.map((shot) => (
+                      <MobileDataCard
+                        key={shot.id}
+                        title={`${formatClub(shot.clubType)} ${formatMetric(shot.carryYd)} carry`}
+                        subtitle={`${formatDate(shot.shotAt)} - ${shot.fileName ?? "No file"}`}
+                        action={<Badge variant="outline">{formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}</Badge>}
+                      >
+                        <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
+                        <DataPair label="Total" value={formatMetric(shot.totalYd)} />
+                        <DataPair label="Side" value={formatMetric(shot.sideCarryYd)} />
+                        <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
+                        <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
+                        <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
+                      </MobileDataCard>
+                    ))
+                  ) : (
+                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                      No shots match these filters.
+                    </div>
+                  )}
+                </MobileDataList>
+              }
+            >
               <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow>
@@ -280,11 +335,10 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                   ) : null}
                 </TableBody>
               </Table>
-            </div>
+            </DataTableFrame>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -414,7 +468,7 @@ function dateParam(value: string) {
 
 function StatTile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-3xl font-semibold tracking-normal">{integerFormatter.format(value)}</p>
     </div>

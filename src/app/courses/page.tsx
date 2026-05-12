@@ -4,8 +4,12 @@ import { asc, inArray } from "drizzle-orm";
 
 import { seedKnownCoursesAction } from "@/app/courses/actions";
 import {
+  DataPair,
   DataPanel,
+  DataTableFrame,
   MetricCard,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -119,7 +123,47 @@ export default async function CoursesPage() {
           action={<Badge variant="outline">{integerFormatter.format(data.courses.length)} courses</Badge>}
         />
         <CardContent>
-          <div className="overflow-hidden rounded-xl border bg-white/80">
+          <DataTableFrame
+            mobile={
+              <MobileDataList>
+                {data.courses.length > 0 ? (
+                  data.courses.map((course) => (
+                    <MobileDataCard
+                      key={course.id}
+                      title={course.name}
+                      subtitle={course.country ?? "Country not set"}
+                      action={
+                        <Badge variant={course.provider === "manual" ? "outline" : "secondary"}>
+                          {course.provider}
+                        </Badge>
+                      }
+                    >
+                      <DataPair label="Tee sets" value={course.teeSetCount} />
+                      <DataPair
+                        label="Mapped holes"
+                        value={
+                          <span className={course.holeCount >= 18 ? "text-emerald-700" : "text-amber-700"}>
+                            {course.holeCount}
+                          </span>
+                        }
+                      />
+                      <DataPair label="Rounds" value={course.roundCount} />
+                      <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                        <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+                          <Settings className="size-4" />
+                          Edit course
+                        </Link>
+                      </Button>
+                    </MobileDataCard>
+                  ))
+                ) : (
+                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                    No courses yet. Seed known courses or create one manually.
+                  </div>
+                )}
+              </MobileDataList>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -171,7 +215,7 @@ export default async function CoursesPage() {
                 ) : null}
               </TableBody>
             </Table>
-          </div>
+          </DataTableFrame>
         </CardContent>
       </DataPanel>
     </PageShell>

@@ -189,7 +189,7 @@ export function ClubDetailClient({
               <Progress value={isShortGameTouch ? Math.min(100, (touch.sampleSize / 50) * 100) : stock.confidenceScore} />
             </div>
             {isShortGameTouch ? (
-              <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
                 Full-stock SW only builds from non-round full swings. Round SW shots stay in touch analysis.
               </div>
             ) : null}
@@ -258,7 +258,7 @@ function RangeToggle({
   onChange: (value: ShotRange) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1 rounded-[8px] border bg-[#f9fafb] p-1">
+    <div className="apple-panel flex flex-wrap gap-1 p-1">
       {RANGE_OPTIONS.map((option) => (
         <Button
           key={option.value}
@@ -289,7 +289,7 @@ function StatTile({
   icon: LucideIcon;
 }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <div className="mb-2 flex items-center justify-between text-muted-foreground">
         <p className="text-xs font-medium">{label}</p>
         <Icon className="size-4" />
@@ -301,7 +301,7 @@ function StatTile({
 
 function SmallMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-3">
+    <div className="apple-panel-strong p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
     </div>
@@ -310,7 +310,7 @@ function SmallMetric({ label, value }: { label: string; value: string }) {
 
 function HealthBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border bg-[#f9fafb] p-4">
+    <div className="apple-panel-strong p-4">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
     </div>

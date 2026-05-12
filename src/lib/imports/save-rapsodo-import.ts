@@ -22,8 +22,21 @@ import {
   type DistanceUnit,
   type ParsedRapsodoRawRow,
   type ParsedRapsodoShot,
+  type ShotCategory,
+  buildClubKey,
+  formatClubType,
+  normalizeClubType,
   parseRapsodoCsv,
 } from "@/lib/rapsodo/parser";
+
+export type RapsodoShotOverride = {
+  rowNumber: number;
+  clubType: string;
+  clubBrand?: string | null;
+  clubModel?: string | null;
+  shotCategory?: ShotCategory;
+  qualityTag?: string | null;
+};
 
 export type SaveRapsodoImportInput = {
   rawCsvText: string;
@@ -47,10 +60,12 @@ export type SaveRapsodoImportInput = {
     gir?: boolean | null;
     strokeIndex?: number | null;
   }>;
+  shotOverrides?: RapsodoShotOverride[];
   notes?: string;
 };
 
 export type LongestShotNotification = {
+  sessionId: string;
   clubId: string;
   clubType: string;
   clubLabel: string;
@@ -84,6 +99,7 @@ export type SaveRapsodoImportResult =
 export type SaveRapsodoImportBatchResult =
   | {
       ok: true;
+      savedSessionId: string | null;
       sessionCount: number;
       shotCount: number;
       clubCount: number;
@@ -114,7 +130,8 @@ export async function saveRapsodoImport(
       };
     }
 
-    const coursePlan = buildCoursePlan(validatedInput, parsed.shots);
+    const importedShots = applyRapsodoShotOverridesForImport(parsed.shots, validatedInput.shotOverrides);
+    const coursePlan = buildCoursePlan(validatedInput, importedShots);
     const courseLink =
       validatedInput.sessionType === "simulated_course"
         ? await ensureKnownCourseForSession(validatedInput.courseName)
@@ -123,7 +140,7 @@ export async function saveRapsodoImport(
     const result = await persistImport({
       ...validatedInput,
       sessionDate: parsed.exportedAtIso ?? validatedInput.sessionDate,
-      shots: parsed.shots,
+      shots: importedShots,
       rawRows: parsed.rawRows,
       coursePlan,
       courseLink,
@@ -168,6 +185,7 @@ export async function saveRapsodoImportBatch(
   let rawRowCount = 0;
   let sessionCount = 0;
   let skippedCount = 0;
+  let savedSessionId: string | null = null;
   const longestShotNotifications: LongestShotNotification[] = [];
   const achievementUnlockNotifications: AchievementUnlockNotification[] = [];
 
@@ -193,6 +211,7 @@ export async function saveRapsodoImportBatch(
       skippedCount += 1;
       warnings.push(`${input.fileName}: identical CSV was already imported and was skipped.`);
     } else {
+      savedSessionId = result.sessionId;
       sessionCount += 1;
       shotCount += result.shotCount;
       rawRowCount += result.rawRowCount;
@@ -208,6 +227,7 @@ export async function saveRapsodoImportBatch(
 
   return {
     ok: true,
+    savedSessionId,
     sessionCount,
     shotCount,
     clubCount: uniqueClubKeys.size,
@@ -362,6 +382,7 @@ async function persistImport(
       importedShots: input.shots,
       clubIdByKey,
       previousLongestByClubId,
+      sessionId: session.id,
       fileName: input.fileName,
     });
 
@@ -460,11 +481,13 @@ export function buildLongestShotNotifications({
   importedShots,
   clubIdByKey,
   previousLongestByClubId,
+  sessionId,
   fileName,
 }: {
   importedShots: ParsedRapsodoShot[];
   clubIdByKey: Map<string, string>;
   previousLongestByClubId: Map<string, number | null>;
+  sessionId: string;
   fileName: string;
 }): LongestShotNotification[] {
   const bestShotByClubKey = new Map<string, ParsedRapsodoShot>();
@@ -504,6 +527,7 @@ export function buildLongestShotNotifications({
       }
 
       return {
+        sessionId,
         clubId,
         clubType: shot.clubType,
         clubLabel: shot.clubLabel,
@@ -558,6 +582,7 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     courseScorecardText: input.courseScorecardText?.slice(0, 12000),
     courseHoleShotCounts: sanitizeHoleShotCounts(input.courseHoleShotCounts),
     courseHoleScoring: sanitizeHoleScoring(input.courseHoleScoring),
+    shotOverrides: sanitizeShotOverrides(input.shotOverrides),
     notes: input.notes?.slice(0, 2000),
   };
 }
@@ -663,6 +688,81 @@ function sanitizeNullableNonNegativeInteger(value: number | null) {
 
 function sanitizeNullableBoolean(value: boolean | null | undefined) {
   return typeof value === "boolean" ? value : null;
+}
+
+function sanitizeShotOverrides(input: SaveRapsodoImportInput["shotOverrides"]) {
+  if (!input) {
+    return undefined;
+  }
+
+  const seenRows = new Set<number>();
+  const overrides: RapsodoShotOverride[] = [];
+
+  for (const override of input) {
+    const rowNumber = sanitizeNonNegativeInteger(override.rowNumber);
+    const clubType = normalizeClubType(override.clubType);
+
+    if (rowNumber === null || rowNumber <= 0 || !clubType || seenRows.has(rowNumber)) {
+      continue;
+    }
+
+    seenRows.add(rowNumber);
+    overrides.push({
+      rowNumber,
+      clubType,
+      clubBrand: nullableOverrideText(override.clubBrand, 120),
+      clubModel: nullableOverrideText(override.clubModel, 160),
+      shotCategory: sanitizeShotCategory(override.shotCategory),
+      qualityTag: nullableOverrideText(override.qualityTag, 40),
+    });
+  }
+
+  return overrides;
+}
+
+function sanitizeShotCategory(value: ShotCategory | undefined) {
+  return value && ["full", "pitch", "chip", "recovery", "tee", "approach"].includes(value)
+    ? value
+    : undefined;
+}
+
+function nullableOverrideText(value: string | null | undefined, maxLength: number) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+export function applyRapsodoShotOverridesForImport(
+  shotsToImport: ParsedRapsodoShot[],
+  overrides: RapsodoShotOverride[] | undefined,
+) {
+  if (!overrides || overrides.length === 0) {
+    return shotsToImport;
+  }
+
+  const overrideByRowNumber = new Map(overrides.map((override) => [override.rowNumber, override]));
+
+  return shotsToImport.map((shot) => {
+    const override = overrideByRowNumber.get(shot.rowNumber);
+
+    if (!override) {
+      return shot;
+    }
+
+    const clubType = normalizeClubType(override.clubType);
+    const clubBrand = override.clubBrand ?? null;
+    const clubModel = override.clubModel ?? null;
+
+    return {
+      ...shot,
+      clubType,
+      clubLabel: formatClubType(clubType),
+      clubBrand,
+      clubModel,
+      clubKey: buildClubKey(clubType, clubBrand, clubModel),
+      shotCategory: override.shotCategory ?? shot.shotCategory,
+      qualityTag: override.qualityTag ?? shot.qualityTag,
+    };
+  });
 }
 
 function buildScorecardSnapshot(

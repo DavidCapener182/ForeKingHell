@@ -43,6 +43,7 @@ export type CompareShot = {
   id: string;
   sessionId: string;
   sessionDate: Date;
+  sessionCreatedAt: Date;
   sessionType: string;
   sessionLabel: string;
   clubId: string;
@@ -181,6 +182,7 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
         id: shots.id,
         sessionId: shots.sessionId,
         sessionDate: sessions.date,
+        sessionCreatedAt: sessions.createdAt,
         sessionType: sessions.type,
         sessionFileName: sessions.fileName,
         sessionCourseName: sessions.courseName,
@@ -379,15 +381,28 @@ function resolveFocusSelection(
   const currentDay = startOfLocalDay(new Date());
   const currentDayEnd = endOfLocalDay(currentDay);
   const currentDayShots = shots.filter((shot) => isBetween(shot.sessionDate, currentDay, currentDayEnd));
-  const anchor = currentDayShots.length > 0 ? currentDay : startOfLocalDay(latestShotDate);
-  const end = endOfLocalDay(anchor);
+
+  if (currentDayShots.length > 0) {
+    return {
+      label: "Today",
+      detail: formatDate(currentDay),
+      shots: currentDayShots,
+      start: currentDay,
+      end: currentDayEnd,
+    };
+  }
+
+  const latestSessionShots = latestImportedSessionShots(shots);
+  const latestShot = latestSessionShots[0];
 
   return {
-    label: currentDayShots.length > 0 ? "Today" : "Latest practice day",
-    detail: formatDate(anchor),
-    shots: shots.filter((shot) => isBetween(shot.sessionDate, anchor, end)),
-    start: anchor,
-    end,
+    label: latestShot ? `Latest imported session: ${latestShot.sessionLabel}` : "Latest imported session",
+    detail: latestShot
+      ? `${formatDate(latestShot.sessionDate)} - ${formatSessionType(latestShot.sessionType)}`
+      : "No imported session found",
+    shots: latestSessionShots,
+    start: minDate(latestSessionShots.map((shot) => shot.shotAt)),
+    end: maxDate(latestSessionShots.map((shot) => shot.shotAt)),
   };
 }
 
@@ -714,6 +729,27 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string) {
   }
 
   return result;
+}
+
+function latestImportedSessionShots(shots: CompareShot[]) {
+  const latestShot = [...shots].sort(compareImportedSessionRecency)[0];
+
+  if (!latestShot) {
+    return [];
+  }
+
+  return shots
+    .filter((shot) => shot.sessionId === latestShot.sessionId)
+    .sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime());
+}
+
+function compareImportedSessionRecency(left: CompareShot, right: CompareShot) {
+  return (
+    right.sessionCreatedAt.getTime() - left.sessionCreatedAt.getTime() ||
+    right.sessionDate.getTime() - left.sessionDate.getTime() ||
+    right.shotAt.getTime() - left.shotAt.getTime() ||
+    (right.shotNumber ?? 0) - (left.shotNumber ?? 0)
+  );
 }
 
 function playableLimit(clubType: string) {

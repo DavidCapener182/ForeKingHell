@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Children } from "react";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
@@ -33,8 +34,8 @@ export function PageShell({
   size = "7xl",
 }: PageShellProps) {
   return (
-    <main className={cn("min-h-screen px-4 py-5 text-foreground sm:px-6 lg:px-8", className)}>
-      <div className={cn("mx-auto flex w-full flex-col gap-5", shellWidths[size], contentClassName)}>
+    <main className={cn("min-h-screen px-4 py-5 pb-24 text-foreground sm:px-6 sm:pb-8 lg:px-8", className)}>
+      <div className={cn("mx-auto flex w-full flex-col gap-5 sm:gap-6", shellWidths[size], contentClassName)}>
         {children}
       </div>
     </main>
@@ -70,7 +71,7 @@ export function PageHeader({
         <div className="max-w-3xl space-y-3">
           {eyebrow ? <div>{eyebrow}</div> : null}
           <div className="space-y-2">
-            <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+            <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
               {title}
             </h1>
             {description ? (
@@ -78,17 +79,17 @@ export function PageHeader({
             ) : null}
           </div>
         </div>
-        {actions ? <div className="flex flex-col gap-2 sm:flex-row">{actions}</div> : null}
+        {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
       </div>
       {metrics?.length ? (
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map((metric) => (
             <div key={metric.label} className="metric-tile">
-              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {metric.label}
               </p>
-              <p className="mt-2 text-3xl font-semibold tracking-normal">{metric.value}</p>
-              {metric.detail ? <p className="mt-1 text-sm text-muted-foreground">{metric.detail}</p> : null}
+              <p className="mt-2 truncate text-2xl font-semibold tracking-normal sm:text-3xl">{metric.value}</p>
+              {metric.detail ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p> : null}
             </div>
           ))}
         </div>
@@ -115,6 +116,8 @@ const toneClasses = {
   slate: "bg-slate-100 text-slate-700 ring-slate-200",
 };
 
+type Tone = keyof typeof toneClasses;
+
 export function MetricCard({
   label,
   value,
@@ -129,7 +132,7 @@ export function MetricCard({
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div className="space-y-1">
           <CardDescription>{label}</CardDescription>
-          <CardTitle className="text-4xl font-semibold tracking-normal">{value}</CardTitle>
+          <CardTitle className="text-3xl font-semibold tracking-normal sm:text-4xl">{value}</CardTitle>
         </div>
         {Icon ? (
           <div className={cn("grid size-10 place-items-center rounded-full ring-1", toneClasses[tone])}>
@@ -176,9 +179,9 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <CardHeader>
+    <CardHeader className="gap-3">
       <div>
-        <CardTitle className="text-2xl tracking-normal">{title}</CardTitle>
+        <CardTitle className="text-xl tracking-normal sm:text-2xl">{title}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
       </div>
       {action ? <CardAction>{action}</CardAction> : null}
@@ -192,7 +195,7 @@ export function StatusPill({
   className,
 }: {
   children: ReactNode;
-  tone?: keyof typeof toneClasses;
+  tone?: Tone;
   className?: string;
 }) {
   return (
@@ -214,16 +217,158 @@ export function InsightBlock({
   label: string;
   value: ReactNode;
   detail?: ReactNode;
-  tone?: keyof typeof toneClasses;
+  tone?: Tone;
 }) {
   return (
-    <div className="rounded-xl border bg-white/76 p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+    <div className="apple-panel-strong p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
         <span className={cn("size-2 rounded-full ring-4", toneClasses[tone])} />
       </div>
-      <p className="mt-3 text-xl font-semibold tracking-normal">{value}</p>
+      <p className="mt-3 text-lg font-semibold tracking-normal sm:text-xl">{value}</p>
       {detail ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
     </div>
   );
+}
+
+export function PageActions({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function FilterPanel({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <DataPanel className={className}>
+      <CardContent className="pt-4">
+        <div className="apple-panel grid gap-3 p-3">{children}</div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+export function DataTableFrame({
+  children,
+  mobile,
+  className,
+}: {
+  children: ReactNode;
+  mobile?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <>
+      <div className={cn(mobile ? "hidden sm:block" : "block", "apple-panel-strong overflow-hidden", className)}>
+        {children}
+      </div>
+      {mobile ? <div className="sm:hidden">{mobile}</div> : null}
+    </>
+  );
+}
+
+export function MobileDataList({
+  children,
+  empty,
+  className,
+}: {
+  children: ReactNode;
+  empty?: ReactNode;
+  className?: string;
+}) {
+  const hasChildren = Children.count(children) > 0;
+
+  return (
+    <div className={cn("grid gap-3", className)}>
+      {hasChildren ? children : empty}
+    </div>
+  );
+}
+
+export function MobileDataCard({
+  title,
+  subtitle,
+  href,
+  action,
+  children,
+  className,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  href?: string;
+  action?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const content = (
+    <>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold tracking-normal">{title}</p>
+          {subtitle ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{subtitle}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children ? <div className="mt-3 grid gap-2">{children}</div> : null}
+    </>
+  );
+
+  const cardClassName = cn("apple-panel-strong block p-3 text-left transition-colors hover:border-emerald-300", className);
+
+  if (href) {
+    return (
+      <Link href={href} prefetch={false} className={cardClassName}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={cardClassName}>{content}</div>;
+}
+
+export function DataPair({
+  label,
+  value,
+  className,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 items-center justify-between gap-3 rounded-lg bg-slate-50/80 px-3 py-2 text-sm", className)}>
+      <span className="min-w-0 text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-right font-semibold tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+}: {
+  icon?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="apple-panel grid place-items-center px-4 py-12 text-center">
+      <div className="flex max-w-md flex-col items-center gap-4">
+        {icon ? <div className="grid size-11 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">{icon}</div> : null}
+        <div>
+          <p className="text-lg font-semibold tracking-normal">{title}</p>
+          {description ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+export function ChartFrame({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("chart-frame", className)}>{children}</div>;
 }
