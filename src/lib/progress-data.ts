@@ -8,7 +8,7 @@ import {
   type BagClubAnalyticsContext,
   type ClubAnalyticsShot,
 } from "@/lib/club-analytics";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import type { ProgressClub } from "@/lib/progress-summary";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 
@@ -16,9 +16,9 @@ export type ProgressData = {
   clubs: ProgressClub[];
 };
 
-export async function getProgressData(): Promise<ProgressData> {
+export async function getProgressData(userId?: string): Promise<ProgressData> {
   const db = getDb();
-  const userId = getDefaultUserId();
+  userId ??= await requireCurrentUserId();
   const [clubRows, shotRows] = await Promise.all([
     db
       .select({

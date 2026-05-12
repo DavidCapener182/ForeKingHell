@@ -6,6 +6,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { InsightBlock } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { trackPlausibleEvent } from "@/lib/analytics";
 import type {
   AiCoachGeneratedSummary,
   AiCoachPayload,
@@ -40,6 +41,12 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
       }
 
       setSummary(data.summary);
+      trackPlausibleEvent("AI Coach Generated", {
+        props: {
+          clubCount: payload.clubs.length,
+          signalCount: payload.signals.length,
+        },
+      });
     } finally {
       setIsSummaryPending(false);
     }

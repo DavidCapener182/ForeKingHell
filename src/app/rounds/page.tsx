@@ -96,9 +96,9 @@ export default async function RoundsPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
               <StatTile label="Real rounds" value={realRounds.length} />
               <StatTile label="Simulator" value={simulatorRounds.length} />
-              <HandicapStatTile label="Real HCP" summary={realHandicap} />
-              <HandicapStatTile label="Sim HCP" summary={simHandicap} />
-              <HandicapStatTile label="Combined" summary={combinedHandicap} />
+              <HandicapStatTile label="Real ceiling" summary={realHandicap} />
+              <HandicapStatTile label="Sim ceiling" summary={simHandicap} />
+              <HandicapStatTile label="Best-form" summary={combinedHandicap} />
               <StatTile label="Club shots" value={rounds.reduce((total, round) => total + round.shotCount, 0)} />
             </div>
           </div>
@@ -129,6 +129,9 @@ export default async function RoundsPage() {
                             </Badge>
                           }
                         >
+                          {round.roundStatus === "in_progress" ? (
+                            <DataPair label="Status" value="Resume" />
+                          ) : null}
                           <DataPair
                             label="Score"
                             value={round.totalScore === null ? "--" : integerFormatter.format(round.totalScore)}
@@ -181,6 +184,9 @@ export default async function RoundsPage() {
                           <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
                             {formatSessionType(round.type)}
                           </Badge>
+                          {round.roundStatus === "in_progress" ? (
+                            <Badge variant="outline" className="ml-2">Resume</Badge>
+                          ) : null}
                         </TableCell>
                         <TableCell className="text-right">
                           {round.totalScore === null ? "--" : integerFormatter.format(round.totalScore)}
@@ -265,6 +271,9 @@ async function getRounds() {
         type: sessions.type,
         courseName: sessions.courseName,
         date: sessions.date,
+        roundStatus: sessions.roundStatus,
+        weatherJson: sessions.weatherJson,
+        equipmentNotes: sessions.equipmentNotes,
         scorecardJson: sessions.scorecardJson,
         courseRating: teeSets.courseRating,
         slopeRating: teeSets.slopeRating,
@@ -294,6 +303,7 @@ async function getRounds() {
         totalPar,
         courseRating: session.courseRating,
         slopeRating: session.slopeRating,
+        holesPlayed: scorecard.length,
       });
 
     return {

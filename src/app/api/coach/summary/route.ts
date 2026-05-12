@@ -6,12 +6,17 @@ import {
   parseAiCoachSummary,
   type AiCoachPayload,
 } from "@/lib/ai-coach-summary";
+import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 export const runtime = "nodejs";
 
 const MAX_REQUEST_BYTES = 128 * 1024;
 
 export async function POST(request: NextRequest) {
+  if (!(await getOptionalCurrentUserId())) {
+    return NextResponse.json({ message: "Authentication required." }, { status: 401 });
+  }
+
   const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
   if (sizeRejection) {
     return sizeRejection;

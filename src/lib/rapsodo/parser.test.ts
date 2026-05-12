@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { applyRapsodoShotOverridesForImport } from "@/lib/imports/save-rapsodo-import";
 import {
+  analyzeRapsodoCsvColumns,
   buildClubKey,
   normalizeClubType,
   parseRapsodoCsv,
@@ -123,6 +124,28 @@ describe("parseRapsodoCsv", () => {
     expect(result.shots[0].launchAngleDeg).toBeNull();
     expect(result.shots[0].totalYd).toBeCloseTo(137.795, 3);
   });
+
+  it("uses a manual column mapping when Rapsodo changes header names", () => {
+    const csv = ["Club Used,Carry Metres,Ball Velocity,Start Direction", "7 Iron,140,109,-2.5"].join("\n");
+
+    const result = parseRapsodoCsv(csv, {
+      fallbackDistanceUnit: "meters",
+      columnMapping: {
+        clubType: "Club Used",
+        carryDistance: "Carry Metres",
+        ballSpeed: "Ball Velocity",
+        launchDirection: "Start Direction",
+      },
+    });
+
+    expect(result.shotCount).toBe(1);
+    expect(result.shots[0]).toMatchObject({
+      clubType: "7i",
+      carryYd: 153.106,
+      ballSpeedMph: 109,
+      launchDirectionDeg: -2.5,
+    });
+  });
 });
 
 describe("club normalization", () => {
@@ -188,6 +211,25 @@ describe("Rapsodo parser edge cases", () => {
 
     expect(result.shotCount).toBe(1);
     expect(result.shots[0].sideCarryYd).toBe(-175);
+  });
+
+  it("finds likely headers and suggests manual mappings for unknown column names", () => {
+    const csv = [
+      '"Rapsodo MLM2PRO: Player - 04/05/2026 8:00 AM"',
+      "Stick,Flight Metres,Ball Velocity",
+      "Driver,220,145",
+    ].join("\n");
+
+    const analysis = analyzeRapsodoCsvColumns(csv);
+
+    expect(analysis.headerRowNumber).toBe(2);
+    expect(analysis.headers).toEqual(["Stick", "Flight Metres", "Ball Velocity"]);
+    expect(analysis.needsManualMapping).toBe(true);
+    expect(analysis.suggestedMapping).toMatchObject({
+      clubType: "Stick",
+      carryDistance: "Flight Metres",
+      ballSpeed: "Ball Velocity",
+    });
   });
 });
 

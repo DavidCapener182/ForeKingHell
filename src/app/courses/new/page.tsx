@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { ArrowLeft, Flag, MapPinned, Save } from "lucide-react";
 
 import { createCourseAction } from "@/app/courses/actions";
+import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
 import {
   DataPanel,
   PageHeader,
@@ -98,11 +99,23 @@ export default function NewCoursePage() {
 
         <DataPanel>
           <SectionHeader
-            title="Overlay notes"
-            description="How this connects to the course maps."
+            title="OpenStreetMap import"
+            description="Search OSM/Nominatim, pull tagged golf-hole geometry from Overpass, then manually correct anything that needs work."
             action={<MapPinned className="size-5 text-sky-600" />}
           />
-          <CardContent className="space-y-3">
+          <CardContent>
+            <OsmCourseImporter />
+          </CardContent>
+        </DataPanel>
+      </section>
+
+      <DataPanel>
+        <SectionHeader
+          title="Overlay notes"
+          description="How this connects to the course maps."
+          action={<MapPinned className="size-5 text-sky-600" />}
+        />
+        <CardContent className="grid gap-3 lg:grid-cols-2">
             <Alert className="border-emerald-200 bg-emerald-50/70">
               <MapPinned className="size-4" />
               <AlertTitle>Hole geometry drives the map</AlertTitle>
@@ -118,9 +131,8 @@ export default function NewCoursePage() {
                 be refined later when we build the full course editor.
               </p>
             </div>
-          </CardContent>
-        </DataPanel>
-      </section>
+        </CardContent>
+      </DataPanel>
     </PageShell>
   );
 }

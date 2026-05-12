@@ -8,7 +8,7 @@ import {
   type CoachDrillChallenge,
   type CoachDrillWinRule,
 } from "@/lib/coach";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import type { AchievementTier, AchievementUnlockNotification } from "@/lib/achievements/types";
 
@@ -44,11 +44,11 @@ export type CoachDrillShot = {
 };
 
 export async function evaluateCoachDrillAchievementsForDefaultUser() {
-  return evaluateCoachDrillAchievementsForUser(getDefaultUserId());
+  return evaluateCoachDrillAchievementsForUser(await requireCurrentUserId());
 }
 
 export async function evaluateCoachDrillAchievementsForUser(userId: string) {
-  const data = await getProgressData();
+  const data = await getProgressData(userId);
   const challenges = buildCoachDrillChallenges(buildCoachSummary(data.clubs));
   const statuses = await getCoachDrillAwardStatuses(challenges, userId);
   const notifications: AchievementUnlockNotification[] = [];
@@ -78,8 +78,9 @@ export async function evaluateCoachDrillAchievementsForUser(userId: string) {
 
 export async function getCoachDrillAwardStatuses(
   challenges: CoachDrillChallenge[],
-  userId = getDefaultUserId(),
+  userId?: string,
 ) {
+  userId ??= await requireCurrentUserId();
   const statusByDrillId: Record<string, CoachDrillAwardStatus> = Object.fromEntries(
     challenges.map((challenge) => [
       challenge.id,

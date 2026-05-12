@@ -3,14 +3,24 @@ import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, sql } from "drizzle-orm";
 
-import { clubs, importRows, sessions, shots, stockYardages, users } from "@/db/schema";
+import {
+  clubs,
+  importFiles,
+  importRows,
+  sessions,
+  shots,
+  stockYardages,
+  strokesGainedBaselines,
+  strokesGainedShotEvents,
+  users,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
-import { evaluateCoachDrillAchievementsForDefaultUser } from "@/lib/coach-drill-awards";
+import { evaluateCoachDrillAchievementsForUser } from "@/lib/coach-drill-awards";
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 import { ensureKnownCourseForSession, type CourseSessionLink } from "@/lib/courses";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import {
   type CourseInferenceResult,
   inferCourseShotsFromHoleShotCounts,
@@ -22,12 +32,17 @@ import {
   type DistanceUnit,
   type ParsedRapsodoRawRow,
   type ParsedRapsodoShot,
+  type RapsodoColumnMapping,
   type ShotCategory,
   buildClubKey,
   formatClubType,
   normalizeClubType,
   parseRapsodoCsv,
 } from "@/lib/rapsodo/parser";
+import {
+  DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+  buildStrokesGainedEventsFromCourseShots,
+} from "@/lib/strokes-gained";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -46,6 +61,7 @@ export type SaveRapsodoImportInput = {
   sessionType: "range" | "round" | "simulator" | "simulated_course";
   sessionDate: string;
   distanceUnit: DistanceUnit;
+  columnMapping?: RapsodoColumnMapping;
   courseName?: string;
   courseScorecardText?: string;
   courseHoleShotCounts?: Array<{ holeNumber: number; shotCount: number }>;
@@ -118,9 +134,11 @@ export async function saveRapsodoImport(
   input: SaveRapsodoImportInput,
 ): Promise<SaveRapsodoImportResult> {
   try {
+    const userId = await requireCurrentUserId();
     const validatedInput = validateInput(input);
     const parsed = parseRapsodoCsv(validatedInput.rawCsvText, {
       fallbackDistanceUnit: validatedInput.distanceUnit,
+      columnMapping: validatedInput.columnMapping,
     });
 
     if (parsed.shots.length === 0) {
@@ -139,6 +157,7 @@ export async function saveRapsodoImport(
 
     const result = await persistImport({
       ...validatedInput,
+      userId,
       sessionDate: parsed.exportedAtIso ?? validatedInput.sessionDate,
       shots: importedShots,
       rawRows: parsed.rawRows,
@@ -149,8 +168,8 @@ export async function saveRapsodoImport(
     const achievementUnlockNotifications = result.skipped
       ? []
       : [
-          ...(await evaluateAchievementsAfterImport(getDefaultUserId())).unlockedAchievements,
-          ...(await evaluateCoachDrillAchievementsForDefaultUser()).notifications,
+          ...(await evaluateAchievementsAfterImport(userId)).unlockedAchievements,
+          ...(await evaluateCoachDrillAchievementsForUser(userId)).notifications,
         ];
 
     revalidateImportPages();
@@ -192,6 +211,7 @@ export async function saveRapsodoImportBatch(
   const parsedInputs = inputs.map((input) => {
     const parsed = parseRapsodoCsv(input.rawCsvText, {
       fallbackDistanceUnit: input.distanceUnit,
+      columnMapping: input.columnMapping,
     });
 
     return { input, parsed };
@@ -241,6 +261,7 @@ export async function saveRapsodoImportBatch(
 
 async function persistImport(
   input: SaveRapsodoImportInput & {
+    userId: string;
     shots: ParsedRapsodoShot[];
     rawRows: ParsedRapsodoRawRow[];
     coursePlan: CourseInferenceResult | null;
@@ -248,7 +269,7 @@ async function persistImport(
   },
 ) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = input.userId;
   const preferredUnits = "yards";
   const now = new Date();
   const sessionDate = parseSessionDate(input.sessionDate);
@@ -263,15 +284,12 @@ async function persistImport(
       .insert(users)
       .values({
         id: userId,
-        email: "single-user@forekinghell.local",
-        name: "ForeKingHell Player",
         preferredUnits,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          preferredUnits,
           updatedAt: now,
         },
       });
@@ -289,6 +307,23 @@ async function persistImport(
       .limit(1);
 
     if (existingImport) {
+      await tx
+        .insert(importFiles)
+        .values({
+          userId,
+          sessionId: existingImport.id,
+          source: input.source,
+          fileName: input.fileName,
+          fileSizeBytes: input.fileSizeBytes,
+          rawCsvHash,
+          status: "duplicate",
+          metadataJson: {
+            skippedSessionId: existingImport.id,
+          },
+          updatedAt: now,
+        })
+        .onConflictDoNothing();
+
       return {
         sessionId: existingImport.id,
         shotCount: 0,
@@ -317,6 +352,24 @@ async function persistImport(
         rawCsvText: input.rawCsvText,
       })
       .returning({ id: sessions.id });
+
+    await tx
+      .insert(importFiles)
+      .values({
+        userId,
+        sessionId: session.id,
+        source: input.source,
+        fileName: input.fileName,
+        fileSizeBytes: input.fileSizeBytes,
+        rawCsvHash,
+        status: "saved",
+        metadataJson: {
+          sessionType: input.sessionType,
+          courseName: input.courseName?.trim() || null,
+        },
+        updatedAt: now,
+      })
+      .onConflictDoNothing();
 
     const clubIdByKey = new Map<string, string>();
 
@@ -386,40 +439,76 @@ async function persistImport(
       fileName: input.fileName,
     });
 
-    await tx.insert(shots).values(
-      input.shots.map((shot) => ({
+    const insertedShots = await tx
+      .insert(shots)
+      .values(
+        input.shots.map((shot) => ({
+          userId,
+          sessionId: session.id,
+          clubId: clubIdByKey.get(shot.clubKey) ?? "",
+          shotAt: sessionDate,
+          clubType: shot.clubType,
+          shotNumber: shot.shotNumber,
+          carryYd: shot.carryYd,
+          totalYd: shot.totalYd,
+          ballSpeedMph: shot.ballSpeedMph,
+          clubSpeedMph: shot.clubSpeedMph,
+          launchAngleDeg: shot.launchAngleDeg,
+          launchDirectionDeg: shot.launchDirectionDeg,
+          apexFt: shot.apexFt,
+          sideCarryYd: shot.sideCarryYd,
+          attackAngleDeg: shot.attackAngleDeg,
+          clubPathDeg: shot.clubPathDeg,
+          descentAngleDeg: shot.descentAngleDeg,
+          smashFactor: shot.smashFactor,
+          spinRate: shot.spinRate,
+          spinAxis: shot.spinAxis,
+          shotShape: shot.shotShape,
+          shotCategory: courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
+          courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
+          courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
+          courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
+          courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
+          distanceRemainingYd: courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
+          qualityTag: shot.qualityTag,
+          clubDataEstType: shot.clubDataEstType,
+          sourceRawJson: shot.sourceRawJson,
+        })),
+      )
+      .returning({ id: shots.id });
+
+    if (input.coursePlan?.shots.length) {
+      const shotIdByRowNumber = new Map<number, string>();
+
+      input.shots.forEach((shot, index) => {
+        const insertedShot = insertedShots[index];
+
+        if (insertedShot) {
+          shotIdByRowNumber.set(shot.rowNumber, insertedShot.id);
+        }
+      });
+
+      const baselineRows = await tx
+        .select({
+          category: strokesGainedBaselines.category,
+          lie: strokesGainedBaselines.lie,
+          distanceStartYd: strokesGainedBaselines.distanceStartYd,
+          distanceEndYd: strokesGainedBaselines.distanceEndYd,
+          expectedStrokes: strokesGainedBaselines.expectedStrokes,
+        })
+        .from(strokesGainedBaselines);
+      const strokesGainedEvents = buildStrokesGainedEventsFromCourseShots({
         userId,
         sessionId: session.id,
-        clubId: clubIdByKey.get(shot.clubKey) ?? "",
-        shotAt: sessionDate,
-        clubType: shot.clubType,
-        shotNumber: shot.shotNumber,
-        carryYd: shot.carryYd,
-        totalYd: shot.totalYd,
-        ballSpeedMph: shot.ballSpeedMph,
-        clubSpeedMph: shot.clubSpeedMph,
-        launchAngleDeg: shot.launchAngleDeg,
-        launchDirectionDeg: shot.launchDirectionDeg,
-        apexFt: shot.apexFt,
-        sideCarryYd: shot.sideCarryYd,
-        attackAngleDeg: shot.attackAngleDeg,
-        clubPathDeg: shot.clubPathDeg,
-        descentAngleDeg: shot.descentAngleDeg,
-        smashFactor: shot.smashFactor,
-        spinRate: shot.spinRate,
-        spinAxis: shot.spinAxis,
-        shotShape: shot.shotShape,
-        shotCategory: courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
-        courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
-        courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
-        courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
-        courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
-        distanceRemainingYd: courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
-        qualityTag: shot.qualityTag,
-        clubDataEstType: shot.clubDataEstType,
-        sourceRawJson: shot.sourceRawJson,
-      })),
-    );
+        courseShots: input.coursePlan.shots,
+        shotIdByRowNumber,
+        baselineBuckets: baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+      });
+
+      if (strokesGainedEvents.length > 0) {
+        await tx.insert(strokesGainedShotEvents).values(strokesGainedEvents);
+      }
+    }
 
     for (const [clubKey, clubId] of clubIdByKey) {
       const firstShotForClub = input.shots.find((shot) => shot.clubKey === clubKey);
@@ -578,6 +667,7 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     ...input,
     fileName: input.fileName.trim().slice(0, 260) || "rapsodo-import.csv",
     fileSizeBytes: Number.isFinite(input.fileSizeBytes) ? Math.max(0, input.fileSizeBytes) : 0,
+    columnMapping: sanitizeColumnMapping(input.columnMapping),
     courseName: input.courseName?.trim().slice(0, 180),
     courseScorecardText: input.courseScorecardText?.slice(0, 12000),
     courseHoleShotCounts: sanitizeHoleShotCounts(input.courseHoleShotCounts),
@@ -608,6 +698,24 @@ function buildCoursePlan(
   coursePlan.warnings.push(...scorecard.warnings);
 
   return coursePlan;
+}
+
+function sanitizeColumnMapping(input: SaveRapsodoImportInput["columnMapping"]) {
+  if (!input) {
+    return undefined;
+  }
+
+  const sanitized: RapsodoColumnMapping = {};
+
+  for (const [field, header] of Object.entries(input) as Array<[keyof RapsodoColumnMapping, string | undefined]>) {
+    const value = header?.trim();
+
+    if (value) {
+      sanitized[field] = value.slice(0, 160);
+    }
+  }
+
+  return Object.keys(sanitized).length > 0 ? sanitized : undefined;
 }
 
 function sanitizeHoleShotCounts(input: SaveRapsodoImportInput["courseHoleShotCounts"]) {

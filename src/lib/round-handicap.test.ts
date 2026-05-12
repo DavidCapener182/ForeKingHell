@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateHandicapSummary, calculateRoundDifferential, formatHandicapDelta } from "./round-handicap";
+import {
+  calculateHandicapSummary,
+  calculatePlayingHandicapSummary,
+  calculateRoundDifferential,
+  formatHandicapDelta,
+} from "./round-handicap";
 
 describe("round handicap", () => {
   it("calculates a rated course differential", () => {
@@ -25,6 +30,18 @@ describe("round handicap", () => {
     ).toBe(22);
   });
 
+  it("normalizes 9-hole differentials to an 18-hole equivalent", () => {
+    expect(
+      calculateRoundDifferential({
+        totalScore: 43,
+        totalPar: 35,
+        courseRating: 34.3,
+        slopeRating: 110,
+        holesPlayed: 9,
+      }),
+    ).toBeCloseTo(17.9, 1);
+  });
+
   it("reports a handicap trend from newest-first values", () => {
     const summary = calculateHandicapSummary([8, 10, 12]);
 
@@ -46,5 +63,33 @@ describe("round handicap", () => {
     expect(summary.usedDifferentialCount).toBe(8);
     expect(summary.value).toBe(4.5);
     expect(summary.methodLabel).toBe("Lowest 8 of latest 20 differentials");
+  });
+
+  it("calculates realistic playing handicap from averaged adjusted recent rounds", () => {
+    const summary = calculatePlayingHandicapSummary([
+      { handicapDifferential: 7, type: "simulated_course" },
+      { handicapDifferential: 18, type: "real_round" },
+      { handicapDifferential: 11, type: "simulator" },
+      { handicapDifferential: 16, type: "real_round" },
+      { handicapDifferential: 20, type: "real_round" },
+    ]);
+
+    expect(summary.value).toBe(16);
+    expect(summary.usedDifferentialCount).toBe(5);
+    expect(summary.realDifferentialCount).toBe(3);
+    expect(summary.simulatorDifferentialCount).toBe(2);
+    expect(summary.methodLabel).toBe("Average latest 5 adjusted differentials; simulator +4.0");
+  });
+
+  it("requires enough rounds before showing a realistic playing handicap", () => {
+    const summary = calculatePlayingHandicapSummary([
+      { handicapDifferential: 12, type: "real_round" },
+      { handicapDifferential: 10, type: "simulated_course" },
+    ]);
+
+    expect(summary.value).toBeNull();
+    expect(summary.sampleSize).toBe(2);
+    expect(summary.usedDifferentialCount).toBe(2);
+    expect(summary.methodLabel).toBe("Needs 3 eligible rounds; 2 available");
   });
 });

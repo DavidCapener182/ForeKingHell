@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, MapPinned, Plus, RefreshCw, Route, Settings, Trophy } from "lucide-react";
-import { asc, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { seedKnownCoursesAction } from "@/app/courses/actions";
 import {
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { courses, holes, sessions, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -224,8 +225,13 @@ export default async function CoursesPage() {
 
 async function getCoursesData() {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [courseRows, teeSetRows, holeRows, roundRows] = await Promise.all([
-    db.select().from(courses).orderBy(asc(courses.name)),
+    db
+      .select()
+      .from(courses)
+      .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
+      .orderBy(asc(courses.name)),
     db.select().from(teeSets).orderBy(asc(teeSets.name)),
     db.select({ courseId: holes.courseId }).from(holes),
     db
@@ -234,7 +240,12 @@ async function getCoursesData() {
         id: sessions.id,
       })
       .from(sessions)
-      .where(inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"])),
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"]),
+        ),
+      ),
   ]);
   const teeSetsByCourse = countBy(teeSetRows.map((teeSet) => teeSet.courseId));
   const holesByCourse = countBy(holeRows.map((hole) => hole.courseId));

@@ -13,10 +13,14 @@ import {
   Gauge,
   GitCompareArrows,
   LineChart,
+  LogOut,
   MapPinned,
   MoreHorizontal,
+  Settings,
   Target,
   Upload,
+  Users,
+  Wrench,
   Zap,
 } from "lucide-react";
 
@@ -30,6 +34,7 @@ const navGroups = [
       { href: "/today", label: "Today", icon: CalendarDays, isActive: (pathname: string) => pathname.startsWith("/today") },
       { href: "/dashboard", label: "Dashboard", icon: Gauge, isActive: (pathname: string) => pathname === "/" || pathname === "/dashboard" },
       { href: "/progress", label: "Progress", icon: LineChart, isActive: (pathname: string) => pathname.startsWith("/progress") },
+      { href: "/strokes-gained", label: "Strokes gained", icon: LineChart, isActive: (pathname: string) => pathname.startsWith("/strokes-gained") },
     ],
   },
   {
@@ -45,6 +50,7 @@ const navGroups = [
     items: [
       { href: "/compare", label: "Compare", icon: GitCompareArrows, isActive: (pathname: string) => pathname.startsWith("/compare") },
       { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
+      { href: "/equipment", label: "Equipment", icon: Wrench, isActive: (pathname: string) => pathname.startsWith("/equipment") },
       { href: "/shots", label: "Shots", icon: Database, isActive: (pathname: string) => pathname.startsWith("/shots") },
       { href: "/rapsodo", label: "Rapsodo", icon: Upload, isActive: (pathname: string) => pathname.startsWith("/rapsodo") },
     ],
@@ -54,6 +60,8 @@ const navGroups = [
     items: [
       { href: "/coach", label: "Coach", icon: Brain, isActive: (pathname: string) => pathname.startsWith("/coach") },
       { href: "/achievements", label: "Achievements", icon: Award, isActive: (pathname: string) => pathname.startsWith("/achievements") },
+      { href: "/leaderboard", label: "Leaderboards", icon: Users, isActive: (pathname: string) => pathname.startsWith("/leaderboard") },
+      { href: "/settings", label: "Settings", icon: Settings, isActive: (pathname: string) => pathname.startsWith("/settings") },
     ],
   },
 ];
@@ -69,12 +77,16 @@ const mobilePrimaryItems = [
 const moreItems = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/compare", label: "Compare", icon: GitCompareArrows },
+  { href: "/equipment", label: "Equipment", icon: Wrench },
   { href: "/rapsodo", label: "Rapsodo", icon: Upload },
   { href: "/shots", label: "Shots", icon: Database },
   { href: "/courses", label: "Courses", icon: MapPinned },
   { href: "/handicap", label: "Handicap", icon: Calculator },
+  { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
   { href: "/progress", label: "Progress", icon: LineChart },
   { href: "/achievements", label: "Achievements", icon: Award },
+  { href: "/leaderboard", label: "Leaderboards", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
@@ -83,6 +95,15 @@ export function AppNav({ totalXp }: { totalXp: number }) {
   const pathname = usePathname();
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
+
+  if (
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/share/") ||
+    pathname.startsWith("/privacy")
+  ) {
+    return null;
+  }
 
   return (
     <>
@@ -195,6 +216,11 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>
           </Link>
+          <form action="/auth/sign-out" method="post" className="hidden sm:block">
+            <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" aria-label="Sign out">
+              <LogOut className="size-4" />
+            </Button>
+          </form>
         </nav>
       </div>
 

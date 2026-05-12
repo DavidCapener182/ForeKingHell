@@ -3,6 +3,7 @@ export type HandicapRoundInput = {
   totalPar?: number | null;
   courseRating: number | null;
   slopeRating: number | null;
+  holesPlayed?: number | null;
 };
 
 export type HandicapTrendDirection = "down" | "up" | "flat" | "none";
@@ -22,16 +23,39 @@ export type HandicapSummary = {
   trend: HandicapTrend;
 };
 
+export type PlayingHandicapRoundInput = {
+  handicapDifferential: number | null;
+  type: string | null;
+};
+
+export type PlayingHandicapSummary = {
+  value: number | null;
+  sampleSize: number;
+  usedDifferentialCount: number;
+  realDifferentialCount: number;
+  simulatorDifferentialCount: number;
+  simulatorAdjustment: number;
+  methodLabel: string;
+  warning: string;
+};
+
 const handicapFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
   minimumFractionDigits: 1,
 });
+
+const MIN_PLAYING_HANDICAP_ROUNDS = 3;
+const PLAYING_HANDICAP_RECENT_ROUNDS = 8;
+const SIMULATOR_PLAYING_ADJUSTMENT = 4;
+const PLAYING_HANDICAP_WARNING =
+  "Data-limited: this reflects recent adjusted scoring, not an official Handicap Index.";
 
 export function calculateRoundDifferential({
   totalScore,
   totalPar,
   courseRating,
   slopeRating,
+  holesPlayed,
 }: HandicapRoundInput) {
   const rating = typeof courseRating === "number" ? courseRating : totalPar;
   const slope = typeof slopeRating === "number" && slopeRating > 0 ? slopeRating : 113;
@@ -40,7 +64,7 @@ export function calculateRoundDifferential({
     return null;
   }
 
-  return ((totalScore - rating) * 113) / slope;
+  return (((totalScore - rating) * 113) / slope) * differentialHolesFactor(holesPlayed);
 }
 
 export function averageRoundDifferential(values: Array<number | null>) {
@@ -70,6 +94,51 @@ export function calculateHandicapSummary(valuesNewestFirst: Array<number | null>
   };
 }
 
+export function calculatePlayingHandicapSummary(
+  roundsNewestFirst: PlayingHandicapRoundInput[],
+): PlayingHandicapSummary {
+  const adjustedRounds = roundsNewestFirst
+    .map((round) => {
+      if (typeof round.handicapDifferential !== "number" || !Number.isFinite(round.handicapDifferential)) {
+        return null;
+      }
+
+      const isRealRound = round.type === "real_round";
+      return {
+        isRealRound,
+        value: round.handicapDifferential + (isRealRound ? 0 : SIMULATOR_PLAYING_ADJUSTMENT),
+      };
+    })
+    .filter((round): round is { isRealRound: boolean; value: number } => round !== null);
+  const selectedRounds = adjustedRounds.slice(0, PLAYING_HANDICAP_RECENT_ROUNDS);
+  const realDifferentialCount = selectedRounds.filter((round) => round.isRealRound).length;
+  const simulatorDifferentialCount = selectedRounds.length - realDifferentialCount;
+
+  if (selectedRounds.length < MIN_PLAYING_HANDICAP_ROUNDS) {
+    return {
+      value: null,
+      sampleSize: adjustedRounds.length,
+      usedDifferentialCount: selectedRounds.length,
+      realDifferentialCount,
+      simulatorDifferentialCount,
+      simulatorAdjustment: SIMULATOR_PLAYING_ADJUSTMENT,
+      methodLabel: `Needs ${MIN_PLAYING_HANDICAP_ROUNDS} eligible rounds; ${selectedRounds.length} available`,
+      warning: PLAYING_HANDICAP_WARNING,
+    };
+  }
+
+  return {
+    value: averageRoundDifferential(selectedRounds.map((round) => round.value)),
+    sampleSize: adjustedRounds.length,
+    usedDifferentialCount: selectedRounds.length,
+    realDifferentialCount,
+    simulatorDifferentialCount,
+    simulatorAdjustment: SIMULATOR_PLAYING_ADJUSTMENT,
+    methodLabel: `Average latest ${selectedRounds.length} adjusted differentials; simulator ${formatHandicapDelta(SIMULATOR_PLAYING_ADJUSTMENT)}`,
+    warning: PLAYING_HANDICAP_WARNING,
+  };
+}
+
 export function calculateWhsStyleIndex(valuesNewestFirst: number[]) {
   const recent = valuesNewestFirst.filter(Number.isFinite).slice(0, 20);
 
@@ -96,6 +165,14 @@ export function calculateWhsStyleIndex(valuesNewestFirst: number[]) {
         ? "Lowest 8 of latest 20 differentials"
         : `${recent.length} eligible ${recent.length === 1 ? "score" : "scores"}: lowest ${rule.count}${rule.adjustment ? ` with ${formatHandicapDelta(rule.adjustment)} adjustment` : ""}`,
   };
+}
+
+function differentialHolesFactor(holesPlayed: number | null | undefined) {
+  if (typeof holesPlayed !== "number" || !Number.isFinite(holesPlayed) || holesPlayed <= 0 || holesPlayed >= 18) {
+    return 1;
+  }
+
+  return 18 / holesPlayed;
 }
 
 export function formatHandicapValue(value: number | null) {

@@ -57,6 +57,41 @@
       "when": 1778585603830,
       "tag": "0007_shiny_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778615991328,
+      "tag": "0008_public_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778619344079,
+      "tag": "0009_chief_garia",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778619461790,
+      "tag": "0010_messy_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778620210450,
+      "tag": "0011_peaceful_vivisector",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1778623206350,
+      "tag": "0012_regular_moondragon",
+      "breakpoints": true
     }
   ]
 }

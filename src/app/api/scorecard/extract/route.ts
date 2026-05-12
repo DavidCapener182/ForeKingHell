@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { rejectOversizedDataUrl, rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
+import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
 
 export const runtime = "nodejs";
@@ -46,6 +47,10 @@ Important:
 - Do not include markdown, explanation, or code fences.`;
 
 export async function POST(request: NextRequest) {
+  if (!(await getOptionalCurrentUserId())) {
+    return NextResponse.json({ message: "Authentication required." }, { status: 401 });
+  }
+
   const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
   if (sizeRejection) {
     return sizeRejection;

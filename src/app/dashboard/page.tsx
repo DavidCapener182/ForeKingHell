@@ -18,7 +18,6 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   CompactLinkGrid,
@@ -33,11 +32,16 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { clubs, importRows, sessions, shots, teeSets } from "@/db/schema";
+import { clubs, importRows, sessions, shots, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
-import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
-import { getDefaultUserId } from "@/lib/current-user";
+import {
+  buildCourseDecisionAdvice,
+  getClubDecisionLabel,
+  getClubDecisionTone,
+} from "@/lib/course-decision-advice";
+import { clubSortValue, formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import {
   calculateHandicapSummary,
@@ -46,7 +50,9 @@ import {
   formatHandicapValue,
   type HandicapSummary,
 } from "@/lib/round-handicap";
+import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
+import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -76,9 +82,8 @@ function MissingDatabaseUrlSetup() {
             <AlertTitle>Set DATABASE_URL</AlertTitle>
             <AlertDescription className="space-y-3">
               <p>
-                Use your Supabase (or other Postgres) connection string. Optionally set{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs">DEFAULT_USER_ID</code> to a
-                UUID; otherwise the built-in single-user id is used.
+                Use your Supabase (or other Postgres) connection string and configure Supabase Auth
+                public keys so each request can be scoped to the signed-in user.
               </p>
               <p className="text-muted-foreground">
                 After deploying with env vars, run{" "}
@@ -100,11 +105,13 @@ export default async function DashboardPage() {
   }
 
   const data = await getDashboardData();
+  const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel = data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
 
   const metrics = [
     {
+      pin: "shots" as const,
       label: "Shots saved",
       value: integerFormatter.format(data.stats.shotCount),
       detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
@@ -113,6 +120,7 @@ export default async function DashboardPage() {
       tone: "sky" as const,
     },
     {
+      pin: "clubs" as const,
       label: "Active clubs",
       value: integerFormatter.format(data.stats.clubCount),
       detail: "Mapped into stock-yardage views",
@@ -121,6 +129,7 @@ export default async function DashboardPage() {
       tone: "pink" as const,
     },
     {
+      pin: "sessions" as const,
       label: "Imported sessions",
       value: integerFormatter.format(data.stats.sessionCount),
       detail: `${integerFormatter.format(data.stats.roundCount)} saved rounds, including real scorecards`,
@@ -129,14 +138,15 @@ export default async function DashboardPage() {
       tone: "green" as const,
     },
     {
-      label: "Combined handicap",
+      pin: "handicap" as const,
+      label: "Scoring ceiling",
       value: formatHandicapValue(data.stats.combinedHandicap.value),
       detail: formatCombinedHandicapDetail(data.stats.realHandicap, data.stats.simHandicap, data.stats.combinedHandicap),
       href: "/rounds",
       icon: LineChart,
       tone: "amber" as const,
     },
-  ];
+  ].filter((metric) => pinnedDashboardSections.has(metric.pin));
 
   const routeCards = [
     {
@@ -189,7 +199,7 @@ export default async function DashboardPage() {
     },
     {
       title: "Handicap",
-      description: "Review real, simulator, and combined WHS-style estimates.",
+      description: "Review scoring ceiling, playing estimate, and data-limited warnings.",
       href: "/handicap",
       metric: formatHandicapValue(data.stats.combinedHandicap.value),
       icon: LineChart,
@@ -293,6 +303,33 @@ export default async function DashboardPage() {
         ))}
       </section>
 
+      <DataPanel>
+        <SectionHeader
+          title="On-course decisions"
+          description="Course-number reminders from the current bag map."
+          action={
+            <Button asChild variant="outline">
+              <Link href="/bag" prefetch={false}>
+                <Target className="size-4" />
+                Full advice
+              </Link>
+            </Button>
+          }
+        />
+        <CardContent>
+          <CompactReadoutGrid
+            columnsClassName="md:grid-cols-3"
+            items={data.courseAdvice.slice(0, 3).map((item) => ({
+              label: item.label,
+              value: item.value,
+              detail: item.detail,
+              tone: item.tone,
+              href: item.clubId ? `/bag/${item.clubId}` : "/bag",
+            }))}
+          />
+        </CardContent>
+      </DataPanel>
+
       <section className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <DataPanel>
           <SectionHeader
@@ -312,6 +349,7 @@ export default async function DashboardPage() {
           </CardContent>
         </DataPanel>
 
+        {pinnedDashboardSections.has("coach") ? (
         <DataPanel>
           <SectionHeader
             title="Next practice"
@@ -355,6 +393,7 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </DataPanel>
+        ) : null}
       </section>
 
       <section className="grid gap-4">
@@ -370,6 +409,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        {pinnedDashboardSections.has("bag") ? (
         <DataPanel>
           <SectionHeader
             title="Bag snapshot"
@@ -396,7 +436,9 @@ export default async function DashboardPage() {
                     <p className="text-lg font-semibold tracking-normal">
                       {formatClubType(club.type)}
                     </p>
-                    <Badge variant="outline">{club.stock.label}</Badge>
+                    <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
+                      {club.decisionLabel}
+                    </StatusPill>
                   </div>
                   <p className="truncate text-sm text-muted-foreground">{club.brandModel}</p>
                 </div>
@@ -425,7 +467,9 @@ export default async function DashboardPage() {
             ) : null}
           </CardContent>
         </DataPanel>
+        ) : null}
 
+        {pinnedDashboardSections.has("rounds") ? (
         <DataPanel>
           <SectionHeader
             title="Latest round"
@@ -483,6 +527,7 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </DataPanel>
+        ) : null}
       </section>
     </PageShell>
   );
@@ -534,7 +579,7 @@ function TodayPlan({
               label: "Best club",
               value: bestClub ? formatClubType(bestClub.type) : "--",
               detail: bestClub
-                ? `${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots`
+                ? `${bestClub.decisionLabel} · ${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots`
                 : "Need a tracked club sample",
               tone: "green",
             },
@@ -587,17 +632,25 @@ function formatCombinedHandicapDetail(
           ? "Flat trend"
           : `${combinedHandicap.sampleSize} round sample`;
 
-  return `Real ${formatHandicapValue(realHandicap.value)} | Sim ${formatHandicapValue(simHandicap.value)} | ${trendLabel}`;
+  return `Real ceiling ${formatHandicapValue(realHandicap.value)} | Sim ceiling ${formatHandicapValue(simHandicap.value)} | ${trendLabel}`;
+}
+
+function normalizeDashboardPins(value: string[] | null | undefined): DashboardPin[] {
+  const allowedPins = new Set<string>(dashboardPinOptions);
+  const pins = (value ?? []).filter((pin): pin is DashboardPin => allowedPins.has(pin));
+
+  return pins.length > 0 ? pins : [...dashboardPinOptions];
 }
 
 async function getDashboardData() {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const [
     [shotCount],
     [rawRowCount],
     [sessionCount],
     [roundCount],
+    [profile],
     recentSessionRows,
     roundRows,
     allClubRows,
@@ -611,6 +664,11 @@ async function getDashboardData() {
       .select({ value: count() })
       .from(sessions)
       .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes]))),
+    db
+      .select({ dashboardPins: users.dashboardPins })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1),
     db
       .select({
         id: sessions.id,
@@ -721,23 +779,34 @@ async function getDashboardData() {
     rawRowCount: rawCountBySessionId.get(session.id) ?? 0,
   }));
 
-  const bagPreview = clubRows
+  const bag = clubRows
     .map((club) => {
       const clubShots = stockShotsByClubId.get(club.id) ?? [];
       const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
+      const stock = calculateStockYardage(clubShots, 50, { clubType: club.type });
+      const touch = calculateShortGameTouchSummary(clubShots, 80, { clubType: club.type });
+      const isShortGameTouch = isShortGameTouchClubType(club.type);
+      const decisionLabel = getClubDecisionLabel({
+        isShortGameTouch,
+        stockLabel: stock.label,
+      });
 
       return {
         ...club,
         brandModel,
+        isShortGameTouch,
+        decisionLabel,
         shotCount: shotCountByClubId.get(club.id) ?? 0,
-        stock: calculateStockYardage(clubShots, 50, { clubType: club.type }),
+        stock,
+        touch,
       };
     })
     .sort((left, right) => {
       const shotCountDifference = right.shotCount - left.shotCount;
       return shotCountDifference || clubSortValue(left.type) - clubSortValue(right.type);
-    })
-    .slice(0, 5);
+    });
+  const bagPreview = bag.slice(0, 5);
+  const courseAdvice = buildCourseDecisionAdvice(bag);
   const roundSummaries = roundRows.map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
   const realHandicap = calculateHandicapSummary(
@@ -763,6 +832,7 @@ async function getDashboardData() {
   const coachCard = buildCoachSummary(coachData.clubs).clubCards[0] ?? null;
 
   return {
+    dashboardPins: normalizeDashboardPins(profile?.dashboardPins),
     stats: {
       shotCount: shotCount?.value ?? 0,
       rawRowCount: rawRowCount?.value ?? 0,
@@ -776,6 +846,7 @@ async function getDashboardData() {
     recentSessions,
     latestRound,
     bagPreview,
+    courseAdvice,
     whatChanged,
     coachPreview: coachCard
       ? {
@@ -978,6 +1049,7 @@ function summarizeRound(round: {
       totalPar,
       courseRating: round.courseRating ?? null,
       slopeRating: round.slopeRating ?? null,
+      holesPlayed: scorecard.length,
     });
 
   return {

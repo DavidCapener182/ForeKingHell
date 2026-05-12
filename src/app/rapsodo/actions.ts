@@ -23,7 +23,7 @@ import {
   setStoredRapsodoToken,
 } from "@/lib/rapsodo/token-cookie";
 import { calculateStockYardage } from "@/lib/stock-yardage";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import {
   type SaveRapsodoImportInput,
   saveRapsodoImport,
@@ -295,10 +295,10 @@ export async function importRapsodoSessionAction(input: {
 
 async function upsertRapsodoSyncSessions(remoteSessions: RapsodoCloudSession[]) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const now = new Date();
 
-  await ensureDefaultUser();
+  await ensureCurrentRapsodoUser();
   const existingRows = await db
     .select({
       providerKind: rapsodoSyncSessions.providerKind,
@@ -397,7 +397,7 @@ async function reconcileExistingRapsodoImports(
   }
 
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const remoteByKey = new Map(
     remoteSessions.map((session) => [
       buildRapsodoSyncSessionKey(session.providerKind, session.providerSessionId),
@@ -630,7 +630,7 @@ function courseNameTokens(value: string) {
 
 async function getRapsodoClubChoices(client: RapsodoCloudClient, token: string): Promise<RapsodoClubChoice[]> {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const [clubRows, stockRows, clubDateRows, rapsodoBagClubs] = await Promise.all([
     db
       .select({
@@ -830,7 +830,7 @@ function dateOnlyTimestamp(value: string | null | undefined) {
 
 async function updateRapsodoExportHash(session: RapsodoSessionListItem, rawCsvHash: string) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const now = new Date();
 
   await db
@@ -851,7 +851,7 @@ async function markRapsodoSessionImported(
   importedSessionId: string,
 ) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const now = new Date();
 
   await db
@@ -871,24 +871,21 @@ async function markRapsodoSessionImported(
     );
 }
 
-async function ensureDefaultUser() {
+async function ensureCurrentRapsodoUser() {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const now = new Date();
 
   await db
     .insert(users)
     .values({
       id: userId,
-      email: "single-user@forekinghell.local",
-      name: "ForeKingHell Player",
       preferredUnits: "yards",
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: users.id,
       set: {
-        preferredUnits: "yards",
         updatedAt: now,
       },
     });

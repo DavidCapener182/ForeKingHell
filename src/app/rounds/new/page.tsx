@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, MapPinned } from "lucide-react";
-import { asc } from "drizzle-orm";
+import { asc, eq, or } from "drizzle-orm";
 
 import { createManualRoundAction } from "@/app/rounds/actions";
 import {
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { NewRoundForm, type RoundCourseOption } from "./new-round-form";
 
 export const dynamic = "force-dynamic";
@@ -81,8 +82,13 @@ export default async function NewRoundPage() {
 
 async function getRoundCourseOptions(): Promise<RoundCourseOption[]> {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [courseRows, teeSetRows, holeRows] = await Promise.all([
-    db.select().from(courses).orderBy(asc(courses.name)),
+    db
+      .select()
+      .from(courses)
+      .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
+      .orderBy(asc(courses.name)),
     db.select().from(teeSets).orderBy(asc(teeSets.name)),
     db.select().from(holes).orderBy(asc(holes.holeNumber)),
   ]);

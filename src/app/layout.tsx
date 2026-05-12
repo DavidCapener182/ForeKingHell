@@ -5,7 +5,8 @@ import { AchievementNotificationProvider } from "@/components/achievement-notifi
 import { AppNav } from "@/components/app-nav";
 import { PwaRegister } from "@/components/pwa-register";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
-import { getTotalXpForDefaultUser } from "@/lib/achievements/service";
+import { getTotalXpForCurrentUser } from "@/lib/achievements/service";
+import { getCurrentUserPreferences } from "@/lib/current-user";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -52,15 +53,29 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [totalXp, achievementNotifications] = await Promise.all([
-    getTotalXpForDefaultUser().catch(() => 0),
+  const [totalXp, achievementNotifications, preferences] = await Promise.all([
+    getTotalXpForCurrentUser().catch(() => 0),
     getAchievementUnlockFlash().catch(() => []),
+    getCurrentUserPreferences().catch(() => ({
+      preferredUnits: "yards" as const,
+      theme: "system" as const,
+      tableDensity: "comfortable" as const,
+    })),
   ]);
+  const themeClass = preferences.theme === "dark" ? "dark" : "";
 
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${themeClass} h-full`}
+      data-theme={preferences.theme}
+      data-table-density={preferences.tableDensity}
+      data-preferred-units={preferences.preferredUnits}
+    >
       <body className="min-h-full flex flex-col antialiased">
         <DevServiceWorkerResetScript />
+        <ThemePreferenceScript />
+        <PlausibleScript />
         <PwaRegister />
         <AppNav totalXp={totalXp} />
         <AchievementNotificationProvider initialNotifications={achievementNotifications}>
@@ -68,6 +83,31 @@ export default async function RootLayout({
         </AchievementNotificationProvider>
       </body>
     </html>
+  );
+}
+
+function ThemePreferenceScript() {
+  return (
+    <Script id="theme-preference" strategy="beforeInteractive">
+      {`try{var root=document.documentElement;var theme=root.dataset.theme;if(theme==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){root.classList.add("dark");}}catch(error){}`}
+    </Script>
+  );
+}
+
+function PlausibleScript() {
+  const domain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+
+  if (!domain) {
+    return null;
+  }
+
+  return (
+    <Script
+      defer
+      data-domain={domain}
+      src="https://plausible.io/js/script.js"
+      strategy="afterInteractive"
+    />
   );
 }
 

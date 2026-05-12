@@ -1,0 +1,84 @@
+import Link from "next/link";
+import { ArrowLeft, Database, LockKeyhole, MessageCircle, Share2, ShieldCheck } from "lucide-react";
+
+import { PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+
+const privacySections = [
+  {
+    title: "Data stored",
+    icon: Database,
+    body: "ForeKingHell stores your profile, preferences, imported CSV files, raw CSV rows, normalized shots, sessions, rounds, courses you create, equipment history, achievements, and coaching outputs in the configured Supabase Postgres database.",
+  },
+  {
+    title: "Account scope",
+    icon: LockKeyhole,
+    body: "Runtime reads and writes are scoped to your Supabase Auth user. Collaboration links create role-based memberships, and private share links expose only the resource named in the link.",
+  },
+  {
+    title: "AI coaching",
+    icon: MessageCircle,
+    body: "Coach summaries and chat responses use SQL-retrieved golf context from your account. Prompts may include relevant shot, round, club, handicap, and goal summaries so the answer can cite the underlying app data.",
+  },
+  {
+    title: "Analytics",
+    icon: ShieldCheck,
+    body: "If NEXT_PUBLIC_PLAUSIBLE_DOMAIN is configured, Plausible records product events such as imports, round creation, AI coach generation, PWA install, and invite acceptance. The app does not send raw shot rows as analytics event properties.",
+  },
+  {
+    title: "Export and deletion",
+    icon: Share2,
+    body: "The settings page includes app-data export and account-data deletion controls. Deleting app data removes ForeKingHell records for the signed-in account, but it does not delete the Supabase Auth identity itself.",
+  },
+];
+
+export default function PrivacyPage() {
+  return (
+    <PageShell size="6xl">
+      <Button asChild variant="ghost" className="w-fit px-0">
+        <Link href="/login" prefetch={false}>
+          <ArrowLeft className="size-4" />
+          Sign in
+        </Link>
+      </Button>
+
+      <PageHeader
+        eyebrow={<StatusPill tone="green">Privacy</StatusPill>}
+        title="ForeKingHell data notice"
+        description="How the app stores golf data, uses AI context, records analytics events, and lets you export or delete account data."
+      />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {privacySections.map((section) => {
+          const Icon = section.icon;
+
+          return (
+            <Card key={section.title} className="premium-card">
+              <CardContent className="space-y-3 p-5">
+                <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Icon className="size-5" />
+                </div>
+                <SectionHeader title={section.title} description={section.body} />
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      <Card className="premium-card">
+        <CardContent className="space-y-3 p-5">
+          <SectionHeader
+            title="Public launch gate"
+            description="Before broad public deployment, verify Supabase Auth providers, RLS policies, role-scoped access, export/delete flows, rate limits, and production analytics configuration in the target Supabase project."
+          />
+          <Button asChild className="w-fit rounded-xl bg-[#111827] text-white">
+            <Link href="/login" prefetch={false}>
+              Continue to sign in
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </PageShell>
+  );
+}

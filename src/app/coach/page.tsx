@@ -42,6 +42,7 @@ import {
 import { getProgressData } from "@/lib/progress-data";
 import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
+import { CoachChatCard } from "@/app/coach/coach-chat-card";
 
 export const dynamic = "force-dynamic";
 
@@ -241,6 +242,15 @@ export default async function CoachPage() {
                   action={<Sparkles className="size-5 text-sky-500" />}
                 />
                 <AiCoachCard payload={aiPayload} />
+              </DataPanel>
+
+              <DataPanel>
+                <SectionHeader
+                  title="AI coach chat"
+                  description="Ask questions answered from cited SQL context in your personal shot database."
+                  action={<Sparkles className="size-5 text-emerald-500" />}
+                />
+                <CoachChatCard />
               </DataPanel>
             </div>
           </section>

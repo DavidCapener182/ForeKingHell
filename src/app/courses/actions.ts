@@ -12,8 +12,11 @@ import {
   ensureMountainParkCourse,
   ensureTpcSawgrassStadiumCourse,
 } from "@/lib/courses";
+import { requireCurrentUserId } from "@/lib/current-user";
+import type { OsmHoleGeometry } from "@/lib/osm-course-search";
 
 export async function seedKnownCoursesAction() {
+  await requireCurrentUserId();
   await Promise.all([
     ensureTpcSawgrassStadiumCourse(),
     ensureBootleGolfCourse(),
@@ -24,6 +27,7 @@ export async function seedKnownCoursesAction() {
 
 export async function createCourseAction(formData: FormData) {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const name = requiredString(formData, "name");
   const country = nullableString(formData, "country");
   const teeName = requiredString(formData, "teeName");
@@ -40,6 +44,8 @@ export async function createCourseAction(formData: FormData) {
       country,
       provider: "manual",
       externalId: `manual-${randomUUID()}`,
+      visibility: "private",
+      createdByUserId: userId,
       updatedAt: now,
     })
     .returning({ id: courses.id });
@@ -61,12 +67,82 @@ export async function createCourseAction(formData: FormData) {
   redirect(`/courses/${course.id}/holes`);
 }
 
+export async function createOsmCourseAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const name = requiredString(formData, "name");
+  const country = nullableString(formData, "country");
+  const osmType = requiredString(formData, "osmType");
+  const osmId = requiredString(formData, "osmId");
+  const teeName = nullableString(formData, "teeName") ?? "OpenStreetMap";
+  const importedHoles = parseOsmHoles(formData);
+  const now = new Date();
+  const par = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
+  const yards = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
+
+  const [course] = await db
+    .insert(courses)
+    .values({
+      name,
+      country,
+      provider: "osm",
+      externalId: `osm-${osmType}-${osmId}-${userId}`,
+      visibility: "private",
+      createdByUserId: userId,
+      updatedAt: now,
+    })
+    .returning({ id: courses.id });
+
+  const [teeSet] = await db
+    .insert(teeSets)
+    .values({
+      courseId: course.id,
+      name: teeName,
+      par,
+      yards,
+      meters: yards === null ? null : Math.round(yards * 0.9144),
+      updatedAt: now,
+    })
+    .returning({ id: teeSets.id });
+
+  if (importedHoles.length > 0) {
+    await db.insert(holes).values(
+      importedHoles.map((hole) => ({
+        courseId: course.id,
+        teeSetId: teeSet.id,
+        holeNumber: hole.holeNumber,
+        par: hole.par,
+        strokeIndex: null,
+        yards: hole.yards,
+        teeLat: hole.teeLat,
+        teeLng: hole.teeLng,
+        greenLat: hole.greenLat,
+        greenLng: hole.greenLng,
+        centerlineGeojson: {
+          type: "LineString" as const,
+          coordinates: [
+            [hole.teeLng, hole.teeLat],
+            [hole.greenLng, hole.greenLat],
+          ] as Array<[number, number]>,
+        },
+        updatedAt: now,
+      })),
+    );
+  }
+
+  revalidateCourses(course.id);
+  redirect(`/courses/${course.id}/holes`);
+}
+
 export async function updateTeeSetAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
   const db = getDb();
   const courseId = requiredString(formData, "courseId");
   const teeSetId = requiredString(formData, "teeSetId");
   const name = requiredString(formData, "name");
   const yards = numberFromForm(formData, "yards");
+
+  await requireEditableCourse(courseId, userId);
 
   await db
     .update(teeSets)
@@ -85,6 +161,7 @@ export async function updateTeeSetAction(formData: FormData) {
 }
 
 export async function upsertHoleAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
   const db = getDb();
   const courseId = requiredString(formData, "courseId");
   const teeSetId = requiredString(formData, "teeSetId");
@@ -107,6 +184,8 @@ export async function upsertHoleAction(formData: FormData) {
   ) {
     throw new Error("Hole number, par, yards, tee coordinates and green coordinates are required.");
   }
+
+  await requireEditableCourse(courseId, userId);
 
   const centerlineGeojson = {
     type: "LineString" as const,
@@ -186,6 +265,92 @@ function decimalFromForm(formData: FormData, key: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseOsmHoles(formData: FormData): OsmHoleGeometry[] {
+  const value = formData.get("holesJson");
+
+  if (typeof value !== "string" || !value.trim()) {
+    return [];
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(value) as unknown;
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed
+    .map((hole): OsmHoleGeometry | null => {
+      if (!hole || typeof hole !== "object") {
+        return null;
+      }
+
+      const candidate = hole as Record<string, unknown>;
+      const holeNumber = safeInteger(candidate.holeNumber, 1, 27);
+      const par = safeInteger(candidate.par, 3, 6);
+      const yards = safeInteger(candidate.yards, 1, 800);
+      const teeLat = safeDecimal(candidate.teeLat);
+      const teeLng = safeDecimal(candidate.teeLng);
+      const greenLat = safeDecimal(candidate.greenLat);
+      const greenLng = safeDecimal(candidate.greenLng);
+
+      if (
+        holeNumber === null ||
+        par === null ||
+        yards === null ||
+        teeLat === null ||
+        teeLng === null ||
+        greenLat === null ||
+        greenLng === null
+      ) {
+        return null;
+      }
+
+      return {
+        holeNumber,
+        name: typeof candidate.name === "string" ? candidate.name : null,
+        par,
+        yards,
+        teeLat,
+        teeLng,
+        greenLat,
+        greenLng,
+      };
+    })
+    .filter((hole): hole is OsmHoleGeometry => hole !== null);
+}
+
+function safeInteger(value: unknown, min: number, max: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const rounded = Math.round(value);
+  return rounded >= min && rounded <= max ? rounded : null;
+}
+
+function safeDecimal(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+async function requireEditableCourse(courseId: string, userId: string) {
+  const db = getDb();
+  const [course] = await db
+    .select({ id: courses.id })
+    .from(courses)
+    .where(and(eq(courses.id, courseId), eq(courses.createdByUserId, userId)))
+    .limit(1);
+
+  if (!course) {
+    throw new Error("You can only edit courses you created.");
+  }
 }
 
 function revalidateCourses(courseId?: string) {

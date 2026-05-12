@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 
 const APP_TIME_ZONE = "Europe/London";
 const PREVIOUS_SHOT_LIMIT_PER_CLUB = 50;
@@ -170,7 +170,7 @@ export async function getTodayPracticeData(
   filters: TodayPracticeFilters = {},
 ): Promise<TodayPracticeData> {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const requestedDate = filters.date;
   const hasExplicitDate = validDateKey(requestedDate);
   let dateKey = hasExplicitDate ? requestedDate : localDateKey(new Date());
@@ -193,7 +193,6 @@ export async function getTodayPracticeData(
 
     if (latestSession) {
       dateKey = localDateKey(latestSession.date);
-      defaultSessionId = latestSession.id;
       bounds = dayBounds(dateKey);
       allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
     }
@@ -301,7 +300,7 @@ async function findLatestImportedSession(
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
     .where(and(...clauses))
-    .orderBy(desc(sessions.createdAt), desc(sessions.date), desc(shots.shotAt), desc(shots.shotNumber))
+    .orderBy(desc(sessions.date), desc(shots.shotAt), desc(sessions.createdAt), desc(shots.shotNumber))
     .limit(1);
 
   return session ?? null;

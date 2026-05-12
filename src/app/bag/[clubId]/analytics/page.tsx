@@ -41,7 +41,7 @@ import {
   type ClubAnalytics,
   type ClubAnalyticsShot,
 } from "@/lib/club-analytics";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 
 export const dynamic = "force-dynamic";
@@ -388,7 +388,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
 
 async function getClubAnalyticsData(clubId: string) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const [clubRows, clubShotRows, activeClubRows, allShotRows] = await Promise.all([
     db
       .select({

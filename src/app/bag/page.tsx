@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
+  MapPinned,
   Trophy,
   Target,
   Upload,
@@ -19,11 +20,13 @@ import {
 import {
   CompactReadoutGrid,
   DataPair,
+  DataPanel,
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
   PageHeader,
   PageShell,
+  SectionHeader,
   StatusPill,
 } from "@/components/premium";
 import { Progress } from "@/components/ui/progress";
@@ -37,6 +40,13 @@ import {
 } from "@/components/ui/table";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
+import {
+  buildCourseDecisionAdvice,
+  getClubDecisionLabel,
+  getClubDecisionTone,
+  type ClubDecisionLabel,
+  type CourseDecisionAdvice,
+} from "@/lib/course-decision-advice";
 import {
   clubAccent,
   clubSortValue,
@@ -58,6 +68,7 @@ const RECENT_SHOTS_PER_CLUB = 200;
 export default async function BagPage() {
   const bag = await getBag();
   const gappingRows = buildGappingRows(bag);
+  const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
   const averageConfidence =
@@ -88,7 +99,7 @@ export default async function BagPage() {
         <PageHeader
           eyebrow={<StatusPill>Bag map</StatusPill>}
           title="Stock yardages"
-          description="Rolling median carry, outlier filtering, dispersion, and confidence by club."
+          description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
           actions={
             <>
             <Button asChild variant="outline">
@@ -114,6 +125,8 @@ export default async function BagPage() {
 
         {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
 
+        <CourseDecisionPanel advice={courseAdvice} />
+
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {bag.map((club) => (
             <Link key={club.id} href={`/bag/${club.id}`} className="group block">
@@ -125,6 +138,9 @@ export default async function BagPage() {
                       <CardTitle className="text-3xl tracking-normal">
                         {formatClubType(club.type)}
                       </CardTitle>
+                      <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
+                        {club.decisionLabel}
+                      </StatusPill>
                     </div>
                     <ClubMark clubType={club.type} />
                   </div>
@@ -202,7 +218,7 @@ export default async function BagPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">
-                        {club.isShortGameTouch ? "Short-game touch" : club.stock.label}
+                        {club.decisionLabel}
                       </span>
                       <span className="text-muted-foreground">
                         {club.isShortGameTouch ? `${club.touch.sampleSize} shots` : `${club.stock.confidenceScore}%`}
@@ -298,16 +314,23 @@ async function getBag() {
       const accent = clubAccent(club.type);
       const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
+      const touch = calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type });
+      const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type });
+      const decisionLabel = getClubDecisionLabel({
+        isShortGameTouch,
+        stockLabel: stock.label,
+      });
 
       return {
         ...club,
         accent,
         brandModel,
         isShortGameTouch,
+        decisionLabel,
         rawShotCount,
         shots: recentShots,
-        touch: calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type }),
-        stock: calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type }),
+        touch,
+        stock,
       };
     })
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
@@ -328,7 +351,7 @@ type GappingRow = {
   targetGapYd: number | null;
   sampleSize: number;
   confidenceScore: number;
-  confidenceLabel: string;
+  decisionLabel: ClubDecisionLabel;
 };
 
 function buildGappingRows(bag: BagClub[]): GappingRow[] {
@@ -356,7 +379,7 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
       targetGapYd: null,
       sampleSize: club.stock.sampleSize,
       confidenceScore: club.stock.confidenceScore,
-      confidenceLabel: club.stock.label,
+      decisionLabel: club.decisionLabel,
     };
   });
 
@@ -389,6 +412,30 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
   });
 }
 
+function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="On-course decisions"
+        description="Course-number reminders from the current bag map."
+        action={<MapPinned className="size-5 text-sky-500" />}
+      />
+      <CardContent>
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-2 xl:grid-cols-4"
+          items={advice.map((item) => ({
+            label: item.label,
+            value: item.value,
+            detail: item.detail,
+            tone: item.tone,
+            href: item.clubId ? `/bag/${item.clubId}` : undefined,
+          }))}
+        />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
   const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
@@ -418,7 +465,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                   <DataPair label="Play" value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`} />
                   <DataPair label="Target" value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`} />
                   <DataPair label="Work on" value={<WorkOnBadge workOnYd={row.workOnYd} />} />
-                  <DataPair label="Confidence" value={`${row.confidenceScore}% ${row.confidenceLabel}`} />
+                  <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
                 </MobileDataCard>
               ))}
             </MobileDataList>
@@ -435,7 +482,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                 <TableHead className="text-right">Target</TableHead>
                 <TableHead className="text-right">Work on</TableHead>
                 <TableHead className="text-right">Sample</TableHead>
-                <TableHead className="text-right">Confidence</TableHead>
+                <TableHead className="text-right">Decision</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -480,7 +527,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                   <TableCell className="text-right">{row.sampleSize}</TableCell>
                   <TableCell className="text-right">
                     <span className="font-medium">{row.confidenceScore}%</span>
-                    <span className="ml-2 text-muted-foreground">{row.confidenceLabel}</span>
+                    <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
                   </TableCell>
                 </TableRow>
               ))}

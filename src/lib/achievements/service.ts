@@ -14,7 +14,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
-import { getDefaultUserId } from "@/lib/current-user";
+import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
 import { ACHIEVEMENT_REGISTRY_VERSION, ACHIEVEMENTS, getAchievement } from "./registry";
 import { evaluateAllAchievementCandidates } from "./evaluator";
 import type {
@@ -134,11 +134,16 @@ export type AchievementPageData = {
 };
 
 export async function syncAchievementsForDefaultUser() {
-  return syncAchievementsForUser(getDefaultUserId());
+  return syncAchievementsForUser(await requireCurrentUserId());
 }
 
 export async function getTotalXpForDefaultUser() {
-  return getTotalXpForUser(getDefaultUserId());
+  return getTotalXpForCurrentUser();
+}
+
+export async function getTotalXpForCurrentUser() {
+  const userId = await getOptionalCurrentUserId();
+  return userId ? getTotalXpForUser(userId) : 0;
 }
 
 export async function getTotalXpForUser(userId: string) {
@@ -237,7 +242,8 @@ export async function evaluateRoundAchievementsForSession(sessionId: string) {
   return result;
 }
 
-export async function getAchievementPageData(userId = getDefaultUserId()): Promise<AchievementPageData> {
+export async function getAchievementPageData(userId?: string): Promise<AchievementPageData> {
+  userId ??= await requireCurrentUserId();
   const db = getDb();
   const [[shotCount], [sessionCount], unlockRows, progressRows, ledgerRows, clubTypeRows, [syncState]] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
@@ -1211,15 +1217,12 @@ async function ensureUser(userId: string) {
     .insert(users)
     .values({
       id: userId,
-      email: "single-user@forekinghell.local",
-      name: "ForeKingHell Player",
       preferredUnits: "yards",
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: users.id,
       set: {
-        preferredUnits: "yards",
         updatedAt: new Date(),
       },
     });

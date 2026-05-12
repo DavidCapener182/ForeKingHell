@@ -3,7 +3,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 
 export type CompareFocusMode = "today" | "latest-session" | "session" | "last-7" | "last-30" | "custom";
@@ -188,7 +188,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 export async function getCompareData(filters: CompareFilters): Promise<CompareData> {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
 
   const [clubRows, shotRows] = await Promise.all([
     db
@@ -304,7 +304,7 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
 
 export async function getClubCompareData(filters: ClubCompareFilters): Promise<ClubCompareData> {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
 
   const [clubRows, shotRows] = await Promise.all([
     db

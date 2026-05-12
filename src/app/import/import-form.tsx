@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -10,17 +10,10 @@ import {
   CheckCircle2,
   Database,
   ExternalLink,
-  Flag,
-  FileText,
   GitCompareArrows,
-  ImageIcon,
-  Loader2,
-  MapPinned,
   Route,
   Trophy,
   Upload,
-  UploadCloud,
-  X,
 } from "lucide-react";
 
 import { saveRapsodoImportBatchAction } from "@/app/import/actions";
@@ -28,13 +21,15 @@ import { notifyAchievementUnlocks } from "@/components/achievement-notifications
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  CompactReadoutGrid,
-  DataPair,
-  DataTableFrame,
-  MobileDataCard,
-  MobileDataList,
-} from "@/components/premium";
+import { CourseOverlay } from "@/app/import/course-overlay";
+import { ImportStepper } from "@/app/import/import-stepper";
+import { SaveChecklistCard } from "@/app/import/save-checklist-card";
+import { ScorecardExtractionPanel } from "@/app/import/scorecard-extraction-panel";
+import { SessionSettings } from "@/app/import/session-settings";
+import { ShotPreview } from "@/app/import/shot-preview";
+import type { HoleReviewState, ScorecardExtractState, SessionType } from "@/app/import/import-types";
+import { UploadDropzone } from "@/app/import/upload-dropzone";
+import { useImportFiles } from "@/app/import/use-import-files";
 import {
   Card,
   CardContent,
@@ -42,49 +37,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   achievementUnlockHref,
   clubHref,
   shotRowsHref,
 } from "@/lib/alert-links";
-import { cn } from "@/lib/utils";
+import { trackPlausibleEvent } from "@/lib/analytics";
+import { queueOfflineAction } from "@/lib/offline-queue";
 import {
-  type CourseInferenceResult,
-  type InferredCourseHole,
-  type InferredCourseShot,
   inferCourseShotsFromHoleShotCounts,
   inferCourseShots,
   parseScorecardText,
 } from "@/lib/course-scorecard";
-import { type DistanceUnit, parseRapsodoCsv } from "@/lib/rapsodo/parser";
-import type { LongestShotNotification } from "@/lib/imports/save-rapsodo-import";
+import { ColumnMappingPanel } from "@/app/import/column-mapping-panel";
+import { type DistanceUnit, type RapsodoColumnMapping, parseRapsodoCsv } from "@/lib/rapsodo/parser";
+import type { LongestShotNotification, SaveRapsodoImportInput } from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
-
-type SessionType = "range" | "round" | "simulator" | "simulated_course";
-
-type UploadedCsv = {
-  id: string;
-  fileName: string;
-  fileSizeBytes: number;
-  rawCsvText: string;
-};
 
 type SaveState =
   | { status: "idle" }
@@ -96,26 +65,6 @@ type SaveState =
       achievementUnlockNotifications: AchievementUnlockNotification[];
     }
   | { status: "error"; message: string };
-
-type ScorecardExtractState =
-  | { status: "idle" }
-  | { status: "loading"; fileName: string }
-  | { status: "success"; fileName: string; message: string }
-  | { status: "error"; fileName?: string; message: string };
-
-type HoleReviewState = Record<
-  number,
-  {
-    shotCount?: number | null;
-    penalties?: number | null;
-    score?: number | null;
-    putts?: number | null;
-    netScore?: number | null;
-    fairwayHit?: boolean | null;
-    gir?: boolean | null;
-    strokeIndex?: number | null;
-  }
->;
 
 const TPC_SAWGRASS_PLAYERS_2026_SCORECARD = [
   "1,4,360",
@@ -142,13 +91,22 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function ImportForm() {
+export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceUnit?: DistanceUnit }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scorecardImageInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedCsv[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>("yards");
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(defaultDistanceUnit);
+  const [columnMapping, setColumnMapping] = useState<RapsodoColumnMapping>({});
+  const {
+    uploadedFiles,
+    parsedFiles,
+    isDragging,
+    readProgress,
+    setIsDragging,
+    readSelectedFiles: readImportFiles,
+    removeFile: removeImportFile,
+    clearFiles,
+  } = useImportFiles(distanceUnit, columnMapping);
   const [sessionType, setSessionType] = useState<SessionType>("range");
   const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [courseName, setCourseName] = useState("");
@@ -159,16 +117,21 @@ export function ImportForm() {
     status: "idle",
   });
   const [isPending, startTransition] = useTransition();
+  const [isOnline, setIsOnline] = useState(true);
   const isCourseUpload = sessionType === "simulated_course";
 
-  const parsedFiles = useMemo(
-    () =>
-      uploadedFiles.map((file) => ({
-        ...file,
-        parsed: parseRapsodoCsv(file.rawCsvText, { fallbackDistanceUnit: distanceUnit }),
-      })),
-    [distanceUnit, uploadedFiles],
-  );
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(getClientOnlineStatus());
+
+    updateOnlineStatus();
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+
+    return () => {
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
+    };
+  }, []);
 
   const scorecard = useMemo(() => parseScorecardText(scorecardText), [scorecardText]);
   const autoCourseInference = useMemo(() => {
@@ -319,40 +282,18 @@ export function ImportForm() {
     !isPending;
 
   async function readSelectedFiles(files: FileList | File[]) {
-    const csvFiles = Array.from(files).filter((file) => {
-      const name = file.name.toLowerCase();
-      return name.endsWith(".csv") || file.type === "text/csv" || file.type === "application/vnd.ms-excel";
-    });
-
     setSaveState({ status: "idle" });
-
-    if (csvFiles.length === 0) {
-      return;
-    }
-
-    const nextFiles = await Promise.all(
-      csvFiles.map(async (file, index) => ({
-        id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
-        fileName: file.name,
-        fileSizeBytes: file.size,
-        rawCsvText: await file.text(),
-      })),
-    );
-
-    setUploadedFiles((currentFiles) => {
-      const existingIds = new Set(currentFiles.map((file) => file.id));
-      return [...currentFiles, ...nextFiles.filter((file) => !existingIds.has(file.id))];
-    });
+    await readImportFiles(files);
   }
 
   function removeFile(fileId: string) {
     setSaveState({ status: "idle" });
-    setUploadedFiles((currentFiles) => currentFiles.filter((file) => file.id !== fileId));
+    removeImportFile(fileId);
   }
 
   function clearBatch() {
     setSaveState({ status: "idle" });
-    setUploadedFiles([]);
+    clearFiles();
   }
 
   function applySawgrassPreset() {
@@ -393,6 +334,12 @@ export function ImportForm() {
       }
 
       const message = applyExtractedScorecard(payload.scorecard);
+      trackPlausibleEvent("Scorecard Extracted", {
+        props: {
+          holeCount: payload.scorecard.holes.length,
+          hasCourseName: Boolean(payload.scorecard.courseName),
+        },
+      });
       setScorecardExtractState({ status: "success", fileName: file.name, message });
     } catch (error) {
       setScorecardExtractState({
@@ -466,25 +413,36 @@ export function ImportForm() {
     }
 
     setSaveState({ status: "idle" });
+    const importInputs = buildImportInputs();
+    trackPlausibleEvent("Import Started", {
+      props: {
+        fileCount: uploadedFiles.length,
+        sessionType,
+        shotCount: aggregate.shotCount,
+      },
+    });
     startTransition(async () => {
-      const result = await saveRapsodoImportBatchAction(
-        uploadedFiles.map((file) => ({
-          ...file,
-          parsed: parseRapsodoCsv(file.rawCsvText, { fallbackDistanceUnit: distanceUnit }),
-        })).map((file) => ({
-          rawCsvText: file.rawCsvText,
-          fileName: file.fileName,
-          fileSizeBytes: file.fileSizeBytes,
-          source: "rapsodo",
-          sessionType,
-          sessionDate: file.parsed.exportedAtIso ?? sessionDate,
-          distanceUnit,
-          courseName: isCourseUpload ? courseName : undefined,
-          courseScorecardText: isCourseUpload ? scorecardText : undefined,
-          courseHoleShotCounts: isCourseUpload ? courseHoleShotCounts : undefined,
-          courseHoleScoring: isCourseUpload ? courseHoleScoring : undefined,
-        })),
-      );
+      if (!isOnline || !getClientOnlineStatus()) {
+        await queueImportBatch(importInputs);
+        return;
+      }
+
+      let result: Awaited<ReturnType<typeof saveRapsodoImportBatchAction>>;
+
+      try {
+        result = await saveRapsodoImportBatchAction(importInputs);
+      } catch (error) {
+        if (!getClientOnlineStatus() || error instanceof TypeError) {
+          await queueImportBatch(importInputs);
+          return;
+        }
+
+        setSaveState({
+          status: "error",
+          message: error instanceof Error ? error.message : "Import failed.",
+        });
+        return;
+      }
 
       if (result.ok) {
         const skippedText =
@@ -500,8 +458,15 @@ export function ImportForm() {
           longestShotNotifications: result.longestShotNotifications,
           achievementUnlockNotifications: result.achievementUnlockNotifications,
         });
+        trackPlausibleEvent("Import Saved", {
+          props: {
+            fileCount: result.sessionCount,
+            shotCount: result.shotCount,
+            skippedCount: result.skippedCount,
+          },
+        });
         notifyAchievementUnlocks(result.achievementUnlockNotifications);
-        setUploadedFiles([]);
+        clearFiles();
         router.refresh();
       } else {
         setSaveState({ status: "error", message: result.message });
@@ -509,8 +474,53 @@ export function ImportForm() {
     });
   }
 
+  function buildImportInputs(): SaveRapsodoImportInput[] {
+    return uploadedFiles
+      .map((file) => ({
+        ...file,
+        parsed: parseRapsodoCsv(file.rawCsvText, { fallbackDistanceUnit: distanceUnit, columnMapping }),
+      }))
+      .map((file) => ({
+        rawCsvText: file.rawCsvText,
+        fileName: file.fileName,
+        fileSizeBytes: file.fileSizeBytes,
+        source: "rapsodo" as const,
+        sessionType,
+        sessionDate: file.parsed.exportedAtIso ?? sessionDate,
+        distanceUnit,
+        columnMapping: hasColumnMapping(columnMapping) ? columnMapping : undefined,
+        courseName: isCourseUpload ? courseName : undefined,
+        courseScorecardText: isCourseUpload ? scorecardText : undefined,
+        courseHoleShotCounts: isCourseUpload ? courseHoleShotCounts : undefined,
+        courseHoleScoring: isCourseUpload ? courseHoleScoring : undefined,
+      }));
+  }
+
+  async function queueImportBatch(inputs: SaveRapsodoImportInput[]) {
+    await queueOfflineAction({
+      id: `import-csv-${Date.now()}-${crypto.randomUUID()}`,
+      kind: "import-csv",
+      payload: { inputs },
+    });
+    setSaveState({
+      status: "success",
+      message: `Queued ${inputs.length} CSV ${inputs.length === 1 ? "file" : "files"} for retry when this device is online.`,
+      savedSessionId: null,
+      longestShotNotifications: [],
+      achievementUnlockNotifications: [],
+    });
+    clearFiles();
+    trackPlausibleEvent("Import Queued Offline", {
+      props: {
+        fileCount: inputs.length,
+        sessionType,
+        shotCount: aggregate.shotCount,
+      },
+    });
+  }
+
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+    <section className="px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
@@ -694,256 +704,47 @@ export function ImportForm() {
               <CardDescription>Drag in one or more Rapsodo files. Obvious parse issues appear before save.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <input
-                ref={fileInputRef}
-                className="hidden"
-                id="csv-file"
-                type="file"
-                accept=".csv,text/csv"
-                multiple
-                onChange={(event) => {
-                  void readSelectedFiles(event.target.files ?? []);
-                  event.currentTarget.value = "";
-                }}
+              <UploadDropzone
+                fileInputRef={fileInputRef}
+                isDragging={isDragging}
+                readProgress={readProgress}
+                files={parsedFiles}
+                setIsDragging={setIsDragging}
+                onFilesSelected={readSelectedFiles}
+                onClear={clearBatch}
+                onRemoveFile={removeFile}
               />
 
-              <div
-                className={cn(
-                  "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 px-4 py-8 text-center transition-colors",
-                  isDragging ? "border-emerald-500 bg-emerald-50" : "border-border hover:border-emerald-400",
-                )}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setIsDragging(false);
-                  void readSelectedFiles(event.dataTransfer.files);
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
-              >
-                <div className="grid size-12 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-                  <UploadCloud className="size-6" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-medium">Choose CSV files</p>
-                  <p className="text-sm text-muted-foreground">Click here or drop multiple CSVs at once.</p>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    fileInputRef.current?.click();
-                  }}
-                >
-                  <Upload className="size-4" />
-                  Browse files
-                </Button>
-              </div>
+              <SessionSettings
+                sessionDate={sessionDate}
+                sessionType={sessionType}
+                distanceUnit={distanceUnit}
+                detectedUnits={detectedUnits}
+                onSessionDateChange={setSessionDate}
+                onSessionTypeChange={setSessionType}
+                onDistanceUnitChange={setDistanceUnit}
+              />
 
-              {uploadedFiles.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">Selected files</p>
-                    <Button type="button" variant="ghost" size="sm" onClick={clearBatch}>
-                      Clear
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {parsedFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className="flex items-center justify-between gap-3 rounded-lg bg-white/90 px-3 py-2 ring-1 ring-slate-200/80"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <FileText className="size-4 shrink-0 text-sky-500" />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{file.fileName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {file.parsed.shotCount} shots
-                              {file.parsed.exportedAtIso
-                                ? `, ${formatDate(file.parsed.exportedAtIso)}`
-                                : ""}
-                              , {file.parsed.detectedDistanceUnit} detected
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeFile(file.id)}
-                          aria-label={`Remove ${file.fileName}`}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="session-date">
-                    Session date
-                  </label>
-                  <Input
-                    id="session-date"
-                    type="date"
-                    value={sessionDate}
-                    onChange={(event) => setSessionDate(event.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Session type</label>
-                  <Select value={sessionType} onValueChange={(value) => setSessionType(value as SessionType)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Range" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="range">Range</SelectItem>
-                      <SelectItem value="round">Round</SelectItem>
-                      <SelectItem value="simulator">Simulator</SelectItem>
-                      <SelectItem value="simulated_course">Simulated course</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <ColumnMappingPanel
+                files={uploadedFiles}
+                columnMapping={columnMapping}
+                onColumnMappingChange={setColumnMapping}
+              />
 
               {isCourseUpload ? (
-                <div className="apple-panel space-y-4 p-4">
-                  <div className="flex items-start gap-3">
-                    <MapPinned className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                    <div className="flex-1 space-y-3">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Course scorecard</p>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          The CSV does not include hole labels, so the app uses the scorecard, shot order,
-                          and review rows below to map shots to holes. Enter a hole score and anything
-                          above CSV shots plus penalties is treated as putts.
-                        </p>
-                      </div>
-                      <Button type="button" variant="outline" size="sm" onClick={applySawgrassPreset}>
-                        Use TPC Sawgrass preset
-                      </Button>
-                      <input
-                        ref={scorecardImageInputRef}
-                        className="hidden"
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => {
-                          void extractScorecardImage(event.target.files?.[0]);
-                          event.currentTarget.value = "";
-                        }}
-                      />
-                      <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">Scorecard screenshot</p>
-                          <p className="text-xs leading-5 text-muted-foreground">
-                            Upload an 18Birdies scorecard image to pull scores, putts, FIR, GIR,
-                            handicap strokes and the round date into the review rows.
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          disabled={scorecardExtractState.status === "loading"}
-                          onClick={() => scorecardImageInputRef.current?.click()}
-                        >
-                          {scorecardExtractState.status === "loading" ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            <ImageIcon className="size-4" />
-                          )}
-                          {scorecardExtractState.status === "loading" ? "Reading..." : "Upload image"}
-                        </Button>
-                      </div>
-                      {scorecardExtractState.status !== "idle" ? (
-                        <p
-                          className={cn(
-                            "text-xs leading-5",
-                            scorecardExtractState.status === "error"
-                              ? "text-destructive"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          {scorecardExtractState.status === "loading"
-                            ? `Extracting ${scorecardExtractState.fileName}...`
-                            : scorecardExtractState.message}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-[0.85fr_1.15fr]">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="course-name">
-                        Course name
-                      </label>
-                      <Input
-                        id="course-name"
-                        value={courseName}
-                        onChange={(event) => setCourseName(event.target.value)}
-                        placeholder="TPC Sawgrass"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium" htmlFor="scorecard">
-                        Scorecard rows
-                      </label>
-                      <textarea
-                        id="scorecard"
-                        value={scorecardText}
-                        onChange={(event) => setScorecardText(event.target.value)}
-                        placeholder={"1,4,423,Opening\n2,5,532\n3,3,177"}
-                        className="min-h-28 w-full resize-y rounded-lg border border-input bg-white/90 px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {scorecard.holes.length > 0
-                          ? `${scorecard.holes.length} holes, ${scorecard.holes
-                              .reduce((total, hole) => total + hole.yards, 0)
-                              .toLocaleString("en-GB")} yards`
-                          : "Use one row per hole: hole, par, yards, optional name."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <ScorecardExtractionPanel
+                  scorecardImageInputRef={scorecardImageInputRef}
+                  scorecardExtractState={scorecardExtractState}
+                  courseName={courseName}
+                  scorecardText={scorecardText}
+                  holeCount={scorecard.holes.length}
+                  totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
+                  onApplySawgrassPreset={applySawgrassPreset}
+                  onExtractScorecardImage={extractScorecardImage}
+                  onCourseNameChange={setCourseName}
+                  onScorecardTextChange={setScorecardText}
+                />
               ) : null}
-
-              <div className="rounded-xl border bg-white p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">Step 2: Confirm session</p>
-                    <p className="text-xs text-muted-foreground">Type, date, unit fallback, and course details if needed.</p>
-                  </div>
-                  <Badge variant="outline">Confirm</Badge>
-                </div>
-                <label className="text-sm font-medium">Fallback distance unit</label>
-                <Select value={distanceUnit} onValueChange={(value) => setDistanceUnit(value as DistanceUnit)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Yards" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="yards">Yards</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-sm text-muted-foreground">
-                  Distances are imported in yards. Apex is imported in feet. Detected units:{" "}
-                  {detectedUnits.length > 0 ? detectedUnits.join(", ") : "none yet"}.
-                </p>
-              </div>
             </CardContent>
           </Card>
 
@@ -993,464 +794,21 @@ export function ImportForm() {
           </Card>
         ) : null}
 
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Step 4: Save import</CardTitle>
-            <CardDescription>Save only when the checklist is green. Successful saves show PBs, achievements, and updated yardages.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="grid gap-2 text-sm">
-              <ChecklistItem complete={uploadedFiles.length > 0}>CSV file selected</ChecklistItem>
-              <ChecklistItem complete={aggregate.shotCount > 0}>Shots detected</ChecklistItem>
-              <ChecklistItem complete={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}>Round mapping complete</ChecklistItem>
-              <ChecklistItem complete={aggregate.warnings.length === 0}>Warnings reviewed</ChecklistItem>
-            </div>
-            <Button type="button" size="lg" disabled={!canSave} onClick={saveImportBatch} className="bg-[#111827] text-white">
-              <Upload className="size-4" />
-              {isPending ? "Saving..." : "Save import"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Step 3: Review shots</CardTitle>
-            <CardDescription>
-              Showing the first {previewShots.length} parsed shots across the selected batch. Distance
-              values are stored in yards.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DataTableFrame
-              mobile={
-                <MobileDataList>
-                  {previewShots.length > 0 ? (
-                    previewShots.map((shot) => (
-                      <MobileDataCard
-                        key={`${shot.fileName}-${shot.rowNumber}-${shot.clubKey}`}
-                        title={`${shot.clubLabel} shot ${shot.fileShotNumber}`}
-                        subtitle={shot.fileName}
-                        action={
-                          isCourseUpload ? (
-                            <Badge variant="outline">
-                              {shot.courseShot
-                                ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}`
-                                : "No hole"}
-                            </Badge>
-                          ) : null
-                        }
-                      >
-                        <DataPair label="Brand" value={shot.clubBrand ?? "--"} />
-                        <DataPair label="Carry yd" value={formatMetric(shot.carryYd)} />
-                        <DataPair label="Total yd" value={formatMetric(shot.totalYd)} />
-                        <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
-                        <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
-                        <DataPair label="Side yd" value={formatMetric(shot.sideCarryYd)} />
-                        {isCourseUpload ? (
-                          <DataPair
-                            label="Remain"
-                            value={formatMetric(shot.courseShot?.distanceRemainingYd ?? null)}
-                          />
-                        ) : null}
-                      </MobileDataCard>
-                    ))
-                  ) : (
-                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                      Select one or more CSV files to preview shots.
-                    </div>
-                  )}
-                </MobileDataList>
-              }
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>File</TableHead>
-                    <TableHead>Shot</TableHead>
-                    {isCourseUpload ? <TableHead>Hole</TableHead> : null}
-                    <TableHead>Club</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead className="text-right">Carry yd</TableHead>
-                    <TableHead className="text-right">Total yd</TableHead>
-                    <TableHead className="text-right">Ball mph</TableHead>
-                    <TableHead className="text-right">Launch</TableHead>
-                    <TableHead className="text-right">Side yd</TableHead>
-                    {isCourseUpload ? <TableHead className="text-right">Remain</TableHead> : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewShots.length > 0 ? (
-                    previewShots.map((shot) => (
-                      <TableRow key={`${shot.fileName}-${shot.rowNumber}-${shot.clubKey}`}>
-                        <TableCell className="max-w-40 truncate">{shot.fileName}</TableCell>
-                        <TableCell>{shot.fileShotNumber}</TableCell>
-                        {isCourseUpload ? (
-                          <TableCell>
-                            {shot.courseShot
-                              ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}`
-                              : "--"}
-                          </TableCell>
-                        ) : null}
-                        <TableCell className="font-medium">{shot.clubLabel}</TableCell>
-                        <TableCell>{shot.clubBrand ?? "--"}</TableCell>
-                        <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
-                        <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
-                        <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
-                        <TableCell className="text-right">{formatMetric(shot.launchAngleDeg)}</TableCell>
-                        <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
-                        {isCourseUpload ? (
-                          <TableCell className="text-right">
-                            {formatMetric(shot.courseShot?.distanceRemainingYd ?? null)}
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={isCourseUpload ? 11 : 9}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        Select one or more CSV files to preview shots.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </DataTableFrame>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
-  );
-}
-
-
-function ImportStepper({
-  isCourseUpload,
-  hasFiles,
-  hasShots,
-  hasCourseMapping,
-  hasWarnings,
-  canSave,
-}: {
-  isCourseUpload: boolean;
-  hasFiles: boolean;
-  hasShots: boolean;
-  hasCourseMapping: boolean;
-  hasWarnings: boolean;
-  canSave: boolean;
-}) {
-  const steps = [
-    { label: "Upload", detail: hasFiles ? "CSV selected" : "Choose CSV", complete: hasFiles },
-    { label: "Confirm", detail: "Session settings", complete: hasFiles },
-    {
-      label: "Review",
-      detail: isCourseUpload ? "Shots + round map" : "Shot preview",
-      complete: hasShots && hasCourseMapping,
-    },
-    { label: "Save", detail: canSave ? "Ready" : hasWarnings ? "Warnings" : "Waiting", complete: canSave },
-  ];
-
-  return (
-    <Card className="premium-card">
-      <CardContent className="p-4">
-        <CompactReadoutGrid
-          columnsClassName="sm:grid-cols-4"
-          items={steps.map((step, index) => ({
-            label: `Step ${index + 1}`,
-            value: step.label,
-            detail: step.detail,
-            tone: step.complete ? "green" : "slate",
-          }))}
+        <SaveChecklistCard
+          hasFiles={uploadedFiles.length > 0}
+          hasShots={aggregate.shotCount > 0}
+          hasCompleteCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
+          hasNoWarnings={aggregate.warnings.length === 0}
+          isOnline={isOnline}
+          isPending={isPending}
+          canSave={canSave}
+          onSave={saveImportBatch}
         />
-      </CardContent>
-    </Card>
+
+        <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
+      </div>
+    </section>
   );
-}
-
-function ChecklistItem({ complete, children }: { complete: boolean; children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <CheckCircle2 className={cn("size-4", complete ? "text-emerald-600" : "text-muted-foreground")} />
-      <span className={complete ? "font-medium" : "text-muted-foreground"}>{children}</span>
-    </div>
-  );
-}
-
-function CourseOverlay({
-  inference,
-  holeReview,
-  totalShotCount,
-  assignedShotCount,
-  onReset,
-  onUpdateHole,
-}: {
-  inference: CourseInferenceResult | null;
-  holeReview: HoleReviewState;
-  totalShotCount: number;
-  assignedShotCount: number;
-  onReset: () => void;
-  onUpdateHole: (holeNumber: number, patch: HoleReviewState[number]) => void;
-}) {
-  if (!inference) {
-    return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 p-6 text-center">
-        <MapPinned className="size-8 text-emerald-600" />
-        <div className="space-y-1">
-          <p className="font-medium">Waiting for a CSV and scorecard</p>
-          <p className="text-sm text-muted-foreground">
-            Add one simulated course CSV and scorecard rows to generate the overlay.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const assignedText = `${inference.assignedShotCount}/${inference.assignedShotCount + inference.unassignedShotCount}`;
-  const assignmentMatches = assignedShotCount === totalShotCount;
-
-  return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-4">
-        <CourseMetric label="Mapped shots" value={assignedText} />
-        <CourseMetric
-          label="Review total"
-          value={`${assignedShotCount}/${totalShotCount}`}
-          tone={assignmentMatches ? "default" : "warning"}
-        />
-        <CourseMetric label="Holes" value={inference.completedHoleCount.toString()} />
-        <CourseMetric label="Scorecard" value={`${inference.totalScorecardYards.toLocaleString("en-GB")} yd`} />
-      </div>
-      <div className="apple-panel flex flex-wrap items-center justify-between gap-3 p-3">
-        <p className="text-sm text-muted-foreground">
-          Edit CSV shots to move the boundary between holes. Enter score and penalties to calculate putts.
-        </p>
-        <Button type="button" variant="outline" size="sm" onClick={onReset}>
-          Reset auto splits
-        </Button>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {inference.holes.map((hole) => (
-          <HoleOverlay
-            key={hole.holeNumber}
-            hole={hole}
-            review={holeReview[hole.holeNumber]}
-            onUpdate={(patch) => onUpdateHole(hole.holeNumber, patch)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CourseMetric({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "warning";
-}) {
-  return (
-    <div className={cn("apple-panel p-3", tone === "warning" && "border-amber-300 bg-amber-50")}>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-normal">{value}</p>
-    </div>
-  );
-}
-
-function HoleOverlay({
-  hole,
-  review,
-  onUpdate,
-}: {
-  hole: InferredCourseHole;
-  review: HoleReviewState[number] | undefined;
-  onUpdate: (patch: HoleReviewState[number]) => void;
-}) {
-  const maxSide = Math.max(35, ...hole.shots.map((shot) => Math.abs(shot.displaySideYd)));
-  const points = hole.shots.map((shot) => ({
-    shot,
-    x: 28 + Math.min(1, Math.max(0, shot.progressAfterYd / hole.yards)) * 244,
-    y: 50 + Math.max(-1, Math.min(1, shot.displaySideYd / maxSide)) * 28,
-  }));
-  const score = review?.score ?? null;
-  const explicitPutts = review?.putts ?? null;
-  const penalties =
-    explicitPutts !== null && score !== null
-      ? Math.max(0, score - hole.shots.length - explicitPutts)
-      : Math.max(0, review?.penalties ?? 0);
-  const putts =
-    explicitPutts ??
-    (score === null ? null : Math.max(0, score - hole.shots.length - penalties));
-
-  return (
-    <div className="apple-panel-strong overflow-hidden">
-      <div className="flex items-start justify-between gap-3 border-b bg-slate-50/80 px-3 py-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            Hole {hole.holeNumber}
-            {hole.name ? ` - ${hole.name}` : ""}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Par {hole.par} - {hole.yards.toLocaleString("en-GB")} yd - {hole.shots.length} shots
-            {review?.strokeIndex ? ` - SI ${review.strokeIndex}` : ""}
-          </p>
-        </div>
-        <Flag className="size-4 shrink-0 text-emerald-600" />
-      </div>
-      <svg viewBox="0 0 300 104" className="h-28 w-full bg-[#f4f7f2]" role="img" aria-label={`Hole ${hole.holeNumber} overlay`}>
-        <rect x="0" y="0" width="300" height="104" fill="#f4f7f2" />
-        <path
-          d="M24 50 C82 20 132 80 184 48 C220 26 252 38 276 50 C252 62 220 74 184 56 C132 24 82 84 24 50Z"
-          fill="#cfe8d1"
-          stroke="#a4c7a8"
-        />
-        <ellipse cx="266" cy="50" rx="18" ry="13" fill="#a7d8ab" stroke="#6ca771" />
-        <circle cx="28" cy="50" r="5" fill="#f59e0b" />
-        <line x1="28" x2="272" y1="50" y2="50" stroke="#6b7280" strokeDasharray="4 5" strokeOpacity="0.35" />
-        {points.map((point, index) => {
-          const previous = index === 0 ? { x: 28, y: 50 } : points[index - 1];
-
-          return (
-            <g key={`${point.shot.holeNumber}-${point.shot.holeShotNumber}`}>
-              <line
-                x1={previous.x}
-                y1={previous.y}
-                x2={point.x}
-                y2={point.y}
-                stroke="#111827"
-                strokeWidth="1.5"
-                strokeOpacity="0.45"
-              />
-              <circle cx={point.x} cy={point.y} r="5.5" fill={categoryColour(point.shot)} />
-              <text
-                x={point.x}
-                y={point.y + 2.8}
-                textAnchor="middle"
-                fontSize="7"
-                fontWeight="700"
-                fill="#ffffff"
-              >
-                {point.shot.holeShotNumber}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="grid grid-cols-3 border-t px-3 py-2 text-xs">
-        <span className="text-muted-foreground">Progress</span>
-        <span className="text-center font-medium">{formatMetric(hole.progressYd)} yd</span>
-        <span className="text-right text-muted-foreground">{formatMetric(hole.distanceRemainingYd)} left</span>
-      </div>
-      <div className="grid gap-2 border-t bg-slate-50/80 p-3 text-sm sm:grid-cols-3">
-        <NumberField
-          label="CSV shots"
-          value={hole.shots.length}
-          min={0}
-          max={10}
-          onChange={(value) => onUpdate({ shotCount: value })}
-        />
-        <NumberField
-          label="Score"
-          value={score}
-          min={1}
-          max={12}
-          placeholder="-"
-          onChange={(value) => onUpdate({ score: value })}
-        />
-        <NumberField
-          label="Putts"
-          value={putts}
-          min={0}
-          max={8}
-          placeholder="-"
-          onChange={(value) => onUpdate({ putts: value })}
-        />
-        <NumberField
-          label="Penalties"
-          value={penalties}
-          min={0}
-          max={8}
-          onChange={(value) => onUpdate({ penalties: value })}
-        />
-        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
-          <p className="text-xs text-muted-foreground">Fairway</p>
-          <p className="mt-1 text-lg font-semibold tracking-normal">
-            {review?.fairwayHit === null || review?.fairwayHit === undefined
-              ? "-"
-              : review.fairwayHit
-                ? "Hit"
-                : "Miss"}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
-          <p className="text-xs text-muted-foreground">GIR</p>
-          <p className="mt-1 text-lg font-semibold tracking-normal">
-            {review?.gir === null || review?.gir === undefined ? "-" : review.gir ? "Hit" : "Miss"}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  placeholder,
-  onChange,
-}: {
-  label: string;
-  value: number | null;
-  min: number;
-  max: number;
-  placeholder?: string;
-  onChange: (value: number | null) => void;
-}) {
-  return (
-    <label className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <Input
-        type="number"
-        inputMode="numeric"
-        min={min}
-        max={max}
-        value={value ?? ""}
-        placeholder={placeholder}
-        onChange={(event) => {
-          if (event.target.value === "") {
-            onChange(null);
-            return;
-          }
-
-          const nextValue = Number(event.target.value);
-          onChange(Number.isFinite(nextValue) ? Math.max(min, Math.min(max, Math.floor(nextValue))) : null);
-        }}
-        className="mt-1 h-8 border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
-      />
-    </label>
-  );
-}
-
-function categoryColour(shot: InferredCourseShot) {
-  if (shot.shotCategory === "tee") {
-    return "#111827";
-  }
-
-  if (shot.shotCategory === "approach") {
-    return "#0284c7";
-  }
-
-  if (shot.shotCategory === "pitch") {
-    return "#059669";
-  }
-
-  return "#f97316";
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
@@ -1471,16 +829,12 @@ function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
 function aggregateShotCount(parsedFiles: Array<{ parsed: { shotCount: number } }>) {
   return parsedFiles.reduce((total, file) => total + file.parsed.shotCount, 0);
+}
+
+function hasColumnMapping(columnMapping: RapsodoColumnMapping) {
+  return Object.values(columnMapping).some((value) => Boolean(value?.trim()));
 }
 
 function compareSessionHref(sessionId: string) {
@@ -1506,4 +860,8 @@ function readFileAsDataUrl(file: File) {
     reader.onerror = () => reject(new Error("Could not read the scorecard image."));
     reader.readAsDataURL(file);
   });
+}
+
+function getClientOnlineStatus() {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
 }

@@ -1,0 +1,80 @@
+import { expect, test } from "@playwright/test";
+import path from "node:path";
+
+import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+
+test.describe("authenticated app flows", () => {
+  test.use(authStorageState ? { storageState: authStorageState } : {});
+
+  const routes = [
+    { path: "/dashboard", text: /Dashboard|Sessions|Shots/i },
+    { path: "/shots", text: /Shot explorer/i },
+    { path: "/bag", text: /Stock yardages/i },
+    { path: "/rounds/new", text: /Add Round/i },
+    { path: "/handicap", text: /Handicap/i },
+    { path: "/coach", text: /Coach/i },
+    { path: "/achievements", text: /Achievements/i },
+    { path: "/equipment", text: /Equipment/i },
+    { path: "/strokes-gained", text: /Strokes-gained dashboard/i },
+  ];
+
+  for (const route of routes) {
+    test(`loads ${route.path}`, async ({ page }) => {
+      skipWhenNoAuth();
+
+      await page.goto(route.path);
+      await expectPageReady(page, route.text);
+    });
+  }
+
+  test("previews a changed CSV format through manual column mapping", async ({ page }) => {
+    skipWhenNoAuth();
+
+    await page.goto("/import");
+    await expectPageReady(page, /Import launch monitor shots/i);
+
+    const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "manual-column-map.csv");
+    await page.setInputFiles("#csv-file", fixturePath);
+
+    await expect(page.getByText("Manual column mapping")).toBeVisible();
+    await page.getByRole("button", { name: /apply suggestions/i }).click();
+    await expect(page.getByText("Driver").first()).toBeVisible();
+    await expect(page.getByText("CSV file selected")).toBeVisible();
+  });
+
+  test("queues a CSV import while offline and shows retry status", async ({ context, page }) => {
+    skipWhenNoAuth();
+
+    await page.goto("/import");
+    await expectPageReady(page, /Import launch monitor shots/i);
+
+    const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "standard-rapsodo.csv");
+    await page.setInputFiles("#csv-file", fixturePath);
+    await expect(page.getByText("Driver").first()).toBeVisible();
+
+    await context.setOffline(true);
+    await page.getByRole("button", { name: /queue offline/i }).click();
+    await expect(page.getByText(/queued 1 csv file/i)).toBeVisible();
+    await expect(page.getByText(/pending offline action/i)).toBeVisible();
+    await context.setOffline(false);
+  });
+
+  test("shot explorer keeps a mobile-friendly review surface", async ({ page }) => {
+    skipWhenNoAuth();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/shots");
+
+    await expectPageReady(page, /Shot explorer/i);
+    await expect(page.getByRole("button", { name: /import/i }).first()).toBeVisible();
+  });
+
+  test("coach chat UI is ready without generating a paid response", async ({ page }) => {
+    skipWhenNoAuth();
+
+    await page.goto("/coach");
+    await expectPageReady(page, /AI coach chat/i);
+    await page.getByLabel(/ask from your shot data/i).fill("How can I improve my 7 iron dispersion?");
+    await expect(page.getByRole("button", { name: /ask coach/i })).toBeEnabled();
+  });
+});

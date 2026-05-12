@@ -5,20 +5,23 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, asc, eq, ne } from "drizzle-orm";
 
-import { clubs, courses, holes, sessions, shots, teeSets, users } from "@/db/schema";
+import { clubs, courses, holes, sessions, shareLinks, shots, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { evaluateRoundAchievementsForSession } from "@/lib/achievements/service";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { buildClubKey, normalizeClubType } from "@/lib/rapsodo/parser";
+import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
 
 type StoredScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>[number];
 
 export async function createManualRoundAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const teeSetId = requiredString(formData, "teeSetId");
   const notes = nullableString(formData, "notes");
+  const equipmentNotes = nullableString(formData, "equipmentNotes");
+  const roundStatus = parseRoundStatus(formData);
   const date = dateFromForm(formData, "date");
   const holeCount = numberFromForm(formData, "holeCount") ?? 18;
   const now = new Date();
@@ -66,15 +69,12 @@ export async function createManualRoundAction(formData: FormData) {
       .insert(users)
       .values({
         id: userId,
-        email: "single-user@forekinghell.local",
-        name: "ForeKingHell Player",
         preferredUnits: "yards",
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          preferredUnits: "yards",
           updatedAt: now,
         },
       });
@@ -90,8 +90,11 @@ export async function createManualRoundAction(formData: FormData) {
         teeSetId: teeSet.id,
         location: teeSet.courseName,
         courseName: teeSet.courseName,
+        roundStatus,
+        weatherJson: parseWeather(formData),
         scorecardJson,
         notes,
+        equipmentNotes,
         rawUploadId: `manual-round-${randomUUID()}`,
         fileName: `${teeSet.courseName} ${date.toISOString().slice(0, 10)}.scorecard`,
         rawCsvText: "",
@@ -105,9 +108,72 @@ export async function createManualRoundAction(formData: FormData) {
   redirect(`/rounds/${session.id}`);
 }
 
+export async function updateRoundContextAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const sessionId = requiredString(formData, "sessionId");
+
+  await db
+    .update(sessions)
+    .set({
+      roundStatus: parseRoundStatus(formData),
+      weatherJson: parseWeather(formData),
+      equipmentNotes: nullableString(formData, "equipmentNotes"),
+      notes: nullableString(formData, "notes"),
+    })
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+
+  revalidateRound(sessionId);
+}
+
+export async function createRoundShareLinkAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const sessionId = requiredString(formData, "sessionId");
+  const expiryDays = numberFromForm(formData, "expiryDays");
+  const token = createShareToken();
+  const now = new Date();
+  const [round] = await db
+    .select({ id: sessions.id, courseName: sessions.courseName, fileName: sessions.fileName })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+
+  if (!round) {
+    throw new Error("Round not found.");
+  }
+
+  await db.insert(shareLinks).values({
+    userId,
+    tokenHash: hashShareToken(token),
+    resourceType: "round",
+    resourceId: round.id,
+    title: round.courseName ?? round.fileName ?? "Shared round",
+    expiresAt: getShareExpiry(expiryDays, now),
+    updatedAt: now,
+  });
+
+  revalidateRound(sessionId);
+  redirect(`/rounds/${sessionId}?share=${encodeURIComponent(token)}`);
+}
+
+export async function revokeRoundShareLinkAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const sessionId = requiredString(formData, "sessionId");
+  const shareLinkId = requiredString(formData, "shareLinkId");
+
+  await db
+    .update(shareLinks)
+    .set({ revokedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(shareLinks.id, shareLinkId), eq(shareLinks.userId, userId), eq(shareLinks.resourceId, sessionId)));
+
+  revalidateRound(sessionId);
+}
+
 export async function updateRoundCourseLinkAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const teeSetId = requiredString(formData, "teeSetId");
 
@@ -163,7 +229,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
 
 export async function updateShotClubAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const clubId = requiredString(formData, "clubId");
@@ -192,7 +258,7 @@ export async function updateShotClubAction(formData: FormData) {
 
 export async function updateClubAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const clubId = requiredString(formData, "clubId");
   const clubType = normalizeClubType(requiredString(formData, "clubType"));
@@ -254,7 +320,7 @@ export async function updateClubAction(formData: FormData) {
 
 export async function updateRoundHoleAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const holeNumber = numberFromForm(formData, "holeNumber");
 
@@ -309,7 +375,7 @@ export async function updateRoundHoleAction(formData: FormData) {
 
 export async function moveRoundShotHoleAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const direction = requiredString(formData, "direction");
@@ -352,7 +418,7 @@ export async function moveRoundShotHoleAction(formData: FormData) {
 
 export async function moveRoundShotToHoleAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const shotId = requiredString(formData, "shotId");
   const targetHoleNumber = numberFromForm(formData, "targetHoleNumber");
@@ -386,7 +452,7 @@ export async function moveRoundShotToHoleAction(formData: FormData) {
 
 export async function resplitRoundAction(formData: FormData) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const [session] = await db
     .select({ scorecardJson: sessions.scorecardJson })
@@ -605,6 +671,18 @@ function booleanFromForm(formData: FormData, key: string) {
   }
 
   return null;
+}
+
+function parseRoundStatus(formData: FormData) {
+  return formData.get("roundStatus") === "in_progress" ? "in_progress" : "complete";
+}
+
+function parseWeather(formData: FormData) {
+  return {
+    conditions: nullableString(formData, "weatherConditions"),
+    wind: nullableString(formData, "wind"),
+    temperature: nullableString(formData, "temperature"),
+  };
 }
 
 function revalidateRound(sessionId: string) {

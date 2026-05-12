@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ComponentProps } from "react";
 import { ArrowLeft, Flag, MapPinned, Save, Trophy } from "lucide-react";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 
 import { updateTeeSetAction, upsertHoleAction } from "@/app/courses/actions";
 import {
@@ -19,6 +19,7 @@ import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { CourseHoleMapEditor } from "./course-hole-map-editor";
 
 export const dynamic = "force-dynamic";
@@ -68,9 +69,13 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="green">Course editor</StatusPill>}
+        eyebrow={<StatusPill tone={data.isEditable ? "green" : "sky"}>{data.isEditable ? "Course editor" : "Shared course"}</StatusPill>}
         title={data.course.name}
-        description="Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
+        description={
+          data.isEditable
+            ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
+            : "Use this shared course for scoring and overlays. Only the course creator can edit tee sets and hole geometry."
+        }
         metrics={[
           {
             label: "Provider",
@@ -104,7 +109,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             </Button>
           </CardContent>
         </DataPanel>
-      ) : (
+      ) : data.isEditable ? (
         <DataPanel>
           <SectionHeader
             title="Visual hole editor"
@@ -132,6 +137,19 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             />
           </CardContent>
         </DataPanel>
+      ) : (
+        <DataPanel>
+          <SectionHeader
+            title="Shared course geometry"
+            description="This map is read-only for your account. Create a private copy if you need to adjust tee or green points."
+            action={<MapPinned className="size-5 text-sky-600" />}
+          />
+          <CardContent>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Shared courses can be selected for rounds and used in overlays. Editing is limited to private courses you created.
+            </p>
+          </CardContent>
+        </DataPanel>
       )}
 
       {primaryTeeSet ? (
@@ -144,34 +162,44 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                 action={<Trophy className="size-5 text-amber-500" />}
               />
               <CardContent>
-                <form action={updateTeeSetAction} className="grid gap-4">
-                  <input type="hidden" name="courseId" value={data.course.id} />
-                  <input type="hidden" name="teeSetId" value={primaryTeeSet.id} />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <FormField label="Tee set" name="name" defaultValue={primaryTeeSet.name} required />
-                    <FormField label="Par" name="par" type="number" defaultValue={primaryTeeSet.par} required />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <FormField
-                      label="Course rating"
-                      name="courseRating"
-                      type="number"
-                      step="0.1"
-                      defaultValue={primaryTeeSet.courseRating ?? undefined}
-                    />
-                    <FormField
-                      label="Slope"
-                      name="slopeRating"
-                      type="number"
-                      defaultValue={primaryTeeSet.slopeRating ?? undefined}
-                    />
-                    <FormField label="Yards" name="yards" type="number" defaultValue={primaryTeeSet.yards ?? undefined} />
-                  </div>
-                  <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
-                    <Save className="size-4" />
-                    Save tee set
-                  </Button>
-                </form>
+                {data.isEditable ? (
+                  <form action={updateTeeSetAction} className="grid gap-4">
+                    <input type="hidden" name="courseId" value={data.course.id} />
+                    <input type="hidden" name="teeSetId" value={primaryTeeSet.id} />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <FormField label="Tee set" name="name" defaultValue={primaryTeeSet.name} required />
+                      <FormField label="Par" name="par" type="number" defaultValue={primaryTeeSet.par} required />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <FormField
+                        label="Course rating"
+                        name="courseRating"
+                        type="number"
+                        step="0.1"
+                        defaultValue={primaryTeeSet.courseRating ?? undefined}
+                      />
+                      <FormField
+                        label="Slope"
+                        name="slopeRating"
+                        type="number"
+                        defaultValue={primaryTeeSet.slopeRating ?? undefined}
+                      />
+                      <FormField label="Yards" name="yards" type="number" defaultValue={primaryTeeSet.yards ?? undefined} />
+                    </div>
+                    <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+                      <Save className="size-4" />
+                      Save tee set
+                    </Button>
+                  </form>
+                ) : (
+                  <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                    <ReadonlyValue label="Tee set" value={primaryTeeSet.name} />
+                    <ReadonlyValue label="Par" value={String(primaryTeeSet.par)} />
+                    <ReadonlyValue label="Course rating" value={formatOptionalNumber(primaryTeeSet.courseRating)} />
+                    <ReadonlyValue label="Slope" value={primaryTeeSet.slopeRating?.toString() ?? "--"} />
+                    <ReadonlyValue label="Yards" value={primaryTeeSet.yards?.toString() ?? "--"} />
+                  </dl>
+                )}
               </CardContent>
             </DataPanel>
 
@@ -206,7 +234,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
         </section>
       ) : null}
 
-      {primaryTeeSet ? (
+      {primaryTeeSet && data.isEditable ? (
         <DataPanel>
           <SectionHeader
             title="Hole geometry"
@@ -232,8 +260,13 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 
 async function getCourseEditorData(courseId: string) {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [courseRows, teeSetRows, holeRows] = await Promise.all([
-    db.select().from(courses).where(eq(courses.id, courseId)).limit(1),
+    db
+      .select()
+      .from(courses)
+      .where(and(eq(courses.id, courseId), or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId))))
+      .limit(1),
     db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)),
     db
       .select()
@@ -251,6 +284,7 @@ async function getCourseEditorData(courseId: string) {
     course,
     teeSets: teeSetRows,
     holes: holeRows,
+    isEditable: course.createdByUserId === userId,
   };
 }
 
@@ -356,6 +390,15 @@ function FormField({
       <span>{label}</span>
       <Input name={name} className="h-10 rounded-xl bg-white" {...props} />
     </label>
+  );
+}
+
+function ReadonlyValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border bg-white px-3 py-2">
+      <dt className="text-xs uppercase tracking-normal text-muted-foreground">{label}</dt>
+      <dd className="mt-1 font-medium">{value}</dd>
+    </div>
   );
 }
 

@@ -30,7 +30,7 @@ import {
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
-import { getDefaultUserId } from "@/lib/current-user";
+import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -360,7 +360,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
 async function getShotDatabase(filters: ShotFilters) {
   const db = getDb();
-  const userId = getDefaultUserId();
+  const userId = await requireCurrentUserId();
   const where = buildShotWhere(filters, userId);
 
   const [

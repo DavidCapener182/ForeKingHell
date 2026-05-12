@@ -39,10 +39,12 @@ import { buildCoachSummary } from "@/lib/coach";
 import { getProgressData } from "@/lib/progress-data";
 import {
   calculateHandicapSummary,
+  calculatePlayingHandicapSummary,
   calculateRoundDifferential,
   formatHandicapDelta,
   formatHandicapValue,
   type HandicapSummary,
+  type PlayingHandicapSummary,
 } from "@/lib/round-handicap";
 
 export const dynamic = "force-dynamic";
@@ -58,11 +60,13 @@ export default async function HandicapPage() {
   const [rounds, progressData] = await Promise.all([getHandicapRounds(), getProgressData()]);
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
-  const ratedRealRounds = realRounds.filter((round) => round.courseRating !== null && round.slopeRating !== null);
   const missingRatingRounds = rounds.filter((round) => round.courseRating === null || round.slopeRating === null);
   const realHandicap = calculateHandicapSummary(realRounds.map((round) => round.handicapDifferential));
   const simulatorHandicap = calculateHandicapSummary(simulatorRounds.map((round) => round.handicapDifferential));
   const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
+  const playingHandicap = calculatePlayingHandicapSummary(
+    rounds.map((round) => ({ handicapDifferential: round.handicapDifferential, type: round.type })),
+  );
   const coach = buildCoachSummary(progressData.clubs);
   const topCoachCard = coach.clubCards[0] ?? null;
   const latestRound = rounds[0] ?? null;
@@ -93,42 +97,44 @@ export default async function HandicapPage() {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="amber">Unofficial WHS-style estimate</StatusPill>}
+        eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
         title="Handicap"
-        description="Separate real-course, simulator, and combined estimates. ForeKingHell uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
+        description="Separate best-form differentials from a conservative playing estimate. ForeKingHell uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
         metrics={[
           {
-            label: "Real estimate",
+            label: "Real best-form",
             value: formatHandicapValue(realHandicap.value),
             detail: handicapMethodDetail(realHandicap),
           },
           {
-            label: "Simulator estimate",
+            label: "Simulator best-form",
             value: formatHandicapValue(simulatorHandicap.value),
             detail: handicapMethodDetail(simulatorHandicap),
+          },
+          {
+            label: "Realistic playing",
+            value: formatHandicapValue(playingHandicap.value),
+            detail: playingHandicap.methodLabel,
           },
           {
             label: "Range performance",
             value: `${coach.summary.totals.averageTrust}%`,
             detail: "Club-trust index from launch monitor data, not a handicap.",
           },
-          {
-            label: "Eligible rounds",
-            value: integerFormatter.format(rounds.length),
-            detail: `${integerFormatter.format(ratedRealRounds.length)} real rounds have rating and slope.`,
-          },
         ]}
       />
 
+      <PlayingHandicapPanel summary={playingHandicap} />
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <HandicapPanel title="Real course" summary={realHandicap} rounds={realRounds.length} tone="green" />
-        <HandicapPanel title="Simulator" summary={simulatorHandicap} rounds={simulatorRounds.length} tone="sky" />
+        <HandicapPanel title="Real course ceiling" summary={realHandicap} rounds={realRounds.length} tone="green" />
+        <HandicapPanel title="Simulator ceiling" summary={simulatorHandicap} rounds={simulatorRounds.length} tone="sky" />
         <RangePerformancePanel
           trust={coach.summary.totals.averageTrust}
           clubs={coach.summary.totals.clubs}
           cleanShots={coach.summary.totals.trackedCleanShots}
         />
-        <HandicapPanel title="Combined" summary={combinedHandicap} rounds={rounds.length} tone="amber" />
+        <HandicapPanel title="Combined ceiling" summary={combinedHandicap} rounds={rounds.length} tone="amber" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -186,7 +192,7 @@ export default async function HandicapPage() {
         <DataPanel>
           <SectionHeader
             title="Trend chart"
-            description="Running WHS-style estimate after each eligible round, oldest to newest."
+            description="Running best-form estimate after each eligible round, oldest to newest."
             action={<Trophy className="size-5 text-amber-500" />}
           />
           <CardContent>
@@ -223,7 +229,7 @@ export default async function HandicapPage() {
       <DataPanel>
         <SectionHeader
           title="Score differential table"
-          description="WHS-style estimate is calculated from score differentials, newest scorecards first."
+          description="Best-form estimates use score differentials, newest scorecards first."
         />
         <CardContent>
           <DataTableFrame
@@ -347,6 +353,7 @@ async function getHandicapRounds() {
       totalPar,
       courseRating: session.courseRating,
       slopeRating: session.slopeRating,
+      holesPlayed: scorecard.length,
     });
 
     return {
@@ -381,6 +388,50 @@ function HandicapPanel({
           <MiniMetric label="Used scores" value={`${summary.usedDifferentialCount}/${summary.sampleSize}`} />
           <MiniMetric label="Trend" value={trendSentence(summary)} />
         </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) {
+  return (
+    <DataPanel className="border-amber-200 bg-amber-50/70">
+      <SectionHeader
+        title="Realistic playing handicap"
+        description={summary.warning}
+        action={<StatusPill tone="amber">Data-limited</StatusPill>}
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
+        <div className="apple-panel-strong p-4">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Playing estimate</p>
+          <p className="mt-2 text-6xl font-semibold tracking-normal">{formatHandicapValue(summary.value)}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Uses recent adjusted scoring, not lowest-score WHS selection.
+          </p>
+        </div>
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-3"
+          items={[
+            {
+              label: "Method",
+              value: summary.methodLabel,
+              detail: `${summary.usedDifferentialCount} of ${summary.sampleSize} eligible rounds used.`,
+              tone: summary.value === null ? "amber" : "green",
+            },
+            {
+              label: "Blend",
+              value: `${summary.realDifferentialCount} real / ${summary.simulatorDifferentialCount} sim`,
+              detail: `Simulator rounds carry a ${formatHandicapDelta(summary.simulatorAdjustment)} differential adjustment.`,
+              tone: summary.realDifferentialCount > 0 ? "sky" : "amber",
+            },
+            {
+              label: "Mindset",
+              value: "Judge the trend",
+              detail: "A best-form ceiling can be low; this estimate is the fairer playing target.",
+              tone: "slate",
+            },
+          ]}
+        />
       </CardContent>
     </DataPanel>
   );
@@ -463,7 +514,7 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
         </g>
       ))}
       <text x="44" y="28" fill="#e5e7eb" fontSize="13">
-        Running estimate
+        Best-form estimate
       </text>
     </svg>
   );

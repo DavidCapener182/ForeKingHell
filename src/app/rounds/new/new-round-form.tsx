@@ -5,6 +5,7 @@ import { CalendarDays, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { trackPlausibleEvent } from "@/lib/analytics";
 
 export type RoundCourseOption = {
   id: string;
@@ -62,7 +63,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
   }
 
   return (
-    <form action={createRoundAction} className="grid gap-5">
+    <form action={createRoundAction} className="grid gap-5" onSubmit={() => trackPlausibleEvent("Round Created")}>
       <input type="hidden" name="holeCount" value={holes.length} />
 
       <div className="apple-panel grid gap-4 p-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -89,9 +90,38 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <span>Date</span>
           <Input name="date" type="date" defaultValue={todayIso} className="h-11 rounded-xl bg-white" required />
         </label>
+        <label className="grid gap-2 text-sm font-medium">
+          <span>Status</span>
+          <select
+            name="roundStatus"
+            defaultValue="complete"
+            className="h-11 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="complete">Complete</option>
+            <option value="in_progress">In progress</option>
+          </select>
+        </label>
         <label className="grid gap-2 text-sm font-medium lg:col-span-2">
           <span>Notes</span>
           <Input name="notes" placeholder="Weather, tees, match notes..." className="h-11 rounded-xl bg-white" />
+        </label>
+        <div className="grid gap-3 lg:col-span-2 sm:grid-cols-3">
+          <label className="grid gap-2 text-sm font-medium">
+            <span>Conditions</span>
+            <Input name="weatherConditions" placeholder="Dry, soft, rain..." className="h-11 rounded-xl bg-white" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            <span>Wind</span>
+            <Input name="wind" placeholder="10 mph into / cross" className="h-11 rounded-xl bg-white" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            <span>Temperature</span>
+            <Input name="temperature" placeholder="14C" className="h-11 rounded-xl bg-white" />
+          </label>
+        </div>
+        <label className="grid gap-2 text-sm font-medium lg:col-span-2">
+          <span>Equipment notes</span>
+          <Input name="equipmentNotes" placeholder="Ball, shaft setting, new club, grip changes..." className="h-11 rounded-xl bg-white" />
         </label>
       </div>
 

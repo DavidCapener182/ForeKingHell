@@ -1,17 +1,22 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Database, MapPinned, Save, Upload } from "lucide-react";
-import { asc, eq } from "drizzle-orm";
+import { ArrowLeft, Database, Link2, MapPinned, Save, Share2, Upload } from "lucide-react";
+import { and, asc, eq, isNull } from "drizzle-orm";
 
 import {
+  createRoundShareLinkAction,
   moveRoundShotHoleAction,
   moveRoundShotToHoleAction,
   resplitRoundAction,
+  revokeRoundShareLinkAction,
   updateClubAction,
+  updateRoundContextAction,
   updateRoundCourseLinkAction,
   updateRoundHoleAction,
   updateShotClubAction,
 } from "@/app/rounds/actions";
+import { OfflineRoundEditForm } from "@/components/offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,8 +44,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clubs, courses, holes as courseHoles, sessions, shots, teeSets } from "@/db/schema";
+import { clubs, courses, holes as courseHoles, sessions, shareLinks, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import { RoundShotMap, type RoundMapHole, type RoundMapShot } from "./round-shot-map";
@@ -50,6 +56,9 @@ export const dynamic = "force-dynamic";
 type PageProps = {
   params: Promise<{
     sessionId: string;
+  }>;
+  searchParams?: Promise<{
+    share?: string;
   }>;
 };
 
@@ -78,8 +87,10 @@ const CLUB_TYPE_OPTIONS = [
   "lw",
 ];
 
-export default async function RoundDetailPage({ params }: PageProps) {
+export default async function RoundDetailPage({ params, searchParams }: PageProps) {
   const { sessionId } = await params;
+  const requestHeaders = await headers();
+  const query = await searchParams;
   const round = await getRoundDetail(sessionId);
 
   if (!round) {
@@ -89,6 +100,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
   const isRealRound = round.session.type === "real_round";
   const hasClubData = round.shots.length > 0;
   const hasMap = round.mapHoles.length > 0;
+  const newShareUrl = query?.share ? `${getRequestOrigin(requestHeaders)}/share/${encodeURIComponent(query.share)}` : null;
 
   return (
     <PageShell>
@@ -133,13 +145,116 @@ export default async function RoundDetailPage({ params }: PageProps) {
 
         <Card className="premium-card">
           <CardHeader>
+            <CardTitle>Round context</CardTitle>
+            <CardDescription>
+              Save partial-round state, weather, wind and equipment notes so comparisons explain the conditions behind the score.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <OfflineRoundEditForm action={updateRoundContextAction} editKind="round-context" className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_1fr]">
+              <input type="hidden" name="sessionId" value={round.session.id} />
+              <label className="grid gap-2 text-sm font-medium">
+                <span>Status</span>
+                <select
+                  name="roundStatus"
+                  defaultValue={round.session.roundStatus}
+                  className="h-10 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="complete">Complete</option>
+                  <option value="in_progress">In progress</option>
+                </select>
+              </label>
+              <RoundContextInput label="Conditions" name="weatherConditions" value={round.weather.conditions} />
+              <RoundContextInput label="Wind" name="wind" value={round.weather.wind} />
+              <RoundContextInput label="Temperature" name="temperature" value={round.weather.temperature} />
+              <label className="grid gap-2 text-sm font-medium lg:col-span-2">
+                <span>Round notes</span>
+                <Input name="notes" defaultValue={round.session.notes ?? ""} className="h-10 rounded-xl bg-white" />
+              </label>
+              <label className="grid gap-2 text-sm font-medium lg:col-span-2">
+                <span>Equipment notes</span>
+                <Input name="equipmentNotes" defaultValue={round.session.equipmentNotes ?? ""} className="h-10 rounded-xl bg-white" />
+              </label>
+              <Button type="submit" className="rounded-xl bg-[#111827] text-white lg:w-fit">
+                <Save className="size-4" />
+                Save context
+              </Button>
+            </OfflineRoundEditForm>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Private share link</CardTitle>
+            <CardDescription>
+              Create revocable read-only links for a round before broader friend feeds and leaderboards are enabled.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {newShareUrl ? (
+              <div className="rounded-2xl border bg-emerald-50 p-3 text-sm text-emerald-900">
+                <p className="font-medium">Share link created</p>
+                <code className="mt-1 block break-all rounded bg-white/70 px-2 py-1 text-xs">{newShareUrl}</code>
+              </div>
+            ) : null}
+            <form action={createRoundShareLinkAction} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+              <input type="hidden" name="sessionId" value={round.session.id} />
+              <label className="grid gap-2 text-sm font-medium">
+                <span>Expiry</span>
+                <select
+                  name="expiryDays"
+                  defaultValue="30"
+                  className="h-10 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="7">7 days</option>
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                  <option value="0">No expiry</option>
+                </select>
+              </label>
+              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <Share2 className="size-4" />
+                Create share link
+              </Button>
+            </form>
+            {round.shareLinks.length > 0 ? (
+              <div className="grid gap-2">
+                {round.shareLinks.map((link) => (
+                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{link.title ?? "Round share"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Created {formatDate(link.createdAt)}{link.expiresAt ? `, expires ${formatDate(link.expiresAt)}` : ", no expiry"}
+                      </p>
+                    </div>
+                    <form action={revokeRoundShareLinkAction}>
+                      <input type="hidden" name="sessionId" value={round.session.id} />
+                      <input type="hidden" name="shareLinkId" value={link.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Revoke
+                      </Button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                <Link2 className="size-4" />
+                No active private links for this round.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card">
+          <CardHeader>
             <CardTitle>Course link</CardTitle>
             <CardDescription>
               Change the course or tee set used by the scorecard, handicap calculation, and hole map.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={updateRoundCourseLinkAction} className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+            <OfflineRoundEditForm action={updateRoundCourseLinkAction} editKind="round-course-link" className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end">
               <input type="hidden" name="sessionId" value={round.session.id} />
               <label className="grid gap-2 text-sm font-medium">
                 <span>Course / tee set</span>
@@ -172,7 +287,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                   Edit course
                 </Link>
               </Button>
-            </form>
+            </OfflineRoundEditForm>
           </CardContent>
         </Card>
 
@@ -209,7 +324,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form action={resplitRoundAction} className="space-y-4">
+              <OfflineRoundEditForm action={resplitRoundAction} editKind="resplit-round" className="space-y-4">
                 <input type="hidden" name="sessionId" value={round.session.id} />
                 <div className="grid gap-2 sm:grid-cols-6 lg:grid-cols-9">
                   {round.holes.map((hole) => (
@@ -236,7 +351,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                     Re-split round
                   </Button>
                 </div>
-              </form>
+              </OfflineRoundEditForm>
             </CardContent>
           </Card>
         ) : (
@@ -271,9 +386,10 @@ export default async function RoundDetailPage({ params }: PageProps) {
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {round.holes.map((hole) => (
-                  <form
+                  <OfflineRoundEditForm
                     key={hole.holeNumber}
                     action={updateRoundHoleAction}
+                    editKind="round-hole"
                     className="apple-panel-strong p-3"
                   >
                     <input type="hidden" name="sessionId" value={round.session.id} />
@@ -326,7 +442,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                       <Save className="size-4" />
                       Save hole
                     </Button>
-                  </form>
+                  </OfflineRoundEditForm>
                 ))}
               </div>
             </CardContent>
@@ -342,7 +458,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
               </CardHeader>
               <CardContent className="space-y-3">
                 {round.roundClubs.map((club) => (
-                  <form key={club.id} action={updateClubAction} className="apple-panel-strong p-3">
+                  <OfflineRoundEditForm key={club.id} action={updateClubAction} editKind="club" className="apple-panel-strong p-3">
                     <input type="hidden" name="sessionId" value={round.session.id} />
                     <input type="hidden" name="clubId" value={club.id} />
                     <div className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_auto]">
@@ -364,7 +480,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                         </Button>
                       </div>
                     </div>
-                  </form>
+                  </OfflineRoundEditForm>
                 ))}
                 {round.roundClubs.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No clubs are linked to this round.</p>
@@ -433,7 +549,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                           currentHoleNumber={shot.courseHoleNumber}
                           holeNumbers={round.holes.map((hole) => hole.holeNumber)}
                         />
-                        <form action={updateShotClubAction} className="grid gap-2">
+                        <OfflineRoundEditForm action={updateShotClubAction} editKind="shot-club" className="grid gap-2">
                           <input type="hidden" name="sessionId" value={round.session.id} />
                           <input type="hidden" name="shotId" value={shot.id} />
                           <select
@@ -450,7 +566,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                           <Button type="submit" size="sm" variant="outline">
                             Save club
                           </Button>
-                        </form>
+                        </OfflineRoundEditForm>
                       </MobileDataCard>
                     ))
                   ) : (
@@ -509,7 +625,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                         />
                       </TableCell>
                       <TableCell>
-                        <form action={updateShotClubAction} className="flex gap-2">
+                        <OfflineRoundEditForm action={updateShotClubAction} editKind="shot-club" className="flex gap-2">
                           <input type="hidden" name="sessionId" value={round.session.id} />
                           <input type="hidden" name="shotId" value={shot.id} />
                           <select
@@ -526,7 +642,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
                           <Button type="submit" size="sm" variant="outline">
                             Save
                           </Button>
-                        </form>
+                        </OfflineRoundEditForm>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -564,15 +680,21 @@ export default async function RoundDetailPage({ params }: PageProps) {
 
 async function getRoundDetail(sessionId: string) {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [session] = await db
     .select({
       id: sessions.id,
+      userId: sessions.userId,
       fileName: sessions.fileName,
       type: sessions.type,
       courseName: sessions.courseName,
       date: sessions.date,
       courseId: sessions.courseId,
       teeSetId: sessions.teeSetId,
+      roundStatus: sessions.roundStatus,
+      weatherJson: sessions.weatherJson,
+      equipmentNotes: sessions.equipmentNotes,
+      notes: sessions.notes,
       scorecardJson: sessions.scorecardJson,
       teeName: teeSets.name,
       courseRating: teeSets.courseRating,
@@ -580,14 +702,14 @@ async function getRoundDetail(sessionId: string) {
     })
     .from(sessions)
     .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .limit(1);
 
   if (!session) {
     return null;
   }
 
-  const [shotRows, clubRows, courseHoleRows, teeSetOptionRows] = await Promise.all([
+  const [shotRows, clubRows, courseHoleRows, teeSetOptionRows, shareLinkRows] = await Promise.all([
     db
       .select({
         id: shots.id,
@@ -606,7 +728,7 @@ async function getRoundDetail(sessionId: string) {
       })
       .from(shots)
       .innerJoin(clubs, eq(shots.clubId, clubs.id))
-      .where(eq(shots.sessionId, sessionId))
+      .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
       .orderBy(asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber)),
     db
       .select({
@@ -617,6 +739,7 @@ async function getRoundDetail(sessionId: string) {
         active: clubs.active,
       })
       .from(clubs)
+      .where(eq(clubs.userId, userId))
       .orderBy(asc(clubs.type), asc(clubs.brand), asc(clubs.model)),
     session.teeSetId
       ? db
@@ -643,6 +766,23 @@ async function getRoundDetail(sessionId: string) {
       .from(teeSets)
       .innerJoin(courses, eq(teeSets.courseId, courses.id))
       .orderBy(asc(courses.name), asc(teeSets.name)),
+    db
+      .select({
+        id: shareLinks.id,
+        title: shareLinks.title,
+        expiresAt: shareLinks.expiresAt,
+        createdAt: shareLinks.createdAt,
+      })
+      .from(shareLinks)
+      .where(
+        and(
+          eq(shareLinks.userId, userId),
+          eq(shareLinks.resourceType, "round"),
+          eq(shareLinks.resourceId, sessionId),
+          isNull(shareLinks.revokedAt),
+        ),
+      )
+      .orderBy(asc(shareLinks.createdAt)),
   ]);
 
   const scorecard = session.scorecardJson ?? [];
@@ -677,6 +817,7 @@ async function getRoundDetail(sessionId: string) {
       totalPar,
       courseRating: session.courseRating,
       slopeRating: session.slopeRating,
+      holesPlayed: holes.length,
     });
   const mapHoles = buildMapHoles(courseHoleRows, holes);
   const actualMapShots: RoundMapShot[] = shotRows.map((shot) => ({
@@ -698,6 +839,7 @@ async function getRoundDetail(sessionId: string) {
 
   return {
     session,
+    weather: normalizeWeather(session.weatherJson),
     holes,
     shots: shotRows,
     allClubs: clubRows.filter((club) => club.active || roundClubIds.has(club.id)),
@@ -714,9 +856,16 @@ async function getRoundDetail(sessionId: string) {
     mapHoles,
     mapShots,
     courseOptions: teeSetOptionRows,
+    shareLinks: shareLinkRows,
     fairwaysHit: holes.filter((hole) => hole.fairwayHit === true).length,
     gir: holes.filter((hole) => hole.gir === true).length,
   };
+}
+
+function getRequestOrigin(requestHeaders: Headers) {
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  return `${protocol}://${host}`;
 }
 
 function buildMapHoles(
@@ -842,14 +991,14 @@ function MoveShotButton({
   disabled: boolean;
 }) {
   return (
-    <form action={moveRoundShotHoleAction}>
+    <OfflineRoundEditForm action={moveRoundShotHoleAction} editKind="move-shot-hole">
       <input type="hidden" name="sessionId" value={sessionId} />
       <input type="hidden" name="shotId" value={shotId} />
       <input type="hidden" name="direction" value={direction} />
       <Button type="submit" variant="outline" size="sm" disabled={disabled}>
         {direction === "previous" ? "Prev" : "Next"}
       </Button>
-    </form>
+    </OfflineRoundEditForm>
   );
 }
 
@@ -865,7 +1014,7 @@ function MoveShotToHoleForm({
   holeNumbers: number[];
 }) {
   return (
-    <form action={moveRoundShotToHoleAction} className="flex gap-2">
+    <OfflineRoundEditForm action={moveRoundShotToHoleAction} editKind="move-shot-to-hole" className="flex gap-2">
       <input type="hidden" name="sessionId" value={sessionId} />
       <input type="hidden" name="shotId" value={shotId} />
       <select
@@ -885,7 +1034,7 @@ function MoveShotToHoleForm({
       <Button type="submit" size="sm" variant="outline">
         Move
       </Button>
-    </form>
+    </OfflineRoundEditForm>
   );
 }
 
@@ -895,6 +1044,23 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className="text-sm font-semibold">{value}</p>
     </div>
+  );
+}
+
+function RoundContextInput({
+  label,
+  name,
+  value,
+}: {
+  label: string;
+  name: string;
+  value: string | null;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-medium">
+      <span>{label}</span>
+      <Input name={name} defaultValue={value ?? ""} className="h-10 rounded-xl bg-white" />
+    </label>
   );
 }
 
@@ -944,6 +1110,24 @@ function ClubTypeSelect({ name, value }: { name: string; value: string }) {
 function sumNullable(values: Array<number | null>) {
   const present = values.filter((value): value is number => typeof value === "number");
   return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+}
+
+function normalizeWeather(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return { conditions: null, wind: null, temperature: null };
+  }
+
+  const weather = value as {
+    conditions?: unknown;
+    wind?: unknown;
+    temperature?: unknown;
+  };
+
+  return {
+    conditions: typeof weather.conditions === "string" ? weather.conditions : null,
+    wind: typeof weather.wind === "string" ? weather.wind : null,
+    temperature: typeof weather.temperature === "string" ? weather.temperature : null,
+  };
 }
 
 function formatDate(value: Date) {
