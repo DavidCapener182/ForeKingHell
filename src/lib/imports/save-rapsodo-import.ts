@@ -19,7 +19,7 @@ import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import { evaluateCoachDrillAchievementsForUser } from "@/lib/coach-drill-awards";
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
-import { ensureKnownCourseForSession, type CourseSessionLink } from "@/lib/courses";
+import { ensureCourseForSession, type CourseSessionLink } from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   type CourseInferenceResult,
@@ -130,6 +130,10 @@ export type SaveRapsodoImportBatchResult =
       message: string;
     };
 
+const BAD_DATA_QUALITY_TAG = "bad_data";
+const WEDGE_CLUB_TYPES = new Set(["pw", "gw", "aw", "sw", "lw", "wedge"]);
+const SHORT_WEDGE_CLUB_TYPES = new Set(["sw", "lw", "wedge"]);
+
 export async function saveRapsodoImport(
   input: SaveRapsodoImportInput,
 ): Promise<SaveRapsodoImportResult> {
@@ -152,7 +156,11 @@ export async function saveRapsodoImport(
     const coursePlan = buildCoursePlan(validatedInput, importedShots);
     const courseLink =
       validatedInput.sessionType === "simulated_course"
-        ? await ensureKnownCourseForSession(validatedInput.courseName)
+        ? await ensureCourseForSession({
+            userId,
+            courseName: validatedInput.courseName,
+            scorecardHoles: coursePlan?.holes,
+          })
         : { courseId: null, teeSetId: null };
 
     const result = await persistImport({
@@ -409,7 +417,6 @@ async function persistImport(
             type: firstShotForClub.clubType,
             brand: firstShotForClub.clubBrand,
             model: firstShotForClub.clubModel,
-            active: isTrackedClubType(firstShotForClub.clubType),
             updatedAt: now,
           },
         })
@@ -839,12 +846,45 @@ function nullableOverrideText(value: string | null | undefined, maxLength: numbe
   return trimmed ? trimmed.slice(0, maxLength) : null;
 }
 
+function withInferredImportedQualityTag(shot: ParsedRapsodoShot) {
+  if (shot.qualityTag) {
+    return shot;
+  }
+
+  const qualityTag = inferImportedShotQualityTag(shot);
+  return qualityTag ? { ...shot, qualityTag } : shot;
+}
+
+function inferImportedShotQualityTag(shot: ParsedRapsodoShot) {
+  const clubType = normalizeClubType(shot.clubType);
+
+  if (
+    WEDGE_CLUB_TYPES.has(clubType) &&
+    isFiniteNumber(shot.ballSpeedMph) &&
+    shot.ballSpeedMph >= 115 &&
+    isFiniteNumber(shot.launchAngleDeg) &&
+    shot.launchAngleDeg <= 15
+  ) {
+    return BAD_DATA_QUALITY_TAG;
+  }
+
+  if (SHORT_WEDGE_CLUB_TYPES.has(clubType) && isFiniteNumber(shot.carryYd) && shot.carryYd >= 170) {
+    return BAD_DATA_QUALITY_TAG;
+  }
+
+  return null;
+}
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return value !== null && value !== undefined && Number.isFinite(value);
+}
+
 export function applyRapsodoShotOverridesForImport(
   shotsToImport: ParsedRapsodoShot[],
   overrides: RapsodoShotOverride[] | undefined,
 ) {
   if (!overrides || overrides.length === 0) {
-    return shotsToImport;
+    return shotsToImport.map(withInferredImportedQualityTag);
   }
 
   const overrideByRowNumber = new Map(overrides.map((override) => [override.rowNumber, override]));
@@ -853,14 +893,14 @@ export function applyRapsodoShotOverridesForImport(
     const override = overrideByRowNumber.get(shot.rowNumber);
 
     if (!override) {
-      return shot;
+      return withInferredImportedQualityTag(shot);
     }
 
     const clubType = normalizeClubType(override.clubType);
     const clubBrand = override.clubBrand ?? null;
     const clubModel = override.clubModel ?? null;
 
-    return {
+    return withInferredImportedQualityTag({
       ...shot,
       clubType,
       clubLabel: formatClubType(clubType),
@@ -869,7 +909,7 @@ export function applyRapsodoShotOverridesForImport(
       clubKey: buildClubKey(clubType, clubBrand, clubModel),
       shotCategory: override.shotCategory ?? shot.shotCategory,
       qualityTag: override.qualityTag ?? shot.qualityTag,
-    };
+    });
   });
 }
 
@@ -925,6 +965,7 @@ function revalidateImportPages() {
     revalidatePath("/bag");
     revalidatePath("/shots");
     revalidatePath("/rounds");
+    revalidatePath("/courses");
   } catch {
     // Allows the import helper to be reused by local scripts outside a Next.js request.
   }

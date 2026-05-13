@@ -61,7 +61,7 @@ export function ClubDetailClient({
   const accent = clubAccent(club.type);
   const clubModelName = formatClubModelName(club);
   const clubTypeLabel = formatClubType(club.type);
-  const [shotRange, setShotRange] = useState<ShotRange>("month1");
+  const [shotRange, setShotRange] = useState<ShotRange>("thisMonth");
   const selectedRange = RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
     () =>

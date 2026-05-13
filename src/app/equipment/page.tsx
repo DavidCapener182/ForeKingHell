@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
-import { desc, eq } from "drizzle-orm";
-import { ArrowLeft, CircleDot, Save, Wrench } from "lucide-react";
+import { count, desc, eq, sql } from "drizzle-orm";
+import { Archive, ArrowLeft, CircleDot, Save, Wrench } from "lucide-react";
 
 import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
 import {
@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ballModels, clubEquipmentHistory, clubs } from "@/db/schema";
+import { ballModels, clubEquipmentHistory, clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -67,7 +67,8 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         title="Equipment inventory"
         description="Track club specifications and ball models over time so performance changes can be compared against equipment changes."
         metrics={[
-          { label: "Clubs", value: data.clubs.length.toString(), detail: "Active bag records" },
+          { label: "Clubs", value: data.activeClubs.length.toString(), detail: "Active bag records" },
+          { label: "Retired clubs", value: data.retiredClubs.length.toString(), detail: "Hidden from bag and dashboard" },
           { label: "Ball models", value: data.ballModels.length.toString(), detail: "Tracked golf balls" },
           { label: "Active specs", value: activeHistory.length.toString(), detail: "Current club setups" },
         ]}
@@ -109,7 +110,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           <CardContent>
             <form action={saveEquipmentHistoryAction} className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <SelectField label="Club" name="clubId" values={data.clubs.map((club) => ({ value: club.id, label: formatClubType(club.type) }))} />
+                <SelectField label="Club" name="clubId" values={data.activeClubs.map((club) => ({ value: club.id, label: formatClubType(club.type) }))} />
                 <SelectField
                   label="Ball model"
                   name="ballModelId"
@@ -136,6 +137,17 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
       <DataPanel>
         <SectionHeader
+          title="Retired clubs"
+          description="Clubs no longer in the active bag. They are hidden from bag, dashboard, and progress views but still count for compare and historic shot totals."
+          action={<Archive className="size-5 text-slate-500" />}
+        />
+        <CardContent>
+          <RetiredClubsTable retired={data.retiredClubs} />
+        </CardContent>
+      </DataPanel>
+
+      <DataPanel>
+        <SectionHeader
           title="Equipment history"
           description="A timeline of club and ball setups used by the account."
         />
@@ -147,10 +159,74 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
   );
 }
 
+function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
+  return (
+    <DataTableFrame
+      mobile={
+        <MobileDataList
+          empty={
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No retired clubs.
+            </p>
+          }
+        >
+          {retired.map((club) => (
+            <MobileDataCard
+              key={club.id}
+              title={formatClubType(club.type)}
+              subtitle={[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
+              action={<StatusPill tone="slate">Retired</StatusPill>}
+            >
+              <DataPair label="Shots" value={club.shotCount.toLocaleString("en-GB")} />
+              <DataPair
+                label="Last shot"
+                value={club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
+              />
+            </MobileDataCard>
+          ))}
+        </MobileDataList>
+      }
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Club</TableHead>
+            <TableHead>Brand / model</TableHead>
+            <TableHead className="text-right">Shots</TableHead>
+            <TableHead>Last shot</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {retired.length > 0 ? (
+            retired.map((club) => (
+              <TableRow key={club.id}>
+                <TableCell className="font-medium">{formatClubType(club.type)}</TableCell>
+                <TableCell>{[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}</TableCell>
+                <TableCell className="text-right tabular-nums">{club.shotCount.toLocaleString("en-GB")}</TableCell>
+                <TableCell>{club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}</TableCell>
+                <TableCell>
+                  <StatusPill tone="slate">Retired</StatusPill>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                No retired clubs.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </DataTableFrame>
+  );
+}
+
 async function getEquipmentData() {
   const userId = await requireCurrentUserId();
   const db = getDb();
-  const [clubRows, ballRows, historyRows] = await Promise.all([
+  const [clubRows, ballRows, historyRows, shotCountRows] = await Promise.all([
     db.select().from(clubs).where(eq(clubs.userId, userId)),
     db.select().from(ballModels).where(eq(ballModels.userId, userId)).orderBy(desc(ballModels.createdAt)),
     db
@@ -172,14 +248,44 @@ async function getEquipmentData() {
       .leftJoin(ballModels, eq(ballModels.id, clubEquipmentHistory.ballModelId))
       .where(eq(clubEquipmentHistory.userId, userId))
       .orderBy(desc(clubEquipmentHistory.effectiveFrom)),
+    db
+      .select({
+        clubId: shots.clubId,
+        shotCount: count(),
+        lastShotAt: sql<Date | null>`max(${shots.shotAt})`,
+      })
+      .from(shots)
+      .where(eq(shots.userId, userId))
+      .groupBy(shots.clubId),
   ]);
+
+  const shotStatsByClubId = new Map(
+    shotCountRows.map((row) => [row.clubId, { shotCount: row.shotCount, lastShotAt: row.lastShotAt }]),
+  );
+  const retiredClubs = clubRows
+    .filter((club) => !club.active)
+    .map((club) => ({
+      ...club,
+      shotCount: shotStatsByClubId.get(club.id)?.shotCount ?? 0,
+      lastShotAt: shotStatsByClubId.get(club.id)?.lastShotAt ?? null,
+    }))
+    .sort((left, right) => {
+      const leftTime = left.lastShotAt instanceof Date ? left.lastShotAt.getTime() : 0;
+      const rightTime = right.lastShotAt instanceof Date ? right.lastShotAt.getTime() : 0;
+      return rightTime - leftTime || left.type.localeCompare(right.type);
+    });
+  const activeClubs = clubRows.filter((club) => club.active);
 
   return {
     clubs: clubRows,
+    activeClubs,
+    retiredClubs,
     ballModels: ballRows,
     history: historyRows,
   };
 }
+
+type RetiredClub = Awaited<ReturnType<typeof getEquipmentData>>["retiredClubs"][number];
 
 function EquipmentHistoryTable({ history }: { history: Awaited<ReturnType<typeof getEquipmentData>>["history"] }) {
   return (

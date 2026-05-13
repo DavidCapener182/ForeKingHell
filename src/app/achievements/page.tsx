@@ -48,7 +48,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
         <PageHeader
           eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
           title="Progress worth tracking"
-          description="Rapsodo metrics and completed round scorecards unlock XP, major badges, and generated club mastery ladders."
+          description="Rapsodo metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
         />
 
         <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />

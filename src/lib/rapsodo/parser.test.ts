@@ -234,6 +234,22 @@ describe("Rapsodo parser edge cases", () => {
 });
 
 describe("Rapsodo import shot overrides", () => {
+  it("marks impossible wedge telemetry as bad data during import prep", () => {
+    const parsed = parseRapsodoCsv(
+      [
+        "Shot Number,Club Type,Carry Distance (yd),Total Distance (yd),Ball Speed,Launch Angle",
+        "1,PW,96.3,103.9,124.7,9.9",
+      ].join("\n"),
+    );
+
+    const prepared = applyRapsodoShotOverridesForImport(parsed.shots, undefined);
+
+    expect(prepared[0]).toMatchObject({
+      clubType: "pw",
+      qualityTag: "bad_data",
+    });
+  });
+
   it("applies confirmed clubs by CSV row number while preserving the raw Rapsodo row", () => {
     const parsed = parseRapsodoCsv(
       [

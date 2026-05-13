@@ -18,6 +18,7 @@ export type AchievementCategory =
   | "consistency"
   | "coach"
   | "progress"
+  | "mileage"
   | "scoring"
   | "putting"
   | "shortGame"

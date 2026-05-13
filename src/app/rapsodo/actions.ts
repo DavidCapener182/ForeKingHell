@@ -717,8 +717,8 @@ async function getRapsodoClubChoices(client: RapsodoCloudClient, token: string):
         clubBrand: club.brand,
         clubModel: club.model,
         active: club.active,
-        firstShotAt: shotDates?.firstShotAt?.toISOString() ?? null,
-        lastShotAt: shotDates?.lastShotAt?.toISOString() ?? null,
+        firstShotAt: timestampToIso(shotDates?.firstShotAt),
+        lastShotAt: timestampToIso(shotDates?.lastShotAt),
         stockCarryYd: latestStock ? latestStock.carryMedianYd : calculatedStock.carryMedianYd,
         stockTotalYd: latestStock ? latestStock.totalMedianYd : calculatedStock.totalMedianYd,
         averageBallSpeedMph:
@@ -826,6 +826,16 @@ function dateOnlyTimestamp(value: string | null | undefined) {
   }
 
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function timestampToIso(value: Date | string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 async function updateRapsodoExportHash(session: RapsodoSessionListItem, rawCsvHash: string) {

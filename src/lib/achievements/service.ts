@@ -168,7 +168,7 @@ export async function syncAchievementsForUser(userId: string) {
 
   const unlockedAchievements = await awardAchievements(userId, evaluation.unlocks);
 
-  for (const progress of evaluation.progress.filter((candidate) => !candidate.achievementId.startsWith("club_"))) {
+  for (const progress of evaluation.progress.filter(shouldPersistProgressCandidate)) {
     await upsertProgress(userId, progress);
   }
 
@@ -469,6 +469,7 @@ function achievementCategoryFromMetadata(value: unknown): AchievementCategory {
     value === "consistency" ||
     value === "coach" ||
     value === "progress" ||
+    value === "mileage" ||
     value === "scoring" ||
     value === "putting" ||
     value === "shortGame" ||
@@ -700,6 +701,8 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Shots", formatInteger(metadata.shotCount)),
     stat("Sample", formatInteger(metadata.sampleSize)),
     stat("Target", formatInteger(metadata.targetShots)),
+    stat("Miles", formatMiles(metadata.totalMiles)),
+    stat("Target miles", formatMiles(metadata.targetMiles)),
     stat("Fairways", formatInteger(metadata.fairways)),
     stat("GIR", formatInteger(metadata.gir)),
     stat("Stock clubs", formatInteger(metadata.stockCount ?? metadata.activeClubCount)),
@@ -826,6 +829,11 @@ function formatPercent(value: unknown) {
 
   const percentage = Math.abs(numberValue) <= 1 ? numberValue * 100 : numberValue;
   return `${roundOne(percentage)}%`;
+}
+
+function formatMiles(value: unknown) {
+  const numberValue = finiteNumber(value);
+  return numberValue === null ? null : `${roundOne(numberValue)} mi`;
 }
 
 function formatDecimal(value: unknown, digits: number) {
@@ -1233,6 +1241,10 @@ function progressLabelFromMetadata(
   progressValue: number,
   targetValue: number,
 ) {
+  if (metadata && typeof metadata.totalMiles === "number") {
+    return `${formatNumber(metadata.totalMiles)} / ${formatNumber(targetValue)} mi`;
+  }
+
   if (metadata && typeof metadata.value === "number") {
     return `${formatNumber(metadata.value)} / ${formatNumber(targetValue)}`;
   }
@@ -1250,6 +1262,10 @@ function progressLabelFromMetadata(
   }
 
   return `${formatNumber(progressValue)} / ${formatNumber(targetValue)}`;
+}
+
+function shouldPersistProgressCandidate(candidate: AchievementProgressCandidate) {
+  return !candidate.achievementId.startsWith("club_") || candidate.achievementId.includes("_miles_");
 }
 
 function isSameUtcDay(left: Date, right: Date) {

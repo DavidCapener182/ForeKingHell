@@ -22,7 +22,7 @@ describe("calculateStockYardage", () => {
     expect(result.recommendedPlayNumberYd).toBe(150);
   });
 
-  it("excludes chip, pitch, recovery, and mishit rows", () => {
+  it("excludes chip, pitch, recovery, mishit, and bad-data rows", () => {
     const result = calculateStockYardage([
       shot(140, 148, 0),
       shot(142, 149, 1),
@@ -30,6 +30,7 @@ describe("calculateStockYardage", () => {
       { ...shot(80, 90, 1), shotCategory: "pitch" },
       { ...shot(100, 120, 1), shotCategory: "recovery" },
       { ...shot(50, 80, 1), qualityTag: "mishit" },
+      { ...shot(200, 220, 1), qualityTag: "bad_data" },
     ]);
 
     expect(result.sampleSize).toBe(2);

@@ -42,7 +42,7 @@ export type StockYardageOptions = {
 };
 
 const EXCLUDED_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
-const EXCLUDED_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat"]);
+const EXCLUDED_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
 
 export function calculateStockYardage(
   shots: StockShot[],

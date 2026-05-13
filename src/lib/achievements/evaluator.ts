@@ -3,10 +3,13 @@ import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 import {
   ACHIEVEMENTS,
   GENERATED_CLUB_MASTERY_BY_CLUB,
+  GENERATED_CLUB_MILEAGE_BY_CLUB,
   GENERATED_CLUB_METRICS_BY_CLUB,
   GENERATED_CLUB_PERSONAL_BEST_BY_CLUB,
   GENERATED_CLUB_VOLUME_BY_CLUB,
+  YARDS_PER_MILE,
   type GeneratedClubMasteryMetric,
+  type GeneratedClubMetric,
   getAchievement,
 } from "./registry";
 import type {
@@ -58,6 +61,7 @@ export function evaluateAllAchievementCandidates(
 
   evaluateRollingSamples(collector, shotCountByClubId);
   evaluateGeneratedClubVolumeSamples(collector, shotsByClubType);
+  evaluateGeneratedClubMileageSamples(collector, shotsByClubType);
   evaluateGeneratedClubPersonalBests(collector, shotsByClubType);
   evaluateStockAndGapping(collector, context.clubs, latestStockByClubId);
   evaluateProgress(collector, trackedShots, trackedStocks);
@@ -91,6 +95,7 @@ export function evaluateRapsodoSessionAchievements(
 
   evaluateSession(collector, session, sortShots(sessionShots));
   evaluateGeneratedClubVolumeSamples(collector, groupBy(sessionShots, (shot) => shot.clubType));
+  evaluateGeneratedClubMileageSamples(collector, groupBy(sessionShots, (shot) => shot.clubType));
 
   return {
     unlocks: dedupeUnlockCandidates(collector.unlocks),
@@ -276,14 +281,14 @@ function evaluateSingleShot(
 }
 
 function evaluateGeneratedShotAchievements(collector: Collector, shot: AchievementShot) {
-  if (isShortGameTouchClubType(shot.clubType)) {
+  if (isShortGameTouchClubType(shot.clubType) && shot.courseHoleNumber !== null && shot.courseHoleNumber !== undefined) {
     return;
   }
 
   const generatedAchievements = GENERATED_CLUB_METRICS_BY_CLUB.get(shot.clubType) ?? [];
 
   for (const generated of generatedAchievements) {
-    const value = absNumber(shot.sideCarryYd);
+    const value = generatedShotMetricValue(generated.metric, shot);
 
     if (value === null) {
       continue;
@@ -300,7 +305,11 @@ function evaluateGeneratedShotAchievements(collector: Collector, shot: Achieveme
         ? Math.min(Math.max(0, value), generated.threshold)
         : Math.max(0, generated.threshold - value),
       generated.operator === ">=" ? generated.threshold : generated.threshold,
-      { value: roundOne(value), clubType: shot.clubType },
+      {
+        value: roundOne(value),
+        clubType: shot.clubType,
+        ...metadataForGeneratedShotMetric(generated.metric, value),
+      },
     );
 
     if (unlocked) {
@@ -308,10 +317,40 @@ function evaluateGeneratedShotAchievements(collector: Collector, shot: Achieveme
         sourceSessionId: shot.sessionId,
         sourceShotId: shot.id,
         unlockedAt: shot.shotAt,
-        metadata: { value: roundOne(value), clubType: shot.clubType },
+        metadata: {
+          value: roundOne(value),
+          clubType: shot.clubType,
+          ...metadataForGeneratedShotMetric(generated.metric, value),
+        },
       });
     }
   }
+}
+
+function generatedShotMetricValue(metric: GeneratedClubMetric, shot: AchievementShot) {
+  if (metric === "offlineYd") {
+    return absNumber(shot.sideCarryYd);
+  }
+
+  if (metric === "carryYd") {
+    return shot.carryYd;
+  }
+
+  return shot.totalYd;
+}
+
+function metadataForGeneratedShotMetric(metric: GeneratedClubMetric, value: number) {
+  const rounded = roundOne(value);
+
+  if (metric === "offlineYd") {
+    return { offlineYd: rounded };
+  }
+
+  if (metric === "carryYd") {
+    return { carryYd: rounded };
+  }
+
+  return { totalYd: rounded };
 }
 
 function evaluateSession(collector: Collector, session: AchievementSession, sessionShots: AchievementShot[]) {
@@ -581,6 +620,69 @@ function evaluateGeneratedClubVolumeSamples(
           clubType,
           shotCount,
           targetShots: generated.shotCount,
+        },
+      });
+    }
+  }
+}
+
+function evaluateGeneratedClubMileageSamples(
+  collector: Collector,
+  shotsByClubType: Map<string, AchievementShot[]>,
+) {
+  for (const [clubType, clubShots] of shotsByClubType.entries()) {
+    const generatedAchievements = GENERATED_CLUB_MILEAGE_BY_CLUB.get(clubType) ?? [];
+
+    if (generatedAchievements.length === 0) {
+      continue;
+    }
+
+    let totalYards = 0;
+    const cumulativeShots: Array<{ shot: AchievementShot; cumulativeYards: number }> = [];
+
+    for (const shot of sortShots(clubShots)) {
+      const distanceYards = shotDistanceYards(shot);
+
+      if (distanceYards === null) {
+        continue;
+      }
+
+      totalYards += distanceYards;
+      cumulativeShots.push({ shot, cumulativeYards: totalYards });
+    }
+
+    const totalMiles = totalYards / YARDS_PER_MILE;
+
+    for (const generated of generatedAchievements) {
+      collector.progressCandidate(
+        generated.id,
+        Math.min(totalMiles, generated.miles),
+        generated.miles,
+        {
+          clubType,
+          targetMiles: generated.miles,
+          totalMiles: roundMetricValue(totalMiles),
+          totalYards: roundOne(totalYards),
+        },
+      );
+
+      if (totalYards < generated.targetYards) {
+        continue;
+      }
+
+      const thresholdShot =
+        cumulativeShots.find((entry) => entry.cumulativeYards >= generated.targetYards) ??
+        cumulativeShots[cumulativeShots.length - 1];
+
+      collector.unlock(generated.id, {
+        sourceSessionId: thresholdShot?.shot.sessionId,
+        sourceShotId: thresholdShot?.shot.id,
+        unlockedAt: thresholdShot?.shot.shotAt,
+        metadata: {
+          clubType,
+          targetMiles: generated.miles,
+          totalMiles: roundMetricValue((thresholdShot?.cumulativeYards ?? totalYards) / YARDS_PER_MILE),
+          totalYards: roundOne(thresholdShot?.cumulativeYards ?? totalYards),
         },
       });
     }
@@ -1069,6 +1171,16 @@ function thresholdLowRoundScore(
       metadata: { score },
     });
   }
+}
+
+function shotDistanceYards(shot: AchievementShot) {
+  const value = shot.totalYd ?? shot.carryYd;
+
+  if (!isNumber(value) || value <= 0) {
+    return null;
+  }
+
+  return value;
 }
 
 function maybeUnlockImprovement(

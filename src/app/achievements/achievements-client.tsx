@@ -59,6 +59,7 @@ const categoryLabels: Record<string, string> = {
   consistency: "Consistency",
   coach: "Coach",
   progress: "Progress",
+  mileage: "Mileage",
   scoring: "Scoring",
   putting: "Putting",
   shortGame: "Short Game",
@@ -154,16 +155,18 @@ const calendarCellStyle = {
   minHeight: "2.5rem",
   width: "100%",
 } as const;
+const defaultStatusFilter = "all";
+const defaultHideCompleted = true;
 
 export function AchievementsClient({ data, focusAchievementId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const initialCalendarDay = latestUnlockedDayFromAchievements(data.achievements);
-  const [statusFilter, setStatusFilter] = useState("unlocked");
+  const [statusFilter, setStatusFilter] = useState(defaultStatusFilter);
   const [typeFilter, setTypeFilter] = useState("all");
   const [clubFilter, setClubFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(defaultHideCompleted);
   const [query, setQuery] = useState("");
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
   const focusedAchievementId = focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
@@ -299,7 +302,14 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         .includes(normalizedQuery);
     });
   }, [clubFilter, data.achievements, focusedAchievementId, hideCompleted, query, statusFilter, tierFilter, typeFilter]);
-  const isFiltered = statusFilter !== "unlocked" || typeFilter !== "all" || clubFilter !== "all" || tierFilter !== "all" || hideCompleted || Boolean(query.trim()) || Boolean(focusedAchievementId);
+  const isFiltered =
+    statusFilter !== defaultStatusFilter ||
+    typeFilter !== "all" ||
+    clubFilter !== "all" ||
+    tierFilter !== "all" ||
+    hideCompleted !== defaultHideCompleted ||
+    Boolean(query.trim()) ||
+    Boolean(focusedAchievementId);
   const selectedTypeLabel =
     typeFilter === "all"
       ? "All types"
@@ -317,11 +327,11 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
 
   function clearFilters() {
     setDismissedFocusId(focusAchievementId);
-    setStatusFilter("unlocked");
+    setStatusFilter(defaultStatusFilter);
     setTypeFilter("all");
     setClubFilter("all");
     setTierFilter("all");
-    setHideCompleted(false);
+    setHideCompleted(defaultHideCompleted);
     setQuery("");
   }
 

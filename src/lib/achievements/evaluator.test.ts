@@ -36,18 +36,21 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("driver_smash_150");
     expect(ids).toContain("club_driver_volume_1");
     expect(ids).toContain("club_driver_offline_5");
-    expect(ids).not.toContain("club_driver_carry_200");
-    expect(ids).not.toContain("club_driver_total_220");
+    expect(ids).toContain("club_driver_carry_200");
+    expect(ids).toContain("club_driver_total_220");
     expect(ids).not.toContain("club_driver_ball_speed_140");
   });
 
-  it("does not register short-game touch clubs or unrealistic wedge power targets as generated metric achievements", () => {
+  it("registers club distance ladders without unrealistic wedge speed or distance targets", () => {
     const ids = ACHIEVEMENTS.map((achievement) => achievement.id);
 
-    expect(ids.some((id) => /^club_(sw|lw)_(carry|total|ball_speed|smash|offline)_/.test(id))).toBe(false);
+    expect(ids.some((id) => /^club_(sw|lw)_(ball_speed|smash|offline)_/.test(id))).toBe(false);
     expect(ids).not.toContain("club_pw_ball_speed_180");
     expect(ids).not.toContain("club_gw_smash_155");
-    expect(ids).not.toContain("club_9i_carry_130");
+    expect(ids).not.toContain("club_sw_carry_130");
+    expect(ids).not.toContain("club_lw_total_130");
+    expect(ids).toContain("club_sw_carry_70");
+    expect(ids).toContain("club_lw_total_50");
     expect(ids).toContain("club_sw_volume_1");
     expect(ids).toContain("club_lw_volume_1");
   });
@@ -96,6 +99,48 @@ describe("Rapsodo achievement evaluation", () => {
     expect(acquainted?.sourceShotId).toBe("seveniron-9");
   });
 
+  it("unlocks generated club-mileage badges from cumulative total distance", () => {
+    const shots = Array.from({ length: 20 }, (_, index) =>
+      makeShot({
+        id: `mileage-7i-${index}`,
+        clubType: "7i",
+        shotNumber: index + 1,
+        shotAt: new Date(`2026-05-${String(index + 1).padStart(2, "0")}T12:00:00.000Z`),
+        totalYd: 200,
+      }),
+    );
+    const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
+    const ids = achievementIds(result.unlocks);
+    const firstMile = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_miles_1");
+    const twoMiles = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_miles_2");
+    const fiveMileProgress = result.progress.find((progress) => progress.achievementId === "club_7i_miles_5");
+
+    expect(ids).toContain("club_7i_miles_1");
+    expect(ids).toContain("club_7i_miles_2");
+    expect(ids).not.toContain("club_7i_miles_5");
+    expect(firstMile?.sourceShotId).toBe("mileage-7i-8");
+    expect(twoMiles?.sourceShotId).toBe("mileage-7i-17");
+    expect(twoMiles?.metadata).toMatchObject({ clubType: "7i", targetMiles: 2 });
+    expect(fiveMileProgress?.progressValue).toBeCloseTo(4000 / 1760, 5);
+    expect(fiveMileProgress?.targetValue).toBe(5);
+  });
+
+  it("uses carry distance for club-mileage progress when total distance is missing", () => {
+    const shots = Array.from({ length: 9 }, (_, index) =>
+      makeShot({
+        id: `carry-mileage-7i-${index}`,
+        clubType: "7i",
+        shotNumber: index + 1,
+        carryYd: 200,
+        totalYd: null,
+      }),
+    );
+    const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
+    const ids = achievementIds(result.unlocks);
+
+    expect(ids).toContain("club_7i_miles_1");
+  });
+
   it("unlocks generated club-session mastery badges from consistent sessions", () => {
     const shots = Array.from({ length: 10 }, (_, index) =>
       makeShot({
@@ -123,7 +168,7 @@ describe("Rapsodo achievement evaluation", () => {
   });
 
 
-  it("unlocks short-game wedge control achievements without distance-power metrics", () => {
+  it("unlocks short-game wedge control achievements and short-game distance ladders", () => {
     const shots = [
       ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-50-${index}`, clubType: "sw", carryYd: 50, shotNumber: index + 1 })),
       ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-70-${index}`, clubType: "sw", carryYd: 70, shotNumber: index + 6 })),
@@ -144,8 +189,8 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("lw_lob_ladder");
     expect(ids).toContain("club_sw_volume_1");
     expect(ids).toContain("club_lw_volume_10");
-    expect(ids).not.toContain("club_sw_carry_70");
-    expect(ids).not.toContain("club_lw_total_50");
+    expect(ids).toContain("club_sw_carry_70");
+    expect(ids).toContain("club_lw_carry_50");
   });
 
   it("does not unlock generated sand wedge distance badges from round touch shots", () => {

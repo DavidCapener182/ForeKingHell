@@ -1,6 +1,6 @@
 import type { Achievement, AchievementCategory, AchievementTier, AchievementTriggerType } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-11-club-identity-v5";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-13-club-distance-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -201,7 +201,7 @@ export const CORE_ACHIEVEMENTS: Achievement[] = ([
   achievement("highlight_reel", "One for the Highlight Reel", "Record the best combined distance and accuracy shot of a session.", "hidden", "hidden", "session", undefined, 150),
 ] satisfies Achievement[]).map(withInferredClubTypes);
 
-export type GeneratedClubMetric = "offlineYd";
+export type GeneratedClubMetric = "offlineYd" | "carryYd" | "totalYd";
 
 export type GeneratedClubMetricAchievement = {
   id: string;
@@ -215,6 +215,13 @@ export type GeneratedClubVolumeAchievement = {
   id: string;
   clubType: string;
   shotCount: number;
+};
+
+export type GeneratedClubMileageAchievement = {
+  id: string;
+  clubType: string;
+  miles: number;
+  targetYards: number;
 };
 
 export type GeneratedClubPersonalBestMetric = "carryYd" | "totalYd" | "withControl";
@@ -263,28 +270,33 @@ const GENERATED_CLUBS = [
 
 const GENERATED_FULL_SHOT_CLUBS = GENERATED_CLUBS.filter((clubType) => !["sw", "lw"].includes(clubType));
 const GENERATED_VOLUME_CLUBS = GENERATED_CLUBS;
+const GENERATED_MILEAGE_CLUBS = GENERATED_CLUBS;
+export const YARDS_PER_MILE = 1760;
 
-type GeneratedClubMetricConfig = Record<string, { offlineYd: number[] }>;
+type GeneratedClubMetricConfig = Record<string, Partial<Record<GeneratedClubMetric, number[]>>>;
 
 const GENERATED_CLUB_METRIC_CONFIG: GeneratedClubMetricConfig = {
-  driver: { offlineYd: [30, 25, 20, 15, 10, 5] },
-  "3w": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "5w": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "7w": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "3h": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "4h": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "5h": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "4i": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "5i": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "6i": { offlineYd: [25, 20, 15, 10, 7, 5] },
-  "7i": { offlineYd: [20, 15, 12, 10, 7, 5] },
-  "8i": { offlineYd: [20, 15, 12, 10, 7, 5] },
-  "9i": { offlineYd: [20, 15, 12, 10, 7, 5] },
-  pw: { offlineYd: [15, 12, 10, 7, 5] },
-  gw: { offlineYd: [15, 12, 10, 7, 5] },
+  driver: { offlineYd: [30, 25, 20, 15, 10, 5], carryYd: range(150, 260, 5), totalYd: range(170, 300, 5) },
+  "3w": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(130, 240, 5), totalYd: range(150, 270, 5) },
+  "5w": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(120, 220, 5), totalYd: range(140, 250, 5) },
+  "7w": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(110, 210, 5), totalYd: range(130, 235, 5) },
+  "3h": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(110, 220, 5), totalYd: range(130, 245, 5) },
+  "4h": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(100, 210, 5), totalYd: range(120, 235, 5) },
+  "5h": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(90, 200, 5), totalYd: range(110, 225, 5) },
+  "4i": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(90, 210, 5), totalYd: range(105, 225, 5) },
+  "5i": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(80, 200, 5), totalYd: range(95, 215, 5) },
+  "6i": { offlineYd: [25, 20, 15, 10, 7, 5], carryYd: range(70, 190, 5), totalYd: range(85, 205, 5) },
+  "7i": { offlineYd: [20, 15, 12, 10, 7, 5], carryYd: range(60, 180, 5), totalYd: range(75, 195, 5) },
+  "8i": { offlineYd: [20, 15, 12, 10, 7, 5], carryYd: range(50, 170, 5), totalYd: range(65, 185, 5) },
+  "9i": { offlineYd: [20, 15, 12, 10, 7, 5], carryYd: range(40, 160, 5), totalYd: range(55, 175, 5) },
+  pw: { offlineYd: [15, 12, 10, 7, 5], carryYd: range(30, 150, 5), totalYd: range(40, 165, 5) },
+  gw: { offlineYd: [15, 12, 10, 7, 5], carryYd: range(20, 135, 5), totalYd: range(30, 150, 5) },
+  sw: { carryYd: range(10, 110, 5), totalYd: range(15, 120, 5) },
+  lw: { carryYd: range(5, 90, 5), totalYd: range(10, 100, 5) },
 };
 
 const GENERATED_VOLUME_SHOT_COUNTS = [1, 10, 25, 50, 100];
+const GENERATED_MILEAGE_MILESTONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100];
 const GENERATED_MASTERY_SAMPLE_CLUBS = GENERATED_FULL_SHOT_CLUBS;
 const GENERATED_MASTERY_MIN_SHOTS = 10;
 
@@ -292,6 +304,8 @@ export const GENERATED_CLUB_METRIC_ACHIEVEMENTS = buildGeneratedClubMetricAchiev
 export const GENERATED_CLUB_METRICS_BY_CLUB = new Map<string, GeneratedClubMetricAchievement[]>();
 export const GENERATED_CLUB_VOLUME_ACHIEVEMENTS = buildGeneratedClubVolumeAchievements();
 export const GENERATED_CLUB_VOLUME_BY_CLUB = new Map<string, GeneratedClubVolumeAchievement[]>();
+export const GENERATED_CLUB_MILEAGE_ACHIEVEMENTS = buildGeneratedClubMileageAchievements();
+export const GENERATED_CLUB_MILEAGE_BY_CLUB = new Map<string, GeneratedClubMileageAchievement[]>();
 export const GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS = buildGeneratedClubPersonalBestAchievements();
 export const GENERATED_CLUB_PERSONAL_BEST_BY_CLUB = new Map<string, GeneratedClubPersonalBestAchievement[]>();
 export const GENERATED_CLUB_MASTERY_ACHIEVEMENTS = buildGeneratedClubMasteryAchievements();
@@ -307,6 +321,12 @@ for (const generated of GENERATED_CLUB_VOLUME_ACHIEVEMENTS) {
   const existing = GENERATED_CLUB_VOLUME_BY_CLUB.get(generated.clubType) ?? [];
   existing.push(generated);
   GENERATED_CLUB_VOLUME_BY_CLUB.set(generated.clubType, existing);
+}
+
+for (const generated of GENERATED_CLUB_MILEAGE_ACHIEVEMENTS) {
+  const existing = GENERATED_CLUB_MILEAGE_BY_CLUB.get(generated.clubType) ?? [];
+  existing.push(generated);
+  GENERATED_CLUB_MILEAGE_BY_CLUB.set(generated.clubType, existing);
 }
 
 for (const generated of GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS) {
@@ -325,6 +345,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   ...CORE_ACHIEVEMENTS,
   ...GENERATED_CLUB_METRIC_ACHIEVEMENTS.map(toGeneratedAchievement),
   ...GENERATED_CLUB_VOLUME_ACHIEVEMENTS.map(toGeneratedVolumeAchievement),
+  ...GENERATED_CLUB_MILEAGE_ACHIEVEMENTS.map(toGeneratedMileageAchievement),
   ...GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS.map(toGeneratedPersonalBestAchievement),
   ...GENERATED_CLUB_MASTERY_ACHIEVEMENTS.map(toGeneratedMasteryAchievement),
 ];
@@ -342,10 +363,28 @@ export function getAchievement(achievementId: string) {
 function buildGeneratedClubMetricAchievements(): GeneratedClubMetricAchievement[] {
   const generated: GeneratedClubMetricAchievement[] = [];
 
-  for (const clubType of GENERATED_FULL_SHOT_CLUBS) {
-    const metricConfig = GENERATED_CLUB_METRIC_CONFIG[clubType];
+  for (const [clubType, metricConfig] of Object.entries(GENERATED_CLUB_METRIC_CONFIG)) {
+    for (const threshold of metricConfig.carryYd ?? []) {
+      generated.push({
+        id: generatedClubMetricId(clubType, "carryYd", threshold),
+        clubType,
+        metric: "carryYd",
+        threshold,
+        operator: ">=",
+      });
+    }
 
-    for (const threshold of metricConfig.offlineYd) {
+    for (const threshold of metricConfig.totalYd ?? []) {
+      generated.push({
+        id: generatedClubMetricId(clubType, "totalYd", threshold),
+        clubType,
+        metric: "totalYd",
+        threshold,
+        operator: ">=",
+      });
+    }
+
+    for (const threshold of metricConfig.offlineYd ?? []) {
       generated.push({
         id: generatedClubMetricId(clubType, "offlineYd", threshold),
         clubType,
@@ -368,6 +407,23 @@ function buildGeneratedClubVolumeAchievements(): GeneratedClubVolumeAchievement[
         id: `club_${clubType}_volume_${shotCount}`,
         clubType,
         shotCount,
+      });
+    }
+  }
+
+  return generated;
+}
+
+function buildGeneratedClubMileageAchievements(): GeneratedClubMileageAchievement[] {
+  const generated: GeneratedClubMileageAchievement[] = [];
+
+  for (const clubType of GENERATED_MILEAGE_CLUBS) {
+    for (const miles of GENERATED_MILEAGE_MILESTONES) {
+      generated.push({
+        id: `club_${clubType}_miles_${miles}`,
+        clubType,
+        miles,
+        targetYards: miles * YARDS_PER_MILE,
       });
     }
   }
@@ -431,6 +487,34 @@ function buildGeneratedClubMasteryAchievements(): GeneratedClubMasteryAchievemen
 function toGeneratedAchievement(generated: GeneratedClubMetricAchievement): Achievement {
   const clubLabel = formatClubLabel(generated.clubType);
   const tier = tierForGeneratedAchievement(generated);
+
+  if (generated.metric === "carryYd") {
+    return achievement(
+      generated.id,
+      `${clubLabel} Carry ${generated.threshold}`,
+      `Carry ${clubLabel} ${generated.threshold}+ yd.`,
+      isShortGameGeneratedClub(generated.clubType) ? "shortGame" : "power",
+      tier,
+      "singleShot",
+      generated.threshold,
+      undefined,
+      [generated.clubType],
+    );
+  }
+
+  if (generated.metric === "totalYd") {
+    return achievement(
+      generated.id,
+      `${clubLabel} Total ${generated.threshold}`,
+      `Hit ${clubLabel} ${generated.threshold}+ yd total.`,
+      isShortGameGeneratedClub(generated.clubType) ? "shortGame" : "power",
+      tier,
+      "singleShot",
+      generated.threshold,
+      undefined,
+      [generated.clubType],
+    );
+  }
 
   return achievement(
     generated.id,
@@ -523,6 +607,23 @@ function toGeneratedVolumeAchievement(generated: GeneratedClubVolumeAchievement)
   );
 }
 
+function toGeneratedMileageAchievement(generated: GeneratedClubMileageAchievement): Achievement {
+  const clubLabel = formatClubLabel(generated.clubType);
+  const tier = tierForGeneratedMileageAchievement(generated.miles);
+
+  return achievement(
+    generated.id,
+    `${clubLabel} ${mileageName(generated.miles)}`,
+    `Accumulate ${generated.miles.toLocaleString("en-GB")} ${generated.miles === 1 ? "mile" : "miles"} of total distance with ${clubLabel}.`,
+    "mileage",
+    tier,
+    "rollingWindow",
+    generated.miles,
+    undefined,
+    [generated.clubType],
+  );
+}
+
 function withInferredClubTypes(achievementEntry: Achievement): Achievement {
   const clubTypes = inferCoreClubTypes(achievementEntry.id);
 
@@ -588,6 +689,14 @@ function tierForGeneratedVolumeAchievement(shotCount: number): AchievementTier {
   return "bronze";
 }
 
+function tierForGeneratedMileageAchievement(miles: number): AchievementTier {
+  if (miles >= 25) return "diamond";
+  if (miles >= 10) return "platinum";
+  if (miles >= 5) return "gold";
+  if (miles >= 2) return "silver";
+  return "bronze";
+}
+
 function tierForGeneratedMasteryAchievement(generated: GeneratedClubMasteryAchievement): AchievementTier {
   const thresholds =
     generated.metric === "smashAverage"
@@ -629,6 +738,14 @@ function volumeDescriptionForShotCount(clubLabel: string, shotCount: number) {
   }
 
   return `Log ${shotCount}+ tracked shots with ${clubLabel}.`;
+}
+
+function mileageName(miles: number) {
+  if (miles === 1) {
+    return "1 Mile";
+  }
+
+  return `${miles.toLocaleString("en-GB")} Miles`;
 }
 
 function isShortGameGeneratedClub(clubType: string) {
@@ -709,14 +826,34 @@ function smashAverageThresholdsForClub(clubType: string) {
 }
 
 function generatedClubMetricId(clubType: string, metric: GeneratedClubMetric, threshold: number) {
-  return `club_${clubType}_${metric === "offlineYd" ? "offline" : metric}_${threshold}`;
+  if (metric === "offlineYd") {
+    return `club_${clubType}_offline_${threshold}`;
+  }
+
+  if (metric === "carryYd") {
+    return `club_${clubType}_carry_${threshold}`;
+  }
+
+  return `club_${clubType}_total_${threshold}`;
 }
 
 function tierForGeneratedAchievement(generated: GeneratedClubMetricAchievement): AchievementTier {
-  if (generated.threshold <= 3) return "diamond";
-  if (generated.threshold <= 5) return "platinum";
-  if (generated.threshold <= 10) return "gold";
-  if (generated.threshold <= 20) return "silver";
+  if (generated.metric === "offlineYd") {
+    if (generated.threshold <= 3) return "diamond";
+    if (generated.threshold <= 5) return "platinum";
+    if (generated.threshold <= 10) return "gold";
+    if (generated.threshold <= 20) return "silver";
+    return "bronze";
+  }
+
+  const thresholds = GENERATED_CLUB_METRIC_CONFIG[generated.clubType]?.[generated.metric] ?? [];
+  const index = thresholds.findIndex((threshold) => threshold === generated.threshold);
+  const ratio = index < 0 || thresholds.length === 0 ? 0 : (index + 1) / thresholds.length;
+
+  if (ratio >= 0.9) return "diamond";
+  if (ratio >= 0.75) return "platinum";
+  if (ratio >= 0.55) return "gold";
+  if (ratio >= 0.3) return "silver";
   return "bronze";
 }
 
@@ -741,6 +878,16 @@ function decimalRange(start: number, end: number, step: number) {
 
   for (let value = start; value <= end + step / 2; value += step) {
     values.push(Math.round(value * 100) / 100);
+  }
+
+  return values;
+}
+
+function range(start: number, end: number, step: number) {
+  const values: number[] = [];
+
+  for (let value = start; value <= end; value += step) {
+    values.push(value);
   }
 
   return values;

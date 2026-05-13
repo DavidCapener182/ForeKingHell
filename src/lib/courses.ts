@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
-import { courses, holes, teeSets } from "@/db/schema";
+import { courses, holes, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
   BOOTLE_GOLF_COURSE,
@@ -17,6 +17,12 @@ import {
 export type CourseSessionLink = {
   courseId: string | null;
   teeSetId: string | null;
+};
+
+export type ScorecardCourseHole = {
+  holeNumber: number;
+  par: number;
+  yards: number;
 };
 
 const TPC_WHITE_YARDAGES = [
@@ -47,6 +53,103 @@ export async function ensureKnownCourseForSession(courseName: string | null | un
   }
 
   return { courseId: null, teeSetId: null };
+}
+
+export async function ensureCourseForSession({
+  userId,
+  courseName,
+  scorecardHoles,
+}: {
+  userId: string;
+  courseName: string | null | undefined;
+  scorecardHoles: ScorecardCourseHole[] | null | undefined;
+}): Promise<CourseSessionLink> {
+  const knownCourse = await ensureKnownCourseForSession(courseName);
+
+  if (knownCourse.courseId) {
+    return knownCourse;
+  }
+
+  return ensureManualScorecardCourseForSession(userId, courseName, scorecardHoles);
+}
+
+async function ensureManualScorecardCourseForSession(
+  userId: string,
+  courseName: string | null | undefined,
+  scorecardHoles: ScorecardCourseHole[] | null | undefined,
+): Promise<CourseSessionLink> {
+  const name = courseName?.trim();
+  const holesForTee = scorecardHoles?.filter((hole) => Number.isFinite(hole.par) && Number.isFinite(hole.yards)) ?? [];
+
+  if (!name || holesForTee.length === 0) {
+    return { courseId: null, teeSetId: null };
+  }
+
+  const db = getDb();
+  const now = new Date();
+  const par = holesForTee.reduce((total, hole) => total + hole.par, 0);
+  const yards = holesForTee.reduce((total, hole) => total + hole.yards, 0);
+  const externalId = manualScorecardExternalId(userId, name);
+
+  return db.transaction(async (tx) => {
+    await tx
+      .insert(users)
+      .values({
+        id: userId,
+        preferredUnits: "yards",
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          updatedAt: now,
+        },
+      });
+
+    const [course] = await tx
+      .insert(courses)
+      .values({
+        name,
+        provider: "manual",
+        externalId,
+        visibility: "private",
+        createdByUserId: userId,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [courses.provider, courses.externalId],
+        set: {
+          name,
+          visibility: "private",
+          createdByUserId: userId,
+          updatedAt: now,
+        },
+      })
+      .returning({ id: courses.id });
+
+    const [teeSet] = await tx
+      .insert(teeSets)
+      .values({
+        courseId: course.id,
+        name: scorecardTeeSetName(holesForTee.length),
+        par,
+        yards,
+        meters: Math.round(yards * 0.9144),
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [teeSets.courseId, teeSets.name],
+        set: {
+          par,
+          yards,
+          meters: Math.round(yards * 0.9144),
+          updatedAt: now,
+        },
+      })
+      .returning({ id: teeSets.id });
+
+    return { courseId: course.id, teeSetId: teeSet.id };
+  });
 }
 
 export async function ensureTpcSawgrassStadiumCourse(): Promise<CourseSessionLink> {
@@ -352,4 +455,18 @@ function toLineStringGeojson(points: Array<[number, number]>) {
     type: "LineString" as const,
     coordinates: points.map(([lat, lng]) => [lng, lat] as [number, number]),
   };
+}
+
+function scorecardTeeSetName(holeCount: number) {
+  return `Scorecard (${holeCount} holes)`;
+}
+
+function manualScorecardExternalId(userId: string, courseName: string) {
+  const slug = courseName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  return `rapsodo-scorecard-${userId}-${slug || "course"}`;
 }
