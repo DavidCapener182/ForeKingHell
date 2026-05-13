@@ -45,7 +45,12 @@ export type AiCoachPayload = {
 
 export type AiCoachGeneratedSummary = {
   headline: string;
+  recommendation: string;
+  evidence: string;
   coachNote: string;
+  drill: string;
+  timeNeeded: string;
+  retest: string;
   practicePlan: string[];
   watchOut: string;
   confidence: "low" | "medium" | "high";
@@ -105,7 +110,12 @@ Write like a direct personal coach: specific, practical, calm.
 Return strict JSON only:
 {
   "headline": "short sentence",
+  "recommendation": "specific recommendation tied to the measured priority",
+  "evidence": "one sentence citing only values from the JSON",
   "coachNote": "90-130 words",
+  "drill": "one practical drill",
+  "timeNeeded": "short time estimate",
+  "retest": "when to check the data again",
   "practicePlan": ["three short drill steps"],
   "watchOut": "one caution",
   "confidence": "low" | "medium" | "high"
@@ -127,7 +137,12 @@ export function parseAiCoachSummary(text: string): AiCoachGeneratedSummary {
 
   return {
     headline: typeof parsed.headline === "string" ? parsed.headline : "Coach note",
+    recommendation: typeof parsed.recommendation === "string" ? parsed.recommendation : "Work from the top measured practice priority.",
+    evidence: typeof parsed.evidence === "string" ? parsed.evidence : "Evidence was limited to the structured ForeKingHell metrics supplied to the AI coach.",
     coachNote: typeof parsed.coachNote === "string" ? parsed.coachNote : text,
+    drill: typeof parsed.drill === "string" ? parsed.drill : practicePlan[0] ?? "Run one controlled stock-shot block and record the result.",
+    timeNeeded: typeof parsed.timeNeeded === "string" ? parsed.timeNeeded : "20-30 minutes",
+    retest: typeof parsed.retest === "string" ? parsed.retest : "Retest after two comparable practice sessions.",
     practicePlan,
     watchOut: typeof parsed.watchOut === "string" ? parsed.watchOut : "Treat AI output as guidance, not a lesson diagnosis.",
     confidence,

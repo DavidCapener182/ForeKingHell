@@ -54,6 +54,7 @@ type PageHeaderProps = {
   description?: ReactNode;
   actions?: ReactNode;
   metrics?: PageHeaderMetric[];
+  visual?: ReactNode;
   className?: string;
 };
 
@@ -63,23 +64,27 @@ export function PageHeader({
   description,
   actions,
   metrics,
+  visual,
   className,
 }: PageHeaderProps) {
   return (
     <header className={cn("premium-hero p-4 sm:p-7", className)}>
-      <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl space-y-2 sm:space-y-3">
-          {eyebrow ? <div>{eyebrow}</div> : null}
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
-              {title}
-            </h1>
-            {description ? (
-              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{description}</p>
-            ) : null}
+      <div className={cn("grid gap-4 sm:gap-6", visual ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)] lg:items-stretch" : "")}>
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl space-y-2 sm:space-y-3">
+            {eyebrow ? <div>{eyebrow}</div> : null}
+            <div className="space-y-2">
+              <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
+                {title}
+              </h1>
+              {description ? (
+                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{description}</p>
+              ) : null}
+            </div>
           </div>
+          {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
         </div>
-        {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
+        {visual ? <div className="hidden min-h-40 lg:block">{visual}</div> : null}
       </div>
       {metrics?.length ? (
         <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mt-6 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">

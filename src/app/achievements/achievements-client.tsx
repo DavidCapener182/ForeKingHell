@@ -840,15 +840,7 @@ function AchievementCard({
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className={cn("grid size-10 shrink-0 place-items-center rounded-lg", achievement.unlocked ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500")}>
-            {achievement.hidden && !achievement.unlocked ? (
-              <Lock className="size-5" />
-            ) : achievement.unlocked ? (
-              <CheckCircle2 className="size-5" />
-            ) : (
-              <Award className="size-5" />
-            )}
-          </div>
+          <AchievementBadgeIcon achievement={achievement} />
           <Badge className={cn("border", tierStyles[achievement.tier])}>{tierLabels[achievement.tier]}</Badge>
         </div>
         <div>
@@ -866,7 +858,7 @@ function AchievementCard({
         ) : achievement.progressPercent !== null ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{achievement.progressLabel ?? "Progress"}</span>
+              <span>{achievement.progressLabel ?? "Next unlock"}</span>
               <span>{achievement.progressPercent}%</span>
             </div>
             <Progress value={achievement.progressPercent} />
@@ -878,6 +870,46 @@ function AchievementCard({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AchievementBadgeIcon({ achievement }: { achievement: AchievementView }) {
+  const locked = achievement.hidden && !achievement.unlocked;
+  const color =
+    achievement.tier === "diamond"
+      ? "#4f46e5"
+      : achievement.tier === "platinum"
+        ? "#0891b2"
+        : achievement.tier === "gold"
+          ? "#d97706"
+          : achievement.tier === "silver"
+            ? "#64748b"
+            : "#b45309";
+
+  return (
+    <div
+      className={cn(
+        "grid size-12 shrink-0 place-items-center rounded-xl border border-white/80 bg-white shadow-sm",
+        achievement.unlocked ? "ring-2 ring-emerald-100" : "opacity-85",
+      )}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 64 64" className="size-10">
+        <path
+          d="M32 5 L51 15 V30 C51 44 42 55 32 59 C22 55 13 44 13 30 V15 Z"
+          fill={locked ? "#e5e7eb" : color}
+          opacity={achievement.unlocked ? "0.92" : "0.72"}
+        />
+        <circle cx="32" cy="31" r="12" fill="white" opacity="0.86" />
+        {locked ? (
+          <Lock x="25" y="24" width="14" height="14" color="#71717a" />
+        ) : achievement.unlocked ? (
+          <CheckCircle2 x="23" y="22" width="18" height="18" color={color} />
+        ) : (
+          <Award x="23" y="22" width="18" height="18" color={color} />
+        )}
+      </svg>
     </div>
   );
 }

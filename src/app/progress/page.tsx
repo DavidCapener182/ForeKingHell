@@ -24,6 +24,8 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
+import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -74,6 +76,7 @@ export default async function ProgressPage() {
         eyebrow={<StatusPill tone="sky">What changed?</StatusPill>}
         title="Progress"
         description="A bag-wide readout of what is improving, what is drifting, which clubs you can trust, and what to practise next."
+        visual={<PageArtwork variant="progress" alt="" className="h-full min-h-44" />}
         actions={
           mostImproved ? (
             <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
@@ -136,6 +139,22 @@ export default async function ProgressPage() {
         </DataPanel>
       ) : (
         <>
+          <MobileSummaryHero
+            eyebrow={<StatusPill tone="green">Progress readout</StatusPill>}
+            title={mostImproved ? `Biggest improvement: ${formatClubType(mostImproved.clubType)}` : "Build a baseline first"}
+            description={needsWork ? `Next practice block: ${formatClubType(needsWork.clubType)}.` : "Import comparable sessions to show movement."}
+            metricLabel="Average trust"
+            metricValue={`${summary.totals.averageTrust}%`}
+            visual={<ShotTraceMotif className="h-16 w-20 text-emerald-700" />}
+            action={
+              <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+                <Link href={needsWork ? `/bag/${needsWork.clubId}/analytics` : "/import"} prefetch={false}>
+                  Next
+                </Link>
+              </Button>
+            }
+          />
+
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Biggest movement"

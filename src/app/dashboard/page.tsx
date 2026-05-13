@@ -34,7 +34,8 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { clubs, importRows, sessions, shots, teeSets, users } from "@/db/schema";
+import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
+import { clubs, importRows, rapsodoSyncSessions, sessions, shots, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
 import {
@@ -55,6 +56,7 @@ import {
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
+import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,8 +64,6 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
-
-const roundSessionTypes = ["round", "simulator", "simulated_course", "real_round"] as const;
 
 function MissingDatabaseUrlSetup() {
   return (
@@ -263,6 +263,14 @@ export default async function DashboardPage() {
         eyebrow={<StatusPill>ForeKingHell</StatusPill>}
         title="Dashboard"
         description="Your golf operating system: imported shots, bag confidence, rounds, course overlays, and the latest signals from your game."
+        visual={
+          <PageArtwork
+            variant="fairway"
+            alt=""
+            priority
+            className="h-full min-h-44"
+          />
+        }
         actions={
           <>
             <Button asChild variant="outline" size="lg" className="w-full rounded-xl bg-white/70 sm:w-auto">
@@ -580,6 +588,15 @@ function TodayPlan({
         action={<CalendarDays className="size-5 text-emerald-500" />}
       />
       <CardContent>
+        <div className="mb-3 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/85 p-3 shadow-sm sm:hidden">
+          <ShotTraceMotif className="h-14 w-20 shrink-0 text-emerald-700" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Today&apos;s readout</p>
+            <p className="truncate text-sm font-semibold">
+              {biggestProblem ? `${biggestProblem.clubName}: ${biggestProblem.issueLabel}` : primaryActionLabel}
+            </p>
+          </div>
+        </div>
         <CompactReadoutGrid
           columnsClassName="md:grid-cols-2 xl:grid-cols-4"
           items={[
@@ -671,7 +688,6 @@ async function getDashboardData() {
     [shotCount],
     [rawRowCount],
     [sessionCount],
-    [roundCount],
     [profile],
     recentSessionRows,
     roundRows,
@@ -682,10 +698,6 @@ async function getDashboardData() {
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
     db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
-    db
-      .select({ value: count() })
-      .from(sessions)
-      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes]))),
     db
       .select({ dashboardPins: users.dashboardPins })
       .from(users)
@@ -713,9 +725,12 @@ async function getDashboardData() {
         scorecardJson: sessions.scorecardJson,
         courseRating: teeSets.courseRating,
         slopeRating: teeSets.slopeRating,
+        providerKind: rapsodoSyncSessions.providerKind,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
       .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
@@ -829,7 +844,7 @@ async function getDashboardData() {
     });
   const bagPreview = bag.slice(0, 5);
   const courseAdvice = buildCourseDecisionAdvice(bag);
-  const roundSummaries = roundRows.map(summarizeRound);
+  const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
   const realHandicap = calculateHandicapSummary(
     roundSummaries
@@ -860,7 +875,7 @@ async function getDashboardData() {
       rawRowCount: rawRowCount?.value ?? 0,
       sessionCount: sessionCount?.value ?? 0,
       clubCount: clubRows.length,
-      roundCount: roundCount?.value ?? 0,
+      roundCount: roundSummaries.length,
       realHandicap,
       simHandicap,
       combinedHandicap,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownRight, ArrowLeft, ArrowUpRight, Award, Flag, Minus, Plus, Upload } from "lucide-react";
+import { ArrowLeft, Award, Flag, Plus, Upload } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,16 @@ import {
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
+  PageHeader,
   PageShell,
+  StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
-import { sessions, shots, teeSets } from "@/db/schema";
+import { PageArtwork } from "@/components/visuals/page-artwork";
+import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import {
   calculateHandicapSummary,
   calculateRoundDifferential,
@@ -83,29 +87,20 @@ export default async function RoundsPage() {
           </div>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <Badge className="w-fit bg-sky-100 text-sky-700 hover:bg-sky-100">
-                Round tracker
-              </Badge>
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                Saved rounds
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                View real scorecards separately from simulator and launch-monitor rounds.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-              <StatTile label="Real rounds" value={realRounds.length} />
-              <StatTile label="Simulator" value={simulatorRounds.length} />
-              <HandicapStatTile label="Real ceiling" summary={realHandicap} />
-              <HandicapStatTile label="Sim ceiling" summary={simHandicap} />
-              <HandicapStatTile label="Best-form" summary={combinedHandicap} />
-              <StatTile label="Club shots" value={rounds.reduce((total, round) => total + round.shotCount, 0)} />
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Round tracker</StatusPill>}
+          title="Saved rounds"
+          description="View real scorecards separately from simulator and launch-monitor rounds."
+          visual={<PageArtwork variant="rounds" alt="" className="h-full min-h-44" />}
+          metrics={[
+            { label: "Real rounds", value: realRounds.length },
+            { label: "Simulator", value: simulatorRounds.length },
+            { label: "Real ceiling", value: formatHandicapValue(realHandicap.value), detail: handicapTrendText(realHandicap) },
+            { label: "Sim ceiling", value: formatHandicapValue(simHandicap.value), detail: handicapTrendText(simHandicap) },
+            { label: "Best-form", value: formatHandicapValue(combinedHandicap.value), detail: handicapTrendText(combinedHandicap) },
+            { label: "Club shots", value: rounds.reduce((total, round) => total + round.shotCount, 0) },
+          ]}
+        />
 
         <MobileSectionChips
           items={[
@@ -216,7 +211,15 @@ export default async function RoundsPage() {
             </CardHeader>
             <CardContent>
               {latestRound ? (
-                <div className="space-y-4">
+                  <div className="space-y-4">
+                  <PageArtwork
+                    variant="fairway"
+                    alt=""
+                    crop="random"
+                    cropKey={latestRound.id}
+                    className="block h-28 min-h-0 rounded-xl"
+                    sizes="(min-width: 768px) 320px, 100vw"
+                  />
                   <div className="apple-panel-strong p-4">
                     <p className="text-sm text-muted-foreground">
                       {formatDate(latestRound.date)} - {formatSessionType(latestRound.type)}
@@ -273,6 +276,14 @@ function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds
         </Badge>
       }
     >
+      <PageArtwork
+        variant="fairway"
+        alt=""
+        crop="random"
+        cropKey={round.id}
+        className="block h-20 min-h-0 rounded-xl"
+        sizes="100vw"
+      />
       {round.roundStatus === "in_progress" ? <DataPair label="Status" value="Resume" /> : null}
       <DataPair
         label="Score"
@@ -308,10 +319,13 @@ async function getRounds() {
         scorecardJson: sessions.scorecardJson,
         courseRating: teeSets.courseRating,
         slopeRating: teeSets.slopeRating,
+        providerKind: rapsodoSyncSessions.providerKind,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .where(and(eq(sessions.userId, userId), inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"])))
+      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -324,7 +338,7 @@ async function getRounds() {
   ]);
   const shotCountBySessionId = new Map(shotCounts.map((row) => [row.sessionId, row.count]));
 
-  return sessionRows.map((session) => {
+  return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
     const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
     const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
@@ -349,55 +363,19 @@ async function getRounds() {
   });
 }
 
-function StatTile({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="apple-panel-strong p-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-normal">
-        {typeof value === "number" ? integerFormatter.format(value) : value}
-      </p>
-    </div>
-  );
-}
-
-function HandicapStatTile({ label, summary }: { label: string; summary: HandicapSummary }) {
-  return (
-    <div className="apple-panel-strong p-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-semibold tracking-normal">
-        {formatHandicapValue(summary.value)}
-      </p>
-      <HandicapTrend summary={summary} />
-    </div>
-  );
-}
-
-function HandicapTrend({ summary }: { summary: HandicapSummary }) {
+function handicapTrendText(summary: HandicapSummary) {
   const direction = summary.trend.direction;
 
   if (summary.sampleSize === 0) {
-    return <p className="mt-1 text-xs text-muted-foreground">No scorecards</p>;
+    return "No scorecards";
   }
 
   if (direction === "none") {
-    return <p className="mt-1 text-xs text-muted-foreground">{summary.sampleSize} round sample</p>;
+    return `${summary.sampleSize} round sample`;
   }
 
-  const Icon = direction === "down" ? ArrowDownRight : direction === "up" ? ArrowUpRight : Minus;
   const label = direction === "down" ? "Trending down" : direction === "up" ? "Trending up" : "Flat";
-  const tone =
-    direction === "down"
-      ? "text-emerald-700"
-      : direction === "up"
-        ? "text-rose-700"
-        : "text-muted-foreground";
-
-  return (
-    <p className={`mt-1 flex items-center gap-1 text-xs font-medium ${tone}`}>
-      <Icon className="size-3.5" />
-      {label} {formatHandicapDelta(summary.trend.delta)}
-    </p>
-  );
+  return `${label} ${formatHandicapDelta(summary.trend.delta)}`;
 }
 
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {

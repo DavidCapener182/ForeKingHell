@@ -1,23 +1,14 @@
 import Link from "next/link";
-import { AlertTriangle, Loader2, SearchX } from "lucide-react";
+import { AlertTriangle, SearchX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GolfLoader } from "@/components/visuals/golf-loader";
 
 export function RouteLoadingState({ label = "Loading ForeKingHell" }: { label?: string }) {
   return (
     <main className="min-h-screen px-4 py-5 pb-24 sm:px-6 lg:px-8">
-      <div className="mx-auto grid w-full max-w-7xl gap-5">
-        <div className="premium-hero p-5 sm:p-7">
-          <div className="flex items-center gap-3">
-            <Loader2 className="size-5 animate-spin text-emerald-600" />
-            <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-4">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="metric-tile h-24 animate-pulse bg-white/70" />
-            ))}
-          </div>
-        </div>
+      <div className="mx-auto grid w-full max-w-7xl gap-5 pt-10 sm:pt-16">
+        <GolfLoader label={label} />
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="apple-panel-strong h-72 animate-pulse" />
           <div className="apple-panel-strong h-72 animate-pulse" />

@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { formatClubType } from "@/lib/club-format";
 import {
   buildCoachSummary,
@@ -91,6 +92,7 @@ export default async function CoachPage() {
         eyebrow={<StatusPill tone={toneForFocus(coach.focusArea)}>Rule-based coach</StatusPill>}
         title="Coach"
         description={`${coach.headline} ${coach.subhead}`}
+        visual={<PageArtwork variant="coach" alt="" className="h-full min-h-44" />}
         actions={
           topClub ? (
             <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
@@ -290,19 +292,24 @@ function CoachPracticePlan({
   return (
     <CardContent className="space-y-4">
       <div className="rounded-xl border bg-emerald-50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-stretch">
           <div>
-            <Badge className="bg-white text-emerald-700 hover:bg-white">Based on stored shot data</Badge>
-            <h2 className="mt-3 text-2xl font-semibold tracking-normal">
-              {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <Badge className="bg-white text-emerald-700 hover:bg-white">Based on stored shot data</Badge>
+                <h2 className="mt-3 text-2xl font-semibold tracking-normal">
+                  {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
+                </h2>
+              </div>
+              <StatusPill tone={topClub?.tone ?? "slate"}>{topClub ? `${topClub.trustIndex}% trust` : "Needs data"}</StatusPill>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
+              <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
+              <SmallMetric label="Target" value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"} />
+            </div>
           </div>
-          <StatusPill tone={topClub?.tone ?? "slate"}>{topClub ? `${topClub.trustIndex}% trust` : "Needs data"}</StatusPill>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
-          <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
-          <SmallMetric label="Target" value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"} />
+          <PageArtwork variant="coach" alt="" className="h-full min-h-32 rounded-xl" sizes="224px" />
         </div>
       </div>
 
@@ -503,8 +510,11 @@ function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
 
       <div>
         <Progress value={card.trustIndex} />
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">{card.reason}</p>
-        <p className="mt-2 text-sm font-medium">{card.drill}</p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <SmallMetric label="Evidence" value={card.reason} />
+          <SmallMetric label="Drill" value={card.drill} />
+          <SmallMetric label="Retest" value="After two comparable sessions" />
+        </div>
       </div>
     </Link>
   );

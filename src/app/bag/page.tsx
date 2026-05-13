@@ -10,6 +10,10 @@ import {
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
+import { ClubArtwork } from "@/components/visuals/club-artwork";
+import { PageArtwork } from "@/components/visuals/page-artwork";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
 import {
   Card,
   CardContent,
@@ -74,6 +78,12 @@ export default async function BagPage() {
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
+  const bestClub = [...stockConfidenceClubs].sort(
+    (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
+  )[0] ?? null;
+  const weakestGap = [...gappingRows]
+    .filter((row): row is GappingRow & { workOnYd: number } => row.workOnYd !== null)
+    .sort((left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd))[0] ?? null;
   const averageConfidence =
     stockConfidenceClubs.length === 0
       ? 0
@@ -103,6 +113,7 @@ export default async function BagPage() {
           eyebrow={<StatusPill>Bag map</StatusPill>}
           title="Stock yardages"
           description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
+          visual={<PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" />}
           actions={
             <>
             <Button asChild variant="outline">
@@ -134,6 +145,33 @@ export default async function BagPage() {
           ]}
         />
 
+        <MobileSummaryHero
+          eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
+          title="Trust the number, then check the gap."
+          description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
+          metricLabel="Best club"
+          metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
+          visual={<ClubArtwork clubType={bestClub?.type ?? "driver"} alt="" className="h-20 w-20 rounded-xl" sizes="80px" />}
+          action={
+            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+              <Link href="#clubs">Clubs</Link>
+            </Button>
+          }
+        />
+
+        <MobileMetricStrip
+          items={[
+            { label: "Clubs", value: bag.length.toString(), detail: "Active", tone: "green" },
+            { label: "Confidence", value: `${averageConfidence}%`, detail: "Average", tone: "sky" },
+            {
+              label: "Weakest gap",
+              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
+              detail: weakestGap ? workOnText(weakestGap.workOnYd) : "Need carry samples",
+              tone: weakestGap && Math.abs(weakestGap.workOnYd) > 10 ? "pink" : "amber",
+            },
+          ]}
+        />
+
         {gappingRows.length > 0 ? (
           <section id="gapping" className="scroll-mt-28">
             <CarryGappingTable rows={gappingRows} />
@@ -159,7 +197,12 @@ export default async function BagPage() {
                         {club.decisionLabel}
                       </StatusPill>
                     </div>
-                    <ClubMark clubType={club.type} />
+                    <ClubArtwork
+                      clubType={club.type}
+                      alt=""
+                      className="h-20 w-28 shrink-0 rounded-xl"
+                      sizes="112px"
+                    />
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
@@ -688,19 +731,6 @@ function WorkOnBadge({ workOnYd }: { workOnYd: number | null }) {
     <span className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>
       {direction} {numberFormatter.format(absoluteYards)} yd
     </span>
-  );
-}
-
-function ClubMark({ clubType }: { clubType: string }) {
-  const accent = clubAccent(clubType);
-
-  return (
-    <div
-      className="grid size-12 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
-      style={{ background: accent }}
-    >
-      {formatClubType(clubType).slice(0, 2)}
-    </div>
   );
 }
 

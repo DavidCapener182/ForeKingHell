@@ -31,6 +31,7 @@ import {
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { formatClubType } from "@/lib/club-format";
 import { parseRapsodoCsv, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
+import { inferRapsodoImportSessionType } from "@/lib/round-sessions";
 import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/sync-identity";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string; code?: string };
@@ -177,7 +178,7 @@ export async function previewRapsodoSessionAction(
         fileSizeBytes: byteLength(rawCsvText),
         rawCsvHash,
         distanceUnit: parsed.appliedDistanceUnit,
-        sessionType: inferForeKingHellSessionType(session),
+        sessionType: inferRapsodoImportSessionType(session),
         sessionDate,
         courseName: session.courseName ?? "",
         warnings: parsed.warnings,
@@ -899,22 +900,6 @@ async function ensureCurrentRapsodoUser() {
         updatedAt: now,
       },
     });
-}
-
-function inferForeKingHellSessionType(
-  session: Pick<RapsodoSessionListItem, "providerKind" | "providerSessionMode" | "providerSessionType" | "title">,
-) {
-  const descriptor = [session.providerSessionMode, session.providerSessionType, session.title].join(" ").toLowerCase();
-
-  if (session.providerKind === "simulation" && /course|courses/.test(descriptor)) {
-    return "simulated_course";
-  }
-
-  if (session.providerKind === "simulation") {
-    return "simulator";
-  }
-
-  return "range";
 }
 
 function buildRapsodoFileName(session: RapsodoSessionListItem) {

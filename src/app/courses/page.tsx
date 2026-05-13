@@ -4,17 +4,20 @@ import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { seedKnownCoursesAction } from "@/app/courses/actions";
 import {
+  ActiveFilterChips,
   DataPair,
   DataPanel,
   DataTableFrame,
   MetricCard,
   MobileDataCard,
   MobileDataList,
+  MobileFilterSheet,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -79,6 +82,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         eyebrow={<StatusPill tone="green">Course overlays</StatusPill>}
         title="Courses"
         description="Manage the course and tee-set data that powers round reviews, satellite overlays, and handicap estimates."
+        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" />}
         metrics={[
           {
             label: "Courses",
@@ -103,7 +107,32 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         ]}
       />
 
-      <DataPanel>
+      <div className="grid gap-3 sm:hidden">
+        <MobileFilterSheet label="Search courses" activeCount={query ? 1 : 0}>
+          <form className="grid gap-3">
+            <label className="grid gap-1 text-sm font-medium">
+              Course search
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search course, country, or provider"
+                className="h-11 rounded-xl border bg-white px-3 text-sm"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                Search
+              </Button>
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/courses" prefetch={false}>Reset</Link>
+              </Button>
+            </div>
+          </form>
+        </MobileFilterSheet>
+        <ActiveFilterChips items={query ? [{ label: `${query} x`, href: "/courses" }] : []} />
+      </div>
+
+      <DataPanel className="hidden sm:block">
         <CardContent className="pt-4">
           <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
             <label className="grid gap-1 text-sm font-medium">
@@ -172,6 +201,18 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                         </Badge>
                       }
                     >
+                      <PageArtwork
+                        variant="fairway"
+                        alt=""
+                        crop="random"
+                        cropKey={course.id}
+                        className="block h-20 min-h-0 rounded-xl"
+                        sizes="100vw"
+                      />
+                      <DataPair
+                        label="Thumbnail"
+                        value={course.holeCount > 0 ? "Saved geometry" : "Illustrative layout"}
+                      />
                       <DataPair label="Tee sets" value={course.teeSetCount} />
                       <DataPair
                         label="Mapped holes"

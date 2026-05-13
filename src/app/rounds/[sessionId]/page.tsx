@@ -51,6 +51,7 @@ import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { RoundShotMap, type RoundMapHole, type RoundMapShot } from "./round-shot-map";
 
 export const dynamic = "force-dynamic";
@@ -144,6 +145,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             { label: "Putts", value: formatNullableInteger(round.totalPutts) },
             { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
           ]}
+          visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={sessionId} className="h-full min-h-44" />}
         />
 
         <MobileSectionChips
@@ -750,6 +752,14 @@ function CurrentHoleCard({
         <CardDescription>{formatHoleSummary(hole)}</CardDescription>
       </CardHeader>
       <CardContent>
+        <PageArtwork
+          variant="fairway"
+          alt=""
+          crop="random"
+          cropKey={`${sessionId}-${hole.holeNumber}`}
+          className="mb-3 block h-24 min-h-0 rounded-xl"
+          sizes="100vw"
+        />
         <OfflineRoundEditForm action={updateRoundHoleAction} editKind="round-hole" className="grid gap-3">
           <input type="hidden" name="sessionId" value={sessionId} />
           <input type="hidden" name="holeNumber" value={hole.holeNumber} />

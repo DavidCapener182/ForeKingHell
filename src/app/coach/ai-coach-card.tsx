@@ -76,13 +76,21 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
       ) : null}
 
       {summary ? (
-        <div className="grid gap-3 lg:grid-cols-[1fr_0.85fr]">
+        <div className="grid gap-3">
           <InsightBlock
             label={summary.confidence === "high" ? "AI coach note" : `AI coach note - ${summary.confidence} confidence`}
             value={summary.headline}
             detail={summary.coachNote}
             tone={summary.confidence === "high" ? "green" : summary.confidence === "low" ? "amber" : "sky"}
           />
+          <div className="grid gap-3 lg:grid-cols-3">
+            <AiEvidenceTile label="Recommendation" value={summary.recommendation} />
+            <AiEvidenceTile label="Evidence" value={summary.evidence} />
+            <AiEvidenceTile label="Confidence" value={summary.confidence} />
+            <AiEvidenceTile label="Drill" value={summary.drill} />
+            <AiEvidenceTile label="Time needed" value={summary.timeNeeded} />
+            <AiEvidenceTile label="Retest" value={summary.retest} />
+          </div>
           <div className="apple-panel-strong p-4">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Practice steps
@@ -99,5 +107,14 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
         </div>
       ) : null}
     </CardContent>
+  );
+}
+
+function AiEvidenceTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-sm font-semibold leading-5">{value}</p>
+    </div>
   );
 }

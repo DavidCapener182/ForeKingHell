@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ClubArtwork } from "@/components/visuals/club-artwork";
 import {
   clubAccent,
   formatClubModelName,
@@ -113,35 +114,38 @@ export function ClubDetailClient({
             </Button>
           </div>
 
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                  {clubModelName}
-                </h1>
-                <p className="text-base leading-7 text-muted-foreground">
-                  {clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
-                </p>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_240px] xl:items-stretch">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-2xl space-y-2">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+                    {clubModelName}
+                  </h1>
+                  <p className="text-base leading-7 text-muted-foreground">
+                    {clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px] xl:min-w-0">
+                <StatTile
+                  label={isShortGameTouch ? "Touch median" : "Stock carry"}
+                  value={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
+                  icon={Target}
+                />
+                <StatTile
+                  label={isShortGameTouch ? "Full stock" : "Play number"}
+                  value={formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd")}
+                  icon={Gauge}
+                />
+                <StatTile label="Shots" value={shotCount} icon={Database} />
+                <StatTile
+                  label={isShortGameTouch ? "Under 30" : "Confidence"}
+                  value={isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`}
+                  icon={BarChart3}
+                />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[680px]">
-              <StatTile
-                label={isShortGameTouch ? "Touch median" : "Stock carry"}
-                value={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
-                icon={Target}
-              />
-              <StatTile
-                label={isShortGameTouch ? "Full stock" : "Play number"}
-                value={formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd")}
-                icon={Gauge}
-              />
-              <StatTile label="Shots" value={shotCount} icon={Database} />
-              <StatTile
-                label={isShortGameTouch ? "Under 30" : "Confidence"}
-                value={isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`}
-                icon={BarChart3}
-              />
-            </div>
+            <ClubArtwork clubType={club.type} alt="" className="hidden h-full min-h-36 xl:block" priority sizes="240px" />
           </div>
         </div>
       </header>

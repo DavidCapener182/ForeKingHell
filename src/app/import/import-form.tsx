@@ -214,6 +214,8 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
       warnings.push(...file.parsed.warnings.map((warning) => `${file.fileName}: ${warning}`));
     }
 
+    warnings.push(...buildDeterministicImportWarnings(parsedFiles));
+
     if (isCourseUpload && uploadedFiles.length > 1) {
       warnings.push("Simulated course import currently supports one CSV per save so hole inference stays deterministic.");
     }
@@ -834,6 +836,99 @@ function formatMetric(value: number | null) {
 
 function aggregateShotCount(parsedFiles: Array<{ parsed: { shotCount: number } }>) {
   return parsedFiles.reduce((total, file) => total + file.parsed.shotCount, 0);
+}
+
+function buildDeterministicImportWarnings(
+  files: Array<{
+    fileName: string;
+    parsed: {
+      detectedDistanceUnit: string;
+      shots: Array<{
+        rowNumber: number;
+        shotNumber: number | null;
+        clubType: string;
+        clubTypeRaw: string | null;
+        carryYd: number | null;
+        totalYd: number | null;
+        ballSpeedMph: number | null;
+        launchAngleDeg: number | null;
+        sourceRawJson: Record<string, string>;
+      }>;
+    };
+  }>,
+) {
+  const warnings: string[] = [];
+  const units = [...new Set(files.map((file) => file.parsed.detectedDistanceUnit).filter((unit) => unit !== "unknown"))];
+
+  if (units.length > 1) {
+    warnings.push(`Detected mixed distance units across files (${units.join(", ")}). Confirm the fallback unit before saving.`);
+  }
+
+  for (const file of files) {
+    const duplicateRows = countDuplicateShotRows(file.parsed.shots);
+    const impossibleCarryRows = file.parsed.shots
+      .filter((shot) => (shot.carryYd !== null && (shot.carryYd < 0 || shot.carryYd > 430)) || (shot.totalYd !== null && (shot.totalYd < 0 || shot.totalYd > 500)))
+      .slice(0, 3);
+    const missingLaunchCount = file.parsed.shots.filter(
+      (shot) => shot.ballSpeedMph === null || shot.launchAngleDeg === null,
+    ).length;
+    const unknownClubCount = file.parsed.shots.filter((shot) => shot.clubType === "unknown").length;
+
+    if (duplicateRows > 0) {
+      warnings.push(`${file.fileName}: ${duplicateRows} duplicate-looking shot row${duplicateRows === 1 ? "" : "s"} detected before save.`);
+    }
+
+    if (impossibleCarryRows.length > 0) {
+      warnings.push(
+        `${file.fileName}: check impossible distance values near row ${impossibleCarryRows.map((shot) => shot.rowNumber).join(", ")}.`,
+      );
+    }
+
+    if (missingLaunchCount > 0) {
+      warnings.push(`${file.fileName}: ${missingLaunchCount} shot${missingLaunchCount === 1 ? "" : "s"} are missing ball speed or launch angle.`);
+    }
+
+    if (unknownClubCount > 0) {
+      warnings.push(`${file.fileName}: ${unknownClubCount} shot${unknownClubCount === 1 ? "" : "s"} have club names that need mapping.`);
+    }
+  }
+
+  return warnings;
+}
+
+function countDuplicateShotRows(
+  shots: Array<{
+    shotNumber: number | null;
+    clubTypeRaw: string | null;
+    carryYd: number | null;
+    totalYd: number | null;
+    ballSpeedMph: number | null;
+    launchAngleDeg: number | null;
+    sourceRawJson: Record<string, string>;
+  }>,
+) {
+  const seen = new Set<string>();
+  let duplicateCount = 0;
+
+  for (const shot of shots) {
+    const key = [
+      shot.shotNumber,
+      shot.clubTypeRaw,
+      shot.carryYd,
+      shot.totalYd,
+      shot.ballSpeedMph,
+      shot.launchAngleDeg,
+      JSON.stringify(shot.sourceRawJson),
+    ].join("|");
+
+    if (seen.has(key)) {
+      duplicateCount += 1;
+    } else {
+      seen.add(key);
+    }
+  }
+
+  return duplicateCount;
 }
 
 function hasColumnMapping(columnMapping: RapsodoColumnMapping) {

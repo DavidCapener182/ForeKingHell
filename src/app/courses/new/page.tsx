@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default function NewCoursePage() {
         eyebrow={<StatusPill tone="green">Manual course setup</StatusPill>}
         title="New Course"
         description="Create the course and first tee set now. The next screen lets you enter tee and green coordinates for each hole so round overlays can use the real course."
+        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" />}
         metrics={[
           {
             label: "Required",

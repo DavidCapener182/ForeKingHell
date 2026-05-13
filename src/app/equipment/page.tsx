@@ -4,6 +4,8 @@ import { count, desc, eq, sql } from "drizzle-orm";
 import { Archive, ArrowLeft, CircleDot, Save, Wrench } from "lucide-react";
 
 import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
+import { ClubArtwork } from "@/components/visuals/club-artwork";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   DataPanel,
   DataPair,
@@ -66,6 +68,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         eyebrow={<StatusPill tone="amber">Equipment</StatusPill>}
         title="Equipment inventory"
         description="Track club specifications and ball models over time so performance changes can be compared against equipment changes."
+        visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-44" />}
         metrics={[
           { label: "Clubs", value: data.activeClubs.length.toString(), detail: "Active bag records" },
           { label: "Retired clubs", value: data.retiredClubs.length.toString(), detail: "Hidden from bag and dashboard" },
@@ -81,6 +84,31 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           <AlertDescription>The inventory record is available for future comparisons.</AlertDescription>
         </Alert>
       ) : null}
+
+      <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+        {data.activeClubs.slice(0, 4).map((club) => (
+          <div key={club.id} className="premium-card min-w-[72vw] p-3 sm:min-w-0">
+            <ClubArtwork clubType={club.type} alt="" className="h-24 rounded-xl" sizes="(min-width: 1024px) 220px, 72vw" />
+            <div className="mt-3">
+              <p className="text-sm font-semibold">{formatClubType(club.type)}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {[club.brand, club.model].filter(Boolean).join(" ") || "Specs not recorded"}
+              </p>
+            </div>
+          </div>
+        ))}
+        {data.ballModels.slice(0, Math.max(0, 4 - data.activeClubs.slice(0, 4).length)).map((ball) => (
+          <div key={ball.id} className="premium-card grid min-w-[72vw] place-items-center p-3 text-center sm:min-w-0">
+            <div className="grid size-20 place-items-center rounded-full border border-slate-200 bg-white shadow-sm">
+              <CircleDot className="size-10 text-emerald-700" />
+            </div>
+            <div className="mt-3">
+              <p className="text-sm font-semibold">{ball.model}</p>
+              <p className="truncate text-xs text-muted-foreground">{ball.brand ?? "Ball model"}</p>
+            </div>
+          </div>
+        ))}
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <DataPanel>

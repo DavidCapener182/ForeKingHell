@@ -30,6 +30,8 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
+import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -142,6 +144,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         eyebrow={<StatusPill tone={verdictTone(data.overall.verdict)}>Today’s practice</StatusPill>}
         title="Today"
         description={data.overall.summary}
+        visual={<PageArtwork variant="range" alt="" className="h-full min-h-44" />}
         actions={
           <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
             <Link href={shotDatabaseHref} prefetch={false}>
@@ -183,6 +186,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           { label: "Shots", href: "#shots" },
         ]}
       />
+
+      {data.shots.length > 0 ? (
+        <MobileSummaryHero
+          eyebrow={<StatusPill tone={verdictTone(data.overall.verdict)}>Today&apos;s focus</StatusPill>}
+          title={data.overall.title}
+          description={data.overall.summary}
+          metricLabel="Selected shots"
+          metricValue={integerFormatter.format(data.shots.length)}
+          visual={<ShotTraceMotif className="h-16 w-20 text-emerald-700" />}
+          action={
+            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+              <Link href={shotDatabaseHref} prefetch={false}>Shots</Link>
+            </Button>
+          }
+        />
+      ) : null}
 
       <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
         <MobileFilterSheet label="Session scope" activeCount={activeFilterChips.length}>

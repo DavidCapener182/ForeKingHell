@@ -12,6 +12,7 @@ import {
 } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -43,6 +44,7 @@ export default async function NewRoundPage() {
         eyebrow={<StatusPill tone="green">Real round</StatusPill>}
         title="Add Round"
         description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
+        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" />}
         metrics={[
           {
             label: "Course source",

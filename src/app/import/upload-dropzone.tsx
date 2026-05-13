@@ -4,6 +4,8 @@ import type { RefObject } from "react";
 import { FileText, Upload, UploadCloud, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GolfLoader } from "@/components/visuals/golf-loader";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { cn } from "@/lib/utils";
 
 type UploadDropzoneFile = {
@@ -82,6 +84,14 @@ export function UploadDropzone({
           }
         }}
       >
+        {files.length === 0 ? (
+          <PageArtwork
+            variant="import"
+            alt=""
+            className="mb-1 h-28 w-full rounded-xl"
+            sizes="(min-width: 768px) 520px, 0px"
+          />
+        ) : null}
         <div className="grid size-12 place-items-center rounded-full bg-emerald-100 text-emerald-700">
           <UploadCloud className="size-6" />
         </div>
@@ -101,6 +111,10 @@ export function UploadDropzone({
             <span className="font-medium">Reading {readProgress.fileName}</span>
             <span className="text-muted-foreground">{formatPercent(readProgress.loaded, readProgress.total)}</span>
           </div>
+          <GolfLoader
+            label="Reading launch data"
+            className="mt-3 max-w-none border-0 bg-emerald-50/55 p-3 shadow-none [&_[data-loader-art]]:h-20"
+          />
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-emerald-600 transition-[width]"

@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -76,6 +77,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
             : "Use this shared course for scoring and overlays. Only the course creator can edit tee sets and hole geometry."
         }
+        visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={courseId} className="h-full min-h-44" />}
         metrics={[
           {
             label: "Provider",

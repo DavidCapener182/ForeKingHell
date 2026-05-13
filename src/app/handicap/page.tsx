@@ -24,6 +24,7 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -35,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { sessions, shots, teeSets } from "@/db/schema";
+import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildCoachSummary } from "@/lib/coach";
@@ -49,6 +50,7 @@ import {
   type HandicapSummary,
   type PlayingHandicapSummary,
 } from "@/lib/round-handicap";
+import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +58,6 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
-
-const roundSessionTypes = ["round", "simulator", "simulated_course", "real_round"] as const;
 
 export default async function HandicapPage() {
   const [rounds, progressData] = await Promise.all([getHandicapRounds(), getProgressData()]);
@@ -103,6 +103,7 @@ export default async function HandicapPage() {
         eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
         title="Handicap"
         description="Separate best-form differentials from a conservative playing estimate. ForeKingHell uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
+        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" />}
         metrics={[
           {
             label: "Real best-form",
@@ -359,9 +360,12 @@ async function getHandicapRounds() {
         scorecardJson: sessions.scorecardJson,
         courseRating: teeSets.courseRating,
         slopeRating: teeSets.slopeRating,
+        providerKind: rapsodoSyncSessions.providerKind,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
       .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
@@ -375,7 +379,7 @@ async function getHandicapRounds() {
   ]);
   const shotCountBySessionId = new Map(shotCounts.map((row) => [row.sessionId, row.count]));
 
-  return sessionRows.map((session) => {
+  return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
     const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
     const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));

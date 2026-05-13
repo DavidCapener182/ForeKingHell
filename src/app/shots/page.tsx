@@ -23,6 +23,7 @@ import {
   PageShell,
   StickyMobileAction,
 } from "@/components/premium";
+import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   Table,
   TableBody,
@@ -272,6 +273,13 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                         subtitle={`${formatDate(shot.shotAt)} - ${shot.fileName ?? "No file"}`}
                         action={<Badge variant="outline">{formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}</Badge>}
                       >
+                        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
+                          <span className={`size-2.5 rounded-full ring-4 ${shotQualityDot(shot.sideCarryYd)}`} aria-hidden="true" />
+                          <ShotTraceMotif className="h-10 w-full text-emerald-700/70" />
+                          <Button asChild variant="outline" size="sm">
+                            <Link href="/compare" prefetch={false}>Compare</Link>
+                          </Button>
+                        </div>
                         <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                         <DataPair label="Total" value={formatMetric(shot.totalYd)} />
                         <DataPair label="Side" value={formatMetric(shot.sideCarryYd)} />
@@ -628,4 +636,22 @@ function formatHole(holeNumber: number | null, holeShotNumber: number | null) {
 
 function formatShotClub(shot: { clubType: string; clubBrand: string | null; clubModel: string | null }) {
   return formatClubModelName({ type: shot.clubType, brand: shot.clubBrand, model: shot.clubModel });
+}
+
+function shotQualityDot(sideCarryYd: number | null) {
+  if (sideCarryYd === null) {
+    return "bg-slate-400 ring-slate-200";
+  }
+
+  const offline = Math.abs(sideCarryYd);
+
+  if (offline <= 8) {
+    return "bg-emerald-500 ring-emerald-100";
+  }
+
+  if (offline <= 20) {
+    return "bg-amber-500 ring-amber-100";
+  }
+
+  return "bg-pink-500 ring-pink-100";
 }

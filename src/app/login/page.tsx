@@ -4,6 +4,7 @@ import { ShieldCheck } from "lucide-react";
 
 import { LoginForm } from "@/app/login/login-form";
 import { PageShell, StatusPill } from "@/components/premium";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -30,13 +31,21 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <Link href="/privacy" className="mt-3 inline-flex text-sm font-medium text-emerald-700 underline-offset-4 hover:underline">
             Read the data notice
           </Link>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            {["Private data", "Coach sharing", "PWA sync"].map((item) => (
-              <div key={item} className="apple-panel-strong p-3">
-                <ShieldCheck className="size-4 text-emerald-600" />
-                <p className="mt-2 text-sm font-medium text-slate-900">{item}</p>
-              </div>
-            ))}
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_15rem] lg:items-stretch">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {["Private data", "Coach sharing", "PWA sync"].map((item) => (
+                <div key={item} className="apple-panel-strong p-3">
+                  <ShieldCheck className="size-4 text-emerald-600" />
+                  <p className="mt-2 text-sm font-medium text-slate-900">{item}</p>
+                </div>
+              ))}
+            </div>
+            <PageArtwork
+              variant="hole"
+              alt=""
+              className="h-full min-h-44 rounded-2xl"
+              sizes="240px"
+            />
           </div>
         </header>
 
