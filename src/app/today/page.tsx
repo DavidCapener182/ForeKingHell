@@ -14,17 +14,21 @@ import {
 } from "lucide-react";
 
 import {
+  ActiveFilterChips,
   CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
   MetricCard,
+  MobileFilterSheet,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +111,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   });
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(data.shots);
+  const activeFilterChips = buildTodayFilterChips(data);
 
   return (
     <PageShell size="full" contentClassName="pb-20 sm:pb-5">
@@ -169,7 +174,34 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         ]}
       />
 
-      <DataPanel>
+      <MobileSectionChips
+        items={[
+          { label: "Scope", href: "#scope" },
+          { label: "Focus", href: "#focus" },
+          { label: "Charts", href: "#charts" },
+          { label: "Clubs", href: "#clubs" },
+          { label: "Shots", href: "#shots" },
+        ]}
+      />
+
+      <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
+        <MobileFilterSheet label="Session scope" activeCount={activeFilterChips.length}>
+          <form className="grid gap-3">
+            <TodayScopeFields data={data} />
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="submit" className="rounded-lg bg-[#111827] text-white">
+                Analyse
+              </Button>
+              <Button asChild variant="outline" className="rounded-lg">
+                <Link href="/today" prefetch={false}>Reset</Link>
+              </Button>
+            </div>
+          </form>
+        </MobileFilterSheet>
+        <ActiveFilterChips items={activeFilterChips} />
+      </div>
+
+      <DataPanel className="hidden sm:block">
         <SectionHeader
           title="Session scope"
           description="Date, session, and club scope."
@@ -177,45 +209,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         />
         <CardContent>
           <form className="apple-panel grid gap-3 p-3 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto]">
-            <label className="grid gap-1 text-sm font-medium">
-              Date
-              <input
-                type="date"
-                name="date"
-                defaultValue={data.dateKey}
-                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-medium">
-              Session
-              <select
-                name="session"
-                defaultValue={data.filters.sessionId}
-                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
-              >
-                <option value="">All sessions today</option>
-                {data.sessions.map((session) => (
-                  <option key={session.id} value={session.id}>
-                    {session.label} ({session.shotCount})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-medium">
-              Club
-              <select
-                name="club"
-                defaultValue={data.filters.club}
-                className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
-              >
-                <option value="">All clubs</option>
-                {data.clubs.map((club) => (
-                  <option key={club.type} value={club.type}>
-                    {club.label} ({club.shotCount})
-                  </option>
-                ))}
-              </select>
-            </label>
+            <TodayScopeFields data={data} />
             <div className="flex items-end">
               <Button type="submit" className="h-10 w-full rounded-lg bg-[#111827] text-white">
                 Analyse
@@ -234,7 +228,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <EmptyToday />
       ) : (
         <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section id="focus" className="grid scroll-mt-28 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Verdict"
               value={data.overall.title}
@@ -265,9 +259,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             />
           </section>
 
-          <TodayShotCharts shots={chartShots} />
+          <section id="charts" className="scroll-mt-28">
+            <TodayShotCharts shots={chartShots} />
+          </section>
 
-          <ClubMainStatsPanel stats={data.clubStats} />
+          <section id="clubs" className="scroll-mt-28">
+            <ClubMainStatsPanel stats={data.clubStats} />
+          </section>
 
           <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
             <DataPanel>
@@ -336,7 +334,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             </DataPanel>
           </section>
 
-          <DataPanel>
+          <DataPanel id="shots" className="scroll-mt-28">
             <SectionHeader
               title="Today’s shot list"
               description="Only the selected day, session, and club."
@@ -404,7 +402,61 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </DataPanel>
         </>
       )}
+      <StickyMobileAction>
+        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Link href="/import" prefetch={false}>
+            <Upload className="size-4" />
+            Import
+          </Link>
+        </Button>
+      </StickyMobileAction>
     </PageShell>
+  );
+}
+
+function TodayScopeFields({ data }: { data: TodayPracticeData }) {
+  return (
+    <>
+      <label className="grid gap-1 text-sm font-medium">
+        Date
+        <input
+          type="date"
+          name="date"
+          defaultValue={data.dateKey}
+          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+        />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Session
+        <select
+          name="session"
+          defaultValue={data.filters.sessionId}
+          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+        >
+          <option value="">All sessions today</option>
+          {data.sessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.label} ({session.shotCount})
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Club
+        <select
+          name="club"
+          defaultValue={data.filters.club}
+          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+        >
+          <option value="">All clubs</option>
+          {data.clubs.map((club) => (
+            <option key={club.type} value={club.type}>
+              {club.label} ({club.shotCount})
+            </option>
+          ))}
+        </select>
+      </label>
+    </>
   );
 }
 
@@ -760,6 +812,36 @@ function shotDatabaseLink(data: TodayPracticeData) {
   }
 
   return `/shots?${params.toString()}`;
+}
+
+function buildTodayFilterChips(data: TodayPracticeData) {
+  const chips: Array<{ label: string; href: string }> = [{ label: data.dateLabel, href: "/today" }];
+  const session = data.sessions.find((item) => item.id === data.filters.sessionId);
+  const club = data.clubs.find((item) => item.type === data.filters.club);
+
+  if (session) {
+    chips.push({ label: `${session.label} x`, href: todayFilterHref(data, "session") });
+  }
+
+  if (club) {
+    chips.push({ label: `${club.label} x`, href: todayFilterHref(data, "club") });
+  }
+
+  return chips;
+}
+
+function todayFilterHref(data: TodayPracticeData, omitKey: "session" | "club") {
+  const params = new URLSearchParams({ date: data.dateKey });
+
+  if (omitKey !== "session" && data.filters.sessionId) {
+    params.set("session", data.filters.sessionId);
+  }
+
+  if (omitKey !== "club" && data.filters.club) {
+    params.set("club", data.filters.club);
+  }
+
+  return `/today?${params.toString()}`;
 }
 
 function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {

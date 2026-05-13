@@ -34,8 +34,19 @@ export const dynamic = "force-dynamic";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
-export default async function CoursesPage() {
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+
+export default async function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const query = first(params.q).trim().slice(0, 80);
   const data = await getCoursesData();
+  const displayedCourses = query
+    ? data.courses.filter((course) =>
+        [course.name, course.country, course.provider].some((value) =>
+          value?.toLowerCase().includes(query.toLowerCase()),
+        ),
+      )
+    : data.courses;
   const mappedCourses = data.courses.filter((course) => course.holeCount > 0);
   const roundLinkedCourses = data.courses.filter((course) => course.roundCount > 0);
 
@@ -92,6 +103,28 @@ export default async function CoursesPage() {
         ]}
       />
 
+      <DataPanel>
+        <CardContent className="pt-4">
+          <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+            <label className="grid gap-1 text-sm font-medium">
+              Course search
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search course, country, or provider"
+                className="h-11 rounded-xl border bg-white px-3 text-sm"
+              />
+            </label>
+            <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+              Search
+            </Button>
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href="/courses" prefetch={false}>Reset</Link>
+            </Button>
+          </form>
+        </CardContent>
+      </DataPanel>
+
       <section className="grid gap-4 md:grid-cols-3">
         <MetricCard
           label="Map readiness"
@@ -121,14 +154,14 @@ export default async function CoursesPage() {
         <SectionHeader
           title="Course library"
           description="Open a course to edit tee sets and per-hole geometry."
-          action={<Badge variant="outline">{integerFormatter.format(data.courses.length)} courses</Badge>}
+          action={<Badge variant="outline">{integerFormatter.format(displayedCourses.length)} courses</Badge>}
         />
         <CardContent>
           <DataTableFrame
             mobile={
               <MobileDataList>
-                {data.courses.length > 0 ? (
-                  data.courses.map((course) => (
+                {displayedCourses.length > 0 ? (
+                  displayedCourses.map((course) => (
                     <MobileDataCard
                       key={course.id}
                       title={course.name}
@@ -177,7 +210,7 @@ export default async function CoursesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.courses.map((course) => (
+                {displayedCourses.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell>
                       <div>
@@ -207,7 +240,7 @@ export default async function CoursesPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {data.courses.length === 0 ? (
+                {displayedCourses.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       No courses yet. Seed known courses or create one manually.
@@ -226,14 +259,19 @@ export default async function CoursesPage() {
 async function getCoursesData() {
   const db = getDb();
   const userId = await requireCurrentUserId();
-  const [courseRows, teeSetRows, holeRows, roundRows] = await Promise.all([
-    db
-      .select()
-      .from(courses)
-      .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
-      .orderBy(asc(courses.name)),
-    db.select().from(teeSets).orderBy(asc(teeSets.name)),
-    db.select({ courseId: holes.courseId }).from(holes),
+  const courseRows = await db
+    .select()
+    .from(courses)
+    .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
+    .orderBy(asc(courses.name));
+  const visibleCourseIds = courseRows.map((course) => course.id);
+  const [teeSetRows, holeRows, roundRows] = await Promise.all([
+    visibleCourseIds.length > 0
+      ? db.select().from(teeSets).where(inArray(teeSets.courseId, visibleCourseIds)).orderBy(asc(teeSets.name))
+      : [],
+    visibleCourseIds.length > 0
+      ? db.select({ courseId: holes.courseId }).from(holes).where(inArray(holes.courseId, visibleCourseIds))
+      : [],
     db
       .select({
         courseId: sessions.courseId,
@@ -272,4 +310,8 @@ function countBy(values: string[]) {
   }
 
   return counts;
+}
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }

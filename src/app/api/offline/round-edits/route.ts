@@ -14,10 +14,15 @@ import {
   offlineRoundEditPayloadToFormData,
   parseOfflineRoundEditPayload,
 } from "@/lib/offline-round-edit-payload";
+import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
+  if (!(await getOptionalCurrentUserId())) {
+    return Response.json({ ok: false, message: "Authentication required." }, { status: 401 });
+  }
+
   const payload = parseOfflineRoundEditPayload(await request.json().catch(() => null));
 
   if (!payload) {

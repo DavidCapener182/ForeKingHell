@@ -31,9 +31,11 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import { Input } from "@/components/ui/input";
 import {
@@ -101,6 +103,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
   const hasClubData = round.shots.length > 0;
   const hasMap = round.mapHoles.length > 0;
   const newShareUrl = query?.share ? `${getRequestOrigin(requestHeaders)}/share/${encodeURIComponent(query.share)}` : null;
+  const currentHole = round.holes.find((hole) => hole.score === null) ?? round.holes[0] ?? null;
 
   return (
     <PageShell>
@@ -142,6 +145,27 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
           ]}
         />
+
+        <MobileSectionChips
+          items={[
+            { label: "Hole", href: "#current-hole" },
+            { label: "Map", href: "#map" },
+            { label: "Scorecard", href: "#scorecard" },
+            { label: "Shots", href: "#shots" },
+          ]}
+        />
+
+        {currentHole ? (
+          <>
+            <RoundHoleSelector holes={round.holes} />
+            <CurrentHoleCard
+              sessionId={round.session.id}
+              hole={currentHole}
+              hasClubData={hasClubData}
+              isRealRound={isRealRound}
+            />
+          </>
+        ) : null}
 
         <Card className="premium-card">
           <CardHeader>
@@ -292,7 +316,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         </Card>
 
         {hasMap ? (
-          <Card className="premium-card">
+          <Card id="map" className="premium-card scroll-mt-28">
             <CardHeader>
               <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
               <CardDescription>
@@ -373,7 +397,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           </Card>
         )}
 
-        <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <section id="scorecard" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Hole-by-hole scorecard</CardTitle>
@@ -387,6 +411,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {round.holes.map((hole) => (
                   <OfflineRoundEditForm
+                    id={`hole-${hole.holeNumber}`}
                     key={hole.holeNumber}
                     action={updateRoundHoleAction}
                     editKind="round-hole"
@@ -506,7 +531,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         </section>
 
         {hasClubData ? (
-        <Card className="premium-card">
+        <Card id="shots" className="premium-card scroll-mt-28">
           <CardHeader>
             <CardTitle>Shot club corrections</CardTitle>
             <CardDescription>
@@ -674,7 +699,87 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </CardContent>
           </Card>
         ) : null}
+        <StickyMobileAction>
+          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+            <a href="#current-hole">
+              Edit current hole
+            </a>
+          </Button>
+        </StickyMobileAction>
     </PageShell>
+  );
+}
+
+type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;
+type RoundDetailHole = RoundDetail["holes"][number];
+
+function RoundHoleSelector({ holes }: { holes: RoundDetail["holes"] }) {
+  return (
+    <nav
+      aria-label="Hole selector"
+      className="sticky top-[7.75rem] z-30 -mx-1 flex gap-1 overflow-x-auto px-1 py-1 sm:hidden"
+    >
+      {holes.map((hole) => (
+        <a
+          key={hole.holeNumber}
+          href={`#hole-${hole.holeNumber}`}
+          className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border border-slate-200 bg-white/95 text-sm font-semibold shadow-sm"
+        >
+          {hole.holeNumber}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function CurrentHoleCard({
+  sessionId,
+  hole,
+  hasClubData,
+  isRealRound,
+}: {
+  sessionId: string;
+  hole: RoundDetailHole;
+  hasClubData: boolean;
+  isRealRound: boolean;
+}) {
+  return (
+    <Card id="current-hole" className="premium-card scroll-mt-36 sm:hidden">
+      <CardHeader>
+        <CardTitle>Hole {hole.holeNumber}</CardTitle>
+        <CardDescription>{formatHoleSummary(hole)}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OfflineRoundEditForm action={updateRoundHoleAction} editKind="round-hole" className="grid gap-3">
+          <input type="hidden" name="sessionId" value={sessionId} />
+          <input type="hidden" name="holeNumber" value={hole.holeNumber} />
+          <div className="grid grid-cols-3 gap-2">
+            <RoundNumberInput label="Score" name="score" value={hole.score} />
+            <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
+            <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
+          </div>
+          {isRealRound ? (
+            <div className="grid grid-cols-2 gap-2">
+              <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
+              <RoundNumberInput label="Sand" name="greensideSandShots" value={hole.greensideSandShots} />
+            </div>
+          ) : null}
+          <div className="grid grid-cols-2 gap-2">
+            <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
+            <RoundSelect label="GIR" name="gir" value={hole.gir} />
+          </div>
+          <div className="grid grid-cols-3 gap-2 rounded-lg bg-white/85 p-2 ring-1 ring-slate-200/80">
+            <MiniMetric label="Par" value={integerFormatter.format(hole.par)} />
+            <MiniMetric label="Yards" value={hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"} />
+            <MiniMetric label="Shots" value={hasClubData ? hole.shots.length.toString() : "Score"} />
+          </div>
+          <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+            <Save className="size-4" />
+            Save hole
+          </Button>
+        </OfflineRoundEditForm>
+      </CardContent>
+    </Card>
   );
 }
 

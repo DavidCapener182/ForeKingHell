@@ -158,29 +158,32 @@ async function getLeaderboardData() {
   }
 
   const ids = [...connectedIds];
-  const [profileRows, xpRows, monthlyXpRows, shotRows, roundRows] = await Promise.all([
-    db.select().from(users).where(inArray(users.id, ids)),
-    db.select().from(xpLedger).where(inArray(xpLedger.userId, ids)),
-    db.select().from(xpLedger).where(and(inArray(xpLedger.userId, ids), gte(xpLedger.createdAt, monthStart))),
-    db
-      .select({
-        userId: shots.userId,
-        clubType: shots.clubType,
-        totalYd: shots.totalYd,
-      })
-      .from(shots)
-      .where(and(inArray(shots.userId, ids), gte(shots.shotAt, monthStart))),
-    db
-      .select({
-        userId: sessions.userId,
-        scorecardJson: sessions.scorecardJson,
-      })
-      .from(sessions)
-      .where(and(inArray(sessions.userId, ids), gte(sessions.date, monthStart)))
-      .orderBy(desc(sessions.date)),
-  ]);
-
+  const profileRows = await db.select().from(users).where(inArray(users.id, ids));
   const visibleProfiles = profileRows.filter((profile) => profile.id === userId || allowsLeaderboard(profile.privacySettingsJson));
+  const visibleIds = visibleProfiles.map((profile) => profile.id);
+  const [xpRows, monthlyXpRows, shotRows, roundRows] =
+    visibleIds.length > 0
+      ? await Promise.all([
+          db.select().from(xpLedger).where(inArray(xpLedger.userId, visibleIds)),
+          db.select().from(xpLedger).where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart))),
+          db
+            .select({
+              userId: shots.userId,
+              clubType: shots.clubType,
+              totalYd: shots.totalYd,
+            })
+            .from(shots)
+            .where(and(inArray(shots.userId, visibleIds), gte(shots.shotAt, monthStart))),
+          db
+            .select({
+              userId: sessions.userId,
+              scorecardJson: sessions.scorecardJson,
+            })
+            .from(sessions)
+            .where(and(inArray(sessions.userId, visibleIds), gte(sessions.date, monthStart)))
+            .orderBy(desc(sessions.date)),
+        ])
+      : [[], [], [], []];
   const totalXpByUser = sumXpByUser(xpRows);
   const monthlyXpByUser = sumXpByUser(monthlyXpRows);
   const monthlyShotsByUser = countByUser(shotRows.map((shot) => shot.userId));

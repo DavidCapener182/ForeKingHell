@@ -248,6 +248,7 @@ export const sessions = pgTable(
   (table) => [
     index("fkh_sessions_user_date_idx").on(table.userId, table.date),
     index("fkh_sessions_user_source_idx").on(table.userId, table.source),
+    index("fkh_sessions_user_type_date_idx").on(table.userId, table.type, table.date),
     index("fkh_sessions_type_date_idx").on(table.type, table.date),
     uniqueIndex("fkh_sessions_user_source_raw_hash_idx").on(table.userId, table.source, table.rawCsvHash),
   ],

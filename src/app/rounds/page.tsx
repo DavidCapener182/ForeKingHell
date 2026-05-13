@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, Award, Flag, Minus, Plus, Upload } from "lucide-react";
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,13 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageShell,
+  StickyMobileAction,
 } from "@/components/premium";
 import { sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import {
   calculateHandicapSummary,
   calculateRoundDifferential,
@@ -104,8 +107,16 @@ export default async function RoundsPage() {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <Card className="premium-card md:col-span-2">
+        <MobileSectionChips
+          items={[
+            { label: "Latest", href: "#latest" },
+            { label: "History", href: "#history" },
+            { label: "Stats", href: "#stats" },
+          ]}
+        />
+
+        <section id="stats" className="grid scroll-mt-28 gap-4 md:grid-cols-3">
+          <Card id="history" className="premium-card order-2 scroll-mt-28 md:order-1 md:col-span-2">
             <CardHeader>
               <CardTitle>Round history</CardTitle>
               <CardDescription>
@@ -117,40 +128,21 @@ export default async function RoundsPage() {
                 mobile={
                   <MobileDataList>
                     {rounds.length > 0 ? (
-                      rounds.map((round) => (
-                        <MobileDataCard
-                          key={round.id}
-                          href={`/rounds/${round.id}`}
-                          title={round.courseName ?? round.fileName ?? "Untitled round"}
-                          subtitle={formatDate(round.date)}
-                          action={
-                            <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
-                              {formatSessionType(round.type)}
-                            </Badge>
-                          }
-                        >
-                          {round.roundStatus === "in_progress" ? (
-                            <DataPair label="Status" value="Resume" />
-                          ) : null}
-                          <DataPair
-                            label="Score"
-                            value={round.totalScore === null ? "--" : integerFormatter.format(round.totalScore)}
-                          />
-                          <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
-                          <DataPair
-                            label="Putts"
-                            value={round.totalPutts === null ? "--" : integerFormatter.format(round.totalPutts)}
-                          />
-                          <DataPair
-                            label="Data"
-                            value={
-                              round.type === "real_round"
-                                ? "Scorecard only"
-                                : `${integerFormatter.format(round.shotCount)} shots`
-                            }
-                          />
-                        </MobileDataCard>
-                      ))
+                      <>
+                        {rounds.slice(0, 3).map((round) => (
+                          <RoundMobileCard key={round.id} round={round} />
+                        ))}
+                        {rounds.length > 3 ? (
+                          <details className="contents">
+                            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+                              Show more rounds
+                            </summary>
+                            {rounds.slice(3).map((round) => (
+                              <RoundMobileCard key={round.id} round={round} />
+                            ))}
+                          </details>
+                        ) : null}
+                      </>
                     ) : (
                       <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
                         No saved rounds yet. Import a simulated-course CSV or add a real scorecard.
@@ -217,7 +209,7 @@ export default async function RoundsPage() {
             </CardContent>
           </Card>
 
-          <Card className="premium-card">
+          <Card id="latest" className="premium-card order-1 scroll-mt-28 md:order-2">
             <CardHeader>
               <CardTitle>Latest</CardTitle>
               <CardDescription>Most recent saved round.</CardDescription>
@@ -257,12 +249,51 @@ export default async function RoundsPage() {
             </CardContent>
           </Card>
         </section>
+        <StickyMobileAction>
+          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+            <Link href="/rounds/new">
+              <Plus className="size-4" />
+              Add round
+            </Link>
+          </Button>
+        </StickyMobileAction>
     </PageShell>
+  );
+}
+
+function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds>>[number] }) {
+  return (
+    <MobileDataCard
+      href={`/rounds/${round.id}`}
+      title={round.courseName ?? round.fileName ?? "Untitled round"}
+      subtitle={formatDate(round.date)}
+      action={
+        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+          {formatSessionType(round.type)}
+        </Badge>
+      }
+    >
+      {round.roundStatus === "in_progress" ? <DataPair label="Status" value="Resume" /> : null}
+      <DataPair
+        label="Score"
+        value={round.totalScore === null ? "--" : integerFormatter.format(round.totalScore)}
+      />
+      <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
+      <DataPair
+        label="Putts"
+        value={round.totalPutts === null ? "--" : integerFormatter.format(round.totalPutts)}
+      />
+      <DataPair
+        label="Data"
+        value={round.type === "real_round" ? "Scorecard only" : `${integerFormatter.format(round.shotCount)} shots`}
+      />
+    </MobileDataCard>
   );
 }
 
 async function getRounds() {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [sessionRows, shotCounts] = await Promise.all([
     db
       .select({
@@ -280,7 +311,7 @@ async function getRounds() {
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .where(inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"]))
+      .where(and(eq(sessions.userId, userId), inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -288,6 +319,7 @@ async function getRounds() {
         count: count(),
       })
       .from(shots)
+      .where(eq(shots.userId, userId))
       .groupBy(shots.sessionId),
   ]);
   const shotCountBySessionId = new Map(shotCounts.map((row) => [row.sessionId, row.count]));

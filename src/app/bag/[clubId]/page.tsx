@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { isTrackedClubType } from "@/lib/club-format";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { type AnalysisShot } from "./club-analysis-tabs";
 import { ClubDetailClient } from "./club-detail-client";
 
@@ -52,6 +53,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
 
 async function getClubDetail(clubId: string) {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [clubRows, shotRows] = await Promise.all([
     db
       .select({
@@ -61,7 +63,7 @@ async function getClubDetail(clubId: string) {
         model: clubs.model,
       })
       .from(clubs)
-      .where(eq(clubs.id, clubId))
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
       .limit(1),
     db
       .select({
@@ -90,7 +92,7 @@ async function getClubDetail(clubId: string) {
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.clubId, clubId))
+      .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId), eq(sessions.userId, userId)))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
   ]);
 

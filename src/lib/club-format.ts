@@ -87,16 +87,16 @@ export function clubSortValue(value: string) {
 
 export function clubAccent(value: string) {
   if (value === "driver") {
-    return "#0EA5E9";
+    return "#0369A1";
   }
 
   if (value.endsWith("w") || value.endsWith("h")) {
-    return "#EC4899";
+    return "#BE185D";
   }
 
   if (value.endsWith("i")) {
-    return "#22C55E";
+    return "#15803D";
   }
 
-  return "#F97316";
+  return "#C2410C";
 }

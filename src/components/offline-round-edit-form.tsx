@@ -11,6 +11,7 @@ type OfflineRoundEditFormProps = {
   editKind: OfflineRoundEditKind;
   children: ReactNode;
   className?: string;
+  id?: string;
 };
 
 export function OfflineRoundEditForm({
@@ -18,11 +19,13 @@ export function OfflineRoundEditForm({
   editKind,
   children,
   className,
+  id,
 }: OfflineRoundEditFormProps) {
   const [queued, setQueued] = useState(false);
 
   return (
     <form
+      id={id}
       action={action}
       className={className}
       onSubmit={(event) => {

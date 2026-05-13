@@ -24,10 +24,12 @@ import {
   CompactReadoutGrid,
   DataPanel,
   MetricCard,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -279,7 +281,18 @@ export default async function DashboardPage() {
         }
       />
 
-      <TodayPlan
+      <MobileSectionChips
+        items={[
+          { label: "Today", href: "#today" },
+          { label: "Decisions", href: "#decisions" },
+          { label: "Progress", href: "#progress" },
+          { label: "Tools", href: "#tools" },
+          { label: "Bag", href: "#bag" },
+        ]}
+      />
+
+      <section id="today" className="scroll-mt-28">
+        <TodayPlan
         latestSession={data.recentSessions[0] ?? null}
         totalShots={data.stats.shotCount}
         bestClub={data.bagPreview[0] ?? null}
@@ -287,7 +300,8 @@ export default async function DashboardPage() {
         firstSignal={data.whatChanged[0] ?? null}
         primaryAction={primaryAction}
         primaryActionLabel={primaryActionLabel}
-      />
+        />
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -303,7 +317,7 @@ export default async function DashboardPage() {
         ))}
       </section>
 
-      <DataPanel>
+      <DataPanel id="decisions" className="scroll-mt-28">
         <SectionHeader
           title="On-course decisions"
           description="Course-number reminders from the current bag map."
@@ -330,7 +344,7 @@ export default async function DashboardPage() {
         </CardContent>
       </DataPanel>
 
-      <section className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section id="progress" className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <DataPanel>
           <SectionHeader
             title="What changed?"
@@ -396,7 +410,7 @@ export default async function DashboardPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4">
+      <section id="tools" className="grid scroll-mt-28 gap-4">
         <DataPanel>
           <SectionHeader
             title="Quick routes"
@@ -408,7 +422,7 @@ export default async function DashboardPage() {
         </DataPanel>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         {pinnedDashboardSections.has("bag") ? (
         <DataPanel>
           <SectionHeader
@@ -529,6 +543,14 @@ export default async function DashboardPage() {
         </DataPanel>
         ) : null}
       </section>
+      <StickyMobileAction>
+        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Link href={primaryAction} prefetch={false}>
+            <ArrowRight className="size-4" />
+            {primaryActionLabel}
+          </Link>
+        </Button>
+      </StickyMobileAction>
     </PageShell>
   );
 }

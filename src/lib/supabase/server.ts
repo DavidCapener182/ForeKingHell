@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let client: SupabaseClient | null = null;
+let serviceRoleClient: SupabaseClient | null = null;
 
 export function getSupabasePublicConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -47,7 +47,7 @@ export async function createSupabaseServerClient() {
 }
 
 export function getSupabaseServiceRoleClient() {
-  if (!client) {
+  if (!serviceRoleClient) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -55,14 +55,12 @@ export function getSupabaseServiceRoleClient() {
       throw new Error("NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
     }
 
-    client = createClient(url, serviceRoleKey, {
+    serviceRoleClient = createClient(url, serviceRoleKey, {
       auth: {
         persistSession: false,
       },
     });
   }
 
-  return client;
+  return serviceRoleClient;
 }
-
-export const getSupabaseServerClient = getSupabaseServiceRoleClient;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Upload } from "lucide-react";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubAccent, clubSortValue, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { LongestShotsSection, type LongestShot } from "../longest-shots-section";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,7 @@ export default async function LongestShotsPage() {
 
 async function getLongestShots() {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [clubRows, shotRows] = await Promise.all([
     db
       .select({
@@ -75,7 +77,7 @@ async function getLongestShots() {
         model: clubs.model,
       })
       .from(clubs)
-      .where(eq(clubs.active, true))
+      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
       .orderBy(asc(clubs.type)),
     db
       .select({
@@ -96,6 +98,7 @@ async function getLongestShots() {
         spinAxis: shots.spinAxis,
       })
       .from(shots)
+      .where(eq(shots.userId, userId))
       .orderBy(desc(shots.shotAt)),
   ]);
 

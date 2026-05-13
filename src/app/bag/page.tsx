@@ -24,10 +24,12 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -40,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import {
   buildCourseDecisionAdvice,
   getClubDecisionLabel,
@@ -123,13 +126,27 @@ export default async function BagPage() {
           ]}
         />
 
-        {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
+        <MobileSectionChips
+          items={[
+            { label: "Gapping", href: "#gapping" },
+            { label: "Decisions", href: "#decisions" },
+            { label: "Clubs", href: "#clubs" },
+          ]}
+        />
 
-        <CourseDecisionPanel advice={courseAdvice} />
+        {gappingRows.length > 0 ? (
+          <section id="gapping" className="scroll-mt-28">
+            <CarryGappingTable rows={gappingRows} />
+          </section>
+        ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section id="decisions" className="scroll-mt-28">
+          <CourseDecisionPanel advice={courseAdvice} />
+        </section>
+
+        <section id="clubs" className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
           {bag.map((club) => (
-            <Link key={club.id} href={`/bag/${club.id}`} className="group block">
+            <Link key={club.id} href={`/bag/${club.id}`} className="group block min-w-[82vw] md:min-w-0">
               <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -245,12 +262,20 @@ export default async function BagPage() {
             </CardContent>
           </Card>
         ) : null}
+        <StickyMobileAction>
+          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+            <Link href="#clubs">
+              Find club
+            </Link>
+          </Button>
+        </StickyMobileAction>
     </PageShell>
   );
 }
 
 async function getBag() {
   const db = getDb();
+  const userId = await requireCurrentUserId();
 
   const clubRows = await db
     .select({
@@ -261,7 +286,7 @@ async function getBag() {
       model: clubs.model,
     })
     .from(clubs)
-    .where(eq(clubs.active, true))
+    .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
     .orderBy(asc(clubs.type));
 
   const clubData = await Promise.all(
@@ -291,13 +316,13 @@ async function getBag() {
           })
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .where(and(eq(shots.userId, club.userId), eq(shots.clubId, club.id)))
+          .where(and(eq(shots.userId, userId), eq(sessions.userId, userId), eq(shots.clubId, club.id)))
           .orderBy(desc(shots.shotAt))
           .limit(RECENT_SHOTS_PER_CLUB),
         db
           .select({ value: count() })
           .from(shots)
-          .where(and(eq(shots.userId, club.userId), eq(shots.clubId, club.id))),
+          .where(and(eq(shots.userId, userId), eq(shots.clubId, club.id))),
       ]);
 
       return {

@@ -12,12 +12,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  ActiveFilterChips,
   CompactReadoutGrid,
   DataPair,
   DataTableFrame,
+  MobileFilterSheet,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageShell,
+  StickyMobileAction,
 } from "@/components/premium";
 import {
   Table,
@@ -46,7 +50,7 @@ type ShotFilters = {
   to: string;
 };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -59,6 +63,15 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
   const { stats, rowTypes, sessionSummaries, savedShots, totalFilteredShots, clubsForFilter, categories } =
     await getShotDatabase(filters);
   const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
+  const activeFilterChips = buildActiveFilterChips(filters, clubsForFilter, sessionSummaries);
+  const filterForm = (
+    <ShotFilterFields
+      filters={filters}
+      clubsForFilter={clubsForFilter}
+      sessionSummaries={sessionSummaries}
+      categories={categories}
+    />
+  );
 
   return (
     <PageShell>
@@ -79,7 +92,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             <Button asChild variant="outline">
               <Link href="/import">
                 <Upload className="size-4" />
-                Import CSV
+                <span className="hidden sm:inline">Import CSV</span>
+                <span className="sm:hidden">Import</span>
               </Link>
             </Button>
           </div>
@@ -95,7 +109,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                 Shot database
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Filter the archive by club, session, date, shot category, or file name. Advanced launch metrics stay available without forcing every row into a giant debugging table.
+                Filter the archive by club, session, date, shot category, or file name.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
@@ -107,52 +121,35 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </div>
         </header>
 
-        <Card className="premium-card">
+        <MobileSectionChips
+          items={[
+            { label: "Filters", href: "#filters" },
+            { label: "Sessions", href: "#sessions" },
+            { label: "Shots", href: "#shots" },
+          ]}
+        />
+
+        <div id="filters" className="grid gap-3 scroll-mt-28">
+          <MobileFilterSheet activeCount={activeFilterChips.length}>
+            <form className="grid gap-3">
+              {filterForm}
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="submit">Apply</Button>
+                <Button asChild variant="outline"><Link href="/shots">Reset</Link></Button>
+              </div>
+            </form>
+          </MobileFilterSheet>
+          <ActiveFilterChips items={activeFilterChips} className="sm:hidden" />
+        </div>
+
+        <Card className="premium-card hidden sm:block">
           <CardHeader>
             <CardTitle>Find shots</CardTitle>
-            <CardDescription>50 rows per page, scoped to the current player.</CardDescription>
+            <CardDescription>{PAGE_SIZE} rows per page, scoped to the current player.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="apple-panel grid gap-3 p-3 md:grid-cols-3 xl:grid-cols-6">
-              <label className="grid gap-1 text-sm font-medium">
-                Search file/course
-                <input name="q" defaultValue={filters.q} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" placeholder="Session name" />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Club
-                <select name="club" defaultValue={filters.club} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-                  <option value="">All clubs</option>
-                  {clubsForFilter.map((club) => (
-                    <option key={club} value={club}>{formatClubType(club)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Session
-                <select name="sessionId" defaultValue={filters.sessionId} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-                  <option value="">All sessions</option>
-                  {sessionSummaries.map((session) => (
-                    <option key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                Category
-                <select name="category" defaultValue={filters.category} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-                  <option value="">All categories</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>{formatSessionType(category)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                From
-                <input type="date" name="from" defaultValue={filters.from} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                To
-                <input type="date" name="to" defaultValue={filters.to} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
-              </label>
+              {filterForm}
               <div className="flex gap-2 md:col-span-3 xl:col-span-6">
                 <Button type="submit">Apply filters</Button>
                 <Button asChild variant="outline"><Link href="/shots">Reset</Link></Button>
@@ -161,7 +158,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </CardContent>
         </Card>
 
-        <section className="grid gap-4 lg:grid-cols-[1fr_0.65fr]">
+        <section id="sessions" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1fr_0.65fr]">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Session imports</CardTitle>
@@ -246,7 +243,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </Card>
         </section>
 
-        <Card className="premium-card">
+        <Card id="shots" className="premium-card scroll-mt-28">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -278,9 +275,19 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                         <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                         <DataPair label="Total" value={formatMetric(shot.totalYd)} />
                         <DataPair label="Side" value={formatMetric(shot.sideCarryYd)} />
-                        <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
-                        <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
-                        <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
+                        <details className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm">
+                          <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
+                            Advanced
+                          </summary>
+                          <div className="mt-2 grid gap-2">
+                            <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
+                            <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
+                            <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
+                            <DataPair label="Apex" value={formatMetric(shot.apexFt)} />
+                            <DataPair label="Attack" value={formatMetric(shot.attackAngleDeg)} />
+                            <DataPair label="Path" value={formatMetric(shot.clubPathDeg)} />
+                          </div>
+                        </details>
                       </MobileDataCard>
                     ))
                   ) : (
@@ -354,7 +361,70 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             </DataTableFrame>
           </CardContent>
         </Card>
+        <StickyMobileAction>
+          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+            <Link href="#filters">
+              Filter / sort shots
+            </Link>
+          </Button>
+        </StickyMobileAction>
     </PageShell>
+  );
+}
+
+function ShotFilterFields({
+  filters,
+  clubsForFilter,
+  sessionSummaries,
+  categories,
+}: {
+  filters: ShotFilters;
+  clubsForFilter: string[];
+  sessionSummaries: Array<{ id: string; fileName: string | null; date: Date }>;
+  categories: string[];
+}) {
+  return (
+    <>
+      <label className="grid gap-1 text-sm font-medium">
+        Search file/course
+        <input name="q" defaultValue={filters.q} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" placeholder="Session name" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Club
+        <select name="club" defaultValue={filters.club} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
+          <option value="">All clubs</option>
+          {clubsForFilter.map((club) => (
+            <option key={club} value={club}>{formatClubType(club)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Session
+        <select name="sessionId" defaultValue={filters.sessionId} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
+          <option value="">All sessions</option>
+          {sessionSummaries.map((session) => (
+            <option key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Category
+        <select name="category" defaultValue={filters.category} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
+          <option value="">All categories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>{formatSessionType(category)}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        From
+        <input type="date" name="from" defaultValue={filters.from} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        To
+        <input type="date" name="to" defaultValue={filters.to} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
+      </label>
+    </>
   );
 }
 
@@ -475,6 +545,45 @@ function pageHref(filters: ShotFilters, page: number) {
     if (value) params.set(key, value.toString());
   }
   return `/shots?${params.toString()}`;
+}
+
+function buildActiveFilterChips(
+  filters: ShotFilters,
+  clubsForFilter: string[],
+  sessionSummaries: Array<{ id: string; fileName: string | null; date: Date }>,
+) {
+  const chips: Array<{ label: string; href: string }> = [];
+  const session = sessionSummaries.find((item) => item.id === filters.sessionId);
+
+  if (filters.q) chips.push({ label: `${filters.q} x`, href: filterHref(filters, "q") });
+  if (filters.club && clubsForFilter.includes(filters.club)) {
+    chips.push({ label: `${formatClubType(filters.club)} x`, href: filterHref(filters, "club") });
+  }
+  if (filters.sessionId) {
+    chips.push({
+      label: `${session?.fileName ?? (session ? formatDate(session.date) : "Session")} x`,
+      href: filterHref(filters, "sessionId"),
+    });
+  }
+  if (filters.category) {
+    chips.push({ label: `${formatSessionType(filters.category)} x`, href: filterHref(filters, "category") });
+  }
+  if (filters.from) chips.push({ label: `From ${filters.from} x`, href: filterHref(filters, "from") });
+  if (filters.to) chips.push({ label: `To ${filters.to} x`, href: filterHref(filters, "to") });
+
+  return chips;
+}
+
+function filterHref(filters: ShotFilters, omitKey: keyof ShotFilters) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries({ ...filters, page: 1 })) {
+    if (key === omitKey || !value) continue;
+    params.set(key, value.toString());
+  }
+
+  const query = params.toString();
+  return query ? `/shots?${query}` : "/shots";
 }
 
 function first(value: string | string[] | undefined) {

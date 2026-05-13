@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, type LucideIcon } from "lucide-react";
+import { ArrowRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -66,23 +66,23 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <header className={cn("premium-hero p-5 sm:p-7", className)}>
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="max-w-3xl space-y-3">
+    <header className={cn("premium-hero p-4 sm:p-7", className)}>
+      <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl space-y-2 sm:space-y-3">
           {eyebrow ? <div>{eyebrow}</div> : null}
           <div className="space-y-2">
-            <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
+            <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
               {title}
             </h1>
             {description ? (
-              <p className="max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{description}</p>
             ) : null}
           </div>
         </div>
         {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
       </div>
       {metrics?.length ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mt-6 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
           {metrics.map((metric) => (
             <div key={metric.label} className="metric-tile">
               <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -95,6 +95,153 @@ export function PageHeader({
         </div>
       ) : null}
     </header>
+  );
+}
+
+export function MobileSectionChips({
+  items,
+  className,
+}: {
+  items: Array<{ label: string; href: string }>;
+  className?: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <nav
+      aria-label="Page sections"
+      className={cn(
+        "sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden",
+        className,
+      )}
+    >
+      {items.map((item) => (
+        <a
+          key={item.href}
+          href={item.href}
+          className="min-h-10 shrink-0 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur"
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+export function StickyMobileAction({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("fixed inset-x-4 bottom-24 z-40 sm:hidden", className)}>
+      <div className="rounded-2xl border border-white/70 bg-white/90 p-2 shadow-xl shadow-slate-950/15 backdrop-blur">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function ActiveFilterChips({
+  items,
+  className,
+}: {
+  items: Array<{ label: string; href?: string }>;
+  className?: string;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={cn("flex gap-2 overflow-x-auto pb-1", className)}>
+      {items.map((item) => {
+        const content = (
+          <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+            {item.label}
+          </span>
+        );
+
+        return item.href ? (
+          <Link key={item.label} href={item.href} prefetch={false}>
+            {content}
+          </Link>
+        ) : (
+          <span key={item.label}>{content}</span>
+        );
+      })}
+    </div>
+  );
+}
+
+export function MobileFilterSheet({
+  children,
+  label = "Filter",
+  activeCount = 0,
+  className,
+}: {
+  children: ReactNode;
+  label?: string;
+  activeCount?: number;
+  className?: string;
+}) {
+  return (
+    <details className={cn("group sm:hidden", className)}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold shadow-sm [&::-webkit-details-marker]:hidden">
+        <SlidersHorizontal className="size-4" aria-hidden />
+        {label}
+        {activeCount > 0 ? (
+          <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">
+            {activeCount}
+          </Badge>
+        ) : null}
+      </summary>
+      <div className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-2xl shadow-slate-950/20">
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
+        {children}
+      </div>
+    </details>
+  );
+}
+
+export function TopThreeDisclosure({
+  items,
+  renderItem,
+  initialCount = 3,
+  moreLabel = "Show more",
+  className,
+}: {
+  items: ReactNode[];
+  renderItem?: (item: ReactNode, index: number) => ReactNode;
+  initialCount?: number;
+  moreLabel?: string;
+  className?: string;
+}) {
+  const visibleItems = items.slice(0, initialCount);
+  const hiddenItems = items.slice(initialCount);
+  const render = renderItem ?? ((item: ReactNode) => item);
+
+  if (hiddenItems.length === 0) {
+    return <div className={className}>{visibleItems.map(render)}</div>;
+  }
+
+  return (
+    <>
+      <div className={cn("sm:hidden", className)}>
+        {visibleItems.map(render)}
+        <details className="contents">
+          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+            {moreLabel}
+          </summary>
+          <div className="contents">{hiddenItems.map((item, index) => render(item, index + initialCount))}</div>
+        </details>
+      </div>
+      <div className={cn("hidden sm:grid", className)}>{items.map(render)}</div>
+    </>
   );
 }
 
@@ -189,11 +336,13 @@ export function MetricCard({
 export function DataPanel({
   children,
   className,
+  id,
 }: {
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
-  return <Card className={cn("premium-card", className)}>{children}</Card>;
+  return <Card id={id} className={cn("premium-card", className)}>{children}</Card>;
 }
 
 export function SectionHeader({
@@ -340,7 +489,7 @@ export function CompactLinkGrid({
 }) {
   return (
     <div className={cn("overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]", className)}>
-      <div className={cn("grid", columnsClassName)}>
+      <div className={cn("grid auto-cols-[minmax(15rem,1fr)] grid-flow-col overflow-x-auto sm:grid-flow-row sm:overflow-visible", columnsClassName)}>
         {items.map((item) => (
           <Link
             key={item.title}

@@ -91,7 +91,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         </p>
         <form action={magicAction} className="grid gap-2">
           <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="magic-email">
-            <span className="sr-only">Email for magic link</span>
+            <span className="sr-only">Magic link address</span>
             <Input
               id="magic-email"
               name="email"

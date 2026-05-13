@@ -1,10 +1,15 @@
 import { NextRequest } from "next/server";
 
+import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { buildOverpassGolfHoleQuery, parseOverpassGolfHoles } from "@/lib/osm-course-search";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
+  if (!(await getOptionalCurrentUserId())) {
+    return Response.json({ message: "Authentication required." }, { status: 401 });
+  }
+
   const lat = numberParam(request, "lat");
   const lon = numberParam(request, "lon");
 

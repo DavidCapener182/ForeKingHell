@@ -8,7 +8,7 @@ import {
   Trophy,
   Upload,
 } from "lucide-react";
-import { asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
   CompactReadoutGrid,
@@ -17,10 +17,12 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireCurrentUserId } from "@/lib/current-user";
 import { buildCoachSummary } from "@/lib/coach";
 import { getProgressData } from "@/lib/progress-data";
 import {
@@ -124,20 +127,39 @@ export default async function HandicapPage() {
         ]}
       />
 
-      <PlayingHandicapPanel summary={playingHandicap} />
+      <MobileSectionChips
+        items={[
+          { label: "Estimate", href: "#estimate" },
+          { label: "Trend", href: "#trend" },
+          { label: "Tasks", href: "#tasks" },
+          { label: "Rounds", href: "#rounds" },
+        ]}
+      />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <HandicapPanel title="Real course ceiling" summary={realHandicap} rounds={realRounds.length} tone="green" />
-        <HandicapPanel title="Simulator ceiling" summary={simulatorHandicap} rounds={simulatorRounds.length} tone="sky" />
-        <RangePerformancePanel
-          trust={coach.summary.totals.averageTrust}
-          clubs={coach.summary.totals.clubs}
-          cleanShots={coach.summary.totals.trackedCleanShots}
-        />
-        <HandicapPanel title="Combined ceiling" summary={combinedHandicap} rounds={rounds.length} tone="amber" />
+      <section id="estimate" className="scroll-mt-28">
+        <PlayingHandicapPanel summary={playingHandicap} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <section className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
+        <div className="min-w-[82vw] md:min-w-0">
+          <HandicapPanel title="Real course ceiling" summary={realHandicap} rounds={realRounds.length} tone="green" />
+        </div>
+        <div className="min-w-[82vw] md:min-w-0">
+          <HandicapPanel title="Simulator ceiling" summary={simulatorHandicap} rounds={simulatorRounds.length} tone="sky" />
+        </div>
+        <div className="min-w-[82vw] md:min-w-0">
+          <RangePerformancePanel
+            trust={coach.summary.totals.averageTrust}
+            clubs={coach.summary.totals.clubs}
+            cleanShots={coach.summary.totals.trackedCleanShots}
+          />
+        </div>
+        <div className="min-w-[82vw] md:min-w-0">
+          <HandicapPanel title="Combined ceiling" summary={combinedHandicap} rounds={rounds.length} tone="amber" />
+        </div>
+      </section>
+
+      <section id="trend" className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <DataPanel>
           <SectionHeader
             title="Readout"
@@ -202,7 +224,7 @@ export default async function HandicapPage() {
       </section>
 
       {missingRatingRounds.length > 0 ? (
-        <DataPanel className="border-amber-200 bg-amber-50/70">
+        <DataPanel id="tasks" className="scroll-mt-28 border-amber-200 bg-amber-50/70">
           <SectionHeader
             title="Data to improve"
             description="These rounds are included using fallback assumptions where needed."
@@ -226,7 +248,7 @@ export default async function HandicapPage() {
         </DataPanel>
       ) : null}
 
-      <DataPanel>
+      <DataPanel id="rounds" className="scroll-mt-28">
         <SectionHeader
           title="Score differential table"
           description="Best-form estimates use score differentials, newest scorecards first."
@@ -311,12 +333,21 @@ export default async function HandicapPage() {
           </DataTableFrame>
         </CardContent>
       </DataPanel>
+      <StickyMobileAction>
+        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Link href="/import" prefetch={false}>
+            <Upload className="size-4" />
+            Import scorecard
+          </Link>
+        </Button>
+      </StickyMobileAction>
     </PageShell>
   );
 }
 
 async function getHandicapRounds() {
   const db = getDb();
+  const userId = await requireCurrentUserId();
   const [sessionRows, shotCounts] = await Promise.all([
     db
       .select({
@@ -331,7 +362,7 @@ async function getHandicapRounds() {
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .where(inArray(sessions.type, [...roundSessionTypes]))
+      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -339,6 +370,7 @@ async function getHandicapRounds() {
         count: count(),
       })
       .from(shots)
+      .where(eq(shots.userId, userId))
       .groupBy(shots.sessionId),
   ]);
   const shotCountBySessionId = new Map(shotCounts.map((row) => [row.sessionId, row.count]));
