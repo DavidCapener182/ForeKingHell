@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { count, desc, eq, sql } from "drizzle-orm";
-import { Archive, ArrowLeft, CircleDot, Save, Wrench } from "lucide-react";
+import { Archive, ArrowLeft, ChevronDown, CircleDot, Save, Wrench } from "lucide-react";
 
 import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
@@ -10,6 +10,7 @@ import {
   DataPanel,
   DataPair,
   DataTableFrame,
+  MobileBentoSummary,
   MobileDataCard,
   MobileDataList,
   PageHeader,
@@ -85,6 +86,35 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         </Alert>
       ) : null}
 
+      <MobileBentoSummary
+        items={[
+          {
+            label: "Current setup",
+            value: `${data.activeClubs.length} clubs`,
+            detail: `${activeHistory.length} active specs`,
+            tone: "green",
+          },
+          {
+            label: "Ball",
+            value: data.ballModels[0]?.model ?? "--",
+            detail: data.ballModels[0]?.brand ?? "No model",
+            tone: "sky",
+          },
+          {
+            label: "Changed",
+            value: data.history.length.toString(),
+            detail: "History rows",
+            tone: "amber",
+          },
+          {
+            label: "Retired",
+            value: data.retiredClubs.length.toString(),
+            detail: "Hidden clubs",
+            tone: "slate",
+          },
+        ]}
+      />
+
       <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
         {data.activeClubs.slice(0, 4).map((club) => (
           <div key={club.id} className="premium-card min-w-[72vw] p-3 sm:min-w-0">
@@ -110,6 +140,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         ))}
       </section>
 
+      <EquipmentMobileDisclosure title="Add or edit equipment" description="Ball models and club specification forms.">
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <DataPanel>
           <SectionHeader
@@ -162,7 +193,9 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           </CardContent>
         </DataPanel>
       </section>
+      </EquipmentMobileDisclosure>
 
+      <EquipmentMobileDisclosure title="Retired equipment" description={`${data.retiredClubs.length} clubs`}>
       <DataPanel>
         <SectionHeader
           title="Retired clubs"
@@ -173,7 +206,9 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           <RetiredClubsTable retired={data.retiredClubs} />
         </CardContent>
       </DataPanel>
+      </EquipmentMobileDisclosure>
 
+      <EquipmentMobileDisclosure title="Equipment history" description={`${data.history.length} setup rows`}>
       <DataPanel>
         <SectionHeader
           title="Equipment history"
@@ -183,7 +218,31 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           <EquipmentHistoryTable history={data.history} />
         </CardContent>
       </DataPanel>
+      </EquipmentMobileDisclosure>
     </PageShell>
+  );
+}
+
+function EquipmentMobileDisclosure({
+  title,
+  description,
+  children,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group sm:contents">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block truncate font-semibold tracking-normal">{title}</span>
+          {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="hidden group-open:block sm:contents">{children}</div>
+    </details>
   );
 }
 

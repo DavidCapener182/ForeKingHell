@@ -211,7 +211,7 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             href="/achievements"
             prefetch={false}
             aria-label={`Level ${level.level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-3 text-sm font-medium text-white shadow-sm"
+            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-3 text-sm font-medium text-white shadow-sm sm:ml-0"
           >
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>

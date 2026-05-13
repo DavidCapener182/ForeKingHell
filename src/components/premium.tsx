@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronDown, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -67,36 +67,128 @@ export function PageHeader({
   visual,
   className,
 }: PageHeaderProps) {
+  const primaryMetric = metrics?.[0];
+
   return (
-    <header className={cn("premium-hero p-4 sm:p-7", className)}>
-      <div className={cn("grid gap-4 sm:gap-6", visual ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)] lg:items-stretch" : "")}>
-        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl space-y-2 sm:space-y-3">
-            {eyebrow ? <div>{eyebrow}</div> : null}
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
-                {title}
-              </h1>
-              {description ? (
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{description}</p>
-              ) : null}
-            </div>
+    <>
+      <header className={cn("premium-hero grid gap-3 p-4 sm:hidden", className)}>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <div className="min-w-0">
+            {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
+            <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{description}</p>
+            ) : null}
           </div>
-          {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
+          {visual ? <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl">{visual}</div> : null}
         </div>
-        {visual ? <div className="hidden min-h-40 lg:block">{visual}</div> : null}
-      </div>
-      {metrics?.length ? (
-        <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mt-6 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="metric-tile">
-              <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                {metric.label}
-              </p>
-              <p className="mt-2 truncate text-2xl font-semibold tracking-normal sm:text-3xl">{metric.value}</p>
-              {metric.detail ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p> : null}
+        {(primaryMetric || actions) ? (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+            {primaryMetric ? (
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {primaryMetric.label}
+                </p>
+                <p className="mt-1 truncate text-2xl font-semibold tracking-normal">{primaryMetric.value}</p>
+                {primaryMetric.detail ? (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{primaryMetric.detail}</p>
+                ) : null}
+              </div>
+            ) : (
+              <span aria-hidden />
+            )}
+            {actions ? (
+              <div className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11">
+                {actions}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </header>
+
+      <header className={cn("premium-hero hidden p-4 sm:block sm:p-7", className)}>
+        <div className={cn("grid gap-4 sm:gap-6", visual ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)] lg:items-stretch" : "")}>
+          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl space-y-2 sm:space-y-3">
+              {eyebrow ? <div>{eyebrow}</div> : null}
+              <div className="space-y-2">
+                <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
+                  {title}
+                </h1>
+                {description ? (
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">{description}</p>
+                ) : null}
+              </div>
             </div>
-          ))}
+            {actions ? <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">{actions}</div> : null}
+          </div>
+          {visual ? <div className="hidden min-h-40 lg:block">{visual}</div> : null}
+        </div>
+        {metrics?.length ? (
+          <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mt-6 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+            {metrics.map((metric) => (
+              <div key={metric.label} className="metric-tile">
+                <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {metric.label}
+                </p>
+                <p className="mt-2 truncate text-2xl font-semibold tracking-normal sm:text-3xl">{metric.value}</p>
+                {metric.detail ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p> : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </header>
+    </>
+  );
+}
+
+export function MobileCompactPageHeader({
+  eyebrow,
+  title,
+  description,
+  metricLabel,
+  metricValue,
+  metricDetail,
+  action,
+  visual,
+  className,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  metricLabel?: ReactNode;
+  metricValue?: ReactNode;
+  metricDetail?: ReactNode;
+  action?: ReactNode;
+  visual?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <header className={cn("premium-hero grid gap-3 p-4 sm:hidden", className)}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+        <div className="min-w-0">
+          {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
+          <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance">{title}</h1>
+          {description ? <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        </div>
+        {visual ? <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl">{visual}</div> : null}
+      </div>
+      {(metricLabel || action) ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+          {metricLabel ? (
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                {metricLabel}
+              </p>
+              <p className="mt-1 truncate text-2xl font-semibold tracking-normal">{metricValue}</p>
+              {metricDetail ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{metricDetail}</p> : null}
+            </div>
+          ) : (
+            <span aria-hidden />
+          )}
+          {action ? <div className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-11">{action}</div> : null}
         </div>
       ) : null}
     </header>
@@ -210,6 +302,208 @@ export function MobileFilterSheet({
         {children}
       </div>
     </details>
+  );
+}
+
+export function MobileFilterCommandSheet({
+  children,
+  chips,
+  label = "Filter",
+  activeCount,
+  className,
+}: {
+  children: ReactNode;
+  chips?: Array<{ label: string; href?: string }>;
+  label?: string;
+  activeCount?: number;
+  className?: string;
+}) {
+  const count = activeCount ?? chips?.length ?? 0;
+
+  return (
+    <div className={cn("grid gap-3 sm:hidden", className)}>
+      <MobileFilterSheet label={label} activeCount={count}>
+        {children}
+      </MobileFilterSheet>
+      {chips?.length ? <ActiveFilterChips items={chips} /> : null}
+    </div>
+  );
+}
+
+export function MobileHorizontalRail({
+  children,
+  title,
+  description,
+  action,
+  className,
+  itemClassName = "min-w-[82vw]",
+}: {
+  children: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+  itemClassName?: string;
+}) {
+  const items = Children.toArray(children).filter(Boolean);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={cn("grid gap-3 sm:hidden", className)}>
+      {(title || action) ? (
+        <div className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            {title ? <h2 className="text-base font-semibold tracking-normal">{title}</h2> : null}
+            {description ? <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{description}</p> : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+      ) : null}
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+        {items.map((item, index) => (
+          <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type MobileBentoSummaryItem = {
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+  href?: string;
+  action?: ReactNode;
+  tone?: Tone;
+};
+
+export function MobileBentoSummary({
+  items,
+  className,
+}: {
+  items: MobileBentoSummaryItem[];
+  className?: string;
+}) {
+  const visibleItems = items.slice(0, 4);
+
+  if (visibleItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={cn("grid grid-cols-2 gap-2 sm:hidden", className)}>
+      {visibleItems.map((item, index) => {
+        const tone = item.tone ?? "green";
+        const content = (
+          <div
+            className={cn(
+              "apple-panel-strong grid min-h-24 content-between gap-3 p-3",
+              index === 0 ? "col-span-2 min-h-32" : "",
+            )}
+          >
+            <div className="min-w-0">
+              <div className="flex items-center justify-between gap-3">
+                <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {item.label}
+                </p>
+                <span className={cn("size-2 rounded-full ring-4", compactToneClasses[tone])} />
+              </div>
+              <p className={cn("mt-2 truncate font-semibold tracking-normal", index === 0 ? "text-2xl" : "text-lg")}>
+                {item.value}
+              </p>
+              {item.detail ? <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.detail}</p> : null}
+            </div>
+            {item.action ? <div className="[&_[data-slot=button]]:min-h-10">{item.action}</div> : null}
+          </div>
+        );
+
+        if (item.href) {
+          return (
+            <Link key={index} href={item.href} prefetch={false} className="block">
+              {content}
+            </Link>
+          );
+        }
+
+        return <div key={index}>{content}</div>;
+      })}
+    </div>
+  );
+}
+
+export function MobileAccordionSection({
+  title,
+  count,
+  description,
+  children,
+  defaultOpen = false,
+  className,
+  contentClassName,
+}: {
+  title: ReactNode;
+  count?: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className={cn("group rounded-xl border border-slate-200 bg-white/92 shadow-sm sm:hidden", className)}
+    >
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-semibold tracking-normal">{title}</span>
+          {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+          {count ? <span>{count}</span> : null}
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+        </span>
+      </summary>
+      <div className={cn("border-t border-slate-200 p-3", contentClassName)}>
+        {children}
+      </div>
+    </details>
+  );
+}
+
+export function MobileCurrentItemCard({
+  title,
+  subtitle,
+  selector,
+  action,
+  children,
+  className,
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  selector?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("grid gap-3 sm:hidden", className)}>
+      {selector ? <div className="-mx-1 overflow-x-auto px-1 pb-1">{selector}</div> : null}
+      <div className="premium-card p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-semibold tracking-normal">{title}</h2>
+            {subtitle ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{subtitle}</p> : null}
+          </div>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+        <div className="mt-3 grid gap-3">{children}</div>
+      </div>
+    </section>
   );
 }
 

@@ -24,6 +24,7 @@ import {
   CompactReadoutGrid,
   DataPanel,
   MetricCard,
+  MobileHorizontalRail,
   MobileSectionChips,
   PageHeader,
   PageShell,
@@ -34,6 +35,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
 import { clubs, importRows, rapsodoSyncSessions, sessions, shots, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -311,7 +313,16 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <MobileMetricStrip
+        items={metrics.map((metric) => ({
+          label: metric.label,
+          value: metric.value,
+          detail: metric.detail,
+          tone: metric.tone === "pink" ? "pink" : metric.tone,
+        }))}
+      />
+
+      <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
           <MetricCard
             key={metric.label}
@@ -419,7 +430,39 @@ export default async function DashboardPage() {
       </section>
 
       <section id="tools" className="grid scroll-mt-28 gap-4">
-        <DataPanel>
+        <MobileHorizontalRail
+          title="Tools"
+          description="Fast routes into the main workflows."
+          action={
+            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
+              <Link href="/dashboard#tools" prefetch={false}>All</Link>
+            </Button>
+          }
+        >
+          {routeCards.slice(0, 8).map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                prefetch={false}
+                className="apple-panel-strong block min-h-36 p-4"
+              >
+                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
+                  <Icon className="size-5" />
+                </div>
+                <p className="font-semibold tracking-normal">{card.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{card.description}</p>
+                <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {card.metric}
+                </p>
+              </Link>
+            );
+          })}
+        </MobileHorizontalRail>
+
+        <DataPanel className="hidden sm:block">
           <SectionHeader
             title="Quick routes"
             description="Direct links into the working parts of the app."
@@ -432,7 +475,35 @@ export default async function DashboardPage() {
 
       <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         {pinnedDashboardSections.has("bag") ? (
-        <DataPanel>
+        <>
+        <MobileHorizontalRail
+          title="Bag snapshot"
+          description="Stock numbers and confidence by club."
+          action={
+            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
+              <Link href="/bag" prefetch={false}>View all</Link>
+            </Button>
+          }
+        >
+          {data.bagPreview.map((club) => (
+            <Link
+              key={club.id}
+              href={`/bag/${club.id}`}
+              prefetch={false}
+              className="apple-panel-strong block p-4"
+            >
+              <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
+              <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+                <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
+              </div>
+              <Progress value={club.stock.confidenceScore} className="mt-4" />
+            </Link>
+          ))}
+        </MobileHorizontalRail>
+
+        <DataPanel className="hidden sm:block">
           <SectionHeader
             title="Bag snapshot"
             description="Active clubs with current stock-yardage confidence."
@@ -489,6 +560,7 @@ export default async function DashboardPage() {
             ) : null}
           </CardContent>
         </DataPanel>
+        </>
         ) : null}
 
         {pinnedDashboardSections.has("rounds") ? (

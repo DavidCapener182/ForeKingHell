@@ -20,9 +20,11 @@ import {
   DataPanel,
   DataTableFrame,
   MetricCard,
+  MobileAccordionSection,
   MobileFilterSheet,
   MobileDataCard,
   MobileDataList,
+  MobileHorizontalRail,
   MobileSectionChips,
   PageHeader,
   PageShell,
@@ -30,6 +32,7 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
 import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -203,6 +206,37 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         />
       ) : null}
 
+      {data.shots.length > 0 ? (
+        <MobileMetricStrip
+          items={[
+            {
+              label: "Selected",
+              value: integerFormatter.format(data.shots.length),
+              detail: `${integerFormatter.format(data.comparisonShots.length)} comparison`,
+              tone: "green",
+            },
+            {
+              label: "Straight",
+              value: formatRate(data.overall.today.straightRate),
+              detail: deltaText(data.overall.straightRateDelta, "pp", true),
+              tone: verdictTone(data.overall.verdict),
+            },
+            {
+              label: "Carry",
+              value: formatYards(data.overall.today.carryAverageYd),
+              detail: deltaText(data.overall.carryDeltaYd, "yd", true),
+              tone: deltaTone(data.overall.carryDeltaYd, "higher"),
+            },
+            {
+              label: "Offline",
+              value: formatYards(data.overall.today.offlineAverageYd),
+              detail: offlineDeltaText(data.overall.offlineDeltaYd),
+              tone: deltaTone(data.overall.offlineDeltaYd, "lower"),
+            },
+          ]}
+        />
+      ) : null}
+
       <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
         <MobileFilterSheet label="Session scope" activeCount={activeFilterChips.length}>
           <form className="grid gap-3">
@@ -247,7 +281,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <EmptyToday />
       ) : (
         <>
-          <section id="focus" className="grid scroll-mt-28 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section id="focus" className="hidden scroll-mt-28 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Verdict"
               value={data.overall.title}
@@ -296,7 +330,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               <CardContent>
                 <DataTableFrame
                   mobile={
-                    <MobileDataList>
+                    <MobileHorizontalRail title="Club changes" description="Today against the latest previous shots.">
                       {data.clubComparisons.map((comparison) => (
                         <MobileDataCard
                           key={comparison.clubType}
@@ -307,13 +341,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                           <DataPair label="Carry" value={formatDeltaPair(comparison.today.carryAverageYd, comparison.carryDeltaYd, "yd", true)} />
                           <DataPair label="Offline" value={formatDeltaPair(comparison.today.offlineAverageYd, comparison.offlineDeltaYd, "yd", false)} />
                           <DataPair label="Straight" value={formatDeltaPair(comparison.today.straightRate, comparison.straightRateDelta, "pp", true)} />
-                          <DataPair label="Playable" value={formatDeltaPair(comparison.today.playableRate, comparison.playableRateDelta, "pp", true)} />
                           <p className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm leading-5 text-muted-foreground">
                             {comparison.summary}
                           </p>
                         </MobileDataCard>
                       ))}
-                    </MobileDataList>
+                    </MobileHorizontalRail>
                   }
                 >
                   <Table className="min-w-[980px]">
@@ -353,7 +386,29 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             </DataPanel>
           </section>
 
-          <DataPanel id="shots" className="scroll-mt-28">
+          <MobileAccordionSection
+            title="Today’s shot list"
+            count={integerFormatter.format(data.shots.length)}
+            description="Open for raw selected shots."
+            className="scroll-mt-28"
+          >
+            <MobileDataList>
+              {data.shots.map((shot) => (
+                <MobileDataCard
+                  key={shot.id}
+                  title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
+                  subtitle={shot.fileName ?? shot.courseName ?? "Session"}
+                  action={<Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>}
+                >
+                  <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
+                  <DataPair label="Total" value={formatYards(shot.totalYd)} />
+                  <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
+                </MobileDataCard>
+              ))}
+            </MobileDataList>
+          </MobileAccordionSection>
+
+          <DataPanel id="shots" className="hidden scroll-mt-28 sm:block">
             <SectionHeader
               title="Today’s shot list"
               description="Only the selected day, session, and club."

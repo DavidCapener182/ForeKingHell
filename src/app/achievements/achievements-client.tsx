@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { MobileFilterSheet } from "@/components/premium";
 import {
   Select,
   SelectContent,
@@ -157,6 +158,14 @@ const calendarCellStyle = {
 } as const;
 const defaultStatusFilter = "all";
 const defaultHideCompleted = true;
+type MobileAchievementTab = "next" | "cabinet" | "catalogue" | "calendar";
+
+const mobileAchievementTabs: Array<{ id: MobileAchievementTab; label: string }> = [
+  { id: "next", label: "Next" },
+  { id: "cabinet", label: "Cabinet" },
+  { id: "catalogue", label: "Catalogue" },
+  { id: "calendar", label: "Calendar" },
+];
 
 export function AchievementsClient({ data, focusAchievementId }: Props) {
   const router = useRouter();
@@ -168,6 +177,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
   const [tierFilter, setTierFilter] = useState("all");
   const [hideCompleted, setHideCompleted] = useState(defaultHideCompleted);
   const [query, setQuery] = useState("");
+  const [mobileTab, setMobileTab] = useState<MobileAchievementTab>("next");
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
   const focusedAchievementId = focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(initialCalendarDay);
@@ -324,6 +334,10 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
       : (tierOptions.find((item) => item.id === tierFilter)?.label ?? "All tiers");
   const shownAchievements =
     !query.trim() && filteredAchievements.length > 360 ? filteredAchievements.slice(0, 360) : filteredAchievements;
+  const nextUnlock = data.achievements
+    .filter((achievement) => !achievement.unlocked)
+    .sort((left, right) => (right.progressPercent ?? -1) - (left.progressPercent ?? -1))[0] ?? null;
+  const mobileShownAchievements = shownAchievements.slice(0, 12);
 
   function clearFilters() {
     setDismissedFocusId(focusAchievementId);
@@ -337,7 +351,13 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
 
   return (
     <div className="space-y-5">
-      <Card className="premium-card">
+      <MobileAchievementTabs tab={mobileTab} onTabChange={setMobileTab} />
+
+      <section className={mobileTab === "next" ? "space-y-4" : "hidden sm:block"}>
+        <NextUnlockCard achievement={nextUnlock} totalXp={data.totalXp} unlockedCount={data.unlockedCount} totalCount={data.totalCount} />
+      </section>
+
+      <Card className={cn("premium-card", mobileTab === "cabinet" ? "flex" : "hidden sm:flex")}>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -378,7 +398,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         </CardContent>
       </Card>
 
-      <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
+      <section className={cn("grid gap-4 lg:grid-cols-[0.85fr_1.15fr]", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
         <Card className="premium-card border-zinc-900 bg-[#111827] text-white">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
@@ -434,22 +454,24 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         </Card>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-4">
+      <section className={cn("grid gap-3 md:grid-cols-4", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
         <Metric label="Catalog" value={data.totalCount.toLocaleString("en-GB")} />
         <Metric label="Rapsodo + round" value="Enabled" />
         <Metric label="Hidden found" value={data.achievements.filter((achievement) => achievement.hidden && achievement.unlocked).length.toString()} />
         <Metric label="Completion" value={`${Math.round((data.unlockedCount / Math.max(1, data.totalCount)) * 100)}%`} />
       </section>
 
-      <AchievementUnlockCalendar
-        calendar={unlockCalendar}
-        monthKey={calendarMonth}
-        selectedDay={effectiveCalendarDay}
-        onMonthChange={setCalendarMonth}
-        onSelectedDayChange={setSelectedCalendarDay}
-      />
+      <div className={mobileTab === "calendar" ? "block" : "hidden sm:block"}>
+        <AchievementUnlockCalendar
+          calendar={unlockCalendar}
+          monthKey={calendarMonth}
+          selectedDay={effectiveCalendarDay}
+          onMonthChange={setCalendarMonth}
+          onSelectedDayChange={setSelectedCalendarDay}
+        />
+      </div>
 
-      <Card className="premium-card">
+      <Card className={cn("premium-card", mobileTab === "catalogue" ? "flex" : "hidden sm:flex")}>
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -459,7 +481,34 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               </CardDescription>
             </div>
           </div>
-          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(145px,190px)_minmax(145px,190px)_minmax(145px,190px)_auto]">
+          <div className="sm:hidden">
+            <MobileFilterSheet label="Filter catalogue" activeCount={isFiltered ? 1 : 0}>
+              <div className="grid gap-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search achievements"
+                    className="pl-9"
+                  />
+                </div>
+                <AchievementSelect label="Achievement type" value={typeFilter} onValueChange={setTypeFilter} options={typeOptions} allLabel="All types" />
+                <AchievementSelect label="Club" value={clubFilter} onValueChange={setClubFilter} options={clubOptions} allLabel="All clubs" />
+                <AchievementSelect label="Tier" value={tierFilter} onValueChange={setTierFilter} options={tierOptions} allLabel="All tiers" />
+                <Button
+                  type="button"
+                  variant={hideCompleted ? "default" : "outline"}
+                  className="h-10 justify-center rounded-lg"
+                  onClick={() => setHideCompleted((current) => !current)}
+                >
+                  <EyeOff className="size-4" />
+                  Hide completed
+                </Button>
+              </div>
+            </MobileFilterSheet>
+          </div>
+          <div className="hidden gap-3 sm:grid lg:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(145px,190px)_minmax(145px,190px)_minmax(145px,190px)_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -560,7 +609,16 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             </div>
           ) : null}
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:hidden">
+            {mobileShownAchievements.map((achievement) => (
+              <AchievementCard
+                key={achievement.id}
+                achievement={achievement}
+                focused={achievement.id === focusedAchievementId}
+              />
+            ))}
+          </div>
+          <div className="hidden gap-3 sm:grid md:grid-cols-2 xl:grid-cols-3">
             {shownAchievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}
@@ -569,6 +627,12 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               />
             ))}
           </div>
+
+          {shownAchievements.length > mobileShownAchievements.length ? (
+            <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground sm:hidden">
+              Showing 12 first. Use filters to narrow the catalogue.
+            </p>
+          ) : null}
 
           {shownAchievements.length === 0 ? (
             <div className="apple-panel p-8 text-center text-sm text-muted-foreground">
@@ -721,6 +785,110 @@ function AchievementUnlockCalendar({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function MobileAchievementTabs({
+  tab,
+  onTabChange,
+}: {
+  tab: MobileAchievementTab;
+  onTabChange: (tab: MobileAchievementTab) => void;
+}) {
+  return (
+    <nav aria-label="Achievement views" className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden">
+      {mobileAchievementTabs.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onTabChange(item.id)}
+          className={cn(
+            "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
+            item.id === tab
+              ? "border-slate-950 bg-slate-950 text-white"
+              : "border-slate-200 bg-white/90 text-slate-700",
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function NextUnlockCard({
+  achievement,
+  totalXp,
+  unlockedCount,
+  totalCount,
+}: {
+  achievement: AchievementView | null;
+  totalXp: number;
+  unlockedCount: number;
+  totalCount: number;
+}) {
+  return (
+    <Card className="premium-card sm:hidden">
+      <CardHeader>
+        <CardDescription>Next unlock</CardDescription>
+        <CardTitle className="text-2xl tracking-normal">
+          {achievement ? achievement.displayName : "Start earning XP"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {achievement ? (
+          <>
+            <p className="text-sm leading-6 text-muted-foreground">{achievement.displayDescription}</p>
+            {achievement.progressPercent !== null ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{achievement.progressLabel ?? "Progress"}</span>
+                  <span>{achievement.progressPercent}%</span>
+                </div>
+                <Progress value={achievement.progressPercent} />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm leading-6 text-muted-foreground">Import sessions or save rounds to unlock the first badges.</p>
+        )}
+        <div className="grid grid-cols-3 gap-2">
+          <Metric label="XP" value={totalXp.toLocaleString("en-GB")} />
+          <Metric label="Unlocked" value={`${unlockedCount}/${totalCount}`} />
+          <Metric label="Reward" value={achievement ? `${achievement.xp} XP` : "--"} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AchievementSelect({
+  label,
+  value,
+  onValueChange,
+  options,
+  allLabel,
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  options: Array<{ id: string; label: string; total: number; unlocked: number }>;
+  allLabel: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-10 w-full rounded-lg" aria-label={label}>
+        <span className="truncate">{value === "all" ? allLabel : options.find((item) => item.id === value)?.label ?? allLabel}</span>
+      </SelectTrigger>
+      <SelectContent position="popper" align="start" className="z-[80]">
+        <SelectItem value="all">{allLabel}</SelectItem>
+        {options.map((item) => (
+          <SelectItem key={item.id} value={item.id}>
+            {item.label} ({item.unlocked}/{item.total})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

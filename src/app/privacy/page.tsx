@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Database, LockKeyhole, MessageCircle, Share2, ShieldCheck } from "lucide-react";
 
-import { PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import { MobileAccordionSection, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -49,7 +49,27 @@ export default function PrivacyPage() {
         description="How the app stores golf data, uses AI context, records analytics events, and lets you export or delete account data."
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <Card className="premium-card sm:hidden">
+        <CardContent className="space-y-3 p-4">
+          <SectionHeader
+            title="Privacy summary"
+            description="Your golf records are scoped to your account, sharing is role-based, and export/delete controls live in settings."
+          />
+          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+            <Link href="/settings" prefetch={false}>Data controls</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 sm:hidden">
+        {privacySections.map((section) => (
+          <MobileAccordionSection key={section.title} title={section.title}>
+            <p className="text-sm leading-6 text-muted-foreground">{section.body}</p>
+          </MobileAccordionSection>
+        ))}
+      </div>
+
+      <div className="hidden gap-4 sm:grid md:grid-cols-2">
         {privacySections.map((section) => {
           const Icon = section.icon;
 

@@ -26,6 +26,7 @@ import {
   DataPair,
   DataPanel,
   DataTableFrame,
+  MobileAccordionSection,
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
@@ -226,13 +227,15 @@ export default async function BagPage() {
                     </div>
                   </div>
 
-                  <MiniDispersion
-                    shots={club.shots}
-                    accent={club.accent}
-                    carryMedianYd={club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd}
-                  />
+                  <div className="hidden sm:block">
+                    <MiniDispersion
+                      shots={club.shots}
+                      accent={club.accent}
+                      carryMedianYd={club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd}
+                    />
+                  </div>
 
-                  <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
                     <Metric
                       label={club.isShortGameTouch ? "Touch sample" : "Sample"}
                       value={(club.isShortGameTouch ? club.touch.sampleSize : club.stock.sampleSize).toString()}
@@ -518,27 +521,27 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
       <CardContent className="space-y-5">
         {targetGapYd !== null ? <GappingRecommendations rows={rows} targetGapYd={targetGapYd} /> : null}
         <CarryGappingBars rows={rows} />
-        <DataTableFrame
-          mobile={
-            <MobileDataList>
-              {rows.map((row) => (
-                <MobileDataCard
-                  key={row.id}
-                  href={`/bag/${row.id}`}
-                  title={formatClubType(row.clubType)}
-                  subtitle={row.brandModel}
-                  action={<GapBadge gapYd={row.gapToNextYd} />}
-                >
-                  <DataPair label="Carry" value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`} />
-                  <DataPair label="Play" value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`} />
-                  <DataPair label="Target" value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`} />
-                  <DataPair label="Work on" value={<WorkOnBadge workOnYd={row.workOnYd} />} />
-                  <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
-                </MobileDataCard>
-              ))}
-            </MobileDataList>
-          }
-        >
+        <MobileAccordionSection title="Full gapping table" count={`${rows.length} clubs`}>
+          <MobileDataList>
+            {rows.map((row) => (
+              <MobileDataCard
+                key={row.id}
+                href={`/bag/${row.id}`}
+                title={formatClubType(row.clubType)}
+                subtitle={row.brandModel}
+                action={<GapBadge gapYd={row.gapToNextYd} />}
+              >
+                <DataPair label="Carry" value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`} />
+                <DataPair label="Play" value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`} />
+                <DataPair label="Target" value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`} />
+                <DataPair label="Work on" value={<WorkOnBadge workOnYd={row.workOnYd} />} />
+                <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
+              </MobileDataCard>
+            ))}
+          </MobileDataList>
+        </MobileAccordionSection>
+        <div className="hidden sm:block">
+        <DataTableFrame>
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
@@ -602,6 +605,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
             </TableBody>
           </Table>
         </DataTableFrame>
+        </div>
       </CardContent>
     </Card>
   );

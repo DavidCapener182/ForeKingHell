@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
+import { MobileCompactPageHeader } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import {
   clubAccent,
   formatClubModelName,
@@ -97,7 +99,50 @@ export function ClubDetailClient({
 
   return (
     <>
-      <header className="premium-hero p-5 sm:p-7">
+      <MobileCompactPageHeader
+        eyebrow={<Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>Club analysis</Badge>}
+        title={clubModelName}
+        description={clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
+        metricLabel={isShortGameTouch ? "Touch median" : "Stock carry"}
+        metricValue={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
+        metricDetail={`${selectedShots.length} in ${selectedRange.compactLabel}`}
+        visual={<ClubArtwork clubType={club.type} alt="" className="h-full w-full rounded-xl" sizes="64px" />}
+        action={
+          <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+            <Link href={`/bag/${club.id}/analytics`} prefetch={false}>Coach</Link>
+          </Button>
+        }
+      />
+
+      <div className="sm:hidden">
+        <RangeToggle value={shotRange} onChange={setShotRange} />
+      </div>
+
+      <MobileMetricStrip
+        items={[
+          {
+            label: isShortGameTouch ? "Touch" : "Carry",
+            value: formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd"),
+            detail: "Stock",
+            tone: "green",
+          },
+          {
+            label: "Play",
+            value: formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd"),
+            detail: "Number",
+            tone: "sky",
+          },
+          { label: "Shots", value: shotCount, detail: "Range", tone: "amber" },
+          {
+            label: isShortGameTouch ? "Under 30" : "Trust",
+            value: isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`,
+            detail: "Confidence",
+            tone: "pink",
+          },
+        ]}
+      />
+
+      <header className="premium-hero hidden p-5 sm:block sm:p-7">
         <div className="space-y-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>

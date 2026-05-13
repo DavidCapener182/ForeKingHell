@@ -30,6 +30,7 @@ import { ShotPreview } from "@/app/import/shot-preview";
 import type { HoleReviewState, ScorecardExtractState, SessionType } from "@/app/import/import-types";
 import { UploadDropzone } from "@/app/import/upload-dropzone";
 import { useImportFiles } from "@/app/import/use-import-files";
+import { MobileCompactPageHeader, StickyMobileAction } from "@/components/premium";
 import {
   Card,
   CardContent,
@@ -54,6 +55,8 @@ import { type DistanceUnit, type RapsodoColumnMapping, parseRapsodoCsv } from "@
 import type { LongestShotNotification, SaveRapsodoImportInput } from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { cn } from "@/lib/utils";
 
 type SaveState =
   | { status: "idle" }
@@ -65,6 +68,8 @@ type SaveState =
       achievementUnlockNotifications: AchievementUnlockNotification[];
     }
   | { status: "error"; message: string };
+
+type MobileImportStep = "type" | "upload" | "columns" | "course" | "preview" | "save";
 
 const TPC_SAWGRASS_PLAYERS_2026_SCORECARD = [
   "1,4,360",
@@ -113,6 +118,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
+  const [mobileStep, setMobileStep] = useState<MobileImportStep>("type");
   const [scorecardExtractState, setScorecardExtractState] = useState<ScorecardExtractState>({
     status: "idle",
   });
@@ -120,6 +126,22 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   const [isPending, startTransition] = useTransition();
   const [isOnline, setIsOnline] = useState(true);
   const isCourseUpload = sessionType === "simulated_course";
+  const mobileImportSteps = useMemo(
+    () =>
+      [
+        { id: "type" as const, label: "Type" },
+        { id: "upload" as const, label: "Upload" },
+        { id: "columns" as const, label: "Columns" },
+        ...(isCourseUpload ? [{ id: "course" as const, label: "Course" }] : []),
+        { id: "preview" as const, label: "Preview" },
+        { id: "save" as const, label: "Save" },
+      ],
+    [isCourseUpload],
+  );
+  const visibleMobileStep = mobileImportSteps.some((step) => step.id === mobileStep)
+    ? mobileStep
+    : "preview";
+  const activeMobileStepIndex = mobileImportSteps.findIndex((step) => step.id === visibleMobileStep);
 
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => setIsHydrated(true), 0);
@@ -539,7 +561,30 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           </Badge>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
+        <MobileCompactPageHeader
+          title="Import launch monitor shots"
+          description="Upload CSVs, confirm columns, preview rows, then save."
+          metricLabel="Shots"
+          metricValue={aggregate.shotCount.toString()}
+          metricDetail={uploadedFiles.length > 0 ? `${uploadedFiles.length} file${uploadedFiles.length === 1 ? "" : "s"}` : "No files"}
+          action={
+            <Button type="button" size="sm" disabled={!canSave} onClick={saveImportBatch} className="rounded-xl bg-[#111827] text-white">
+              <Upload className="size-4" />
+              Save
+            </Button>
+          }
+        />
+
+        <MobileMetricStrip
+          items={[
+            { label: "Files", value: aggregate.fileCount.toString(), detail: "Selected", tone: "green" },
+            { label: "Rows", value: aggregate.rowCount.toString(), detail: "Parsed", tone: "sky" },
+            { label: "Shots", value: aggregate.shotCount.toString(), detail: "Preview", tone: "amber" },
+            { label: "Warnings", value: aggregate.warnings.length.toString(), detail: "Review", tone: aggregate.warnings.length > 0 ? "pink" : "slate" },
+          ]}
+        />
+
+        <header className="premium-hero hidden p-5 sm:block sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl space-y-2">
               <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
@@ -572,14 +617,18 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
         </header>
 
 
-        <ImportStepper
-          isCourseUpload={isCourseUpload}
-          hasFiles={uploadedFiles.length > 0}
-          hasShots={aggregate.shotCount > 0}
-          hasCourseMapping={!isCourseUpload || (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)}
-          hasWarnings={aggregate.warnings.length > 0}
-          canSave={canSave}
-        />
+        <MobileImportStepper steps={mobileImportSteps} step={visibleMobileStep} onStepChange={setMobileStep} />
+
+        <div className="hidden sm:block">
+          <ImportStepper
+            isCourseUpload={isCourseUpload}
+            hasFiles={uploadedFiles.length > 0}
+            hasShots={aggregate.shotCount > 0}
+            hasCourseMapping={!isCourseUpload || (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)}
+            hasWarnings={aggregate.warnings.length > 0}
+            canSave={canSave}
+          />
+        </div>
 
         {saveState.status !== "idle" ? (
           <Alert variant={saveState.status === "error" ? "destructive" : "default"}>
@@ -703,57 +752,70 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           </Alert>
         ) : null}
         <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          <Card className="premium-card">
+          <Card
+            className={cn(
+              "premium-card",
+              ["type", "upload", "columns", "course"].includes(visibleMobileStep) ? "flex" : "hidden sm:flex",
+            )}
+          >
             <CardHeader>
-              <CardTitle>Step 1: Upload CSV</CardTitle>
+              <CardTitle>{mobileImportCardTitle(visibleMobileStep)}</CardTitle>
               <CardDescription>Drag in one or more Rapsodo files. Obvious parse issues appear before save.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <UploadDropzone
-                fileInputRef={fileInputRef}
-                isDragging={isDragging}
-                readProgress={readProgress}
-                files={parsedFiles}
-                setIsDragging={setIsDragging}
-                onFilesSelected={readSelectedFiles}
-                onClear={clearBatch}
-                onRemoveFile={removeFile}
-              />
+              <div className={visibleMobileStep === "upload" ? "block" : "hidden sm:block"}>
+                <UploadDropzone
+                  fileInputRef={fileInputRef}
+                  isDragging={isDragging}
+                  readProgress={readProgress}
+                  files={parsedFiles}
+                  setIsDragging={setIsDragging}
+                  onFilesSelected={readSelectedFiles}
+                  onClear={clearBatch}
+                  onRemoveFile={removeFile}
+                />
+              </div>
 
-              <SessionSettings
-                sessionDate={sessionDate}
-                sessionType={sessionType}
-                distanceUnit={distanceUnit}
-                detectedUnits={detectedUnits}
-                onSessionDateChange={setSessionDate}
-                onSessionTypeChange={setSessionType}
-                onDistanceUnitChange={setDistanceUnit}
-              />
+              <div className={visibleMobileStep === "type" ? "block" : "hidden sm:block"}>
+                <SessionSettings
+                  sessionDate={sessionDate}
+                  sessionType={sessionType}
+                  distanceUnit={distanceUnit}
+                  detectedUnits={detectedUnits}
+                  onSessionDateChange={setSessionDate}
+                  onSessionTypeChange={setSessionType}
+                  onDistanceUnitChange={setDistanceUnit}
+                />
+              </div>
 
-              <ColumnMappingPanel
-                files={uploadedFiles}
-                columnMapping={columnMapping}
-                onColumnMappingChange={setColumnMapping}
-              />
+              <div className={visibleMobileStep === "columns" ? "block" : "hidden sm:block"}>
+                <ColumnMappingPanel
+                  files={uploadedFiles}
+                  columnMapping={columnMapping}
+                  onColumnMappingChange={setColumnMapping}
+                />
+              </div>
 
               {isCourseUpload ? (
-                <ScorecardExtractionPanel
-                  scorecardImageInputRef={scorecardImageInputRef}
-                  scorecardExtractState={scorecardExtractState}
-                  courseName={courseName}
-                  scorecardText={scorecardText}
-                  holeCount={scorecard.holes.length}
-                  totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
-                  onApplySawgrassPreset={applySawgrassPreset}
-                  onExtractScorecardImage={extractScorecardImage}
-                  onCourseNameChange={setCourseName}
-                  onScorecardTextChange={setScorecardText}
-                />
+                <div className={visibleMobileStep === "course" ? "block" : "hidden sm:block"}>
+                  <ScorecardExtractionPanel
+                    scorecardImageInputRef={scorecardImageInputRef}
+                    scorecardExtractState={scorecardExtractState}
+                    courseName={courseName}
+                    scorecardText={scorecardText}
+                    holeCount={scorecard.holes.length}
+                    totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
+                    onApplySawgrassPreset={applySawgrassPreset}
+                    onExtractScorecardImage={extractScorecardImage}
+                    onCourseNameChange={setCourseName}
+                    onScorecardTextChange={setScorecardText}
+                  />
+                </div>
               ) : null}
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="hidden gap-4 sm:grid sm:grid-cols-2">
             <MetricCard
               label="Files"
               value={aggregate.fileCount.toString()}
@@ -774,7 +836,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
         ) : null}
 
         {isCourseUpload ? (
-          <Card className="premium-card">
+          <Card className={cn("premium-card", visibleMobileStep === "course" ? "flex" : "hidden sm:flex")}>
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -799,21 +861,91 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           </Card>
         ) : null}
 
-        <SaveChecklistCard
-          hasFiles={uploadedFiles.length > 0}
-          hasShots={aggregate.shotCount > 0}
-          hasCompleteCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
-          hasNoWarnings={aggregate.warnings.length === 0}
-          isOnline={isOnline}
-          isPending={isPending}
-          canSave={canSave}
-          onSave={saveImportBatch}
-        />
+        <div className={visibleMobileStep === "save" ? "block" : "hidden sm:block"}>
+          <SaveChecklistCard
+            hasFiles={uploadedFiles.length > 0}
+            hasShots={aggregate.shotCount > 0}
+            hasCompleteCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
+            hasNoWarnings={aggregate.warnings.length === 0}
+            isOnline={isOnline}
+            isPending={isPending}
+            canSave={canSave}
+            onSave={saveImportBatch}
+          />
+        </div>
 
-        <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
+        <div className={visibleMobileStep === "preview" ? "block" : "hidden sm:block"}>
+          <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
+        </div>
+
+        <StickyMobileAction>
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl"
+              disabled={activeMobileStepIndex <= 0}
+              onClick={() => setMobileStep(mobileImportSteps[Math.max(0, activeMobileStepIndex - 1)].id)}
+            >
+              Back
+            </Button>
+            {visibleMobileStep === "save" ? (
+              <Button type="button" disabled={!canSave} onClick={saveImportBatch} className="rounded-xl bg-[#111827] text-white">
+                <Upload className="size-4" />
+                {isPending ? "Saving..." : "Save batch"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="rounded-xl bg-[#111827] text-white"
+                onClick={() => setMobileStep(mobileImportSteps[Math.min(mobileImportSteps.length - 1, activeMobileStepIndex + 1)].id)}
+              >
+                Next
+              </Button>
+            )}
+          </div>
+        </StickyMobileAction>
       </div>
     </section>
   );
+}
+
+function MobileImportStepper({
+  steps,
+  step,
+  onStepChange,
+}: {
+  steps: Array<{ id: MobileImportStep; label: string }>;
+  step: MobileImportStep;
+  onStepChange: (step: MobileImportStep) => void;
+}) {
+  return (
+    <nav aria-label="Import steps" className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden">
+      {steps.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onStepChange(item.id)}
+          className={cn(
+            "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
+            item.id === step
+              ? "border-slate-950 bg-slate-950 text-white"
+              : "border-slate-200 bg-white/90 text-slate-700",
+          )}
+        >
+          {item.label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function mobileImportCardTitle(step: MobileImportStep) {
+  if (step === "type") return "Step 1: Type";
+  if (step === "upload") return "Step 2: Upload CSV";
+  if (step === "columns") return "Step 3: Columns";
+  if (step === "course") return "Step 4: Course";
+  return "Import setup";
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {

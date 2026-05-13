@@ -8,6 +8,7 @@ import {
   DataPanel,
   DataPair,
   DataTableFrame,
+  MobileAccordionSection,
   MobileDataCard,
   MobileDataList,
   PageHeader,
@@ -103,7 +104,33 @@ async function getImportLibrary() {
 
 function ImportFileLibrary({ files }: { files: Awaited<ReturnType<typeof getImportLibrary>>["files"] }) {
   return (
-    <DataPanel>
+    <>
+    <MobileAccordionSection
+      title="File library"
+      description="Recent imports and duplicate status."
+      count={`${integerFormatter.format(files.length)} files`}
+    >
+      <MobileDataList empty={<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No import files yet.</p>}>
+        {files.slice(0, 8).map((file) => (
+          <MobileDataCard
+            key={file.id}
+            title={file.fileName}
+            subtitle={`${formatDate(file.createdAt)} - ${file.parseVersion}`}
+            action={<StatusBadge status={file.status} />}
+          >
+            <DataPair label="Rows" value={file.sessionId ? "Session linked" : "No session"} />
+            <DataPair label="Hash" value={file.rawCsvHash.slice(0, 10)} />
+            {file.sessionId ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/rounds/${file.sessionId}`}>Open session</Link>
+              </Button>
+            ) : null}
+          </MobileDataCard>
+        ))}
+      </MobileDataList>
+    </MobileAccordionSection>
+
+    <DataPanel className="hidden sm:flex">
       <SectionHeader
         title="File library"
         description="Recent imported files, duplicate status, parse version, and linked sessions."
@@ -193,6 +220,7 @@ function ImportFileLibrary({ files }: { files: Awaited<ReturnType<typeof getImpo
         </DataTableFrame>
       </CardContent>
     </DataPanel>
+    </>
   );
 }
 

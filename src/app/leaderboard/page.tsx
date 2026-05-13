@@ -3,9 +3,13 @@ import { ArrowLeft, Medal, Target, Trophy, Users } from "lucide-react";
 import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
 
 import {
+  DataPair,
   DataPanel,
   DataTableFrame,
   MetricCard,
+  MobileBentoSummary,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -56,7 +60,36 @@ export default async function LeaderboardPage() {
         ]}
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <MobileBentoSummary
+        items={[
+          {
+            label: "Podium",
+            value: data.players[0]?.displayName ?? "--",
+            detail: data.players[0] ? `${integerFormatter.format(data.players[0].totalXp)} total XP` : "No visible players yet.",
+            tone: "amber",
+          },
+          {
+            label: "You",
+            value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Visible",
+            detail: "Private account scope",
+            tone: "green",
+          },
+          {
+            label: "Monthly shots",
+            value: integerFormatter.format(data.monthlyShotTotal),
+            detail: formatMonth(data.monthStart),
+            tone: "sky",
+          },
+          {
+            label: "Rounds",
+            value: integerFormatter.format(data.monthlyRoundTotal),
+            detail: "This month",
+            tone: "slate",
+          },
+        ]}
+      />
+
+      <section className="hidden gap-4 sm:grid md:grid-cols-3">
         <MetricCard
           label="Practice challenge"
           value={data.challengeWinners.practice?.displayName ?? "--"}
@@ -87,7 +120,28 @@ export default async function LeaderboardPage() {
           action={<Badge variant="outline">{formatMonth(data.monthStart)}</Badge>}
         />
         <CardContent>
-          <DataTableFrame>
+          <DataTableFrame
+            mobile={
+              <MobileDataList>
+                {data.players.map((player, index) => (
+                  <MobileDataCard
+                    key={player.userId}
+                    title={`#${index + 1} ${player.displayName}`}
+                    subtitle={player.isCurrentUser ? "You" : player.relationship}
+                    action={<Badge variant={index === 0 ? "default" : "outline"}>{integerFormatter.format(player.totalXp)} XP</Badge>}
+                  >
+                    <DataPair label="Monthly XP" value={integerFormatter.format(player.monthlyXp)} />
+                    <DataPair label="Monthly shots" value={integerFormatter.format(player.monthlyShots)} />
+                    <DataPair label="Best round" value={player.bestRoundScore ?? "--"} />
+                    <DataPair
+                      label="Longest drive"
+                      value={player.longestDriveYd ? `${numberFormatter.format(player.longestDriveYd)} yd` : "--"}
+                    />
+                  </MobileDataCard>
+                ))}
+              </MobileDataList>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>

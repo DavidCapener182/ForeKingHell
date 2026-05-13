@@ -15,6 +15,8 @@ import {
   DataPair,
   DataPanel,
   DataTableFrame,
+  MobileAccordionSection,
+  MobileBentoSummary,
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
@@ -137,6 +139,35 @@ export default async function HandicapPage() {
         ]}
       />
 
+      <MobileBentoSummary
+        items={[
+          {
+            label: "Playing estimate",
+            value: formatHandicapValue(playingHandicap.value),
+            detail: playingHandicap.methodLabel,
+            tone: "amber",
+          },
+          {
+            label: "Best form",
+            value: formatHandicapValue(realHandicap.value),
+            detail: `${realRounds.length} real`,
+            tone: "green",
+          },
+          {
+            label: "Trend",
+            value: trendSentence(combinedHandicap),
+            detail: "Combined",
+            tone: combinedHandicap.trend.direction === "down" ? "green" : combinedHandicap.trend.direction === "up" ? "amber" : "slate",
+          },
+          {
+            label: "Ratings",
+            value: missingRatingRounds.length.toString(),
+            detail: "Need data",
+            tone: missingRatingRounds.length > 0 ? "pink" : "sky",
+          },
+        ]}
+      />
+
       <section id="estimate" className="scroll-mt-28">
         <PlayingHandicapPanel summary={playingHandicap} />
       </section>
@@ -249,43 +280,47 @@ export default async function HandicapPage() {
         </DataPanel>
       ) : null}
 
-      <DataPanel id="rounds" className="scroll-mt-28">
+      <MobileAccordionSection
+        title="Score differential table"
+        description="Newest scorecards and calculation inputs."
+        count={`${rounds.length} rounds`}
+      >
+        <MobileDataList>
+          {rounds.length > 0 ? (
+            rounds.map((round) => (
+              <MobileDataCard
+                key={round.id}
+                href={`/rounds/${round.id}`}
+                title={round.courseName ?? round.fileName ?? "Untitled round"}
+                subtitle={formatDate(round.date)}
+                action={
+                  <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                    {formatSessionType(round.type)}
+                  </Badge>
+                }
+              >
+                <DataPair label="Score" value={round.totalScore ?? "--"} />
+                <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
+                <DataPair label="Slope" value={round.slopeRating ?? "--"} />
+                <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
+                <DataPair label="Shots" value={integerFormatter.format(round.shotCount)} />
+              </MobileDataCard>
+            ))
+          ) : (
+            <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+              No scorecards yet. Import a simulated course or add a real round.
+            </div>
+          )}
+        </MobileDataList>
+      </MobileAccordionSection>
+
+      <DataPanel id="rounds" className="hidden scroll-mt-28 sm:flex">
         <SectionHeader
           title="Score differential table"
           description="Best-form estimates use score differentials, newest scorecards first."
         />
         <CardContent>
-          <DataTableFrame
-            mobile={
-              <MobileDataList>
-                {rounds.length > 0 ? (
-                  rounds.map((round) => (
-                    <MobileDataCard
-                      key={round.id}
-                      href={`/rounds/${round.id}`}
-                      title={round.courseName ?? round.fileName ?? "Untitled round"}
-                      subtitle={formatDate(round.date)}
-                      action={
-                        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
-                          {formatSessionType(round.type)}
-                        </Badge>
-                      }
-                    >
-                      <DataPair label="Score" value={round.totalScore ?? "--"} />
-                      <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
-                      <DataPair label="Slope" value={round.slopeRating ?? "--"} />
-                      <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
-                      <DataPair label="Shots" value={integerFormatter.format(round.shotCount)} />
-                    </MobileDataCard>
-                  ))
-                ) : (
-                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                    No scorecards yet. Import a simulated course or add a real round.
-                  </div>
-                )}
-              </MobileDataList>
-            }
-          >
+          <DataTableFrame>
             <Table>
               <TableHeader>
                 <TableRow>

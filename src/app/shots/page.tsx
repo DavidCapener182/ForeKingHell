@@ -16,6 +16,8 @@ import {
   CompactReadoutGrid,
   DataPair,
   DataTableFrame,
+  MobileAccordionSection,
+  MobileCompactPageHeader,
   MobileFilterSheet,
   MobileDataCard,
   MobileDataList,
@@ -23,6 +25,7 @@ import {
   PageShell,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   Table,
@@ -100,7 +103,30 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </div>
         </div>
 
-        <header className="premium-hero p-5 sm:p-7">
+        <MobileCompactPageHeader
+          eyebrow={<Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Explorer</Badge>}
+          title="Shot database"
+          description="Filter the archive by club, session, date, shot category, or file name."
+          metricLabel="Shots"
+          metricValue={integerFormatter.format(stats.shotCount)}
+          metricDetail={`${integerFormatter.format(totalFilteredShots)} matching`}
+          action={
+            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+              <Link href="#filters">Filter</Link>
+            </Button>
+          }
+        />
+
+        <MobileMetricStrip
+          items={[
+            { label: "Shots", value: integerFormatter.format(stats.shotCount), detail: "Saved", tone: "green" },
+            { label: "Sessions", value: integerFormatter.format(stats.sessionCount), detail: "Imports", tone: "sky" },
+            { label: "Clubs", value: integerFormatter.format(stats.clubCount), detail: "Tracked", tone: "amber" },
+            { label: "Rows", value: integerFormatter.format(stats.rawRowCount), detail: "Raw", tone: "slate" },
+          ]}
+        />
+
+        <header className="premium-hero hidden p-5 sm:block sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl space-y-2">
               <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
@@ -159,7 +185,51 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </CardContent>
         </Card>
 
-        <section id="sessions" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1fr_0.65fr]">
+        <section id="sessions" className="order-3 scroll-mt-28 sm:order-none">
+          <MobileAccordionSection
+            title="Session and raw import detail"
+            description="Import metadata stays available without blocking the shot feed."
+            count={`${integerFormatter.format(sessionSummaries.length)} sessions`}
+          >
+            <MobileDataList>
+              {sessionSummaries.slice(0, 5).length > 0 ? (
+                sessionSummaries.slice(0, 5).map((session) => (
+                  <MobileDataCard
+                    key={session.id}
+                    href={isRoundSession(session.type) ? `/rounds/${session.id}` : undefined}
+                    title={session.fileName ?? "Untitled import"}
+                    subtitle={formatDate(session.date)}
+                    action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
+                  >
+                    <DataPair label="Shots" value={integerFormatter.format(session.shotCount)} />
+                    <DataPair label="Raw rows" value={integerFormatter.format(session.rawRowCount)} />
+                  </MobileDataCard>
+                ))
+              ) : (
+                <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                  No imported sessions yet.
+                </div>
+              )}
+            </MobileDataList>
+            {rowTypes.length > 0 ? (
+              <details className="mt-3 rounded-lg border bg-slate-50/80 px-3 py-2 text-sm">
+                <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
+                  Raw CSV archive
+                </summary>
+                <div className="mt-2 grid gap-2">
+                  {rowTypes.map((rowType) => (
+                    <DataPair
+                      key={rowType.rowType}
+                      label={rowType.rowType}
+                      value={integerFormatter.format(rowType.count)}
+                    />
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </MobileAccordionSection>
+
+          <div className="hidden gap-4 sm:grid lg:grid-cols-[1fr_0.65fr]">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Session imports</CardTitle>
@@ -242,9 +312,10 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             )}
             </CardContent>
           </Card>
+          </div>
         </section>
 
-        <Card id="shots" className="premium-card scroll-mt-28">
+        <Card id="shots" className="premium-card order-2 scroll-mt-28 sm:order-none">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

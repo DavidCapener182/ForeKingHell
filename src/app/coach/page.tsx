@@ -17,6 +17,7 @@ import {
   CompactReadoutGrid,
   DataPanel,
   MetricCard,
+  MobileBentoSummary,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -155,7 +156,36 @@ export default async function CoachPage() {
         </DataPanel>
       ) : (
         <>
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MobileBentoSummary
+            items={[
+              {
+                label: "Do this next",
+                value: topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline",
+                detail: topClub?.drill ?? "Import enough clean shots for a recommendation.",
+                href: topClub ? `/bag/${topClub.clubId}/analytics` : "/import",
+                tone: topClub?.tone ?? "slate",
+              },
+              {
+                label: "Trust",
+                value: `${coach.summary.totals.averageTrust}%`,
+                detail: `${coach.summary.totals.clubs} clubs`,
+                tone: "green",
+              },
+              {
+                label: "Clean shots",
+                value: coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
+                detail: "Tracked",
+                tone: "sky",
+              },
+              {
+                label: "Playable",
+                value: formatRate(coach.summary.totals.averagePlayableRate),
+                detail: "Average",
+                tone: "amber",
+              },
+            ]}
+          />
+          <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Practice priority"
               value={topClub?.clubName ?? "--"}
@@ -263,10 +293,29 @@ export default async function CoachPage() {
               description="For each club: what ForeKingHell thinks the issue is, why, and what to practise."
               action={<Brain className="size-5 text-pink-500" />}
             />
-            <CardContent className="grid gap-3 lg:grid-cols-2">
+            <CardContent>
+              <div className="grid gap-3 sm:hidden">
+                {coach.clubCards.slice(0, 3).map((card) => (
+                  <CoachClubDiagnosis key={card.clubId} card={card} />
+                ))}
+                {coach.clubCards.length > 3 ? (
+                  <details className="rounded-xl border bg-white">
+                    <summary className="min-h-11 cursor-pointer list-none px-3 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                      View all diagnoses
+                    </summary>
+                    <div className="grid gap-3 border-t p-3">
+                      {coach.clubCards.slice(3).map((card) => (
+                        <CoachClubDiagnosis key={card.clubId} card={card} />
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+              <div className="hidden gap-3 sm:grid lg:grid-cols-2">
               {coach.clubCards.map((card) => (
                 <CoachClubDiagnosis key={card.clubId} card={card} />
               ))}
+              </div>
             </CardContent>
           </DataPanel>
         </>
@@ -321,13 +370,14 @@ function CoachPracticePlan({
               Progress is read from today&apos;s uploaded shots. XP unlocks automatically when the data proves it.
             </p>
           </div>
-          <div className="grid gap-3">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:snap-none sm:px-0">
             {drillChallenges.map((challenge) => (
-              <CoachDrillChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                status={drillStatuses[challenge.id] ?? { completed: false, won: false }}
-              />
+              <div key={challenge.id} className="min-w-[82vw] shrink-0 snap-start sm:min-w-0">
+                <CoachDrillChallengeCard
+                  challenge={challenge}
+                  status={drillStatuses[challenge.id] ?? { completed: false, won: false }}
+                />
+              </div>
             ))}
           </div>
         </div>

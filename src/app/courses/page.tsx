@@ -12,11 +12,13 @@ import {
   MobileDataCard,
   MobileDataList,
   MobileFilterSheet,
+  MobileHorizontalRail,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +109,15 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         ]}
       />
 
+      <MobileMetricStrip
+        items={[
+          { label: "Courses", value: integerFormatter.format(data.courses.length), detail: "Library", tone: "green" },
+          { label: "Mapped", value: integerFormatter.format(mappedCourses.length), detail: "Geometry saved", tone: "sky" },
+          { label: "Tee sets", value: integerFormatter.format(data.teeSetCount), detail: "Ratings and yardages", tone: "amber" },
+          { label: "Rounds", value: integerFormatter.format(data.roundCount), detail: "Linked", tone: "slate" },
+        ]}
+      />
+
       <div className="grid gap-3 sm:hidden">
         <MobileFilterSheet label="Search courses" activeCount={query ? 1 : 0}>
           <form className="grid gap-3">
@@ -154,7 +165,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         </CardContent>
       </DataPanel>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="hidden gap-4 sm:grid md:grid-cols-3">
         <MetricCard
           label="Map readiness"
           value={`${mappedCourses.length}/${data.courses.length || 0}`}
@@ -178,6 +189,41 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
           tone="sky"
         />
       </section>
+
+      <MobileHorizontalRail
+        title="Courses"
+        description="Open a course to edit tee sets and holes."
+        action={
+          <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
+            <Link href="/courses/new" prefetch={false}>New</Link>
+          </Button>
+        }
+      >
+        {displayedCourses.slice(0, 6).map((course) => (
+          <Link
+            key={course.id}
+            href={`/courses/${course.id}/holes`}
+            prefetch={false}
+            className="apple-panel-strong block p-4"
+          >
+            <PageArtwork
+              variant="fairway"
+              alt=""
+              crop="random"
+              cropKey={course.id}
+              className="mb-3 block h-24 min-h-0 rounded-xl"
+              sizes="90vw"
+            />
+            <p className="truncate font-semibold tracking-normal">{course.name}</p>
+            <p className="mt-1 truncate text-sm text-muted-foreground">{course.country ?? "Country not set"}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.holeCount} holes</span>
+              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.teeSetCount} tees</span>
+              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.roundCount} rounds</span>
+            </div>
+          </Link>
+        ))}
+      </MobileHorizontalRail>
 
       <DataPanel>
         <SectionHeader

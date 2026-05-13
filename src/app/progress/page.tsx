@@ -155,7 +155,7 @@ export default async function ProgressPage() {
             }
           />
 
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Biggest movement"
               value={mostImproved ? formatClubType(mostImproved.clubType) : "--"}
@@ -257,10 +257,14 @@ export default async function ProgressPage() {
                 description="Latest clean baseline vs first clean baseline. Offline going down is good."
                 action={<LineChart className="size-5 text-sky-500" />}
               />
-              <CardContent className="space-y-3">
-                {summary.clubRows.map((row) => (
-                  <ClubMovementRow key={row.clubId} row={row} />
-                ))}
+              <CardContent>
+                <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:px-0">
+                  {summary.clubRows.map((row) => (
+                    <div key={row.clubId} className="min-w-[82vw] shrink-0 sm:min-w-0">
+                      <ClubMovementRow row={row} />
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </DataPanel>
 

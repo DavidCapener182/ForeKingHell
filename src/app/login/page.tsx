@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <PageShell size="6xl" className="lg:grid lg:place-items-center">
       <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <header className="premium-hero order-2 p-5 text-slate-950 sm:p-8 lg:order-1">
+        <header className="premium-hero order-2 hidden p-5 text-slate-950 sm:p-8 lg:order-1 lg:block">
           <StatusPill tone="green">Secure access</StatusPill>
           <h2 className="mt-4 text-2xl font-semibold tracking-normal text-balance sm:text-4xl lg:text-5xl">
             Sign in to ForeKingHell
@@ -58,8 +58,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             <p className="mt-1 text-sm text-slate-600">
               Use email magic link first, or connect Google/Apple once those providers are enabled in Supabase.
             </p>
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-xs font-medium text-emerald-800 lg:hidden">
+              <ShieldCheck className="size-4" />
+              Private shot data, coach sharing, and PWA sync stay scoped to your account.
+            </div>
           </div>
           <LoginForm error={first(params.error) || null} next={safeNextPath(first(params.next))} />
+          <details className="mt-4 rounded-xl border border-slate-200 bg-white/80 lg:hidden">
+            <summary className="min-h-11 cursor-pointer list-none px-3 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+              Why sign in?
+            </summary>
+            <div className="border-t border-slate-200 px-3 py-2 text-sm leading-6 text-slate-600">
+              Your rounds, imports, equipment, achievements, and coaching context are private to your Supabase account.
+            </div>
+          </details>
         </section>
       </div>
     </PageShell>

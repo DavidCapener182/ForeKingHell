@@ -6,7 +6,8 @@ import { ArrowLeft, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { DataPair, DataTableFrame, MobileDataCard, MobileDataList, PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getDb } from "@/db/client";
 import { sessions, shareLinks, teeSets, users } from "@/db/schema";
@@ -61,6 +62,15 @@ export default async function SharedRoundPage({ params }: PageProps) {
         ]}
       />
 
+      <MobileMetricStrip
+        items={[
+          { label: "Score", value: formatNullableInteger(round.totalScore), detail: "Gross", tone: "green" },
+          { label: "Par", value: formatNullableInteger(round.totalPar), detail: "Round par", tone: "sky" },
+          { label: "Putts", value: formatNullableInteger(round.totalPutts), detail: "Total", tone: "amber" },
+          { label: "Diff", value: formatHandicapValue(round.handicapDifferential), detail: "Estimate", tone: "slate" },
+        ]}
+      />
+
       <section className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr]">
         <Card className="premium-card">
           <CardHeader>
@@ -70,7 +80,25 @@ export default async function SharedRoundPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DataTableFrame>
+            <DataTableFrame
+              mobile={
+                <MobileDataList>
+                  {round.holes.map((hole) => (
+                    <MobileDataCard
+                      key={hole.holeNumber}
+                      title={`Hole ${hole.holeNumber}`}
+                      subtitle={`Par ${hole.par} · ${hole.yards > 0 ? `${integerFormatter.format(hole.yards)} yd` : "Yards not set"}`}
+                      action={<Badge variant="outline">{formatNullableInteger(hole.score)}</Badge>}
+                    >
+                      <DataPair label="Putts" value={formatNullableInteger(hole.putts)} />
+                      <DataPair label="Penalties" value={formatNullableInteger(hole.penalties)} />
+                      <DataPair label="FIR" value={formatBoolean(hole.fairwayHit)} />
+                      <DataPair label="GIR" value={formatBoolean(hole.gir)} />
+                    </MobileDataCard>
+                  ))}
+                </MobileDataList>
+              }
+            >
               <Table className="min-w-[720px]">
                 <TableHeader>
                   <TableRow>

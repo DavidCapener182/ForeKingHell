@@ -8,11 +8,14 @@ import { updateTeeSetAction, upsertHoleAction } from "@/app/courses/actions";
 import {
   DataPanel,
   MetricCard,
+  MobileAccordionSection,
+  MobileCurrentItemCard,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -98,6 +101,20 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             label: "Map status",
             value: mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36 ? "Ready" : "Partial",
             detail: "Round overlays use these coordinates.",
+          },
+        ]}
+      />
+
+      <MobileMetricStrip
+        items={[
+          { label: "Provider", value: data.course.provider, detail: data.course.country ?? "Country not set", tone: "green" },
+          { label: "Tee sets", value: integerFormatter.format(data.teeSets.length), detail: "Available", tone: "sky" },
+          { label: "Mapped", value: integerFormatter.format(mappedHoleCount), detail: "Saved holes", tone: "amber" },
+          {
+            label: "Status",
+            value: mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36 ? "Ready" : "Partial",
+            detail: "Overlay geometry",
+            tone: mappedHoleCount >= 18 ? "green" : "slate",
           },
         ]}
       />
@@ -205,7 +222,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
               </CardContent>
             </DataPanel>
 
-            <section className="grid gap-3 sm:grid-cols-2">
+            <section className="hidden gap-3 sm:grid sm:grid-cols-2">
               <MetricCard
                 label="Course rating"
                 value={formatOptionalNumber(primaryTeeSet.courseRating)}
@@ -237,7 +254,53 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
       ) : null}
 
       {primaryTeeSet && data.isEditable ? (
-        <DataPanel>
+        <>
+        <MobileCurrentItemCard
+          title="Hole editor"
+          subtitle="Edit one hole at a time on mobile."
+          selector={
+            <div className="flex gap-2">
+              {holeSlots.map((holeNumber) => (
+                <a
+                  key={holeNumber}
+                  href={`#mobile-hole-${holeNumber}`}
+                  className="grid min-h-10 min-w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold"
+                >
+                  {holeNumber}
+                </a>
+              ))}
+            </div>
+          }
+          action={<Badge variant="outline">{holesForPrimaryTeeSet.length}/{holeSlots.length}</Badge>}
+        >
+          <div id="mobile-hole-1">
+            <HoleForm
+              courseId={data.course.id}
+              teeSetId={primaryTeeSet.id}
+              holeNumber={holeSlots[0] ?? 1}
+              hole={holeByNumber.get(holeSlots[0] ?? 1) ?? null}
+            />
+          </div>
+        </MobileCurrentItemCard>
+
+        <MobileAccordionSection
+          title="All hole forms"
+          count={holeSlots.length}
+          description="Open only when you need batch edits."
+          contentClassName="grid gap-3"
+        >
+          {holeSlots.map((holeNumber) => (
+            <HoleForm
+              key={holeNumber}
+              courseId={data.course.id}
+              teeSetId={primaryTeeSet.id}
+              holeNumber={holeNumber}
+              hole={holeByNumber.get(holeNumber) ?? null}
+            />
+          ))}
+        </MobileAccordionSection>
+
+        <DataPanel className="hidden sm:block">
           <SectionHeader
             title="Hole geometry"
             description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
@@ -255,6 +318,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             ))}
           </CardContent>
         </DataPanel>
+        </>
       ) : null}
     </PageShell>
   );

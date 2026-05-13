@@ -2,13 +2,13 @@ import Link from "next/link";
 import { AlertTriangle, SearchX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { GolfLoader } from "@/components/visuals/golf-loader";
+import { DelayedGolfLoader } from "@/components/visuals/delayed-golf-loader";
 
 export function RouteLoadingState({ label = "Loading ForeKingHell" }: { label?: string }) {
   return (
     <main className="min-h-screen px-4 py-5 pb-24 sm:px-6 lg:px-8">
       <div className="mx-auto grid w-full max-w-7xl gap-5 pt-10 sm:pt-16">
-        <GolfLoader label={label} />
+        <DelayedGolfLoader label={label} />
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="apple-panel-strong h-72 animate-pulse" />
           <div className="apple-panel-strong h-72 animate-pulse" />

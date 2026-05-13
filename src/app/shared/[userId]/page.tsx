@@ -4,9 +4,13 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { ArrowLeft, Database, Flag, Target, Trophy } from "lucide-react";
 
 import {
+  DataPair,
   DataPanel,
   DataTableFrame,
   MetricCard,
+  MobileBentoSummary,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -61,7 +65,36 @@ export default async function SharedAccountPage({ params }: PageProps) {
         ]}
       />
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <MobileBentoSummary
+        items={[
+          {
+            label: "Best recent",
+            value: data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "--",
+            detail: "Longest driver total",
+            tone: "amber",
+          },
+          {
+            label: "Top club",
+            value: data.topClub?.clubType ?? "--",
+            detail: data.topClub ? `${integerFormatter.format(data.topClub.count)} shots` : "No shots yet",
+            tone: "green",
+          },
+          {
+            label: "Recent rounds",
+            value: integerFormatter.format(data.recentRounds.length),
+            detail: "Shared sessions",
+            tone: "sky",
+          },
+          {
+            label: "30 day shots",
+            value: integerFormatter.format(data.recentShotCount),
+            detail: "Practice volume",
+            tone: "slate",
+          },
+        ]}
+      />
+
+      <section className="hidden gap-4 sm:grid md:grid-cols-3">
         <MetricCard
           label="Longest drive"
           value={data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "--"}
@@ -92,7 +125,23 @@ export default async function SharedAccountPage({ params }: PageProps) {
           action={<Database className="size-5 text-sky-600" />}
         />
         <CardContent>
-          <DataTableFrame>
+          <DataTableFrame
+            mobile={
+              <MobileDataList>
+                {data.recentRounds.map((round) => (
+                  <MobileDataCard
+                    key={round.id}
+                    title={round.courseName ?? round.fileName ?? "Shared session"}
+                    subtitle={`${formatDate(round.date)} · ${round.type}`}
+                    action={<Badge variant="outline">{round.totalScore ?? "--"}</Badge>}
+                  >
+                    <DataPair label="Holes" value={round.holesPlayed} />
+                    <DataPair label="Score" value={round.totalScore ?? "--"} />
+                  </MobileDataCard>
+                ))}
+              </MobileDataList>
+            }
+          >
             <Table>
               <TableHeader>
                 <TableRow>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { headers } from "next/headers";
-import { Download, Link2, ShieldCheck, SlidersHorizontal, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import { ChevronDown, Download, Link2, ShieldCheck, SlidersHorizontal, Trash2, UserCog, UserPlus, X } from "lucide-react";
 import { desc, eq, inArray } from "drizzle-orm";
 
 import {
@@ -146,6 +146,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </Alert>
       ) : null}
 
+      <SettingsMobileDisclosure title="Profile" description={`${profile.preferredUnits}, ${profile.tableDensity} tables`} defaultOpen>
       <DataPanel>
         <SectionHeader
           title="Profile and preferences"
@@ -195,7 +196,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </form>
         </CardContent>
       </DataPanel>
+      </SettingsMobileDisclosure>
 
+      <SettingsMobileDisclosure title="Sharing" description="Invites, coaches and shared accounts.">
       <DataPanel>
         <SectionHeader
           title="Sharing and collaboration"
@@ -266,8 +269,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </section>
         </CardContent>
       </DataPanel>
+      </SettingsMobileDisclosure>
 
       <section className="grid gap-4 lg:grid-cols-2">
+        <SettingsMobileDisclosure title="Data export" description="Download a JSON copy.">
         <DataPanel>
           <SectionHeader
             title="Data export"
@@ -283,7 +288,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             </Button>
           </CardContent>
         </DataPanel>
+        </SettingsMobileDisclosure>
 
+        <SettingsMobileDisclosure title="Danger zone" description="Delete app data.">
         <DataPanel>
           <SectionHeader
             title="Delete app data"
@@ -304,8 +311,34 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             </form>
           </CardContent>
         </DataPanel>
+        </SettingsMobileDisclosure>
       </section>
     </PageShell>
+  );
+}
+
+function SettingsMobileDisclosure({
+  title,
+  description,
+  children,
+  defaultOpen = false,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className="group sm:contents" open={defaultOpen}>
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block truncate font-semibold tracking-normal">{title}</span>
+          {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
+      <div className="hidden group-open:block sm:contents">{children}</div>
+    </details>
   );
 }
 

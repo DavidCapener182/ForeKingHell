@@ -3,7 +3,7 @@ import { ArrowLeft, Flag, Target, Upload } from "lucide-react";
 
 import { AchievementsClient } from "@/app/achievements/achievements-client";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
-import { AchievementBadgeArtwork } from "@/components/visuals/page-artwork";
+import { AchievementArtwork } from "@/components/visuals/achievement-artwork";
 import { Button } from "@/components/ui/button";
 import { getAchievementPageData } from "@/lib/achievements/service";
 
@@ -50,7 +50,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
           title="Progress worth tracking"
           description="Rapsodo metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
-          visual={<AchievementBadgeArtwork className="h-full min-h-44" />}
+          visual={<AchievementArtwork className="h-full min-h-44" />}
         />
 
         <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />

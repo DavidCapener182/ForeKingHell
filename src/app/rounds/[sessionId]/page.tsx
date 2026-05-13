@@ -1,7 +1,8 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Database, Link2, MapPinned, Save, Share2, Upload } from "lucide-react";
+import { ArrowLeft, ChevronDown, Database, Link2, MapPinned, Save, Share2, Upload } from "lucide-react";
 import { and, asc, eq, isNull } from "drizzle-orm";
 
 import {
@@ -169,6 +170,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           </>
         ) : null}
 
+        <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
         <Card className="premium-card">
           <CardHeader>
             <CardTitle>Round context</CardTitle>
@@ -208,7 +210,9 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </OfflineRoundEditForm>
           </CardContent>
         </Card>
+        </MobileCollapsible>
 
+        <MobileCollapsible title="Sharing" description="Create or revoke read-only round links.">
         <Card className="premium-card">
           <CardHeader>
             <CardTitle>Private share link</CardTitle>
@@ -271,7 +275,9 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             )}
           </CardContent>
         </Card>
+        </MobileCollapsible>
 
+        <MobileCollapsible title="Course link" description="Course and tee data used by the scorecard.">
         <Card className="premium-card">
           <CardHeader>
             <CardTitle>Course link</CardTitle>
@@ -316,8 +322,10 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </OfflineRoundEditForm>
           </CardContent>
         </Card>
+        </MobileCollapsible>
 
         {hasMap ? (
+          <MobileCollapsible title={hasClubData ? "Actual hole map" : "Estimated hole map"} description="Shot map detail.">
           <Card id="map" className="premium-card scroll-mt-28">
             <CardHeader>
               <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
@@ -338,9 +346,11 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               />
             </CardContent>
           </Card>
+          </MobileCollapsible>
         ) : null}
 
         {hasClubData ? (
+          <MobileCollapsible title="Shot-to-hole split" description="Adjust CSV shot counts by hole.">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Shot-to-hole split</CardTitle>
@@ -380,7 +390,9 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               </OfflineRoundEditForm>
             </CardContent>
           </Card>
+          </MobileCollapsible>
         ) : (
+          <MobileCollapsible title="Real round data" description="Scorecard-only stats and estimates.">
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Real round data</CardTitle>
@@ -397,9 +409,11 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               <MiniMetric label="Map estimates" value={integerFormatter.format(round.mapShots.length)} />
             </CardContent>
           </Card>
+          </MobileCollapsible>
         )}
 
         <section id="scorecard" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <MobileCollapsible title="Full scorecard" description="All hole editors, collapsed on mobile." count={`${round.holes.length} holes`}>
           <Card className="premium-card">
             <CardHeader>
               <CardTitle>Hole-by-hole scorecard</CardTitle>
@@ -474,8 +488,10 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               </div>
             </CardContent>
           </Card>
+          </MobileCollapsible>
 
           {hasClubData ? (
+            <MobileCollapsible title="Club corrections" description="Round-level club name fixes.">
             <Card className="premium-card">
               <CardHeader>
                 <CardTitle>Clubs in this round</CardTitle>
@@ -514,7 +530,9 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 ) : null}
               </CardContent>
             </Card>
+            </MobileCollapsible>
           ) : (
+            <MobileCollapsible title="Handicap input" description="Rating, slope and differential.">
             <Card className="premium-card">
               <CardHeader>
                 <CardTitle>Handicap input</CardTitle>
@@ -529,10 +547,12 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 <MiniMetric label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
               </CardContent>
             </Card>
+            </MobileCollapsible>
           )}
         </section>
 
         {hasClubData ? (
+        <MobileCollapsible title="Shot corrections" description="Per-shot hole and club fixes." count={`${round.shots.length} shots`}>
         <Card id="shots" className="premium-card scroll-mt-28">
           <CardHeader>
             <CardTitle>Shot club corrections</CardTitle>
@@ -685,6 +705,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </DataTableFrame>
           </CardContent>
         </Card>
+        </MobileCollapsible>
         ) : null}
 
         {round.unmappedShots.length > 0 ? (
@@ -714,6 +735,36 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
 
 type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;
 type RoundDetailHole = RoundDetail["holes"][number];
+
+function MobileCollapsible({
+  title,
+  description,
+  count,
+  children,
+  defaultOpen = false,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  count?: ReactNode;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className="group sm:contents" open={defaultOpen}>
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block truncate font-semibold tracking-normal">{title}</span>
+          {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+          {count ? <span>{count}</span> : null}
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+        </span>
+      </summary>
+      <div className="hidden group-open:block sm:contents">{children}</div>
+    </details>
+  );
+}
 
 function RoundHoleSelector({ holes }: { holes: RoundDetail["holes"] }) {
   return (

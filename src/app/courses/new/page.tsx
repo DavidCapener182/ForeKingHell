@@ -6,11 +6,13 @@ import { createCourseAction } from "@/app/courses/actions";
 import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
 import {
   DataPanel,
+  MobileAccordionSection,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -60,8 +62,16 @@ export default function NewCoursePage() {
         ]}
       />
 
+      <MobileMetricStrip
+        items={[
+          { label: "Step", value: "Course", detail: "Name and tee", tone: "green" },
+          { label: "Next", value: "Hole map", detail: "Tee and green points", tone: "sky" },
+          { label: "Unit", value: "Yards", detail: "Course yardage", tone: "slate" },
+        ]}
+      />
+
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <DataPanel>
+        <DataPanel className="hidden sm:block">
           <SectionHeader
             title="Course details"
             description="Start with the tee set you normally play. Extra tee sets can be added later."
@@ -111,7 +121,26 @@ export default function NewCoursePage() {
         </DataPanel>
       </section>
 
-      <DataPanel>
+      <MobileAccordionSection title="OpenStreetMap import" description="Search and pull tagged golf-hole geometry.">
+        <OsmCourseImporter />
+      </MobileAccordionSection>
+
+      <MobileAccordionSection title="Overlay notes" description="How course maps power round overlays.">
+        <div className="grid gap-3">
+          <Alert className="border-emerald-200 bg-emerald-50/70">
+            <MapPinned className="size-4" />
+            <AlertTitle>Hole geometry drives the map</AlertTitle>
+            <AlertDescription>
+              Round pages project launch-monitor shots from saved tee points toward saved green points.
+            </AlertDescription>
+          </Alert>
+          <p className="rounded-xl border bg-white/80 p-3 text-sm leading-6 text-muted-foreground">
+            Tee and green coordinates are enough for useful overlays. Centreline refinement can happen later.
+          </p>
+        </div>
+      </MobileAccordionSection>
+
+      <DataPanel className="hidden sm:block">
         <SectionHeader
           title="Overlay notes"
           description="How this connects to the course maps."

@@ -7,6 +7,8 @@ import {
   DataPair,
   DataTableFrame,
   MetricCard,
+  MobileAccordionSection,
+  MobileBentoSummary,
   MobileDataCard,
   MobileDataList,
   PageHeader,
@@ -74,7 +76,24 @@ export default async function StrokesGainedPage() {
         ]}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <MobileBentoSummary
+        items={[
+          {
+            label: "Biggest loss",
+            value: weakestCategory,
+            detail: `${formatNumber(totals.total)} total SG`,
+            tone: totals.total !== null && totals.total < 0 ? "pink" : "green",
+          },
+          ...categorySummaries.slice(0, 3).map((summary) => ({
+            label: titleCase(summary.category),
+            value: formatNumber(summary.total),
+            detail: `${summary.sampleSize} events`,
+            tone: summary.total !== null && summary.total < 0 ? "amber" as const : "green" as const,
+          })),
+        ]}
+      />
+
+      <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
         {categorySummaries.length > 0 ? (
           categorySummaries.map((summary) => (
             <MetricCard
@@ -97,7 +116,25 @@ export default async function StrokesGainedPage() {
         )}
       </section>
 
-      <DataPanel>
+      <MobileAccordionSection title="Recent shot events" count={`${data.events.length} rows`}>
+        <MobileDataList empty={<p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No event rows yet.</p>}>
+          {data.events.slice(0, 30).map((event) => (
+            <MobileDataCard
+              key={event.id}
+              title={titleCase(event.category)}
+              subtitle={`${event.courseName ?? "Round"} - ${formatDate(event.sessionDate)}`}
+              href={`/rounds/${event.sessionId}`}
+              action={<StatusPill tone={event.strokesGained !== null && event.strokesGained < 0 ? "amber" : "green"}>{formatNumber(event.strokesGained)}</StatusPill>}
+            >
+              <DataPair label="Hole / stroke" value={`${event.holeNumber ?? "--"} / ${event.strokeNumber ?? "--"}`} />
+              <DataPair label="Start" value={`${formatNumber(event.startDistanceYd)} yd ${event.startLie}`} />
+              <DataPair label="End" value={`${formatNumber(event.endDistanceYd)} yd ${event.endLie ?? "--"}`} />
+            </MobileDataCard>
+          ))}
+        </MobileDataList>
+      </MobileAccordionSection>
+
+      <DataPanel className="hidden sm:flex">
         <SectionHeader
           title="Recent shot events"
           description="Detailed rows used by dashboards and AI practice-plan context."
