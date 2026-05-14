@@ -62,22 +62,36 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 export default async function HandicapPage() {
-  const [rounds, progressData] = await Promise.all([getHandicapRounds(), getProgressData()]);
+  const [rounds, progressData] = await Promise.all([
+    getHandicapRounds(),
+    getProgressData(),
+  ]);
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
-  const missingRatingRounds = rounds.filter((round) => round.courseRating === null || round.slopeRating === null);
-  const realHandicap = calculateHandicapSummary(realRounds.map((round) => round.handicapDifferential));
-  const simulatorHandicap = calculateHandicapSummary(simulatorRounds.map((round) => round.handicapDifferential));
-  const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
+  const missingRatingRounds = rounds.filter(
+    (round) => round.courseRating === null || round.slopeRating === null,
+  );
+  const realHandicap = calculateHandicapSummary(
+    realRounds.map((round) => round.handicapDifferential),
+  );
+  const simulatorHandicap = calculateHandicapSummary(
+    simulatorRounds.map((round) => round.handicapDifferential),
+  );
+  const combinedHandicap = calculateHandicapSummary(
+    rounds.map((round) => round.handicapDifferential),
+  );
   const playingHandicap = calculatePlayingHandicapSummary(
-    rounds.map((round) => ({ handicapDifferential: round.handicapDifferential, type: round.type })),
+    rounds.map((round) => ({
+      handicapDifferential: round.handicapDifferential,
+      type: round.type,
+    })),
   );
   const coach = buildCoachSummary(progressData.clubs);
   const topCoachCard = coach.clubCards[0] ?? null;
   const latestRound = rounds[0] ?? null;
 
   return (
-    <PageShell>
+    <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
       <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
@@ -102,10 +116,19 @@ export default async function HandicapPage() {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
+        eyebrow={
+          <StatusPill tone="amber">Unofficial scoring estimates</StatusPill>
+        }
         title="Handicap"
         description="Separate best-form differentials from a conservative playing estimate. ForeKingHell uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
-        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" />}
+        visual={
+          <PageArtwork
+            variant="fairway"
+            alt=""
+            crop="tee"
+            className="h-full min-h-44"
+          />
+        }
         metrics={[
           {
             label: "Real best-form",
@@ -125,7 +148,8 @@ export default async function HandicapPage() {
           {
             label: "Range performance",
             value: `${coach.summary.totals.averageTrust}%`,
-            detail: "Club-trust index from launch monitor data, not a handicap.",
+            detail:
+              "Club-trust index from launch monitor data, not a handicap.",
           },
         ]}
       />
@@ -157,7 +181,12 @@ export default async function HandicapPage() {
             label: "Trend",
             value: trendSentence(combinedHandicap),
             detail: "Combined",
-            tone: combinedHandicap.trend.direction === "down" ? "green" : combinedHandicap.trend.direction === "up" ? "amber" : "slate",
+            tone:
+              combinedHandicap.trend.direction === "down"
+                ? "green"
+                : combinedHandicap.trend.direction === "up"
+                  ? "amber"
+                  : "slate",
           },
           {
             label: "Ratings",
@@ -174,10 +203,20 @@ export default async function HandicapPage() {
 
       <section className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
         <div className="min-w-[82vw] md:min-w-0">
-          <HandicapPanel title="Real course ceiling" summary={realHandicap} rounds={realRounds.length} tone="green" />
+          <HandicapPanel
+            title="Real course ceiling"
+            summary={realHandicap}
+            rounds={realRounds.length}
+            tone="green"
+          />
         </div>
         <div className="min-w-[82vw] md:min-w-0">
-          <HandicapPanel title="Simulator ceiling" summary={simulatorHandicap} rounds={simulatorRounds.length} tone="sky" />
+          <HandicapPanel
+            title="Simulator ceiling"
+            summary={simulatorHandicap}
+            rounds={simulatorRounds.length}
+            tone="sky"
+          />
         </div>
         <div className="min-w-[82vw] md:min-w-0">
           <RangePerformancePanel
@@ -187,12 +226,81 @@ export default async function HandicapPage() {
           />
         </div>
         <div className="min-w-[82vw] md:min-w-0">
-          <HandicapPanel title="Combined ceiling" summary={combinedHandicap} rounds={rounds.length} tone="amber" />
+          <HandicapPanel
+            title="Combined ceiling"
+            summary={combinedHandicap}
+            rounds={rounds.length}
+            tone="amber"
+          />
         </div>
       </section>
 
-      <section id="trend" className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <DataPanel>
+      <section
+        id="trend"
+        className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]"
+      >
+        <MobileAccordionSection
+          title="Readout"
+          description="Current scorecard signals."
+          count="4 signals"
+        >
+          <CompactReadoutGrid
+            items={[
+              {
+                label: "Trend",
+                value: trendSentence(combinedHandicap),
+                detail:
+                  "Lower is better. Trend compares current estimate with the prior estimate.",
+                tone:
+                  combinedHandicap.trend.direction === "down"
+                    ? "green"
+                    : combinedHandicap.trend.direction === "up"
+                      ? "amber"
+                      : "slate",
+              },
+              {
+                label: "Data quality",
+                value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
+                detail:
+                  "Real-course estimates are stronger with rating and slope.",
+                tone: missingRatingRounds.length > 0 ? "amber" : "green",
+              },
+              {
+                label: "Latest round",
+                value: latestRound
+                  ? `${latestRound.totalScore ?? "--"} at ${latestRound.courseName ?? latestRound.fileName ?? "latest round"}`
+                  : "No scorecards yet",
+                detail: latestRound
+                  ? `${formatDate(latestRound.date)} / differential ${formatHandicapValue(latestRound.handicapDifferential)}`
+                  : "Import or create a scorecard to start.",
+                tone: "sky",
+              },
+              {
+                label: "Range priority",
+                value: topCoachCard
+                  ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}`
+                  : "No club priority yet",
+                detail: topCoachCard
+                  ? topCoachCard.drill
+                  : "Import more launch monitor sessions.",
+                tone: topCoachCard ? topCoachCard.tone : "slate",
+                href: topCoachCard
+                  ? `/bag/${topCoachCard.clubId}/analytics`
+                  : "/coach",
+              },
+            ]}
+          />
+        </MobileAccordionSection>
+
+        <MobileAccordionSection
+          title="Trend chart"
+          description="Running best-form estimate."
+          count={`${rounds.length} rounds`}
+        >
+          <HandicapTrendChart rounds={[...rounds].reverse()} />
+        </MobileAccordionSection>
+
+        <DataPanel className="hidden sm:flex">
           <SectionHeader
             title="Readout"
             description="What the current scorecards are saying."
@@ -205,7 +313,8 @@ export default async function HandicapPage() {
                 {
                   label: "Trend",
                   value: trendSentence(combinedHandicap),
-                  detail: "Lower is better. Trend compares the current estimate with the estimate before the newest eligible round.",
+                  detail:
+                    "Lower is better. Trend compares the current estimate with the estimate before the newest eligible round.",
                   tone:
                     combinedHandicap.trend.direction === "down"
                       ? "green"
@@ -216,7 +325,8 @@ export default async function HandicapPage() {
                 {
                   label: "Data quality",
                   value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
-                  detail: "Simulator rounds can fall back to par and 113 slope; real-course estimates are stronger with rating and slope.",
+                  detail:
+                    "Simulator rounds can fall back to par and 113 slope; real-course estimates are stronger with rating and slope.",
                   tone: missingRatingRounds.length > 0 ? "amber" : "green",
                 },
                 {
@@ -231,19 +341,23 @@ export default async function HandicapPage() {
                 },
                 {
                   label: "Range priority",
-                  value: topCoachCard ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}` : "No club priority yet",
+                  value: topCoachCard
+                    ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}`
+                    : "No club priority yet",
                   detail: topCoachCard
                     ? topCoachCard.drill
                     : "Import more launch monitor sessions to separate range performance from scorecards.",
                   tone: topCoachCard ? topCoachCard.tone : "slate",
-                  href: topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach",
+                  href: topCoachCard
+                    ? `/bag/${topCoachCard.clubId}/analytics`
+                    : "/coach",
                 },
               ]}
             />
           </CardContent>
         </DataPanel>
 
-        <DataPanel>
+        <DataPanel className="hidden sm:flex">
           <SectionHeader
             title="Trend chart"
             description="Running best-form estimate after each eligible round, oldest to newest."
@@ -256,7 +370,10 @@ export default async function HandicapPage() {
       </section>
 
       {missingRatingRounds.length > 0 ? (
-        <DataPanel id="tasks" className="scroll-mt-28 border-amber-200 bg-amber-50/70">
+        <DataPanel
+          id="tasks"
+          className="scroll-mt-28 border-amber-200 bg-amber-50/70"
+        >
           <SectionHeader
             title="Data to improve"
             description="These rounds are included using fallback assumptions where needed."
@@ -270,9 +387,15 @@ export default async function HandicapPage() {
                 prefetch={false}
                 className="rounded-xl border border-amber-200 bg-white/80 p-4 hover:border-amber-400"
               >
-                <p className="font-semibold">{round.courseName ?? round.fileName ?? "Untitled round"}</p>
+                <p className="font-semibold">
+                  {round.courseName ?? round.fileName ?? "Untitled round"}
+                </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Missing {round.courseRating === null ? "course rating" : ""}{round.courseRating === null && round.slopeRating === null ? " and " : ""}{round.slopeRating === null ? "slope rating" : ""}.
+                  Missing {round.courseRating === null ? "course rating" : ""}
+                  {round.courseRating === null && round.slopeRating === null
+                    ? " and "
+                    : ""}
+                  {round.slopeRating === null ? "slope rating" : ""}.
                 </p>
               </Link>
             ))}
@@ -294,16 +417,29 @@ export default async function HandicapPage() {
                 title={round.courseName ?? round.fileName ?? "Untitled round"}
                 subtitle={formatDate(round.date)}
                 action={
-                  <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                  <Badge
+                    variant={
+                      round.type === "real_round" ? "default" : "secondary"
+                    }
+                  >
                     {formatSessionType(round.type)}
                   </Badge>
                 }
               >
                 <DataPair label="Score" value={round.totalScore ?? "--"} />
-                <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
+                <DataPair
+                  label="Rating"
+                  value={formatOptionalNumber(round.courseRating)}
+                />
                 <DataPair label="Slope" value={round.slopeRating ?? "--"} />
-                <DataPair label="Differential" value={formatHandicapValue(round.handicapDifferential)} />
-                <DataPair label="Shots" value={integerFormatter.format(round.shotCount)} />
+                <DataPair
+                  label="Differential"
+                  value={formatHandicapValue(round.handicapDifferential)}
+                />
+                <DataPair
+                  label="Shots"
+                  value={integerFormatter.format(round.shotCount)}
+                />
               </MobileDataCard>
             ))
           ) : (
@@ -338,29 +474,49 @@ export default async function HandicapPage() {
                 {rounds.map((round) => (
                   <TableRow key={round.id}>
                     <TableCell className="max-w-64 truncate font-medium">
-                      <Link href={`/rounds/${round.id}`} prefetch={false} className="hover:underline">
+                      <Link
+                        href={`/rounds/${round.id}`}
+                        prefetch={false}
+                        className="hover:underline"
+                      >
                         {round.courseName ?? round.fileName ?? "Untitled round"}
                       </Link>
                     </TableCell>
                     <TableCell>{formatDate(round.date)}</TableCell>
                     <TableCell>
-                      <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          round.type === "real_round" ? "default" : "secondary"
+                        }
+                      >
                         {formatSessionType(round.type)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{round.totalScore ?? "--"}</TableCell>
-                    <TableCell className="text-right">{formatOptionalNumber(round.courseRating)}</TableCell>
-                    <TableCell className="text-right">{round.slopeRating ?? "--"}</TableCell>
+                    <TableCell className="text-right">
+                      {round.totalScore ?? "--"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatOptionalNumber(round.courseRating)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {round.slopeRating ?? "--"}
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatHandicapValue(round.handicapDifferential)}
                     </TableCell>
-                    <TableCell className="text-right">{integerFormatter.format(round.shotCount)}</TableCell>
+                    <TableCell className="text-right">
+                      {integerFormatter.format(round.shotCount)}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {rounds.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      No scorecards yet. Import a simulated course or add a real round.
+                    <TableCell
+                      colSpan={8}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No scorecards yet. Import a simulated course or add a real
+                      round.
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -400,8 +556,16 @@ async function getHandicapRounds() {
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
-      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
+      .leftJoin(
+        rapsodoSyncSessions,
+        eq(sessions.id, rapsodoSyncSessions.importedSessionId),
+      )
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          inArray(sessions.type, [...roundSessionTypes]),
+        ),
+      )
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -412,13 +576,18 @@ async function getHandicapRounds() {
       .where(eq(shots.userId, userId))
       .groupBy(shots.sessionId),
   ]);
-  const shotCountBySessionId = new Map(shotCounts.map((row) => [row.sessionId, row.count]));
+  const shotCountBySessionId = new Map(
+    shotCounts.map((row) => [row.sessionId, row.count]),
+  );
 
   return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
     const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
     const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const totalPar = scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
+    const totalPar =
+      scorecard.length > 0
+        ? scorecard.reduce((total, hole) => total + hole.par, 0)
+        : null;
     const handicapDifferential = calculateRoundDifferential({
       totalScore,
       totalPar,
@@ -451,12 +620,20 @@ function HandicapPanel({
 }) {
   return (
     <DataPanel>
-      <SectionHeader title={title} action={<StatusPill tone={tone}>{rounds} rounds</StatusPill>} />
-      <CardContent>
-        <p className="text-6xl font-semibold tracking-normal">{formatHandicapValue(summary.value)}</p>
-        <div className="mt-4 grid gap-3">
+      <SectionHeader
+        title={title}
+        action={<StatusPill tone={tone}>{rounds} rounds</StatusPill>}
+      />
+      <CardContent className="py-4 sm:py-6">
+        <p className="text-4xl font-semibold tracking-normal sm:text-6xl">
+          {formatHandicapValue(summary.value)}
+        </p>
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3">
           <MiniMetric label="Method" value={summary.methodLabel} />
-          <MiniMetric label="Used scores" value={`${summary.usedDifferentialCount}/${summary.sampleSize}`} />
+          <MiniMetric
+            label="Used scores"
+            value={`${summary.usedDifferentialCount}/${summary.sampleSize}`}
+          />
           <MiniMetric label="Trend" value={trendSentence(summary)} />
         </div>
       </CardContent>
@@ -464,7 +641,11 @@ function HandicapPanel({
   );
 }
 
-function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) {
+function PlayingHandicapPanel({
+  summary,
+}: {
+  summary: PlayingHandicapSummary;
+}) {
   return (
     <DataPanel className="border-amber-200 bg-amber-50/70">
       <SectionHeader
@@ -472,11 +653,15 @@ function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) 
         description={summary.warning}
         action={<StatusPill tone="amber">Data-limited</StatusPill>}
       />
-      <CardContent className="grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
-        <div className="apple-panel-strong p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Playing estimate</p>
-          <p className="mt-2 text-6xl font-semibold tracking-normal">{formatHandicapValue(summary.value)}</p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+      <CardContent className="grid gap-3 lg:grid-cols-[0.7fr_1.3fr]">
+        <div className="apple-panel-strong p-3 sm:p-4">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Playing estimate
+          </p>
+          <p className="mt-1 text-4xl font-semibold tracking-normal sm:mt-2 sm:text-6xl">
+            {formatHandicapValue(summary.value)}
+          </p>
+          <p className="mt-2 text-sm leading-5 text-muted-foreground sm:leading-6">
             Uses recent adjusted scoring, not lowest-score WHS selection.
           </p>
         </div>
@@ -498,7 +683,8 @@ function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) 
             {
               label: "Mindset",
               value: "Judge the trend",
-              detail: "A best-form ceiling can be low; this estimate is the fairer playing target.",
+              detail:
+                "A best-form ceiling can be low; this estimate is the fairer playing target.",
               tone: "slate",
             },
           ]}
@@ -519,12 +705,18 @@ function RangePerformancePanel({
 }) {
   return (
     <DataPanel>
-      <SectionHeader title="Range performance" action={<StatusPill tone="pink">{clubs} clubs</StatusPill>} />
+      <SectionHeader
+        title="Range performance"
+        action={<StatusPill tone="pink">{clubs} clubs</StatusPill>}
+      />
       <CardContent>
         <p className="text-6xl font-semibold tracking-normal">{trust}%</p>
         <div className="mt-4 grid gap-3">
           <MiniMetric label="Index type" value="Club trust, not handicap" />
-          <MiniMetric label="Clean shots" value={integerFormatter.format(cleanShots)} />
+          <MiniMetric
+            label="Clean shots"
+            value={integerFormatter.format(cleanShots)}
+          />
           <Button asChild variant="outline" className="rounded-xl">
             <Link href="/coach" prefetch={false}>
               <Brain className="size-4" />
@@ -537,13 +729,25 @@ function RangePerformancePanel({
   );
 }
 
-function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getHandicapRounds>> }) {
+function HandicapTrendChart({
+  rounds,
+}: {
+  rounds: Awaited<ReturnType<typeof getHandicapRounds>>;
+}) {
   const points = rounds
     .map((round, index) => {
-      const summary = calculateHandicapSummary(rounds.slice(0, index + 1).map((item) => item.handicapDifferential).reverse());
+      const summary = calculateHandicapSummary(
+        rounds
+          .slice(0, index + 1)
+          .map((item) => item.handicapDifferential)
+          .reverse(),
+      );
       return summary.value === null ? null : { round, value: summary.value };
     })
-    .filter((point): point is { round: (typeof rounds)[number]; value: number } => Boolean(point));
+    .filter(
+      (point): point is { round: (typeof rounds)[number]; value: number } =>
+        Boolean(point),
+    );
 
   if (points.length === 0) {
     return (
@@ -556,30 +760,67 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
   const values = points.map((point) => point.value);
   const minValue = Math.min(...values) - 2;
   const maxValue = Math.max(...values) + 2;
-  const xFor = (index: number) => 48 + (index / Math.max(1, points.length - 1)) * 784;
-  const yFor = (value: number) => 252 - ((value - minValue) / Math.max(1, maxValue - minValue)) * 204;
-  const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point.value)}`).join(" ");
+  const xFor = (index: number) =>
+    48 + (index / Math.max(1, points.length - 1)) * 784;
+  const yFor = (value: number) =>
+    252 - ((value - minValue) / Math.max(1, maxValue - minValue)) * 204;
+  const path = points
+    .map(
+      (point, index) =>
+        `${index === 0 ? "M" : "L"} ${xFor(index)} ${yFor(point.value)}`,
+    )
+    .join(" ");
 
   return (
-    <svg viewBox="0 0 880 300" className="h-72 w-full rounded-2xl border bg-[#0f172a]">
+    <svg
+      viewBox="0 0 880 300"
+      className="h-72 w-full rounded-2xl border bg-[#0f172a]"
+    >
       {[0, 1, 2, 3].map((index) => {
         const value = minValue + ((maxValue - minValue) / 3) * index;
         const y = yFor(value);
 
         return (
           <g key={index}>
-            <line x1="44" x2="836" y1={y} y2={y} stroke="#ffffff" strokeOpacity="0.1" />
+            <line
+              x1="44"
+              x2="836"
+              y1={y}
+              y2={y}
+              stroke="#ffffff"
+              strokeOpacity="0.1"
+            />
             <text x="18" y={y + 4} fill="#cbd5e1" fontSize="12">
               {numberFormatter.format(value)}
             </text>
           </g>
         );
       })}
-      <path d={path} fill="none" stroke="#22c55e" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={path}
+        fill="none"
+        stroke="#22c55e"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       {points.map((point, index) => (
         <g key={point.round.id}>
-          <circle cx={xFor(index)} cy={yFor(point.value)} r="6" fill="#dcfce7" stroke="#22c55e" strokeWidth="3" />
-          <text x={xFor(index)} y="282" fill="#94a3b8" fontSize="11" textAnchor="middle">
+          <circle
+            cx={xFor(index)}
+            cy={yFor(point.value)}
+            r="6"
+            fill="#dcfce7"
+            stroke="#22c55e"
+            strokeWidth="3"
+          />
+          <text
+            x={xFor(index)}
+            y="282"
+            fill="#94a3b8"
+            fontSize="11"
+            textAnchor="middle"
+          >
             {formatShortDate(point.round.date)}
           </text>
         </g>
@@ -594,7 +835,9 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="apple-panel-strong p-3">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 text-sm font-semibold leading-5">{value}</p>
     </div>
   );
@@ -617,8 +860,12 @@ function trendSentence(summary: HandicapSummary) {
 }
 
 function sumNullable(values: Array<number | null>) {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+  const present = values.filter(
+    (value): value is number => typeof value === "number",
+  );
+  return present.length > 0
+    ? present.reduce((total, value) => total + value, 0)
+    : null;
 }
 
 function handicapMethodDetail(summary: HandicapSummary) {

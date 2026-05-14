@@ -24,20 +24,28 @@ import {
   CompactReadoutGrid,
   DataPanel,
   MetricCard,
+  MobileAccordionSection,
   MobileHorizontalRail,
   MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
-  StickyMobileAction,
 } from "@/components/premium";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
-import { clubs, importRows, rapsodoSyncSessions, sessions, shots, teeSets, users } from "@/db/schema";
+import {
+  clubs,
+  importRows,
+  rapsodoSyncSessions,
+  sessions,
+  shots,
+  teeSets,
+  users,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
 import {
@@ -45,7 +53,12 @@ import {
   getClubDecisionLabel,
   getClubDecisionTone,
 } from "@/lib/course-decision-advice";
-import { clubSortValue, formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import {
+  clubSortValue,
+  formatClubType,
+  isShortGameTouchClubType,
+  isTrackedClubType,
+} from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import {
@@ -86,13 +99,19 @@ function MissingDatabaseUrlSetup() {
             <AlertTitle>Set DATABASE_URL</AlertTitle>
             <AlertDescription className="space-y-3">
               <p>
-                Use your Supabase (or other Postgres) connection string and configure Supabase Auth
-                public keys so each request can be scoped to the signed-in user.
+                Use your Supabase (or other Postgres) connection string and
+                configure Supabase Auth public keys so each request can be
+                scoped to the signed-in user.
               </p>
               <p className="text-muted-foreground">
                 After deploying with env vars, run{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs">npm run db:migrate</code>{" "}
-                locally with the same <code className="rounded bg-muted px-1 py-0.5 text-xs">DATABASE_URL</code>
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                  npm run db:migrate
+                </code>{" "}
+                locally with the same{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                  DATABASE_URL
+                </code>
                 .
               </p>
             </AlertDescription>
@@ -111,7 +130,8 @@ export default async function DashboardPage() {
   const data = await getDashboardData();
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
-  const primaryActionLabel = data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
+  const primaryActionLabel =
+    data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
 
   const metrics = [
     {
@@ -145,7 +165,11 @@ export default async function DashboardPage() {
       pin: "handicap" as const,
       label: "Scoring ceiling",
       value: formatHandicapValue(data.stats.combinedHandicap.value),
-      detail: formatCombinedHandicapDetail(data.stats.realHandicap, data.stats.simHandicap, data.stats.combinedHandicap),
+      detail: formatCombinedHandicapDetail(
+        data.stats.realHandicap,
+        data.stats.simHandicap,
+        data.stats.combinedHandicap,
+      ),
       href: "/rounds",
       icon: LineChart,
       tone: "amber" as const,
@@ -155,7 +179,8 @@ export default async function DashboardPage() {
   const routeCards = [
     {
       title: "Today",
-      description: "Review today’s shots, session quality, and better-or-worse signals.",
+      description:
+        "Review today’s shots, session quality, and better-or-worse signals.",
       href: "/today",
       metric: "Practice",
       icon: CalendarDays,
@@ -179,7 +204,8 @@ export default async function DashboardPage() {
     },
     {
       title: "Compare",
-      description: "Compare a focused session against the previous-session baseline.",
+      description:
+        "Compare a focused session against the previous-session baseline.",
       href: "/compare",
       metric: "Session delta",
       icon: GitCompareArrows,
@@ -203,7 +229,8 @@ export default async function DashboardPage() {
     },
     {
       title: "Handicap",
-      description: "Review scoring ceiling, playing estimate, and data-limited warnings.",
+      description:
+        "Review scoring ceiling, playing estimate, and data-limited warnings.",
       href: "/handicap",
       metric: formatHandicapValue(data.stats.combinedHandicap.value),
       icon: LineChart,
@@ -227,7 +254,8 @@ export default async function DashboardPage() {
     },
     {
       title: "Coach",
-      description: "Open the next practice priority, diagnosis, and session plan.",
+      description:
+        "Open the next practice priority, diagnosis, and session plan.",
       href: "/coach",
       metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
       icon: Brain,
@@ -251,7 +279,8 @@ export default async function DashboardPage() {
     },
     {
       title: "Round review",
-      description: "Open real scorecards, simulator overlays, and handicap inputs.",
+      description:
+        "Open real scorecards, simulator overlays, and handicap inputs.",
       href: data.latestRound ? `/rounds/${data.latestRound.id}` : "/rounds",
       metric: data.latestRound ? "Latest round" : "No round yet",
       icon: MapPinned,
@@ -275,13 +304,22 @@ export default async function DashboardPage() {
         }
         actions={
           <>
-            <Button asChild variant="outline" size="lg" className="w-full rounded-xl bg-white/70 sm:w-auto">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="w-full rounded-xl bg-white/70 sm:w-auto"
+            >
               <Link href="/shots" prefetch={false}>
                 <Database className="size-4" />
                 View shots
               </Link>
             </Button>
-            <Button asChild size="lg" className="w-full rounded-xl bg-[#111827] text-white sm:w-auto">
+            <Button
+              asChild
+              size="lg"
+              className="w-full rounded-xl bg-[#111827] text-white sm:w-auto"
+            >
               <Link href={primaryAction} prefetch={false}>
                 <ArrowRight className="size-4" />
                 {primaryActionLabel}
@@ -303,13 +341,13 @@ export default async function DashboardPage() {
 
       <section id="today" className="scroll-mt-28">
         <TodayPlan
-        latestSession={data.recentSessions[0] ?? null}
-        totalShots={data.stats.shotCount}
-        bestClub={data.bagPreview[0] ?? null}
-        biggestProblem={data.coachPreview}
-        firstSignal={data.whatChanged[0] ?? null}
-        primaryAction={primaryAction}
-        primaryActionLabel={primaryActionLabel}
+          latestSession={data.recentSessions[0] ?? null}
+          totalShots={data.stats.shotCount}
+          bestClub={data.bagPreview[0] ?? null}
+          biggestProblem={data.coachPreview}
+          firstSignal={data.whatChanged[0] ?? null}
+          primaryAction={primaryAction}
+          primaryActionLabel={primaryActionLabel}
         />
       </section>
 
@@ -363,8 +401,19 @@ export default async function DashboardPage() {
         </CardContent>
       </DataPanel>
 
-      <section id="progress" className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <DataPanel>
+      <section
+        id="progress"
+        className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]"
+      >
+        <MobileAccordionSection
+          title="What changed?"
+          description="Latest imported-shot and round signals."
+          count={`${data.whatChanged.length} signals`}
+        >
+          <CompactReadoutGrid items={data.whatChanged} />
+        </MobileAccordionSection>
+
+        <DataPanel className="hidden sm:flex">
           <SectionHeader
             title="What changed?"
             description="A lightweight readout from the imported shots and saved rounds already in the database."
@@ -378,54 +427,71 @@ export default async function DashboardPage() {
             }
           />
           <CardContent>
-            <CompactReadoutGrid items={data.whatChanged} columnsClassName="md:grid-cols-3" />
+            <CompactReadoutGrid
+              items={data.whatChanged}
+              columnsClassName="md:grid-cols-3"
+            />
           </CardContent>
         </DataPanel>
 
         {pinnedDashboardSections.has("coach") ? (
-        <DataPanel>
-          <SectionHeader
-            title="Next practice"
-            description="The current highest-value coach signal."
-            action={<Crosshair className="size-5 text-pink-500" />}
-          />
-          <CardContent>
-            {data.coachPreview ? (
-              <Link
-                href={`/bag/${data.coachPreview.clubId}/analytics`}
-                prefetch={false}
-                className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <StatusPill tone={data.coachPreview.tone}>{data.coachPreview.issueLabel}</StatusPill>
-                    <p className="mt-3 text-3xl font-semibold tracking-normal">{data.coachPreview.clubName}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{data.coachPreview.reason}</p>
+          <DataPanel>
+            <SectionHeader
+              title="Next practice"
+              description="The current highest-value coach signal."
+              action={<Crosshair className="size-5 text-pink-500" />}
+            />
+            <CardContent>
+              {data.coachPreview ? (
+                <Link
+                  href={`/bag/${data.coachPreview.clubId}/analytics`}
+                  prefetch={false}
+                  className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <StatusPill tone={data.coachPreview.tone}>
+                        {data.coachPreview.issueLabel}
+                      </StatusPill>
+                      <p className="mt-3 text-3xl font-semibold tracking-normal">
+                        {data.coachPreview.clubName}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {data.coachPreview.reason}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-semibold">
+                        {data.coachPreview.trustIndex}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">trust</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-semibold">{data.coachPreview.trustIndex}%</p>
-                    <p className="text-xs text-muted-foreground">trust</p>
-                  </div>
+                  <p className="mt-4 text-sm font-medium">
+                    {data.coachPreview.drill}
+                  </p>
+                  <Progress
+                    value={data.coachPreview.trustIndex}
+                    className="mt-4"
+                  />
+                </Link>
+              ) : (
+                <div className="apple-panel-strong p-5">
+                  <p className="font-semibold">No coach priority yet</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Import a range session to unlock club-specific practice
+                    recommendations.
+                  </p>
+                  <Button asChild variant="outline" className="mt-4">
+                    <Link href="/coach" prefetch={false}>
+                      <Brain className="size-4" />
+                      Open coach
+                    </Link>
+                  </Button>
                 </div>
-                <p className="mt-4 text-sm font-medium">{data.coachPreview.drill}</p>
-                <Progress value={data.coachPreview.trustIndex} className="mt-4" />
-              </Link>
-            ) : (
-              <div className="apple-panel-strong p-5">
-                <p className="font-semibold">No coach priority yet</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Import a range session to unlock club-specific practice recommendations.
-                </p>
-                <Button asChild variant="outline" className="mt-4">
-                  <Link href="/coach" prefetch={false}>
-                    <Brain className="size-4" />
-                    Open coach
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </DataPanel>
+              )}
+            </CardContent>
+          </DataPanel>
         ) : null}
       </section>
 
@@ -434,8 +500,15 @@ export default async function DashboardPage() {
           title="Tools"
           description="Fast routes into the main workflows."
           action={
-            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
-              <Link href="/dashboard#tools" prefetch={false}>All</Link>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="min-h-10 rounded-xl"
+            >
+              <Link href="/dashboard#tools" prefetch={false}>
+                All
+              </Link>
             </Button>
           }
         >
@@ -447,13 +520,17 @@ export default async function DashboardPage() {
                 key={card.href}
                 href={card.href}
                 prefetch={false}
-                className="apple-panel-strong block min-h-36 p-4"
+                className="apple-panel-strong block min-h-28 p-3"
               >
-                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
+                <div
+                  className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}
+                >
                   <Icon className="size-5" />
                 </div>
                 <p className="font-semibold tracking-normal">{card.title}</p>
-                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{card.description}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                  {card.description}
+                </p>
                 <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {card.metric}
                 </p>
@@ -473,164 +550,208 @@ export default async function DashboardPage() {
         </DataPanel>
       </section>
 
-      <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      <section
+        id="bag"
+        className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]"
+      >
         {pinnedDashboardSections.has("bag") ? (
-        <>
-        <MobileHorizontalRail
-          title="Bag snapshot"
-          description="Stock numbers and confidence by club."
-          action={
-            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
-              <Link href="/bag" prefetch={false}>View all</Link>
-            </Button>
-          }
-        >
-          {data.bagPreview.map((club) => (
-            <Link
-              key={club.id}
-              href={`/bag/${club.id}`}
-              prefetch={false}
-              className="apple-panel-strong block p-4"
-            >
-              <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
-              <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
-                <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
-              </div>
-              <Progress value={club.stock.confidenceScore} className="mt-4" />
-            </Link>
-          ))}
-        </MobileHorizontalRail>
-
-        <DataPanel className="hidden sm:block">
-          <SectionHeader
-            title="Bag snapshot"
-            description="Active clubs with current stock-yardage confidence."
-            action={
-              <Button asChild variant="outline">
-                <Link href="/bag" prefetch={false}>
-                  <Target className="size-4" />
-                  Full bag
-                </Link>
-              </Button>
-            }
-          />
-          <CardContent className="space-y-3">
-            {data.bagPreview.map((club) => (
-              <Link
-                key={club.id}
-                href={`/bag/${club.id}`}
-                prefetch={false}
-                className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-lg font-semibold tracking-normal">
-                      {formatClubType(club.type)}
-                    </p>
-                    <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
-                      {club.decisionLabel}
-                    </StatusPill>
-                  </div>
-                  <p className="truncate text-sm text-muted-foreground">{club.brandModel}</p>
-                </div>
-                <div className="grid min-w-48 grid-cols-2 gap-3">
-                  <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
-                  <MiniMetric label="Shots" value={integerFormatter.format(club.shotCount)} />
-                </div>
-                <div className="sm:col-span-2">
-                  <Progress value={club.stock.confidenceScore} />
-                </div>
-              </Link>
-            ))}
-            {data.bagPreview.length === 0 ? (
-              <div className="apple-panel p-6 text-center">
-                <p className="font-medium">No active clubs yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Import a Rapsodo CSV and the bag map will build automatically.
-                </p>
-                <Button asChild className="mt-4">
-                  <Link href="/import" prefetch={false}>
-                    <Upload className="size-4" />
-                    Import CSV
+          <>
+            <MobileHorizontalRail
+              title="Bag snapshot"
+              description="Stock numbers and confidence by club."
+              action={
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="min-h-10 rounded-xl"
+                >
+                  <Link href="/bag" prefetch={false}>
+                    View all
                   </Link>
                 </Button>
-              </div>
-            ) : null}
-          </CardContent>
-        </DataPanel>
-        </>
+              }
+            >
+              {data.bagPreview.map((club) => (
+                <Link
+                  key={club.id}
+                  href={`/bag/${club.id}`}
+                  prefetch={false}
+                  className="apple-panel-strong block p-4"
+                >
+                  <p className="text-lg font-semibold tracking-normal">
+                    {formatClubType(club.type)}
+                  </p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">
+                    {club.brandModel}
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <MiniMetric
+                      label="Carry"
+                      value={formatYards(club.stock.carryMedianYd)}
+                    />
+                    <MiniMetric
+                      label="Trust"
+                      value={`${club.stock.confidenceScore}%`}
+                    />
+                  </div>
+                  <Progress
+                    value={club.stock.confidenceScore}
+                    className="mt-4"
+                  />
+                </Link>
+              ))}
+            </MobileHorizontalRail>
+
+            <DataPanel className="hidden sm:block">
+              <SectionHeader
+                title="Bag snapshot"
+                description="Active clubs with current stock-yardage confidence."
+                action={
+                  <Button asChild variant="outline">
+                    <Link href="/bag" prefetch={false}>
+                      <Target className="size-4" />
+                      Full bag
+                    </Link>
+                  </Button>
+                }
+              />
+              <CardContent className="space-y-3">
+                {data.bagPreview.map((club) => (
+                  <Link
+                    key={club.id}
+                    href={`/bag/${club.id}`}
+                    prefetch={false}
+                    className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold tracking-normal">
+                          {formatClubType(club.type)}
+                        </p>
+                        <StatusPill
+                          tone={getClubDecisionTone(club.decisionLabel)}
+                        >
+                          {club.decisionLabel}
+                        </StatusPill>
+                      </div>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {club.brandModel}
+                      </p>
+                    </div>
+                    <div className="grid min-w-48 grid-cols-2 gap-3">
+                      <MiniMetric
+                        label="Carry"
+                        value={formatYards(club.stock.carryMedianYd)}
+                      />
+                      <MiniMetric
+                        label="Shots"
+                        value={integerFormatter.format(club.shotCount)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Progress value={club.stock.confidenceScore} />
+                    </div>
+                  </Link>
+                ))}
+                {data.bagPreview.length === 0 ? (
+                  <div className="apple-panel p-6 text-center">
+                    <p className="font-medium">No active clubs yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Import a Rapsodo CSV and the bag map will build
+                      automatically.
+                    </p>
+                    <Button asChild className="mt-4">
+                      <Link href="/import" prefetch={false}>
+                        <Upload className="size-4" />
+                        Import CSV
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
+              </CardContent>
+            </DataPanel>
+          </>
         ) : null}
 
         {pinnedDashboardSections.has("rounds") ? (
-        <DataPanel>
-          <SectionHeader
-            title="Latest round"
-            description="Newest round, simulator, or simulated-course file."
-            action={<Flag className="size-5 text-sky-500" />}
-          />
-          <CardContent>
-            {data.latestRound ? (
-              <div className="space-y-4">
-                <div className="apple-panel-strong p-4">
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(data.latestRound.date)} - {formatSessionType(data.latestRound.type)}
-                  </p>
-                  <p className="mt-1 text-2xl font-semibold tracking-normal">
-                    {data.latestRound.courseName ?? data.latestRound.fileName ?? "Untitled round"}
-                  </p>
+          <DataPanel>
+            <SectionHeader
+              title="Latest round"
+              description="Newest round, simulator, or simulated-course file."
+              action={<Flag className="size-5 text-sky-500" />}
+            />
+            <CardContent>
+              {data.latestRound ? (
+                <div className="space-y-4">
+                  <div className="apple-panel-strong p-4">
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(data.latestRound.date)} -{" "}
+                      {formatSessionType(data.latestRound.type)}
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold tracking-normal">
+                      {data.latestRound.courseName ??
+                        data.latestRound.fileName ??
+                        "Untitled round"}
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                    <RoundMetric
+                      label="Score"
+                      value={data.latestRound.totalScore}
+                    />
+                    <RoundMetric
+                      label="Par"
+                      value={data.latestRound.totalPar}
+                    />
+                    <RoundMetric
+                      label="Putts"
+                      value={data.latestRound.totalPutts}
+                    />
+                    <RoundMetric
+                      label="Diff"
+                      value={formatHandicapValue(
+                        data.latestRound.handicapDifferential,
+                      )}
+                    />
+                  </div>
+                  <Separator />
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Button asChild className="flex-1">
+                      <Link
+                        href={`/rounds/${data.latestRound.id}`}
+                        prefetch={false}
+                      >
+                        <Flag className="size-4" />
+                        Review round
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1">
+                      <Link href="/rounds" prefetch={false}>
+                        All rounds
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  <RoundMetric label="Score" value={data.latestRound.totalScore} />
-                  <RoundMetric label="Par" value={data.latestRound.totalPar} />
-                  <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
-                  <RoundMetric
-                    label="Diff"
-                    value={formatHandicapValue(data.latestRound.handicapDifferential)}
-                  />
-                </div>
-                <Separator />
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button asChild className="flex-1">
-                    <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
-                      <Flag className="size-4" />
-                      Review round
+              ) : (
+                <div className="apple-panel p-6">
+                  <p className="font-medium">No round imports yet</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Save a simulated-course CSV to unlock scorecards, hole
+                    review, and round shot maps.
+                  </p>
+                  <Button asChild variant="outline" className="mt-4">
+                    <Link href="/import" prefetch={false}>
+                      <Upload className="size-4" />
+                      Import round CSV
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" className="flex-1">
-                    <Link href="/rounds" prefetch={false}>
-                      All rounds
-                    </Link>
-                  </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="apple-panel p-6">
-                <p className="font-medium">No round imports yet</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
-                </p>
-                <Button asChild variant="outline" className="mt-4">
-                  <Link href="/import" prefetch={false}>
-                    <Upload className="size-4" />
-                    Import round CSV
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </DataPanel>
+              )}
+            </CardContent>
+          </DataPanel>
         ) : null}
       </section>
-      <StickyMobileAction>
-        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
-          <Link href={primaryAction} prefetch={false}>
-            <ArrowRight className="size-4" />
-            {primaryActionLabel}
-          </Link>
-        </Button>
-      </StickyMobileAction>
     </PageShell>
   );
 }
@@ -644,9 +765,13 @@ function TodayPlan({
   primaryAction,
   primaryActionLabel,
 }: {
-  latestSession: Awaited<ReturnType<typeof getDashboardData>>["recentSessions"][number] | null;
+  latestSession:
+    | Awaited<ReturnType<typeof getDashboardData>>["recentSessions"][number]
+    | null;
   totalShots: number;
-  bestClub: Awaited<ReturnType<typeof getDashboardData>>["bagPreview"][number] | null;
+  bestClub:
+    | Awaited<ReturnType<typeof getDashboardData>>["bagPreview"][number]
+    | null;
   biggestProblem: Awaited<ReturnType<typeof getDashboardData>>["coachPreview"];
   firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
   primaryAction: string;
@@ -663,9 +788,13 @@ function TodayPlan({
         <div className="mb-3 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/85 p-3 shadow-sm sm:hidden">
           <ShotTraceMotif className="h-14 w-20 shrink-0 text-emerald-700" />
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Today&apos;s readout</p>
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Today&apos;s readout
+            </p>
             <p className="truncate text-sm font-semibold">
-              {biggestProblem ? `${biggestProblem.clubName}: ${biggestProblem.issueLabel}` : primaryActionLabel}
+              {biggestProblem
+                ? `${biggestProblem.clubName}: ${biggestProblem.issueLabel}`
+                : primaryActionLabel}
             </p>
           </div>
         </div>
@@ -674,7 +803,9 @@ function TodayPlan({
           items={[
             {
               label: "Latest session",
-              value: latestSession ? formatDate(latestSession.date) : "No import yet",
+              value: latestSession
+                ? formatDate(latestSession.date)
+                : "No import yet",
               detail: latestSession
                 ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}`
                 : "Import a CSV to build your baseline",
@@ -683,7 +814,9 @@ function TodayPlan({
             {
               label: "Your game",
               value: `${totalShots.toLocaleString("en-GB")} shots`,
-              detail: firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement",
+              detail: firstSignal
+                ? firstSignal.detail
+                : "Waiting for enough data to spot movement",
               tone: firstSignal?.tone ?? "slate",
             },
             {
@@ -697,9 +830,13 @@ function TodayPlan({
             {
               label: "Practise next",
               value: biggestProblem?.clubName ?? primaryActionLabel,
-              detail: biggestProblem?.drill ?? "Import data or review the latest round",
+              detail:
+                biggestProblem?.drill ??
+                "Import data or review the latest round",
               tone: biggestProblem?.tone ?? "amber",
-              href: biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction,
+              href: biggestProblem
+                ? `/bag/${biggestProblem.clubId}/analytics`
+                : primaryAction,
             },
           ]}
         />
@@ -717,12 +854,20 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
+function RoundMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string | null;
+}) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">
-        {typeof value === "number" ? integerFormatter.format(value) : value ?? "--"}
+        {typeof value === "number"
+          ? integerFormatter.format(value)
+          : (value ?? "--")}
       </span>
     </div>
   );
@@ -746,9 +891,13 @@ function formatCombinedHandicapDetail(
   return `Real ceiling ${formatHandicapValue(realHandicap.value)} | Sim ceiling ${formatHandicapValue(simHandicap.value)} | ${trendLabel}`;
 }
 
-function normalizeDashboardPins(value: string[] | null | undefined): DashboardPin[] {
+function normalizeDashboardPins(
+  value: string[] | null | undefined,
+): DashboardPin[] {
   const allowedPins = new Set<string>(dashboardPinOptions);
-  const pins = (value ?? []).filter((pin): pin is DashboardPin => allowedPins.has(pin));
+  const pins = (value ?? []).filter((pin): pin is DashboardPin =>
+    allowedPins.has(pin),
+  );
 
   return pins.length > 0 ? pins : [...dashboardPinOptions];
 }
@@ -768,8 +917,14 @@ async function getDashboardData() {
     recentStockShots,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
-    db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
-    db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
+    db
+      .select({ value: count() })
+      .from(importRows)
+      .where(eq(importRows.userId, userId)),
+    db
+      .select({ value: count() })
+      .from(sessions)
+      .where(eq(sessions.userId, userId)),
     db
       .select({ dashboardPins: users.dashboardPins })
       .from(users)
@@ -802,8 +957,16 @@ async function getDashboardData() {
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
-      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
+      .leftJoin(
+        rapsodoSyncSessions,
+        eq(sessions.id, rapsodoSyncSessions.importedSessionId),
+      )
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          inArray(sessions.type, [...roundSessionTypes]),
+        ),
+      )
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -856,7 +1019,12 @@ async function getDashboardData() {
               count: count(),
             })
             .from(shots)
-            .where(and(eq(shots.userId, userId), inArray(shots.sessionId, recentSessionIds)))
+            .where(
+              and(
+                eq(shots.userId, userId),
+                inArray(shots.sessionId, recentSessionIds),
+              ),
+            )
             .groupBy(shots.sessionId),
           db
             .select({
@@ -864,7 +1032,12 @@ async function getDashboardData() {
               count: count(),
             })
             .from(importRows)
-            .where(and(eq(importRows.userId, userId), inArray(importRows.sessionId, recentSessionIds)))
+            .where(
+              and(
+                eq(importRows.userId, userId),
+                inArray(importRows.sessionId, recentSessionIds),
+              ),
+            )
             .groupBy(importRows.sessionId),
         ])
       : [[], []];
@@ -872,8 +1045,12 @@ async function getDashboardData() {
   const shotCountBySessionId = new Map(
     shotCountsBySession.map((row) => [row.sessionId, row.count]),
   );
-  const rawCountBySessionId = new Map(rawCountsBySession.map((row) => [row.sessionId, row.count]));
-  const shotCountByClubId = new Map(shotCountsByClub.map((row) => [row.clubId, row.count]));
+  const rawCountBySessionId = new Map(
+    rawCountsBySession.map((row) => [row.sessionId, row.count]),
+  );
+  const shotCountByClubId = new Map(
+    shotCountsByClub.map((row) => [row.clubId, row.count]),
+  );
   const stockShotsByClubId = new Map<string, typeof recentStockShots>();
 
   for (const shot of recentStockShots) {
@@ -891,9 +1068,15 @@ async function getDashboardData() {
   const bag = clubRows
     .map((club) => {
       const clubShots = stockShotsByClubId.get(club.id) ?? [];
-      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
-      const stock = calculateStockYardage(clubShots, 50, { clubType: club.type });
-      const touch = calculateShortGameTouchSummary(clubShots, 80, { clubType: club.type });
+      const brandModel =
+        [club.brand, club.model].filter(Boolean).join(" ") ||
+        "Unspecified model";
+      const stock = calculateStockYardage(clubShots, 50, {
+        clubType: club.type,
+      });
+      const touch = calculateShortGameTouchSummary(clubShots, 80, {
+        clubType: club.type,
+      });
       const isShortGameTouch = isShortGameTouchClubType(club.type);
       const decisionLabel = getClubDecisionLabel({
         isShortGameTouch,
@@ -912,11 +1095,16 @@ async function getDashboardData() {
     })
     .sort((left, right) => {
       const shotCountDifference = right.shotCount - left.shotCount;
-      return shotCountDifference || clubSortValue(left.type) - clubSortValue(right.type);
+      return (
+        shotCountDifference ||
+        clubSortValue(left.type) - clubSortValue(right.type)
+      );
     });
   const bagPreview = bag.slice(0, 5);
   const courseAdvice = buildCourseDecisionAdvice(bag);
-  const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
+  const roundSummaries = roundRows
+    .filter(isRoundHistorySession)
+    .map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
   const realHandicap = calculateHandicapSummary(
     roundSummaries
@@ -1025,20 +1213,44 @@ function buildWhatChangedInsights({
         return shotDate >= previousStart && shotDate < currentStart;
       });
 
-      const currentCarry = median(currentShots.map((shot) => shot.carryYd).filter(isNumber));
-      const previousCarry = median(previousShots.map((shot) => shot.carryYd).filter(isNumber));
-      const currentMiss = averageNumber(currentShots.map((shot) => shot.sideCarryYd).filter(isNumber).map(Math.abs));
-      const previousMiss = averageNumber(previousShots.map((shot) => shot.sideCarryYd).filter(isNumber).map(Math.abs));
-      const currentBallSpeed = averageNumber(currentShots.map((shot) => shot.ballSpeedMph).filter(isNumber));
-      const previousBallSpeed = averageNumber(previousShots.map((shot) => shot.ballSpeedMph).filter(isNumber));
+      const currentCarry = median(
+        currentShots.map((shot) => shot.carryYd).filter(isNumber),
+      );
+      const previousCarry = median(
+        previousShots.map((shot) => shot.carryYd).filter(isNumber),
+      );
+      const currentMiss = averageNumber(
+        currentShots
+          .map((shot) => shot.sideCarryYd)
+          .filter(isNumber)
+          .map(Math.abs),
+      );
+      const previousMiss = averageNumber(
+        previousShots
+          .map((shot) => shot.sideCarryYd)
+          .filter(isNumber)
+          .map(Math.abs),
+      );
+      const currentBallSpeed = averageNumber(
+        currentShots.map((shot) => shot.ballSpeedMph).filter(isNumber),
+      );
+      const previousBallSpeed = averageNumber(
+        previousShots.map((shot) => shot.ballSpeedMph).filter(isNumber),
+      );
 
       return {
         clubId,
         clubType: clubTypeById.get(clubId) ?? "club",
         currentCount: currentShots.length,
         previousCount: previousShots.length,
-        carryDelta: currentCarry !== null && previousCarry !== null ? currentCarry - previousCarry : null,
-        missDelta: currentMiss !== null && previousMiss !== null ? currentMiss - previousMiss : null,
+        carryDelta:
+          currentCarry !== null && previousCarry !== null
+            ? currentCarry - previousCarry
+            : null,
+        missDelta:
+          currentMiss !== null && previousMiss !== null
+            ? currentMiss - previousMiss
+            : null,
         ballSpeedDelta:
           currentBallSpeed !== null && previousBallSpeed !== null
             ? currentBallSpeed - previousBallSpeed
@@ -1056,9 +1268,15 @@ function buildWhatChangedInsights({
 
   const strongestCarryChange = clubChanges
     .filter((change) => change.carryDelta !== null)
-    .sort((left, right) => Math.abs(right.carryDelta ?? 0) - Math.abs(left.carryDelta ?? 0))[0];
+    .sort(
+      (left, right) =>
+        Math.abs(right.carryDelta ?? 0) - Math.abs(left.carryDelta ?? 0),
+    )[0];
 
-  if (strongestCarryChange?.carryDelta !== null && strongestCarryChange?.carryDelta !== undefined) {
+  if (
+    strongestCarryChange?.carryDelta !== null &&
+    strongestCarryChange?.carryDelta !== undefined
+  ) {
     insights.push({
       label: `${formatClubType(strongestCarryChange.clubType)} carry`,
       value: `${formatSignedYards(strongestCarryChange.carryDelta)} vs previous 30`,
@@ -1069,23 +1287,37 @@ function buildWhatChangedInsights({
 
   const strongestMissChange = clubChanges
     .filter((change) => change.missDelta !== null)
-    .sort((left, right) => Math.abs(right.missDelta ?? 0) - Math.abs(left.missDelta ?? 0))[0];
+    .sort(
+      (left, right) =>
+        Math.abs(right.missDelta ?? 0) - Math.abs(left.missDelta ?? 0),
+    )[0];
 
-  if (strongestMissChange?.missDelta !== null && strongestMissChange?.missDelta !== undefined) {
+  if (
+    strongestMissChange?.missDelta !== null &&
+    strongestMissChange?.missDelta !== undefined
+  ) {
     const tighter = strongestMissChange.missDelta < 0;
     insights.push({
       label: `${formatClubType(strongestMissChange.clubType)} dispersion`,
       value: `${numberFormatter.format(Math.abs(strongestMissChange.missDelta))} yd ${tighter ? "tighter" : "wider"}`,
-      detail: "Average left/right miss compared with the previous 30-day window.",
+      detail:
+        "Average left/right miss compared with the previous 30-day window.",
       tone: tighter ? "green" : "amber",
     });
   }
 
   const strongestSpeedChange = clubChanges
     .filter((change) => change.ballSpeedDelta !== null)
-    .sort((left, right) => Math.abs(right.ballSpeedDelta ?? 0) - Math.abs(left.ballSpeedDelta ?? 0))[0];
+    .sort(
+      (left, right) =>
+        Math.abs(right.ballSpeedDelta ?? 0) -
+        Math.abs(left.ballSpeedDelta ?? 0),
+    )[0];
 
-  if (strongestSpeedChange?.ballSpeedDelta !== null && strongestSpeedChange?.ballSpeedDelta !== undefined) {
+  if (
+    strongestSpeedChange?.ballSpeedDelta !== null &&
+    strongestSpeedChange?.ballSpeedDelta !== undefined
+  ) {
     insights.push({
       label: `${formatClubType(strongestSpeedChange.clubType)} speed`,
       value: `${formatSignedNumber(strongestSpeedChange.ballSpeedDelta)} mph`,
@@ -1094,7 +1326,11 @@ function buildWhatChangedInsights({
     });
   }
 
-  if (latestRound && latestRound.totalScore !== null && latestRound.totalPar !== null) {
+  if (
+    latestRound &&
+    latestRound.totalScore !== null &&
+    latestRound.totalPar !== null
+  ) {
     const versusPar = latestRound.totalScore - latestRound.totalPar;
     insights.push({
       label: "Latest round",
@@ -1117,10 +1353,18 @@ function buildWhatChangedInsights({
     });
   }
 
-  const fillerOptions: Array<{ label: string; value: string; detail: string; tone: "slate" }> = [
+  const fillerOptions: Array<{
+    label: string;
+    value: string;
+    detail: string;
+    tone: "slate";
+  }> = [
     {
       label: "Data depth",
-      value: bagPreview.length > 0 ? `${integerFormatter.format(bagPreview.length)} clubs mapped` : "Import needed",
+      value:
+        bagPreview.length > 0
+          ? `${integerFormatter.format(bagPreview.length)} clubs mapped`
+          : "Import needed",
       detail:
         bagPreview.length > 0
           ? "Keep adding shots to unlock stronger trend comparisons."
@@ -1130,7 +1374,8 @@ function buildWhatChangedInsights({
     {
       label: "Next step",
       value: "Log a session",
-      detail: "More recent shots produce sharper insight cards on this dashboard.",
+      detail:
+        "More recent shots produce sharper insight cards on this dashboard.",
       tone: "slate",
     },
     {
@@ -1161,26 +1406,26 @@ function summarizeRound(round: {
   date: Date;
   courseRating?: number | null;
   slopeRating?: number | null;
-  scorecardJson:
-    | Array<{
-        par: number;
-        score?: number | null;
-        putts?: number | null;
-      }>
-    | null;
+  scorecardJson: Array<{
+    par: number;
+    score?: number | null;
+    putts?: number | null;
+  }> | null;
 }) {
   const scorecard = round.scorecardJson ?? [];
   const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
   const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-  const totalPar = scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
-  const handicapDifferential =
-    calculateRoundDifferential({
-      totalScore,
-      totalPar,
-      courseRating: round.courseRating ?? null,
-      slopeRating: round.slopeRating ?? null,
-      holesPlayed: scorecard.length,
-    });
+  const totalPar =
+    scorecard.length > 0
+      ? scorecard.reduce((total, hole) => total + hole.par, 0)
+      : null;
+  const handicapDifferential = calculateRoundDifferential({
+    totalScore,
+    totalPar,
+    courseRating: round.courseRating ?? null,
+    slopeRating: round.slopeRating ?? null,
+    holesPlayed: scorecard.length,
+  });
 
   return {
     ...round,
@@ -1192,8 +1437,12 @@ function summarizeRound(round: {
 }
 
 function sumNullable(values: Array<number | null>) {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+  const present = values.filter(
+    (value): value is number => typeof value === "number",
+  );
+  return present.length > 0
+    ? present.reduce((total, value) => total + value, 0)
+    : null;
 }
 
 function daysBefore(value: Date, days: number) {
@@ -1210,11 +1459,15 @@ function median(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
 
-  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
 }
 
 function averageNumber(values: number[]) {
-  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null;
+  return values.length > 0
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : null;
 }
 
 function isNumber(value: number | null): value is number {
