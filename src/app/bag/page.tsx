@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
+  BarChart3,
   MapPinned,
   Trophy,
   Target,
@@ -47,6 +48,7 @@ import {
 } from "@/components/ui/table";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { buildClubBenchmarkRows, type ClubBenchmarkRow } from "@/lib/club-benchmarks";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   buildCourseDecisionAdvice,
@@ -76,6 +78,7 @@ const RECENT_SHOTS_PER_CLUB = 200;
 export default async function BagPage() {
   const bag = await getBag();
   const gappingRows = buildGappingRows(bag);
+  const benchmarkRows = buildBenchmarkRows(bag);
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
@@ -168,6 +171,7 @@ export default async function BagPage() {
       <MobileSectionChips
         items={[
           { label: "Gapping", href: "#gapping" },
+          { label: "Levels", href: "#levels" },
           { label: "Decisions", href: "#decisions" },
           { label: "Clubs", href: "#clubs" },
         ]}
@@ -229,6 +233,12 @@ export default async function BagPage() {
       {gappingRows.length > 0 ? (
         <section id="gapping" className="scroll-mt-28">
           <CarryGappingTable rows={gappingRows} />
+        </section>
+      ) : null}
+
+      {benchmarkRows.length > 0 ? (
+        <section id="levels" className="scroll-mt-28">
+          <DistanceBenchmarkPanel rows={benchmarkRows} />
         </section>
       ) : null}
 
@@ -535,6 +545,19 @@ type GappingRow = {
   decisionLabel: ClubDecisionLabel;
 };
 
+function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
+  return buildClubBenchmarkRows(
+    bag.map((club) => ({
+      clubId: club.id,
+      clubType: club.type,
+      brandModel: club.brandModel,
+      carryYd: club.stock.carryMedianYd,
+      sampleSize: club.stock.sampleSize,
+      confidenceScore: club.stock.confidenceScore,
+    })),
+  );
+}
+
 function buildGappingRows(bag: BagClub[]): GappingRow[] {
   const stockBag = bag.filter((club) => !club.isShortGameTouch);
 
@@ -628,6 +651,253 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
       </CardContent>
     </DataPanel>
   );
+}
+
+function DistanceBenchmarkPanel({ rows }: { rows: ClubBenchmarkRow[] }) {
+  const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
+  const averageLevel =
+    rowsWithData.length === 0
+      ? null
+      : Math.round(
+          rowsWithData.reduce((total, row) => total + (row.comparison.levelIndex ?? 0), 0) / rowsWithData.length,
+        );
+  const strongest = [...rowsWithData].sort(
+    (left, right) =>
+      (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
+      right.comparison.progressPercent - left.comparison.progressPercent,
+  )[0] ?? null;
+  const closestNext = [...rows]
+    .filter(
+      (
+        row,
+      ): row is ClubBenchmarkRow & {
+        comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
+      } => row.comparison.yardsToNextLevel !== null,
+    )
+    .sort((left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel)[0] ?? null;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Distance benchmarks"
+        description="Your rolling stock carry against broad club-distance reference levels."
+        action={<BarChart3 className="size-5 text-emerald-500" />}
+      />
+      <CardContent className="space-y-4">
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-3"
+          items={[
+            {
+              label: "Bag average",
+              value: averageLevel === null ? "--" : benchmarkLevelFromIndex(averageLevel),
+              detail:
+                rowsWithData.length === 0
+                  ? "Need stock carry samples"
+                  : `${rowsWithData.length} club${rowsWithData.length === 1 ? "" : "s"} compared`,
+              tone: benchmarkTone(averageLevel === null ? "no-data" : benchmarkLevelKeyFromIndex(averageLevel)),
+            },
+            {
+              label: "Strongest match",
+              value: strongest ? formatClubType(strongest.clubType) : "--",
+              detail: strongest
+                ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd`
+                : "Need stock carry samples",
+              tone: benchmarkTone(strongest?.comparison.levelKey ?? "no-data"),
+              href: strongest ? `/bag/${strongest.clubId}` : undefined,
+            },
+            {
+              label: "Closest next level",
+              value: closestNext ? formatClubType(closestNext.clubType) : "--",
+              detail: closestNext
+                ? `${formatMetric(closestNext.comparison.yardsToNextLevel)} yd to ${closestNext.comparison.nextLevel?.label}`
+                : "No next target yet",
+              tone: closestNext ? "amber" : "slate",
+              href: closestNext ? `/bag/${closestNext.clubId}` : undefined,
+            },
+          ]}
+        />
+
+        <MobileAccordionSection title="Club level table" count={`${rows.length} clubs`}>
+          <MobileDataList>
+            {rows.map((row) => (
+              <MobileDataCard
+                key={row.clubId}
+                href={`/bag/${row.clubId}`}
+                title={formatClubType(row.clubType)}
+                subtitle={row.brandModel}
+                action={<BenchmarkBadge row={row} />}
+              >
+                <DataPair
+                  label="Carry"
+                  value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
+                />
+                <DataPair label="Sample" value={row.sampleSize.toString()} />
+                <DataPair label="Next" value={benchmarkNextText(row)} />
+                <DataPair label="Reference" value={benchmarkReferenceText(row)} />
+                <BenchmarkMeter row={row} />
+              </MobileDataCard>
+            ))}
+          </MobileDataList>
+        </MobileAccordionSection>
+
+        <div className="hidden sm:block">
+          <DataTableFrame>
+            <Table className="min-w-[980px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-right">Your carry</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Next</TableHead>
+                  <TableHead className="min-w-[280px]">Benchmark band</TableHead>
+                  <TableHead className="text-right">Sample</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.clubId}>
+                    <TableCell>
+                      <Link
+                        href={`/bag/${row.clubId}`}
+                        className="font-semibold text-foreground underline-offset-4 hover:underline"
+                      >
+                        {formatClubType(row.clubType)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                      {row.brandModel}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatMetric(row.carryYd)}
+                      {row.carryYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell>
+                      <BenchmarkBadge row={row} />
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {benchmarkNextText(row)}
+                    </TableCell>
+                    <TableCell>
+                      <BenchmarkMeter row={row} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="font-medium">{row.sampleSize}</span>
+                      <span className="ml-2 text-muted-foreground">{row.confidenceScore}%</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function BenchmarkMeter({ row }: { row: ClubBenchmarkRow }) {
+  const marker = row.comparison.carryYd === null ? null : row.comparison.progressPercent;
+
+  return (
+    <div className="min-w-0 space-y-2">
+      <div className="relative h-3 rounded-full bg-slate-100">
+        <div
+          className="h-full rounded-full bg-emerald-600"
+          style={{ width: `${row.comparison.progressPercent}%` }}
+        />
+        {marker === null ? null : (
+          <span
+            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-sm"
+            style={{ left: `calc(${marker}% - 0.5rem)` }}
+            aria-hidden
+          />
+        )}
+      </div>
+      <div className="grid grid-cols-5 gap-1 text-[10px] leading-4 text-muted-foreground">
+        {row.comparison.benchmark.levels.map((level) => (
+          <span key={level.key} className="truncate">
+            {level.shortLabel} {level.yards}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BenchmarkBadge({ row }: { row: ClubBenchmarkRow }) {
+  return (
+    <span
+      className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${benchmarkBadgeClass(
+        row.comparison.levelKey,
+      )}`}
+    >
+      {row.comparison.levelLabel}
+    </span>
+  );
+}
+
+function benchmarkNextText(row: ClubBenchmarkRow) {
+  if (row.comparison.carryYd === null) {
+    return "Needs full-swing stock data";
+  }
+
+  if (!row.comparison.nextLevel || row.comparison.yardsToNextLevel === null) {
+    return "Above top reference";
+  }
+
+  return `${formatMetric(row.comparison.yardsToNextLevel)} yd to ${row.comparison.nextLevel.label}`;
+}
+
+function benchmarkReferenceText(row: ClubBenchmarkRow) {
+  const first = row.comparison.benchmark.levels[0];
+  const last = row.comparison.benchmark.levels[row.comparison.benchmark.levels.length - 1];
+
+  return `${first.yards}-${last.yards} yd ${row.comparison.benchmark.label}`;
+}
+
+function benchmarkLevelFromIndex(index: number) {
+  return ["Beginner", "Average", "Good", "Advanced", "Tour"][index] ?? "--";
+}
+
+function benchmarkLevelKeyFromIndex(index: number) {
+  return (["beginner", "average", "good", "advanced", "tour"] as const)[index] ?? "no-data";
+}
+
+function benchmarkTone(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
+  if (levelKey === "tour" || levelKey === "tour-plus" || levelKey === "advanced") {
+    return "green";
+  }
+
+  if (levelKey === "good") {
+    return "sky";
+  }
+
+  if (levelKey === "average" || levelKey === "beginner" || levelKey === "building") {
+    return "amber";
+  }
+
+  return "slate";
+}
+
+function benchmarkBadgeClass(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
+  if (levelKey === "tour" || levelKey === "tour-plus") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
+  }
+
+  if (levelKey === "advanced" || levelKey === "good") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (levelKey === "average") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (levelKey === "beginner" || levelKey === "building") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {

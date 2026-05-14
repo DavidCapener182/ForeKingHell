@@ -1,6 +1,8 @@
+import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
+
 import type { Achievement, AchievementCategory, AchievementTier, AchievementTriggerType } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-13-club-distance-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-14-benchmark-club-levels-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -120,6 +122,13 @@ export const CORE_ACHIEVEMENTS: Achievement[] = ([
   achievement("scoring_gap_fixed", "Scoring Gap Fixed", "Confirm PW to 9i to 8i gaps.", "gapping", "gold", "stockYardage"),
   achievement("eight_nine_gap_healthy", "8/9 Gap Healthy", "Keep 8i 8-12 yd longer than 9i.", "gapping", "gold", "stockYardage"),
   achievement("reliable_bag", "Reliable Bag", "Get every active club above 70 confidence.", "gapping", "platinum", "stockYardage", 70),
+  achievement("benchmark_first_average", "Average Marker", "Build a reliable stock carry that reaches the Average benchmark for any club.", "gapping", "silver", "stockYardage", 1),
+  achievement("benchmark_first_good", "Good Marker", "Build a reliable stock carry that reaches the Good benchmark for any club.", "gapping", "gold", "stockYardage", 2),
+  achievement("benchmark_first_advanced", "Advanced Marker", "Build a reliable stock carry that reaches the Advanced benchmark for any club.", "gapping", "platinum", "stockYardage", 3),
+  achievement("benchmark_first_tour", "Tour Marker", "Build a reliable stock carry that reaches the Tour benchmark for any club.", "gapping", "diamond", "stockYardage", 4),
+  achievement("benchmark_bag_average", "Average Bag", "Average the Average benchmark or better across 5 reliable stock clubs.", "gapping", "gold", "stockYardage", 1),
+  achievement("benchmark_bag_good", "Good Bag", "Average the Good benchmark or better across 5 reliable stock clubs.", "gapping", "platinum", "stockYardage", 2),
+  achievement("benchmark_bag_advanced", "Advanced Bag", "Average the Advanced benchmark or better across 5 reliable stock clubs.", "gapping", "diamond", "stockYardage", 3),
 
   achievement("ten_shot_sample", "10-Shot Sample", "Log 10 shots with one club.", "consistency", "bronze", "rollingWindow", 10),
   achievement("twenty_shot_sample", "20-Shot Sample", "Log 20 shots with one club.", "consistency", "silver", "rollingWindow", 20),
@@ -248,6 +257,32 @@ export type GeneratedClubMasteryAchievement = {
   minShots: number;
 };
 
+export type GeneratedClubBenchmarkAchievement = {
+  id: string;
+  clubType: string;
+  levelKey: ClubBenchmarkLevelKey;
+  levelLabel: string;
+  targetYards: number;
+};
+
+export type GeneratedHiddenShotKind =
+  | "offlineLeftYd"
+  | "offlineRightYd"
+  | "lowCarryYd"
+  | "lowLaunchDeg"
+  | "highLaunchDeg"
+  | "lowApexFt"
+  | "highApexFt"
+  | "straightOfflineYd"
+  | "pureWild";
+
+export type GeneratedHiddenShotAchievement = {
+  id: string;
+  clubType: string;
+  kind: GeneratedHiddenShotKind;
+  threshold: number;
+};
+
 const GENERATED_CLUBS = [
   "driver",
   "3w",
@@ -268,7 +303,27 @@ const GENERATED_CLUBS = [
   "lw",
 ];
 
+const GENERATED_HIDDEN_SHOT_CLUBS = [...new Set([...GENERATED_CLUBS, "2i", "3i"])];
 const GENERATED_FULL_SHOT_CLUBS = GENERATED_CLUBS.filter((clubType) => !["sw", "lw"].includes(clubType));
+const GENERATED_HIDDEN_FULL_SHOT_CLUBS = GENERATED_HIDDEN_SHOT_CLUBS.filter((clubType) => !["sw", "lw"].includes(clubType));
+const GENERATED_BENCHMARK_CLUBS = [
+  "driver",
+  "3w",
+  "5w",
+  "3h",
+  "4h",
+  "5h",
+  "2i",
+  "3i",
+  "4i",
+  "5i",
+  "6i",
+  "7i",
+  "8i",
+  "9i",
+  "pw",
+  "gw",
+];
 const GENERATED_VOLUME_CLUBS = GENERATED_CLUBS;
 const GENERATED_MILEAGE_CLUBS = GENERATED_CLUBS;
 export const YARDS_PER_MILE = 1760;
@@ -299,6 +354,14 @@ const GENERATED_VOLUME_SHOT_COUNTS = [1, 10, 25, 50, 100];
 const GENERATED_MILEAGE_MILESTONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100];
 const GENERATED_MASTERY_SAMPLE_CLUBS = GENERATED_FULL_SHOT_CLUBS;
 const GENERATED_MASTERY_MIN_SHOTS = 10;
+const HIDDEN_OFFLINE_THRESHOLDS = [20, 35, 50, 70];
+const HIDDEN_LAUNCH_LOW_THRESHOLDS = [4, 7];
+const HIDDEN_LAUNCH_HIGH_THRESHOLDS = [24, 30];
+const HIDDEN_APEX_LOW_THRESHOLDS = [20, 35];
+const HIDDEN_APEX_HIGH_THRESHOLDS = [130, 170];
+const HIDDEN_LOW_CARRY_RATIOS = [0.25, 0.5, 0.75];
+const HIDDEN_STRAIGHT_OFFLINE_THRESHOLD = 2;
+const HIDDEN_PURE_WILD_OFFLINE_THRESHOLD = 35;
 
 export const GENERATED_CLUB_METRIC_ACHIEVEMENTS = buildGeneratedClubMetricAchievements();
 export const GENERATED_CLUB_METRICS_BY_CLUB = new Map<string, GeneratedClubMetricAchievement[]>();
@@ -310,6 +373,10 @@ export const GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS = buildGeneratedClubPerso
 export const GENERATED_CLUB_PERSONAL_BEST_BY_CLUB = new Map<string, GeneratedClubPersonalBestAchievement[]>();
 export const GENERATED_CLUB_MASTERY_ACHIEVEMENTS = buildGeneratedClubMasteryAchievements();
 export const GENERATED_CLUB_MASTERY_BY_CLUB = new Map<string, GeneratedClubMasteryAchievement[]>();
+export const GENERATED_CLUB_BENCHMARK_ACHIEVEMENTS = buildGeneratedClubBenchmarkAchievements();
+export const GENERATED_CLUB_BENCHMARKS_BY_CLUB = new Map<string, GeneratedClubBenchmarkAchievement[]>();
+export const GENERATED_HIDDEN_SHOT_ACHIEVEMENTS = buildGeneratedHiddenShotAchievements();
+export const GENERATED_HIDDEN_SHOTS_BY_CLUB = new Map<string, GeneratedHiddenShotAchievement[]>();
 
 for (const generated of GENERATED_CLUB_METRIC_ACHIEVEMENTS) {
   const existing = GENERATED_CLUB_METRICS_BY_CLUB.get(generated.clubType) ?? [];
@@ -341,6 +408,18 @@ for (const generated of GENERATED_CLUB_MASTERY_ACHIEVEMENTS) {
   GENERATED_CLUB_MASTERY_BY_CLUB.set(generated.clubType, existing);
 }
 
+for (const generated of GENERATED_CLUB_BENCHMARK_ACHIEVEMENTS) {
+  const existing = GENERATED_CLUB_BENCHMARKS_BY_CLUB.get(generated.clubType) ?? [];
+  existing.push(generated);
+  GENERATED_CLUB_BENCHMARKS_BY_CLUB.set(generated.clubType, existing);
+}
+
+for (const generated of GENERATED_HIDDEN_SHOT_ACHIEVEMENTS) {
+  const existing = GENERATED_HIDDEN_SHOTS_BY_CLUB.get(generated.clubType) ?? [];
+  existing.push(generated);
+  GENERATED_HIDDEN_SHOTS_BY_CLUB.set(generated.clubType, existing);
+}
+
 export const ACHIEVEMENTS: Achievement[] = [
   ...CORE_ACHIEVEMENTS,
   ...GENERATED_CLUB_METRIC_ACHIEVEMENTS.map(toGeneratedAchievement),
@@ -348,6 +427,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   ...GENERATED_CLUB_MILEAGE_ACHIEVEMENTS.map(toGeneratedMileageAchievement),
   ...GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS.map(toGeneratedPersonalBestAchievement),
   ...GENERATED_CLUB_MASTERY_ACHIEVEMENTS.map(toGeneratedMasteryAchievement),
+  ...GENERATED_CLUB_BENCHMARK_ACHIEVEMENTS.map(toGeneratedBenchmarkAchievement),
+  ...GENERATED_HIDDEN_SHOT_ACHIEVEMENTS.map(toGeneratedHiddenShotAchievement),
 ];
 
 export type AchievementId = string;
@@ -484,6 +565,91 @@ function buildGeneratedClubMasteryAchievements(): GeneratedClubMasteryAchievemen
   return generated;
 }
 
+function buildGeneratedClubBenchmarkAchievements(): GeneratedClubBenchmarkAchievement[] {
+  const generated: GeneratedClubBenchmarkAchievement[] = [];
+
+  for (const clubType of GENERATED_BENCHMARK_CLUBS) {
+    const benchmark = getClubDistanceBenchmark(clubType);
+
+    if (!benchmark) {
+      continue;
+    }
+
+    for (const level of benchmark.levels) {
+      generated.push({
+        id: `club_${clubType}_benchmark_${level.key}`,
+        clubType,
+        levelKey: level.key,
+        levelLabel: level.label,
+        targetYards: level.yards,
+      });
+    }
+  }
+
+  return generated;
+}
+
+function buildGeneratedHiddenShotAchievements(): GeneratedHiddenShotAchievement[] {
+  const generated: GeneratedHiddenShotAchievement[] = [];
+
+  for (const clubType of GENERATED_HIDDEN_SHOT_CLUBS) {
+    for (const threshold of HIDDEN_OFFLINE_THRESHOLDS) {
+      generated.push(hiddenShotAchievement(clubType, "offlineLeftYd", threshold));
+      generated.push(hiddenShotAchievement(clubType, "offlineRightYd", threshold));
+    }
+
+    for (const threshold of HIDDEN_APEX_LOW_THRESHOLDS) {
+      generated.push(hiddenShotAchievement(clubType, "lowApexFt", threshold));
+    }
+
+    for (const threshold of HIDDEN_APEX_HIGH_THRESHOLDS) {
+      generated.push(hiddenShotAchievement(clubType, "highApexFt", threshold));
+    }
+
+    generated.push(hiddenShotAchievement(clubType, "straightOfflineYd", HIDDEN_STRAIGHT_OFFLINE_THRESHOLD));
+  }
+
+  for (const clubType of GENERATED_HIDDEN_FULL_SHOT_CLUBS) {
+    for (const threshold of HIDDEN_LAUNCH_LOW_THRESHOLDS) {
+      generated.push(hiddenShotAchievement(clubType, "lowLaunchDeg", threshold));
+    }
+
+    for (const threshold of HIDDEN_LAUNCH_HIGH_THRESHOLDS) {
+      generated.push(hiddenShotAchievement(clubType, "highLaunchDeg", threshold));
+    }
+
+    generated.push(hiddenShotAchievement(clubType, "pureWild", HIDDEN_PURE_WILD_OFFLINE_THRESHOLD));
+  }
+
+  for (const clubType of GENERATED_BENCHMARK_CLUBS) {
+    const benchmark = getClubDistanceBenchmark(clubType);
+    const beginner = benchmark?.levels.find((level) => level.key === "beginner");
+
+    if (!beginner) {
+      continue;
+    }
+
+    for (const ratio of HIDDEN_LOW_CARRY_RATIOS) {
+      generated.push(hiddenShotAchievement(clubType, "lowCarryYd", Math.round(beginner.yards * ratio)));
+    }
+  }
+
+  return generated;
+}
+
+function hiddenShotAchievement(
+  clubType: string,
+  kind: GeneratedHiddenShotKind,
+  threshold: number,
+): GeneratedHiddenShotAchievement {
+  return {
+    id: `club_${clubType}_hidden_${hiddenShotKindId(kind)}_${thresholdId(threshold)}`,
+    clubType,
+    kind,
+    threshold,
+  };
+}
+
 function toGeneratedAchievement(generated: GeneratedClubMetricAchievement): Achievement {
   const clubLabel = formatClubLabel(generated.clubType);
   const tier = tierForGeneratedAchievement(generated);
@@ -586,6 +752,38 @@ function toGeneratedMasteryAchievement(generated: GeneratedClubMasteryAchievemen
     "session",
     generated.threshold,
     undefined,
+    [generated.clubType],
+  );
+}
+
+function toGeneratedBenchmarkAchievement(generated: GeneratedClubBenchmarkAchievement): Achievement {
+  const clubLabel = formatClubLabel(generated.clubType);
+
+  return achievement(
+    generated.id,
+    `${clubLabel} ${generated.levelLabel} Marker`,
+    `Build a reliable ${clubLabel} stock carry of ${generated.targetYards}+ yd to reach the ${generated.levelLabel} benchmark.`,
+    "gapping",
+    tierForBenchmarkLevel(generated.levelKey),
+    "stockYardage",
+    generated.targetYards,
+    undefined,
+    [generated.clubType],
+  );
+}
+
+function toGeneratedHiddenShotAchievement(generated: GeneratedHiddenShotAchievement): Achievement {
+  const clubLabel = formatClubLabel(generated.clubType);
+
+  return achievement(
+    generated.id,
+    hiddenShotName(clubLabel, generated),
+    hiddenShotDescription(clubLabel, generated),
+    "hidden",
+    "hidden",
+    "singleShot",
+    generated.threshold,
+    25,
     [generated.clubType],
   );
 }
@@ -750,6 +948,74 @@ function mileageName(miles: number) {
 
 function isShortGameGeneratedClub(clubType: string) {
   return clubType === "sw" || clubType === "lw";
+}
+
+function tierForBenchmarkLevel(levelKey: ClubBenchmarkLevelKey): AchievementTier {
+  if (levelKey === "tour") return "diamond";
+  if (levelKey === "advanced") return "platinum";
+  if (levelKey === "good") return "gold";
+  if (levelKey === "average") return "silver";
+  return "bronze";
+}
+
+function hiddenShotKindId(kind: GeneratedHiddenShotKind) {
+  if (kind === "offlineLeftYd") return "left_miss";
+  if (kind === "offlineRightYd") return "right_miss";
+  if (kind === "lowCarryYd") return "low_carry";
+  if (kind === "lowLaunchDeg") return "low_launch";
+  if (kind === "highLaunchDeg") return "high_launch";
+  if (kind === "lowApexFt") return "low_apex";
+  if (kind === "highApexFt") return "high_apex";
+  if (kind === "straightOfflineYd") return "centre_line";
+  return "pure_wild";
+}
+
+function hiddenShotName(clubLabel: string, generated: GeneratedHiddenShotAchievement) {
+  if (generated.kind === "offlineLeftYd") return `${clubLabel} Left Detour ${generated.threshold}`;
+  if (generated.kind === "offlineRightYd") return `${clubLabel} Right Detour ${generated.threshold}`;
+  if (generated.kind === "lowCarryYd") return `${clubLabel} False Start ${generated.threshold}`;
+  if (generated.kind === "lowLaunchDeg") return `${clubLabel} Ground Skimmer ${generated.threshold}`;
+  if (generated.kind === "highLaunchDeg") return `${clubLabel} Elevator Button ${generated.threshold}`;
+  if (generated.kind === "lowApexFt") return `${clubLabel} Low Ceiling ${generated.threshold}`;
+  if (generated.kind === "highApexFt") return `${clubLabel} Roof Test ${generated.threshold}`;
+  if (generated.kind === "straightOfflineYd") return `${clubLabel} Centre Line`;
+  return `${clubLabel} Pure But Gone`;
+}
+
+function hiddenShotDescription(clubLabel: string, generated: GeneratedHiddenShotAchievement) {
+  if (generated.kind === "offlineLeftYd") {
+    return `Finish a tracked ${clubLabel} shot ${generated.threshold}+ yd left.`;
+  }
+
+  if (generated.kind === "offlineRightYd") {
+    return `Finish a tracked ${clubLabel} shot ${generated.threshold}+ yd right.`;
+  }
+
+  if (generated.kind === "lowCarryYd") {
+    return `Carry ${clubLabel} ${generated.threshold} yd or less on a tracked full shot.`;
+  }
+
+  if (generated.kind === "lowLaunchDeg") {
+    return `Launch ${clubLabel} under ${generated.threshold} deg.`;
+  }
+
+  if (generated.kind === "highLaunchDeg") {
+    return `Launch ${clubLabel} over ${generated.threshold} deg.`;
+  }
+
+  if (generated.kind === "lowApexFt") {
+    return `Keep a tracked ${clubLabel} shot under ${generated.threshold} ft apex.`;
+  }
+
+  if (generated.kind === "highApexFt") {
+    return `Send a tracked ${clubLabel} shot over ${generated.threshold} ft apex.`;
+  }
+
+  if (generated.kind === "straightOfflineYd") {
+    return `Finish a tracked ${clubLabel} shot within ${generated.threshold} yd of the target line.`;
+  }
+
+  return `Record solid smash with ${clubLabel} but finish ${generated.threshold}+ yd offline.`;
 }
 
 function masteryMetricId(metric: GeneratedClubMasteryMetric) {

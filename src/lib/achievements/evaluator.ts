@@ -1,15 +1,20 @@
-import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import { compareClubCarryToBenchmark } from "@/lib/club-benchmarks";
+import { formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 
 import {
   ACHIEVEMENTS,
+  GENERATED_CLUB_BENCHMARKS_BY_CLUB,
   GENERATED_CLUB_MASTERY_BY_CLUB,
   GENERATED_CLUB_MILEAGE_BY_CLUB,
   GENERATED_CLUB_METRICS_BY_CLUB,
   GENERATED_CLUB_PERSONAL_BEST_BY_CLUB,
   GENERATED_CLUB_VOLUME_BY_CLUB,
+  GENERATED_HIDDEN_SHOTS_BY_CLUB,
   YARDS_PER_MILE,
+  type GeneratedClubBenchmarkAchievement,
   type GeneratedClubMasteryMetric,
   type GeneratedClubMetric,
+  type GeneratedHiddenShotAchievement,
   getAchievement,
 } from "./registry";
 import type {
@@ -33,6 +38,18 @@ export type AchievementEvaluationContext = {
 const IRON_PATTERN = /^[4-9]i$/;
 const WEDGE_TYPES = new Set(["pw", "gw", "aw", "sw", "lw", "wedge"]);
 const WOOD_TYPES = new Set(["3w", "4w", "5w", "7w"]);
+const HIDDEN_FULL_SHOT_EXCLUDED_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
+const SINGLE_BENCHMARK_ACHIEVEMENTS = [
+  { id: "benchmark_first_average", label: "Average", targetLevelIndex: 1 },
+  { id: "benchmark_first_good", label: "Good", targetLevelIndex: 2 },
+  { id: "benchmark_first_advanced", label: "Advanced", targetLevelIndex: 3 },
+  { id: "benchmark_first_tour", label: "Tour", targetLevelIndex: 4 },
+] as const;
+const BAG_BENCHMARK_ACHIEVEMENTS = [
+  { id: "benchmark_bag_average", label: "Average", targetLevelIndex: 1 },
+  { id: "benchmark_bag_good", label: "Good", targetLevelIndex: 2 },
+  { id: "benchmark_bag_advanced", label: "Advanced", targetLevelIndex: 3 },
+] as const;
 
 export function evaluateAllAchievementCandidates(
   context: AchievementEvaluationContext,
@@ -164,6 +181,7 @@ function evaluateSingleShot(
   const apexYd = shot.apexFt === null ? null : shot.apexFt / 3;
 
   evaluateGeneratedShotAchievements(collector, shot);
+  evaluateGeneratedHiddenShotAchievements(collector, shot, source);
 
   if (shot.clubType === "driver") {
     thresholdShot(collector, shot, "driver_total_200", shot.totalYd, 200);
@@ -278,6 +296,105 @@ function evaluateSingleShot(
   if (context.maxApex !== null && shot.apexFt === context.maxApex) {
     collector.unlock("satellite_launch", { ...source, metadata: { apexFt: shot.apexFt } });
   }
+}
+
+function evaluateGeneratedHiddenShotAchievements(
+  collector: Collector,
+  shot: AchievementShot,
+  source: Omit<AchievementUnlockCandidate, "achievementId">,
+) {
+  const generatedAchievements = GENERATED_HIDDEN_SHOTS_BY_CLUB.get(shot.clubType) ?? [];
+
+  for (const generated of generatedAchievements) {
+    const value = generatedHiddenShotValue(generated, shot);
+
+    if (value === null || !generatedHiddenShotUnlocked(generated, value)) {
+      continue;
+    }
+
+    collector.unlock(generated.id, {
+      ...source,
+      metadata: metadataForGeneratedHiddenShot(generated, shot, value),
+    });
+  }
+}
+
+function generatedHiddenShotValue(generated: GeneratedHiddenShotAchievement, shot: AchievementShot) {
+  const offline = shot.sideCarryYd;
+  const absOffline = absNumber(offline);
+
+  if (generated.kind === "offlineLeftYd") {
+    return offline !== null && offline < 0 ? Math.abs(offline) : null;
+  }
+
+  if (generated.kind === "offlineRightYd") {
+    return offline !== null && offline > 0 ? offline : null;
+  }
+
+  if (generated.kind === "straightOfflineYd") {
+    return absOffline;
+  }
+
+  if (generated.kind === "lowCarryYd") {
+    return isHiddenFullShotCandidate(shot) ? shot.carryYd : null;
+  }
+
+  if (generated.kind === "lowLaunchDeg" || generated.kind === "highLaunchDeg") {
+    return isHiddenFullShotCandidate(shot) ? shot.launchAngleDeg : null;
+  }
+
+  if (generated.kind === "lowApexFt" || generated.kind === "highApexFt") {
+    return shot.apexFt;
+  }
+
+  if (generated.kind === "pureWild") {
+    return isHiddenFullShotCandidate(shot) && (shot.smashFactor ?? 0) >= smashTarget(shot.clubType)
+      ? absOffline
+      : null;
+  }
+
+  return null;
+}
+
+function generatedHiddenShotUnlocked(generated: GeneratedHiddenShotAchievement, value: number) {
+  if (
+    generated.kind === "lowCarryYd" ||
+    generated.kind === "lowLaunchDeg" ||
+    generated.kind === "lowApexFt" ||
+    generated.kind === "straightOfflineYd"
+  ) {
+    return value <= generated.threshold;
+  }
+
+  return value >= generated.threshold;
+}
+
+function metadataForGeneratedHiddenShot(
+  generated: GeneratedHiddenShotAchievement,
+  shot: AchievementShot,
+  value: number,
+) {
+  return {
+    clubName: formatClubType(generated.clubType),
+    clubType: generated.clubType,
+    value: roundOne(value),
+    targetValue: generated.threshold,
+    carryYd: shot.carryYd,
+    totalYd: shot.totalYd,
+    sideCarryYd: shot.sideCarryYd,
+    launchAngleDeg: shot.launchAngleDeg,
+    apexFt: shot.apexFt,
+    smashFactor: shot.smashFactor,
+  };
+}
+
+function isHiddenFullShotCandidate(shot: AchievementShot) {
+  if (isShortGameTouchClubType(shot.clubType)) {
+    return false;
+  }
+
+  const category = shot.shotCategory?.trim().toLowerCase();
+  return !category || !HIDDEN_FULL_SHOT_EXCLUDED_CATEGORIES.has(category);
 }
 
 function evaluateGeneratedShotAchievements(collector: Collector, shot: AchievementShot) {
@@ -872,6 +989,7 @@ function evaluateStockAndGapping(
       isTrackedClubType(stock.clubType) && !isShortGameTouchClubType(stock.clubType) && isReliableStock(stock),
   );
   const reliableByType = new Map(reliableStocks.map((stock) => [stock.clubType, stock]));
+  const activeClubIds = new Set(activeClubs.map((club) => club.id));
 
   collector.progressCandidate("first_stock_number", Math.min(reliableStocks.length, 1), 1);
   collector.progressCandidate("full_bag_started", Math.min(reliableStocks.length, 5), 5);
@@ -898,6 +1016,11 @@ function evaluateStockAndGapping(
     collector.unlock("reliable_bag", { metadata: { activeClubCount: activeClubs.length } });
   }
 
+  evaluateBenchmarkLevels(
+    collector,
+    reliableStocks.filter((stock) => activeClubIds.has(stock.clubId)),
+  );
+
   const driver = reliableByType.get("driver");
   const fiveWood = reliableByType.get("5w");
   const fiveIron = reliableByType.get("5i");
@@ -921,6 +1044,133 @@ function evaluateStockAndGapping(
       collector.unlock("scoring_gap_fixed");
     }
   }
+}
+
+function evaluateBenchmarkLevels(collector: Collector, reliableStocks: AchievementStockYardage[]) {
+  const benchmarkedStocks = reliableStocks
+    .map((stock) => {
+      const comparison = compareClubCarryToBenchmark(stock.clubType, stock.carryMedianYd);
+
+      if (!comparison || stock.carryMedianYd === null) {
+        return null;
+      }
+
+      return {
+        stock,
+        comparison,
+        score: comparison.levelIndex ?? 0,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+  const bestStock = benchmarkedStocks.reduce<(typeof benchmarkedStocks)[number] | null>((best, item) => {
+    if (!best || item.score > best.score) {
+      return item;
+    }
+
+    if (item.score === best.score && item.comparison.progressPercent > best.comparison.progressPercent) {
+      return item;
+    }
+
+    return best;
+  }, null);
+
+  for (const achievement of SINGLE_BENCHMARK_ACHIEVEMENTS) {
+    collector.progressCandidate(
+      achievement.id,
+      Math.min(bestStock?.score ?? 0, achievement.targetLevelIndex),
+      achievement.targetLevelIndex,
+      bestStock
+        ? metadataForBenchmarkStock(bestStock.stock, achievement.label, bestStock.comparison.levelLabel)
+        : { benchmarkLevel: achievement.label },
+    );
+
+    if (bestStock && bestStock.score >= achievement.targetLevelIndex) {
+      collector.unlock(achievement.id, {
+        metadata: metadataForBenchmarkStock(bestStock.stock, achievement.label, bestStock.comparison.levelLabel),
+      });
+    }
+  }
+
+  for (const { stock } of benchmarkedStocks) {
+    const generatedAchievements = GENERATED_CLUB_BENCHMARKS_BY_CLUB.get(stock.clubType) ?? [];
+
+    for (const generated of generatedAchievements) {
+      if (stock.carryMedianYd === null) {
+        continue;
+      }
+
+      const progressValue = Math.min(Math.max(0, stock.carryMedianYd), generated.targetYards);
+      const metadata = metadataForClubBenchmarkStock(stock, generated);
+
+      collector.progressCandidate(generated.id, progressValue, generated.targetYards, metadata);
+
+      if (stock.carryMedianYd >= generated.targetYards) {
+        collector.unlock(generated.id, { metadata });
+      }
+    }
+  }
+
+  const benchmarkClubCount = benchmarkedStocks.length;
+  const benchmarkAverageLevel = benchmarkClubCount === 0 ? 0 : mean(benchmarkedStocks.map((item) => item.score));
+  const sampleProgressMultiplier = Math.min(benchmarkClubCount / 5, 1);
+
+  for (const achievement of BAG_BENCHMARK_ACHIEVEMENTS) {
+    collector.progressCandidate(
+      achievement.id,
+      Math.min(benchmarkAverageLevel * sampleProgressMultiplier, achievement.targetLevelIndex),
+      achievement.targetLevelIndex,
+      metadataForBenchmarkBag(achievement.label, benchmarkClubCount, benchmarkAverageLevel),
+    );
+
+    if (benchmarkClubCount >= 5 && benchmarkAverageLevel >= achievement.targetLevelIndex) {
+      collector.unlock(achievement.id, {
+        metadata: metadataForBenchmarkBag(achievement.label, benchmarkClubCount, benchmarkAverageLevel),
+      });
+    }
+  }
+}
+
+function metadataForClubBenchmarkStock(
+  stock: AchievementStockYardage,
+  generated: GeneratedClubBenchmarkAchievement,
+) {
+  return {
+    clubName: formatClubType(stock.clubType),
+    clubType: stock.clubType,
+    benchmarkLevel: generated.levelLabel,
+    targetYd: generated.targetYards,
+    carryYd: stock.carryMedianYd === null ? null : roundOne(stock.carryMedianYd),
+    sampleSize: stock.sampleSize,
+    confidenceScore: stock.confidenceScore,
+  };
+}
+
+function metadataForBenchmarkStock(
+  stock: AchievementStockYardage,
+  benchmarkLevel: string,
+  actualLevel = benchmarkLevel,
+) {
+  return {
+    clubName: formatClubType(stock.clubType),
+    clubType: stock.clubType,
+    benchmarkLevel,
+    actualLevel,
+    carryYd: stock.carryMedianYd === null ? null : roundOne(stock.carryMedianYd),
+    sampleSize: stock.sampleSize,
+    confidenceScore: stock.confidenceScore,
+  };
+}
+
+function metadataForBenchmarkBag(
+  benchmarkLevel: string,
+  benchmarkClubCount: number,
+  benchmarkAverageLevel: number,
+) {
+  return {
+    benchmarkLevel,
+    benchmarkClubCount,
+    benchmarkAverageLevel: roundMetricValue(benchmarkAverageLevel),
+  };
 }
 
 function evaluateProgress(

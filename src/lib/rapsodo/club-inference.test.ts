@@ -49,7 +49,7 @@ describe("suggestRapsodoClub", () => {
     expect(suggestion.alternatives[0]).toMatchObject({ clubLabel: "7 Iron" });
   });
 
-  it("prefers the same-type club that matches the session date history", () => {
+  it("uses the closest active club when the session-date history points at a retired club", () => {
     const suggestion = suggestRapsodoClub(
       shot("5 Iron", 154, 162, 110),
       [
@@ -72,9 +72,30 @@ describe("suggestRapsodoClub", () => {
       { preferredClubKey: "5i:macgreggor:generic" },
     );
 
-    expect(suggestion.choice.clubKey).toBe("5i:macgreggor:generic");
+    expect(suggestion.choice.clubKey).toBe("5i:taylormade:qi");
     expect(suggestion.confidence).toBe("trusted");
-    expect(suggestion.reason).toContain("equipment history");
+    expect(suggestion.reason).toContain("closest active match");
+  });
+
+  it("filters retired clubs out of stock-yardage recommendations and alternatives", () => {
+    const suggestion = suggestRapsodoClub(
+      shot("Other", 151, 161, 113),
+      [
+        club("7i", "7 Iron", 151, 161, 113, 24, {
+          clubKey: "7i:retired:generic",
+          clubBrand: "Retired",
+          active: false,
+        }),
+        club("8i", "8 Iron", 142, 150, 106, 24, {
+          clubKey: "8i:active:generic",
+          clubBrand: "Active",
+          active: true,
+        }),
+      ],
+    );
+
+    expect(suggestion.choice.clubKey).toBe("8i:active:generic");
+    expect(suggestion.alternatives.map((alternative) => alternative.clubKey)).not.toContain("7i:retired:generic");
   });
 
   it("falls back to low confidence when there is no stock-yardage candidate", () => {

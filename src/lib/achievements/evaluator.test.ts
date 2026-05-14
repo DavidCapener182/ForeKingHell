@@ -53,6 +53,37 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("club_lw_total_50");
     expect(ids).toContain("club_sw_volume_1");
     expect(ids).toContain("club_lw_volume_1");
+    expect(ids).toContain("club_driver_benchmark_average");
+    expect(ids).toContain("club_9i_benchmark_good");
+    expect(ids).toContain("club_3h_benchmark_tour");
+    expect(ids).not.toContain("club_sw_benchmark_average");
+    expect(ids).not.toContain("club_7w_benchmark_average");
+    expect(ACHIEVEMENTS.filter((achievement) => achievement.category === "hidden").length).toBeGreaterThan(350);
+  });
+
+  it("unlocks generated hidden shot achievements from unusual shots", () => {
+    const shot = makeShot({
+      id: "driver-hidden",
+      clubType: "driver",
+      carryYd: 40,
+      totalYd: 55,
+      sideCarryYd: -75,
+      launchAngleDeg: 3,
+      apexFt: 12,
+      smashFactor: 1.5,
+      shotCategory: "full",
+    });
+    const result = evaluateRapsodoSessionAchievements(makeSession(), [shot]);
+    const ids = achievementIds(result.unlocks);
+    const leftDetour = result.unlocks.find((unlock) => unlock.achievementId === "club_driver_hidden_left_miss_70");
+
+    expect(ids).toContain("club_driver_hidden_left_miss_70");
+    expect(ids).toContain("club_driver_hidden_low_carry_45");
+    expect(ids).toContain("club_driver_hidden_low_launch_4");
+    expect(ids).toContain("club_driver_hidden_low_apex_20");
+    expect(ids).toContain("club_driver_hidden_pure_wild_35");
+    expect(ids).not.toContain("club_driver_hidden_centre_line_2");
+    expect(leftDetour?.metadata).toMatchObject({ clubName: "Driver", sideCarryYd: -75, targetValue: 70 });
   });
 
   it("unlocks session, consistency, and 5W badges", () => {
@@ -277,6 +308,50 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("hook_exorcist");
     expect(ids).toContain("club_driver_pb_carry");
     expect(ids).toContain("club_driver_pb_with_control");
+  });
+
+  it("unlocks benchmark level achievements from reliable stock carries", () => {
+    const result = evaluateAllAchievementCandidates({
+      sessions: [],
+      shots: [],
+      clubs: [
+        { id: "driver-club", type: "driver", active: true },
+        { id: "fivewood-club", type: "5w", active: true },
+        { id: "seveniron-club", type: "7i", active: true },
+        { id: "eightiron-club", type: "8i", active: true },
+        { id: "nineiron-club", type: "9i", active: true },
+        { id: "retired-driver-club", type: "driver", active: false },
+      ],
+      stockYardages: [
+        stock("driver-club", "driver", 250, 80, "2026-05-01"),
+        stock("fivewood-club", "5w", 205, 80, "2026-05-01"),
+        stock("seveniron-club", "7i", 150, 80, "2026-05-01"),
+        stock("eightiron-club", "8i", 140, 80, "2026-05-01"),
+        stock("nineiron-club", "9i", 125, 80, "2026-05-01"),
+        stock("retired-driver-club", "driver", 320, 80, "2026-05-01"),
+      ],
+    });
+    const ids = achievementIds(result.unlocks);
+    const firstGood = result.unlocks.find((unlock) => unlock.achievementId === "benchmark_first_good");
+    const goodBag = result.unlocks.find((unlock) => unlock.achievementId === "benchmark_bag_good");
+    const driverGood = result.unlocks.find((unlock) => unlock.achievementId === "club_driver_benchmark_good");
+
+    expect(ids).toContain("benchmark_first_average");
+    expect(ids).toContain("benchmark_first_good");
+    expect(ids).toContain("benchmark_bag_average");
+    expect(ids).toContain("benchmark_bag_good");
+    expect(ids).toContain("club_driver_benchmark_beginner");
+    expect(ids).toContain("club_driver_benchmark_average");
+    expect(ids).toContain("club_driver_benchmark_good");
+    expect(ids).toContain("club_9i_benchmark_good");
+    expect(ids).not.toContain("benchmark_first_advanced");
+    expect(ids).not.toContain("benchmark_first_tour");
+    expect(ids).not.toContain("benchmark_bag_advanced");
+    expect(ids).not.toContain("club_driver_benchmark_advanced");
+    expect(ids).not.toContain("club_driver_benchmark_tour");
+    expect(firstGood?.metadata).toMatchObject({ benchmarkLevel: "Good", actualLevel: "Good", clubName: "Driver" });
+    expect(driverGood?.metadata).toMatchObject({ benchmarkLevel: "Good", clubName: "Driver", targetYd: 250, carryYd: 250 });
+    expect(goodBag?.metadata).toMatchObject({ benchmarkLevel: "Good", benchmarkClubCount: 5, benchmarkAverageLevel: 2 });
   });
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, BarChart3, Gauge, Target, type LucideIcon } from "lucide-react";
+import { Activity, BarChart3, CalendarDays, ChevronDown, Gauge, Target, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { clubAccent } from "@/lib/club-format";
@@ -55,6 +55,7 @@ export function ClubAnalysisTabs({
   const [activeTab, setActiveTab] = useState<ActiveTab>("dispersion");
   const [distanceView, setDistanceView] = useState<DistanceView>("carry");
   const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
+  const [openDateKeys, setOpenDateKeys] = useState<string[] | null>(null);
   const visibleSelectedShotId = shots.some((shot) => shot.id === selectedShotId)
     ? selectedShotId
     : shots[0]?.id ?? "";
@@ -63,6 +64,41 @@ export function ClubAnalysisTabs({
     () => [...shots].sort((left, right) => Number(left.shotNumber ?? 0) - Number(right.shotNumber ?? 0)),
     [shots],
   );
+  const shotDateGroups = useMemo(() => groupShotsByDate(shots), [shots]);
+  const activeOpenDateKeys = useMemo(() => {
+    const validDateKeys = new Set(shotDateGroups.map((group) => group.dateKey));
+    const currentDateKeys = openDateKeys ?? (shotDateGroups[0] ? [shotDateGroups[0].dateKey] : []);
+
+    return currentDateKeys.filter((dateKey) => validDateKeys.has(dateKey));
+  }, [openDateKeys, shotDateGroups]);
+  const toggleDateGroup = (dateKey: string, open: boolean) => {
+    setOpenDateKeys((current) => {
+      const baseDateKeys = current ?? (shotDateGroups[0] ? [shotDateGroups[0].dateKey] : []);
+
+      if (open) {
+        return baseDateKeys.includes(dateKey) ? baseDateKeys : [...baseDateKeys, dateKey];
+      }
+
+      return baseDateKeys.filter((currentDateKey) => currentDateKey !== dateKey);
+    });
+  };
+  const selectShot = (shotId: string) => {
+    const nextShot = shots.find((shot) => shot.id === shotId);
+
+    setSelectedShotId(shotId);
+
+    if (!nextShot) {
+      return;
+    }
+
+    const dateKey = shotDateKey(nextShot.shotAt);
+
+    setOpenDateKeys((current) => {
+      const baseDateKeys = current ?? (shotDateGroups[0] ? [shotDateGroups[0].dateKey] : []);
+
+      return baseDateKeys.includes(dateKey) ? baseDateKeys : [...baseDateKeys, dateKey];
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -130,7 +166,7 @@ export function ClubAnalysisTabs({
           clubType={clubType}
           shots={sortedShots}
           selectedShotId={selectedShot?.id ?? ""}
-          onSelect={setSelectedShotId}
+          onSelect={selectShot}
           distanceView={distanceView}
           accent={accent}
         />
@@ -146,33 +182,68 @@ export function ClubAnalysisTabs({
 
       <ShotMetricStrip shot={selectedShot} accent={accent} />
 
-      <div className="space-y-2">
-        {sortedShots.map((shot) => (
-          <button
-            key={shot.id}
-            type="button"
-            onClick={() => setSelectedShotId(shot.id)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-lg bg-white/85 px-4 py-3 text-left text-sm ring-1 ring-slate-200/80 transition-colors hover:bg-slate-50",
-              selectedShot?.id === shot.id && "border-current",
-            )}
-            style={selectedShot?.id === shot.id ? { color: accent } : undefined}
-          >
-            <span className="grid size-8 place-items-center rounded-full border font-semibold">
-              {shot.shotNumber ?? "-"}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium text-foreground">{clubModelName}</span>
-              {clubModelName !== clubTypeLabel ? (
-                <span className="block truncate text-xs text-muted-foreground">{clubTypeLabel}</span>
-              ) : null}
-            </span>
-            <span className="ml-auto text-muted-foreground">{formatDate(shot.shotAt)}</span>
-            <span className="hidden min-w-20 text-right font-medium text-foreground sm:block">
-              {formatMetric(shot.carryYd)} yd
-            </span>
-          </button>
-        ))}
+      <div className="space-y-3">
+        {shotDateGroups.map((group) => {
+          const isOpen = activeOpenDateKeys.includes(group.dateKey);
+          const selectedInGroup = group.shots.some((shot) => shot.id === selectedShot?.id);
+
+          return (
+            <details
+              key={group.dateKey}
+              open={isOpen}
+              className={cn(
+                "group overflow-hidden rounded-xl border bg-white/85 shadow-sm ring-1 ring-slate-200/80",
+                selectedInGroup && "border-emerald-300 ring-emerald-200",
+              )}
+            >
+              <summary
+                className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
+                onClick={(event) => {
+                  event.preventDefault();
+                  toggleDateGroup(group.dateKey, !isOpen);
+                }}
+              >
+                <span className="grid size-9 place-items-center rounded-full border bg-white text-muted-foreground">
+                  <CalendarDays className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold text-foreground">{group.label}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} - best carry {formatMetric(group.bestCarryYd)} yd
+                  </span>
+                </span>
+                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="space-y-2 border-t bg-slate-50/70 p-2 sm:p-3">
+                {group.shots.map((shot) => (
+                  <button
+                    key={shot.id}
+                    type="button"
+                    onClick={() => selectShot(shot.id)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-lg bg-white/90 px-4 py-3 text-left text-sm ring-1 ring-slate-200/80 transition-colors hover:bg-white",
+                      selectedShot?.id === shot.id && "ring-2",
+                    )}
+                    style={selectedShot?.id === shot.id ? { color: accent } : undefined}
+                  >
+                    <span className="grid size-8 place-items-center rounded-full border font-semibold">
+                      {shot.shotNumber ?? "-"}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-foreground">{clubModelName}</span>
+                      {clubModelName !== clubTypeLabel ? (
+                        <span className="block truncate text-xs text-muted-foreground">{clubTypeLabel}</span>
+                      ) : null}
+                    </span>
+                    <span className="min-w-20 text-right font-medium text-foreground">
+                      {formatMetric(shot.carryYd)} yd
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          );
+        })}
       </div>
     </div>
   );
@@ -1054,6 +1125,62 @@ function buildDispersionEllipse(points: Array<{ x: number; y: number }>) {
 
 function average(values: number[]) {
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function groupShotsByDate(shots: AnalysisShot[]) {
+  const groups = new Map<
+    string,
+    {
+      dateKey: string;
+      label: string;
+      shots: AnalysisShot[];
+    }
+  >();
+  const orderedShots = [...shots].sort((left, right) => {
+    const dateDifference = new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime();
+
+    if (dateDifference !== 0) {
+      return dateDifference;
+    }
+
+    return Number(left.shotNumber ?? 0) - Number(right.shotNumber ?? 0);
+  });
+
+  for (const shot of orderedShots) {
+    const dateKey = shotDateKey(shot.shotAt);
+    const group = groups.get(dateKey) ?? {
+      dateKey,
+      label: formatDate(shot.shotAt),
+      shots: [],
+    };
+
+    group.shots.push(shot);
+    groups.set(dateKey, group);
+  }
+
+  return [...groups.values()].map((group) => ({
+    ...group,
+    bestCarryYd: maxMetric(group.shots.map((shot) => shot.carryYd)),
+  }));
+}
+
+function shotDateKey(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(new Date(value));
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "00";
+  const day = parts.find((part) => part.type === "day")?.value ?? "00";
+
+  return `${year}-${month}-${day}`;
+}
+
+function maxMetric(values: Array<number | null>) {
+  const numericValues = values.filter((value): value is number => value !== null);
+
+  return numericValues.length === 0 ? null : Math.max(...numericValues);
 }
 
 function formatDate(value: string) {

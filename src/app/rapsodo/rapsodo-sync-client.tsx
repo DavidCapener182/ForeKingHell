@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Upload,
+  X,
 } from "lucide-react";
 
 import {
@@ -77,6 +78,12 @@ type Notice =
   | { kind: "idle" }
   | { kind: "success"; title: string; message: string; sessionId?: string | null }
   | { kind: "error"; title: string; message: string };
+type SaveConfirmation = {
+  id: string;
+  title: string;
+  message: string;
+  sessionId: string | null;
+};
 
 type HoleReviewState = Record<
   number,
@@ -95,11 +102,13 @@ type RapsodoMobileStep = "connect" | "sessions" | "preview" | "clubs" | "course"
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const RAPSODO_SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const SAVE_CONFIRMATION_DISMISS_MS = 14000;
 
 export function RapsodoSyncClient({ initialStatus }: { initialStatus: ConnectionStatus }) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [notice, setNotice] = useState<Notice>({ kind: "idle" });
+  const [saveConfirmation, setSaveConfirmation] = useState<SaveConfirmation | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [sessions, setSessions] = useState<RapsodoSessionListItem[]>([]);
@@ -117,6 +126,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
   const [browserNotificationState, setBrowserNotificationState] = useState<BrowserNotificationState>(() =>
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
   );
+  const noticeRef = useRef<HTMLDivElement | null>(null);
   const previewSectionRef = useRef<HTMLElement | null>(null);
   const [isPending, startTransition] = useTransition();
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
@@ -301,6 +311,18 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
     return () => window.clearInterval(intervalId);
   }, [loadSessions, status.connected]);
 
+  useEffect(() => {
+    if (!saveConfirmation) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSaveConfirmation((current) => (current?.id === saveConfirmation.id ? null : current));
+    }, SAVE_CONFIRMATION_DISMISS_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [saveConfirmation]);
+
   function login() {
     setNotice({ kind: "idle" });
     setLoadingLabel("Signing in");
@@ -392,6 +414,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       return;
     }
 
+    setNotice({ kind: "idle" });
     const shotOverrides = preview.shots.map((shot): RapsodoShotOverride => {
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]) ?? shot.suggestion.choice;
       return {
@@ -423,11 +446,14 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       if (updateRapsodoClubs) {
         if (rapsodoWritebackRows.updatableCount === 0) {
           setLoadingLabel(null);
-          setNotice({
-            kind: "error",
-            title: "Rapsodo update unavailable",
-            message: "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with ForeKingHell recommendations or update Rapsodo manually first.",
-          });
+          showNotice(
+            {
+              kind: "error",
+              title: "Rapsodo update unavailable",
+              message: "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with ForeKingHell recommendations or update Rapsodo manually first.",
+            },
+            { scroll: true },
+          );
           return;
         }
 
@@ -438,7 +464,10 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
 
         if (!writebackResult.ok) {
           setLoadingLabel(null);
-          setNotice({ kind: "error", title: "Rapsodo update failed", message: writebackResult.message });
+          showNotice(
+            { kind: "error", title: "Rapsodo update failed", message: writebackResult.message },
+            { scroll: true },
+          );
           return;
         }
 
@@ -471,18 +500,18 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       setLoadingLabel(null);
 
       if (!result.ok) {
-        setNotice({ kind: "error", title: "Import failed", message: result.message });
+        showNotice({ kind: "error", title: "Import failed", message: result.message }, { scroll: true });
         return;
       }
 
       if (!result.data.ok) {
-        setNotice({ kind: "error", title: "Import failed", message: result.data.message });
+        showNotice({ kind: "error", title: "Import failed", message: result.data.message }, { scroll: true });
         return;
       }
 
       const importedSessionId = result.data.sessionId;
       notifyAchievementUnlocks(result.data.achievementUnlockNotifications);
-      setNotice({
+      const saveNotice: Extract<Notice, { kind: "success" }> = {
         kind: "success",
         title: result.data.skipped ? "Already imported" : "Rapsodo session saved",
         message: result.data.skipped
@@ -490,6 +519,16 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
           : `Saved ${result.data.shotCount} shot${result.data.shotCount === 1 ? "" : "s"}.${
               courseShotOnlyImport ? " Saved as shot-only club data, not a round." : ""
             }${writebackMessage}`,
+        sessionId: result.data.sessionId,
+      };
+      showNotice(
+        saveNotice,
+        { scroll: true },
+      );
+      setSaveConfirmation({
+        id: `${Date.now()}-${result.data.sessionId}`,
+        title: saveNotice.title,
+        message: saveNotice.message,
         sessionId: result.data.sessionId,
       });
       setSessions((current) =>
@@ -582,28 +621,30 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         <RapsodoMobileStepper steps={mobileSteps} step={visibleMobileStep} onStepChange={setMobileStep} />
 
         {notice.kind !== "idle" ? (
-          <Alert variant={notice.kind === "error" ? "destructive" : "default"}>
-            {notice.kind === "error" ? <AlertCircle className="size-4" /> : <CheckCircle2 className="size-4" />}
-            <AlertTitle>{notice.title}</AlertTitle>
-            <AlertDescription>
-              <span>{notice.message}</span>
-              {notice.kind === "error" ? (
-                <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
-                  <Link href="/import">
-                    <ExternalLink className="size-4" />
-                    Use manual import
-                  </Link>
-                </Button>
-              ) : notice.sessionId ? (
-                <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
-                  <Link href={`/shots?sessionId=${encodeURIComponent(notice.sessionId)}`}>
-                    <Database className="size-4" />
-                    View shots
-                  </Link>
-                </Button>
-              ) : null}
-            </AlertDescription>
-          </Alert>
+          <div ref={noticeRef} className="scroll-mt-4">
+            <Alert variant={notice.kind === "error" ? "destructive" : "default"}>
+              {notice.kind === "error" ? <AlertCircle className="size-4" /> : <CheckCircle2 className="size-4" />}
+              <AlertTitle>{notice.title}</AlertTitle>
+              <AlertDescription>
+                <span>{notice.message}</span>
+                {notice.kind === "error" ? (
+                  <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
+                    <Link href="/import">
+                      <ExternalLink className="size-4" />
+                      Use manual import
+                    </Link>
+                  </Button>
+                ) : notice.sessionId ? (
+                  <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
+                    <Link href={`/shots?sessionId=${encodeURIComponent(notice.sessionId)}`}>
+                      <Database className="size-4" />
+                      View shots
+                    </Link>
+                  </Button>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          </div>
         ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -1165,6 +1206,12 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             )}
           </div>
         </StickyMobileAction>
+        {saveConfirmation ? (
+          <SaveConfirmationToast
+            confirmation={saveConfirmation}
+            onDismiss={() => setSaveConfirmation(null)}
+          />
+        ) : null}
       </div>
     </main>
   );
@@ -1178,6 +1225,69 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       },
     }));
   }
+
+  function showNotice(nextNotice: Notice, options: { scroll?: boolean } = {}) {
+    setNotice(nextNotice);
+
+    if (options.scroll) {
+      requestAnimationFrame(() => {
+        noticeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }
+}
+
+function SaveConfirmationToast({
+  confirmation,
+  onDismiss,
+}: {
+  confirmation: SaveConfirmation;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      aria-live="polite"
+      aria-atomic="true"
+      className="fixed inset-x-3 top-[calc(5rem+env(safe-area-inset-top))] z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-4 sm:top-24"
+    >
+      <div className="overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl">
+        <div className="flex items-start gap-3 px-4 py-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
+            <CheckCircle2 className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">{confirmation.title}</p>
+            <p className="mt-0.5 text-xs leading-5 text-slate-300">{confirmation.message}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 text-slate-300 hover:bg-white/10 hover:text-white"
+            onClick={onDismiss}
+            aria-label="Dismiss save confirmation"
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+        {confirmation.sessionId ? (
+          <div className="border-t border-white/10 px-4 py-3">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            >
+              <Link href={`/shots?sessionId=${encodeURIComponent(confirmation.sessionId)}`}>
+                <Database className="size-4" />
+                View saved shots
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function RapsodoMobileStepper({

@@ -701,11 +701,17 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Shots", formatInteger(metadata.shotCount)),
     stat("Sample", formatInteger(metadata.sampleSize)),
     stat("Target", formatInteger(metadata.targetShots)),
+    stat("Threshold", formatMetricValue(metadata.targetValue)),
     stat("Miles", formatMiles(metadata.totalMiles)),
     stat("Target miles", formatMiles(metadata.targetMiles)),
     stat("Fairways", formatInteger(metadata.fairways)),
     stat("GIR", formatInteger(metadata.gir)),
     stat("Stock clubs", formatInteger(metadata.stockCount ?? metadata.activeClubCount)),
+    stat("Benchmark clubs", formatInteger(metadata.benchmarkClubCount)),
+    stat("Level", formatText(metadata.benchmarkLevel)),
+    stat("Actual level", formatText(metadata.actualLevel)),
+    stat("Average level", formatDecimal(metadata.benchmarkAverageLevel, 1)),
+    stat("Target", formatYards(metadata.targetYd)),
     stat("Carry", formatYards(metadata.carryYd)),
     stat("Total", formatYards(metadata.totalYd)),
     stat("Side", formatSignedYards(metadata.sideCarryYd)),
@@ -721,6 +727,7 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Gap", formatYards(metadata.gapYd ?? metadata.driverGap ?? metadata.fiveWoodGap)),
     stat("Launch", formatDegrees(metadata.launchAngleDeg ?? metadata.recentLaunch)),
     stat("Old launch", formatDegrees(metadata.earlyLaunch)),
+    stat("Apex", formatFeet(metadata.apexFt)),
     stat("Path", formatSignedDegrees(metadata.clubPathDeg)),
     stat("Attack", formatSignedDegrees(metadata.attackAngleDeg)),
     stat("Smash", formatDecimal(metadata.smashFactor, 2)),
@@ -834,6 +841,11 @@ function formatPercent(value: unknown) {
 function formatMiles(value: unknown) {
   const numberValue = finiteNumber(value);
   return numberValue === null ? null : `${roundOne(numberValue)} mi`;
+}
+
+function formatFeet(value: unknown) {
+  const numberValue = finiteNumber(value);
+  return numberValue === null ? null : `${roundOne(numberValue)} ft`;
 }
 
 function formatDecimal(value: unknown, digits: number) {
@@ -1261,11 +1273,27 @@ function progressLabelFromMetadata(
     return `${formatNumber(metadata.improvementPercent)}%`;
   }
 
+  if (metadata && typeof metadata.benchmarkAverageLevel === "number") {
+    return `${formatNumber(metadata.benchmarkAverageLevel)} / ${formatNumber(targetValue)} avg`;
+  }
+
+  if (metadata && typeof metadata.carryYd === "number" && typeof metadata.targetYd === "number") {
+    return `${formatNumber(metadata.carryYd)} / ${formatNumber(metadata.targetYd)} yd`;
+  }
+
+  if (metadata && typeof metadata.actualLevel === "string") {
+    return `${metadata.actualLevel} level`;
+  }
+
   return `${formatNumber(progressValue)} / ${formatNumber(targetValue)}`;
 }
 
 function shouldPersistProgressCandidate(candidate: AchievementProgressCandidate) {
-  return !candidate.achievementId.startsWith("club_") || candidate.achievementId.includes("_miles_");
+  return (
+    !candidate.achievementId.startsWith("club_") ||
+    candidate.achievementId.includes("_miles_") ||
+    candidate.achievementId.includes("_benchmark_")
+  );
 }
 
 function isSameUtcDay(left: Date, right: Date) {

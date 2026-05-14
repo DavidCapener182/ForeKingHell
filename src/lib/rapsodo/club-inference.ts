@@ -41,10 +41,17 @@ export function suggestRapsodoClub(
   candidates: RapsodoClubChoice[],
   options: RapsodoClubSuggestionOptions = {},
 ): RapsodoClubSuggestion {
-  const preferredChoice = preferredRapsodoClubChoice(shot, candidates, options.preferredClubKey);
+  const activeCandidates = candidates.filter(isActiveChoice);
+  const preferredChoice = preferredRapsodoClubChoice(shot, activeCandidates, options.preferredClubKey);
   const reportedChoice = reportedRapsodoClubChoice(shot, candidates, options);
-  const isEquipmentHistoryMatch = preferredChoice?.clubKey === reportedChoice.clubKey;
-  const scoredCandidates = candidates
+  const activeReportedChoice = activeRapsodoClubChoice(shot, activeCandidates, {
+    preferredClubKey: preferredChoice?.clubKey ?? options.preferredClubKey,
+  });
+  const reportedChoiceIsRetired = reportedChoice.active === false;
+  const isEquipmentHistoryMatch = Boolean(
+    preferredChoice && activeReportedChoice?.clubKey === preferredChoice.clubKey,
+  );
+  const scoredCandidates = activeCandidates
     .map((candidate) => ({
       candidate,
       score: clubDistanceScore(shot, candidate),
@@ -52,34 +59,47 @@ export function suggestRapsodoClub(
     .filter((entry) => Number.isFinite(entry.score))
     .sort((left, right) => left.score - right.score);
   const best = scoredCandidates[0] ?? null;
-  const reportedScore = clubDistanceScore(shot, reportedChoice);
+  const reportedScore = activeReportedChoice
+    ? clubDistanceScore(shot, activeReportedChoice)
+    : Number.POSITIVE_INFINITY;
   const reportedIsKnown = isTrackedClubType(shot.clubType);
 
   if (!best) {
+    const fallbackChoice =
+      activeReportedChoice ??
+      sameTypeActiveChoice(shot, activeCandidates) ??
+      (isActiveChoice(reportedChoice) ? reportedChoice : fallbackShotChoice(shot));
+
     return {
-      choice: reportedChoice,
-      confidenceScore: reportedIsKnown ? 72 : 25,
-      confidence: reportedIsKnown ? "trusted" : "low",
-      reason: reportedIsKnown
-        ? "Rapsodo reported this club and there is not enough stock-yardage data to challenge it."
-        : "No stock-yardage match is available yet; choose the club before importing.",
+      choice: fallbackChoice,
+      confidenceScore: reportedIsKnown && isTrackedClubType(fallbackChoice.clubType) ? 72 : 25,
+      confidence: reportedIsKnown && isTrackedClubType(fallbackChoice.clubType) ? "trusted" : "low",
+      reason: noStockDataReason({
+        reportedIsKnown,
+        reportedChoiceIsRetired,
+        fallbackChoice,
+      }),
       alternatives: [],
     };
   }
 
   if (
     reportedIsKnown &&
-    (reportedChoice.clubKey === best.candidate.clubKey || best.score + TRUSTED_DISTANCE_GAP_YD >= reportedScore)
+    activeReportedChoice &&
+    (activeReportedChoice.clubKey === best.candidate.clubKey ||
+      best.score + TRUSTED_DISTANCE_GAP_YD >= reportedScore)
   ) {
     return {
-      choice: reportedChoice,
+      choice: activeReportedChoice,
       confidenceScore: Math.max(70, confidenceFromScore(reportedScore)),
       confidence: "trusted",
-      reason: isEquipmentHistoryMatch
-        ? "This club matches the session date in your equipment history."
-        : reportedChoice.clubKey === best.candidate.clubKey
-          ? "Rapsodo's reported club matches the closest stock-yardage profile."
-          : "Rapsodo reported a tracked club and the stock-yardage data is not different enough to override it.",
+      reason: reportedChoiceIsRetired
+        ? `${activeReportedChoice.clubLabel} is the closest active match. Retired clubs are ignored for recommendations.`
+        : isEquipmentHistoryMatch
+          ? "This club matches the session date in your equipment history."
+          : activeReportedChoice.clubKey === best.candidate.clubKey
+            ? "Rapsodo's reported club matches the closest stock-yardage profile."
+            : "Rapsodo reported a tracked club and the stock-yardage data is not different enough to override it.",
       alternatives: alternatives(scoredCandidates),
     };
   }
@@ -90,9 +110,11 @@ export function suggestRapsodoClub(
     choice: best.candidate,
     confidenceScore,
     confidence: confidenceLabel(confidenceScore),
-    reason: reportedIsKnown
-      ? `${best.candidate.clubLabel} is materially closer to this shot than Rapsodo's reported ${reportedChoice.clubLabel}.`
-      : `${best.candidate.clubLabel} is the closest match from your bag and stock-yardage history.`,
+    reason: reportedChoiceIsRetired
+      ? `${best.candidate.clubLabel} is the closest active match. Retired clubs are ignored for recommendations.`
+      : reportedIsKnown
+        ? `${best.candidate.clubLabel} is materially closer to this shot than Rapsodo's reported ${reportedChoice.clubLabel}.`
+        : `${best.candidate.clubLabel} is the closest match from your bag and stock-yardage history.`,
     alternatives: alternatives(scoredCandidates),
   };
 }
@@ -157,6 +179,28 @@ function preferredRapsodoClubChoice(
   ) ?? null;
 }
 
+function activeRapsodoClubChoice(
+  shot: ParsedRapsodoShot,
+  activeCandidates: RapsodoClubChoice[],
+  options: RapsodoClubSuggestionOptions,
+) {
+  const preferred = preferredRapsodoClubChoice(shot, activeCandidates, options.preferredClubKey);
+  if (preferred) {
+    return preferred;
+  }
+
+  const exact = activeCandidates.find((candidate) => candidate.clubKey === shot.clubKey);
+  if (exact) {
+    return exact;
+  }
+
+  if (!shot.clubBrand && !shot.clubModel) {
+    return sameTypeActiveChoice(shot, activeCandidates);
+  }
+
+  return null;
+}
+
 function clubDistanceScore(shot: ParsedRapsodoShot, candidate: RapsodoClubChoice) {
   const carryScore =
     shot.carryYd !== null && candidate.stockCarryYd !== null
@@ -202,6 +246,51 @@ function alternatives(scoredCandidates: Array<{ candidate: RapsodoClubChoice; sc
     clubLabel: entry.candidate.clubLabel,
     score: Math.round(entry.score),
   }));
+}
+
+function noStockDataReason({
+  reportedIsKnown,
+  reportedChoiceIsRetired,
+  fallbackChoice,
+}: {
+  reportedIsKnown: boolean;
+  reportedChoiceIsRetired: boolean;
+  fallbackChoice: RapsodoClubChoice;
+}) {
+  if (reportedChoiceIsRetired && isTrackedClubType(fallbackChoice.clubType)) {
+    return `${fallbackChoice.clubLabel} is the closest active match available. Retired clubs are ignored for recommendations.`;
+  }
+
+  return reportedIsKnown
+    ? "Rapsodo reported this club and there is not enough stock-yardage data to challenge it."
+    : "No stock-yardage match is available yet; choose the club before importing.";
+}
+
+function sameTypeActiveChoice(shot: ParsedRapsodoShot, activeCandidates: RapsodoClubChoice[]) {
+  const [choice] = activeCandidates
+    .filter((candidate) => candidate.clubType === shot.clubType)
+    .sort((left, right) => right.sampleSize - left.sampleSize || left.clubLabel.localeCompare(right.clubLabel));
+
+  return choice ?? null;
+}
+
+function fallbackShotChoice(shot: ParsedRapsodoShot): RapsodoClubChoice {
+  return {
+    clubKey: `${shot.clubType}:generic:generic`,
+    clubType: shot.clubType,
+    clubLabel: shot.clubLabel,
+    clubBrand: null,
+    clubModel: null,
+    stockCarryYd: null,
+    stockTotalYd: null,
+    averageBallSpeedMph: null,
+    sampleSize: 0,
+    rapsodoClubId: null,
+  };
+}
+
+function isActiveChoice(choice: RapsodoClubChoice) {
+  return choice.active !== false;
 }
 
 function isTrackedClubType(value: string) {
