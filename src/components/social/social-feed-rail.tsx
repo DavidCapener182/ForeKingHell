@@ -510,17 +510,29 @@ function RailActivityItem({
       </div>
 
       {commenting ? (
-        <form onSubmit={onSubmitComment} className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-1.5">
-          <Input
-            value={commentDraft}
-            onChange={(event) => onCommentDraftChange(event.target.value)}
-            placeholder="Write a comment"
-            className="h-8 rounded-lg bg-white text-xs"
-          />
-          <Button type="submit" size="icon" disabled={busy || !commentDraft.trim()} aria-label="Post comment">
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
-          </Button>
-        </form>
+        <div className="mt-2 grid gap-2">
+          {item.comments.length > 0 ? (
+            <div className="grid gap-1.5">
+              {item.comments.map((comment) => (
+                <div key={comment.id} className="rounded-lg bg-white px-2 py-1.5 text-xs">
+                  <p className="font-medium">{comment.profile.displayName}</p>
+                  <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <form onSubmit={onSubmitComment} className="grid grid-cols-[minmax(0,1fr)_auto] gap-1.5">
+            <Input
+              value={commentDraft}
+              onChange={(event) => onCommentDraftChange(event.target.value)}
+              placeholder="Write a comment"
+              className="h-8 rounded-lg bg-white text-xs"
+            />
+            <Button type="submit" size="icon" disabled={busy || !commentDraft.trim()} aria-label="Post comment">
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+            </Button>
+          </form>
+        </div>
       ) : null}
     </div>
   );

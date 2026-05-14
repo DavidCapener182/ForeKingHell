@@ -145,7 +145,10 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
         </div>
 
         {achievements.length > 0 ? (
-          <details className="group rounded-xl border bg-slate-50/80">
+          <details
+            className="group rounded-xl border bg-slate-50/80"
+            open={achievements.some((item) => item.commentCount > 0)}
+          >
             <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <Award className="size-4 text-emerald-600" />
@@ -350,7 +353,7 @@ function ActivityActions({ item }: { item: FeedItemView }) {
             Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
           </Button>
         </form>
-        <details className="group w-full sm:w-auto">
+        <details className="group w-full sm:w-auto" open={item.commentCount > 0}>
           <summary className="inline-flex h-7 cursor-pointer list-none items-center justify-center gap-1 rounded-lg px-2.5 text-[0.8rem] font-medium hover:bg-muted [&::-webkit-details-marker]:hidden">
             <MessageCircle className="size-4" />
             Comments {item.commentCount > 0 ? item.commentCount : ""}
