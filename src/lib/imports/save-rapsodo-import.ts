@@ -21,6 +21,7 @@ import { evaluateCoachDrillAchievementsForUser } from "@/lib/coach-drill-awards"
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 import { ensureCourseForSession, type CourseSessionLink } from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { recordImportFeedItems } from "@/lib/social";
 import {
   type CourseInferenceResult,
   inferCourseShotsFromHoleShotCounts,
@@ -179,6 +180,19 @@ export async function saveRapsodoImport(
           ...(await evaluateAchievementsAfterImport(userId)).unlockedAchievements,
           ...(await evaluateCoachDrillAchievementsForUser(userId)).notifications,
         ];
+
+    if (!result.skipped) {
+      await recordImportFeedItems({
+        userId,
+        sessionId: result.sessionId,
+        fileName: validatedInput.fileName,
+        source: validatedInput.source,
+        shotCount: result.shotCount,
+        rawRowCount: result.rawRowCount,
+        longestShotNotifications: result.longestShotNotifications,
+        achievementUnlockNotifications,
+      });
+    }
 
     revalidateImportPages();
 

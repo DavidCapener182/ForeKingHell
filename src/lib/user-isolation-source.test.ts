@@ -69,6 +69,86 @@ describe("user isolation source guards", () => {
     expect(leaderboardPage).not.toContain("inArray(sessions.userId, ids)");
   });
 
+  it("keeps social feed, profile search, and challenge reads behind social visibility helpers", () => {
+    const socialSource = source("src/lib/social.ts");
+    const challengeSource = source("src/lib/challenges.ts");
+    const feedPage = source("src/app/feed/page.tsx");
+    const friendsPage = source("src/app/friends/page.tsx");
+
+    expectAll(socialSource, [
+      "await requireCurrentUserId()",
+      "getBlockedUserIds",
+      "canViewFeedItem",
+      "canViewProfile",
+      "row.publicProfile || (row.friendProfile && friendIdSet.has(row.userId))",
+    ]);
+    expectAll(challengeSource, [
+      "await requireCurrentUserId()",
+      "canViewChallenge",
+      "await isBlockedBetween(viewerUserId, challenge.creatorUserId)",
+      "await areFriends(viewerUserId, challenge.creatorUserId)",
+    ]);
+    expect(feedPage).toContain("getFeedPageData");
+    expect(friendsPage).toContain("getFriendsPageData");
+  });
+
+  it("keeps groups, billing, providers, offers, and AI social data user scoped", () => {
+    const groupsSource = source("src/lib/groups.ts");
+    const billingSource = source("src/lib/billing.ts");
+    const providersSource = source("src/lib/provider-integrations.ts");
+    const partnersSource = source("src/lib/partners.ts");
+    const intelligenceSource = source("src/lib/social-intelligence.ts");
+    const exportRoute = source("src/app/api/settings/export/route.ts");
+    const settingsActions = source("src/app/settings/actions.ts");
+    const partnerActions = source("src/app/partners/actions.ts");
+
+    expectAll(groupsSource, [
+      "await requireCurrentUserId()",
+      "canViewGroup",
+      "isGroupMember",
+      "eq(groups.ownerUserId, userId)",
+      "eq(groupMemberships.userId, userId)",
+    ]);
+    expectAll(billingSource, [
+      "await requireCurrentUserId()",
+      "eq(subscriptions.userId, userId)",
+      "eq(entitlements.userId, userId)",
+      "eq(billingCustomers.userId, userId)",
+    ]);
+    expectAll(providersSource, [
+      "await requireCurrentUserId()",
+      "eq(providerAccounts.userId, userId)",
+      "eq(providerSessions.userId, userId)",
+      "eq(importJobs.userId, userId)",
+    ]);
+    expectAll(partnersSource, [
+      "await requireCurrentUserId()",
+      "eq(offerClicks.userId, userId)",
+      "ownerUserId: userId",
+    ]);
+    expectAll(intelligenceSource, [
+      "await requireCurrentUserId()",
+      "eq(aiSocialSummaries.userId, userId)",
+      "reporterUserId: userId",
+      "reportedUserId",
+    ]);
+    expectAll(exportRoute, [
+      "aiSocialSummaries",
+      "billingCustomers",
+      "groupMemberships",
+      "providerSessions",
+      "socialReports",
+    ]);
+    expectAll(settingsActions, [
+      "await tx.delete(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId));",
+      "await tx.delete(providerSessions).where(eq(providerSessions.userId, userId));",
+      "await tx.delete(groupMemberships).where(eq(groupMemberships.userId, userId));",
+      "await tx.delete(billingCustomers).where(eq(billingCustomers.userId, userId));",
+    ]);
+    expect(partnerActions).toContain("safeExternalUrl");
+    expect(partnerActions).toContain("url.protocol === \"https:\" || url.protocol === \"http:\"");
+  });
+
   it("requires auth in app API routes that handle private data or external lookups", () => {
     for (const path of [
       "src/app/api/coach/chat/route.ts",

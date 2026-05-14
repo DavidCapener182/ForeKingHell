@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
+  ChevronDown,
   Crosshair,
   Database,
   Minus,
@@ -477,122 +478,131 @@ export default async function TodayPage({
             </MobileDataList>
           </MobileAccordionSection>
 
-          <DataPanel id="shots" className="hidden scroll-mt-28 sm:block">
-            <SectionHeader
-              title="Today’s shot list"
-              description="Only the selected day, session, and club."
-              action={
-                <StatusPill tone="slate">
-                  {integerFormatter.format(data.shots.length)} shots
-                </StatusPill>
-              }
-            />
-            <CardContent>
-              <DataTableFrame
-                mobile={
-                  <MobileDataList>
-                    {data.shots.map((shot) => (
-                      <MobileDataCard
-                        key={shot.id}
-                        title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
-                        subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                        action={
-                          <Badge variant="outline">
-                            {formatShotCategory(shot.shotCategory)}
-                          </Badge>
-                        }
-                      >
-                        <DataPair
-                          label="Shot"
-                          value={shot.shotNumber ?? "--"}
-                        />
-                        <DataPair
-                          label="Total"
-                          value={formatYards(shot.totalYd)}
-                        />
-                        <DataPair
-                          label="Side"
-                          value={formatSignedYards(shot.sideCarryYd)}
-                        />
-                        <DataPair
-                          label="Start"
-                          value={formatDegrees(shot.launchDirectionDeg)}
-                        />
-                        <DataPair
-                          label="Launch"
-                          value={formatDegrees(shot.launchAngleDeg)}
-                        />
-                        <DataPair
-                          label="Ball"
-                          value={formatMph(shot.ballSpeedMph)}
-                        />
-                        <DataPair
-                          label="Smash"
-                          value={formatNumber(shot.smashFactor)}
-                        />
-                      </MobileDataCard>
-                    ))}
-                  </MobileDataList>
-                }
-              >
-                <Table className="min-w-[1040px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Session</TableHead>
-                      <TableHead className="text-right">Shot</TableHead>
-                      <TableHead>Club</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Carry</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Side</TableHead>
-                      <TableHead className="text-right">Start</TableHead>
-                      <TableHead className="text-right">Launch</TableHead>
-                      <TableHead className="text-right">Ball</TableHead>
-                      <TableHead className="text-right">Smash</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.shots.map((shot) => (
-                      <TableRow key={shot.id}>
-                        <TableCell className="max-w-52 truncate">
-                          {shot.fileName ?? shot.courseName ?? "Session"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {shot.shotNumber ?? "--"}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatClubType(shot.clubType)}
-                        </TableCell>
-                        <TableCell>
-                          {formatShotCategory(shot.shotCategory)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatYards(shot.carryYd)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatYards(shot.totalYd)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatSignedYards(shot.sideCarryYd)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatDegrees(shot.launchDirectionDeg)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatDegrees(shot.launchAngleDeg)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatMph(shot.ballSpeedMph)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatNumber(shot.smashFactor)}
-                        </TableCell>
+          <DataPanel id="shots" className="hidden scroll-mt-28 overflow-hidden sm:block">
+            <details className="group">
+              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-6 py-5 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
+                <div>
+                  <h2 className="text-xl font-semibold tracking-normal sm:text-2xl">
+                    Today’s shot list
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Only the selected day, session, and club.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusPill tone="slate">
+                    {integerFormatter.format(data.shots.length)} shots
+                  </StatusPill>
+                  <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
+                </div>
+              </summary>
+              <CardContent>
+                <DataTableFrame
+                  mobile={
+                    <MobileDataList>
+                      {data.shots.map((shot) => (
+                        <MobileDataCard
+                          key={shot.id}
+                          title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
+                          subtitle={shot.fileName ?? shot.courseName ?? "Session"}
+                          action={
+                            <Badge variant="outline">
+                              {formatShotCategory(shot.shotCategory)}
+                            </Badge>
+                          }
+                        >
+                          <DataPair
+                            label="Shot"
+                            value={shot.shotNumber ?? "--"}
+                          />
+                          <DataPair
+                            label="Total"
+                            value={formatYards(shot.totalYd)}
+                          />
+                          <DataPair
+                            label="Side"
+                            value={formatSignedYards(shot.sideCarryYd)}
+                          />
+                          <DataPair
+                            label="Start"
+                            value={formatDegrees(shot.launchDirectionDeg)}
+                          />
+                          <DataPair
+                            label="Launch"
+                            value={formatDegrees(shot.launchAngleDeg)}
+                          />
+                          <DataPair
+                            label="Ball"
+                            value={formatMph(shot.ballSpeedMph)}
+                          />
+                          <DataPair
+                            label="Smash"
+                            value={formatNumber(shot.smashFactor)}
+                          />
+                        </MobileDataCard>
+                      ))}
+                    </MobileDataList>
+                  }
+                >
+                  <Table className="min-w-[1040px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Session</TableHead>
+                        <TableHead className="text-right">Shot</TableHead>
+                        <TableHead>Club</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="text-right">Carry</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-right">Side</TableHead>
+                        <TableHead className="text-right">Start</TableHead>
+                        <TableHead className="text-right">Launch</TableHead>
+                        <TableHead className="text-right">Ball</TableHead>
+                        <TableHead className="text-right">Smash</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </DataTableFrame>
-            </CardContent>
+                    </TableHeader>
+                    <TableBody>
+                      {data.shots.map((shot) => (
+                        <TableRow key={shot.id}>
+                          <TableCell className="max-w-52 truncate">
+                            {shot.fileName ?? shot.courseName ?? "Session"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {shot.shotNumber ?? "--"}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {formatClubType(shot.clubType)}
+                          </TableCell>
+                          <TableCell>
+                            {formatShotCategory(shot.shotCategory)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatYards(shot.carryYd)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatYards(shot.totalYd)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatSignedYards(shot.sideCarryYd)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatDegrees(shot.launchDirectionDeg)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatDegrees(shot.launchAngleDeg)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatMph(shot.ballSpeedMph)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatNumber(shot.smashFactor)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </DataTableFrame>
+              </CardContent>
+            </details>
           </DataPanel>
         </>
       )}

@@ -12,6 +12,7 @@ import { evaluateRoundAchievementsForSession } from "@/lib/achievements/service"
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildClubKey, normalizeClubType } from "@/lib/rapsodo/parser";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
+import { recordRoundCompletedFeedItem } from "@/lib/social";
 
 type StoredScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>[number];
 
@@ -104,6 +105,13 @@ export async function createManualRoundAction(formData: FormData) {
   });
 
   await evaluateRoundAchievementsForSessionWithFlash(session.id);
+  await recordRoundCompletedFeedItem({
+    userId,
+    sessionId: session.id,
+    courseName: teeSet.courseName,
+    score: scorecardTotal(scorecardJson),
+    source: "manual",
+  });
   revalidateRound(session.id);
   redirect(`/rounds/${session.id}`);
 }
@@ -683,6 +691,14 @@ function parseWeather(formData: FormData) {
     wind: nullableString(formData, "wind"),
     temperature: nullableString(formData, "temperature"),
   };
+}
+
+function scorecardTotal(scorecard: StoredScorecardHole[]) {
+  const scores = scorecard
+    .map((hole) => hole.score)
+    .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
+
+  return scores.length > 0 ? scores.reduce((total, score) => total + score, 0) : null;
 }
 
 function revalidateRound(sessionId: string) {

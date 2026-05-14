@@ -7,18 +7,26 @@ import {
   Brain,
   Calculator,
   CalendarDays,
+  Cable,
   ChevronDown,
+  CreditCard,
   Database,
   Flag,
   Gauge,
+  Gift,
   GitCompareArrows,
   LineChart,
   LogOut,
   MapPinned,
   MoreHorizontal,
+  Radio,
   Settings,
+  ShieldAlert,
+  ShieldCheck,
   Target,
+  Trophy,
   Upload,
+  UserRound,
   Users,
   Wrench,
   Zap,
@@ -117,6 +125,53 @@ const navGroups = [
     ],
   },
   {
+    label: "Social",
+    items: [
+      {
+        href: "/feed",
+        label: "Feed",
+        icon: Radio,
+        isActive: (pathname: string) => pathname.startsWith("/feed"),
+      },
+      {
+        href: "/friends",
+        label: "Friends",
+        icon: Users,
+        isActive: (pathname: string) => pathname.startsWith("/friends"),
+      },
+      {
+        href: "/groups",
+        label: "Groups",
+        icon: Users,
+        isActive: (pathname: string) => pathname.startsWith("/groups"),
+      },
+      {
+        href: "/challenges",
+        label: "Challenges",
+        icon: Trophy,
+        isActive: (pathname: string) => pathname.startsWith("/challenges"),
+      },
+      {
+        href: "/leaderboard",
+        label: "Leaderboards",
+        icon: Users,
+        isActive: (pathname: string) => pathname.startsWith("/leaderboard"),
+      },
+      {
+        href: "/profile",
+        label: "Profile",
+        icon: UserRound,
+        isActive: (pathname: string) => pathname.startsWith("/profile"),
+      },
+      {
+        href: "/social-intelligence",
+        label: "Recaps & safety",
+        icon: ShieldAlert,
+        isActive: (pathname: string) => pathname.startsWith("/social-intelligence"),
+      },
+    ],
+  },
+  {
     label: "Improve",
     items: [
       {
@@ -132,12 +187,6 @@ const navGroups = [
         isActive: (pathname: string) => pathname.startsWith("/achievements"),
       },
       {
-        href: "/leaderboard",
-        label: "Leaderboards",
-        icon: Users,
-        isActive: (pathname: string) => pathname.startsWith("/leaderboard"),
-      },
-      {
         href: "/settings",
         label: "Settings",
         icon: Settings,
@@ -145,7 +194,37 @@ const navGroups = [
       },
     ],
   },
+  {
+    label: "Platform",
+    items: [
+      {
+        href: "/billing",
+        label: "Billing",
+        icon: CreditCard,
+        isActive: (pathname: string) => pathname.startsWith("/billing"),
+      },
+      {
+        href: "/providers",
+        label: "Providers",
+        icon: Cable,
+        isActive: (pathname: string) => pathname.startsWith("/providers"),
+      },
+      {
+        href: "/partners",
+        label: "Partners",
+        icon: Gift,
+        isActive: (pathname: string) => pathname.startsWith("/partners"),
+      },
+    ],
+  },
 ];
+
+const adminNavItem = {
+  href: "/admin",
+  label: "Admin",
+  icon: ShieldCheck,
+  isActive: (pathname: string) => pathname.startsWith("/admin"),
+};
 
 const mobilePrimaryItems = [
   {
@@ -191,17 +270,29 @@ const moreItems = [
   { href: "/handicap", label: "Handicap", icon: Calculator },
   { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
   { href: "/progress", label: "Progress", icon: LineChart },
+  { href: "/feed", label: "Feed", icon: Radio },
+  { href: "/friends", label: "Friends", icon: Users },
+  { href: "/groups", label: "Groups", icon: Users },
+  { href: "/challenges", label: "Challenges", icon: Trophy },
   { href: "/achievements", label: "Achievements", icon: Award },
   { href: "/leaderboard", label: "Leaderboards", icon: Users },
+  { href: "/profile", label: "Profile", icon: UserRound },
+  { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/providers", label: "Providers", icon: Cable },
+  { href: "/partners", label: "Partners", icon: Gift },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const adminMoreItem = { href: "/admin", label: "Admin", icon: ShieldCheck };
+
 const xpFormatter = new Intl.NumberFormat("en-GB");
 
-export function AppNav({ totalXp }: { totalXp: number }) {
+export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?: boolean }) {
   const pathname = usePathname();
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
+  const visibleMoreItems = isAdmin ? [...moreItems, adminMoreItem] : moreItems;
 
   if (
     pathname.startsWith("/login") ||
@@ -221,7 +312,6 @@ export function AppNav({ totalXp }: { totalXp: number }) {
         >
           <Link
             href="/dashboard"
-            prefetch={false}
             className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold sm:px-2.5 sm:py-2"
           >
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#111827] text-white sm:size-8">
@@ -233,7 +323,8 @@ export function AppNav({ totalXp }: { totalXp: number }) {
 
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
             {navGroups.map((group) => {
-              const groupActive = group.items.some((item) =>
+              const items = group.label === "Platform" && isAdmin ? [...group.items, adminNavItem] : group.items;
+              const groupActive = items.some((item) =>
                 item.isActive(pathname),
               );
               const menuId = `desktop-nav-${group.label.toLowerCase()}`;
@@ -260,7 +351,7 @@ export function AppNav({ totalXp }: { totalXp: number }) {
                     role="menu"
                     className="pointer-events-none invisible absolute left-0 top-full z-50 grid min-w-52 translate-y-1 gap-1 rounded-2xl border border-white/60 bg-white/95 p-2 opacity-0 shadow-xl shadow-black/10 backdrop-blur transition duration-150 group-hover/desktop-nav:pointer-events-auto group-hover/desktop-nav:visible group-hover/desktop-nav:translate-y-0 group-hover/desktop-nav:opacity-100 group-focus-within/desktop-nav:pointer-events-auto group-focus-within/desktop-nav:visible group-focus-within/desktop-nav:translate-y-0 group-focus-within/desktop-nav:opacity-100"
                   >
-                    {group.items.map((item) => {
+                    {items.map((item) => {
                       const Icon = item.icon;
                       const active = item.isActive(pathname);
 
@@ -268,7 +359,6 @@ export function AppNav({ totalXp }: { totalXp: number }) {
                         <Link
                           key={item.href}
                           href={item.href}
-                          prefetch={false}
                           role="menuitem"
                           aria-current={active ? "page" : undefined}
                           className={
@@ -312,7 +402,6 @@ export function AppNav({ totalXp }: { totalXp: number }) {
                 >
                   <Link
                     href={item.href}
-                    prefetch={false}
                     aria-current={active ? "page" : undefined}
                   >
                     <Icon className="size-4" />
@@ -327,7 +416,7 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             asChild
             className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 sm:inline-flex"
           >
-            <Link href="/import" prefetch={false}>
+            <Link href="/import">
               <Upload className="size-4" />
               Import CSV
             </Link>
@@ -335,7 +424,6 @@ export function AppNav({ totalXp }: { totalXp: number }) {
 
           <Link
             href="/achievements"
-            prefetch={false}
             aria-label={`Level ${level.level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
             className="ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-2.5 text-sm font-medium text-white shadow-sm sm:ml-0 sm:h-9 sm:px-3"
           >
@@ -373,7 +461,6 @@ export function AppNav({ totalXp }: { totalXp: number }) {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 aria-current={active ? "page" : undefined}
                 className={
                   active
@@ -392,13 +479,12 @@ export function AppNav({ totalXp }: { totalXp: number }) {
               More
             </summary>
             <div className="absolute bottom-full right-0 mb-2 grid min-w-44 gap-1 rounded-2xl border bg-white p-2 shadow-xl">
-              {moreItems.map((item) => {
+              {visibleMoreItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    prefetch={false}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted"
                   >
                     <Icon className="size-4 text-muted-foreground" />

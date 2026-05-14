@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -9,19 +9,54 @@ import {
   accountMemberships,
   achievementProgress,
   achievementSyncState,
+  aiSocialSummaries,
   ballModels,
+  billingCustomers,
+  challengeAttempts,
+  challengeComments,
+  challengeEntries,
+  challengeInvites,
+  challengeRewards,
+  challengeResults,
+  challenges,
   clubEquipmentHistory,
   clubs,
   courses,
+  entitlements,
+  feedComments,
+  feedItems,
+  feedReactions,
+  friendRequests,
+  friendships,
+  groupChallengeLinks,
+  groupInvites,
+  groupMemberships,
+  groupPosts,
+  groups,
   importFiles,
+  importJobs,
+  importMappings,
   importRows,
+  importSourceFiles,
+  moderationEvents,
+  offerClicks,
+  partnerOffers,
+  providerAccounts,
+  providerSessions,
   rapsodoSyncSessions,
   sessions,
   shareLinks,
   shots,
+  socialReports,
+  sponsors,
   stockYardages,
   strokesGainedShotEvents,
+  subscriptions,
+  usageEvents,
   userAchievements,
+  userBlocks,
+  userFollows,
+  userProfiles,
   users,
   xpLedger,
 } from "@/db/schema";
@@ -214,6 +249,46 @@ export async function deleteAccountDataAction(formData: FormData) {
   const db = getDb();
 
   await db.transaction(async (tx) => {
+    const ownedSponsorRows = await tx.select({ id: sponsors.id }).from(sponsors).where(eq(sponsors.ownerUserId, userId));
+    const ownedSponsorIds = ownedSponsorRows.map((sponsor) => sponsor.id);
+
+    await tx.delete(socialReports).where(or(eq(socialReports.reporterUserId, userId), eq(socialReports.reportedUserId, userId)));
+    await tx.delete(moderationEvents).where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId)));
+    await tx.delete(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId));
+    await tx.delete(importJobs).where(eq(importJobs.userId, userId));
+    await tx.delete(importSourceFiles).where(eq(importSourceFiles.userId, userId));
+    await tx.delete(importMappings).where(eq(importMappings.userId, userId));
+    await tx.delete(providerSessions).where(eq(providerSessions.userId, userId));
+    await tx.delete(providerAccounts).where(eq(providerAccounts.userId, userId));
+    await tx.delete(offerClicks).where(eq(offerClicks.userId, userId));
+    if (ownedSponsorIds.length > 0) {
+      await tx.delete(partnerOffers).where(inArray(partnerOffers.sponsorId, ownedSponsorIds));
+      await tx.delete(challengeRewards).where(inArray(challengeRewards.sponsorId, ownedSponsorIds));
+    }
+    await tx.delete(sponsors).where(eq(sponsors.ownerUserId, userId));
+    await tx.delete(usageEvents).where(eq(usageEvents.userId, userId));
+    await tx.delete(entitlements).where(eq(entitlements.userId, userId));
+    await tx.delete(subscriptions).where(eq(subscriptions.userId, userId));
+    await tx.delete(billingCustomers).where(eq(billingCustomers.userId, userId));
+    await tx.delete(groupChallengeLinks).where(eq(groupChallengeLinks.createdByUserId, userId));
+    await tx.delete(groupPosts).where(eq(groupPosts.userId, userId));
+    await tx.delete(groupInvites).where(or(eq(groupInvites.inviterUserId, userId), eq(groupInvites.inviteeUserId, userId)));
+    await tx.delete(groupMemberships).where(eq(groupMemberships.userId, userId));
+    await tx.delete(groups).where(eq(groups.ownerUserId, userId));
+    await tx.delete(challengeComments).where(eq(challengeComments.userId, userId));
+    await tx.delete(challengeInvites).where(or(eq(challengeInvites.inviterUserId, userId), eq(challengeInvites.inviteeUserId, userId)));
+    await tx.delete(challengeResults).where(eq(challengeResults.userId, userId));
+    await tx.delete(challengeAttempts).where(eq(challengeAttempts.userId, userId));
+    await tx.delete(challengeEntries).where(eq(challengeEntries.userId, userId));
+    await tx.delete(challenges).where(eq(challenges.creatorUserId, userId));
+    await tx.delete(feedReactions).where(eq(feedReactions.userId, userId));
+    await tx.delete(feedComments).where(eq(feedComments.userId, userId));
+    await tx.delete(feedItems).where(eq(feedItems.userId, userId));
+    await tx.delete(friendRequests).where(or(eq(friendRequests.requesterUserId, userId), eq(friendRequests.recipientUserId, userId)));
+    await tx.delete(friendships).where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId)));
+    await tx.delete(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId)));
+    await tx.delete(userFollows).where(or(eq(userFollows.followerUserId, userId), eq(userFollows.followedUserId, userId)));
+    await tx.delete(userProfiles).where(eq(userProfiles.userId, userId));
     await tx.delete(shareLinks).where(eq(shareLinks.userId, userId));
     await tx.delete(strokesGainedShotEvents).where(eq(strokesGainedShotEvents.userId, userId));
     await tx.delete(importFiles).where(eq(importFiles.userId, userId));

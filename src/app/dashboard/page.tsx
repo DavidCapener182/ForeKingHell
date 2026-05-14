@@ -11,9 +11,12 @@ import {
   GitCompareArrows,
   LineChart,
   MapPinned,
+  Radio,
   Target,
   Trophy,
   Upload,
+  UserRound,
+  Users,
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
@@ -276,6 +279,38 @@ export default async function DashboardPage() {
       metric: "XP system",
       icon: Award,
       accent: "text-zinc-700 bg-zinc-100",
+    },
+    {
+      title: "Feed",
+      description: "See friend PBs, achievements, rounds, and challenge cards.",
+      href: "/feed",
+      metric: "Social",
+      icon: Radio,
+      accent: "text-sky-700 bg-sky-50",
+    },
+    {
+      title: "Friends",
+      description: "Search by username and manage normal golfer friendships.",
+      href: "/friends",
+      metric: "Network",
+      icon: Users,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Challenges",
+      description: "Create private friend challenges and monthly boards.",
+      href: "/challenges",
+      metric: "Compete",
+      icon: Trophy,
+      accent: "text-amber-700 bg-amber-50",
+    },
+    {
+      title: "Profile",
+      description: "Set your username, QR invite, and social privacy defaults.",
+      href: "/profile",
+      metric: "Identity",
+      icon: UserRound,
+      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Round review",

@@ -99,6 +99,27 @@
       "when": 1778662431000,
       "tag": "0013_user_type_date_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778785039000,
+      "tag": "0014_social_foundations",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1778788370000,
+      "tag": "0015_network_growth",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1778840000000,
+      "tag": "0016_admin_ops",
+      "breakpoints": true
     }
   ]
 }

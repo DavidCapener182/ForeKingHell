@@ -33,6 +33,881 @@ export const users = pgTable("fkh_users", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const adminUsers = pgTable(
+  "fkh_admin_users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 24 }).notNull().default("operator"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    permissionsJson: jsonb("permissions_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_admin_users_user_idx").on(table.userId),
+    index("fkh_admin_users_status_role_idx").on(table.status, table.role),
+  ],
+);
+
+export const adminAuditLog = pgTable(
+  "fkh_admin_audit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: varchar("action", { length: 80 }).notNull(),
+    targetType: varchar("target_type", { length: 60 }),
+    targetId: varchar("target_id", { length: 220 }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_admin_audit_actor_created_idx").on(table.actorUserId, table.createdAt),
+    index("fkh_admin_audit_target_idx").on(table.targetType, table.targetId),
+  ],
+);
+
+export const userProfiles = pgTable(
+  "fkh_user_profiles",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    username: varchar("username", { length: 40 }).notNull(),
+    displayName: varchar("display_name", { length: 160 }).notNull(),
+    avatarUrl: text("avatar_url"),
+    bio: text("bio"),
+    homeCourse: varchar("home_course", { length: 180 }),
+    primaryLaunchMonitor: varchar("primary_launch_monitor", { length: 80 }),
+    handicapBand: varchar("handicap_band", { length: 40 }),
+    publicProfile: boolean("public_profile").notNull().default(false),
+    friendProfile: boolean("friend_profile").notNull().default(false),
+    feedVisibilityDefault: varchar("feed_visibility_default", { length: 24 }).notNull().default("private"),
+    leaderboardVisibility: varchar("leaderboard_visibility", { length: 24 }).notNull().default("private"),
+    visibilitySettingsJson: jsonb("visibility_settings_json")
+      .$type<{
+        rounds?: "private" | "friends" | "public";
+        pbs?: "private" | "friends" | "public";
+        bag?: "private" | "friends" | "public";
+        achievements?: "private" | "friends" | "public";
+        handicap?: "private" | "friends" | "public";
+        practice?: "private" | "friends" | "public";
+        exactShots?: "private" | "friends" | "public";
+      }>()
+      .notNull()
+      .default({}),
+    achievementShowcaseJson: jsonb("achievement_showcase_json").$type<string[]>().notNull().default([]),
+    pbShowcaseJson: jsonb("pb_showcase_json").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_user_profiles_username_idx").on(table.username),
+    index("fkh_user_profiles_public_idx").on(table.publicProfile),
+    index("fkh_user_profiles_leaderboard_idx").on(table.leaderboardVisibility),
+  ],
+);
+
+export const friendRequests = pgTable(
+  "fkh_friend_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requesterUserId: uuid("requester_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    recipientUserId: uuid("recipient_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    message: text("message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_friend_requests_requester_recipient_idx").on(table.requesterUserId, table.recipientUserId),
+    index("fkh_friend_requests_recipient_status_idx").on(table.recipientUserId, table.status),
+    index("fkh_friend_requests_requester_status_idx").on(table.requesterUserId, table.status),
+  ],
+);
+
+export const friendships = pgTable(
+  "fkh_friendships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userAId: uuid("user_a_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userBId: uuid("user_b_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    visibilityLevel: varchar("visibility_level", { length: 24 }).notNull().default("friends"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_friendships_pair_idx").on(table.userAId, table.userBId),
+    index("fkh_friendships_user_a_idx").on(table.userAId),
+    index("fkh_friendships_user_b_idx").on(table.userBId),
+  ],
+);
+
+export const userBlocks = pgTable(
+  "fkh_user_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockerUserId: uuid("blocker_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedUserId: uuid("blocked_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: varchar("reason", { length: 160 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_user_blocks_blocker_blocked_idx").on(table.blockerUserId, table.blockedUserId),
+    index("fkh_user_blocks_blocked_idx").on(table.blockedUserId),
+  ],
+);
+
+export const userFollows = pgTable(
+  "fkh_user_follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    followerUserId: uuid("follower_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    followedUserId: uuid("followed_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_user_follows_follower_followed_idx").on(table.followerUserId, table.followedUserId),
+    index("fkh_user_follows_followed_idx").on(table.followedUserId),
+  ],
+);
+
+export const feedItems = pgTable(
+  "fkh_feed_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemType: varchar("item_type", { length: 60 }).notNull(),
+    headline: varchar("headline", { length: 220 }).notNull(),
+    metricLabel: varchar("metric_label", { length: 80 }),
+    metricValue: varchar("metric_value", { length: 120 }),
+    context: text("context"),
+    proofUrl: text("proof_url"),
+    sourceType: varchar("source_type", { length: 60 }),
+    sourceId: varchar("source_id", { length: 220 }),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
+    verificationLabel: varchar("verification_label", { length: 80 }).notNull().default("Unverified"),
+    dedupeKey: varchar("dedupe_key", { length: 260 }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_feed_items_user_dedupe_idx").on(table.userId, table.dedupeKey),
+    index("fkh_feed_items_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_feed_items_visibility_created_idx").on(table.visibility, table.createdAt),
+    index("fkh_feed_items_source_idx").on(table.sourceType, table.sourceId),
+  ],
+);
+
+export const feedReactions = pgTable(
+  "fkh_feed_reactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    feedItemId: uuid("feed_item_id")
+      .notNull()
+      .references(() => feedItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reactionType: varchar("reaction_type", { length: 40 }).notNull().default("kudos"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_feed_reactions_item_user_type_idx").on(table.feedItemId, table.userId, table.reactionType),
+    index("fkh_feed_reactions_user_idx").on(table.userId),
+  ],
+);
+
+export const feedComments = pgTable(
+  "fkh_feed_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    feedItemId: uuid("feed_item_id")
+      .notNull()
+      .references(() => feedItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_feed_comments_item_created_idx").on(table.feedItemId, table.createdAt),
+    index("fkh_feed_comments_user_idx").on(table.userId),
+  ],
+);
+
+export const challengeTemplates = pgTable(
+  "fkh_challenge_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    description: text("description").notNull(),
+    challengeType: varchar("challenge_type", { length: 60 }).notNull(),
+    rulesJson: jsonb("rules_json").$type<Record<string, unknown>>().notNull().default({}),
+    scoringDirection: varchar("scoring_direction", { length: 12 }).notNull().default("desc"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_challenge_templates_slug_idx").on(table.slug),
+    index("fkh_challenge_templates_active_idx").on(table.active),
+  ],
+);
+
+export const challenges = pgTable(
+  "fkh_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    templateId: uuid("template_id").references(() => challengeTemplates.id, { onDelete: "set null" }),
+    creatorUserId: uuid("creator_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 180 }).notNull(),
+    description: text("description"),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("friends"),
+    status: varchar("status", { length: 24 }).notNull().default("open"),
+    challengeRulesJson: jsonb("challenge_rules_json").$type<Record<string, unknown>>().notNull().default({}),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_challenges_creator_idx").on(table.creatorUserId),
+    index("fkh_challenges_visibility_status_idx").on(table.visibility, table.status),
+    index("fkh_challenges_template_idx").on(table.templateId),
+  ],
+);
+
+export const challengeEntries = pgTable(
+  "fkh_challenge_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("joined"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_challenge_entries_challenge_user_idx").on(table.challengeId, table.userId),
+    index("fkh_challenge_entries_user_idx").on(table.userId),
+  ],
+);
+
+export const challengeAttempts = pgTable(
+  "fkh_challenge_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id").references(() => challengeEntries.id, { onDelete: "set null" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: varchar("source_type", { length: 60 }).notNull().default("manual"),
+    sourceId: varchar("source_id", { length: 220 }),
+    metricValue: doublePrecision("metric_value").notNull(),
+    metricLabel: varchar("metric_label", { length: 80 }).notNull(),
+    verificationLabel: varchar("verification_label", { length: 80 }).notNull().default("Manual"),
+    notes: text("notes"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_challenge_attempts_challenge_user_idx").on(table.challengeId, table.userId),
+    index("fkh_challenge_attempts_entry_idx").on(table.entryId),
+  ],
+);
+
+export const challengeResults = pgTable(
+  "fkh_challenge_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bestAttemptId: uuid("best_attempt_id").references(() => challengeAttempts.id, { onDelete: "set null" }),
+    rank: integer("rank"),
+    score: doublePrecision("score").notNull(),
+    scoreLabel: varchar("score_label", { length: 120 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_challenge_results_challenge_user_idx").on(table.challengeId, table.userId),
+    index("fkh_challenge_results_challenge_rank_idx").on(table.challengeId, table.rank),
+    index("fkh_challenge_results_user_idx").on(table.userId),
+  ],
+);
+
+export const challengeComments = pgTable(
+  "fkh_challenge_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_challenge_comments_challenge_created_idx").on(table.challengeId, table.createdAt),
+    index("fkh_challenge_comments_user_idx").on(table.userId),
+  ],
+);
+
+export const challengeInvites = pgTable(
+  "fkh_challenge_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    inviterUserId: uuid("inviter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteeUserId: uuid("invitee_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("fkh_challenge_invites_challenge_invitee_idx").on(table.challengeId, table.inviteeUserId),
+    index("fkh_challenge_invites_invitee_status_idx").on(table.inviteeUserId, table.status),
+  ],
+);
+
+export const groups = pgTable(
+  "fkh_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    description: text("description"),
+    groupType: varchar("group_type", { length: 40 }).notNull().default("friends"),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
+    avatarUrl: text("avatar_url"),
+    inviteCode: varchar("invite_code", { length: 80 }),
+    rules: text("rules"),
+    settingsJson: jsonb("settings_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_groups_slug_idx").on(table.slug),
+    uniqueIndex("fkh_groups_invite_code_idx").on(table.inviteCode),
+    index("fkh_groups_owner_idx").on(table.ownerUserId),
+    index("fkh_groups_visibility_type_idx").on(table.visibility, table.groupType),
+  ],
+);
+
+export const groupMemberships = pgTable(
+  "fkh_group_memberships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 24 }).notNull().default("member"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_group_memberships_group_user_idx").on(table.groupId, table.userId),
+    index("fkh_group_memberships_user_idx").on(table.userId),
+    index("fkh_group_memberships_group_role_idx").on(table.groupId, table.role),
+  ],
+);
+
+export const groupInvites = pgTable(
+  "fkh_group_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    inviterUserId: uuid("inviter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteeUserId: uuid("invitee_user_id").references(() => users.id, { onDelete: "cascade" }),
+    inviteeEmail: varchar("invitee_email", { length: 320 }),
+    tokenHash: varchar("token_hash", { length: 128 }),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_group_invites_group_idx").on(table.groupId),
+    index("fkh_group_invites_invitee_status_idx").on(table.inviteeUserId, table.status),
+    index("fkh_group_invites_email_idx").on(table.inviteeEmail),
+  ],
+);
+
+export const groupPosts = pgTable(
+  "fkh_group_posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 180 }),
+    body: text("body").notNull(),
+    pinned: boolean("pinned").notNull().default(false),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_group_posts_group_created_idx").on(table.groupId, table.createdAt),
+    index("fkh_group_posts_user_idx").on(table.userId),
+  ],
+);
+
+export const groupChallengeLinks = pgTable(
+  "fkh_group_challenge_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_group_challenge_links_group_challenge_idx").on(table.groupId, table.challengeId),
+    index("fkh_group_challenge_links_challenge_idx").on(table.challengeId),
+  ],
+);
+
+export const billingCustomers = pgTable(
+  "fkh_billing_customers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 120 }),
+    email: varchar("email", { length: 320 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_billing_customers_user_idx").on(table.userId),
+    uniqueIndex("fkh_billing_customers_stripe_idx").on(table.stripeCustomerId),
+  ],
+);
+
+export const subscriptions = pgTable(
+  "fkh_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    billingCustomerId: uuid("billing_customer_id").references(() => billingCustomers.id, { onDelete: "set null" }),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 120 }),
+    planKey: varchar("plan_key", { length: 40 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("inactive"),
+    currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+    cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_subscriptions_user_status_idx").on(table.userId, table.status),
+    uniqueIndex("fkh_subscriptions_stripe_idx").on(table.stripeSubscriptionId),
+  ],
+);
+
+export const entitlements = pgTable(
+  "fkh_entitlements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entitlementKey: varchar("entitlement_key", { length: 80 }).notNull(),
+    valueJson: jsonb("value_json").$type<Record<string, unknown>>().notNull().default({}),
+    source: varchar("source", { length: 40 }).notNull().default("plan"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_entitlements_user_key_idx").on(table.userId, table.entitlementKey),
+    index("fkh_entitlements_user_source_idx").on(table.userId, table.source),
+  ],
+);
+
+export const usageEvents = pgTable(
+  "fkh_usage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 80 }).notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    sourceId: varchar("source_id", { length: 220 }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_usage_events_user_type_created_idx").on(table.userId, table.eventType, table.createdAt),
+  ],
+);
+
+export const planLimits = pgTable(
+  "fkh_plan_limits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planKey: varchar("plan_key", { length: 40 }).notNull(),
+    limitKey: varchar("limit_key", { length: 80 }).notNull(),
+    limitValueJson: jsonb("limit_value_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_plan_limits_plan_key_idx").on(table.planKey, table.limitKey),
+  ],
+);
+
+export const sponsors = pgTable(
+  "fkh_sponsors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerUserId: uuid("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    name: varchar("name", { length: 160 }).notNull(),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    websiteUrl: text("website_url"),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    status: varchar("status", { length: 32 }).notNull().default("prospect"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_sponsors_slug_idx").on(table.slug),
+    index("fkh_sponsors_owner_idx").on(table.ownerUserId),
+  ],
+);
+
+export const challengeRewards = pgTable(
+  "fkh_challenge_rewards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeId: uuid("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    sponsorId: uuid("sponsor_id").references(() => sponsors.id, { onDelete: "set null" }),
+    rewardType: varchar("reward_type", { length: 40 }).notNull().default("discount"),
+    title: varchar("title", { length: 160 }).notNull(),
+    description: text("description"),
+    rewardUrl: text("reward_url"),
+    couponCode: varchar("coupon_code", { length: 80 }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_challenge_rewards_challenge_idx").on(table.challengeId),
+    index("fkh_challenge_rewards_sponsor_idx").on(table.sponsorId),
+  ],
+);
+
+export const partnerOffers = pgTable(
+  "fkh_partner_offers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sponsorId: uuid("sponsor_id").references(() => sponsors.id, { onDelete: "set null" }),
+    title: varchar("title", { length: 160 }).notNull(),
+    description: text("description"),
+    offerType: varchar("offer_type", { length: 40 }).notNull().default("affiliate"),
+    placement: varchar("placement", { length: 80 }).notNull().default("contextual"),
+    targetContext: varchar("target_context", { length: 80 }),
+    offerUrl: text("offer_url"),
+    couponCode: varchar("coupon_code", { length: 80 }),
+    active: boolean("active").notNull().default(true),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_partner_offers_active_context_idx").on(table.active, table.targetContext),
+    index("fkh_partner_offers_sponsor_idx").on(table.sponsorId),
+  ],
+);
+
+export const offerClicks = pgTable(
+  "fkh_offer_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    offerId: uuid("offer_id")
+      .notNull()
+      .references(() => partnerOffers.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    source: varchar("source", { length: 80 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_offer_clicks_offer_created_idx").on(table.offerId, table.createdAt),
+    index("fkh_offer_clicks_user_idx").on(table.userId),
+  ],
+);
+
+export const providerAccounts = pgTable(
+  "fkh_provider_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    providerAccountId: varchar("provider_account_id", { length: 180 }),
+    displayName: varchar("display_name", { length: 160 }),
+    status: varchar("status", { length: 32 }).notNull().default("active"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_provider_accounts_user_provider_account_idx").on(table.userId, table.providerKind, table.providerAccountId),
+    index("fkh_provider_accounts_user_provider_idx").on(table.userId, table.providerKind),
+  ],
+);
+
+export const providerSessions = pgTable(
+  "fkh_provider_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerAccountId: uuid("provider_account_id").references(() => providerAccounts.id, { onDelete: "set null" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    providerSessionId: varchar("provider_session_id", { length: 180 }).notNull(),
+    title: varchar("title", { length: 260 }),
+    sessionDate: timestamp("session_date", { withTimezone: true }),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    rawMetadataJson: jsonb("raw_metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    importedAt: timestamp("imported_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_provider_sessions_user_provider_session_idx").on(table.userId, table.providerKind, table.providerSessionId),
+    index("fkh_provider_sessions_user_seen_idx").on(table.userId, table.lastSeenAt),
+    index("fkh_provider_sessions_imported_idx").on(table.importedSessionId),
+  ],
+);
+
+export const importJobs = pgTable(
+  "fkh_import_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    sourceFileId: uuid("source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    detectedProviderKind: varchar("detected_provider_kind", { length: 40 }),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    errorMessage: text("error_message"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_import_jobs_user_status_idx").on(table.userId, table.status),
+    index("fkh_import_jobs_provider_idx").on(table.providerKind),
+  ],
+);
+
+export const importSourceFiles = pgTable(
+  "fkh_import_source_files",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    fileName: varchar("file_name", { length: 260 }).notNull(),
+    fileSizeBytes: integer("file_size_bytes"),
+    rawHash: varchar("raw_hash", { length: 64 }).notNull(),
+    storagePath: text("storage_path"),
+    status: varchar("status", { length: 32 }).notNull().default("saved"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_import_source_files_user_hash_idx").on(table.userId, table.rawHash),
+    index("fkh_import_source_files_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const importMappings = pgTable(
+  "fkh_import_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    mappingName: varchar("mapping_name", { length: 160 }).notNull(),
+    mappingJson: jsonb("mapping_json").$type<Record<string, unknown>>().notNull().default({}),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_import_mappings_user_provider_name_idx").on(table.userId, table.providerKind, table.mappingName),
+    index("fkh_import_mappings_user_provider_idx").on(table.userId, table.providerKind),
+  ],
+);
+
+export const aiSocialSummaries = pgTable(
+  "fkh_ai_social_summaries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    summaryType: varchar("summary_type", { length: 60 }).notNull(),
+    subjectType: varchar("subject_type", { length: 60 }),
+    subjectId: varchar("subject_id", { length: 220 }),
+    headline: varchar("headline", { length: 220 }).notNull(),
+    body: text("body").notNull(),
+    evidenceJson: jsonb("evidence_json").$type<Record<string, unknown>>().notNull().default({}),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
+    model: varchar("model", { length: 80 }).notNull().default("rules-v1"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_ai_social_summaries_user_type_idx").on(table.userId, table.summaryType),
+    index("fkh_ai_social_summaries_subject_idx").on(table.subjectType, table.subjectId),
+  ],
+);
+
+export const socialReports = pgTable(
+  "fkh_social_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterUserId: uuid("reporter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reportedUserId: uuid("reported_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetType: varchar("target_type", { length: 60 }).notNull(),
+    targetId: varchar("target_id", { length: 220 }).notNull(),
+    reason: varchar("reason", { length: 120 }).notNull(),
+    details: text("details"),
+    status: varchar("status", { length: 32 }).notNull().default("open"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_social_reports_reporter_idx").on(table.reporterUserId),
+    index("fkh_social_reports_target_idx").on(table.targetType, table.targetId),
+    index("fkh_social_reports_status_idx").on(table.status),
+  ],
+);
+
+export const moderationEvents = pgTable(
+  "fkh_moderation_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    targetType: varchar("target_type", { length: 60 }).notNull(),
+    targetId: varchar("target_id", { length: 220 }).notNull(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    eventType: varchar("event_type", { length: 60 }).notNull(),
+    severity: varchar("severity", { length: 24 }).notNull().default("low"),
+    status: varchar("status", { length: 32 }).notNull().default("open"),
+    reason: text("reason"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_moderation_events_target_idx").on(table.targetType, table.targetId),
+    index("fkh_moderation_events_status_severity_idx").on(table.status, table.severity),
+    index("fkh_moderation_events_actor_idx").on(table.actorUserId),
+  ],
+);
+
 export const accountMemberships = pgTable(
   "fkh_account_memberships",
   {
@@ -605,6 +1480,45 @@ export const rapsodoSyncSessions = pgTable(
 );
 
 export type NewUser = typeof users.$inferInsert;
+export type NewAdminUser = typeof adminUsers.$inferInsert;
+export type NewAdminAuditLog = typeof adminAuditLog.$inferInsert;
+export type NewUserProfile = typeof userProfiles.$inferInsert;
+export type NewFriendRequest = typeof friendRequests.$inferInsert;
+export type NewFriendship = typeof friendships.$inferInsert;
+export type NewUserBlock = typeof userBlocks.$inferInsert;
+export type NewUserFollow = typeof userFollows.$inferInsert;
+export type NewFeedItem = typeof feedItems.$inferInsert;
+export type NewFeedReaction = typeof feedReactions.$inferInsert;
+export type NewFeedComment = typeof feedComments.$inferInsert;
+export type NewChallengeTemplate = typeof challengeTemplates.$inferInsert;
+export type NewChallenge = typeof challenges.$inferInsert;
+export type NewChallengeEntry = typeof challengeEntries.$inferInsert;
+export type NewChallengeAttempt = typeof challengeAttempts.$inferInsert;
+export type NewChallengeResult = typeof challengeResults.$inferInsert;
+export type NewChallengeComment = typeof challengeComments.$inferInsert;
+export type NewChallengeInvite = typeof challengeInvites.$inferInsert;
+export type NewGroup = typeof groups.$inferInsert;
+export type NewGroupMembership = typeof groupMemberships.$inferInsert;
+export type NewGroupInvite = typeof groupInvites.$inferInsert;
+export type NewGroupPost = typeof groupPosts.$inferInsert;
+export type NewGroupChallengeLink = typeof groupChallengeLinks.$inferInsert;
+export type NewBillingCustomer = typeof billingCustomers.$inferInsert;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+export type NewEntitlement = typeof entitlements.$inferInsert;
+export type NewUsageEvent = typeof usageEvents.$inferInsert;
+export type NewPlanLimit = typeof planLimits.$inferInsert;
+export type NewSponsor = typeof sponsors.$inferInsert;
+export type NewChallengeReward = typeof challengeRewards.$inferInsert;
+export type NewPartnerOffer = typeof partnerOffers.$inferInsert;
+export type NewOfferClick = typeof offerClicks.$inferInsert;
+export type NewProviderAccount = typeof providerAccounts.$inferInsert;
+export type NewProviderSession = typeof providerSessions.$inferInsert;
+export type NewImportJob = typeof importJobs.$inferInsert;
+export type NewImportSourceFile = typeof importSourceFiles.$inferInsert;
+export type NewImportMapping = typeof importMappings.$inferInsert;
+export type NewAiSocialSummary = typeof aiSocialSummaries.$inferInsert;
+export type NewSocialReport = typeof socialReports.$inferInsert;
+export type NewModerationEvent = typeof moderationEvents.$inferInsert;
 export type NewAccountMembership = typeof accountMemberships.$inferInsert;
 export type NewAccountInvitation = typeof accountInvitations.$inferInsert;
 export type NewShareLink = typeof shareLinks.$inferInsert;

@@ -1,0 +1,1211 @@
+import "server-only";
+
+import { and, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+
+import {
+  feedComments,
+  feedItems,
+  feedReactions,
+  friendRequests,
+  friendships,
+  sessions,
+  shots,
+  userBlocks,
+  userFollows,
+  userProfiles,
+  users,
+  xpLedger,
+} from "@/db/schema";
+import { getDb } from "@/db/client";
+import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
+import { calculateUserLevel } from "@/lib/achievements/xp";
+import type { AchievementUnlockNotification } from "@/lib/achievements/types";
+
+export const socialVisibilityOptions = ["private", "friends", "public"] as const;
+export type SocialVisibility = (typeof socialVisibilityOptions)[number];
+
+export type SocialProfileSummary = {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  homeCourse: string | null;
+  primaryLaunchMonitor: string | null;
+  handicapBand: string | null;
+  publicProfile: boolean;
+  friendProfile: boolean;
+  leaderboardVisibility: SocialVisibility;
+  feedVisibilityDefault: SocialVisibility;
+  relationship: "self" | "friend" | "incoming" | "outgoing" | "blocked" | "none";
+};
+
+export type FeedItemView = {
+  id: string;
+  userId: string;
+  itemType: string;
+  headline: string;
+  metricLabel: string | null;
+  metricValue: string | null;
+  context: string | null;
+  proofUrl: string | null;
+  visibility: SocialVisibility;
+  verificationLabel: string;
+  createdAt: Date;
+  profile: SocialProfileSummary;
+  reactionCount: number;
+  commentCount: number;
+  viewerReacted: boolean;
+  comments: Array<{
+    id: string;
+    body: string;
+    createdAt: Date;
+    profile: Pick<SocialProfileSummary, "userId" | "username" | "displayName" | "avatarUrl">;
+  }>;
+};
+
+type ProfileRow = typeof userProfiles.$inferSelect;
+type FriendRequestRow = typeof friendRequests.$inferSelect;
+type FeedItemRow = typeof feedItems.$inferSelect;
+
+const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+
+export async function ensureSocialProfileForUser(userId: string) {
+  const db = getDb();
+  const [existing] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const displayName = safeSocialDisplayName(user?.name) || safeSocialDisplayName(user?.email?.split("@")[0]) || "ForeKingHell Player";
+
+  if (existing) {
+    const needsDisplayRepair = !safeSocialDisplayName(existing.displayName);
+    const needsUsernameRepair = isSharedDatabaseArtifact(existing.username);
+
+    if (!needsDisplayRepair && !needsUsernameRepair) {
+      return existing;
+    }
+
+    const [repaired] = await db
+      .update(userProfiles)
+      .set({
+        ...(needsDisplayRepair ? { displayName } : {}),
+        ...(needsUsernameRepair ? { username: await uniqueUsername(defaultUsername(displayName, userId)) } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(userProfiles.userId, userId))
+      .returning();
+
+    return repaired;
+  }
+
+  const username = await uniqueUsername(defaultUsername(displayName, userId));
+  const now = new Date();
+  const [profile] = await db
+    .insert(userProfiles)
+    .values({
+      userId,
+      username,
+      displayName,
+      updatedAt: now,
+    })
+    .returning();
+
+  return profile;
+}
+
+export async function ensureCurrentSocialProfile() {
+  const userId = await requireCurrentUserId();
+  return ensureSocialProfileForUser(userId);
+}
+
+export async function getFriendIds(userId: string) {
+  const rows = await getDb()
+    .select({
+      userAId: friendships.userAId,
+      userBId: friendships.userBId,
+    })
+    .from(friendships)
+    .where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId)));
+
+  return rows.map((row) => (row.userAId === userId ? row.userBId : row.userAId));
+}
+
+export async function areFriends(userAId: string, userBId: string) {
+  if (userAId === userBId) {
+    return true;
+  }
+
+  const [userA, userB] = sortedUserPair(userAId, userBId);
+  const [row] = await getDb()
+    .select({ id: friendships.id })
+    .from(friendships)
+    .where(and(eq(friendships.userAId, userA), eq(friendships.userBId, userB)))
+    .limit(1);
+
+  return Boolean(row);
+}
+
+export async function isBlockedBetween(userAId: string, userBId: string) {
+  if (userAId === userBId) {
+    return false;
+  }
+
+  const [row] = await getDb()
+    .select({ id: userBlocks.id })
+    .from(userBlocks)
+    .where(
+      or(
+        and(eq(userBlocks.blockerUserId, userAId), eq(userBlocks.blockedUserId, userBId)),
+        and(eq(userBlocks.blockerUserId, userBId), eq(userBlocks.blockedUserId, userAId)),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(row);
+}
+
+export async function getBlockedUserIds(userId: string) {
+  const rows = await getDb()
+    .select({
+      blockerUserId: userBlocks.blockerUserId,
+      blockedUserId: userBlocks.blockedUserId,
+    })
+    .from(userBlocks)
+    .where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId)));
+
+  return new Set(rows.map((row) => (row.blockerUserId === userId ? row.blockedUserId : row.blockerUserId)));
+}
+
+export async function getFriendsPageData(searchQuery: string | null) {
+  const userId = await requireCurrentUserId();
+  const profile = await ensureSocialProfileForUser(userId);
+  const [friendIds, blockedIds, pendingRequests] = await Promise.all([
+    getFriendIds(userId),
+    getBlockedUserIds(userId),
+    getPendingFriendRequestsForUser(userId),
+  ]);
+  const relatedIds = new Set<string>([
+    ...friendIds,
+    ...pendingRequests.map((request) =>
+      request.requesterUserId === userId ? request.recipientUserId : request.requesterUserId,
+    ),
+  ]);
+  const relatedProfiles = relatedIds.size > 0 ? await profilesByUserId([...relatedIds]) : new Map<string, ProfileRow>();
+  const searchResults = await searchDiscoverableProfiles({
+    viewerUserId: userId,
+    query: searchQuery,
+    friendIds,
+    blockedIds,
+    pendingRequests,
+  });
+
+  return {
+    profile: profileSummary(profile, "self"),
+    friends: friendIds
+      .map((friendId) => relatedProfiles.get(friendId))
+      .filter((item): item is ProfileRow => Boolean(item))
+      .map((row) => profileSummary(row, "friend")),
+    incomingRequests: pendingRequests
+      .filter((request) => request.recipientUserId === userId)
+      .map((request) => ({
+        request,
+        profile: profileSummary(relatedProfiles.get(request.requesterUserId), "incoming"),
+      }))
+      .filter((row) => row.profile),
+    outgoingRequests: pendingRequests
+      .filter((request) => request.requesterUserId === userId)
+      .map((request) => ({
+        request,
+        profile: profileSummary(relatedProfiles.get(request.recipientUserId), "outgoing"),
+      }))
+      .filter((row) => row.profile),
+    searchResults,
+  };
+}
+
+export async function getProfilePageData(username: string) {
+  const viewerUserId = await getOptionalCurrentUserId();
+  const viewerProfile = viewerUserId ? await ensureSocialProfileForUser(viewerUserId) : null;
+  const [profile] = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.username, normalizeUsername(username)))
+    .limit(1);
+
+  if (!profile || !(await canViewProfile(viewerUserId, profile))) {
+    return null;
+  }
+
+  const relationship = viewerUserId ? await getRelationship(viewerUserId, profile.userId) : "none";
+  const recentFeed = viewerUserId
+    ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
+    : await getPublicFeedItemsForProfile(profile.userId, 6);
+  const stats = await getProfileStats(profile.userId, profile.visibilitySettingsJson, relationship);
+
+  return {
+    viewerProfile: viewerProfile ? profileSummary(viewerProfile, "self") : null,
+    profile: profileSummary(profile, relationship),
+    stats,
+    recentFeed,
+  };
+}
+
+export async function updateCurrentSocialProfile(input: {
+  username: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  homeCourse?: string | null;
+  primaryLaunchMonitor?: string | null;
+  handicapBand?: string | null;
+  publicProfile: boolean;
+  friendProfile: boolean;
+  feedVisibilityDefault: SocialVisibility;
+  leaderboardVisibility: SocialVisibility;
+  visibilitySettingsJson: NonNullable<ProfileRow["visibilitySettingsJson"]>;
+}) {
+  const userId = await requireCurrentUserId();
+  const current = await ensureSocialProfileForUser(userId);
+  const username = normalizeUsername(input.username);
+
+  if (!isValidUsername(username)) {
+    throw new Error("Username must be 3-40 characters and use letters, numbers, hyphens or underscores.");
+  }
+
+  if (isSharedDatabaseArtifact(username) || isSharedDatabaseArtifact(input.displayName)) {
+    throw new Error("Use your ForeKingHell profile name, not a shared workspace label.");
+  }
+
+  const [existing] = await getDb()
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(and(eq(userProfiles.username, username), ne(userProfiles.userId, userId)))
+    .limit(1);
+
+  if (existing) {
+    throw new Error("That username is already taken.");
+  }
+
+  await getDb()
+    .update(userProfiles)
+    .set({
+      username,
+      displayName: cleanRequired(input.displayName, current.displayName),
+      avatarUrl: nullableClean(input.avatarUrl),
+      bio: nullableClean(input.bio),
+      homeCourse: nullableClean(input.homeCourse),
+      primaryLaunchMonitor: nullableClean(input.primaryLaunchMonitor),
+      handicapBand: nullableClean(input.handicapBand),
+      publicProfile: input.publicProfile,
+      friendProfile: input.friendProfile,
+      feedVisibilityDefault: input.feedVisibilityDefault,
+      leaderboardVisibility: input.leaderboardVisibility,
+      visibilitySettingsJson: input.visibilitySettingsJson,
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.userId, userId));
+
+  revalidateSocialPaths();
+}
+
+export async function sendFriendRequest(recipientUserId: string, message: string | null) {
+  const requesterUserId = await requireCurrentUserId();
+  await ensureSocialProfileForUser(requesterUserId);
+
+  if (requesterUserId === recipientUserId) {
+    throw new Error("You cannot add yourself as a friend.");
+  }
+
+  if (await isBlockedBetween(requesterUserId, recipientUserId)) {
+    throw new Error("Friend request cannot be sent.");
+  }
+
+  if (await areFriends(requesterUserId, recipientUserId)) {
+    return;
+  }
+
+  const [recipient] = await getDb()
+    .select({ userId: userProfiles.userId })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, recipientUserId))
+    .limit(1);
+
+  if (!recipient) {
+    throw new Error("Profile not found.");
+  }
+
+  const now = new Date();
+  await getDb()
+    .insert(friendRequests)
+    .values({
+      requesterUserId,
+      recipientUserId,
+      status: "pending",
+      message: nullableClean(message),
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [friendRequests.requesterUserId, friendRequests.recipientUserId],
+      set: {
+        status: "pending",
+        message: nullableClean(message),
+        respondedAt: null,
+        updatedAt: now,
+      },
+    });
+
+  revalidateSocialPaths();
+}
+
+export async function acceptFriendRequest(requestId: string) {
+  const userId = await requireCurrentUserId();
+  const db = getDb();
+  const now = new Date();
+  const [request] = await db
+    .select()
+    .from(friendRequests)
+    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.recipientUserId, userId), eq(friendRequests.status, "pending")))
+    .limit(1);
+
+  if (!request || (await isBlockedBetween(request.requesterUserId, request.recipientUserId))) {
+    throw new Error("Friend request not found.");
+  }
+
+  const [userAId, userBId] = sortedUserPair(request.requesterUserId, request.recipientUserId);
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(friendships)
+      .values({
+        userAId,
+        userBId,
+        visibilityLevel: "friends",
+      })
+      .onConflictDoNothing({
+        target: [friendships.userAId, friendships.userBId],
+      });
+
+    await tx
+      .update(friendRequests)
+      .set({
+        status: "accepted",
+        respondedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(friendRequests.id, request.id));
+  });
+
+  revalidateSocialPaths();
+}
+
+export async function declineFriendRequest(requestId: string) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .update(friendRequests)
+    .set({
+      status: "declined",
+      respondedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.recipientUserId, userId)));
+  revalidateSocialPaths();
+}
+
+export async function cancelFriendRequest(requestId: string) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .update(friendRequests)
+    .set({
+      status: "cancelled",
+      respondedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.requesterUserId, userId)));
+  revalidateSocialPaths();
+}
+
+export async function removeFriend(friendUserId: string) {
+  const userId = await requireCurrentUserId();
+  const [userAId, userBId] = sortedUserPair(userId, friendUserId);
+  await getDb()
+    .delete(friendships)
+    .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
+  revalidateSocialPaths();
+}
+
+export async function blockUser(blockedUserId: string) {
+  const blockerUserId = await requireCurrentUserId();
+
+  if (blockerUserId === blockedUserId) {
+    throw new Error("You cannot block yourself.");
+  }
+
+  const [userAId, userBId] = sortedUserPair(blockerUserId, blockedUserId);
+  const db = getDb();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(userBlocks)
+      .values({ blockerUserId, blockedUserId })
+      .onConflictDoNothing({
+        target: [userBlocks.blockerUserId, userBlocks.blockedUserId],
+      });
+    await tx
+      .delete(friendships)
+      .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
+    await tx
+      .delete(friendRequests)
+      .where(
+        or(
+          and(eq(friendRequests.requesterUserId, blockerUserId), eq(friendRequests.recipientUserId, blockedUserId)),
+          and(eq(friendRequests.requesterUserId, blockedUserId), eq(friendRequests.recipientUserId, blockerUserId)),
+        ),
+      );
+    await tx
+      .delete(userFollows)
+      .where(
+        or(
+          and(eq(userFollows.followerUserId, blockerUserId), eq(userFollows.followedUserId, blockedUserId)),
+          and(eq(userFollows.followerUserId, blockedUserId), eq(userFollows.followedUserId, blockerUserId)),
+        ),
+      );
+  });
+
+  revalidateSocialPaths();
+}
+
+export async function getFeedPageData() {
+  const viewerUserId = await requireCurrentUserId();
+  const profile = await ensureSocialProfileForUser(viewerUserId);
+  const [friendIds, publicProfileCount, totalXp, items] = await Promise.all([
+    getFriendIds(viewerUserId),
+    getDb()
+      .select({ value: sql<number>`count(*)::int` })
+      .from(userProfiles)
+      .where(eq(userProfiles.publicProfile, true))
+      .then((rows) => rows[0]?.value ?? 0),
+    getDb()
+      .select({ value: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int` })
+      .from(xpLedger)
+      .where(eq(xpLedger.userId, viewerUserId))
+      .then((rows) => rows[0]?.value ?? 0),
+    getVisibleFeedItemsForViewer(viewerUserId, { limit: 40 }),
+  ]);
+
+  return {
+    viewerUserId,
+    profile: profileSummary(profile, "self"),
+    friendCount: friendIds.length,
+    publicProfileCount,
+    totalXp,
+    items,
+  };
+}
+
+export async function getDashboardFeedPreview(limit = 20) {
+  const viewerUserId = await requireCurrentUserId();
+  await ensureSocialProfileForUser(viewerUserId);
+  return getVisibleFeedItemsForViewer(viewerUserId, { limit });
+}
+
+export async function getVisibleFeedItemsForViewer(
+  viewerUserId: string,
+  options: { ownerUserId?: string; limit?: number } = {},
+) {
+  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const socialIds = new Set([viewerUserId, ...friendIds]);
+  const limit = Math.min(Math.max(options.limit ?? 30, 1), 80);
+  const rows = await getDb()
+    .select()
+    .from(feedItems)
+    .where(
+      and(
+        ne(feedItems.itemType, "import_summary"),
+        options.ownerUserId
+          ? eq(feedItems.userId, options.ownerUserId)
+          : or(inArray(feedItems.userId, [...socialIds]), eq(feedItems.visibility, "public")),
+      ),
+    )
+    .orderBy(desc(feedItems.createdAt))
+    .limit(limit * 3);
+  const visible = rows
+    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds))
+    .slice(0, limit);
+
+  return hydrateFeedItems(visible, viewerUserId);
+}
+
+export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 6) {
+  const rows = await getDb()
+    .select()
+    .from(feedItems)
+    .where(and(eq(feedItems.userId, ownerUserId), eq(feedItems.visibility, "public"), ne(feedItems.itemType, "import_summary")))
+    .orderBy(desc(feedItems.createdAt))
+    .limit(Math.min(Math.max(limit, 1), 20));
+
+  return hydrateFeedItems(rows, "");
+}
+
+export async function addFeedReaction(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb()
+    .insert(feedReactions)
+    .values({
+      feedItemId,
+      userId,
+      reactionType: "kudos",
+    })
+    .onConflictDoNothing({
+      target: [feedReactions.feedItemId, feedReactions.userId, feedReactions.reactionType],
+    });
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function removeFeedReaction(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .delete(feedReactions)
+    .where(
+      and(
+        eq(feedReactions.feedItemId, feedItemId),
+        eq(feedReactions.userId, userId),
+        eq(feedReactions.reactionType, "kudos"),
+      ),
+    );
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function addFeedComment(feedItemId: string, body: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+  const cleanBody = cleanRequired(body, "");
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  if (!cleanBody) {
+    throw new Error("Comment cannot be empty.");
+  }
+
+  await getDb().insert(feedComments).values({
+    feedItemId,
+    userId,
+    body: cleanBody.slice(0, 1200),
+    updatedAt: new Date(),
+  });
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function createFeedItem(input: {
+  userId: string;
+  itemType: string;
+  headline: string;
+  metricLabel?: string | null;
+  metricValue?: string | null;
+  context?: string | null;
+  proofUrl?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  visibility?: SocialVisibility | null;
+  verificationLabel?: string | null;
+  dedupeKey?: string | null;
+  metadataJson?: Record<string, unknown>;
+}) {
+  const profile = await ensureSocialProfileForUser(input.userId);
+  const visibility = input.visibility ?? parseVisibility(profile.feedVisibilityDefault, "private");
+  const now = new Date();
+  const values = {
+    userId: input.userId,
+    itemType: input.itemType,
+    headline: input.headline.slice(0, 220),
+    metricLabel: nullableClean(input.metricLabel)?.slice(0, 80) ?? null,
+    metricValue: nullableClean(input.metricValue)?.slice(0, 120) ?? null,
+    context: nullableClean(input.context),
+    proofUrl: nullableClean(input.proofUrl),
+    sourceType: nullableClean(input.sourceType)?.slice(0, 60) ?? null,
+    sourceId: nullableClean(input.sourceId)?.slice(0, 220) ?? null,
+    visibility,
+    verificationLabel: nullableClean(input.verificationLabel)?.slice(0, 80) ?? "Unverified",
+    dedupeKey: nullableClean(input.dedupeKey)?.slice(0, 260) ?? null,
+    metadataJson: input.metadataJson ?? {},
+    updatedAt: now,
+  };
+
+  if (values.dedupeKey) {
+    await getDb()
+      .insert(feedItems)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [feedItems.userId, feedItems.dedupeKey],
+        set: {
+          headline: values.headline,
+          metricLabel: values.metricLabel,
+          metricValue: values.metricValue,
+          context: values.context,
+          proofUrl: values.proofUrl,
+          visibility: values.visibility,
+          verificationLabel: values.verificationLabel,
+          metadataJson: values.metadataJson,
+          updatedAt: now,
+        },
+      });
+  } else {
+    await getDb().insert(feedItems).values(values);
+  }
+}
+
+export async function recordImportFeedItems(input: {
+  userId: string;
+  sessionId: string;
+  fileName: string;
+  source: string;
+  shotCount: number;
+  rawRowCount: number;
+  longestShotNotifications: Array<{
+    clubType: string;
+    clubLabel: string;
+    shotDistanceYd: number;
+    previousDistanceYd: number;
+    distanceType: "total" | "carry";
+    shotNumber: number | null;
+    sessionId: string;
+    clubId: string;
+  }>;
+  achievementUnlockNotifications: AchievementUnlockNotification[];
+}) {
+  const profile = await ensureSocialProfileForUser(input.userId);
+  const visibility = parseVisibility(profile.feedVisibilityDefault, "private");
+  const verificationLabel = verificationLabelForImportSource(input.source);
+
+  for (const pb of input.longestShotNotifications) {
+    await createFeedItem({
+      userId: input.userId,
+      itemType: "new_pb",
+      headline: `${profile.displayName} hit a new ${pb.clubLabel} PB`,
+      metricLabel: pb.distanceType === "carry" ? "Carry" : "Total",
+      metricValue: `${numberFormatter.format(pb.shotDistanceYd)} yd`,
+      context: `Previous best: ${numberFormatter.format(pb.previousDistanceYd)} yd`,
+      proofUrl: `/bag/${pb.clubId}`,
+      sourceType: "shot",
+      sourceId: `${input.sessionId}:${pb.shotNumber ?? "unknown"}:${pb.clubType}`,
+      visibility,
+      verificationLabel,
+      dedupeKey: `new-pb:${input.sessionId}:${pb.clubType}:${pb.shotDistanceYd}`,
+      metadataJson: { clubType: pb.clubType, distanceType: pb.distanceType },
+    });
+
+    if (pb.clubType.toLowerCase() === "driver") {
+      await createFeedItem({
+        userId: input.userId,
+        itemType: "longest_drive",
+        headline: `${profile.displayName} set a longest-drive marker`,
+        metricLabel: "Driver",
+        metricValue: `${numberFormatter.format(pb.shotDistanceYd)} yd`,
+        context: `${pb.distanceType === "carry" ? "Carry" : "Total"} distance from import`,
+        proofUrl: `/bag/${pb.clubId}`,
+        sourceType: "shot",
+        sourceId: `${input.sessionId}:${pb.shotNumber ?? "unknown"}:driver`,
+        visibility,
+        verificationLabel,
+        dedupeKey: `longest-drive:${input.sessionId}:${pb.shotDistanceYd}`,
+      });
+    }
+  }
+
+  for (const achievement of input.achievementUnlockNotifications) {
+    await createFeedItem({
+      userId: input.userId,
+      itemType: "achievement_unlock",
+      headline: `${profile.displayName} unlocked "${achievement.name}"`,
+      metricLabel: "Achievement",
+      metricValue: `+${achievement.xpAwarded} XP`,
+      context: achievement.description,
+      proofUrl: "/achievements",
+      sourceType: "achievement",
+      sourceId: achievement.achievementId,
+      visibility,
+      verificationLabel,
+      dedupeKey: `achievement:${achievement.achievementId}`,
+      metadataJson: {
+        tier: achievement.tier,
+        unlockedAt: achievement.unlockedAt,
+      },
+    });
+  }
+
+  await recordLevelUpFeedItem(input.userId, visibility);
+}
+
+export async function recordRoundCompletedFeedItem(input: {
+  userId: string;
+  sessionId: string;
+  courseName: string | null;
+  score: number | null;
+  source: string;
+}) {
+  const profile = await ensureSocialProfileForUser(input.userId);
+  const visibility = parseVisibility(profile.feedVisibilityDefault, "private");
+  await createFeedItem({
+    userId: input.userId,
+    itemType: "round_completed",
+    headline: `${profile.displayName} completed a round`,
+    metricLabel: input.courseName ?? "Round",
+    metricValue: input.score === null ? "Logged" : `${input.score}`,
+    context: input.courseName ?? "Manual round",
+    proofUrl: `/rounds/${input.sessionId}`,
+    sourceType: "session",
+    sourceId: input.sessionId,
+    visibility,
+    verificationLabel: input.source === "manual" ? "Manual" : "Verified import",
+    dedupeKey: `round-completed:${input.sessionId}`,
+  });
+}
+
+export function parseVisibility(value: unknown, fallback: SocialVisibility = "private"): SocialVisibility {
+  return socialVisibilityOptions.includes(value as SocialVisibility) ? (value as SocialVisibility) : fallback;
+}
+
+export function normalizeUsername(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+export function isValidUsername(value: string) {
+  return /^[a-z0-9][a-z0-9_-]{1,38}[a-z0-9]$/.test(value) || /^[a-z0-9]{3}$/.test(value);
+}
+
+export function defaultProfileVisibilitySettings() {
+  return {
+    rounds: "private",
+    pbs: "friends",
+    bag: "private",
+    achievements: "friends",
+    handicap: "private",
+    practice: "friends",
+    exactShots: "private",
+  } satisfies NonNullable<ProfileRow["visibilitySettingsJson"]>;
+}
+
+async function recordLevelUpFeedItem(userId: string, visibility: SocialVisibility) {
+  const [{ totalXp }] = await getDb()
+    .select({
+      totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
+    })
+    .from(xpLedger)
+    .where(eq(xpLedger.userId, userId));
+  const total = Number(totalXp ?? 0);
+  const level = calculateUserLevel(total);
+
+  if (level.level <= 1) {
+    return;
+  }
+
+  const profile = await ensureSocialProfileForUser(userId);
+  await createFeedItem({
+    userId,
+    itemType: "level_up",
+    headline: `${profile.displayName} reached level ${level.level}`,
+    metricLabel: "XP",
+    metricValue: `${total}`,
+    context: `${Math.max(0, level.nextLevelXp - total)} XP to the next level`,
+    proofUrl: "/achievements",
+    sourceType: "xp",
+    sourceId: `level-${level.level}`,
+    visibility,
+    verificationLabel: "Verified import",
+    dedupeKey: `level-up:${level.level}`,
+  });
+}
+
+async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
+  const [item] = await getDb().select().from(feedItems).where(eq(feedItems.id, feedItemId)).limit(1);
+
+  if (!item) {
+    return null;
+  }
+
+  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const socialIds = new Set([viewerUserId, ...friendIds]);
+  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds) ? item : null;
+}
+
+async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Promise<FeedItemView[]> {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const itemIds = items.map((item) => item.id);
+  const profileMap = await profilesByUserId([...new Set(items.map((item) => item.userId))]);
+  const [reactionRows, commentRows] = await Promise.all([
+    getDb().select().from(feedReactions).where(inArray(feedReactions.feedItemId, itemIds)),
+    getDb()
+      .select()
+      .from(feedComments)
+      .where(and(inArray(feedComments.feedItemId, itemIds), sql`${feedComments.deletedAt} IS NULL`))
+      .orderBy(desc(feedComments.createdAt)),
+  ]);
+  const commentProfileMap = await profilesByUserId([...new Set(commentRows.map((comment) => comment.userId))]);
+  const reactionsByItem = new Map<string, typeof reactionRows>();
+  const commentsByItem = new Map<string, typeof commentRows>();
+
+  for (const reaction of reactionRows) {
+    reactionsByItem.set(reaction.feedItemId, [...(reactionsByItem.get(reaction.feedItemId) ?? []), reaction]);
+  }
+
+  for (const comment of commentRows) {
+    commentsByItem.set(comment.feedItemId, [...(commentsByItem.get(comment.feedItemId) ?? []), comment]);
+  }
+
+  return items
+    .map((item) => {
+      const profile = profileMap.get(item.userId);
+
+      if (!profile) {
+        return null;
+      }
+
+      const reactions = reactionsByItem.get(item.id) ?? [];
+      const comments = (commentsByItem.get(item.id) ?? []).slice(0, 3).reverse();
+
+      return {
+        id: item.id,
+        userId: item.userId,
+        itemType: item.itemType,
+        headline: item.headline,
+        metricLabel: item.metricLabel,
+        metricValue: item.metricValue,
+        context: item.context,
+        proofUrl: item.proofUrl,
+        visibility: parseVisibility(item.visibility),
+        verificationLabel: item.verificationLabel,
+        createdAt: item.createdAt,
+        profile: profileSummary(profile, item.userId === viewerUserId ? "self" : "friend"),
+        reactionCount: reactions.length,
+        commentCount: commentsByItem.get(item.id)?.length ?? 0,
+        viewerReacted: reactions.some((reaction) => reaction.userId === viewerUserId),
+        comments: comments
+          .map((comment) => {
+            const commentProfile = commentProfileMap.get(comment.userId);
+
+            if (!commentProfile) {
+              return null;
+            }
+
+            return {
+              id: comment.id,
+              body: comment.body,
+              createdAt: comment.createdAt,
+              profile: {
+                userId: commentProfile.userId,
+                username: commentProfile.username,
+                displayName: commentProfile.displayName,
+                avatarUrl: commentProfile.avatarUrl,
+              },
+            };
+          })
+          .filter((comment): comment is NonNullable<typeof comment> => Boolean(comment)),
+      };
+    })
+    .filter((item): item is FeedItemView => Boolean(item));
+}
+
+function canViewFeedItem(
+  item: FeedItemRow,
+  viewerUserId: string,
+  socialIds: Set<string>,
+  blockedIds: Set<string>,
+) {
+  if (blockedIds.has(item.userId)) {
+    return false;
+  }
+
+  if (item.userId === viewerUserId) {
+    return true;
+  }
+
+  if (item.visibility === "public") {
+    return true;
+  }
+
+  return item.visibility === "friends" && socialIds.has(item.userId);
+}
+
+async function canViewProfile(viewerUserId: string | null, profile: ProfileRow) {
+  if (!viewerUserId) {
+    return profile.publicProfile;
+  }
+
+  if (profile.userId === viewerUserId) {
+    return true;
+  }
+
+  if (await isBlockedBetween(viewerUserId, profile.userId)) {
+    return false;
+  }
+
+  return profile.publicProfile || (profile.friendProfile && (await areFriends(viewerUserId, profile.userId)));
+}
+
+async function searchDiscoverableProfiles(input: {
+  viewerUserId: string;
+  query: string | null;
+  friendIds: string[];
+  blockedIds: Set<string>;
+  pendingRequests: FriendRequestRow[];
+}) {
+  const query = normalizeUsername(input.query ?? "");
+
+  if (query.length < 2) {
+    return [];
+  }
+
+  const rows = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(or(ilike(userProfiles.username, `${query}%`), ilike(userProfiles.displayName, `%${query}%`)))
+    .limit(20);
+  const friendIdSet = new Set(input.friendIds);
+
+  return rows
+    .filter((row) => row.userId !== input.viewerUserId)
+    .filter((row) => !input.blockedIds.has(row.userId))
+    .filter((row) => row.publicProfile || (row.friendProfile && friendIdSet.has(row.userId)))
+    .map((row) => profileSummary(row, relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests)))
+    .filter((profile) => profile.relationship !== "blocked");
+}
+
+async function getPendingFriendRequestsForUser(userId: string) {
+  return getDb()
+    .select()
+    .from(friendRequests)
+    .where(
+      and(
+        eq(friendRequests.status, "pending"),
+        or(eq(friendRequests.requesterUserId, userId), eq(friendRequests.recipientUserId, userId)),
+      ),
+    )
+    .orderBy(desc(friendRequests.createdAt));
+}
+
+async function getRelationship(viewerUserId: string, subjectUserId: string): Promise<SocialProfileSummary["relationship"]> {
+  if (viewerUserId === subjectUserId) {
+    return "self";
+  }
+
+  if (await isBlockedBetween(viewerUserId, subjectUserId)) {
+    return "blocked";
+  }
+
+  if (await areFriends(viewerUserId, subjectUserId)) {
+    return "friend";
+  }
+
+  const [request] = await getDb()
+    .select()
+    .from(friendRequests)
+    .where(
+      and(
+        eq(friendRequests.status, "pending"),
+        or(
+          and(eq(friendRequests.requesterUserId, viewerUserId), eq(friendRequests.recipientUserId, subjectUserId)),
+          and(eq(friendRequests.requesterUserId, subjectUserId), eq(friendRequests.recipientUserId, viewerUserId)),
+        ),
+      ),
+    )
+    .limit(1);
+
+  if (!request) {
+    return "none";
+  }
+
+  return request.requesterUserId === viewerUserId ? "outgoing" : "incoming";
+}
+
+async function getProfileStats(
+  userId: string,
+  visibilitySettings: ProfileRow["visibilitySettingsJson"],
+  relationship: SocialProfileSummary["relationship"],
+) {
+  const canSeePublic = relationship === "self" || relationship === "friend";
+  const canSeeRounds = canSeePublic || visibilitySettings?.rounds === "public";
+  const canSeePractice = canSeePublic || visibilitySettings?.practice === "public";
+  const canSeePbs = canSeePublic || visibilitySettings?.pbs === "public";
+  const [roundCountRow, practiceCountRow, bestShotRow] = await Promise.all([
+    canSeeRounds
+      ? getDb()
+          .select({ value: sql<number>`count(*)::int` })
+          .from(sessions)
+          .where(and(eq(sessions.userId, userId), or(eq(sessions.type, "real_round"), eq(sessions.type, "round"))))
+          .then((rows) => rows[0]?.value ?? 0)
+      : Promise.resolve(null),
+    canSeePractice
+      ? getDb()
+          .select({ value: sql<number>`count(*)::int` })
+          .from(shots)
+          .where(eq(shots.userId, userId))
+          .then((rows) => rows[0]?.value ?? 0)
+      : Promise.resolve(null),
+    canSeePbs
+      ? getDb()
+          .select({
+            clubType: shots.clubType,
+            totalYd: shots.totalYd,
+          })
+          .from(shots)
+          .where(eq(shots.userId, userId))
+          .orderBy(desc(shots.totalYd))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
+      : Promise.resolve(null),
+  ]);
+
+  return {
+    rounds: roundCountRow,
+    shots: practiceCountRow,
+    bestShot: bestShotRow,
+  };
+}
+
+async function profilesByUserId(userIds: string[]) {
+  if (userIds.length === 0) {
+    return new Map<string, ProfileRow>();
+  }
+
+  const rows = await getDb().select().from(userProfiles).where(inArray(userProfiles.userId, userIds));
+  return new Map(rows.map((row) => [row.userId, row]));
+}
+
+async function uniqueUsername(base: string) {
+  const db = getDb();
+  let candidate = normalizeUsername(base);
+
+  if (!isValidUsername(candidate)) {
+    candidate = `player-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  for (let index = 0; index < 10; index += 1) {
+    const username = index === 0 ? candidate : `${candidate.slice(0, 33)}-${index}`;
+    const [existing] = await db.select({ userId: userProfiles.userId }).from(userProfiles).where(eq(userProfiles.username, username)).limit(1);
+
+    if (!existing) {
+      return username;
+    }
+  }
+
+  return `${candidate.slice(0, 30)}-${Date.now().toString(36).slice(-6)}`;
+}
+
+function profileSummary(
+  profile: ProfileRow | undefined,
+  relationship: SocialProfileSummary["relationship"],
+): SocialProfileSummary {
+  if (!profile) {
+    throw new Error("Profile not found.");
+  }
+
+  return {
+    userId: profile.userId,
+    username: profile.username,
+    displayName: profile.displayName,
+    avatarUrl: profile.avatarUrl,
+    bio: profile.bio,
+    homeCourse: profile.homeCourse,
+    primaryLaunchMonitor: profile.primaryLaunchMonitor,
+    handicapBand: profile.handicapBand,
+    publicProfile: profile.publicProfile,
+    friendProfile: profile.friendProfile,
+    leaderboardVisibility: parseVisibility(profile.leaderboardVisibility),
+    feedVisibilityDefault: parseVisibility(profile.feedVisibilityDefault),
+    relationship,
+  };
+}
+
+function relationshipFromContext(
+  subjectUserId: string,
+  viewerUserId: string,
+  friendIds: Set<string>,
+  requests: FriendRequestRow[],
+): SocialProfileSummary["relationship"] {
+  if (subjectUserId === viewerUserId) {
+    return "self";
+  }
+
+  if (friendIds.has(subjectUserId)) {
+    return "friend";
+  }
+
+  const request = requests.find(
+    (item) =>
+      (item.requesterUserId === viewerUserId && item.recipientUserId === subjectUserId) ||
+      (item.requesterUserId === subjectUserId && item.recipientUserId === viewerUserId),
+  );
+
+  if (!request) {
+    return "none";
+  }
+
+  return request.requesterUserId === viewerUserId ? "outgoing" : "incoming";
+}
+
+function sortedUserPair(userAId: string, userBId: string) {
+  return userAId < userBId ? [userAId, userBId] as const : [userBId, userAId] as const;
+}
+
+function defaultUsername(displayName: string, userId: string) {
+  return `${displayName}-${userId.slice(0, 8)}`;
+}
+
+function nullableClean(value: string | null | undefined) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function cleanRequired(value: string | null | undefined, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function safeSocialDisplayName(value: string | null | undefined) {
+  const cleaned = nullableClean(value);
+  return cleaned && !isSharedDatabaseArtifact(cleaned) ? cleaned : null;
+}
+
+function isSharedDatabaseArtifact(value: string | null | undefined) {
+  return typeof value === "string" && /\bincert\b/i.test(value);
+}
+
+function verificationLabelForImportSource(source: string) {
+  switch (source) {
+    case "rapsodo_cloud":
+      return "Rapsodo Cloud";
+    case "rapsodo":
+      return "Rapsodo CSV";
+    case "manual":
+      return "Manual";
+    default:
+      return "Unverified";
+  }
+}
+
+function revalidateSocialPaths() {
+  revalidatePath("/friends");
+  revalidatePath("/feed");
+  revalidatePath("/leaderboard");
+  revalidatePath("/dashboard");
+}

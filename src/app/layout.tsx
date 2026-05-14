@@ -4,8 +4,10 @@ import Script from "next/script";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { AppNav } from "@/components/app-nav";
 import { PwaRegister } from "@/components/pwa-register";
+import { SocialFeedRail } from "@/components/social/social-feed-rail";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { getTotalXpForCurrentUser } from "@/lib/achievements/service";
+import { isCurrentUserAdmin } from "@/lib/admin";
 import { getCurrentUserPreferences } from "@/lib/current-user";
 import "./globals.css";
 
@@ -53,7 +55,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [totalXp, achievementNotifications, preferences] = await Promise.all([
+  const [totalXp, achievementNotifications, preferences, isAdmin] = await Promise.all([
     getTotalXpForCurrentUser().catch(() => 0),
     getAchievementUnlockFlash().catch(() => []),
     getCurrentUserPreferences().catch(() => ({
@@ -61,6 +63,7 @@ export default async function RootLayout({
       theme: "light" as const,
       tableDensity: "comfortable" as const,
     })),
+    isCurrentUserAdmin().catch(() => false),
   ]);
 
   return (
@@ -76,10 +79,11 @@ export default async function RootLayout({
         <DevServiceWorkerResetScript />
         <PlausibleScript />
         <PwaRegister />
-        <AppNav totalXp={totalXp} />
+        <AppNav totalXp={totalXp} isAdmin={isAdmin} />
         <AchievementNotificationProvider initialNotifications={achievementNotifications}>
           {children}
         </AchievementNotificationProvider>
+        <SocialFeedRail />
       </body>
     </html>
   );
