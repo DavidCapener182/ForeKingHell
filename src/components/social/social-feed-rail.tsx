@@ -6,7 +6,6 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ExternalLink,
-  Flag,
   Loader2,
   MessageCircle,
   Radio,
@@ -468,13 +467,6 @@ function RailActivityItem({
           <p className="line-clamp-2 text-sm font-medium leading-5">{item.headline}</p>
           <p className="mt-1 text-xs text-muted-foreground">{itemDateFormatter.format(new Date(item.createdAt))}</p>
         </div>
-        {item.proofUrl ? (
-          <Button asChild variant="ghost" size="icon-sm">
-            <Link href={item.proofUrl} prefetch={false} aria-label="Open proof">
-              <Flag className="size-3.5" />
-            </Link>
-          </Button>
-        ) : null}
       </div>
 
       {item.metricValue ? (

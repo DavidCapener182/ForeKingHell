@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Award, BarChart3, CalendarDays, ChevronDown, Flag, Globe2, Lock, MessageCircle, Share2, ShieldCheck, ThumbsUp, Users, Zap } from "lucide-react";
+import { Award, BarChart3, CalendarDays, ChevronDown, Globe2, Lock, MessageCircle, Share2, ShieldCheck, ThumbsUp, Users, Zap } from "lucide-react";
 
 import {
   addFeedCommentAction,
@@ -159,7 +159,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
                 <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
               </span>
             </summary>
-            <div className="hidden gap-2 border-t border-slate-100 p-3 group-open:grid sm:group-open:grid-cols-2">
+            <div className="grid gap-2 border-t border-slate-100 p-3 sm:grid-cols-2">
               {achievements.map((item) => (
                 <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-sm">
                   <p className="line-clamp-1 font-medium">{achievementTitle(item)}</p>
@@ -172,14 +172,6 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
         ) : null}
 
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-          {firstItem.proofUrl ? (
-            <Button asChild variant="ghost" size="sm">
-              <Link href={firstItem.proofUrl} prefetch={false}>
-                <Flag className="size-4" />
-                Latest proof
-              </Link>
-            </Button>
-          ) : null}
           <Button asChild variant="ghost" size="sm">
             <Link href={`/api/share-cards/feed/${firstItem.id}`} target="_blank" prefetch={false}>
               <Share2 className="size-4" />
@@ -261,14 +253,6 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
                 Comments {item.commentCount > 0 ? item.commentCount : ""}
               </Button>
             ) : null}
-            {item.proofUrl ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link href={item.proofUrl} prefetch={false}>
-                  <Flag className="size-4" />
-                  Proof
-                </Link>
-              </Button>
-            ) : null}
             <Button asChild variant="ghost" size="sm">
               <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
                 <Share2 className="size-4" />
@@ -328,14 +312,6 @@ function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: 
             {item.context ? ` · ${item.context}` : ""}
           </p>
         </div>
-        {item.proofUrl ? (
-          <Button asChild variant="outline" size="sm">
-            <Link href={item.proofUrl} prefetch={false}>
-              <Flag className="size-4" />
-              Proof
-            </Link>
-          </Button>
-        ) : null}
       </div>
       <ActivityActions item={item} />
     </div>
@@ -358,7 +334,7 @@ function ActivityActions({ item }: { item: FeedItemView }) {
             <MessageCircle className="size-4" />
             Comments {item.commentCount > 0 ? item.commentCount : ""}
           </summary>
-          <div className="mt-2 hidden min-w-72 gap-2 rounded-xl border bg-slate-50 p-2 group-open:grid">
+          <div className="mt-2 grid min-w-72 gap-2 rounded-xl border bg-slate-50 p-2">
             {item.comments.length > 0 ? (
               <div className="grid gap-2">
                 {item.comments.map((comment) => (
