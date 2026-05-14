@@ -79,44 +79,59 @@ export default async function BagPage() {
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
-  const bestClub = [...stockConfidenceClubs].sort(
-    (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
-  )[0] ?? null;
-  const weakestGap = [...gappingRows]
-    .filter((row): row is GappingRow & { workOnYd: number } => row.workOnYd !== null)
-    .sort((left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd))[0] ?? null;
+  const bestClub =
+    [...stockConfidenceClubs].sort(
+      (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
+    )[0] ?? null;
+  const weakestGap =
+    [...gappingRows]
+      .filter(
+        (row): row is GappingRow & { workOnYd: number } =>
+          row.workOnYd !== null,
+      )
+      .sort(
+        (left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd),
+      )[0] ?? null;
   const averageConfidence =
     stockConfidenceClubs.length === 0
       ? 0
       : Math.round(
-          stockConfidenceClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
-            stockConfidenceClubs.length,
+          stockConfidenceClubs.reduce(
+            (total, club) => total + club.stock.confidenceScore,
+            0,
+          ) / stockConfidenceClubs.length,
         );
 
   return (
-    <PageShell>
-        <div className="flex items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/import">
-              <Upload className="size-4" />
-              Import CSV
-            </Link>
-          </Button>
-        </div>
+    <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
+      <div className="flex items-center justify-between gap-4">
+        <Button asChild variant="ghost" className="px-0">
+          <Link href="/dashboard">
+            <ArrowLeft className="size-4" />
+            Dashboard
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/import">
+            <Upload className="size-4" />
+            Import CSV
+          </Link>
+        </Button>
+      </div>
 
-        <PageHeader
-          eyebrow={<StatusPill>Bag map</StatusPill>}
-          title="Stock yardages"
-          description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
-          visual={<PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" />}
-          actions={
-            <>
+      <PageHeader
+        eyebrow={<StatusPill>Bag map</StatusPill>}
+        title="Stock yardages"
+        description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
+        visual={
+          <PageArtwork
+            variant="stockYardages"
+            alt=""
+            className="h-full min-h-44"
+          />
+        }
+        actions={
+          <>
             <Button asChild variant="outline">
               <Link href="/bag/longest">
                 <Trophy className="size-4" />
@@ -129,192 +144,271 @@ export default async function BagPage() {
                 Achievements
               </Link>
             </Button>
-            </>
-          }
-          metrics={[
-            { label: "Clubs", value: bag.length.toString(), detail: "Tracked active clubs" },
-            { label: "Shots", value: totalShots.toString(), detail: "Saved launch monitor rows" },
-            { label: "Confidence", value: `${averageConfidence}%`, detail: "Average stock confidence" },
-          ]}
-        />
+          </>
+        }
+        metrics={[
+          {
+            label: "Clubs",
+            value: bag.length.toString(),
+            detail: "Tracked active clubs",
+          },
+          {
+            label: "Shots",
+            value: totalShots.toString(),
+            detail: "Saved launch monitor rows",
+          },
+          {
+            label: "Confidence",
+            value: `${averageConfidence}%`,
+            detail: "Average stock confidence",
+          },
+        ]}
+      />
 
-        <MobileSectionChips
-          items={[
-            { label: "Gapping", href: "#gapping" },
-            { label: "Decisions", href: "#decisions" },
-            { label: "Clubs", href: "#clubs" },
-          ]}
-        />
+      <MobileSectionChips
+        items={[
+          { label: "Gapping", href: "#gapping" },
+          { label: "Decisions", href: "#decisions" },
+          { label: "Clubs", href: "#clubs" },
+        ]}
+      />
 
-        <MobileSummaryHero
-          eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
-          title="Trust the number, then check the gap."
-          description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
-          metricLabel="Best club"
-          metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
-          visual={<ClubArtwork clubType={bestClub?.type ?? "driver"} alt="" className="h-20 w-20 rounded-xl" sizes="80px" />}
-          action={
-            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
-              <Link href="#clubs">Clubs</Link>
-            </Button>
-          }
-        />
-
-        <MobileMetricStrip
-          items={[
-            { label: "Clubs", value: bag.length.toString(), detail: "Active", tone: "green" },
-            { label: "Confidence", value: `${averageConfidence}%`, detail: "Average", tone: "sky" },
-            {
-              label: "Weakest gap",
-              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
-              detail: weakestGap ? workOnText(weakestGap.workOnYd) : "Need carry samples",
-              tone: weakestGap && Math.abs(weakestGap.workOnYd) > 10 ? "pink" : "amber",
-            },
-          ]}
-        />
-
-        {gappingRows.length > 0 ? (
-          <section id="gapping" className="scroll-mt-28">
-            <CarryGappingTable rows={gappingRows} />
-          </section>
-        ) : null}
-
-        <section id="decisions" className="scroll-mt-28">
-          <CourseDecisionPanel advice={courseAdvice} />
-        </section>
-
-        <section id="clubs" className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
-          {bag.map((club) => (
-            <Link key={club.id} href={`/bag/${club.id}`} className="group block min-w-[82vw] md:min-w-0">
-              <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <CardDescription>{club.brandModel}</CardDescription>
-                      <CardTitle className="text-3xl tracking-normal">
-                        {formatClubType(club.type)}
-                      </CardTitle>
-                      <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
-                        {club.decisionLabel}
-                      </StatusPill>
-                    </div>
-                    <ClubArtwork
-                      clubType={club.type}
-                      alt=""
-                      className="h-20 w-28 shrink-0 rounded-xl"
-                      sizes="112px"
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="grid grid-cols-[1fr_auto] items-end gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Touch median" : "Stock carry"}
-                      </p>
-                      <p className="text-5xl font-semibold tracking-normal">
-                        {formatMetric(club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd)}
-                        <span className="ml-1 text-lg text-muted-foreground">yd</span>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Full stock" : "Play"}
-                      </p>
-                      <p className="text-3xl font-semibold tracking-normal">
-                        {formatMetric(club.isShortGameTouch ? null : club.stock.recommendedPlayNumberYd)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="hidden sm:block">
-                    <MiniDispersion
-                      shots={club.shots}
-                      accent={club.accent}
-                      carryMedianYd={club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd}
-                    />
-                  </div>
-
-                  <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
-                    <Metric
-                      label={club.isShortGameTouch ? "Touch sample" : "Sample"}
-                      value={(club.isShortGameTouch ? club.touch.sampleSize : club.stock.sampleSize).toString()}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Upper touch" : "Good carry"}
-                      value={formatMetric(club.isShortGameTouch ? club.touch.carryP75Yd : club.stock.carryP75Yd)}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Longest touch" : "Total"}
-                      value={formatMetric(club.isShortGameTouch ? club.touch.longestCarryYd : club.stock.totalMedianYd)}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
-                      value={formatMetric(club.isShortGameTouch ? club.touch.carryP25Yd : club.stock.averageBallSpeedMph)}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Under 30" : "Launch"}
-                      value={
-                        club.isShortGameTouch
-                          ? club.touch.under30YdCount.toString()
-                          : `${formatMetric(club.stock.averageLaunchAngleDeg)} deg`
-                      }
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Type" : "Side"}
-                      value={
-                        club.isShortGameTouch
-                          ? "Touch"
-                          : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
-                              club.stock.dispersionRightYd,
-                            )}R`
-                      }
-                    />
-                  </div>
-
-                  {club.isShortGameTouch ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                      Round chips and pitches are shown as touch data, not full-swing stock yardage.
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">
-                        {club.decisionLabel}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {club.isShortGameTouch ? `${club.touch.sampleSize} shots` : `${club.stock.confidenceScore}%`}
-                      </span>
-                    </div>
-                    <Progress
-                      value={club.isShortGameTouch ? Math.min(100, (club.touch.sampleSize / 50) * 100) : club.stock.confidenceScore}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </section>
-
-        {bag.length === 0 ? (
-          <Card className="premium-card">
-            <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-              <Target className="size-8 text-emerald-500" />
-              <div>
-                <p className="text-lg font-medium">No clubs imported yet</p>
-                <p className="text-sm text-muted-foreground">Import Rapsodo CSVs to build the bag map.</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-        <StickyMobileAction>
-          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
-            <Link href="#clubs">
-              Find club
-            </Link>
+      <MobileSummaryHero
+        eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
+        title="Trust the number, then check the gap."
+        description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
+        metricLabel="Best club"
+        metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
+        visual={
+          <ClubArtwork
+            clubType={bestClub?.type ?? "driver"}
+            alt=""
+            className="h-20 w-20 rounded-xl"
+            sizes="80px"
+          />
+        }
+        action={
+          <Button
+            asChild
+            size="sm"
+            className="rounded-xl bg-[#111827] text-white"
+          >
+            <Link href="#clubs">Clubs</Link>
           </Button>
-        </StickyMobileAction>
+        }
+      />
+
+      <MobileMetricStrip
+        items={[
+          {
+            label: "Clubs",
+            value: bag.length.toString(),
+            detail: "Active",
+            tone: "green",
+          },
+          {
+            label: "Confidence",
+            value: `${averageConfidence}%`,
+            detail: "Average",
+            tone: "sky",
+          },
+          {
+            label: "Weakest gap",
+            value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
+            detail: weakestGap
+              ? workOnText(weakestGap.workOnYd)
+              : "Need carry samples",
+            tone:
+              weakestGap && Math.abs(weakestGap.workOnYd) > 10
+                ? "pink"
+                : "amber",
+          },
+        ]}
+      />
+
+      {gappingRows.length > 0 ? (
+        <section id="gapping" className="scroll-mt-28">
+          <CarryGappingTable rows={gappingRows} />
+        </section>
+      ) : null}
+
+      <section id="decisions" className="scroll-mt-28">
+        <CourseDecisionPanel advice={courseAdvice} />
+      </section>
+
+      <section
+        id="clubs"
+        className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
+      >
+        {bag.map((club) => (
+          <Link
+            key={club.id}
+            href={`/bag/${club.id}`}
+            className="group block min-w-[82vw] md:min-w-0"
+          >
+            <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <CardDescription>{club.brandModel}</CardDescription>
+                    <CardTitle className="text-2xl tracking-normal sm:text-3xl">
+                      {formatClubType(club.type)}
+                    </CardTitle>
+                    <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
+                      {club.decisionLabel}
+                    </StatusPill>
+                  </div>
+                  <ClubArtwork
+                    clubType={club.type}
+                    alt=""
+                    className="h-14 w-20 shrink-0 rounded-xl sm:h-20 sm:w-28"
+                    sizes="112px"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
+                <div className="grid grid-cols-[1fr_auto] items-end gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {club.isShortGameTouch ? "Touch median" : "Stock carry"}
+                    </p>
+                    <p className="text-4xl font-semibold tracking-normal sm:text-5xl">
+                      {formatMetric(
+                        club.isShortGameTouch
+                          ? club.touch.carryMedianYd
+                          : club.stock.carryMedianYd,
+                      )}
+                      <span className="ml-1 text-lg text-muted-foreground">
+                        yd
+                      </span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">
+                      {club.isShortGameTouch ? "Full stock" : "Play"}
+                    </p>
+                    <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
+                      {formatMetric(
+                        club.isShortGameTouch
+                          ? null
+                          : club.stock.recommendedPlayNumberYd,
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="hidden sm:block">
+                  <MiniDispersion
+                    shots={club.shots}
+                    accent={club.accent}
+                    carryMedianYd={
+                      club.isShortGameTouch
+                        ? club.touch.carryMedianYd
+                        : club.stock.carryMedianYd
+                    }
+                  />
+                </div>
+
+                <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
+                  <Metric
+                    label={club.isShortGameTouch ? "Touch sample" : "Sample"}
+                    value={(club.isShortGameTouch
+                      ? club.touch.sampleSize
+                      : club.stock.sampleSize
+                    ).toString()}
+                  />
+                  <Metric
+                    label={club.isShortGameTouch ? "Upper touch" : "Good carry"}
+                    value={formatMetric(
+                      club.isShortGameTouch
+                        ? club.touch.carryP75Yd
+                        : club.stock.carryP75Yd,
+                    )}
+                  />
+                  <Metric
+                    label={club.isShortGameTouch ? "Longest touch" : "Total"}
+                    value={formatMetric(
+                      club.isShortGameTouch
+                        ? club.touch.longestCarryYd
+                        : club.stock.totalMedianYd,
+                    )}
+                  />
+                  <Metric
+                    label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
+                    value={formatMetric(
+                      club.isShortGameTouch
+                        ? club.touch.carryP25Yd
+                        : club.stock.averageBallSpeedMph,
+                    )}
+                  />
+                  <Metric
+                    label={club.isShortGameTouch ? "Under 30" : "Launch"}
+                    value={
+                      club.isShortGameTouch
+                        ? club.touch.under30YdCount.toString()
+                        : `${formatMetric(club.stock.averageLaunchAngleDeg)} deg`
+                    }
+                  />
+                  <Metric
+                    label={club.isShortGameTouch ? "Type" : "Side"}
+                    value={
+                      club.isShortGameTouch
+                        ? "Touch"
+                        : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
+                            club.stock.dispersionRightYd,
+                          )}R`
+                    }
+                  />
+                </div>
+
+                {club.isShortGameTouch ? (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    Round chips and pitches are shown as touch data, not
+                    full-swing stock yardage.
+                  </p>
+                ) : null}
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{club.decisionLabel}</span>
+                    <span className="text-muted-foreground">
+                      {club.isShortGameTouch
+                        ? `${club.touch.sampleSize} shots`
+                        : `${club.stock.confidenceScore}%`}
+                    </span>
+                  </div>
+                  <Progress
+                    value={
+                      club.isShortGameTouch
+                        ? Math.min(100, (club.touch.sampleSize / 50) * 100)
+                        : club.stock.confidenceScore
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </section>
+
+      {bag.length === 0 ? (
+        <Card className="premium-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <Target className="size-8 text-emerald-500" />
+            <div>
+              <p className="text-lg font-medium">No clubs imported yet</p>
+              <p className="text-sm text-muted-foreground">
+                Import Rapsodo CSVs to build the bag map.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      <StickyMobileAction>
+        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Link href="#clubs">Find club</Link>
+        </Button>
+      </StickyMobileAction>
     </PageShell>
   );
 }
@@ -362,7 +456,13 @@ async function getBag() {
           })
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .where(and(eq(shots.userId, userId), eq(sessions.userId, userId), eq(shots.clubId, club.id)))
+          .where(
+            and(
+              eq(shots.userId, userId),
+              eq(sessions.userId, userId),
+              eq(shots.clubId, club.id),
+            ),
+          )
           .orderBy(desc(shots.shotAt))
           .limit(RECENT_SHOTS_PER_CLUB),
         db
@@ -383,10 +483,18 @@ async function getBag() {
     .filter(({ club }) => isTrackedClubType(club.type))
     .map(({ club, recentShots, rawShotCount }) => {
       const accent = clubAccent(club.type);
-      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
+      const brandModel =
+        [club.brand, club.model].filter(Boolean).join(" ") ||
+        "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
-      const touch = calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type });
-      const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, { clubType: club.type });
+      const touch = calculateShortGameTouchSummary(
+        recentShots,
+        RECENT_SHOTS_PER_CLUB,
+        { clubType: club.type },
+      );
+      const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, {
+        clubType: club.type,
+      });
       const decisionLabel = getClubDecisionLabel({
         isShortGameTouch,
         stockLabel: stock.label,
@@ -404,7 +512,9 @@ async function getBag() {
         stock,
       };
     })
-    .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
+    .sort(
+      (left, right) => clubSortValue(left.type) - clubSortValue(right.type),
+    );
 }
 
 type BagClub = Awaited<ReturnType<typeof getBag>>[number];
@@ -433,7 +543,9 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
       .slice(index + 1)
       .find((candidate) => candidate.stock.carryMedianYd !== null);
     const gapToNextYd =
-      club.stock.carryMedianYd !== null && nextClub !== undefined && nextClub.stock.carryMedianYd !== null
+      club.stock.carryMedianYd !== null &&
+      nextClub !== undefined &&
+      nextClub.stock.carryMedianYd !== null
         ? club.stock.carryMedianYd - nextClub.stock.carryMedianYd
         : null;
 
@@ -443,7 +555,8 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
       brandModel: club.brandModel,
       carryYd: club.stock.carryMedianYd,
       playNumberYd: club.stock.recommendedPlayNumberYd,
-      gapToNextYd: gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
+      gapToNextYd:
+        gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
       targetCarryYd: null,
       targetPlayNumberYd: null,
       workOnYd: null,
@@ -456,7 +569,12 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
 
   const rowsWithCarry = baseRows
     .map((row, index) => ({ row, index }))
-    .filter((entry): entry is { row: GappingRow & { carryYd: number }; index: number } => entry.row.carryYd !== null);
+    .filter(
+      (
+        entry,
+      ): entry is { row: GappingRow & { carryYd: number }; index: number } =>
+        entry.row.carryYd !== null,
+    );
   const first = rowsWithCarry[0];
   const last = rowsWithCarry[rowsWithCarry.length - 1];
 
@@ -464,20 +582,25 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
     return baseRows;
   }
 
-  const targetGapYd = roundOne((first.row.carryYd - last.row.carryYd) / (last.index - first.index));
+  const targetGapYd = roundOne(
+    (first.row.carryYd - last.row.carryYd) / (last.index - first.index),
+  );
 
   if (targetGapYd <= 0) {
     return baseRows;
   }
 
   return baseRows.map((row, index) => {
-    const targetCarryYd = roundOne(first.row.carryYd - targetGapYd * (index - first.index));
+    const targetCarryYd = roundOne(
+      first.row.carryYd - targetGapYd * (index - first.index),
+    );
 
     return {
       ...row,
       targetCarryYd,
       targetPlayNumberYd: roundToNearestFive(targetCarryYd),
-      workOnYd: row.carryYd === null ? null : roundOne(targetCarryYd - row.carryYd),
+      workOnYd:
+        row.carryYd === null ? null : roundOne(targetCarryYd - row.carryYd),
       targetGapYd,
     };
   });
@@ -508,20 +631,44 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
 }
 
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
-  const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
+  const targetGapYd =
+    rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
   return (
     <Card className="premium-card">
-      <CardHeader>
-        <CardTitle className="text-2xl tracking-normal">Carry gapping</CardTitle>
-        <CardDescription>
-          Stock carry by club, with target carry numbers to make the gaps more consistent.
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-xl tracking-normal sm:text-2xl">
+          Carry gapping
+        </CardTitle>
+        <CardDescription className="hidden sm:block">
+          Stock carry by club, with target carry numbers to make the gaps more
+          consistent.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        {targetGapYd !== null ? <GappingRecommendations rows={rows} targetGapYd={targetGapYd} /> : null}
+      <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
+        {targetGapYd !== null ? (
+          <>
+            <MobileAccordionSection
+              title="Gapping targets"
+              description="Target gap and priorities."
+              count={`${rows.length} clubs`}
+            >
+              <GappingRecommendations
+                rows={rows}
+                targetGapYd={targetGapYd}
+                compact
+              />
+            </MobileAccordionSection>
+            <div className="hidden sm:block">
+              <GappingRecommendations rows={rows} targetGapYd={targetGapYd} />
+            </div>
+          </>
+        ) : null}
         <CarryGappingBars rows={rows} />
-        <MobileAccordionSection title="Full gapping table" count={`${rows.length} clubs`}>
+        <MobileAccordionSection
+          title="Full gapping table"
+          count={`${rows.length} clubs`}
+        >
           <MobileDataList>
             {rows.map((row) => (
               <MobileDataCard
@@ -531,100 +678,143 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                 subtitle={row.brandModel}
                 action={<GapBadge gapYd={row.gapToNextYd} />}
               >
-                <DataPair label="Carry" value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`} />
-                <DataPair label="Play" value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`} />
-                <DataPair label="Target" value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`} />
-                <DataPair label="Work on" value={<WorkOnBadge workOnYd={row.workOnYd} />} />
-                <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
+                <DataPair
+                  label="Carry"
+                  value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
+                />
+                <DataPair
+                  label="Play"
+                  value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`}
+                />
+                <DataPair
+                  label="Target"
+                  value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`}
+                />
+                <DataPair
+                  label="Work on"
+                  value={<WorkOnBadge workOnYd={row.workOnYd} />}
+                />
+                <DataPair
+                  label="Decision"
+                  value={`${row.confidenceScore}% ${row.decisionLabel}`}
+                />
               </MobileDataCard>
             ))}
           </MobileDataList>
         </MobileAccordionSection>
         <div className="hidden sm:block">
-        <DataTableFrame>
-          <Table className="min-w-[980px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Club</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-right">Carry</TableHead>
-                <TableHead className="text-right">Play</TableHead>
-                <TableHead className="text-right">Gap</TableHead>
-                <TableHead className="text-right">Target</TableHead>
-                <TableHead className="text-right">Work on</TableHead>
-                <TableHead className="text-right">Sample</TableHead>
-                <TableHead className="text-right">Decision</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Link
-                      href={`/bag/${row.id}`}
-                      className="font-semibold text-foreground underline-offset-4 hover:underline"
-                    >
-                      {formatClubType(row.clubType)}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
-                    {row.brandModel}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatMetric(row.carryYd)}
-                    {row.carryYd === null ? "" : " yd"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMetric(row.playNumberYd)}
-                    {row.playNumberYd === null ? "" : " yd"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <GapBadge gapYd={row.gapToNextYd} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className="font-medium">
-                      {formatMetric(row.targetCarryYd)}
-                      {row.targetCarryYd === null ? "" : " yd"}
-                    </span>
-                    {row.targetPlayNumberYd === null ? null : (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {row.targetPlayNumberYd} play
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <WorkOnBadge workOnYd={row.workOnYd} />
-                  </TableCell>
-                  <TableCell className="text-right">{row.sampleSize}</TableCell>
-                  <TableCell className="text-right">
-                    <span className="font-medium">{row.confidenceScore}%</span>
-                    <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
-                  </TableCell>
+          <DataTableFrame>
+            <Table className="min-w-[980px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Model</TableHead>
+                  <TableHead className="text-right">Carry</TableHead>
+                  <TableHead className="text-right">Play</TableHead>
+                  <TableHead className="text-right">Gap</TableHead>
+                  <TableHead className="text-right">Target</TableHead>
+                  <TableHead className="text-right">Work on</TableHead>
+                  <TableHead className="text-right">Sample</TableHead>
+                  <TableHead className="text-right">Decision</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Link
+                        href={`/bag/${row.id}`}
+                        className="font-semibold text-foreground underline-offset-4 hover:underline"
+                      >
+                        {formatClubType(row.clubType)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                      {row.brandModel}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">
+                      {formatMetric(row.carryYd)}
+                      {row.carryYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatMetric(row.playNumberYd)}
+                      {row.playNumberYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <GapBadge gapYd={row.gapToNextYd} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="font-medium">
+                        {formatMetric(row.targetCarryYd)}
+                        {row.targetCarryYd === null ? "" : " yd"}
+                      </span>
+                      {row.targetPlayNumberYd === null ? null : (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {row.targetPlayNumberYd} play
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <WorkOnBadge workOnYd={row.workOnYd} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {row.sampleSize}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="font-medium">
+                        {row.confidenceScore}%
+                      </span>
+                      <span className="ml-2 text-muted-foreground">
+                        {row.decisionLabel}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function GappingRecommendations({ rows, targetGapYd }: { rows: GappingRow[]; targetGapYd: number }) {
+function GappingRecommendations({
+  rows,
+  targetGapYd,
+  compact = false,
+}: {
+  rows: GappingRow[];
+  targetGapYd: number;
+  compact?: boolean;
+}) {
   const priorities = rows
-    .filter((row): row is GappingRow & { workOnYd: number; targetCarryYd: number } => row.workOnYd !== null && row.targetCarryYd !== null)
+    .filter(
+      (row): row is GappingRow & { workOnYd: number; targetCarryYd: number } =>
+        row.workOnYd !== null && row.targetCarryYd !== null,
+    )
     .filter((row) => Math.abs(row.workOnYd) > 2)
     .sort((left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd))
     .slice(0, 3);
 
   return (
-    <div className="apple-panel grid gap-3 p-4 lg:grid-cols-[0.7fr_1.3fr]">
-      <div className="apple-panel-strong p-4">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Target gap</p>
-        <p className="mt-2 text-4xl font-semibold tracking-normal">{numberFormatter.format(targetGapYd)} yd</p>
+    <div
+      className={
+        compact
+          ? "grid gap-3"
+          : "apple-panel grid gap-3 p-4 lg:grid-cols-[0.7fr_1.3fr]"
+      }
+    >
+      <div className="apple-panel-strong p-3 sm:p-4">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Target gap
+        </p>
+        <p className="mt-1 text-3xl font-semibold tracking-normal sm:mt-2 sm:text-4xl">
+          {numberFormatter.format(targetGapYd)} yd
+        </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Straight-line ladder from your longest full club to your shortest full club.
+          Straight-line ladder from your longest full club to your shortest full
+          club.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -645,7 +835,8 @@ function GappingRecommendations({ rows, targetGapYd }: { rows: GappingRow[]; tar
           <div className="apple-panel-strong p-4 md:col-span-3">
             <p className="font-semibold">Gaps are already close</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Every club with a target is within 2 yd of the current carry ladder.
+              Every club with a target is within 2 yd of the current carry
+              ladder.
             </p>
           </div>
         )}
@@ -663,26 +854,35 @@ function workOnText(workOnYd: number) {
   return `${workOnYd > 0 ? "Add" : "Take off"} ${absoluteYards} yd to close the ladder.`;
 }
 
-
 function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
   const maxCarry = Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
 
   return (
-    <div className="apple-panel grid gap-3 p-4">
+    <div className="apple-panel grid gap-3 p-3 sm:p-4">
       {rows.map((row) => {
         const carry = row.carryYd ?? 0;
         const width = Math.max(8, (carry / maxCarry) * 100);
 
         return (
-          <Link key={row.id} href={`/bag/${row.id}`} className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/80">
+          <Link
+            key={row.id}
+            href={`/bag/${row.id}`}
+            className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/80"
+          >
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold">{formatClubType(row.clubType)}</span>
+              <span className="font-semibold">
+                {formatClubType(row.clubType)}
+              </span>
               <span className="text-muted-foreground">
-                {formatMetric(row.carryYd)} yd carry · {formatMetric(row.playNumberYd)} yd play
+                {formatMetric(row.carryYd)} yd carry ·{" "}
+                {formatMetric(row.playNumberYd)} yd play
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-white">
-              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${width}%` }} />
+              <div
+                className="h-full rounded-full bg-emerald-600"
+                style={{ width: `${width}%` }}
+              />
             </div>
           </Link>
         );
@@ -704,7 +904,9 @@ function GapBadge({ gapYd }: { gapYd: number | null }) {
         : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
   return (
-    <span className={`inline-flex min-w-16 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>
+    <span
+      className={`inline-flex min-w-16 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}
+    >
       {numberFormatter.format(gapYd)} yd
     </span>
   );
@@ -732,7 +934,9 @@ function WorkOnBadge({ workOnYd }: { workOnYd: number | null }) {
   const direction = workOnYd > 0 ? "Add" : "Take off";
 
   return (
-    <span className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}>
+    <span
+      className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}
+    >
       {direction} {numberFormatter.format(absoluteYards)} yd
     </span>
   );
@@ -750,11 +954,20 @@ function MiniDispersion({
   const visibleShots = shots
     .filter((shot) => shot.carryYd !== null)
     .slice(0, 40);
-  const maxCarry = Math.max(240, ...visibleShots.map((shot) => shot.carryYd ?? 0));
-  const maxSide = Math.max(45, ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)));
+  const maxCarry = Math.max(
+    240,
+    ...visibleShots.map((shot) => shot.carryYd ?? 0),
+  );
+  const maxSide = Math.max(
+    45,
+    ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)),
+  );
 
   return (
-    <svg viewBox="0 0 360 150" className="h-36 w-full rounded-xl border bg-white/80">
+    <svg
+      viewBox="0 0 360 150"
+      className="h-36 w-full rounded-xl border bg-white/80"
+    >
       <rect x="0" y="0" width="360" height="150" fill="#f9fafb" />
       {[60, 120, 180, 240].map((yard) => {
         const y = 140 - (yard / maxCarry) * 120;
@@ -782,7 +995,16 @@ function MiniDispersion({
       {visibleShots.map((shot, index) => {
         const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
         const y = 140 - ((shot.carryYd ?? 0) / maxCarry) * 120;
-        return <circle key={index} cx={x} cy={y} r="4" fill={accent} opacity="0.75" />;
+        return (
+          <circle
+            key={index}
+            cx={x}
+            cy={y}
+            r="4"
+            fill={accent}
+            opacity="0.75"
+          />
+        );
       })}
     </svg>
   );

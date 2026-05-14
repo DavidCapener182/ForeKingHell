@@ -31,47 +31,154 @@ const navGroups = [
   {
     label: "Overview",
     items: [
-      { href: "/today", label: "Today", icon: CalendarDays, isActive: (pathname: string) => pathname.startsWith("/today") },
-      { href: "/dashboard", label: "Dashboard", icon: Gauge, isActive: (pathname: string) => pathname === "/" || pathname === "/dashboard" },
-      { href: "/progress", label: "Progress", icon: LineChart, isActive: (pathname: string) => pathname.startsWith("/progress") },
-      { href: "/strokes-gained", label: "Strokes gained", icon: LineChart, isActive: (pathname: string) => pathname.startsWith("/strokes-gained") },
+      {
+        href: "/today",
+        label: "Today",
+        icon: CalendarDays,
+        isActive: (pathname: string) => pathname.startsWith("/today"),
+      },
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        icon: Gauge,
+        isActive: (pathname: string) =>
+          pathname === "/" || pathname === "/dashboard",
+      },
+      {
+        href: "/progress",
+        label: "Progress",
+        icon: LineChart,
+        isActive: (pathname: string) => pathname.startsWith("/progress"),
+      },
+      {
+        href: "/strokes-gained",
+        label: "Strokes gained",
+        icon: LineChart,
+        isActive: (pathname: string) => pathname.startsWith("/strokes-gained"),
+      },
     ],
   },
   {
     label: "Play",
     items: [
-      { href: "/rounds", label: "Rounds", icon: Flag, isActive: (pathname: string) => pathname.startsWith("/rounds") },
-      { href: "/courses", label: "Courses", icon: MapPinned, isActive: (pathname: string) => pathname.startsWith("/courses") },
-      { href: "/handicap", label: "Handicap", icon: Calculator, isActive: (pathname: string) => pathname.startsWith("/handicap") },
+      {
+        href: "/rounds",
+        label: "Rounds",
+        icon: Flag,
+        isActive: (pathname: string) => pathname.startsWith("/rounds"),
+      },
+      {
+        href: "/courses",
+        label: "Courses",
+        icon: MapPinned,
+        isActive: (pathname: string) => pathname.startsWith("/courses"),
+      },
+      {
+        href: "/handicap",
+        label: "Handicap",
+        icon: Calculator,
+        isActive: (pathname: string) => pathname.startsWith("/handicap"),
+      },
     ],
   },
   {
     label: "Analyse",
     items: [
-      { href: "/compare", label: "Compare", icon: GitCompareArrows, isActive: (pathname: string) => pathname.startsWith("/compare") },
-      { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
-      { href: "/equipment", label: "Equipment", icon: Wrench, isActive: (pathname: string) => pathname.startsWith("/equipment") },
-      { href: "/shots", label: "Shots", icon: Database, isActive: (pathname: string) => pathname.startsWith("/shots") },
-      { href: "/rapsodo", label: "Rapsodo", icon: Upload, isActive: (pathname: string) => pathname.startsWith("/rapsodo") },
+      {
+        href: "/compare",
+        label: "Compare",
+        icon: GitCompareArrows,
+        isActive: (pathname: string) => pathname.startsWith("/compare"),
+      },
+      {
+        href: "/bag",
+        label: "Bag",
+        icon: Target,
+        isActive: (pathname: string) => pathname.startsWith("/bag"),
+      },
+      {
+        href: "/equipment",
+        label: "Equipment",
+        icon: Wrench,
+        isActive: (pathname: string) => pathname.startsWith("/equipment"),
+      },
+      {
+        href: "/shots",
+        label: "Shots",
+        icon: Database,
+        isActive: (pathname: string) => pathname.startsWith("/shots"),
+      },
+      {
+        href: "/rapsodo",
+        label: "Rapsodo",
+        icon: Upload,
+        isActive: (pathname: string) => pathname.startsWith("/rapsodo"),
+      },
     ],
   },
   {
     label: "Improve",
     items: [
-      { href: "/coach", label: "Coach", icon: Brain, isActive: (pathname: string) => pathname.startsWith("/coach") },
-      { href: "/achievements", label: "Achievements", icon: Award, isActive: (pathname: string) => pathname.startsWith("/achievements") },
-      { href: "/leaderboard", label: "Leaderboards", icon: Users, isActive: (pathname: string) => pathname.startsWith("/leaderboard") },
-      { href: "/settings", label: "Settings", icon: Settings, isActive: (pathname: string) => pathname.startsWith("/settings") },
+      {
+        href: "/coach",
+        label: "Coach",
+        icon: Brain,
+        isActive: (pathname: string) => pathname.startsWith("/coach"),
+      },
+      {
+        href: "/achievements",
+        label: "Achievements",
+        icon: Award,
+        isActive: (pathname: string) => pathname.startsWith("/achievements"),
+      },
+      {
+        href: "/leaderboard",
+        label: "Leaderboards",
+        icon: Users,
+        isActive: (pathname: string) => pathname.startsWith("/leaderboard"),
+      },
+      {
+        href: "/settings",
+        label: "Settings",
+        icon: Settings,
+        isActive: (pathname: string) => pathname.startsWith("/settings"),
+      },
     ],
   },
 ];
 
 const mobilePrimaryItems = [
-  { href: "/today", label: "Today", icon: CalendarDays, isActive: (pathname: string) => pathname === "/" || pathname.startsWith("/today") },
-  { href: "/import", label: "Import", icon: Upload, isActive: (pathname: string) => pathname.startsWith("/import") },
-  { href: "/bag", label: "Bag", icon: Target, isActive: (pathname: string) => pathname.startsWith("/bag") },
-  { href: "/rounds", label: "Rounds", icon: Flag, isActive: (pathname: string) => pathname.startsWith("/rounds") },
-  { href: "/coach", label: "Coach", icon: Brain, isActive: (pathname: string) => pathname.startsWith("/coach") },
+  {
+    href: "/today",
+    label: "Today",
+    icon: CalendarDays,
+    isActive: (pathname: string) =>
+      pathname === "/" || pathname.startsWith("/today"),
+  },
+  {
+    href: "/import",
+    label: "Import",
+    icon: Upload,
+    isActive: (pathname: string) => pathname.startsWith("/import"),
+  },
+  {
+    href: "/bag",
+    label: "Bag",
+    icon: Target,
+    isActive: (pathname: string) => pathname.startsWith("/bag"),
+  },
+  {
+    href: "/rounds",
+    label: "Rounds",
+    icon: Flag,
+    isActive: (pathname: string) => pathname.startsWith("/rounds"),
+  },
+  {
+    href: "/coach",
+    label: "Coach",
+    icon: Brain,
+    isActive: (pathname: string) => pathname.startsWith("/coach"),
+  },
 ];
 
 const moreItems = [
@@ -107,18 +214,18 @@ export function AppNav({ totalXp }: { totalXp: number }) {
 
   return (
     <>
-      <div className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4 lg:px-8">
+      <div className="sticky top-0 z-40 px-2 pt-2 sm:px-6 sm:pt-4 lg:px-8">
         <nav
           aria-label="Primary"
-          className="glass-toolbar mx-auto flex w-full max-w-7xl items-center gap-2 rounded-xl p-2 sm:rounded-2xl"
+          className="glass-toolbar mx-auto flex w-full max-w-7xl items-center gap-2 rounded-xl p-1.5 sm:rounded-2xl sm:p-2"
         >
           <Link
             href="/dashboard"
             prefetch={false}
-            className="flex min-w-0 items-center gap-2 rounded-xl px-2.5 py-2 text-sm font-semibold"
+            className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold sm:px-2.5 sm:py-2"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#111827] text-white">
-              <Flag className="size-4" />
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#111827] text-white sm:size-8">
+              <Flag className="size-3.5 sm:size-4" />
             </span>
             <span className="hidden truncate sm:inline">ForeKingHell</span>
             <span className="truncate sm:hidden">FKH</span>
@@ -126,7 +233,9 @@ export function AppNav({ totalXp }: { totalXp: number }) {
 
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
             {navGroups.map((group) => {
-              const groupActive = group.items.some((item) => item.isActive(pathname));
+              const groupActive = group.items.some((item) =>
+                item.isActive(pathname),
+              );
               const menuId = `desktop-nav-${group.label.toLowerCase()}`;
 
               return (
@@ -168,7 +277,13 @@ export function AppNav({ totalXp }: { totalXp: number }) {
                               : "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
                           }
                         >
-                          <Icon className={active ? "size-4 text-emerald-300" : "size-4 text-muted-foreground"} />
+                          <Icon
+                            className={
+                              active
+                                ? "size-4 text-emerald-300"
+                                : "size-4 text-muted-foreground"
+                            }
+                          />
                           {item.label}
                         </Link>
                       );
@@ -189,9 +304,17 @@ export function AppNav({ totalXp }: { totalXp: number }) {
                   key={item.href}
                   asChild
                   variant={active ? "default" : "ghost"}
-                  className={active ? "h-9 rounded-xl bg-[#111827] text-white" : "h-9 rounded-xl"}
+                  className={
+                    active
+                      ? "h-9 rounded-xl bg-[#111827] text-white"
+                      : "h-9 rounded-xl"
+                  }
                 >
-                  <Link href={item.href} prefetch={false} aria-current={active ? "page" : undefined}>
+                  <Link
+                    href={item.href}
+                    prefetch={false}
+                    aria-current={active ? "page" : undefined}
+                  >
                     <Icon className="size-4" />
                     {item.label}
                   </Link>
@@ -200,7 +323,10 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             })}
           </div>
 
-          <Button asChild className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 sm:inline-flex">
+          <Button
+            asChild
+            className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 sm:inline-flex"
+          >
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
               Import CSV
@@ -211,20 +337,33 @@ export function AppNav({ totalXp }: { totalXp: number }) {
             href="/achievements"
             prefetch={false}
             aria-label={`Level ${level.level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
-            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-3 text-sm font-medium text-white shadow-sm sm:ml-0"
+            className="ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-2.5 text-sm font-medium text-white shadow-sm sm:ml-0 sm:h-9 sm:px-3"
           >
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>
           </Link>
-          <form action="/auth/sign-out" method="post" className="hidden sm:block">
-            <Button type="submit" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" aria-label="Sign out">
+          <form
+            action="/auth/sign-out"
+            method="post"
+            className="hidden sm:block"
+          >
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-xl"
+              aria-label="Sign out"
+            >
               <LogOut className="size-4" />
             </Button>
           </form>
         </nav>
       </div>
 
-      <nav aria-label="Mobile primary" className="fixed inset-x-3 bottom-3 z-50 sm:hidden">
+      <nav
+        aria-label="Mobile primary"
+        className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 sm:hidden"
+      >
         <div className="glass-toolbar grid grid-cols-6 gap-1 rounded-2xl p-1.5">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
@@ -256,7 +395,12 @@ export function AppNav({ totalXp }: { totalXp: number }) {
               {moreItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.href} href={item.href} prefetch={false} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted">
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    prefetch={false}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted"
+                  >
                     <Icon className="size-4 text-muted-foreground" />
                     {item.label}
                   </Link>

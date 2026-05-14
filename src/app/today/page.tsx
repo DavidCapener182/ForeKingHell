@@ -30,11 +30,9 @@ import {
   PageShell,
   SectionHeader,
   StatusPill,
-  StickyMobileAction,
 } from "@/components/premium";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
-import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
-import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -46,7 +44,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { TodayShotCharts, type TodayChartShot } from "@/app/today/today-shot-charts";
+import {
+  TodayShotCharts,
+  type TodayChartShot,
+} from "@/app/today/today-shot-charts";
 import { formatClubType } from "@/lib/club-format";
 import {
   type ClubDayComparison,
@@ -95,7 +96,11 @@ type ClubHighlightDescriptor = {
   priority: number;
 };
 
-export default async function TodayPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   if (!process.env.DATABASE_URL?.trim()) {
     return (
       <PageShell>
@@ -119,7 +124,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const activeFilterChips = buildTodayFilterChips(data);
 
   return (
-    <PageShell size="full" contentClassName="pb-20 sm:pb-5">
+    <PageShell size="full" contentClassName="pb-4 sm:pb-5">
       <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
@@ -134,7 +139,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               Shot rows
             </Link>
           </Button>
-          <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+          <Button
+            asChild
+            className="bg-emerald-600 text-white hover:bg-emerald-700"
+          >
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
               Import CSV
@@ -144,12 +152,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone={verdictTone(data.overall.verdict)}>Today’s practice</StatusPill>}
+        eyebrow={
+          <StatusPill tone={verdictTone(data.overall.verdict)}>
+            Today’s practice
+          </StatusPill>
+        }
         title="Today"
         description={data.overall.summary}
-        visual={<PageArtwork variant="range" alt="" className="h-full min-h-44" />}
+        visual={
+          <PageArtwork variant="range" alt="" className="h-full min-h-44" />
+        }
         actions={
-          <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
+          <Button
+            asChild
+            size="lg"
+            className="rounded-xl bg-[#111827] text-white"
+          >
             <Link href={shotDatabaseHref} prefetch={false}>
               <Database className="size-4" />
               Open filtered shots
@@ -191,22 +209,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       />
 
       {data.shots.length > 0 ? (
-        <MobileSummaryHero
-          eyebrow={<StatusPill tone={verdictTone(data.overall.verdict)}>Today&apos;s focus</StatusPill>}
-          title={data.overall.title}
-          description={data.overall.summary}
-          metricLabel="Selected shots"
-          metricValue={integerFormatter.format(data.shots.length)}
-          visual={<ShotTraceMotif className="h-16 w-20 text-emerald-700" />}
-          action={
-            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
-              <Link href={shotDatabaseHref} prefetch={false}>Shots</Link>
-            </Button>
-          }
-        />
-      ) : null}
-
-      {data.shots.length > 0 ? (
         <MobileMetricStrip
           items={[
             {
@@ -238,15 +240,23 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       ) : null}
 
       <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
-        <MobileFilterSheet label="Session scope" activeCount={activeFilterChips.length}>
+        <MobileFilterSheet
+          label="Session scope"
+          activeCount={activeFilterChips.length}
+        >
           <form className="grid gap-3">
             <TodayScopeFields data={data} />
             <div className="grid grid-cols-2 gap-2">
-              <Button type="submit" className="rounded-lg bg-[#111827] text-white">
+              <Button
+                type="submit"
+                className="rounded-lg bg-[#111827] text-white"
+              >
                 Analyse
               </Button>
               <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/today" prefetch={false}>Reset</Link>
+                <Link href="/today" prefetch={false}>
+                  Reset
+                </Link>
               </Button>
             </div>
           </form>
@@ -264,13 +274,22 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <form className="apple-panel grid gap-3 p-3 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto]">
             <TodayScopeFields data={data} />
             <div className="flex items-end">
-              <Button type="submit" className="h-10 w-full rounded-lg bg-[#111827] text-white">
+              <Button
+                type="submit"
+                className="h-10 w-full rounded-lg bg-[#111827] text-white"
+              >
                 Analyse
               </Button>
             </div>
             <div className="flex items-end">
-              <Button asChild variant="outline" className="h-10 w-full rounded-lg">
-                <Link href="/today" prefetch={false}>Reset</Link>
+              <Button
+                asChild
+                variant="outline"
+                className="h-10 w-full rounded-lg"
+              >
+                <Link href="/today" prefetch={false}>
+                  Reset
+                </Link>
               </Button>
             </div>
           </form>
@@ -281,7 +300,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <EmptyToday />
       ) : (
         <>
-          <section id="focus" className="hidden scroll-mt-28 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
+          <section
+            id="focus"
+            className="hidden scroll-mt-28 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4"
+          >
             <MetricCard
               label="Verdict"
               value={data.overall.title}
@@ -325,22 +347,59 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               <SectionHeader
                 title="Club by club"
                 description="Today against the latest previous shots for the same club."
-                action={<StatusPill tone={verdictTone(data.overall.verdict)}>{data.overall.title}</StatusPill>}
+                action={
+                  <StatusPill tone={verdictTone(data.overall.verdict)}>
+                    {data.overall.title}
+                  </StatusPill>
+                }
               />
               <CardContent>
                 <DataTableFrame
                   mobile={
-                    <MobileHorizontalRail title="Club changes" description="Today against the latest previous shots.">
+                    <MobileHorizontalRail
+                      title="Club changes"
+                      description="Today against the latest previous shots."
+                    >
                       {data.clubComparisons.map((comparison) => (
                         <MobileDataCard
                           key={comparison.clubType}
                           title={comparison.clubLabel}
                           subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
-                          action={<Badge className={verdictBadgeClass(comparison.verdict)}>{verdictLabel(comparison.verdict)}</Badge>}
+                          action={
+                            <Badge
+                              className={verdictBadgeClass(comparison.verdict)}
+                            >
+                              {verdictLabel(comparison.verdict)}
+                            </Badge>
+                          }
                         >
-                          <DataPair label="Carry" value={formatDeltaPair(comparison.today.carryAverageYd, comparison.carryDeltaYd, "yd", true)} />
-                          <DataPair label="Offline" value={formatDeltaPair(comparison.today.offlineAverageYd, comparison.offlineDeltaYd, "yd", false)} />
-                          <DataPair label="Straight" value={formatDeltaPair(comparison.today.straightRate, comparison.straightRateDelta, "pp", true)} />
+                          <DataPair
+                            label="Carry"
+                            value={formatDeltaPair(
+                              comparison.today.carryAverageYd,
+                              comparison.carryDeltaYd,
+                              "yd",
+                              true,
+                            )}
+                          />
+                          <DataPair
+                            label="Offline"
+                            value={formatDeltaPair(
+                              comparison.today.offlineAverageYd,
+                              comparison.offlineDeltaYd,
+                              "yd",
+                              false,
+                            )}
+                          />
+                          <DataPair
+                            label="Straight"
+                            value={formatDeltaPair(
+                              comparison.today.straightRate,
+                              comparison.straightRateDelta,
+                              "pp",
+                              true,
+                            )}
+                          />
                           <p className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm leading-5 text-muted-foreground">
                             {comparison.summary}
                           </p>
@@ -364,7 +423,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                     </TableHeader>
                     <TableBody>
                       {data.clubComparisons.map((comparison) => (
-                        <ClubComparisonRow key={comparison.clubType} comparison={comparison} />
+                        <ClubComparisonRow
+                          key={comparison.clubType}
+                          comparison={comparison}
+                        />
                       ))}
                     </TableBody>
                   </Table>
@@ -398,11 +460,18 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                   key={shot.id}
                   title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
                   subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                  action={<Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>}
+                  action={
+                    <Badge variant="outline">
+                      {formatShotCategory(shot.shotCategory)}
+                    </Badge>
+                  }
                 >
                   <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                   <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                  <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
+                  <DataPair
+                    label="Side"
+                    value={formatSignedYards(shot.sideCarryYd)}
+                  />
                 </MobileDataCard>
               ))}
             </MobileDataList>
@@ -412,7 +481,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             <SectionHeader
               title="Today’s shot list"
               description="Only the selected day, session, and club."
-              action={<StatusPill tone="slate">{integerFormatter.format(data.shots.length)} shots</StatusPill>}
+              action={
+                <StatusPill tone="slate">
+                  {integerFormatter.format(data.shots.length)} shots
+                </StatusPill>
+              }
             />
             <CardContent>
               <DataTableFrame
@@ -423,15 +496,40 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                         key={shot.id}
                         title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
                         subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                        action={<Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>}
+                        action={
+                          <Badge variant="outline">
+                            {formatShotCategory(shot.shotCategory)}
+                          </Badge>
+                        }
                       >
-                        <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
-                        <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                        <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
-                        <DataPair label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-                        <DataPair label="Launch" value={formatDegrees(shot.launchAngleDeg)} />
-                        <DataPair label="Ball" value={formatMph(shot.ballSpeedMph)} />
-                        <DataPair label="Smash" value={formatNumber(shot.smashFactor)} />
+                        <DataPair
+                          label="Shot"
+                          value={shot.shotNumber ?? "--"}
+                        />
+                        <DataPair
+                          label="Total"
+                          value={formatYards(shot.totalYd)}
+                        />
+                        <DataPair
+                          label="Side"
+                          value={formatSignedYards(shot.sideCarryYd)}
+                        />
+                        <DataPair
+                          label="Start"
+                          value={formatDegrees(shot.launchDirectionDeg)}
+                        />
+                        <DataPair
+                          label="Launch"
+                          value={formatDegrees(shot.launchAngleDeg)}
+                        />
+                        <DataPair
+                          label="Ball"
+                          value={formatMph(shot.ballSpeedMph)}
+                        />
+                        <DataPair
+                          label="Smash"
+                          value={formatNumber(shot.smashFactor)}
+                        />
                       </MobileDataCard>
                     ))}
                   </MobileDataList>
@@ -456,17 +554,39 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
                   <TableBody>
                     {data.shots.map((shot) => (
                       <TableRow key={shot.id}>
-                        <TableCell className="max-w-52 truncate">{shot.fileName ?? shot.courseName ?? "Session"}</TableCell>
-                        <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
-                        <TableCell className="font-medium">{formatClubType(shot.clubType)}</TableCell>
-                        <TableCell>{formatShotCategory(shot.shotCategory)}</TableCell>
-                        <TableCell className="text-right">{formatYards(shot.carryYd)}</TableCell>
-                        <TableCell className="text-right">{formatYards(shot.totalYd)}</TableCell>
-                        <TableCell className="text-right">{formatSignedYards(shot.sideCarryYd)}</TableCell>
-                        <TableCell className="text-right">{formatDegrees(shot.launchDirectionDeg)}</TableCell>
-                        <TableCell className="text-right">{formatDegrees(shot.launchAngleDeg)}</TableCell>
-                        <TableCell className="text-right">{formatMph(shot.ballSpeedMph)}</TableCell>
-                        <TableCell className="text-right">{formatNumber(shot.smashFactor)}</TableCell>
+                        <TableCell className="max-w-52 truncate">
+                          {shot.fileName ?? shot.courseName ?? "Session"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {shot.shotNumber ?? "--"}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatClubType(shot.clubType)}
+                        </TableCell>
+                        <TableCell>
+                          {formatShotCategory(shot.shotCategory)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatYards(shot.carryYd)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatYards(shot.totalYd)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatSignedYards(shot.sideCarryYd)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatDegrees(shot.launchDirectionDeg)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatDegrees(shot.launchAngleDeg)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatMph(shot.ballSpeedMph)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatNumber(shot.smashFactor)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -476,14 +596,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </DataPanel>
         </>
       )}
-      <StickyMobileAction>
-        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
-          <Link href="/import" prefetch={false}>
-            <Upload className="size-4" />
-            Import
-          </Link>
-        </Button>
-      </StickyMobileAction>
     </PageShell>
   );
 }
@@ -542,10 +654,14 @@ function EmptyToday() {
         <div>
           <p className="text-xl font-semibold">No shots for this selection</p>
           <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-            Import a Rapsodo CSV for the day, or clear the session and club filters.
+            Import a Rapsodo CSV for the day, or clear the session and club
+            filters.
           </p>
         </div>
-        <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+        <Button
+          asChild
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
+        >
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
             Import CSV
@@ -559,7 +675,9 @@ function EmptyToday() {
 function ClubMainStatsPanel({ stats }: { stats: ClubMainStats[] }) {
   const highlights = buildClubHighlights(stats);
   const records = highlights.filter((highlight) => highlight.kind !== "close");
-  const closeCalls = highlights.filter((highlight) => highlight.kind === "close").slice(0, 6);
+  const closeCalls = highlights
+    .filter((highlight) => highlight.kind === "close")
+    .slice(0, 6);
 
   return (
     <DataPanel>
@@ -588,12 +706,23 @@ function ClubMainStatsPanel({ stats }: { stats: ClubMainStats[] }) {
   );
 }
 
-function HighlightGroup({ title, highlights }: { title: string; highlights: ClubHighlight[] }) {
+function HighlightGroup({
+  title,
+  highlights,
+}: {
+  title: string;
+  highlights: ClubHighlight[];
+}) {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">{title}</h3>
-        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+        <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
+          {title}
+        </h3>
+        <Badge
+          variant="outline"
+          className="border-slate-200 bg-slate-50 text-slate-700"
+        >
           {highlights.length}
         </Badge>
       </div>
@@ -602,7 +731,9 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
         items={highlights.map((highlight) => ({
           label: highlight.clubLabel,
           value: `${highlight.metricLabel}: ${highlight.value}`,
-          detail: highlight.target ? `${highlight.detail} ${highlight.target}` : highlight.detail,
+          detail: highlight.target
+            ? `${highlight.detail} ${highlight.target}`
+            : highlight.detail,
           tone: highlightTone(highlight.kind),
         }))}
       />
@@ -612,15 +743,24 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
 
 function buildClubHighlights(stats: ClubMainStats[]) {
   return stats
-    .flatMap((stat) => statHighlightDescriptors(stat).flatMap((descriptor) => buildMetricHighlights(stat, descriptor)))
-    .sort((left, right) => left.priority - right.priority || left.closeness - right.closeness);
+    .flatMap((stat) =>
+      statHighlightDescriptors(stat).flatMap((descriptor) =>
+        buildMetricHighlights(stat, descriptor),
+      ),
+    )
+    .sort(
+      (left, right) =>
+        left.priority - right.priority || left.closeness - right.closeness,
+    );
 }
 
 function highlightTone(kind: HighlightKind) {
   return kind === "record" ? "green" : kind === "tie" ? "sky" : "amber";
 }
 
-function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[] {
+function statHighlightDescriptors(
+  stat: ClubMainStats,
+): ClubHighlightDescriptor[] {
   return [
     {
       key: "total",
@@ -679,7 +819,10 @@ function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[
   ];
 }
 
-function buildMetricHighlights(stat: ClubMainStats, descriptor: ClubHighlightDescriptor): ClubHighlight[] {
+function buildMetricHighlights(
+  stat: ClubMainStats,
+  descriptor: ClubHighlightDescriptor,
+): ClubHighlight[] {
   const { metric, direction, unit } = descriptor;
   if (metric.bestStatus === "new" || metric.bestStatus === "tied") {
     return [
@@ -701,7 +844,11 @@ function buildMetricHighlights(stat: ClubMainStats, descriptor: ClubHighlightDes
     return [];
   }
 
-  if (direction === "lower" && isNumber(metric.allTimeBest) && metric.allTimeBest <= 0) {
+  if (
+    direction === "lower" &&
+    isNumber(metric.allTimeBest) &&
+    metric.allTimeBest <= 0
+  ) {
     return [];
   }
 
@@ -720,7 +867,11 @@ function buildMetricHighlights(stat: ClubMainStats, descriptor: ClubHighlightDes
   ];
 }
 
-function recordDetail(metric: ClubMainStatMetric, direction: HighlightDirection, unit: MetricUnit) {
+function recordDetail(
+  metric: ClubMainStatMetric,
+  direction: HighlightDirection,
+  unit: MetricUnit,
+) {
   if (metric.bestStatus === "tied") {
     return "Tied your previous best.";
   }
@@ -739,17 +890,25 @@ function gapToBest(metric: ClubMainStatMetric, direction: HighlightDirection) {
     return null;
   }
 
-  const gap = direction === "higher" ? metric.allTimeBest - metric.todayBest : metric.todayBest - metric.allTimeBest;
+  const gap =
+    direction === "higher"
+      ? metric.allTimeBest - metric.todayBest
+      : metric.todayBest - metric.allTimeBest;
   return Math.round(gap * 100) / 100;
 }
 
-function improvementOverPrevious(metric: ClubMainStatMetric, direction: HighlightDirection) {
+function improvementOverPrevious(
+  metric: ClubMainStatMetric,
+  direction: HighlightDirection,
+) {
   if (!isNumber(metric.todayBest) || !isNumber(metric.previousBest)) {
     return null;
   }
 
   const improvement =
-    direction === "higher" ? metric.todayBest - metric.previousBest : metric.previousBest - metric.todayBest;
+    direction === "higher"
+      ? metric.todayBest - metric.previousBest
+      : metric.previousBest - metric.todayBest;
   return improvement > 0 ? Math.round(improvement * 100) / 100 : null;
 }
 
@@ -758,11 +917,15 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
     <TableRow>
       <TableCell className="font-medium">{comparison.clubLabel}</TableCell>
       <TableCell>
-        <Badge className={verdictBadgeClass(comparison.verdict)}>{verdictLabel(comparison.verdict)}</Badge>
+        <Badge className={verdictBadgeClass(comparison.verdict)}>
+          {verdictLabel(comparison.verdict)}
+        </Badge>
       </TableCell>
       <TableCell className="text-right">
         {comparison.today.shotCount}
-        <span className="text-muted-foreground">/{comparison.previous.shotCount}</span>
+        <span className="text-muted-foreground">
+          /{comparison.previous.shotCount}
+        </span>
       </TableCell>
       <MetricDeltaCell
         value={comparison.today.carryAverageYd}
@@ -790,7 +953,9 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
         direction="higher"
         isRate
       />
-      <TableCell className="max-w-80 text-sm text-muted-foreground">{comparison.summary}</TableCell>
+      <TableCell className="max-w-80 text-sm text-muted-foreground">
+        {comparison.summary}
+      </TableCell>
     </TableRow>
   );
 }
@@ -806,7 +971,9 @@ function formatDeltaPair(
   return (
     <span className="inline-flex flex-col items-end leading-tight">
       <span>{unit === "pp" ? formatRate(value) : formatYards(value)}</span>
-      <span className={deltaClass(delta, direction)}>{deltaText(delta, unit, true)}</span>
+      <span className={deltaClass(delta, direction)}>
+        {deltaText(delta, unit, true)}
+      </span>
     </span>
   );
 }
@@ -826,8 +993,12 @@ function MetricDeltaCell({
 }) {
   return (
     <TableCell className="text-right">
-      <div className="font-medium">{isRate ? formatRate(value) : formatYards(value)}</div>
-      <div className={deltaClass(delta, direction)}>{deltaText(delta, unit, true)}</div>
+      <div className="font-medium">
+        {isRate ? formatRate(value) : formatYards(value)}
+      </div>
+      <div className={deltaClass(delta, direction)}>
+        {deltaText(delta, unit, true)}
+      </div>
     </TableCell>
   );
 }
@@ -838,20 +1009,27 @@ function StraightShotCard({ shot }: { shot: TodayPracticeShot }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold">
-            {formatClubType(shot.clubType)} {shot.shotNumber ? `shot ${shot.shotNumber}` : ""}
+            {formatClubType(shot.clubType)}{" "}
+            {shot.shotNumber ? `shot ${shot.shotNumber}` : ""}
           </p>
           <p className="mt-0.5 max-w-72 truncate text-sm text-muted-foreground">
             {shot.fileName ?? shot.courseName ?? "Today"}
           </p>
         </div>
-        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
+        <Badge
+          variant="outline"
+          className="border-sky-200 bg-sky-50 text-sky-700"
+        >
           {formatSignedYards(shot.sideCarryYd)}
         </Badge>
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
         <MiniMetric label="Carry" value={formatYards(shot.carryYd)} />
         <MiniMetric label="Total" value={formatYards(shot.totalYd)} />
-        <MiniMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+        <MiniMetric
+          label="Start"
+          value={formatDegrees(shot.launchDirectionDeg)}
+        />
         <MiniMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
       </div>
     </div>
@@ -861,14 +1039,16 @@ function StraightShotCard({ shot }: { shot: TodayPracticeShot }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
+        {label}
+      </p>
       <p className="font-semibold">{value}</p>
     </div>
   );
 }
 
 function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 function shotDatabaseLink(data: TodayPracticeData) {
@@ -889,16 +1069,26 @@ function shotDatabaseLink(data: TodayPracticeData) {
 }
 
 function buildTodayFilterChips(data: TodayPracticeData) {
-  const chips: Array<{ label: string; href: string }> = [{ label: data.dateLabel, href: "/today" }];
-  const session = data.sessions.find((item) => item.id === data.filters.sessionId);
+  const chips: Array<{ label: string; href: string }> = [
+    { label: data.dateLabel, href: "/today" },
+  ];
+  const session = data.sessions.find(
+    (item) => item.id === data.filters.sessionId,
+  );
   const club = data.clubs.find((item) => item.type === data.filters.club);
 
   if (session) {
-    chips.push({ label: `${session.label} x`, href: todayFilterHref(data, "session") });
+    chips.push({
+      label: `${session.label} x`,
+      href: todayFilterHref(data, "session"),
+    });
   }
 
   if (club) {
-    chips.push({ label: `${club.label} x`, href: todayFilterHref(data, "club") });
+    chips.push({
+      label: `${club.label} x`,
+      href: todayFilterHref(data, "club"),
+    });
   }
 
   return chips;
@@ -955,9 +1145,12 @@ function deltaTone(value: number | null, direction: "higher" | "lower") {
 }
 
 function verdictBadgeClass(verdict: ClubDayComparison["verdict"]) {
-  if (verdict === "better") return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
-  if (verdict === "worse") return "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-50";
-  if (verdict === "mixed") return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50";
+  if (verdict === "better")
+    return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
+  if (verdict === "worse")
+    return "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-50";
+  if (verdict === "mixed")
+    return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50";
   return "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100";
 }
 
@@ -970,11 +1163,20 @@ function verdictLabel(verdict: ClubDayComparison["verdict"]) {
 
 function deltaClass(value: number | null, direction: "higher" | "lower") {
   const tone = deltaTone(value, direction);
-  const color = tone === "green" ? "text-emerald-700" : tone === "pink" ? "text-pink-700" : "text-muted-foreground";
+  const color =
+    tone === "green"
+      ? "text-emerald-700"
+      : tone === "pink"
+        ? "text-pink-700"
+        : "text-muted-foreground";
   return `text-xs ${color}`;
 }
 
-function deltaText(value: number | null, unit: "yd" | "mph" | "pp", showNoBaseline = false) {
+function deltaText(
+  value: number | null,
+  unit: "yd" | "mph" | "pp",
+  showNoBaseline = false,
+) {
   if (value === null) return showNoBaseline ? "No baseline" : "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${numberFormatter.format(value)} ${unit}`;
@@ -983,7 +1185,9 @@ function deltaText(value: number | null, unit: "yd" | "mph" | "pp", showNoBaseli
 function offlineDeltaText(value: number | null) {
   if (value === null) return "No baseline";
   if (value === 0) return "same as previous";
-  return value < 0 ? `${numberFormatter.format(Math.abs(value))} yd straighter` : `${numberFormatter.format(value)} yd wider`;
+  return value < 0
+    ? `${numberFormatter.format(Math.abs(value))} yd straighter`
+    : `${numberFormatter.format(value)} yd wider`;
 }
 
 function bestShotTitle(shot: TodayPracticeShot | undefined) {
@@ -1020,7 +1224,9 @@ function formatMetricValue(value: number | null, unit: MetricUnit) {
 }
 
 function formatMetricNumber(value: number, unit: MetricUnit) {
-  return unit === "ratio" ? smashFormatter.format(value) : numberFormatter.format(value);
+  return unit === "ratio"
+    ? smashFormatter.format(value)
+    : numberFormatter.format(value);
 }
 
 function metricUnitSuffix(unit: MetricUnit) {
