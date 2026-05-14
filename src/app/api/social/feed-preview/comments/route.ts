@@ -1,4 +1,4 @@
-import { addFeedComment } from "@/lib/social";
+import { addFeedComment, deleteFeedComment } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +22,23 @@ export async function POST(request: Request) {
     return Response.json({ ok: true });
   } catch {
     return Response.json({ error: "Unable to post comment." }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { commentId } = (await request.json()) as {
+      commentId?: unknown;
+    };
+
+    if (typeof commentId !== "string" || !commentId.trim()) {
+      return Response.json({ error: "commentId is required." }, { status: 400 });
+    }
+
+    await deleteFeedComment(commentId.trim());
+
+    return Response.json({ ok: true });
+  } catch {
+    return Response.json({ error: "Unable to delete comment." }, { status: 400 });
   }
 }

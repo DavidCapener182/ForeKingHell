@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  Trash2,
   ThumbsUp,
   Zap,
 } from "lucide-react";
@@ -45,6 +46,9 @@ type SocialFeedPreviewItem = {
     id: string;
     body: string;
     createdAt: string;
+    likeCount: number;
+    viewerLiked: boolean;
+    viewerCanDelete: boolean;
     profile: {
       userId: string;
       username: string;
@@ -111,6 +115,7 @@ function SocialFeedRailContent() {
   const [commentingItemId, setCommentingItemId] = useState<string | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
+  const [busyCommentId, setBusyCommentId] = useState<string | null>(null);
   const groups = useMemo(() => groupItemsByDay(items), [items]);
 
   useEffect(() => {
@@ -182,6 +187,17 @@ function SocialFeedRailContent() {
     setItems((current) => current.map((item) => (item.id === itemId ? updater(item) : item)));
   }
 
+  function updateComment(
+    itemId: string,
+    commentId: string,
+    updater: (comment: SocialFeedPreviewItem["comments"][number]) => SocialFeedPreviewItem["comments"][number],
+  ) {
+    updateItem(itemId, (item) => ({
+      ...item,
+      comments: item.comments.map((comment) => (comment.id === commentId ? updater(comment) : comment)),
+    }));
+  }
+
   async function toggleReaction(item: SocialFeedPreviewItem) {
     const nextReacted = !item.viewerReacted;
     const reactionDelta = nextReacted ? 1 : -1;
@@ -245,6 +261,65 @@ function SocialFeedRailContent() {
       setCommentingItemId(null);
     } finally {
       setBusyItemId(null);
+    }
+  }
+
+  async function toggleCommentReaction(itemId: string, comment: SocialFeedPreviewItem["comments"][number]) {
+    const nextLiked = !comment.viewerLiked;
+    const likeDelta = nextLiked ? 1 : -1;
+
+    updateComment(itemId, comment.id, (current) => ({
+      ...current,
+      viewerLiked: nextLiked,
+      likeCount: Math.max(0, current.likeCount + likeDelta),
+    }));
+    setBusyCommentId(comment.id);
+
+    try {
+      const response = await fetch("/api/social/feed-preview/comment-reactions", {
+        method: nextLiked ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ commentId: comment.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to update comment like.");
+      }
+    } catch {
+      updateComment(itemId, comment.id, () => comment);
+    } finally {
+      setBusyCommentId(null);
+    }
+  }
+
+  async function deleteComment(itemId: string, comment: SocialFeedPreviewItem["comments"][number]) {
+    updateItem(itemId, (item) => ({
+      ...item,
+      commentCount: Math.max(0, item.commentCount - 1),
+      comments: item.comments.filter((candidate) => candidate.id !== comment.id),
+    }));
+    setBusyCommentId(comment.id);
+
+    try {
+      const response = await fetch("/api/social/feed-preview/comments", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ commentId: comment.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to delete comment.");
+      }
+    } catch {
+      updateItem(itemId, (item) => ({
+        ...item,
+        commentCount: item.commentCount + 1,
+        comments: [...item.comments, comment].sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt)),
+      }));
+    } finally {
+      setBusyCommentId(null);
     }
   }
 
@@ -330,6 +405,7 @@ function SocialFeedRailContent() {
                   <RailDayDigest
                     key={group.key}
                     busyItemId={busyItemId}
+                    busyCommentId={busyCommentId}
                     commentingItemId={commentingItemId}
                     commentDrafts={commentDrafts}
                     group={group}
@@ -340,6 +416,8 @@ function SocialFeedRailContent() {
                       setCommentingItemId((current) => (current === itemId ? null : itemId))
                     }
                     onReactionToggle={toggleReaction}
+                    onCommentReactionToggle={toggleCommentReaction}
+                    onCommentDelete={deleteComment}
                     onSubmitComment={submitComment}
                   />
                 ))}
@@ -363,19 +441,25 @@ function SocialFeedRailContent() {
 
 function RailDayDigest({
   busyItemId,
+  busyCommentId,
   commentingItemId,
   commentDrafts,
   group,
   onCommentDraftChange,
+  onCommentDelete,
+  onCommentReactionToggle,
   onCommentToggle,
   onReactionToggle,
   onSubmitComment,
 }: {
   busyItemId: string | null;
+  busyCommentId: string | null;
   commentingItemId: string | null;
   commentDrafts: Record<string, string>;
   group: RailDayGroup;
   onCommentDraftChange: (itemId: string, value: string) => void;
+  onCommentDelete: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentReactionToggle: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
   onCommentToggle: (itemId: string) => void;
   onReactionToggle: (item: SocialFeedPreviewItem) => void;
   onSubmitComment: (event: FormEvent<HTMLFormElement>, itemId: string) => void;
@@ -427,10 +511,13 @@ function RailDayDigest({
           <RailActivityItem
             key={item.id}
             busy={busyItemId === item.id}
+            busyCommentId={busyCommentId}
             commenting={commentingItemId === item.id}
             commentDraft={commentDrafts[item.id] ?? ""}
             item={item}
             onCommentDraftChange={(value) => onCommentDraftChange(item.id, value)}
+            onCommentDelete={(comment) => onCommentDelete(item.id, comment)}
+            onCommentReactionToggle={(comment) => onCommentReactionToggle(item.id, comment)}
             onCommentToggle={() => onCommentToggle(item.id)}
             onReactionToggle={() => onReactionToggle(item)}
             onSubmitComment={(event) => onSubmitComment(event, item.id)}
@@ -443,19 +530,25 @@ function RailDayDigest({
 
 function RailActivityItem({
   busy,
+  busyCommentId,
   commenting,
   commentDraft,
   item,
   onCommentDraftChange,
+  onCommentDelete,
+  onCommentReactionToggle,
   onCommentToggle,
   onReactionToggle,
   onSubmitComment,
 }: {
   busy: boolean;
+  busyCommentId: string | null;
   commenting: boolean;
   commentDraft: string;
   item: SocialFeedPreviewItem;
   onCommentDraftChange: (value: string) => void;
+  onCommentDelete: (comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentReactionToggle: (comment: SocialFeedPreviewItem["comments"][number]) => void;
   onCommentToggle: () => void;
   onReactionToggle: () => void;
   onSubmitComment: (event: FormEvent<HTMLFormElement>) => void;
@@ -509,6 +602,30 @@ function RailActivityItem({
                 <div key={comment.id} className="rounded-lg bg-white px-2 py-1.5 text-xs">
                   <p className="font-medium">{comment.profile.displayName}</p>
                   <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      variant={comment.viewerLiked ? "secondary" : "ghost"}
+                      size="xs"
+                      disabled={busyCommentId === comment.id}
+                      onClick={() => onCommentReactionToggle(comment)}
+                    >
+                      <ThumbsUp className="size-3" />
+                      Like {comment.likeCount > 0 ? comment.likeCount : ""}
+                    </Button>
+                    {comment.viewerCanDelete ? (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="xs"
+                        disabled={busyCommentId === comment.id}
+                        onClick={() => onCommentDelete(comment)}
+                      >
+                        <Trash2 className="size-3" />
+                        Delete
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

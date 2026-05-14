@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
+  feedCommentReactions,
   feedComments,
   feedItems,
   feedReactions,
@@ -61,6 +62,9 @@ export type FeedItemView = {
     id: string;
     body: string;
     createdAt: Date;
+    likeCount: number;
+    viewerLiked: boolean;
+    viewerCanDelete: boolean;
     profile: Pick<SocialProfileSummary, "userId" | "username" | "displayName" | "avatarUrl">;
   }>;
 };
@@ -610,6 +614,69 @@ export async function addFeedComment(feedItemId: string, body: string) {
   revalidatePath("/dashboard");
 }
 
+export async function deleteFeedComment(commentId: string) {
+  const userId = await requireCurrentUserId();
+  const [comment] = await getDb()
+    .select()
+    .from(feedComments)
+    .where(and(eq(feedComments.id, commentId), eq(feedComments.userId, userId), sql`${feedComments.deletedAt} IS NULL`))
+    .limit(1);
+
+  if (!comment) {
+    throw new Error("Comment not found.");
+  }
+
+  await getDb()
+    .update(feedComments)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(feedComments.id, commentId), eq(feedComments.userId, userId)));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function addFeedCommentReaction(commentId: string) {
+  const userId = await requireCurrentUserId();
+  const comment = await getVisibleFeedComment(commentId, userId);
+
+  if (!comment) {
+    throw new Error("Comment not found.");
+  }
+
+  await getDb()
+    .insert(feedCommentReactions)
+    .values({
+      feedCommentId: commentId,
+      userId,
+      reactionType: "like",
+    })
+    .onConflictDoNothing({
+      target: [feedCommentReactions.feedCommentId, feedCommentReactions.userId, feedCommentReactions.reactionType],
+    });
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function removeFeedCommentReaction(commentId: string) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .delete(feedCommentReactions)
+    .where(
+      and(
+        eq(feedCommentReactions.feedCommentId, commentId),
+        eq(feedCommentReactions.userId, userId),
+        eq(feedCommentReactions.reactionType, "like"),
+      ),
+    );
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
 export async function createFeedItem(input: {
   userId: string;
   itemType: string;
@@ -847,6 +914,26 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
   return canViewFeedItem(item, viewerUserId, socialIds, blockedIds) ? item : null;
 }
 
+async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
+  const [row] = await getDb()
+    .select({
+      comment: feedComments,
+      item: feedItems,
+    })
+    .from(feedComments)
+    .innerJoin(feedItems, eq(feedComments.feedItemId, feedItems.id))
+    .where(and(eq(feedComments.id, commentId), sql`${feedComments.deletedAt} IS NULL`))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const socialIds = new Set([viewerUserId, ...friendIds]);
+  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds) ? row.comment : null;
+}
+
 async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Promise<FeedItemView[]> {
   if (items.length === 0) {
     return [];
@@ -862,9 +949,17 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
       .where(and(inArray(feedComments.feedItemId, itemIds), sql`${feedComments.deletedAt} IS NULL`))
       .orderBy(desc(feedComments.createdAt)),
   ]);
+  const commentReactionRows =
+    commentRows.length > 0
+      ? await getDb()
+          .select()
+          .from(feedCommentReactions)
+          .where(inArray(feedCommentReactions.feedCommentId, commentRows.map((comment) => comment.id)))
+      : [];
   const commentProfileMap = await profilesByUserId([...new Set(commentRows.map((comment) => comment.userId))]);
   const reactionsByItem = new Map<string, typeof reactionRows>();
   const commentsByItem = new Map<string, typeof commentRows>();
+  const commentReactionsByComment = new Map<string, typeof commentReactionRows>();
 
   for (const reaction of reactionRows) {
     reactionsByItem.set(reaction.feedItemId, [...(reactionsByItem.get(reaction.feedItemId) ?? []), reaction]);
@@ -872,6 +967,13 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
 
   for (const comment of commentRows) {
     commentsByItem.set(comment.feedItemId, [...(commentsByItem.get(comment.feedItemId) ?? []), comment]);
+  }
+
+  for (const reaction of commentReactionRows) {
+    commentReactionsByComment.set(reaction.feedCommentId, [
+      ...(commentReactionsByComment.get(reaction.feedCommentId) ?? []),
+      reaction,
+    ]);
   }
 
   return items
@@ -913,6 +1015,11 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
               id: comment.id,
               body: comment.body,
               createdAt: comment.createdAt,
+              likeCount: commentReactionsByComment.get(comment.id)?.length ?? 0,
+              viewerLiked: commentReactionsByComment
+                .get(comment.id)
+                ?.some((reaction) => reaction.userId === viewerUserId) ?? false,
+              viewerCanDelete: comment.userId === viewerUserId,
               profile: {
                 userId: commentProfile.userId,
                 username: commentProfile.username,

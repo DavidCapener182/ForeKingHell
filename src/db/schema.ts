@@ -262,6 +262,30 @@ export const feedComments = pgTable(
   ],
 );
 
+export const feedCommentReactions = pgTable(
+  "fkh_feed_comment_reactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    feedCommentId: uuid("feed_comment_id")
+      .notNull()
+      .references(() => feedComments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reactionType: varchar("reaction_type", { length: 40 }).notNull().default("like"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_feed_comment_reactions_comment_user_type_idx").on(
+      table.feedCommentId,
+      table.userId,
+      table.reactionType,
+    ),
+    index("fkh_feed_comment_reactions_comment_idx").on(table.feedCommentId),
+    index("fkh_feed_comment_reactions_user_idx").on(table.userId),
+  ],
+);
+
 export const challengeTemplates = pgTable(
   "fkh_challenge_templates",
   {
@@ -1490,6 +1514,7 @@ export type NewUserFollow = typeof userFollows.$inferInsert;
 export type NewFeedItem = typeof feedItems.$inferInsert;
 export type NewFeedReaction = typeof feedReactions.$inferInsert;
 export type NewFeedComment = typeof feedComments.$inferInsert;
+export type NewFeedCommentReaction = typeof feedCommentReactions.$inferInsert;
 export type NewChallengeTemplate = typeof challengeTemplates.$inferInsert;
 export type NewChallenge = typeof challenges.$inferInsert;
 export type NewChallengeEntry = typeof challengeEntries.$inferInsert;

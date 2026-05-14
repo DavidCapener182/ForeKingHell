@@ -23,6 +23,7 @@ import {
   clubs,
   courses,
   entitlements,
+  feedCommentReactions,
   feedComments,
   feedItems,
   feedReactions,
@@ -281,6 +282,7 @@ export async function deleteAccountDataAction(formData: FormData) {
     await tx.delete(challengeAttempts).where(eq(challengeAttempts.userId, userId));
     await tx.delete(challengeEntries).where(eq(challengeEntries.userId, userId));
     await tx.delete(challenges).where(eq(challenges.creatorUserId, userId));
+    await tx.delete(feedCommentReactions).where(eq(feedCommentReactions.userId, userId));
     await tx.delete(feedReactions).where(eq(feedReactions.userId, userId));
     await tx.delete(feedComments).where(eq(feedComments.userId, userId));
     await tx.delete(feedItems).where(eq(feedItems.userId, userId));

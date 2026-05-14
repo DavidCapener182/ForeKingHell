@@ -120,6 +120,13 @@
       "when": 1778840000000,
       "tag": "0016_admin_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778845000000,
+      "tag": "0017_feed_comment_reactions",
+      "breakpoints": true
     }
   ]
 }

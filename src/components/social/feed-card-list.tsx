@@ -3,7 +3,10 @@ import { Award, BarChart3, CalendarDays, ChevronDown, Globe2, Lock, MessageCircl
 
 import {
   addFeedCommentAction,
+  addFeedCommentReactionAction,
   addFeedReactionAction,
+  deleteFeedCommentAction,
+  removeFeedCommentReactionAction,
   removeFeedReactionAction,
 } from "@/app/feed/actions";
 import { Badge } from "@/components/ui/badge";
@@ -144,11 +147,10 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
           </div>
         </div>
 
+        <DigestComments items={group.items} />
+
         {achievements.length > 0 ? (
-          <details
-            className="group rounded-xl border bg-slate-50/80"
-            open={achievements.some((item) => item.commentCount > 0)}
-          >
+          <details className="group rounded-xl border bg-slate-50/80">
             <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <Award className="size-4 text-emerald-600" />
@@ -164,7 +166,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
                 <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-sm">
                   <p className="line-clamp-1 font-medium">{achievementTitle(item)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{item.metricValue ?? "Achievement"} · {item.context ?? "Verified activity"}</p>
-                  <ActivityActions item={item} />
+                  <ActivityActions item={item} showCommentThread={false} />
                 </div>
               ))}
             </div>
@@ -266,19 +268,7 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               {item.comments.length > 0 ? (
                 <div className="grid gap-2">
                   {item.comments.map((comment) => (
-                    <div key={comment.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
-                      <SocialAvatar
-                        displayName={comment.profile.displayName}
-                        username={comment.profile.username}
-                        avatarUrl={comment.profile.avatarUrl}
-                        href={`/profile/${comment.profile.username}`}
-                        size="sm"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium">{comment.profile.displayName}</p>
-                        <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
-                      </div>
-                    </div>
+                    <CommentCard key={comment.id} comment={comment} />
                   ))}
                 </div>
               ) : null}
@@ -313,12 +303,100 @@ function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: 
           </p>
         </div>
       </div>
-      <ActivityActions item={item} />
+      <ActivityActions item={item} showCommentThread={false} />
     </div>
   );
 }
 
-function ActivityActions({ item }: { item: FeedItemView }) {
+function DigestComments({ items }: { items: FeedItemView[] }) {
+  const commentedItems = items.filter((item) => item.comments.length > 0);
+  const commentCount = commentedItems.reduce((total, item) => total + item.comments.length, 0);
+
+  if (commentedItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-xl border bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <MessageCircle className="size-4 text-sky-600" />
+          Comments
+        </p>
+        <Badge variant="secondary">{commentCount} total</Badge>
+      </div>
+      <div className="mt-3 grid gap-3">
+        {commentedItems.map((item) => (
+          <article key={item.id} className="rounded-lg bg-slate-50/80 p-3">
+            <p className="line-clamp-2 text-sm font-medium">{item.headline}</p>
+            <div className="mt-2 grid gap-2">
+              {item.comments.map((comment) => (
+                <CommentCard key={comment.id} comment={comment} />
+              ))}
+            </div>
+            <form action={addFeedCommentAction} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <Input name="body" placeholder="Write a comment" className="h-9 rounded-xl bg-white" />
+              <Button type="submit" variant="outline">
+                <MessageCircle className="size-4" />
+                Post
+              </Button>
+            </form>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CommentCard({
+  comment,
+  compact = false,
+}: {
+  comment: FeedItemView["comments"][number];
+  compact?: boolean;
+}) {
+  return (
+    <div className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-white ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}>
+      <SocialAvatar
+        displayName={comment.profile.displayName}
+        username={comment.profile.username}
+        avatarUrl={comment.profile.avatarUrl}
+        href={`/profile/${comment.profile.username}`}
+        size="sm"
+      />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="font-medium">{comment.profile.displayName}</p>
+          <form action={comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction}>
+            <input type="hidden" name="commentId" value={comment.id} />
+            <Button type="submit" variant={comment.viewerLiked ? "secondary" : "ghost"} size="xs">
+              <ThumbsUp className="size-3" />
+              Like {comment.likeCount > 0 ? comment.likeCount : ""}
+            </Button>
+          </form>
+          {comment.viewerCanDelete ? (
+            <form action={deleteFeedCommentAction}>
+              <input type="hidden" name="commentId" value={comment.id} />
+              <Button type="submit" variant="destructive" size="xs">
+                Delete
+              </Button>
+            </form>
+          ) : null}
+        </div>
+        <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
+      </div>
+    </div>
+  );
+}
+
+function ActivityActions({
+  item,
+  showCommentThread = true,
+}: {
+  item: FeedItemView;
+  showCommentThread?: boolean;
+}) {
   return (
     <div className="mt-2 grid gap-2 border-t border-slate-100 pt-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -329,40 +407,35 @@ function ActivityActions({ item }: { item: FeedItemView }) {
             Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
           </Button>
         </form>
-        <details className="group w-full sm:w-auto" open={item.commentCount > 0}>
-          <summary className="inline-flex h-7 cursor-pointer list-none items-center justify-center gap-1 rounded-lg px-2.5 text-[0.8rem] font-medium hover:bg-muted [&::-webkit-details-marker]:hidden">
+        {showCommentThread ? (
+          <details className="group w-full sm:w-auto" open={item.commentCount > 0}>
+            <summary className="inline-flex h-7 cursor-pointer list-none items-center justify-center gap-1 rounded-lg px-2.5 text-[0.8rem] font-medium hover:bg-muted [&::-webkit-details-marker]:hidden">
+              <MessageCircle className="size-4" />
+              Comments {item.commentCount > 0 ? item.commentCount : ""}
+            </summary>
+            <div className="mt-2 grid min-w-72 gap-2 rounded-xl border bg-slate-50 p-2">
+              {item.comments.length > 0 ? (
+                <div className="grid gap-2">
+                  {item.comments.map((comment) => (
+                    <CommentCard key={comment.id} comment={comment} compact />
+                  ))}
+                </div>
+              ) : null}
+              <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input type="hidden" name="feedItemId" value={item.id} />
+                <Input name="body" placeholder="Write a comment" className="h-8 rounded-lg bg-white text-xs" />
+                <Button type="submit" variant="outline" size="sm">
+                  Post
+                </Button>
+              </form>
+            </div>
+          </details>
+        ) : (
+          <span className="inline-flex h-7 items-center justify-center gap-1 rounded-lg px-2.5 text-[0.8rem] font-medium text-muted-foreground">
             <MessageCircle className="size-4" />
             Comments {item.commentCount > 0 ? item.commentCount : ""}
-          </summary>
-          <div className="mt-2 grid min-w-72 gap-2 rounded-xl border bg-slate-50 p-2">
-            {item.comments.length > 0 ? (
-              <div className="grid gap-2">
-                {item.comments.map((comment) => (
-                  <div key={comment.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-white px-2 py-1.5 text-xs">
-                    <SocialAvatar
-                      displayName={comment.profile.displayName}
-                      username={comment.profile.username}
-                      avatarUrl={comment.profile.avatarUrl}
-                      href={`/profile/${comment.profile.username}`}
-                      size="sm"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium">{comment.profile.displayName}</p>
-                      <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
-              <input type="hidden" name="feedItemId" value={item.id} />
-              <Input name="body" placeholder="Write a comment" className="h-8 rounded-lg bg-white text-xs" />
-              <Button type="submit" variant="outline" size="sm">
-                Post
-              </Button>
-            </form>
-          </div>
-        </details>
+          </span>
+        )}
       </div>
     </div>
   );

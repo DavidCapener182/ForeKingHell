@@ -7,6 +7,7 @@ const shareLinkMigration = readFileSync(join(process.cwd(), "drizzle/0010_messy_
 const socialMigration = readFileSync(join(process.cwd(), "drizzle/0014_social_foundations.sql"), "utf8");
 const networkMigration = readFileSync(join(process.cwd(), "drizzle/0015_network_growth.sql"), "utf8");
 const adminMigration = readFileSync(join(process.cwd(), "drizzle/0016_admin_ops.sql"), "utf8");
+const commentReactionMigration = readFileSync(join(process.cwd(), "drizzle/0017_feed_comment_reactions.sql"), "utf8");
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -114,5 +115,14 @@ describe("RLS migration", () => {
     expect(adminMigration).toContain('CREATE POLICY "fkh_admin_audit_actor_select"');
     expect(adminMigration).toContain("('full', 'lifetime_full'");
     expect(adminMigration).toContain("('full', 'admin_operations'");
+  });
+
+  it("keeps feed comment reactions behind visible comment RLS", () => {
+    expect(commentReactionMigration).toContain('ALTER TABLE "fkh_feed_comment_reactions" ENABLE ROW LEVEL SECURITY');
+    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_select_visible_comment"');
+    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_insert_self_visible_comment"');
+    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_delete_self"');
+    expect(commentReactionMigration).toContain("public.fkh_can_view_feed_item(item)");
+    expect(commentReactionMigration).toContain('"user_id" = auth.uid()');
   });
 });
