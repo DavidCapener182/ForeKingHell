@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { Award, BarChart3, CalendarDays, ChevronDown, Globe2, Lock, MessageCircle, Share2, ShieldCheck, ThumbsUp, Users, Zap } from "lucide-react";
+import { Award, BarChart3, CalendarDays, ChevronDown, EyeOff, Flag, Globe2, Lock, MessageCircle, Share2, ShieldCheck, ThumbsUp, Trash2, Users, Zap } from "lucide-react";
 
 import {
   addFeedCommentAction,
   addFeedCommentReactionAction,
   addFeedReactionAction,
   deleteFeedCommentAction,
+  hideFeedItemAction,
+  muteFeedItemTypeAction,
   removeFeedCommentReactionAction,
   removeFeedReactionAction,
+  reportFeedItemAction,
+  updateFeedItemVisibilityAction,
 } from "@/app/feed/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,6 +241,7 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               {item.verificationLabel}
             </Badge>
             <Badge variant="outline">{feedTypeLabel(item.itemType)}</Badge>
+            <Badge variant="outline">Safety checked</Badge>
           </div>
         </div>
 
@@ -258,9 +263,10 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
             <Button asChild variant="ghost" size="sm">
               <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
                 <Share2 className="size-4" />
-                Share card
+                Copy share image
               </Link>
             </Button>
+            <CardSafetyControls item={item} />
           </div>
 
           {!compact ? (
@@ -285,6 +291,49 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
         </div>
       </div>
     </article>
+  );
+}
+
+function CardSafetyControls({ item }: { item: FeedItemView }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {item.viewerCanManage ? (
+        <>
+          <form action={updateFeedItemVisibilityAction} className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1">
+            <input type="hidden" name="feedItemId" value={item.id} />
+            <span className="text-xs text-muted-foreground">Visibility</span>
+            <select name="visibility" defaultValue={item.visibility} className="h-7 rounded-md border bg-white px-2 text-xs">
+              <option value="private">Private</option>
+              <option value="friends">Friends</option>
+              <option value="public">Public</option>
+            </select>
+            <Button type="submit" variant="ghost" size="xs">Save</Button>
+          </form>
+          <form action={hideFeedItemAction}>
+            <input type="hidden" name="feedItemId" value={item.id} />
+            <Button type="submit" variant="ghost" size="sm">
+              <Trash2 className="size-4" />
+              Delete from feed
+            </Button>
+          </form>
+        </>
+      ) : null}
+      <form action={reportFeedItemAction}>
+        <input type="hidden" name="feedItemId" value={item.id} />
+        <input type="hidden" name="reason" value="feed_safety" />
+        <Button type="submit" variant="ghost" size="sm">
+          <Flag className="size-4" />
+          Report
+        </Button>
+      </form>
+      <form action={muteFeedItemTypeAction}>
+        <input type="hidden" name="feedItemId" value={item.id} />
+        <Button type="submit" variant="ghost" size="sm">
+          <EyeOff className="size-4" />
+          Hide this type
+        </Button>
+      </form>
+    </div>
   );
 }
 

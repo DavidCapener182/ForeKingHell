@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Check, CreditCard, LockKeyhole, Sparkles, Zap } from "lucide-react";
+import { Check, CreditCard, Sparkles, Zap } from "lucide-react";
 
 import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
 import { PageShell, StatusPill } from "@/components/premium";
@@ -28,14 +27,14 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <StatusPill tone="sky">Monetisation</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Billing and entitlements</h1>
+            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Pricing</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Social basics stay free. Advanced analytics, AI coaching, private leagues and coach/group tools are controlled by entitlements.
+              Start with free Rapsodo CSV tracking, then upgrade when you need advanced reports, AI coaching, private leagues or coach/club tools.
             </p>
           </div>
           <Badge variant={data.stripeConfigured ? "secondary" : "outline"} className="gap-1">
             <CreditCard className="size-3" />
-            Stripe {data.stripeConfigured ? "configured" : "not configured"}
+            {data.stripeConfigured ? "Secure checkout ready" : "Checkout unavailable"}
           </Badge>
         </div>
         {params?.checkout || params?.portal ? (
@@ -73,17 +72,27 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
               >
                 <CreditCard className="size-4" />
-                Customer portal
+                Manage billing
               </Button>
             </form>
           </section>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold">Entitlement snapshot</p>
+            <p className="text-sm font-semibold">Upgrade prompts</p>
+            <div className="mt-3 grid gap-2 text-sm">
+              <UpgradePrompt text="You have 5 free monthly imports before Plus unlocks unlimited history." />
+              <UpgradePrompt text="Private challenges and friend leagues unlock on Plus." />
+              <UpgradePrompt text="AI comparison against friends is a Pro feature." />
+              <UpgradePrompt text="Coach dashboard and player seats are for Coach / Club." />
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold">Included in your plan</p>
             <div className="mt-3 grid gap-2">
               {data.planLimits
                 .filter((limit) => limit.planKey === data.activePlanKey)
-                .slice(0, 8)
+                .slice(0, 6)
                 .map((limit) => (
                   <div key={limit.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
                     <p className="font-medium">{label(limit.limitKey)}</p>
@@ -91,22 +100,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                   </div>
                 ))}
               {data.planLimits.filter((limit) => limit.planKey === data.activePlanKey).length === 0 ? (
-                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Free plan defaults apply.</p>
+                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Free social and import defaults apply.</p>
               ) : null}
             </div>
-          </section>
-
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <LockKeyhole className="size-4 text-emerald-600" />
-              Implementation state
-            </p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Checkout is wired to Stripe price environment variables. Subscription webhooks can update these tables without changing feature checks.
-            </p>
-            <Button asChild variant="outline" className="mt-3 w-full">
-              <Link href="/settings" prefetch={false}>Account settings</Link>
-            </Button>
           </section>
         </aside>
       </section>
@@ -148,6 +144,14 @@ function PlanCard({ plan, active, stripeConfigured }: { plan: BillingPlan; activ
         </Button>
       </form>
     </article>
+  );
+}
+
+function UpgradePrompt({ text }: { text: string }) {
+  return (
+    <div className="rounded-lg border bg-slate-50 px-3 py-2 text-muted-foreground">
+      {text}
+    </div>
   );
 }
 
