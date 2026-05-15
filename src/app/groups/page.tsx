@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe2, Lock, Plus, Radio, Search, Trophy, Users } from "lucide-react";
+import { Award, Globe2, Lock, Plus, Radio, Search, Trophy, Users } from "lucide-react";
 
 import { createGroupAction, joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
 import { PageShell, StatusPill } from "@/components/premium";
@@ -89,15 +89,23 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <StatusPill tone="green">Groups and leagues</StatusPill>
                 <h1 className="mt-3 text-3xl font-semibold tracking-normal">Groups</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Build Rapsodo leagues, golf societies, coach stables and simulator venue communities with their own feed, challenges and leaderboards.
+                  Build Rapsodo leagues, golf societies, coach stables and simulator venue communities with their own feed, records, events and leaderboards.
                 </p>
               </div>
-              <Button asChild variant="outline">
-                <Link href="/challenges" prefetch={false}>
-                  <Trophy className="size-4" />
-                  Challenges
-                </Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/course-records" prefetch={false}>
+                    <Award className="size-4" />
+                    Records
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/tournaments" prefetch={false}>
+                    <Trophy className="size-4" />
+                    Events
+                  </Link>
+                </Button>
+              </div>
             </div>
             {params?.created || params?.joined ? (
               <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
@@ -194,11 +202,27 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
               <Trophy className="size-3" />
               {group.challengeCount}
             </Badge>
+            <Badge variant="outline" className="gap-1">
+              <Award className="size-3" />
+              Records
+            </Badge>
             <Badge variant="outline">{label(group.groupType)}</Badge>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
               <Link href={`/groups/${group.slug}`} prefetch={false}>Open</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/course-records" prefetch={false}>
+                <Award className="size-4" />
+                Records
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tournaments" prefetch={false}>
+                <Trophy className="size-4" />
+                Events
+              </Link>
             </Button>
             {!group.viewerRole && group.visibility === "public" ? (
               <form action={joinGroupAction}>

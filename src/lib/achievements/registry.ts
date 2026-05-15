@@ -2,7 +2,7 @@ import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club
 
 import type { Achievement, AchievementCategory, AchievementTier, AchievementTriggerType } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-14-benchmark-club-levels-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-15-course-records-tournaments-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -164,6 +164,12 @@ export const CORE_ACHIEVEMENTS: Achievement[] = ([
   achievement("two_birdie_round", "Two Birdie Round", "Make 2 birdies in one round.", "scoring", "platinum", "roundScorecard", 2),
   achievement("eagle_landed", "Eagle Landed", "Make an eagle or better.", "scoring", "diamond", "roundScorecard", 1),
   achievement("bounce_back", "Bounce Back", "Make par or better after a double bogey or worse.", "scoring", "gold", "roundScorecard", 1),
+  achievement("course_champion", "Course Champion", "Hold a verified course record.", "scoring", "gold", "roundScorecard", 1, 250),
+  achievement("first_verified_record", "First Verified Record", "Submit your first verified course record.", "data", "silver", "roundScorecard", 1, 150),
+  achievement("beat_friend_record", "Beat a Friend Record", "Move ahead of a friend on a course record board.", "scoring", "gold", "roundScorecard", 1, 200),
+  achievement("defended_champion", "Defended Champion", "Defend a course champion record with a new verified attempt.", "scoring", "platinum", "roundScorecard", 1, 300),
+  achievement("major_contender", "Major Contender", "Enter a major-style tournament.", "scoring", "silver", "roundScorecard", 1, 150),
+  achievement("four_round_finisher", "Four-Round Finisher", "Complete all four rounds of a major-style event.", "scoring", "platinum", "roundScorecard", 4, 350),
 
   achievement("first_one_putt", "First One-Putt", "Record a one-putt.", "putting", "bronze", "roundScorecard", 1),
   achievement("no_3_putt_nine", "No 3-Putt Nine", "Complete 9 holes with no 3-putts.", "putting", "silver", "roundScorecard", 9),

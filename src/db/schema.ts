@@ -1504,6 +1504,466 @@ export const rapsodoSyncSessions = pgTable(
   ],
 );
 
+export const courseProviderAliases = pgTable(
+  "fkh_course_provider_aliases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    providerKind: varchar("provider_kind", { length: 40 }).notNull(),
+    providerCourseId: varchar("provider_course_id", { length: 180 }),
+    providerCourseName: varchar("provider_course_name", { length: 220 }).notNull(),
+    providerTeeName: varchar("provider_tee_name", { length: 120 }),
+    normalisedName: varchar("normalised_name", { length: 220 }).notNull(),
+    confidenceScore: doublePrecision("confidence_score").notNull().default(0.6),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_provider_aliases_provider_idx").on(
+      table.providerKind,
+      table.providerCourseId,
+      table.providerCourseName,
+      table.providerTeeName,
+    ),
+    index("fkh_course_provider_aliases_course_idx").on(table.courseId),
+    index("fkh_course_provider_aliases_normalised_idx").on(table.normalisedName),
+  ],
+);
+
+export const courseRecordCategories = pgTable(
+  "fkh_course_record_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: varchar("slug", { length: 80 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    description: text("description"),
+    recordType: varchar("record_type", { length: 60 }).notNull(),
+    metricKind: varchar("metric_kind", { length: 40 }).notNull().default("score"),
+    scoringDirection: varchar("scoring_direction", { length: 12 }).notNull().default("asc"),
+    scopeDefault: varchar("scope_default", { length: 24 }).notNull().default("public"),
+    verificationRequired: varchar("verification_required", { length: 40 }).notNull().default("silver"),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(100),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_record_categories_slug_idx").on(table.slug),
+    index("fkh_course_record_categories_type_idx").on(table.recordType),
+    index("fkh_course_record_categories_active_sort_idx").on(table.active, table.sortOrder),
+  ],
+);
+
+export const courseRecords = pgTable(
+  "fkh_course_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => courseRecordCategories.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    teeSetId: uuid("tee_set_id").references(() => teeSets.id, { onDelete: "set null" }),
+    groupId: uuid("group_id").references(() => groups.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    recordType: varchar("record_type", { length: 60 }).notNull(),
+    scope: varchar("scope", { length: 24 }).notNull().default("public"),
+    period: varchar("period", { length: 24 }).notNull().default("all_time"),
+    periodStart: timestamp("period_start", { withTimezone: true }),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    verificationRequired: varchar("verification_required", { length: 40 }).notNull().default("silver"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    bestResultId: uuid("best_result_id"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_records_unique_scope_idx").on(
+      table.categoryId,
+      table.courseId,
+      table.teeSetId,
+      table.scope,
+      table.period,
+      table.groupId,
+    ),
+    index("fkh_course_records_course_scope_idx").on(table.courseId, table.scope, table.period),
+    index("fkh_course_records_best_idx").on(table.bestResultId),
+    index("fkh_course_records_group_idx").on(table.groupId),
+  ],
+);
+
+export const courseRecordAttempts = pgTable(
+  "fkh_course_record_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recordId: uuid("record_id")
+      .notNull()
+      .references(() => courseRecords.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => courseRecordCategories.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    teeSetId: uuid("tee_set_id").references(() => teeSets.id, { onDelete: "set null" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    roundId: uuid("round_id").references(() => sessions.id, { onDelete: "set null" }),
+    challengeId: uuid("challenge_id").references(() => challenges.id, { onDelete: "set null" }),
+    score: integer("score"),
+    netScore: integer("net_score"),
+    stablefordPoints: integer("stableford_points"),
+    metricValue: doublePrecision("metric_value").notNull(),
+    metricLabel: varchar("metric_label", { length: 80 }).notNull(),
+    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
+    sourceKind: varchar("source_kind", { length: 60 }).notNull().default("manual"),
+    proofStatus: varchar("proof_status", { length: 40 }).notNull().default("pending_evidence"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_record_attempts_record_user_idx").on(table.recordId, table.userId),
+    index("fkh_course_record_attempts_course_user_idx").on(table.courseId, table.userId),
+    index("fkh_course_record_attempts_session_idx").on(table.sessionId),
+    index("fkh_course_record_attempts_status_idx").on(table.verificationStatus),
+  ],
+);
+
+export const courseRecordResults = pgTable(
+  "fkh_course_record_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recordId: uuid("record_id")
+      .notNull()
+      .references(() => courseRecords.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    bestAttemptId: uuid("best_attempt_id").references(() => courseRecordAttempts.id, { onDelete: "set null" }),
+    rank: integer("rank"),
+    metricValue: doublePrecision("metric_value").notNull(),
+    scoreLabel: varchar("score_label", { length: 120 }).notNull(),
+    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    tieBreakerJson: jsonb("tie_breaker_json").$type<Record<string, unknown>>().notNull().default({}),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_record_results_record_user_idx").on(table.recordId, table.userId),
+    index("fkh_course_record_results_record_rank_idx").on(table.recordId, table.rank),
+    index("fkh_course_record_results_user_idx").on(table.userId),
+  ],
+);
+
+export const courseRecordEvidence = pgTable(
+  "fkh_course_record_evidence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    attemptId: uuid("attempt_id")
+      .notNull()
+      .references(() => courseRecordAttempts.id, { onDelete: "cascade" }),
+    evidenceType: varchar("evidence_type", { length: 60 }).notNull(),
+    storagePath: text("storage_path"),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
+    csvHash: varchar("csv_hash", { length: 64 }),
+    extractedScorecardTotal: integer("extracted_scorecard_total"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    reviewStatus: varchar("review_status", { length: 40 }).notNull().default("pending"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_record_evidence_attempt_idx").on(table.attemptId),
+    index("fkh_course_record_evidence_csv_hash_idx").on(table.csvHash),
+    index("fkh_course_record_evidence_review_idx").on(table.reviewStatus),
+  ],
+);
+
+export const courseRecordFlags = pgTable(
+  "fkh_course_record_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    attemptId: uuid("attempt_id")
+      .notNull()
+      .references(() => courseRecordAttempts.id, { onDelete: "cascade" }),
+    reporterUserId: uuid("reporter_user_id").references(() => users.id, { onDelete: "set null" }),
+    flagType: varchar("flag_type", { length: 60 }).notNull(),
+    reason: text(),
+    status: varchar("status", { length: 32 }).notNull().default("open"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_course_record_flags_attempt_idx").on(table.attemptId),
+    index("fkh_course_record_flags_status_idx").on(table.status),
+  ],
+);
+
+export const tournaments = pgTable(
+  "fkh_tournaments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: varchar("title", { length: 180 }).notNull(),
+    description: text(),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
+    teeSetId: uuid("tee_set_id").references(() => teeSets.id, { onDelete: "set null" }),
+    format: varchar("format", { length: 40 }).notNull().default("two_round_open"),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("friends"),
+    status: varchar("status", { length: 24 }).notNull().default("open"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    roundCount: integer("round_count").notNull().default(2),
+    verificationPolicy: varchar("verification_policy", { length: 40 }).notNull().default("silver"),
+    screenshotRequired: boolean("screenshot_required").notNull().default(false),
+    directRapsodoRequired: boolean("direct_rapsodo_required").notNull().default(false),
+    cutRuleJson: jsonb("cut_rule_json").$type<Record<string, unknown>>().notNull().default({}),
+    playoffRuleJson: jsonb("playoff_rule_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id").references(() => groups.id, { onDelete: "cascade" }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_tournaments_creator_idx").on(table.createdByUserId),
+    index("fkh_tournaments_course_status_idx").on(table.courseId, table.status),
+    index("fkh_tournaments_visibility_status_idx").on(table.visibility, table.status),
+    index("fkh_tournaments_group_idx").on(table.groupId),
+  ],
+);
+
+export const tournamentRounds = pgTable(
+  "fkh_tournament_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    roundNumber: integer("round_number").notNull(),
+    title: varchar("title", { length: 160 }),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    status: varchar("status", { length: 24 }).notNull().default("scheduled"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_tournament_rounds_number_idx").on(table.tournamentId, table.roundNumber),
+    index("fkh_tournament_rounds_status_idx").on(table.tournamentId, table.status),
+  ],
+);
+
+export const tournamentEntries = pgTable(
+  "fkh_tournament_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("entered"),
+    seed: integer("seed"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_tournament_entries_tournament_user_idx").on(table.tournamentId, table.userId),
+    index("fkh_tournament_entries_user_idx").on(table.userId),
+    index("fkh_tournament_entries_status_idx").on(table.tournamentId, table.status),
+  ],
+);
+
+export const tournamentSubmissions = pgTable(
+  "fkh_tournament_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => tournamentEntries.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roundNumber: integer("round_number").notNull(),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    scorecardSessionId: uuid("scorecard_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    grossScore: integer("gross_score").notNull(),
+    netScore: integer("net_score"),
+    stablefordPoints: integer("stableford_points"),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    scorecardScreenshotPath: text("scorecard_screenshot_path"),
+    extractedScorecardTotal: integer("extracted_scorecard_total"),
+    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
+    proofStatus: varchar("proof_status", { length: 40 }).notNull().default("pending_evidence"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_tournament_submissions_entry_round_idx").on(table.entryId, table.roundNumber),
+    index("fkh_tournament_submissions_tournament_round_idx").on(table.tournamentId, table.roundNumber),
+    index("fkh_tournament_submissions_status_idx").on(table.verificationStatus),
+    index("fkh_tournament_submissions_session_idx").on(table.sessionId),
+  ],
+);
+
+export const tournamentEvidence = pgTable(
+  "fkh_tournament_evidence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    submissionId: uuid("submission_id")
+      .notNull()
+      .references(() => tournamentSubmissions.id, { onDelete: "cascade" }),
+    evidenceType: varchar("evidence_type", { length: 60 }).notNull(),
+    storagePath: text("storage_path"),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
+    csvHash: varchar("csv_hash", { length: 64 }),
+    extractedScorecardTotal: integer("extracted_scorecard_total"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    reviewStatus: varchar("review_status", { length: 40 }).notNull().default("pending"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_tournament_evidence_submission_idx").on(table.submissionId),
+    index("fkh_tournament_evidence_csv_hash_idx").on(table.csvHash),
+    index("fkh_tournament_evidence_review_idx").on(table.reviewStatus),
+  ],
+);
+
+export const tournamentStandings = pgTable(
+  "fkh_tournament_standings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => tournamentEntries.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    grossTotal: integer("gross_total").notNull().default(0),
+    netTotal: integer("net_total"),
+    stablefordTotal: integer("stableford_total"),
+    roundsCompleted: integer("rounds_completed").notNull().default(0),
+    rank: integer("rank"),
+    tieBreakerJson: jsonb("tie_breaker_json").$type<Record<string, unknown>>().notNull().default({}),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_tournament_standings_entry_idx").on(table.entryId),
+    index("fkh_tournament_standings_rank_idx").on(table.tournamentId, table.rank),
+    index("fkh_tournament_standings_user_idx").on(table.userId),
+  ],
+);
+
+export const tournamentComments = pgTable(
+  "fkh_tournament_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("fkh_tournament_comments_tournament_created_idx").on(table.tournamentId, table.createdAt),
+    index("fkh_tournament_comments_user_idx").on(table.userId),
+  ],
+);
+
+export const tournamentInvites = pgTable(
+  "fkh_tournament_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    inviterUserId: uuid("inviter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteeUserId: uuid("invitee_user_id").references(() => users.id, { onDelete: "cascade" }),
+    inviteeEmail: varchar("invitee_email", { length: 320 }),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("fkh_tournament_invites_tournament_invitee_idx").on(table.tournamentId, table.inviteeUserId),
+    index("fkh_tournament_invites_invitee_status_idx").on(table.inviteeUserId, table.status),
+    index("fkh_tournament_invites_email_idx").on(table.inviteeEmail),
+  ],
+);
+
+export const tournamentPrizes = pgTable(
+  "fkh_tournament_prizes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: uuid("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    sponsorId: uuid("sponsor_id").references(() => sponsors.id, { onDelete: "set null" }),
+    title: varchar("title", { length: 160 }).notNull(),
+    description: text(),
+    prizeType: varchar("prize_type", { length: 40 }).notNull().default("badge"),
+    rankStart: integer("rank_start"),
+    rankEnd: integer("rank_end"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_tournament_prizes_tournament_idx").on(table.tournamentId),
+    index("fkh_tournament_prizes_sponsor_idx").on(table.sponsorId),
+  ],
+);
+
 export type NewUser = typeof users.$inferInsert;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type NewAdminAuditLog = typeof adminAuditLog.$inferInsert;
@@ -1565,3 +2025,19 @@ export type NewXpLedger = typeof xpLedger.$inferInsert;
 export type NewAchievementProgress = typeof achievementProgress.$inferInsert;
 export type NewAchievementSyncState = typeof achievementSyncState.$inferInsert;
 export type NewRapsodoSyncSession = typeof rapsodoSyncSessions.$inferInsert;
+export type NewCourseProviderAlias = typeof courseProviderAliases.$inferInsert;
+export type NewCourseRecordCategory = typeof courseRecordCategories.$inferInsert;
+export type NewCourseRecord = typeof courseRecords.$inferInsert;
+export type NewCourseRecordAttempt = typeof courseRecordAttempts.$inferInsert;
+export type NewCourseRecordResult = typeof courseRecordResults.$inferInsert;
+export type NewCourseRecordEvidence = typeof courseRecordEvidence.$inferInsert;
+export type NewCourseRecordFlag = typeof courseRecordFlags.$inferInsert;
+export type NewTournament = typeof tournaments.$inferInsert;
+export type NewTournamentRound = typeof tournamentRounds.$inferInsert;
+export type NewTournamentEntry = typeof tournamentEntries.$inferInsert;
+export type NewTournamentSubmission = typeof tournamentSubmissions.$inferInsert;
+export type NewTournamentEvidence = typeof tournamentEvidence.$inferInsert;
+export type NewTournamentStanding = typeof tournamentStandings.$inferInsert;
+export type NewTournamentComment = typeof tournamentComments.$inferInsert;
+export type NewTournamentInvite = typeof tournamentInvites.$inferInsert;
+export type NewTournamentPrize = typeof tournamentPrizes.$inferInsert;

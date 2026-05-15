@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, CalendarDays, Globe2, Medal, ShieldCheck, Target, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Flag, Globe2, Medal, ShieldCheck, Target, Trophy, Users } from "lucide-react";
 import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
 
 import {
@@ -17,7 +17,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { sessions, shots, userProfiles, users, xpLedger } from "@/db/schema";
+import {
+  courseRecordCategories,
+  courseRecordResults,
+  courseRecords,
+  courses,
+  sessions,
+  shots,
+  tournamentStandings,
+  tournaments,
+  userProfiles,
+  users,
+  xpLedger,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
@@ -25,7 +37,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
-type LeaderboardTab = "friends" | "monthly" | "challenges" | "public";
+type LeaderboardTab = "friends" | "monthly" | "courses" | "challenges" | "tournaments" | "public";
 
 type LeaderboardPageProps = {
   searchParams?: Promise<{
@@ -48,6 +60,33 @@ type PlayerRow = {
   bestRoundScore: number | null;
   longestDriveYd: number | null;
   verificationLabel: string;
+};
+
+type CourseChampionBoard = {
+  id: string;
+  courseId: string;
+  courseName: string;
+  categoryName: string;
+  scope: string;
+  period: string;
+  scoreLabel: string;
+  verificationTier: string;
+  champion: {
+    displayName: string;
+    username: string;
+  };
+};
+
+type TournamentBoard = {
+  id: string;
+  title: string;
+  format: string;
+  grossTotal: number;
+  roundsCompleted: number;
+  champion: {
+    displayName: string;
+    username: string;
+  };
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
@@ -84,7 +123,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           { label: "Visible players", value: integerFormatter.format(data.players.length), detail: `${titleCase(activeTab)} scope` },
           { label: "Friends", value: integerFormatter.format(data.friendCount), detail: "Accepted friendships only" },
           { label: "Monthly shots", value: integerFormatter.format(data.monthlyShotTotal), detail: formatMonth(data.monthStart) },
-          { label: "Challenge boards", value: integerFormatter.format(data.challengeBoards.length), detail: "Visible challenge leaders" },
+          { label: "Course champions", value: integerFormatter.format(data.courseChampionBoards.length), detail: "Verified record holders" },
         ]}
       />
 
@@ -92,8 +131,20 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         items={[
           {
             label: "Leader",
-            value: data.players[0]?.displayName ?? "--",
-            detail: data.players[0] ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}` : "No visible players.",
+            value:
+              activeTab === "courses"
+                ? data.courseChampionBoards[0]?.champion.displayName ?? "--"
+                : activeTab === "tournaments"
+                  ? data.tournamentBoards[0]?.champion.displayName ?? "--"
+                  : data.players[0]?.displayName ?? "--",
+            detail:
+              activeTab === "courses"
+                ? data.courseChampionBoards[0]?.courseName ?? "No course champions yet."
+                : activeTab === "tournaments"
+                  ? data.tournamentBoards[0]?.title ?? "No tournament leaders yet."
+                  : data.players[0]
+                    ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
+                    : "No visible players.",
             tone: "amber",
           },
           {
@@ -110,8 +161,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           },
           {
             label: "Boards",
-            value: integerFormatter.format(data.challengeBoards.length),
-            detail: "Challenges",
+            value: integerFormatter.format(data.courseChampionBoards.length + data.challengeBoards.length + data.tournamentBoards.length),
+            detail: "Records, challenges, events",
             tone: "slate",
           },
         ]}
@@ -144,10 +195,13 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
       <div className="flex flex-wrap gap-2">
         <TabLink tab="friends" activeTab={activeTab} icon={<Users className="size-4" />} label="Friends" />
         <TabLink tab="monthly" activeTab={activeTab} icon={<CalendarDays className="size-4" />} label="Monthly" />
+        <TabLink tab="courses" activeTab={activeTab} icon={<Medal className="size-4" />} label="Course Champions" />
         <TabLink tab="challenges" activeTab={activeTab} icon={<Trophy className="size-4" />} label="Challenges" />
+        <TabLink tab="tournaments" activeTab={activeTab} icon={<Flag className="size-4" />} label="Tournaments" />
         <TabLink tab="public" activeTab={activeTab} icon={<Globe2 className="size-4" />} label="Public opt-in" />
       </div>
 
+      {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
       <section className="rounded-xl border bg-white p-3 shadow-sm">
         <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
           <input type="hidden" name="tab" value={activeTab} />
@@ -174,9 +228,14 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           <Badge variant="outline" className="px-3 py-1.5">Month: {formatMonth(data.monthStart)}</Badge>
         </form>
       </section>
+      ) : null}
 
       {activeTab === "challenges" ? (
         <ChallengeBoards boards={data.challengeBoards} />
+      ) : activeTab === "courses" ? (
+        <CourseChampionBoards boards={data.courseChampionBoards} />
+      ) : activeTab === "tournaments" ? (
+        <TournamentBoards boards={data.tournamentBoards} />
       ) : (
         <PlayerLeaderboard players={data.players} activeTab={activeTab} monthStart={data.monthStart} filters={filters} />
       )}
@@ -319,7 +378,11 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
         ? b.monthlyXp - a.monthlyXp || b.monthlyShots - a.monthlyShots || a.displayName.localeCompare(b.displayName)
         : b.totalXp - a.totalXp || b.monthlyXp - a.monthlyXp || a.displayName.localeCompare(b.displayName),
     );
-  const challengeData = await getChallengesPageData();
+  const [challengeData, courseChampionBoards, tournamentBoards] = await Promise.all([
+    getChallengesPageData(),
+    getCourseChampionBoards(userId, friendIds),
+    getTournamentBoards(userId, friendIds),
+  ]);
 
   return {
     monthStart,
@@ -329,7 +392,90 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
     monthlyLeader: maxPlayer(players, (player) => player.monthlyXp),
     longDriveLeader: maxPlayer(players, (player) => player.longestDriveYd ?? 0),
     challengeBoards: challengeData.challenges.filter((challenge) => challenge.leader),
+    courseChampionBoards,
+    tournamentBoards,
   };
+}
+
+async function getCourseChampionBoards(viewerUserId: string, friendIds: string[]): Promise<CourseChampionBoard[]> {
+  const creatorIds = [viewerUserId, ...friendIds];
+  const visibilityConditions = [
+    eq(courseRecords.scope, "public"),
+    eq(courseRecords.createdByUserId, viewerUserId),
+  ];
+
+  if (creatorIds.length > 0) {
+    visibilityConditions.push(and(eq(courseRecords.scope, "friends"), inArray(courseRecords.createdByUserId, creatorIds))!);
+  }
+
+  const rows = await getDb()
+    .select({
+      result: courseRecordResults,
+      record: courseRecords,
+      category: courseRecordCategories,
+      course: courses,
+      profile: userProfiles,
+    })
+    .from(courseRecordResults)
+    .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+    .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
+    .innerJoin(courses, eq(courseRecords.courseId, courses.id))
+    .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+    .where(and(eq(courseRecordResults.rank, 1), or(...visibilityConditions)))
+    .orderBy(desc(courseRecordResults.calculatedAt))
+    .limit(12);
+
+  return rows
+    .filter((row) => row.profile)
+    .map((row) => ({
+      id: row.record.id,
+      courseId: row.course.id,
+      courseName: row.course.name,
+      categoryName: row.category.name,
+      scope: row.record.scope,
+      period: row.record.period,
+      scoreLabel: row.result.scoreLabel,
+      verificationTier: row.result.verificationTier,
+      champion: {
+        displayName: row.profile?.displayName ?? "Player",
+        username: row.profile?.username ?? row.result.userId,
+      },
+    }));
+}
+
+async function getTournamentBoards(viewerUserId: string, friendIds: string[]): Promise<TournamentBoard[]> {
+  const creatorIds = [viewerUserId, ...friendIds];
+  const rows = await getDb()
+    .select({
+      standing: tournamentStandings,
+      tournament: tournaments,
+      profile: userProfiles,
+    })
+    .from(tournamentStandings)
+    .innerJoin(tournaments, eq(tournamentStandings.tournamentId, tournaments.id))
+    .leftJoin(userProfiles, eq(tournamentStandings.userId, userProfiles.userId))
+    .where(
+      and(
+        eq(tournamentStandings.rank, 1),
+        or(eq(tournaments.visibility, "public"), inArray(tournaments.createdByUserId, creatorIds)),
+      ),
+    )
+    .orderBy(desc(tournamentStandings.calculatedAt))
+    .limit(12);
+
+  return rows
+    .filter((row) => row.profile)
+    .map((row) => ({
+      id: row.tournament.id,
+      title: row.tournament.title,
+      format: row.tournament.format,
+      grossTotal: row.standing.grossTotal,
+      roundsCompleted: row.standing.roundsCompleted,
+      champion: {
+        displayName: row.profile?.displayName ?? "Player",
+        username: row.profile?.username ?? row.standing.userId,
+      },
+    }));
 }
 
 function PlayerLeaderboard({
@@ -509,6 +655,112 @@ function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLead
   );
 }
 
+function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
+  const champion = boards[0] ?? null;
+
+  return (
+    <section className="grid gap-4">
+      <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Course Champions</p>
+            <p className="mt-1 text-sm text-muted-foreground">Verified and manual boards stay labelled by scope and proof tier.</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/course-records" prefetch={false}>Open records</Link>
+          </Button>
+        </div>
+        {champion ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <Badge>Current champion</Badge>
+            <p className="mt-3 text-2xl font-semibold tracking-normal">{champion.champion.displayName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {champion.courseName} · {champion.categoryName} · {champion.scoreLabel}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No course champions yet.</p>
+        )}
+      </article>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {boards.map((board) => (
+          <Link
+            key={board.id}
+            href={`/course-records/${board.id}`}
+            prefetch={false}
+            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{board.courseName}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{board.categoryName}</p>
+              </div>
+              <Badge variant={board.verificationTier === "gold" ? "secondary" : "outline"}>{label(board.verificationTier)}</Badge>
+            </div>
+            <p className="mt-4 text-xl font-semibold tracking-normal">{board.champion.displayName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {board.scoreLabel} · {label(board.scope)} · {label(board.period)}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
+  const leader = boards[0] ?? null;
+
+  return (
+    <section className="grid gap-4">
+      <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold">Tournament Leaders</p>
+            <p className="mt-1 text-sm text-muted-foreground">Major-style events rank gross first, with net totals as tiebreak context.</p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/tournaments" prefetch={false}>Open events</Link>
+          </Button>
+        </div>
+        {leader ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <Badge>Event leader</Badge>
+            <p className="mt-3 text-2xl font-semibold tracking-normal">{leader.champion.displayName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {leader.title} · {leader.grossTotal} through {leader.roundsCompleted}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No tournament standings yet.</p>
+        )}
+      </article>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {boards.map((board) => (
+          <Link
+            key={board.id}
+            href={`/tournaments/${board.id}`}
+            prefetch={false}
+            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{board.title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{formatTournamentLabel(board.format)}</p>
+              </div>
+              <Badge variant="outline">{board.roundsCompleted} rounds</Badge>
+            </div>
+            <p className="mt-4 text-xl font-semibold tracking-normal">{board.champion.displayName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{board.grossTotal} gross total</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TabLink({
   tab,
   activeTab,
@@ -666,7 +918,13 @@ function formatMonth(value: Date) {
 }
 
 function parseTab(value: string | undefined): LeaderboardTab {
-  return value === "monthly" || value === "challenges" || value === "public" ? value : "friends";
+  return value === "monthly" ||
+    value === "courses" ||
+    value === "challenges" ||
+    value === "tournaments" ||
+    value === "public"
+    ? value
+    : "friends";
 }
 
 function parseLeaderboardFilters(params: Awaited<LeaderboardPageProps["searchParams"]>): LeaderboardFilters {
@@ -689,6 +947,14 @@ function titleCase(value: string) {
 function label(value: string) {
   return value
     .split("_")
+    .map((part) => titleCase(part))
+    .join(" ");
+}
+
+function formatTournamentLabel(value: string) {
+  return value
+    .split("_")
+    .filter(Boolean)
     .map((part) => titleCase(part))
     .join(" ");
 }

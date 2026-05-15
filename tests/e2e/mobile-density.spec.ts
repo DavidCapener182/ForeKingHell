@@ -31,6 +31,7 @@ test.describe("mobile density screenshots", () => {
         { name: "rounds-new", path: "/rounds/new", text: /Add Round|New round/i },
         { name: "handicap", path: "/handicap", text: /Handicap/i },
         { name: "courses", path: "/courses", text: /Courses/i },
+        { name: "course-records", path: "/course-records", text: /Course records|Course Champion/i },
         { name: "courses-new", path: "/courses/new", text: /New Course|Manual course setup/i },
       ],
     },
@@ -52,6 +53,7 @@ test.describe("mobile density screenshots", () => {
       name: "platform",
       routes: [
         { name: "leaderboard", path: "/leaderboard", text: /Leaderboards/i },
+        { name: "tournaments", path: "/tournaments", text: /Major-style events|Spring Major/i },
         { name: "settings", path: "/settings", text: /Settings/i },
       ],
     },

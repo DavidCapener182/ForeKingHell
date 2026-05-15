@@ -17,7 +17,6 @@ import {
   Zap,
 } from "lucide-react";
 
-import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,7 +115,7 @@ function SocialFeedRailContent() {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
   const [busyCommentId, setBusyCommentId] = useState<string | null>(null);
-  const groups = useMemo(() => groupItemsByDay(items), [items]);
+  const groups = useMemo(() => groupItemsByDayAndUser(items), [items]);
 
   useEffect(() => {
     if (status !== "loading") {
@@ -475,19 +474,22 @@ function RailDayDigest({
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-2.5 text-sm shadow-sm">
-      <header className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-        <SocialAvatar
-          displayName={firstItem.profile.displayName}
-          username={firstItem.profile.username}
-          avatarUrl={firstItem.profile.avatarUrl}
-          href={`/profile/${firstItem.profile.username}`}
-          size="sm"
-        />
+      <header>
         <div className="min-w-0">
-          <Badge variant="secondary" className="gap-1">
-            <CalendarDays className="size-3" />
-            {group.label}
-          </Badge>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <Badge variant="secondary" className="gap-1">
+              <CalendarDays className="size-3" />
+              {group.label}
+            </Badge>
+            <Link
+              href={`/profile/${firstItem.profile.username}`}
+              prefetch={false}
+              className="text-xs font-semibold hover:underline"
+            >
+              {firstItem.profile.displayName}
+            </Link>
+            <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
+          </div>
           <p className="mt-2 font-semibold leading-5">{digestHeadline(group, achievements.length)}</p>
         </div>
       </header>
@@ -647,28 +649,36 @@ function RailActivityItem({
   );
 }
 
-function groupItemsByDay(items: SocialFeedPreviewItem[]): RailDayGroup[] {
+function groupItemsByDayAndUser(items: SocialFeedPreviewItem[]): RailDayGroup[] {
   const grouped = new Map<string, SocialFeedPreviewItem[]>();
 
   for (const item of items) {
-    const key = dayKeyFormatter.format(new Date(item.createdAt));
+    const key = `${dayKeyFormatter.format(new Date(item.createdAt))}:${item.userId}`;
     grouped.set(key, [...(grouped.get(key) ?? []), item]);
   }
 
-  return [...grouped.entries()].map(([key, groupItems]) => {
-    const sortedItems = [...groupItems].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-    const firstItem = sortedItems[0];
+  return [...grouped.entries()]
+    .map(([key, groupItems]) => {
+      const sortedItems = [...groupItems].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const firstItem = sortedItems[0];
 
-    return {
-      key,
-      label: firstItem ? dayFormatter.format(new Date(firstItem.createdAt)) : key,
-      items: sortedItems,
-      xpGained: sortedItems.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0),
-      reactionCount: sortedItems.reduce((total, item) => total + item.reactionCount, 0),
-      commentCount: sortedItems.reduce((total, item) => total + item.commentCount, 0),
-      typeSummaries: summarizeItemTypes(sortedItems),
-    };
-  });
+      return {
+        key,
+        label: firstItem ? dayFormatter.format(new Date(firstItem.createdAt)) : key,
+        items: sortedItems,
+        xpGained: sortedItems.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0),
+        reactionCount: sortedItems.reduce((total, item) => total + item.reactionCount, 0),
+        commentCount: sortedItems.reduce((total, item) => total + item.commentCount, 0),
+        typeSummaries: summarizeItemTypes(sortedItems),
+      };
+    })
+    .sort((left, right) => latestItemTime(right.items) - latestItemTime(left.items));
+}
+
+function latestItemTime(items: SocialFeedPreviewItem[]) {
+  const timestamp = Date.parse(items[0]?.createdAt ?? "");
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function summarizeItemTypes(items: SocialFeedPreviewItem[]) {

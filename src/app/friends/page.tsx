@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, Ban, Check, Copy, QrCode, Search, Trophy, UserMinus, UserPlus, Users, X } from "lucide-react";
+import { ArrowLeft, Award, Ban, Check, Copy, QrCode, Search, Trophy, UserMinus, UserPlus, Users, X } from "lucide-react";
 
 import {
   acceptFriendRequestAction,
@@ -74,7 +74,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
                 <StatusPill tone="green">Social graph</StatusPill>
                 <h1 className="mt-2 text-3xl font-semibold tracking-normal">Friends</h1>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Find golfers by username, approve requests, and keep friendships separate from coach/viewer/editor account access.
+                  Find golfers by username, approve requests, and keep friendships separate from coach/viewer/editor access. Friend scopes now power records, boards and private events.
                 </p>
               </div>
             </div>
@@ -192,10 +192,28 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           <SectionHeader title="Active this week" description="Shortcuts for friend-scoped competition." action={<Trophy className="size-5 text-amber-600" />} />
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <Button asChild variant="outline">
-              <Link href="/leaderboard?tab=friends" prefetch={false}>Friends leaderboard</Link>
+              <Link href="/leaderboard?tab=friends" prefetch={false}>
+                <Users className="size-4" />
+                Friends leaderboard
+              </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/challenges" prefetch={false}>Start challenge</Link>
+              <Link href="/course-records" prefetch={false}>
+                <Award className="size-4" />
+                Friend records
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/challenges" prefetch={false}>
+                <Trophy className="size-4" />
+                Start challenge
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/tournaments" prefetch={false}>
+                <Trophy className="size-4" />
+                Friend event
+              </Link>
             </Button>
           </CardContent>
         </DataPanel>

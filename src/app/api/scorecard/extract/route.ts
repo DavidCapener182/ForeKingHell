@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rejectOversizedDataUrl, rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
+import { createScorecardProofToken } from "@/lib/scorecard-proof-token";
 
 export const runtime = "nodejs";
 
@@ -47,7 +48,9 @@ Important:
 - Do not include markdown, explanation, or code fences.`;
 
 export async function POST(request: NextRequest) {
-  if (!(await getOptionalCurrentUserId())) {
+  const userId = await getOptionalCurrentUserId();
+
+  if (!userId) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
@@ -128,7 +131,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ scorecard });
+    const proofToken = createScorecardProofToken({
+      userId,
+      totalScore: scorecard.totalScore,
+      courseName: scorecard.courseName,
+      teeName: scorecard.teeName,
+      dateIso: scorecard.dateIso,
+    });
+
+    return NextResponse.json({ scorecard, proofToken });
   } catch (error) {
     return NextResponse.json(
       {

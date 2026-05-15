@@ -67,6 +67,8 @@ export default async function SocialIntelligencePage() {
                 <option value="feed_item">Feed item</option>
                 <option value="comment">Comment</option>
                 <option value="challenge_result">Challenge result</option>
+                <option value="course_record_attempt">Course record attempt</option>
+                <option value="tournament_submission">Tournament submission</option>
                 <option value="profile">Profile</option>
               </select>
               <Input name="targetId" placeholder="Target id" className="h-9 rounded-xl bg-slate-50" required />
@@ -110,17 +112,41 @@ export default async function SocialIntelligencePage() {
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Safety queue</p>
-            <div className="mt-4 grid gap-2">
-              {data.reports.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No reports created by this account.</p>
-              ) : (
+            <div className="mt-4 grid gap-3">
+              {data.moderation.length > 0 ? (
+                data.moderation.map((event) => (
+                  <article key={event.id} className="rounded-xl border bg-slate-50 p-4 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge variant={event.severity === "high" ? "destructive" : "secondary"}>{label(event.eventType)}</Badge>
+                      <Badge variant="outline">{event.status}</Badge>
+                    </div>
+                    <p className="mt-3 font-medium">{event.reason ?? "Verification review needed"}</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                      <ReviewMetric label="Imported" value={metadataValue(event.metadataJson, "imported")} />
+                      <ReviewMetric label="Screenshot" value={metadataValue(event.metadataJson, "screenshot")} />
+                      <ReviewMetric label="Context" value={metadataValue(event.metadataJson, "course") ?? metadataValue(event.metadataJson, "tournament")} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" variant="outline">Approve</Button>
+                      <Button type="button" size="sm" variant="outline">Reject</Button>
+                      <Button type="button" size="sm" variant="outline">Request more evidence</Button>
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {event.targetType} / {event.targetId} · {dateFormatter.format(event.createdAt)}
+                    </p>
+                  </article>
+                ))
+              ) : data.reports.length === 0 ? (
+                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No verification events or reports created by this account.</p>
+              ) : null}
+              {data.reports.length > 0 ? (
                 data.reports.map((report) => (
                   <div key={report.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
                     <p className="font-medium">{label(report.reason)} · {report.status}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{report.targetType} / {report.targetId}</p>
                   </div>
                 ))
-              )}
+              ) : null}
             </div>
           </section>
         </main>
@@ -136,6 +162,25 @@ function Metric({ icon, label: metricLabel, value }: { icon: ReactNode; label: s
       <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
     </div>
   );
+}
+
+function ReviewMetric({ label: metricLabel, value }: { label: string; value: string | null }) {
+  return (
+    <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+      <p className="text-xs font-semibold uppercase text-muted-foreground">{metricLabel}</p>
+      <p className="mt-1 font-medium">{value ?? "--"}</p>
+    </div>
+  );
+}
+
+function metadataValue(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  return null;
 }
 
 function label(value: string) {

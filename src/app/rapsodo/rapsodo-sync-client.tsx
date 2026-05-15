@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Trophy,
   Upload,
   X,
 } from "lucide-react";
@@ -1271,7 +1272,7 @@ function SaveConfirmationToast({
           </Button>
         </div>
         {confirmation.sessionId ? (
-          <div className="border-t border-white/10 px-4 py-3">
+          <div className="grid gap-2 border-t border-white/10 px-4 py-3">
             <Button
               asChild
               variant="outline"
@@ -1283,6 +1284,30 @@ function SaveConfirmationToast({
                 View saved shots
               </Link>
             </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/course-records">
+                  <Trophy className="size-4" />
+                  Boards
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/tournaments">
+                  <ShieldCheck className="size-4" />
+                  Events
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : null}
       </div>

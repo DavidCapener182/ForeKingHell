@@ -25,6 +25,7 @@ export type StripeWebhookEventType =
   | string;
 
 type StripeObject = Record<string, unknown>;
+type StripeWebhookEnv = Record<string, string | undefined>;
 
 export type BillingWebhookStore = {
   upsertBillingCustomer(input: {
@@ -158,7 +159,7 @@ export function verifyStripeSignature(input: {
 export async function handleStripeWebhookEvent(
   event: StripeWebhookEvent,
   store: BillingWebhookStore = createDrizzleBillingWebhookStore(),
-  env: NodeJS.ProcessEnv = process.env,
+  env: StripeWebhookEnv = process.env,
 ): Promise<StripeWebhookResult> {
   switch (event.type) {
     case "checkout.session.completed":
@@ -292,7 +293,7 @@ export function entitlementRowsForPlan(
 function handleCheckoutSessionCompleted(
   object: StripeObject,
   store: BillingWebhookStore,
-  env: NodeJS.ProcessEnv,
+  env: StripeWebhookEnv,
   type: string,
 ): Promise<StripeWebhookResult> {
   const metadata = objectMetadata(object);
@@ -331,7 +332,7 @@ function handleCheckoutSessionCompleted(
 async function handleSubscriptionUpdated(
   object: StripeObject,
   store: BillingWebhookStore,
-  env: NodeJS.ProcessEnv,
+  env: StripeWebhookEnv,
   type: string,
 ): Promise<StripeWebhookResult> {
   const metadata = objectMetadata(object);
@@ -368,7 +369,7 @@ async function handleSubscriptionUpdated(
 async function handleSubscriptionDeleted(
   object: StripeObject,
   store: BillingWebhookStore,
-  env: NodeJS.ProcessEnv,
+  env: StripeWebhookEnv,
   type: string,
 ): Promise<StripeWebhookResult> {
   const result = await handleSubscriptionUpdated(
@@ -387,7 +388,7 @@ async function handleSubscriptionDeleted(
 async function handleInvoicePaid(
   object: StripeObject,
   store: BillingWebhookStore,
-  env: NodeJS.ProcessEnv,
+  env: StripeWebhookEnv,
   type: string,
 ): Promise<StripeWebhookResult> {
   const customerId = stripeId(object.customer);
@@ -426,7 +427,7 @@ async function handleInvoicePaid(
 async function handleInvoicePaymentFailed(
   object: StripeObject,
   store: BillingWebhookStore,
-  env: NodeJS.ProcessEnv,
+  env: StripeWebhookEnv,
   type: string,
 ): Promise<StripeWebhookResult> {
   const customerId = stripeId(object.customer);
@@ -513,7 +514,7 @@ async function upsertCustomerSubscriptionAndEntitlements(input: {
   };
 }
 
-function resolvePlanKey(metadata: Record<string, unknown>, priceId: string | null, env: NodeJS.ProcessEnv): PlanKey {
+function resolvePlanKey(metadata: Record<string, unknown>, priceId: string | null, env: StripeWebhookEnv): PlanKey {
   const metadataPlan = stringFrom(metadata.plan_key);
 
   if (metadataPlan === "plus" || metadataPlan === "pro" || metadataPlan === "coach" || metadataPlan === "full") {

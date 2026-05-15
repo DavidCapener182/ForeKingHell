@@ -47,7 +47,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clubs, courses, holes as courseHoles, sessions, shareLinks, shots, teeSets } from "@/db/schema";
+import {
+  clubs,
+  courseRecordCategories,
+  courseRecords,
+  courses,
+  holes as courseHoles,
+  sessions,
+  shareLinks,
+  shots,
+  teeSets,
+  tournaments,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
@@ -169,6 +180,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             />
           </>
         ) : null}
+
+        <RecordOpportunitiesCard round={round} />
 
         <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
         <Card id="share" className="premium-card scroll-mt-28">
@@ -736,6 +749,41 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
 type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;
 type RoundDetailHole = RoundDetail["holes"][number];
 
+function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
+  if (round.recordOpportunities.length === 0 && round.tournamentOpportunities.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="premium-card">
+      <CardHeader>
+        <CardTitle>Record opportunities</CardTitle>
+        <CardDescription>This round can go straight into the boards it qualifies for.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        {round.recordOpportunities.slice(0, 4).map((item) => (
+          <div key={item.record.id} className="rounded-xl border bg-slate-50 p-3 text-sm">
+            <p className="font-semibold">{item.category.name}</p>
+            <p className="mt-1 text-muted-foreground">{item.record.period === "month" ? "Monthly board" : "Course record"}</p>
+            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
+              <Link href={`/course-records/${item.record.id}`} prefetch={false}>Submit to board</Link>
+            </Button>
+          </div>
+        ))}
+        {round.tournamentOpportunities.slice(0, 4).map((event) => (
+          <div key={event.id} className="rounded-xl border bg-slate-50 p-3 text-sm">
+            <p className="font-semibold">{event.title}</p>
+            <p className="mt-1 text-muted-foreground">Round submission available</p>
+            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
+              <Link href={`/tournaments/${event.id}/submit`} prefetch={false}>Submit to event</Link>
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 function MobileCollapsible({
   title,
   description,
@@ -875,7 +923,7 @@ async function getRoundDetail(sessionId: string) {
     return null;
   }
 
-  const [shotRows, clubRows, courseHoleRows, teeSetOptionRows, shareLinkRows] = await Promise.all([
+  const [shotRows, clubRows, courseHoleRows, teeSetOptionRows, shareLinkRows, recordOpportunityRows, tournamentOpportunityRows] = await Promise.all([
     db
       .select({
         id: shots.id,
@@ -949,6 +997,26 @@ async function getRoundDetail(sessionId: string) {
         ),
       )
       .orderBy(asc(shareLinks.createdAt)),
+    session.courseId
+      ? db
+          .select({
+            record: courseRecords,
+            category: courseRecordCategories,
+          })
+          .from(courseRecords)
+          .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
+          .where(and(eq(courseRecords.courseId, session.courseId), eq(courseRecords.status, "active")))
+          .orderBy(asc(courseRecordCategories.sortOrder))
+          .limit(8)
+      : Promise.resolve([]),
+    session.courseId
+      ? db
+          .select()
+          .from(tournaments)
+          .where(and(eq(tournaments.courseId, session.courseId), eq(tournaments.status, "open")))
+          .orderBy(asc(tournaments.endsAt))
+          .limit(8)
+      : Promise.resolve([]),
   ]);
 
   const scorecard = session.scorecardJson ?? [];
@@ -1023,6 +1091,8 @@ async function getRoundDetail(sessionId: string) {
     mapShots,
     courseOptions: teeSetOptionRows,
     shareLinks: shareLinkRows,
+    recordOpportunities: recordOpportunityRows,
+    tournamentOpportunities: tournamentOpportunityRows,
     fairwaysHit: holes.filter((hole) => hole.fairwayHit === true).length,
     gir: holes.filter((hole) => hole.gir === true).length,
   };

@@ -75,7 +75,7 @@ export function FeedCardList({
       <div className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-6 text-sm text-muted-foreground shadow-sm">
         <p className="font-medium text-foreground">No activity yet.</p>
         <p className="mt-1">
-          Import a session, unlock an achievement, complete a round, or join a challenge to start the feed.
+          Import a session, set a course record, enter an event, unlock an achievement, or join a challenge to start the feed.
         </p>
       </div>
     );
@@ -85,7 +85,7 @@ export function FeedCardList({
     <div className={compact ? "grid gap-3" : "grid gap-4"}>
       {compact
         ? items.map((item) => <FeedItemCard key={item.id} item={item} compact />)
-        : groupItemsByDay(items).map((group) => <FeedDayDigestCard key={group.key} group={group} />)}
+        : groupItemsByDayAndUser(items).map((group) => <FeedDayDigestCard key={group.key} group={group} />)}
     </div>
   );
 }
@@ -107,19 +107,21 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
   return (
     <article className="overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-sm">
       <div className="grid gap-4 p-4">
-        <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
-          <SocialAvatar
-            displayName={firstItem.profile.displayName}
-            username={firstItem.profile.username}
-            avatarUrl={firstItem.profile.avatarUrl}
-            href={`/profile/${firstItem.profile.username}`}
-          />
+        <header className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Badge variant="secondary" className="gap-1">
                 <CalendarDays className="size-3" />
                 {group.label}
               </Badge>
+              <Link
+                href={`/profile/${firstItem.profile.username}`}
+                prefetch={false}
+                className="text-sm font-semibold hover:underline"
+              >
+                {firstItem.profile.displayName}
+              </Link>
+              <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
               <span className="text-xs text-muted-foreground">Daily activity digest</span>
             </div>
             <h2 className="mt-2 text-lg font-semibold leading-6">
@@ -614,28 +616,30 @@ type FeedDayGroup = {
   typeSummaries: Array<{ type: string; label: string }>;
 };
 
-function groupItemsByDay(items: FeedItemView[]): FeedDayGroup[] {
+function groupItemsByDayAndUser(items: FeedItemView[]): FeedDayGroup[] {
   const grouped = new Map<string, FeedItemView[]>();
 
   for (const item of items) {
-    const key = dayKeyFormatter.format(item.createdAt);
+    const key = `${dayKeyFormatter.format(item.createdAt)}:${item.userId}`;
     grouped.set(key, [...(grouped.get(key) ?? []), item]);
   }
 
-  return [...grouped.entries()].map(([key, groupItems]) => {
-    const sortedItems = [...groupItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    const firstItem = sortedItems[0];
+  return [...grouped.entries()]
+    .map(([key, groupItems]) => {
+      const sortedItems = [...groupItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const firstItem = sortedItems[0];
 
-    return {
-      key,
-      label: firstItem ? dayFormatter.format(firstItem.createdAt) : key,
-      items: sortedItems,
-      xpGained: sortedItems.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0),
-      reactionCount: sortedItems.reduce((total, item) => total + item.reactionCount, 0),
-      commentCount: sortedItems.reduce((total, item) => total + item.commentCount, 0),
-      typeSummaries: summarizeItemTypes(sortedItems),
-    };
-  });
+      return {
+        key,
+        label: firstItem ? dayFormatter.format(firstItem.createdAt) : key,
+        items: sortedItems,
+        xpGained: sortedItems.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0),
+        reactionCount: sortedItems.reduce((total, item) => total + item.reactionCount, 0),
+        commentCount: sortedItems.reduce((total, item) => total + item.commentCount, 0),
+        typeSummaries: summarizeItemTypes(sortedItems),
+      };
+    })
+    .sort((left, right) => (right.items[0]?.createdAt.getTime() ?? 0) - (left.items[0]?.createdAt.getTime() ?? 0));
 }
 
 function summarizeItemTypes(items: FeedItemView[]) {
@@ -659,11 +663,17 @@ function pluralFeedTypeLabel(type: string, count: number) {
     challenge_completed: ["challenge completion", "challenge completions"],
     challenge_joined: ["challenge join", "challenge joins"],
     challenge_won: ["challenge win", "challenge wins"],
+    course_record_set: ["course record", "course records"],
+    course_record_beaten: ["record beat", "record beats"],
+    course_record_defended: ["record defence", "record defences"],
     import_summary: ["import", "imports"],
     level_up: ["level up", "level ups"],
     longest_drive: ["longest drive", "longest drives"],
     new_pb: ["PB", "PBs"],
     round_completed: ["round", "rounds"],
+    tournament_created: ["tournament", "tournaments"],
+    tournament_joined: ["tournament entry", "tournament entries"],
+    tournament_round_submitted: ["tournament round", "tournament rounds"],
   };
   const fallback = feedTypeLabel(type).toLowerCase();
   const [single, plural] = labels[type] ?? [fallback, `${fallback}s`];

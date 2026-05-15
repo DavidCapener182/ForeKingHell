@@ -83,6 +83,18 @@ const navGroups = [
         isActive: (pathname: string) => pathname.startsWith("/courses"),
       },
       {
+        href: "/course-records",
+        label: "Records",
+        icon: Trophy,
+        isActive: (pathname: string) => pathname.startsWith("/course-records"),
+      },
+      {
+        href: "/tournaments",
+        label: "Tournaments",
+        icon: CalendarDays,
+        isActive: (pathname: string) => pathname.startsWith("/tournaments"),
+      },
+      {
         href: "/handicap",
         label: "Handicap",
         icon: Calculator,
@@ -237,10 +249,14 @@ const mobilePrimaryItems = [
       pathname === "/" || pathname.startsWith("/today"),
   },
   {
-    href: "/import",
-    label: "Import",
-    icon: Upload,
-    isActive: (pathname: string) => pathname.startsWith("/import"),
+    href: "/rounds",
+    label: "Play",
+    icon: Flag,
+    isActive: (pathname: string) =>
+      pathname.startsWith("/rounds") ||
+      pathname.startsWith("/courses") ||
+      pathname.startsWith("/course-records") ||
+      pathname.startsWith("/tournaments"),
   },
   {
     href: "/bag",
@@ -249,10 +265,10 @@ const mobilePrimaryItems = [
     isActive: (pathname: string) => pathname.startsWith("/bag"),
   },
   {
-    href: "/rounds",
-    label: "Rounds",
-    icon: Flag,
-    isActive: (pathname: string) => pathname.startsWith("/rounds"),
+    href: "/feed",
+    label: "Feed",
+    icon: Radio,
+    isActive: (pathname: string) => pathname.startsWith("/feed"),
   },
   {
     href: "/coach",

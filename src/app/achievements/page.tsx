@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Flag, Share2, Target, Trophy, Upload, Users } from "lucide-react";
+import { ArrowLeft, Award, Flag, Share2, Target, Trophy, Upload, Users } from "lucide-react";
 
 import { AchievementsClient } from "@/app/achievements/achievements-client";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
@@ -27,6 +27,18 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
             </Link>
           </Button>
           <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+            <Button asChild variant="outline">
+              <Link href="/course-records">
+                <Award className="size-4" />
+                Records
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/tournaments">
+                <Trophy className="size-4" />
+                Events
+              </Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/rounds">
                 <Flag className="size-4" />
@@ -74,14 +86,13 @@ function AchievementSocialPanel({
   latestFeedItemId: string | null;
 }) {
   const rarePercent = data.totalCount > 0 ? Math.round((data.unlockedCount / data.totalCount) * 100) : 0;
-  const nextBadge = data.achievements.find((achievement) => !achievement.unlocked && achievement.progressPercent !== null);
 
   return (
     <section className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div>
         <p className="text-sm font-semibold">Achievement social layer</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          {rarePercent}% unlocked. Next social badge: {nextBadge?.displayName ?? "build more tracked shots and rounds"}.
+          {rarePercent}% unlocked. Course champions, verified records and major-style finishes now live on this identity layer.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -89,6 +100,18 @@ function AchievementSocialPanel({
           <Link href={latestFeedItemId ? `/api/share-cards/feed/${latestFeedItemId}` : "/feed?filter=achievements"} target={latestFeedItemId ? "_blank" : undefined} prefetch={false}>
             <Share2 className="size-4" />
             Share achievement
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/course-records" prefetch={false}>
+            <Award className="size-4" />
+            Course badges
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/tournaments" prefetch={false}>
+            <Trophy className="size-4" />
+            Major badges
           </Link>
         </Button>
         <Button asChild variant="outline" size="sm">
@@ -100,7 +123,7 @@ function AchievementSocialPanel({
         <Button asChild variant="outline" size="sm">
           <Link href="/challenges" prefetch={false}>
             <Trophy className="size-4" />
-            Next badge
+            Challenge badge
           </Link>
         </Button>
       </div>

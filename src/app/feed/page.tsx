@@ -19,7 +19,16 @@ type FeedPageProps = {
   }>;
 };
 
-type FeedFilter = "all" | "friends" | "pbs" | "achievements" | "challenges" | "rounds" | "me";
+type FeedFilter =
+  | "all"
+  | "friends"
+  | "pbs"
+  | "achievements"
+  | "challenges"
+  | "records"
+  | "tournaments"
+  | "rounds"
+  | "me";
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
@@ -31,6 +40,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
   const pbCount = data.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
   const challengeCount = data.items.filter((item) => item.itemType.startsWith("challenge_")).length;
+  const recordCount = data.items.filter((item) => item.itemType.startsWith("course_record")).length;
+  const tournamentCount = data.items.filter((item) => item.itemType.startsWith("tournament")).length;
 
   return (
     <PageShell size="7xl" className="bg-slate-50/20">
@@ -70,6 +81,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
               <SideLink href="/groups" icon={<Users className="size-4" />} label="Groups" />
               <SideLink href="/challenges" icon={<Trophy className="size-4" />} label="Challenges" />
+              <SideLink href="/course-records" icon={<Award className="size-4" />} label="Course records" />
+              <SideLink href="/tournaments" icon={<Trophy className="size-4" />} label="Tournaments" />
               <SideLink href="/leaderboard" icon={<BarChart3 className="size-4" />} label="Leaderboards" />
             </div>
           </section>
@@ -82,7 +95,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 <StatusPill tone="green">Social feed</StatusPill>
                 <h1 className="mt-3 text-2xl font-semibold tracking-normal sm:text-3xl">Feed</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  PBs, achievements, imports, rounds and challenge moments from your golf network.
+                  PBs, achievements, imports, rounds, course records and tournament moments from your golf network.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -110,13 +123,15 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                   Social pulse
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {data.friendCount} friends connected · {pbCount} PBs · {challengeCount} challenge moments · {comments} comments.
+                  {data.friendCount} friends connected · {pbCount} PBs · {recordCount} records · {tournamentCount} events · {comments} comments.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <BadgeLike icon={<Users className="size-3" />} label={`${data.friendCount} friends`} />
                 <BadgeLike icon={<Award className="size-3" />} label={`${pbCount} PBs`} />
                 <BadgeLike icon={<Trophy className="size-3" />} label={`${challengeCount} challenges`} />
+                <BadgeLike icon={<Award className="size-3" />} label={`${recordCount} records`} />
+                <BadgeLike icon={<Trophy className="size-3" />} label={`${tournamentCount} events`} />
                 <BadgeLike icon={<MessageCircle className="size-3" />} label={`${comments} comments`} />
               </div>
             </div>
@@ -145,6 +160,12 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                     <Link href="/rounds/new" prefetch={false}>
                       <Radio className="size-4" />
                       Log round
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/course-records" prefetch={false}>
+                      <Award className="size-4" />
+                      Submit record
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="sm">
@@ -229,6 +250,8 @@ const feedFilters: Array<{ key: FeedFilter; label: string }> = [
   { key: "pbs", label: "PBs" },
   { key: "achievements", label: "Achievements" },
   { key: "challenges", label: "Challenges" },
+  { key: "records", label: "Records" },
+  { key: "tournaments", label: "Tournaments" },
   { key: "rounds", label: "Rounds" },
   { key: "me", label: "Me" },
 ];
@@ -291,6 +314,10 @@ function filterFeedItems(items: Awaited<ReturnType<typeof getFeedPageData>>["ite
       return items.filter((item) => item.itemType === "achievement_unlock" || item.itemType === "level_up");
     case "challenges":
       return items.filter((item) => item.itemType.startsWith("challenge_"));
+    case "records":
+      return items.filter((item) => item.itemType.startsWith("course_record"));
+    case "tournaments":
+      return items.filter((item) => item.itemType.startsWith("tournament"));
     case "rounds":
       return items.filter((item) => item.itemType === "round_completed");
     case "me":

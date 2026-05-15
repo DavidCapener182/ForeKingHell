@@ -8,6 +8,7 @@ const socialMigration = readFileSync(join(process.cwd(), "drizzle/0014_social_fo
 const networkMigration = readFileSync(join(process.cwd(), "drizzle/0015_network_growth.sql"), "utf8");
 const adminMigration = readFileSync(join(process.cwd(), "drizzle/0016_admin_ops.sql"), "utf8");
 const commentReactionMigration = readFileSync(join(process.cwd(), "drizzle/0017_feed_comment_reactions.sql"), "utf8");
+const recordsTournamentsMigration = readFileSync(join(process.cwd(), "drizzle/0020_course_records_tournaments.sql"), "utf8");
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -124,5 +125,47 @@ describe("RLS migration", () => {
     expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_delete_self"');
     expect(commentReactionMigration).toContain("public.fkh_can_view_feed_item(item)");
     expect(commentReactionMigration).toContain('"user_id" = auth.uid()');
+  });
+
+  it("enables RLS for course records and major-style tournament tables", () => {
+    for (const table of [
+      "fkh_course_provider_aliases",
+      "fkh_course_record_categories",
+      "fkh_course_records",
+      "fkh_course_record_attempts",
+      "fkh_course_record_results",
+      "fkh_course_record_evidence",
+      "fkh_course_record_flags",
+      "fkh_tournaments",
+      "fkh_tournament_rounds",
+      "fkh_tournament_entries",
+      "fkh_tournament_submissions",
+      "fkh_tournament_evidence",
+      "fkh_tournament_standings",
+      "fkh_tournament_comments",
+      "fkh_tournament_invites",
+      "fkh_tournament_prizes",
+    ]) {
+      expect(recordsTournamentsMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+    }
+
+    expect(recordsTournamentsMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_course_record");
+    expect(recordsTournamentsMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_tournament");
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_records_select_visible"');
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournaments_select_visible"');
+  });
+
+  it("scopes private, friend, group and evidence-backed competition data", () => {
+    expect(recordsTournamentsMigration).toContain("record_row.scope = 'public'");
+    expect(recordsTournamentsMigration).toContain("record_row.scope = 'friends'");
+    expect(recordsTournamentsMigration).toContain("record_row.scope = 'group'");
+    expect(recordsTournamentsMigration).toContain("record_row.scope = 'private'");
+    expect(recordsTournamentsMigration).toContain("membership.group_id = record_row.group_id");
+    expect(recordsTournamentsMigration).toContain("membership.group_id = tournament_row.group_id");
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_record_attempts_select_visible_record_or_self"');
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournament_submissions_select_visible_tournament_or_self"');
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_record_evidence_select_attempt_owner_or_admin"');
+    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournament_evidence_select_submission_owner_or_admin"');
+    expect(recordsTournamentsMigration).toContain("public.fkh_can_read_course(course)");
   });
 });

@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { courses, holes, sessions, teeSets } from "@/db/schema";
+import { courseRecordResults, courseRecords, courses, holes, sessions, teeSets, userProfiles } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 
@@ -81,20 +81,20 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="green">Course overlays</StatusPill>}
+        eyebrow={<StatusPill tone="green">Course hub</StatusPill>}
         title="Courses"
-        description="Manage the course and tee-set data that powers round reviews, satellite overlays, and handicap estimates."
+        description="Open record boards, find live events, and manage the tee-set data behind round reviews and handicap estimates."
         visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" />}
         metrics={[
           {
             label: "Courses",
             value: integerFormatter.format(data.courses.length),
-            detail: "Seeded and manually created courses",
+            detail: "Player-facing course hubs",
           },
           {
-            label: "Mapped courses",
-            value: integerFormatter.format(mappedCourses.length),
-            detail: "Have at least one saved hole geometry",
+            label: "Record boards",
+            value: integerFormatter.format(data.recordCount),
+            detail: "Course champion scopes",
           },
           {
             label: "Tee sets",
@@ -167,11 +167,12 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 
       <section className="hidden gap-4 sm:grid md:grid-cols-3">
         <MetricCard
-          label="Map readiness"
-          value={`${mappedCourses.length}/${data.courses.length || 0}`}
-          detail="Course overlays need hole geometry with tee and green points."
+          label="Course champions"
+          value={integerFormatter.format(data.championCount)}
+          detail="Verified leaders across all visible course boards."
           icon={MapPinned}
           tone="green"
+          href="/course-records"
         />
         <MetricCard
           label="Handicap quality"
@@ -192,7 +193,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 
       <MobileHorizontalRail
         title="Courses"
-        description="Open a course to edit tee sets and holes."
+        description="Open a course to view champion boards first. Management stays behind Manage."
         action={
           <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
             <Link href="/courses/new" prefetch={false}>New</Link>
@@ -202,7 +203,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         {displayedCourses.slice(0, 6).map((course) => (
           <Link
             key={course.id}
-            href={`/courses/${course.id}/holes`}
+            href={`/courses/${course.id}/records`}
             prefetch={false}
             className="apple-panel-strong block p-4"
           >
@@ -217,7 +218,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             <p className="truncate font-semibold tracking-normal">{course.name}</p>
             <p className="mt-1 truncate text-sm text-muted-foreground">{course.country ?? "Country not set"}</p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.holeCount} holes</span>
+              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.recordCount} records</span>
               <span className="rounded-lg bg-slate-50 px-2 py-2">{course.teeSetCount} tees</span>
               <span className="rounded-lg bg-slate-50 px-2 py-2">{course.roundCount} rounds</span>
             </div>
@@ -228,7 +229,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
       <DataPanel>
         <SectionHeader
           title="Course library"
-          description="Open a course to edit tee sets and per-hole geometry."
+          description="Open Records for the player hub, or Manage for tee sets and per-hole geometry."
           action={<Badge variant="outline">{integerFormatter.format(displayedCourses.length)} courses</Badge>}
         />
         <CardContent>
@@ -259,6 +260,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                         label="Thumbnail"
                         value={course.holeCount > 0 ? "Saved geometry" : "Illustrative layout"}
                       />
+                      <DataPair label="Records" value={course.recordCount} />
+                      <DataPair label="Champion" value={course.champion?.displayName ?? "--"} />
                       <DataPair label="Tee sets" value={course.teeSetCount} />
                       <DataPair
                         label="Mapped holes"
@@ -270,9 +273,15 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                       />
                       <DataPair label="Rounds" value={course.roundCount} />
                       <Button asChild variant="outline" size="sm" className="mt-1 w-full">
+                        <Link href={`/courses/${course.id}/records`} prefetch={false}>
+                          <Trophy className="size-4" />
+                          Open records
+                        </Link>
+                      </Button>
+                      <Button asChild variant="ghost" size="sm" className="mt-1 w-full">
                         <Link href={`/courses/${course.id}/holes`} prefetch={false}>
                           <Settings className="size-4" />
-                          Edit course
+                          Manage
                         </Link>
                       </Button>
                     </MobileDataCard>
@@ -290,6 +299,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                 <TableRow>
                   <TableHead>Course</TableHead>
                   <TableHead>Provider</TableHead>
+                  <TableHead className="text-right">Records</TableHead>
+                  <TableHead>Champion</TableHead>
                   <TableHead className="text-right">Tee sets</TableHead>
                   <TableHead className="text-right">Mapped holes</TableHead>
                   <TableHead className="text-right">Rounds</TableHead>
@@ -310,6 +321,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                         {course.provider}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">{course.recordCount}</TableCell>
+                    <TableCell>
+                      {course.champion ? (
+                        <span className="text-sm font-medium">{course.champion.displayName}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Open</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">{course.teeSetCount}</TableCell>
                     <TableCell className="text-right">
                       <span className={course.holeCount >= 18 ? "font-semibold text-emerald-700" : "font-semibold text-amber-700"}>
@@ -318,18 +337,26 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                     </TableCell>
                     <TableCell className="text-right">{course.roundCount}</TableCell>
                     <TableCell className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/courses/${course.id}/holes`} prefetch={false}>
-                          <Settings className="size-4" />
-                          Edit
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/courses/${course.id}/records`} prefetch={false}>
+                            <Trophy className="size-4" />
+                            Records
+                          </Link>
+                        </Button>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+                            <Settings className="size-4" />
+                            Manage
+                          </Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {displayedCourses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No courses yet. Seed known courses or create one manually.
                     </TableCell>
                   </TableRow>
@@ -352,7 +379,7 @@ async function getCoursesData() {
     .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
     .orderBy(asc(courses.name));
   const visibleCourseIds = courseRows.map((course) => course.id);
-  const [teeSetRows, holeRows, roundRows] = await Promise.all([
+  const [teeSetRows, holeRows, roundRows, recordRows, championRows] = await Promise.all([
     visibleCourseIds.length > 0
       ? db.select().from(teeSets).where(inArray(teeSets.courseId, visibleCourseIds)).orderBy(asc(teeSets.name))
       : [],
@@ -371,20 +398,47 @@ async function getCoursesData() {
           inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"]),
         ),
       ),
+    visibleCourseIds.length > 0
+      ? db.select().from(courseRecords).where(inArray(courseRecords.courseId, visibleCourseIds))
+      : [],
+    visibleCourseIds.length > 0
+      ? db
+          .select({
+            record: courseRecords,
+            result: courseRecordResults,
+            profile: userProfiles,
+          })
+          .from(courseRecordResults)
+          .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+          .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+          .where(and(inArray(courseRecords.courseId, visibleCourseIds), eq(courseRecordResults.rank, 1)))
+      : [],
   ]);
   const teeSetsByCourse = countBy(teeSetRows.map((teeSet) => teeSet.courseId));
   const holesByCourse = countBy(holeRows.map((hole) => hole.courseId));
   const roundsByCourse = countBy(roundRows.map((round) => round.courseId).filter((id): id is string => Boolean(id)));
+  const recordsByCourse = countBy(recordRows.map((record) => record.courseId));
+  const championByCourse = new Map<string, (typeof championRows)[number]>();
+
+  for (const champion of championRows) {
+    if (!championByCourse.has(champion.record.courseId)) {
+      championByCourse.set(champion.record.courseId, champion);
+    }
+  }
 
   return {
     teeSetCount: teeSetRows.length,
     ratedTeeSetCount: teeSetRows.filter((teeSet) => teeSet.courseRating !== null && teeSet.slopeRating !== null).length,
     roundCount: roundRows.length,
+    recordCount: recordRows.length,
+    championCount: championRows.filter((row) => row.result.verificationStatus === "verified").length,
     courses: courseRows.map((course) => ({
       ...course,
       teeSetCount: teeSetsByCourse.get(course.id) ?? 0,
       holeCount: holesByCourse.get(course.id) ?? 0,
       roundCount: roundsByCourse.get(course.id) ?? 0,
+      recordCount: recordsByCourse.get(course.id) ?? 0,
+      champion: championByCourse.get(course.id)?.profile ?? null,
     })),
   };
 }

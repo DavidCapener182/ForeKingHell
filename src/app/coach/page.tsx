@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  Award,
   Brain,
   CheckCircle2,
   Clock,
@@ -399,15 +400,29 @@ function CoachSocialPrompt({
       <CardContent className="grid gap-3">
         <p className="rounded-xl border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
           {topClub
-            ? `${topClub.clubName} is the current practice priority. Use a challenge board when you want an opt-in comparison against friends.`
-            : "Build a clean club baseline before comparing with friends."}
+            ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
+            : "Build a clean club baseline before comparing with friends or entering verified boards."}
         </p>
-        <Button asChild variant="outline" className="w-fit">
-          <Link href={challenge ? `/challenges/${challenge.id}` : "/challenges"} prefetch={false}>
-            <Trophy className="size-4" />
-            {challenge ? `Suggested: ${challenge.title}` : "Open challenges"}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="w-fit">
+            <Link href={challenge ? `/challenges/${challenge.id}` : "/challenges"} prefetch={false}>
+              <Trophy className="size-4" />
+              {challenge ? `Suggested: ${challenge.title}` : "Open challenges"}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="w-fit">
+            <Link href="/course-records" prefetch={false}>
+              <Award className="size-4" />
+              Record strategy
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="w-fit">
+            <Link href="/tournaments" prefetch={false}>
+              <Trophy className="size-4" />
+              Tournament prep
+            </Link>
+          </Button>
+        </div>
       </CardContent>
     </DataPanel>
   );

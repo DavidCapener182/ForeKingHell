@@ -95,9 +95,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Upgrade prompts</p>
             <div className="mt-3 grid gap-2">
-              <Prompt icon={<Trophy className="size-4 text-amber-600" />} text="Private challenges are unlimited on Plus and above." />
-              <Prompt icon={<Sparkles className="size-4 text-emerald-600" />} text="AI comparison and coaching unlock on Pro." />
-              <Prompt icon={<CreditCard className="size-4 text-sky-600" />} text="Coach dashboard and player seats unlock on Coach / Club." />
+              <Prompt icon={<Trophy className="size-4 text-amber-600" />} text="Plus unlocks private course records and friend tournaments." />
+              <Prompt icon={<Sparkles className="size-4 text-emerald-600" />} text="Pro adds AI tournament prep, record strategy and verification analytics." />
+              <Prompt icon={<CreditCard className="size-4 text-sky-600" />} text="Coach / Club can host leagues, majors and evidence review queues." />
             </div>
           </section>
 

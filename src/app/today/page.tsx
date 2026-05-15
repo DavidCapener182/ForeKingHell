@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Award,
   CalendarDays,
   ChevronDown,
   Crosshair,
@@ -709,16 +710,30 @@ function TodaySocialLine({
           <p className="text-sm font-semibold">Social context</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {challenge
-              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. That is enough to compare against ${challenge.title}.`
-              : `${bestClub} is ready to share as a practice update if you want a friends-only pulse check.`}
+              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Compare it with ${challenge.title}, then look for course boards or event entries after import.`
+              : `${bestClub} is ready to share, and imported rounds can now qualify for records or tournaments.`}
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
-            <Trophy className="size-4" />
-            {challenge ? "Open challenge" : "Open feed"}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
+              <Trophy className="size-4" />
+              {challenge ? "Open challenge" : "Open feed"}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/course-records" prefetch={false}>
+              <Award className="size-4" />
+              Records
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/tournaments" prefetch={false}>
+              <Trophy className="size-4" />
+              Events
+            </Link>
+          </Button>
+        </div>
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Copy, Globe2, Lock, MessageCircle, Plus, Settings, Trophy, Users } from "lucide-react";
+import { Award, Copy, Globe2, Lock, MessageCircle, Plus, Settings, Trophy, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { createGroupPostAction } from "@/app/groups/actions";
@@ -29,6 +29,17 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+const groupTabs = [
+  { label: "Feed", href: "#feed" },
+  { label: "Leaderboard", href: "#leaderboard" },
+  { label: "Records", href: "#records" },
+  { label: "Tournaments", href: "#tournaments" },
+  { label: "Challenges", href: "#challenges" },
+  { label: "Members", href: "#members" },
+  { label: "Invite", href: "#invite" },
+  { label: "Settings", href: "#settings" },
+];
 
 export default async function GroupDetailPage({ params, searchParams }: GroupDetailPageProps) {
   const { groupSlug } = await params;
@@ -65,6 +76,10 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                     <Trophy className="size-3" />
                     {data.group.challengeCount} challenges
                   </Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <Award className="size-3" />
+                    records ready
+                  </Badge>
                 </div>
               </div>
               <Button asChild variant="outline">
@@ -79,9 +94,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           </header>
 
           <nav className="flex flex-wrap gap-2 rounded-xl border bg-white p-3 shadow-sm" aria-label="Group sections">
-            {["Feed", "Leaderboard", "Challenges", "Members", "Invite", "Settings"].map((tab) => (
-              <a key={tab} href={`#${tab.toLowerCase()}`} className="rounded-lg border bg-slate-50 px-3 py-1.5 text-sm font-medium hover:bg-white">
-                {tab}
+            {groupTabs.map((tab) => (
+              <a key={tab.href} href={tab.href} className="rounded-lg border bg-slate-50 px-3 py-1.5 text-sm font-medium hover:bg-white">
+                {tab.label}
               </a>
             ))}
           </nav>
@@ -137,10 +152,44 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Group leaderboard</p>
-                <p className="mt-1 text-sm text-muted-foreground">Use linked challenge boards for group-scoped competition.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Use linked records, tournaments and challenge boards for group-scoped competition.</p>
               </div>
               <Button asChild variant="outline">
                 <Link href="/leaderboard" prefetch={false}>Open leaderboards</Link>
+              </Button>
+            </div>
+          </section>
+
+          <section id="records" className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Group records</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Friend and group scopes keep course champions separate from public boards.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/course-records" prefetch={false}>
+                  <Award className="size-4" />
+                  Open records
+                </Link>
+              </Button>
+            </div>
+          </section>
+
+          <section id="tournaments" className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Group tournaments</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Run society opens, order-of-merit seasons and major-style events with proof.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/tournaments" prefetch={false}>
+                  <Trophy className="size-4" />
+                  Open events
+                </Link>
               </Button>
             </div>
           </section>
@@ -179,6 +228,20 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               <SideMetric icon={<Users className="size-4 text-emerald-600" />} label="Members" value={data.group.memberCount} />
               <SideMetric icon={<MessageCircle className="size-4 text-sky-600" />} label="Posts" value={data.group.postCount} />
               <SideMetric icon={<Trophy className="size-4 text-amber-600" />} label="Challenges" value={data.group.challengeCount} />
+            </div>
+            <div className="mt-3 grid gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/course-records" prefetch={false}>
+                  <Award className="size-4" />
+                  Records
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/tournaments" prefetch={false}>
+                  <Trophy className="size-4" />
+                  Tournaments
+                </Link>
+              </Button>
             </div>
           </section>
 

@@ -247,10 +247,26 @@ export default async function DashboardPage() {
     },
     {
       title: "Courses",
-      description: "Manage tee sets and hole geometry for map overlays.",
+      description: "Open course champions, record boards, and tee-map details.",
       href: "/courses",
-      metric: "Maps",
+      metric: "Champions",
       icon: MapPinned,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Course records",
+      description: "Challenge all-time, monthly, friend, and hole honours boards.",
+      href: "/course-records",
+      metric: "Records",
+      icon: Award,
+      accent: "text-amber-700 bg-amber-50",
+    },
+    {
+      title: "Tournaments",
+      description: "Enter major-style events with rounds, standings, and proof.",
+      href: "/tournaments",
+      metric: "Events",
+      icon: Trophy,
       accent: "text-emerald-700 bg-emerald-50",
     },
     {
@@ -897,6 +913,8 @@ function DashboardSocialPulse({
 }) {
   const topItems = social.items.slice(0, 3);
   const pbCount = social.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
+  const recordCount = social.items.filter((item) => item.itemType.startsWith("course_record")).length;
+  const tournamentCount = social.items.filter((item) => item.itemType.startsWith("tournament")).length;
   const closingSoon = challenges
     .filter((challenge) => challenge.endsAt)
     .sort((left, right) => (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0))[0] ?? null;
@@ -932,6 +950,20 @@ function DashboardSocialPulse({
               detail: "Visible PB and longest-drive cards",
               tone: "amber",
               href: "/feed?filter=pbs",
+            },
+            {
+              label: "Course records",
+              value: recordCount.toString(),
+              detail: "Champion, defended, and beaten marks",
+              tone: "amber",
+              href: "/course-records",
+            },
+            {
+              label: "Tournaments",
+              value: tournamentCount.toString(),
+              detail: "Entries and verified round submissions",
+              tone: "green",
+              href: "/tournaments",
             },
             {
               label: "Challenge closing",

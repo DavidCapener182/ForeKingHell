@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { headers } from "next/headers";
 import { ArrowLeft, Award, Copy, QrCode, ShieldCheck, Target, Trophy, UserRound } from "lucide-react";
+import { desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import {
@@ -18,6 +19,8 @@ import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { getDb } from "@/db/client";
+import { courseRecordCategories, courseRecordResults, courseRecords, courses, tournamentStandings, tournaments } from "@/db/schema";
 import { getChallengesPageData } from "@/lib/challenges";
 import {
   defaultProfileVisibilitySettings,
@@ -41,6 +44,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     ensureCurrentSocialProfile(),
     getChallengesPageData(),
   ]);
+  const honours = await getProfileHonoursData(profile.userId);
   const origin = getRequestOrigin(requestHeaders);
   const profileUrl = `${origin}/profile/${profile.username}`;
   const visibility = {
@@ -115,7 +119,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <PreviewStat icon={<Target className="size-4 text-emerald-600" />} label="Home setup" value={profile.primaryLaunchMonitor ?? "Add device"} />
-              <PreviewStat icon={<Trophy className="size-4 text-amber-600" />} label="Current entries" value={challenges.mine.length} />
+              <PreviewStat icon={<Trophy className="size-4 text-amber-600" />} label="Course champions" value={honours.championCount} />
               <PreviewStat icon={<ShieldCheck className="size-4 text-sky-600" />} label="Default share" value={titleCase(profile.feedVisibilityDefault)} />
             </div>
           </div>
@@ -130,7 +134,63 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           <div className="mt-4 grid gap-2 text-sm">
             <ShowcaseRow icon={<Award className="size-4 text-emerald-600" />} label="PB showcase" value={pbShowcase.length ? pbShowcase.map(pbLabel).join(" · ") : "Choose PBs to feature"} />
             <ShowcaseRow icon={<Trophy className="size-4 text-amber-600" />} label="Achievements" value={achievementShowcase.length ? achievementShowcase.join(" · ") : "Unlock and pin badges"} />
-            <ShowcaseRow icon={<Target className="size-4 text-sky-600" />} label="Challenges" value={challenges.mine.slice(0, 2).map((item) => item.title).join(" · ") || "Join a challenge"} />
+            <ShowcaseRow icon={<Target className="size-4 text-sky-600" />} label="Entries" value={`${challenges.mine.length} challenges · ${honours.tournaments.length} tournaments`} />
+          </div>
+        </article>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Honours board</p>
+              <p className="mt-1 text-sm text-muted-foreground">Course champions, current records and tournament history define your golf identity.</p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/course-records" prefetch={false}>Records</Link>
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {honours.records.map((record) => (
+              <Link
+                key={record.id}
+                href={`/course-records/${record.recordId}`}
+                prefetch={false}
+                className={record.rank === 1 ? "rounded-xl border border-amber-200 bg-amber-50 p-4" : "rounded-xl border bg-slate-50 p-4"}
+              >
+                <Badge variant={record.rank === 1 ? "default" : "outline"}>{record.rank === 1 ? "Champion" : `#${record.rank}`}</Badge>
+                <p className="mt-3 font-semibold tracking-normal">{record.courseName}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{record.categoryName} · {record.scoreLabel}</p>
+              </Link>
+            ))}
+            {honours.records.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-2">No course records yet.</p>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Tournament history</p>
+              <p className="mt-1 text-sm text-muted-foreground">Major-style and open event finishes.</p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tournaments" prefetch={false}>Events</Link>
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-2">
+            {honours.tournaments.map((event) => (
+              <Link key={event.id} href={`/tournaments/${event.tournamentId}`} prefetch={false} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                <p className="font-medium">{event.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  #{event.rank ?? "--"} · {event.grossTotal} gross · {event.roundsCompleted} rounds
+                </p>
+              </Link>
+            ))}
+            {honours.tournaments.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No tournament standings yet.</p>
+            ) : null}
           </div>
         </article>
       </section>
@@ -315,6 +375,55 @@ function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocia
   const completed = fields.filter(Boolean).length;
 
   return Math.round((completed / fields.length) * 100);
+}
+
+async function getProfileHonoursData(userId: string) {
+  const [records, tournamentRows] = await Promise.all([
+    getDb()
+      .select({
+        result: courseRecordResults,
+        record: courseRecords,
+        category: courseRecordCategories,
+        course: courses,
+      })
+      .from(courseRecordResults)
+      .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+      .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
+      .innerJoin(courses, eq(courseRecords.courseId, courses.id))
+      .where(eq(courseRecordResults.userId, userId))
+      .orderBy(desc(courseRecordResults.calculatedAt))
+      .limit(6),
+    getDb()
+      .select({
+        standing: tournamentStandings,
+        tournament: tournaments,
+      })
+      .from(tournamentStandings)
+      .innerJoin(tournaments, eq(tournamentStandings.tournamentId, tournaments.id))
+      .where(eq(tournamentStandings.userId, userId))
+      .orderBy(desc(tournamentStandings.calculatedAt))
+      .limit(6),
+  ]);
+
+  return {
+    championCount: records.filter((row) => row.result.rank === 1).length,
+    records: records.map((row) => ({
+      id: row.result.id,
+      recordId: row.record.id,
+      courseName: row.course.name,
+      categoryName: row.category.name,
+      scoreLabel: row.result.scoreLabel,
+      rank: row.result.rank,
+    })),
+    tournaments: tournamentRows.map((row) => ({
+      id: row.standing.id,
+      tournamentId: row.tournament.id,
+      title: row.tournament.title,
+      grossTotal: row.standing.grossTotal,
+      roundsCompleted: row.standing.roundsCompleted,
+      rank: row.standing.rank,
+    })),
+  };
 }
 
 function pbLabel(value: Record<string, unknown>) {

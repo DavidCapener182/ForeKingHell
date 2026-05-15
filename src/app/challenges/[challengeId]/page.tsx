@@ -78,7 +78,21 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <Badge variant="secondary" className="w-fit">Invite sent</Badge>
       ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
+        <Anchor href="#board" label="Board" />
+        <Anchor href="#submit-attempt" label="Submit" />
+        <Anchor href="#rules" label="Rules" />
+        <Anchor href="#chat" label="Chat" />
+        {data.challenge.creatorUserId === data.viewerUserId ? (
+          <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl">
+            <Link href={`/tournaments?fromChallenge=${data.challenge.id}`} prefetch={false}>
+              Convert to tournament
+            </Link>
+          </Button>
+        ) : null}
+      </nav>
+
+      <section id="board" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="rounded-xl border bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -185,7 +199,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             </CardContent>
           </DataPanel>
 
-          <DataPanel>
+          <DataPanel id="rules">
             <SectionHeader
               title="Rules"
               description="Anti-gaming checks are shown as labels, not heavy-handed blockers."
@@ -282,7 +296,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
           </DataPanel>
 
           <section className="grid gap-4 md:grid-cols-2">
-            <Card className="premium-card">
+            <Card id="chat" className="premium-card scroll-mt-28">
               <CardHeader>
                 <CardTitle>Recent attempts</CardTitle>
                 <CardDescription>Latest submissions for this challenge.</CardDescription>
@@ -376,4 +390,12 @@ function formatDate(value: Date) {
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function Anchor({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-white px-3 text-sm font-semibold">
+      {label}
+    </a>
+  );
 }
