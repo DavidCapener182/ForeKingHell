@@ -90,6 +90,25 @@ export default async function FeedPage() {
           </header>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <PulseCard label="Friends active this week" value={Math.min(data.friendCount, 3)} detail="From your network" />
+              <PulseCard label="PBs" value={data.items.filter((item) => item.itemType.includes("pb")).length} detail="Recent personal bests" />
+              <PulseCard label="Challenge closing soon" value={data.items.filter((item) => item.itemType.includes("challenge")).length > 0 ? 1 : 0} detail="Check the boards" />
+              <PulseCard label="New comments" value={comments} detail="Across visible cards" />
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-white p-3 shadow-sm">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {["All", "Friends", "PBs", "Achievements", "Challenges", "Rounds", "Me"].map((filter) => (
+                <Button key={filter} type="button" variant={filter === "All" ? "default" : "outline"} size="sm" className="shrink-0">
+                  {filter}
+                </Button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-white p-4 shadow-sm">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
               <SocialAvatar
                 displayName={data.profile.displayName}
@@ -156,6 +175,16 @@ export default async function FeedPage() {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
+
+function PulseCard({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
+  return (
+    <div className="rounded-xl border bg-slate-50 px-4 py-3">
+      <p className="text-2xl font-semibold tracking-normal">{value}</p>
+      <p className="mt-1 text-sm font-medium">{label}</p>
+      <p className="text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
 
 function MiniStat({ label, value }: { label: string; value: ReactNode }) {
   return (

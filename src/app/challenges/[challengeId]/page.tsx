@@ -74,6 +74,42 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <Badge variant="secondary" className="w-fit">Invite sent</Badge>
       ) : null}
 
+      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Your attempt</CardTitle>
+            <CardDescription>{data.challenge.viewerJoined ? "Submit another verified score when you improve." : "Join before submitting an attempt."}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={data.challenge.viewerJoined ? "secondary" : "outline"}>{data.challenge.viewerJoined ? "Entered" : "Not entered"}</Badge>
+            <p className="mt-3 text-2xl font-semibold">{data.challenge.viewerRank ? `#${data.challenge.viewerRank}` : "--"}</p>
+            <p className="text-sm text-muted-foreground">Current rank</p>
+          </CardContent>
+        </Card>
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Rules</CardTitle>
+            <CardDescription>{data.challenge.scoringDirection === "desc" ? "Highest score wins." : "Lowest score wins."}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Badge variant="outline">{data.challenge.templateName}</Badge>
+            <Badge variant="outline">{titleCase(data.challenge.visibility)}</Badge>
+            <Badge variant="secondary">Verified or mixed board</Badge>
+          </CardContent>
+        </Card>
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Anti-gaming checks</CardTitle>
+            <CardDescription>Public boards flag outliers without making private friend challenges heavy.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Badge variant="outline">Duplicate attempt</Badge>
+            <Badge variant="outline">Outside date window</Badge>
+            <Badge variant="outline">Wrong club type</Badge>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
         <div className="grid gap-4">
           <DataPanel>
@@ -156,6 +192,22 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               action={<Trophy className="size-5 text-amber-600" />}
             />
             <CardContent>
+              <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                {data.results.slice(0, 3).map(({ result, profile, verificationLabel }) => (
+                  <div key={result.id} className="rounded-xl border bg-gradient-to-br from-amber-50 to-white p-3 text-sm">
+                    <Badge variant={result.rank === 1 ? "default" : "secondary"}>#{result.rank ?? "--"}</Badge>
+                    <p className="mt-3 font-semibold">{profile.displayName}</p>
+                    <p className="text-muted-foreground">{result.scoreLabel}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{verificationLabel}</p>
+                  </div>
+                ))}
+                {data.results.length === 0 ? (
+                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground sm:col-span-3">No podium yet. Submit the first attempt.</p>
+                ) : null}
+              </div>
+              <details className="rounded-xl border bg-white" open>
+                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">View full leaderboard</summary>
+                <div className="border-t">
               <DataTableFrame>
                 <Table>
                   <TableHeader>
@@ -183,6 +235,8 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
                   </TableBody>
                 </Table>
               </DataTableFrame>
+                </div>
+              </details>
             </CardContent>
           </DataPanel>
 

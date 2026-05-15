@@ -12,6 +12,7 @@ import {
   friendships,
   sessions,
   shots,
+  socialReports,
   userBlocks,
   userFollows,
   userProfiles,
@@ -58,6 +59,7 @@ export type FeedItemView = {
   reactionCount: number;
   commentCount: number;
   viewerReacted: boolean;
+  viewerCanManage: boolean;
   comments: Array<{
     id: string;
     body: string;
@@ -590,6 +592,78 @@ export async function removeFeedReaction(feedItemId: string) {
   revalidatePath("/dashboard");
 }
 
+
+export async function updateFeedItemVisibility(feedItemId: string, visibility: SocialVisibility) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .update(feedItems)
+    .set({
+      visibility,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function hideFeedItem(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  await getDb()
+    .update(feedItems)
+    .set({
+      visibility: "private",
+      metadataJson: { hiddenByOwner: true },
+      updatedAt: new Date(),
+    })
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+
+export async function muteFeedItemType(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb().insert(socialReports).values({
+    reporterUserId: userId,
+    reportedUserId: null,
+    targetType: "feed_type_mute",
+    targetId: item.itemType,
+    reason: "hide_this_type",
+    details: `Muted from feed item ${feedItemId}.`,
+  });
+
+  revalidatePath("/feed");
+}
+
+export async function reportFeedItem(feedItemId: string, reason = "feed_safety") {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb().insert(socialReports).values({
+    reporterUserId: userId,
+    reportedUserId: item.userId === userId ? null : item.userId,
+    targetType: "feed_item",
+    targetId: feedItemId,
+    reason: reason.slice(0, 120),
+    details: "Reported from feed card controls.",
+  });
+
+  revalidatePath("/feed");
+  revalidatePath("/admin/moderation");
+}
+
 export async function addFeedComment(feedItemId: string, body: string) {
   const userId = await requireCurrentUserId();
   const item = await getVisibleFeedItem(feedItemId, userId);
@@ -1003,6 +1077,7 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
         reactionCount: reactions.length,
         commentCount: commentsByItem.get(item.id)?.length ?? 0,
         viewerReacted: reactions.some((reaction) => reaction.userId === viewerUserId),
+        viewerCanManage: item.userId === viewerUserId,
         comments: comments
           .map((comment) => {
             const commentProfile = commentProfileMap.get(comment.userId);

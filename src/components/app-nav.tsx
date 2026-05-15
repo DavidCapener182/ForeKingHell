@@ -260,28 +260,47 @@ const mobilePrimaryItems = [
   },
 ];
 
-const moreItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/compare", label: "Compare", icon: GitCompareArrows },
-  { href: "/equipment", label: "Equipment", icon: Wrench },
-  { href: "/rapsodo", label: "Rapsodo", icon: Upload },
-  { href: "/shots", label: "Shots", icon: Database },
-  { href: "/courses", label: "Courses", icon: MapPinned },
-  { href: "/handicap", label: "Handicap", icon: Calculator },
-  { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
-  { href: "/progress", label: "Progress", icon: LineChart },
-  { href: "/feed", label: "Feed", icon: Radio },
-  { href: "/friends", label: "Friends", icon: Users },
-  { href: "/groups", label: "Groups", icon: Users },
-  { href: "/challenges", label: "Challenges", icon: Trophy },
-  { href: "/achievements", label: "Achievements", icon: Award },
-  { href: "/leaderboard", label: "Leaderboards", icon: Users },
-  { href: "/profile", label: "Profile", icon: UserRound },
-  { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/providers", label: "Providers", icon: Cable },
-  { href: "/partners", label: "Partners", icon: Gift },
-  { href: "/settings", label: "Settings", icon: Settings },
+const moreGroups = [
+  {
+    label: "Play",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: Gauge },
+      { href: "/courses", label: "Courses", icon: MapPinned },
+      { href: "/handicap", label: "Handicap", icon: Calculator },
+    ],
+  },
+  {
+    label: "Analyse",
+    items: [
+      { href: "/compare", label: "Compare", icon: GitCompareArrows },
+      { href: "/equipment", label: "Equipment", icon: Wrench },
+      { href: "/rapsodo", label: "Rapsodo", icon: Upload },
+      { href: "/shots", label: "Shots", icon: Database },
+      { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
+      { href: "/progress", label: "Progress", icon: LineChart },
+    ],
+  },
+  {
+    label: "Social",
+    items: [
+      { href: "/feed", label: "Feed", icon: Radio },
+      { href: "/friends", label: "Friends", icon: Users },
+      { href: "/groups", label: "Groups", icon: Users },
+      { href: "/challenges", label: "Challenges", icon: Trophy },
+      { href: "/achievements", label: "Achievements", icon: Award },
+      { href: "/leaderboard", label: "Leaderboards", icon: Users },
+      { href: "/profile", label: "Profile", icon: UserRound },
+      { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { href: "/billing", label: "Billing", icon: CreditCard },
+      { href: "/providers", label: "Providers", icon: Cable },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 const adminMoreItem = { href: "/admin", label: "Admin", icon: ShieldCheck };
@@ -292,7 +311,9 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
   const pathname = usePathname();
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
-  const visibleMoreItems = isAdmin ? [...moreItems, adminMoreItem] : moreItems;
+  const visibleMoreGroups = isAdmin
+    ? [...moreGroups, { label: "Admin", items: [{ href: "/partners", label: "Partners", icon: Gift }, adminMoreItem] }]
+    : moreGroups;
 
   if (
     pathname.startsWith("/login") ||
@@ -323,7 +344,12 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
 
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
             {navGroups.map((group) => {
-              const items = group.label === "Platform" && isAdmin ? [...group.items, adminNavItem] : group.items;
+              const items = group.label === "Platform"
+                ? [
+                    ...group.items.filter((item) => item.href !== "/partners" || isAdmin),
+                    ...(isAdmin ? [adminNavItem] : []),
+                  ]
+                : group.items;
               const groupActive = items.some((item) =>
                 item.isActive(pathname),
               );
@@ -478,20 +504,31 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
               <MoreHorizontal className="size-4" />
               More
             </summary>
-            <div className="absolute bottom-full right-0 mb-2 grid min-w-44 gap-1 rounded-2xl border bg-white p-2 shadow-xl">
-              {visibleMoreItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted"
-                  >
-                    <Icon className="size-4 text-muted-foreground" />
-                    {item.label}
-                  </Link>
-                );
-              })}
+            <div className="absolute bottom-full right-0 mb-2 grid max-h-[72vh] min-w-64 gap-3 overflow-y-auto rounded-2xl border bg-white p-3 shadow-xl">
+              <input
+                type="search"
+                placeholder="Search menu"
+                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
+                aria-label="Search more menu"
+              />
+              {visibleMoreGroups.map((group) => (
+                <section key={group.label} className="grid gap-1">
+                  <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</p>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted"
+                      >
+                        <Icon className="size-4 text-muted-foreground" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </section>
+              ))}
             </div>
           </details>
         </div>

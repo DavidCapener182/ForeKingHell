@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Plus, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Flame, Plus, Trophy, Users } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import {
@@ -49,6 +49,40 @@ export default async function ChallengesPage() {
           { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
         ]}
       />
+
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <Card className="premium-card overflow-hidden">
+          <div className="bg-[linear-gradient(135deg,#111827,#047857_55%,#f59e0b)] p-5 text-white">
+            <Badge variant="secondary" className="gap-1"><Flame className="size-3" /> Featured monthly challenge</Badge>
+            <h2 className="mt-3 text-3xl font-semibold tracking-normal">{data.active[0]?.title ?? "Wedge Window"}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-white/80">
+              {data.active[0]?.description ?? "Dial in a scoring-club window and see where you stand against friends and public opt-in boards."}
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <HeroMetric label="Your status" value={data.active[0]?.viewerJoined ? "Entered" : "Not entered"} />
+              <HeroMetric label="Friends entered" value={data.active[0]?.participantCount ?? 0} />
+              <HeroMetric label="Verification" value={data.active[0]?.leader?.verificationLabel ?? "Mixed"} />
+            </div>
+            {data.active[0] ? (
+              <Button asChild className="mt-4 bg-white text-[#111827] hover:bg-white/90">
+                <Link href={`/challenges/${data.active[0].id}`} prefetch={false}>Join challenge</Link>
+              </Button>
+            ) : null}
+          </div>
+        </Card>
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle>Competition hub</CardTitle>
+            <CardDescription>Jump into active entries, friend boards, templates and past results.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 text-sm">
+            <HubRow label="My active entries" value={data.mine.length} />
+            <HubRow label="Friends competing" value={data.active.reduce((total, challenge) => total + challenge.participantCount, 0)} />
+            <HubRow label="Public Rapsodo boards" value={data.active.filter((challenge) => challenge.visibility === "public").length} />
+            <HubRow label="Challenge templates" value={data.templates.length} />
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
         <DataPanel>
@@ -117,6 +151,24 @@ export default async function ChallengesPage() {
         </DataPanel>
       </section>
     </PageShell>
+  );
+}
+
+function HeroMetric({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2">
+      <p className="text-xs text-white/70">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function HubRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
   );
 }
 
