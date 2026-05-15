@@ -9,6 +9,7 @@ import {
   declineFriendRequest,
   removeFriend,
   sendFriendRequest,
+  unblockUser,
 } from "@/lib/social";
 
 export async function sendFriendRequestAction(formData: FormData) {
@@ -39,6 +40,11 @@ export async function removeFriendAction(formData: FormData) {
 export async function blockUserAction(formData: FormData) {
   await blockUser(requiredString(formData, "blockedUserId"));
   redirect(safeNext(formData, "/friends?user=blocked"));
+}
+
+export async function unblockUserAction(formData: FormData) {
+  await unblockUser(requiredString(formData, "blockedUserId"));
+  redirect(safeNext(formData, "/friends?user=unblocked"));
 }
 
 function requiredString(formData: FormData, key: string) {

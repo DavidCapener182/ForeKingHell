@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, BarChart3, Lock, Plus, Radio, Trophy, Upload, Users, Zap } from "lucide-react";
+import { Award, BarChart3, Filter, Lock, MessageCircle, Plus, Radio, Trophy, Upload, Users, Zap } from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
@@ -13,11 +13,24 @@ import { getFeedPageData } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
-export default async function FeedPage() {
+type FeedPageProps = {
+  searchParams?: Promise<{
+    filter?: string;
+  }>;
+};
+
+type FeedFilter = "all" | "friends" | "pbs" | "achievements" | "challenges" | "rounds" | "me";
+
+export default async function FeedPage({ searchParams }: FeedPageProps) {
+  const params = await searchParams;
+  const activeFilter = parseFeedFilter(params?.filter);
   const data = await getFeedPageData();
   const kudos = data.items.reduce((total, item) => total + item.reactionCount, 0);
   const comments = data.items.reduce((total, item) => total + item.commentCount, 0);
   const feedXp = data.items.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0);
+  const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
+  const pbCount = data.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
+  const challengeCount = data.items.filter((item) => item.itemType.startsWith("challenge_")).length;
 
   return (
     <PageShell size="7xl" className="bg-slate-50/20">
@@ -90,21 +103,22 @@ export default async function FeedPage() {
           </header>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
-            <div className="grid gap-3 sm:grid-cols-4">
-              <PulseCard label="Friends active this week" value={Math.min(data.friendCount, 3)} detail="From your network" />
-              <PulseCard label="PBs" value={data.items.filter((item) => item.itemType.includes("pb")).length} detail="Recent personal bests" />
-              <PulseCard label="Challenge closing soon" value={data.items.filter((item) => item.itemType.includes("challenge")).length > 0 ? 1 : 0} detail="Check the boards" />
-              <PulseCard label="New comments" value={comments} detail="Across visible cards" />
-            </div>
-          </section>
-
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {["All", "Friends", "PBs", "Achievements", "Challenges", "Rounds", "Me"].map((filter) => (
-                <Button key={filter} type="button" variant={filter === "All" ? "default" : "outline"} size="sm" className="shrink-0">
-                  {filter}
-                </Button>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Zap className="size-4 text-emerald-600" />
+                  Social pulse
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.friendCount} friends connected · {pbCount} PBs · {challengeCount} challenge moments · {comments} comments.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <BadgeLike icon={<Users className="size-3" />} label={`${data.friendCount} friends`} />
+                <BadgeLike icon={<Award className="size-3" />} label={`${pbCount} PBs`} />
+                <BadgeLike icon={<Trophy className="size-3" />} label={`${challengeCount} challenges`} />
+                <BadgeLike icon={<MessageCircle className="size-3" />} label={`${comments} comments`} />
+              </div>
             </div>
           </section>
 
@@ -144,7 +158,40 @@ export default async function FeedPage() {
             </div>
           </section>
 
-          <FeedCardList items={data.items} />
+          {data.friendCount === 0 ? (
+            <section className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold">Build your golf network</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Add a friend or join a group to unlock friend-only PBs, challenge entries and comments in this feed.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/friends" prefetch={false}>Find friends</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/groups" prefetch={false}>Browse groups</Link>
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          <section className="rounded-xl border bg-white p-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 px-1 text-sm font-semibold">
+                <Filter className="size-4 text-slate-600" />
+                Filter
+              </span>
+              {feedFilters.map((filter) => (
+                <Button key={filter.key} asChild variant={filter.key === activeFilter ? "default" : "outline"} size="sm">
+                  <Link href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`} prefetch={false}>
+                    {filter.label}
+                  </Link>
+                </Button>
+              ))}
+            </div>
+          </section>
+
+          <FeedCardList items={filteredItems} />
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
@@ -176,15 +223,15 @@ export default async function FeedPage() {
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
 
-function PulseCard({ label, value, detail }: { label: string; value: ReactNode; detail: string }) {
-  return (
-    <div className="rounded-xl border bg-slate-50 px-4 py-3">
-      <p className="text-2xl font-semibold tracking-normal">{value}</p>
-      <p className="mt-1 text-sm font-medium">{label}</p>
-      <p className="text-xs text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
+const feedFilters: Array<{ key: FeedFilter; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "friends", label: "Friends" },
+  { key: "pbs", label: "PBs" },
+  { key: "achievements", label: "Achievements" },
+  { key: "challenges", label: "Challenges" },
+  { key: "rounds", label: "Rounds" },
+  { key: "me", label: "Me" },
+];
 
 function MiniStat({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -216,7 +263,39 @@ function PulseRow({ icon, label, value }: { icon: ReactNode; label: string; valu
   );
 }
 
+function BadgeLike({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-slate-50 px-2.5 text-xs font-medium">
+      {icon}
+      {label}
+    </span>
+  );
+}
+
 function xpFromFeedItem(metricValue: string | null) {
   const match = metricValue?.replace(/,/g, "").match(/^\+?(\d+(?:\.\d+)?)\s*XP$/i);
   return match ? Math.round(Number(match[1])) : 0;
+}
+
+function parseFeedFilter(value: string | undefined): FeedFilter {
+  return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "all";
+}
+
+function filterFeedItems(items: Awaited<ReturnType<typeof getFeedPageData>>["items"], filter: FeedFilter, viewerUserId: string) {
+  switch (filter) {
+    case "friends":
+      return items.filter((item) => item.userId !== viewerUserId);
+    case "pbs":
+      return items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive");
+    case "achievements":
+      return items.filter((item) => item.itemType === "achievement_unlock" || item.itemType === "level_up");
+    case "challenges":
+      return items.filter((item) => item.itemType.startsWith("challenge_"));
+    case "rounds":
+      return items.filter((item) => item.itemType === "round_completed");
+    case "me":
+      return items.filter((item) => item.userId === viewerUserId);
+    default:
+      return items;
+  }
 }

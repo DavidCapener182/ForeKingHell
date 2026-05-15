@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Globe2, Lock, Plus, Radio, Search, Trophy, Users } from "lucide-react";
 
-import { createGroupAction, joinGroupAction } from "@/app/groups/actions";
+import { createGroupAction, joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
 import { PageShell, StatusPill } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +16,13 @@ type GroupsPageProps = {
   searchParams?: Promise<{
     created?: string;
     joined?: string;
+    invite?: string;
   }>;
 };
 
 export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   const params = await searchParams;
-  const data = await getGroupsPageData();
+  const data = await getGroupsPageData(params?.invite);
 
   return (
     <PageShell size="7xl">
@@ -104,6 +105,33 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             ) : null}
           </header>
+
+          {params?.invite ? (
+            <section className="rounded-xl border bg-white p-4 shadow-sm">
+              {data.invitePreview ? (
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">Invite to {data.invitePreview.name}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {data.invitePreview.description ?? `${data.invitePreview.memberCount} members · ${label(data.invitePreview.visibility)}`}
+                    </p>
+                  </div>
+                  {data.invitePreview.viewerRole ? (
+                    <Button asChild variant="outline">
+                      <Link href={`/groups/${data.invitePreview.slug}`} prefetch={false}>Open group</Link>
+                    </Button>
+                  ) : (
+                    <form action={joinGroupByInviteCodeAction}>
+                      <input type="hidden" name="inviteCode" value={data.invitePreview.inviteCode} />
+                      <Button type="submit">Join from invite</Button>
+                    </form>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">That group invite is not valid or has expired.</p>
+              )}
+            </section>
+          ) : null}
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">

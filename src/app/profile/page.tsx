@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { headers } from "next/headers";
-import { ArrowLeft, Copy, QrCode, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeft, Award, Copy, QrCode, ShieldCheck, Target, Trophy, UserRound } from "lucide-react";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import {
@@ -11,10 +11,14 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { getChallengesPageData } from "@/lib/challenges";
 import {
   defaultProfileVisibilitySettings,
   ensureCurrentSocialProfile,
@@ -31,10 +35,11 @@ type ProfilePageProps = {
 };
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
-  const [params, requestHeaders, profile] = await Promise.all([
+  const [params, requestHeaders, profile, challenges] = await Promise.all([
     searchParams,
     headers(),
     ensureCurrentSocialProfile(),
+    getChallengesPageData(),
   ]);
   const origin = getRequestOrigin(requestHeaders);
   const profileUrl = `${origin}/profile/${profile.username}`;
@@ -42,6 +47,9 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     ...defaultProfileVisibilitySettings(),
     ...profile.visibilitySettingsJson,
   };
+  const completion = profileCompletion(profile);
+  const pbShowcase = profile.pbShowcaseJson.slice(0, 3);
+  const achievementShowcase = profile.achievementShowcaseJson.slice(0, 4);
 
   return (
     <PageShell size="6xl">
@@ -79,6 +87,53 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           <AlertDescription>Your social profile and privacy defaults are active.</AlertDescription>
         </Alert>
       ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]">
+        <article className="overflow-hidden rounded-xl border bg-white shadow-sm">
+          <div className="h-24 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)]" />
+          <div className="grid gap-4 p-5 pt-0">
+            <div className="-mt-9 flex flex-wrap items-end justify-between gap-3">
+              <div className="flex items-end gap-3">
+                <SocialAvatar
+                  displayName={profile.displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatarUrl}
+                  href={`/profile/${profile.username}`}
+                  size="lg"
+                />
+                <div className="pb-1">
+                  <h2 className="text-2xl font-semibold tracking-normal">{profile.displayName}</h2>
+                  <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                </div>
+              </div>
+              <Button asChild variant="outline">
+                <Link href={`/profile/${profile.username}`} prefetch={false}>Preview public page</Link>
+              </Button>
+            </div>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              {profile.bio ?? "Add a short goal, home setup or favourite club so friends understand what you are working on."}
+            </p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <PreviewStat icon={<Target className="size-4 text-emerald-600" />} label="Home setup" value={profile.primaryLaunchMonitor ?? "Add device"} />
+              <PreviewStat icon={<Trophy className="size-4 text-amber-600" />} label="Current entries" value={challenges.mine.length} />
+              <PreviewStat icon={<ShieldCheck className="size-4 text-sky-600" />} label="Default share" value={titleCase(profile.feedVisibilityDefault)} />
+            </div>
+          </div>
+        </article>
+
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Profile completion</p>
+            <Badge variant="secondary">{completion}%</Badge>
+          </div>
+          <Progress value={completion} className="mt-3" />
+          <div className="mt-4 grid gap-2 text-sm">
+            <ShowcaseRow icon={<Award className="size-4 text-emerald-600" />} label="PB showcase" value={pbShowcase.length ? pbShowcase.map(pbLabel).join(" · ") : "Choose PBs to feature"} />
+            <ShowcaseRow icon={<Trophy className="size-4 text-amber-600" />} label="Achievements" value={achievementShowcase.length ? achievementShowcase.join(" · ") : "Unlock and pin badges"} />
+            <ShowcaseRow icon={<Target className="size-4 text-sky-600" />} label="Challenges" value={challenges.mine.slice(0, 2).map((item) => item.title).join(" · ") || "Join a challenge"} />
+          </div>
+        </article>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
         <DataPanel>
@@ -226,6 +281,47 @@ function SelectField({
       </select>
     </label>
   );
+}
+
+function PreviewStat({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-slate-50 px-3 py-2">
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function ShowcaseRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-slate-50 px-3 py-2">
+      <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">{icon}{label}</p>
+      <p className="mt-1 line-clamp-2">{value}</p>
+    </div>
+  );
+}
+
+function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocialProfile>>) {
+  const fields = [
+    profile.username,
+    profile.displayName,
+    profile.avatarUrl,
+    profile.bio,
+    profile.homeCourse,
+    profile.primaryLaunchMonitor,
+    profile.handicapBand,
+    profile.publicProfile || profile.friendProfile ? "visibility" : "",
+  ];
+  const completed = fields.filter(Boolean).length;
+
+  return Math.round((completed / fields.length) * 100);
+}
+
+function pbLabel(value: Record<string, unknown>) {
+  const label = typeof value.label === "string" ? value.label : typeof value.club === "string" ? value.club : "PB";
+  const metric = typeof value.value === "string" || typeof value.value === "number" ? String(value.value) : null;
+
+  return metric ? `${label} ${metric}` : label;
 }
 
 function titleCase(value: string) {

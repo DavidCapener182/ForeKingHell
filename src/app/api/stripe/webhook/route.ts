@@ -1,33 +1,44 @@
-import {
-  createDrizzleBillingWebhookStore,
-  parseStripeWebhookEvent,
-  processStripeWebhookEvent,
-  verifyStripeWebhookSignature,
-} from "@/lib/stripe-billing";
+import { createDrizzleBillingWebhookStore, handleStripeWebhookEvent, verifyStripeSignature } from "@/lib/stripe-webhook";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
   if (!webhookSecret) {
-    return Response.json({ error: "Stripe webhook secret is not configured." }, { status: 500 });
+    return Response.json({ error: "STRIPE_WEBHOOK_SECRET is not configured." }, { status: 500 });
   }
 
   const payload = await request.text();
   const signatureHeader = request.headers.get("stripe-signature");
-  const verified = verifyStripeWebhookSignature({ payload, signatureHeader, webhookSecret });
 
-  if (!verified) {
+  if (!verifyStripeSignature({ payload, signatureHeader, webhookSecret })) {
     return Response.json({ error: "Invalid Stripe signature." }, { status: 400 });
   }
 
+  let event: unknown;
+
   try {
-    const event = parseStripeWebhookEvent(payload);
-    const result = await processStripeWebhookEvent(event, createDrizzleBillingWebhookStore());
-    return Response.json(result);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Stripe webhook failed.";
-    return Response.json({ error: message }, { status: 400 });
+    event = JSON.parse(payload);
+  } catch {
+    return Response.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
+
+  if (!isStripeWebhookEvent(event)) {
+    return Response.json({ error: "Invalid Stripe event." }, { status: 400 });
+  }
+
+  const result = await handleStripeWebhookEvent(event, createDrizzleBillingWebhookStore());
+
+  return Response.json({ received: true, ...result });
+}
+
+function isStripeWebhookEvent(value: unknown): value is Parameters<typeof handleStripeWebhookEvent>[0] {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof (value as { type?: unknown }).type === "string" &&
+    Boolean((value as { data?: { object?: unknown } }).data?.object)
+  );
 }

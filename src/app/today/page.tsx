@@ -50,6 +50,7 @@ import {
   type TodayChartShot,
 } from "@/app/today/today-shot-charts";
 import { formatClubType } from "@/lib/club-format";
+import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
   type ClubDayComparison,
   type ClubMainStatMetric,
@@ -115,11 +116,14 @@ export default async function TodayPage({
   }
 
   const params = await searchParams;
-  const data = await getTodayPracticeData({
-    date: first(params.date),
-    sessionId: first(params.session),
-    club: first(params.club),
-  });
+  const [data, challengeData] = await Promise.all([
+    getTodayPracticeData({
+      date: first(params.date),
+      sessionId: first(params.session),
+      club: first(params.club),
+    }),
+    getChallengesPageData(),
+  ]);
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(data.shots);
   const activeFilterChips = buildTodayFilterChips(data);
@@ -198,6 +202,8 @@ export default async function TodayPage({
           },
         ]}
       />
+
+      <TodaySocialLine data={data} challenges={challengeData.active} />
 
       <MobileSectionChips
         items={[
@@ -679,6 +685,42 @@ function EmptyToday() {
         </Button>
       </CardContent>
     </DataPanel>
+  );
+}
+
+function TodaySocialLine({
+  data,
+  challenges,
+}: {
+  data: TodayPracticeData;
+  challenges: ChallengeListItem[];
+}) {
+  if (data.shots.length === 0) {
+    return null;
+  }
+
+  const bestClub = data.clubComparisons[0]?.clubLabel ?? data.clubs[0]?.label ?? "This session";
+  const challenge = challenges.find((item) => item.status === "open") ?? null;
+
+  return (
+    <section className="rounded-xl border bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Social context</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {challenge
+              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. That is enough to compare against ${challenge.title}.`
+              : `${bestClub} is ready to share as a practice update if you want a friends-only pulse check.`}
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
+            <Trophy className="size-4" />
+            {challenge ? "Open challenge" : "Open feed"}
+          </Link>
+        </Button>
+      </div>
+    </section>
   );
 }
 

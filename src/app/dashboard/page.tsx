@@ -51,6 +51,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
+import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
   buildCourseDecisionAdvice,
   getClubDecisionLabel,
@@ -75,6 +76,7 @@ import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
+import { getFeedPageData, type FeedItemView } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
@@ -130,7 +132,11 @@ export default async function DashboardPage() {
     return <MissingDatabaseUrlSetup />;
   }
 
-  const data = await getDashboardData();
+  const [data, social, challengeData] = await Promise.all([
+    getDashboardData(),
+    getFeedPageData(),
+    getChallengesPageData(),
+  ]);
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel =
@@ -394,6 +400,8 @@ export default async function DashboardPage() {
           tone: metric.tone === "pink" ? "pink" : metric.tone,
         }))}
       />
+
+      <DashboardSocialPulse social={social} challenges={challengeData.active} />
 
       <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => (
@@ -877,6 +885,94 @@ function TodayPlan({
         />
       </CardContent>
     </DataPanel>
+  );
+}
+
+function DashboardSocialPulse({
+  social,
+  challenges,
+}: {
+  social: Awaited<ReturnType<typeof getFeedPageData>>;
+  challenges: ChallengeListItem[];
+}) {
+  const topItems = social.items.slice(0, 3);
+  const pbCount = social.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
+  const closingSoon = challenges
+    .filter((challenge) => challenge.endsAt)
+    .sort((left, right) => (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0))[0] ?? null;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Social pulse"
+        description="A compact view of network activity without turning the dashboard into another feed."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/feed" prefetch={false}>
+              <Radio className="size-4" />
+              Open feed
+            </Link>
+          </Button>
+        }
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <CompactReadoutGrid
+          columnsClassName="sm:grid-cols-2"
+          items={[
+            {
+              label: "Friends active",
+              value: social.friendCount.toString(),
+              detail: "Accepted golfer friendships",
+              tone: "green",
+              href: "/friends",
+            },
+            {
+              label: "Network PBs",
+              value: pbCount.toString(),
+              detail: "Visible PB and longest-drive cards",
+              tone: "amber",
+              href: "/feed?filter=pbs",
+            },
+            {
+              label: "Challenge closing",
+              value: closingSoon?.title ?? "--",
+              detail: closingSoon?.endsAt ? `Ends ${formatDate(closingSoon.endsAt)}` : "No open closing board",
+              tone: closingSoon ? "sky" : "slate",
+              href: closingSoon ? `/challenges/${closingSoon.id}` : "/challenges",
+            },
+          ]}
+        />
+        <div className="grid gap-2">
+          {topItems.length > 0 ? (
+            topItems.map((item) => <DashboardSocialMoment key={item.id} item={item} />)
+          ) : (
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No visible social moments yet. Add friends or join a challenge to populate this pulse.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function DashboardSocialMoment({ item }: { item: FeedItemView }) {
+  return (
+    <Link
+      href={item.proofUrl ?? "/feed"}
+      prefetch={false}
+      className="grid gap-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-white"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-medium">{item.headline}</p>
+        <StatusPill tone={item.verificationLabel === "Manual" || item.verificationLabel === "Unverified" ? "slate" : "green"}>
+          {item.verificationLabel}
+        </StatusPill>
+      </div>
+      <p className="text-muted-foreground">
+        {item.metricValue ? `${item.metricLabel ?? "Metric"} ${item.metricValue}` : item.context ?? "Social update"}
+      </p>
+    </Link>
   );
 }
 

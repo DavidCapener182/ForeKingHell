@@ -7,6 +7,7 @@ import {
   Trophy,
   Target,
   Upload,
+  Users,
 } from "lucide-react";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
@@ -49,6 +50,7 @@ import {
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { buildClubBenchmarkRows, type ClubBenchmarkRow } from "@/lib/club-benchmarks";
+import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   buildCourseDecisionAdvice,
@@ -58,12 +60,17 @@ import {
   type CourseDecisionAdvice,
 } from "@/lib/course-decision-advice";
 import {
+  buildPersonalGappingTargets,
+  type GappingTargetTone,
+} from "@/lib/gapping-targets";
+import {
   clubAccent,
   clubSortValue,
   formatClubType,
   isShortGameTouchClubType,
   isTrackedClubType,
 } from "@/lib/club-format";
+import { ensureCurrentSocialProfile } from "@/lib/social";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
 
@@ -76,8 +83,14 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const RECENT_SHOTS_PER_CLUB = 200;
 
 export default async function BagPage() {
-  const bag = await getBag();
-  const gappingRows = buildGappingRows(bag);
+  const [bag, profile, challengeData] = await Promise.all([
+    getBag(),
+    ensureCurrentSocialProfile(),
+    getChallengesPageData(),
+  ]);
+  const gappingRows = buildGappingRows(bag, {
+    handicapBand: profile.handicapBand,
+  });
   const benchmarkRows = buildBenchmarkRows(bag);
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
@@ -90,10 +103,10 @@ export default async function BagPage() {
     [...gappingRows]
       .filter(
         (row): row is GappingRow & { workOnYd: number } =>
-          row.workOnYd !== null,
+          row.workOnYd !== null && row.targetPriorityYd > 0,
       )
       .sort(
-        (left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd),
+        (left, right) => right.targetPriorityYd - left.targetPriorityYd,
       )[0] ?? null;
   const averageConfidence =
     stockConfidenceClubs.length === 0
@@ -186,6 +199,8 @@ export default async function BagPage() {
         visual={
           <ClubArtwork
             clubType={bestClub?.type ?? "driver"}
+            brand={bestClub?.brand}
+            model={bestClub?.model}
             alt=""
             className="h-20 w-20 rounded-xl"
             sizes="80px"
@@ -220,14 +235,17 @@ export default async function BagPage() {
             label: "Weakest gap",
             value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
             detail: weakestGap
-              ? workOnText(weakestGap.workOnYd)
+              ? workOnText(weakestGap)
               : "Need carry samples",
-            tone:
-              weakestGap && Math.abs(weakestGap.workOnYd) > 10
-                ? "pink"
-                : "amber",
+            tone: weakestGap?.targetTone ?? "amber",
           },
         ]}
+      />
+
+      <BagSocialComparison
+        bestClub={bestClub}
+        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+        challenges={challengeData.active}
       />
 
       {gappingRows.length > 0 ? (
@@ -258,22 +276,26 @@ export default async function BagPage() {
           >
             <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
               <CardHeader className="p-4 sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <CardDescription>{club.brandModel}</CardDescription>
+                <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                  <ClubArtwork
+                    clubType={club.type}
+                    brand={club.brand}
+                    model={club.model}
+                    alt=""
+                    className="h-16 w-full shrink-0 rounded-xl sm:h-20"
+                    sizes="112px"
+                  />
+                  <div className="min-w-0 space-y-1 text-right">
+                    <CardDescription className="truncate">{club.brandModel}</CardDescription>
                     <CardTitle className="text-2xl tracking-normal sm:text-3xl">
                       {formatClubType(club.type)}
                     </CardTitle>
-                    <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
-                      {club.decisionLabel}
-                    </StatusPill>
+                    <div className="flex justify-end">
+                      <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
+                        {club.decisionLabel}
+                      </StatusPill>
+                    </div>
                   </div>
-                  <ClubArtwork
-                    clubType={club.type}
-                    alt=""
-                    className="h-14 w-20 shrink-0 rounded-xl sm:h-20 sm:w-28"
-                    sizes="112px"
-                  />
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -540,8 +562,12 @@ type GappingRow = {
   targetPlayNumberYd: number | null;
   workOnYd: number | null;
   targetGapYd: number | null;
+  targetMessage: string;
+  targetTone: GappingTargetTone;
+  targetPriorityYd: number;
   sampleSize: number;
   confidenceScore: number;
+  averageLaunchAngleDeg: number | null;
   decisionLabel: ClubDecisionLabel;
 };
 
@@ -558,7 +584,10 @@ function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
   );
 }
 
-function buildGappingRows(bag: BagClub[]): GappingRow[] {
+function buildGappingRows(
+  bag: BagClub[],
+  options: { handicapBand?: string | null } = {},
+): GappingRow[] {
   const stockBag = bag.filter((club) => !club.isShortGameTouch);
 
   const baseRows: GappingRow[] = stockBag.map((club, index) => {
@@ -584,48 +613,18 @@ function buildGappingRows(bag: BagClub[]): GappingRow[] {
       targetPlayNumberYd: null,
       workOnYd: null,
       targetGapYd: null,
+      targetMessage: "Need carry samples",
+      targetTone: "slate",
+      targetPriorityYd: 0,
       sampleSize: club.stock.sampleSize,
       confidenceScore: club.stock.confidenceScore,
       decisionLabel: club.decisionLabel,
+      averageLaunchAngleDeg: club.stock.averageLaunchAngleDeg,
     };
   });
 
-  const rowsWithCarry = baseRows
-    .map((row, index) => ({ row, index }))
-    .filter(
-      (
-        entry,
-      ): entry is { row: GappingRow & { carryYd: number }; index: number } =>
-        entry.row.carryYd !== null,
-    );
-  const first = rowsWithCarry[0];
-  const last = rowsWithCarry[rowsWithCarry.length - 1];
-
-  if (!first || !last || first.index === last.index) {
-    return baseRows;
-  }
-
-  const targetGapYd = roundOne(
-    (first.row.carryYd - last.row.carryYd) / (last.index - first.index),
-  );
-
-  if (targetGapYd <= 0) {
-    return baseRows;
-  }
-
-  return baseRows.map((row, index) => {
-    const targetCarryYd = roundOne(
-      first.row.carryYd - targetGapYd * (index - first.index),
-    );
-
-    return {
-      ...row,
-      targetCarryYd,
-      targetPlayNumberYd: roundToNearestFive(targetCarryYd),
-      workOnYd:
-        row.carryYd === null ? null : roundOne(targetCarryYd - row.carryYd),
-      targetGapYd,
-    };
+  return buildPersonalGappingTargets(baseRows, {
+    handicapBand: options.handicapBand,
   });
 }
 
@@ -648,6 +647,41 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
             href: item.clubId ? `/bag/${item.clubId}` : undefined,
           }))}
         />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function BagSocialComparison({
+  bestClub,
+  leaderboardOptedIn,
+  challenges,
+}: {
+  bestClub: Awaited<ReturnType<typeof getBag>>[number] | null;
+  leaderboardOptedIn: boolean;
+  challenges: ChallengeListItem[];
+}) {
+  const challenge = challenges.find((item) => item.status === "open") ?? null;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Friend comparison"
+        description="Only shown as an opt-in leaderboard prompt. Bag data stays private unless profile visibility allows it."
+        action={<Users className="size-5 text-emerald-600" />}
+      />
+      <CardContent className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="rounded-xl border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+          {leaderboardOptedIn && bestClub
+            ? `${formatClubType(bestClub.type)} is your most trusted active club. Compare it through friend boards or a private challenge when you want a fair opt-in benchmark.`
+            : "Leaderboard comparison is off in your profile, so this page is keeping the bag readout private."}
+        </div>
+        <Button asChild variant="outline" className="w-fit">
+          <Link href={leaderboardOptedIn && challenge ? `/challenges/${challenge.id}` : "/profile"} prefetch={false}>
+            <Users className="size-4" />
+            {leaderboardOptedIn && challenge ? "Open challenge" : "Privacy settings"}
+          </Link>
+        </Button>
       </CardContent>
     </DataPanel>
   );
@@ -911,8 +945,8 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
           Carry gapping
         </CardTitle>
         <CardDescription className="hidden sm:block">
-          Stock carry by club, with target carry numbers to make the gaps more
-          consistent.
+          Stock carry by club, with realistic next-step targets from the
+          current bag data.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -962,7 +996,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                 />
                 <DataPair
                   label="Work on"
-                  value={<WorkOnBadge workOnYd={row.workOnYd} />}
+                  value={<WorkOnBadge row={row} />}
                 />
                 <DataPair
                   label="Decision"
@@ -1025,7 +1059,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <WorkOnBadge workOnYd={row.workOnYd} />
+                      <WorkOnBadge row={row} />
                     </TableCell>
                     <TableCell className="text-right">
                       {row.sampleSize}
@@ -1063,8 +1097,8 @@ function GappingRecommendations({
       (row): row is GappingRow & { workOnYd: number; targetCarryYd: number } =>
         row.workOnYd !== null && row.targetCarryYd !== null,
     )
-    .filter((row) => Math.abs(row.workOnYd) > 2)
-    .sort((left, right) => Math.abs(right.workOnYd) - Math.abs(left.workOnYd))
+    .filter((row) => row.targetPriorityYd > 0)
+    .sort((left, right) => right.targetPriorityYd - left.targetPriorityYd)
     .slice(0, 3);
 
   return (
@@ -1083,8 +1117,8 @@ function GappingRecommendations({
           {numberFormatter.format(targetGapYd)} yd
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Straight-line ladder from your longest full club to your shortest full
-          club.
+          Personal gap from your current reliable carries. Progress targets are
+          capped by club type, confidence, and handicap band.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -1094,19 +1128,19 @@ function GappingRecommendations({
               columnsClassName="md:grid-cols-3"
               items={priorities.map((row) => ({
                 label: formatClubType(row.clubType),
-                value: `${numberFormatter.format(row.targetCarryYd)} yd target`,
-                detail: workOnText(row.workOnYd),
-                tone: Math.abs(row.workOnYd) > 10 ? "pink" : "amber",
+                value: `${numberFormatter.format(row.targetCarryYd)} yd next step`,
+                detail: workOnText(row),
+                tone: row.targetTone,
                 href: `/bag/${row.id}`,
               }))}
             />
           </div>
         ) : (
           <div className="apple-panel-strong p-4 md:col-span-3">
-            <p className="font-semibold">Gaps are already close</p>
+            <p className="font-semibold">Distances are in a healthy window</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Every club with a target is within 2 yd of the current carry
-              ladder.
+              No club needs a distance chase from the current bag data. Keep
+              prioritising strike consistency and predictable carry.
             </p>
           </div>
         )}
@@ -1115,13 +1149,8 @@ function GappingRecommendations({
   );
 }
 
-function workOnText(workOnYd: number) {
-  const absoluteYards = numberFormatter.format(Math.abs(workOnYd));
-  if (Math.abs(workOnYd) <= 2) {
-    return "Hold the current carry window.";
-  }
-
-  return `${workOnYd > 0 ? "Add" : "Take off"} ${absoluteYards} yd to close the ladder.`;
+function workOnText(row: Pick<GappingRow, "targetMessage">) {
+  return row.targetMessage;
 }
 
 function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
@@ -1182,34 +1211,49 @@ function GapBadge({ gapYd }: { gapYd: number | null }) {
   );
 }
 
-function WorkOnBadge({ workOnYd }: { workOnYd: number | null }) {
-  if (workOnYd === null) {
+function WorkOnBadge({
+  row,
+}: {
+  row: Pick<GappingRow, "workOnYd" | "targetMessage" | "targetTone">;
+}) {
+  if (row.workOnYd === null) {
     return <span className="text-muted-foreground">--</span>;
   }
 
-  const absoluteYards = Math.abs(workOnYd);
-
-  if (absoluteYards <= 2) {
-    return (
-      <span className="inline-flex min-w-24 justify-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
-        Hold window
-      </span>
-    );
-  }
-
-  const tone =
-    absoluteYards > 10
-      ? "border-rose-200 bg-rose-50 text-rose-700"
-      : "border-amber-200 bg-amber-50 text-amber-700";
-  const direction = workOnYd > 0 ? "Add" : "Take off";
+  const label =
+    row.workOnYd > 0
+      ? `Potential +${numberFormatter.format(row.workOnYd)} yd`
+      : row.targetMessage;
 
   return (
     <span
-      className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}
+      className={`inline-flex min-w-28 max-w-48 justify-center rounded-full border px-2 py-1 text-center text-xs font-semibold leading-snug ${targetToneClass(
+        row.targetTone,
+      )}`}
     >
-      {direction} {numberFormatter.format(absoluteYards)} yd
+      {label}
     </span>
   );
+}
+
+function targetToneClass(tone: GappingTargetTone) {
+  if (tone === "green") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (tone === "sky") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (tone === "amber") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  if (tone === "pink") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
 function MiniDispersion({
@@ -1291,12 +1335,4 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
-}
-
-function roundOne(value: number) {
-  return Math.round(value * 10) / 10;
-}
-
-function roundToNearestFive(value: number) {
-  return Math.round(value / 5) * 5;
 }

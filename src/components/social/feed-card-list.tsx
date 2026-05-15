@@ -1,23 +1,43 @@
 import Link from "next/link";
-import { Award, BarChart3, CalendarDays, ChevronDown, EyeOff, Flag, Globe2, Lock, MessageCircle, Share2, ShieldCheck, ThumbsUp, Trash2, Users, Zap } from "lucide-react";
+import {
+  Award,
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  EyeOff,
+  Flag,
+  Globe2,
+  Lock,
+  MessageCircle,
+  MoreHorizontal,
+  Share2,
+  ShieldCheck,
+  ThumbsUp,
+  Trash2,
+  Users,
+  Zap,
+} from "lucide-react";
 
 import {
   addFeedCommentAction,
   addFeedCommentReactionAction,
   addFeedReactionAction,
-  deleteFeedCommentAction,
+  deleteFeedItemAction,
   hideFeedItemAction,
-  muteFeedItemTypeAction,
+  hideFeedItemTypeAction,
+  muteFeedItemUserAction,
+  reportFeedItemAction,
+  deleteFeedCommentAction,
   removeFeedCommentReactionAction,
   removeFeedReactionAction,
-  reportFeedItemAction,
   updateFeedItemVisibilityAction,
 } from "@/app/feed/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
 import { SocialAvatar } from "@/components/social/social-avatar";
-import type { FeedItemView } from "@/lib/social";
+import { socialVisibilityOptions, type FeedItemView } from "@/lib/social";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -177,6 +197,24 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
           </details>
         ) : null}
 
+        <details className="group rounded-xl border bg-slate-50/80">
+          <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <MoreHorizontal className="size-4 text-slate-600" />
+              Individual cards
+            </span>
+            <span className="flex items-center gap-2">
+              <Badge variant="outline">{group.items.length} posts</Badge>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-slate-100 p-3">
+            {group.items.map((item) => (
+              <FeedItemCard key={item.id} item={item} />
+            ))}
+          </div>
+        </details>
+
         <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           <Button asChild variant="ghost" size="sm">
             <Link href={`/api/share-cards/feed/${firstItem.id}`} target="_blank" prefetch={false}>
@@ -192,7 +230,10 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
 
 function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white/92 shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+    <article
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white/92 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+      data-feed-item-id={item.id}
+    >
       <div className={compact ? "grid gap-3 p-3" : "grid gap-4 p-4"}>
         <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
           <SocialAvatar
@@ -241,7 +282,6 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               {item.verificationLabel}
             </Badge>
             <Badge variant="outline">{feedTypeLabel(item.itemType)}</Badge>
-            <Badge variant="outline">Safety checked</Badge>
           </div>
         </div>
 
@@ -263,10 +303,15 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
             <Button asChild variant="ghost" size="sm">
               <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
                 <Share2 className="size-4" />
-                Copy share image
+                Share card
               </Link>
             </Button>
-            <CardSafetyControls item={item} />
+            <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
+            {item.proofUrl ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link href={item.proofUrl} prefetch={false}>Open related</Link>
+              </Button>
+            ) : null}
           </div>
 
           {!compact ? (
@@ -288,52 +333,10 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               </form>
             </>
           ) : null}
+          <FeedItemControls item={item} compact={compact} />
         </div>
       </div>
     </article>
-  );
-}
-
-function CardSafetyControls({ item }: { item: FeedItemView }) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {item.viewerCanManage ? (
-        <>
-          <form action={updateFeedItemVisibilityAction} className="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1">
-            <input type="hidden" name="feedItemId" value={item.id} />
-            <span className="text-xs text-muted-foreground">Visibility</span>
-            <select name="visibility" defaultValue={item.visibility} className="h-7 rounded-md border bg-white px-2 text-xs">
-              <option value="private">Private</option>
-              <option value="friends">Friends</option>
-              <option value="public">Public</option>
-            </select>
-            <Button type="submit" variant="ghost" size="xs">Save</Button>
-          </form>
-          <form action={hideFeedItemAction}>
-            <input type="hidden" name="feedItemId" value={item.id} />
-            <Button type="submit" variant="ghost" size="sm">
-              <Trash2 className="size-4" />
-              Delete from feed
-            </Button>
-          </form>
-        </>
-      ) : null}
-      <form action={reportFeedItemAction}>
-        <input type="hidden" name="feedItemId" value={item.id} />
-        <input type="hidden" name="reason" value="feed_safety" />
-        <Button type="submit" variant="ghost" size="sm">
-          <Flag className="size-4" />
-          Report
-        </Button>
-      </form>
-      <form action={muteFeedItemTypeAction}>
-        <input type="hidden" name="feedItemId" value={item.id} />
-        <Button type="submit" variant="ghost" size="sm">
-          <EyeOff className="size-4" />
-          Hide this type
-        </Button>
-      </form>
-    </div>
   );
 }
 
@@ -485,8 +488,96 @@ function ActivityActions({
             Comments {item.commentCount > 0 ? item.commentCount : ""}
           </span>
         )}
+        <Button asChild variant="ghost" size="sm">
+          <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
+            <Share2 className="size-4" />
+            Share card
+          </Link>
+        </Button>
+        <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
       </div>
+      <FeedItemControls item={item} compact />
     </div>
+  );
+}
+
+function FeedItemControls({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
+  const isOwnItem = item.profile.relationship === "self";
+
+  return (
+    <details className="group rounded-xl border bg-slate-50/80">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          <ShieldCheck className="size-4 text-slate-600" />
+          Controls
+        </span>
+        <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className={compact ? "grid gap-2 border-t p-2" : "grid gap-3 border-t p-3 sm:grid-cols-2"}>
+        {isOwnItem ? (
+          <>
+            <form action={updateFeedItemVisibilityAction} className="grid gap-2 rounded-lg bg-white p-2">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <label className="grid gap-1 text-xs font-medium">
+                <span>Edit visibility</span>
+                <select name="visibility" defaultValue={item.visibility} className="h-8 rounded-lg border bg-white px-2 text-xs">
+                  {socialVisibilityOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {titleCase(option)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" variant="outline" size="sm">Save visibility</Button>
+            </form>
+            <form action={deleteFeedItemAction} className="rounded-lg bg-white p-2">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <Button type="submit" variant="destructive" size="sm">
+                <Trash2 className="size-4" />
+                Delete from feed
+              </Button>
+            </form>
+          </>
+        ) : (
+          <>
+            <form action={hideFeedItemAction} className="rounded-lg bg-white p-2">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <Button type="submit" variant="outline" size="sm">
+                <EyeOff className="size-4" />
+                Hide post
+              </Button>
+            </form>
+            <form action={hideFeedItemTypeAction} className="rounded-lg bg-white p-2">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <Button type="submit" variant="outline" size="sm">
+                <EyeOff className="size-4" />
+                Hide this type
+              </Button>
+            </form>
+            <form action={muteFeedItemUserAction} className="rounded-lg bg-white p-2">
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <Button type="submit" variant="outline" size="sm">
+                <Users className="size-4" />
+                Mute user
+              </Button>
+            </form>
+          </>
+        )}
+        <form action={reportFeedItemAction} className="grid gap-2 rounded-lg bg-white p-2" data-feed-report-form>
+          <input type="hidden" name="feedItemId" value={item.id} />
+          <select name="reason" defaultValue="feed_report" className="h-8 rounded-lg border bg-white px-2 text-xs">
+            <option value="feed_report">Report post</option>
+            <option value="suspicious_result">Suspicious result</option>
+            <option value="spam">Spam</option>
+            <option value="harassment">Harassment</option>
+          </select>
+          <Button type="submit" variant="outline" size="sm">
+            <Flag className="size-4" />
+            Report
+          </Button>
+        </form>
+      </div>
+    </details>
   );
 }
 

@@ -14,6 +14,7 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { getActivePlanKeyForUser, planAllowsPrivateChallenges } from "@/lib/billing";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   areFriends,
@@ -59,6 +60,7 @@ export type ChallengeListItem = {
 };
 
 export type ChallengeDetailData = {
+  viewerUserId: string;
   challenge: ChallengeListItem & {
     creatorUserId: string;
     rulesJson: Record<string, unknown>;
@@ -187,6 +189,7 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
   }
 
   return {
+    viewerUserId,
     challenge: {
       ...listItem,
       creatorUserId: challenge.creatorUserId,
@@ -252,12 +255,20 @@ export async function createChallenge(input: {
   const creatorUserId = await requireCurrentUserId();
   const creatorProfile = await ensureSocialProfileForUser(creatorUserId);
   const [template] = await getDb().select().from(challengeTemplates).where(eq(challengeTemplates.id, input.templateId)).limit(1);
+  const visibility = parseVisibility(input.visibility, "friends");
 
   if (!template) {
     throw new Error("Challenge template not found.");
   }
 
-  const visibility = parseVisibility(input.visibility, "friends");
+  if (visibility !== "public") {
+    const planKey = await getActivePlanKeyForUser(creatorUserId);
+
+    if (!planAllowsPrivateChallenges(planKey)) {
+      throw new Error("Private challenges require Plus, Pro, Coach / Club or Lifetime Full.");
+    }
+  }
+
   const title = input.title.trim() || template.name;
   const now = new Date();
   const [challenge] = await getDb().transaction(async (tx) => {
@@ -702,16 +713,19 @@ function isBetterScore(candidate: number, current: number, direction: "asc" | "d
 }
 
 function metricLabelForTemplate(template: ChallengeTemplateRow | undefined | null) {
-  switch (template?.slug) {
-    case "longest-drive":
+  switch (challengeTemplateKind(template)) {
+    case "longest_drive":
       return "Total distance";
-    case "wedge-window":
+    case "straightest_drive":
+      return "Offline miss";
+    case "wedge_window":
+    case "wedge_ladder":
       return "Average error";
-    case "7i-consistency":
+    case "consistency":
       return "Carry spread";
-    case "closest-to-pin":
+    case "closest_to_pin":
       return "Distance to pin";
-    case "monthly-practice-streak":
+    case "practice_streak":
       return "Practice days";
     default:
       return "Score";
@@ -719,15 +733,18 @@ function metricLabelForTemplate(template: ChallengeTemplateRow | undefined | nul
 }
 
 function scoreLabel(score: number, template: ChallengeTemplateRow | undefined | null) {
-  switch (template?.slug) {
-    case "longest-drive":
+  switch (challengeTemplateKind(template)) {
+    case "longest_drive":
       return `${score.toFixed(1)} yd`;
-    case "wedge-window":
-    case "closest-to-pin":
+    case "straightest_drive":
+      return `${score.toFixed(1)} yd offline`;
+    case "wedge_window":
+    case "wedge_ladder":
+    case "closest_to_pin":
       return `${score.toFixed(1)} yd error`;
-    case "7i-consistency":
+    case "consistency":
       return `${score.toFixed(1)} yd spread`;
-    case "monthly-practice-streak":
+    case "practice_streak":
       return `${Math.round(score)} days`;
     default:
       return score.toFixed(1);
@@ -735,19 +752,48 @@ function scoreLabel(score: number, template: ChallengeTemplateRow | undefined | 
 }
 
 function challengeCoachNote(template: ChallengeTemplateRow) {
-  switch (template.slug) {
-    case "longest-drive":
+  switch (challengeTemplateKind(template)) {
+    case "longest_drive":
       return "Use your normal gamer driver, keep the attempt count tight, and avoid chasing speed after contact quality drops.";
-    case "wedge-window":
+    case "straightest_drive":
+      return "Pick a clear start line and avoid steering it. Straight wins only when contact and launch are repeatable.";
+    case "wedge_window":
       return "Pick one landing window, alternate clubs only when the carry number demands it, and reject outliers from poor contact.";
-    case "7i-consistency":
+    case "wedge_ladder":
+      return "Move through the ladder in order and record every target. The best score usually comes from tempo control, not one perfect wedge.";
+    case "consistency":
       return "Warm up with half swings, then keep tempo fixed; the winning number is usually the smallest spread, not the longest shot.";
-    case "closest-to-pin":
+    case "closest_to_pin":
       return "Choose the shot that removes the big miss first. Distance control matters more than flag hunting.";
-    case "monthly-practice-streak":
+    case "practice_streak":
       return "Keep sessions short enough to repeat. A clean 20-shot session is better than one long session that disrupts the week.";
     default:
       return "Submit a clean, repeatable attempt and use verified launch-monitor data when possible.";
+  }
+}
+
+function challengeTemplateKind(template: ChallengeTemplateRow | undefined | null) {
+  if (!template) {
+    return "custom";
+  }
+
+  switch (template.slug) {
+    case "longest-drive":
+      return "longest_drive";
+    case "straightest-drive":
+      return "straightest_drive";
+    case "wedge-window":
+      return "wedge_window";
+    case "wedge-ladder":
+      return "wedge_ladder";
+    case "7i-consistency":
+      return "consistency";
+    case "closest-to-pin":
+      return "closest_to_pin";
+    case "monthly-practice-streak":
+      return "practice_streak";
+    default:
+      return template.challengeType;
   }
 }
 

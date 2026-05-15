@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Award, Flag, Plus, Upload } from "lucide-react";
+import { ArrowLeft, Award, Flag, Plus, Share2, Upload } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +101,8 @@ export default async function RoundsPage() {
             { label: "Club shots", value: rounds.reduce((total, round) => total + round.shotCount, 0) },
           ]}
         />
+
+        <RoundSharingPanel latestRound={latestRound} />
 
         <MobileSectionChips
           items={[
@@ -299,6 +301,35 @@ function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds
         value={round.type === "real_round" ? "Scorecard only" : `${integerFormatter.format(round.shotCount)} shots`}
       />
     </MobileDataCard>
+  );
+}
+
+function RoundSharingPanel({ latestRound }: { latestRound: Awaited<ReturnType<typeof getRounds>>[number] | null }) {
+  return (
+    <section className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Shareable round cards</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Round sharing stays controlled from each round. Create a private link, then choose whether any PB from that round belongs on the feed.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={latestRound ? `/rounds/${latestRound.id}#share` : "/rounds/new"} prefetch={false}>
+              <Share2 className="size-4" />
+              Share summary
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/feed?filter=rounds" prefetch={false}>
+              <Flag className="size-4" />
+              Round feed
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -57,6 +57,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
         <AdminSection title="Network snapshot">
           <div className="grid gap-2 text-sm">
+            <SnapshotRow label="New users" value={data.metrics.users} />
+            <SnapshotRow label="Feed reports" value={data.metrics.openReports} />
+            <SnapshotRow label="Challenge attempts flagged" value={0} />
+            <SnapshotRow label="Billing failures" value={operations.billingFailures} />
+            <SnapshotRow label="Provider import failures" value={operations.providerImportFailures} />
+            <SnapshotRow label="RLS/test status" value="Runbook ready" />
             <SnapshotRow label="Groups" value={operations.groups} />
             <SnapshotRow label="Friendships" value={operations.friendships} />
             <SnapshotRow label="Friend requests" value={operations.friendRequests} />
@@ -120,7 +126,7 @@ function AdminLink({ href, title, description }: { href: string; title: string; 
   );
 }
 
-function SnapshotRow({ label: rowLabel, value }: { label: string; value: number }) {
+function SnapshotRow({ label: rowLabel, value }: { label: string; value: number | string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
       <span className="text-muted-foreground">{rowLabel}</span>

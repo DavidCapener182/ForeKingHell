@@ -129,6 +129,26 @@ export async function getBillingPageData() {
   };
 }
 
+export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> {
+  const [latestSubscription] = await getDb()
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(desc(subscriptions.createdAt))
+    .limit(1);
+  const entitlementRows = await getDb().select().from(entitlements).where(eq(entitlements.userId, userId));
+
+  return resolveActivePlanKey(latestSubscription, entitlementRows);
+}
+
+export function planAllowsPrivateChallenges(planKey: PlanKey) {
+  return planKey !== "free";
+}
+
+export function planAllowsAiCoach(planKey: PlanKey) {
+  return planKey === "pro" || planKey === "coach" || planKey === "full";
+}
+
 export async function createCheckoutSession(input: {
   planKey: PlanKey;
   interval: BillingInterval;

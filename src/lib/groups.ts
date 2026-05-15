@@ -69,10 +69,28 @@ export type GroupDetailData = {
     templateName: string;
     status: string;
   }>;
+  members: Array<{
+    userId: string;
+    role: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  }>;
   canPost: boolean;
 };
 
-export async function getGroupsPageData() {
+export type GroupInvitePreview = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  visibility: SocialVisibility;
+  memberCount: number;
+  viewerRole: string | null;
+  inviteCode: string;
+};
+
+export async function getGroupsPageData(inviteCode?: string | null) {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
   const memberships = await getDb()
@@ -91,6 +109,7 @@ export async function getGroupsPageData() {
     .orderBy(desc(groups.createdAt))
     .limit(80);
   const hydrated = await hydrateGroupList(rows, memberships);
+  const invitePreview = inviteCode ? await getGroupInvitePreview(inviteCode, userId, memberships) : null;
 
   return {
     profile: {
@@ -102,6 +121,7 @@ export async function getGroupsPageData() {
     mine: hydrated.filter((group) => group.viewerRole),
     discoverable: hydrated.filter((group) => !group.viewerRole && group.visibility === "public"),
     groupTypes,
+    invitePreview,
   };
 }
 
@@ -126,6 +146,7 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .orderBy(desc(groupPosts.pinned), desc(groupPosts.createdAt))
     .limit(40);
   const profileMap = await profilesByUserId([...new Set(postRows.map((post) => post.userId))]);
+  const memberProfileMap = await profilesByUserId([...new Set(memberships.map((membership) => membership.userId))]);
   const challengeRows = await getDb()
     .select({
       id: challenges.id,
@@ -168,6 +189,21 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
       status: challenge.status,
       templateName: challenge.templateName ?? "Challenge",
     })),
+    members: memberships
+      .map((membership) => {
+        const profile = memberProfileMap.get(membership.userId);
+
+        return profile
+          ? {
+              userId: membership.userId,
+              role: membership.role,
+              username: profile.username,
+              displayName: profile.displayName,
+              avatarUrl: profile.avatarUrl,
+            }
+          : null;
+      })
+      .filter((member): member is NonNullable<typeof member> => Boolean(member)),
     canPost: group.ownerUserId === userId || Boolean(viewerMembership),
   };
 }
@@ -263,6 +299,18 @@ export async function joinGroup(groupId: string, inviteCode?: string | null) {
   revalidateGroups(group.slug);
 }
 
+export async function joinGroupByInviteCode(inviteCode: string) {
+  const code = cleanRequired(inviteCode, "");
+  const [group] = await getDb().select().from(groups).where(eq(groups.inviteCode, code)).limit(1);
+
+  if (!group) {
+    throw new Error("Invite code not found.");
+  }
+
+  await joinGroup(group.id, code);
+  return group.slug;
+}
+
 export async function createGroupPost(groupId: string, title: string | null, body: string) {
   const userId = await requireCurrentUserId();
   const group = await getVisibleGroupForUser(groupId, userId);
@@ -331,6 +379,35 @@ async function hydrateGroupList(groupRows: GroupRow[], memberships: GroupMembers
     viewerRole: membershipMap.get(group.id)?.role ?? null,
     inviteCode: group.inviteCode,
   }));
+}
+
+async function getGroupInvitePreview(
+  inviteCode: string,
+  userId: string,
+  memberships: GroupMembershipRow[],
+): Promise<GroupInvitePreview | null> {
+  const [group] = await getDb().select().from(groups).where(eq(groups.inviteCode, cleanRequired(inviteCode, ""))).limit(1);
+
+  if (!group) {
+    return null;
+  }
+
+  const [item] = await hydrateGroupList([group], memberships);
+
+  if (!item || (group.visibility !== "public" && group.inviteCode !== inviteCode)) {
+    return null;
+  }
+
+  return {
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    description: item.description,
+    visibility: item.visibility,
+    memberCount: item.memberCount,
+    viewerRole: memberships.find((membership) => membership.userId === userId && membership.groupId === group.id)?.role ?? null,
+    inviteCode: group.inviteCode ?? inviteCode,
+  };
 }
 
 async function canViewGroup(userId: string, group: GroupRow) {

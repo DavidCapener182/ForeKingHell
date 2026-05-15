@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { count, desc, eq, sql } from "drizzle-orm";
-import { Archive, ArrowLeft, ChevronDown, CircleDot, Save, Wrench } from "lucide-react";
+import { Archive, ArrowLeft, Award, ChevronDown, CircleDot, Save, Wrench } from "lucide-react";
 
 import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
@@ -19,6 +19,7 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -117,9 +118,16 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
       <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
         {data.activeClubs.slice(0, 4).map((club) => (
-          <div key={club.id} className="premium-card min-w-[72vw] p-3 sm:min-w-0">
-            <ClubArtwork clubType={club.type} alt="" className="h-24 rounded-xl" sizes="(min-width: 1024px) 220px, 72vw" />
-            <div className="mt-3">
+          <div key={club.id} className="premium-card grid min-w-[72vw] grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 p-3 sm:min-w-0">
+            <ClubArtwork
+              clubType={club.type}
+              brand={club.brand}
+              model={club.model}
+              alt=""
+              className="h-24 rounded-xl"
+              sizes="104px"
+            />
+            <div className="min-w-0 text-right">
               <p className="text-sm font-semibold">{formatClubType(club.type)}</p>
               <p className="truncate text-xs text-muted-foreground">
                 {[club.brand, club.model].filter(Boolean).join(" ") || "Specs not recorded"}
@@ -139,6 +147,8 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           </div>
         ))}
       </section>
+
+      <EquipmentSocialBadges data={data} activeHistoryCount={activeHistory.length} />
 
       <EquipmentMobileDisclosure title="Add or edit equipment" description="Ball models and club specification forms.">
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -243,6 +253,48 @@ function EquipmentMobileDisclosure({
       </summary>
       <div className="hidden group-open:block sm:contents">{children}</div>
     </details>
+  );
+}
+
+function EquipmentSocialBadges({
+  data,
+  activeHistoryCount,
+}: {
+  data: Awaited<ReturnType<typeof getEquipmentData>>;
+  activeHistoryCount: number;
+}) {
+  const mostUsedClub = data.activeClubs
+    .map((club) => ({
+      club,
+      shotCount: data.shotStatsByClubId.get(club.id)?.shotCount ?? 0,
+    }))
+    .sort((left, right) => right.shotCount - left.shotCount)[0];
+
+  return (
+    <section className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm md:grid-cols-3">
+      <div className="rounded-xl border bg-slate-50 p-3">
+        <Badge variant="secondary" className="gap-1">
+          <Award className="size-3" />
+          Most trusted club
+        </Badge>
+        <p className="mt-3 text-xl font-semibold tracking-normal">
+          {mostUsedClub ? formatClubType(mostUsedClub.club.type) : "--"}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {mostUsedClub ? `${mostUsedClub.shotCount.toLocaleString("en-GB")} tracked shots` : "Import shots to earn equipment badges."}
+        </p>
+      </div>
+      <div className="rounded-xl border bg-slate-50 p-3">
+        <Badge variant="outline">New equipment test</Badge>
+        <p className="mt-3 text-xl font-semibold tracking-normal">{activeHistoryCount} active specs</p>
+        <p className="mt-1 text-sm text-muted-foreground">Use history rows to compare before and after performance.</p>
+      </div>
+      <div className="rounded-xl border bg-slate-50 p-3">
+        <Badge variant="outline">Before / after</Badge>
+        <p className="mt-3 text-xl font-semibold tracking-normal">{data.history.length} setup rows</p>
+        <p className="mt-1 text-sm text-muted-foreground">Equipment comparisons stay private unless you share a feed card.</p>
+      </div>
+    </section>
   );
 }
 
@@ -369,6 +421,7 @@ async function getEquipmentData() {
     retiredClubs,
     ballModels: ballRows,
     history: historyRows,
+    shotStatsByClubId,
   };
 }
 

@@ -11,7 +11,9 @@ type SocialFixture = {
   incomingUserId: string;
   friendUserId: string;
   strangerUserId: string;
+  privateUserId: string;
   targetUsername: string;
+  privateUsername: string;
   targetDisplayName: string;
   incomingDisplayName: string;
   friendHeadline: string;
@@ -33,6 +35,7 @@ test.describe("social friends and feed visibility", () => {
     "Set DATABASE_URL and PLAYWRIGHT_AUTH_STATE with a Supabase session to run live social checks.",
   );
   test.use(authStorageState ? { storageState: authStorageState } : {});
+  test.setTimeout(120_000);
 
   let sql: Sql | null = null;
   let fixture: SocialFixture | null = null;
@@ -104,6 +107,116 @@ test.describe("social friends and feed visibility", () => {
     await expect(page.locator("body")).toContainText(data.publicHeadline);
     await expect(page.locator("body")).not.toContainText(data.strangerHeadline);
   });
+
+  test("keeps private profiles closed to strangers", async ({ page }) => {
+    expect(fixture).not.toBeNull();
+    const data = fixture!;
+
+    const response = await page.goto(`/profile/${data.privateUsername}`);
+    expect(response?.status()).toBe(404);
+  });
+
+  test("supports feed kudos, comments and reporting", async ({ page }) => {
+    expect(fixture).not.toBeNull();
+    const data = fixture!;
+    const comment = `Nice work ${data.token}`;
+
+    await page.goto("/feed");
+    await expectPageReady(page, /Social feed/i);
+    const digest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
+    await digest.getByText("Individual cards").click();
+    const card = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await card.getByRole("button", { name: /Kudos/i }).first().click();
+
+    await expect
+      .poll(async () => {
+        const rows = await sql!`
+          select id
+          from fkh_feed_reactions
+          where feed_item_id = ${data.friendFeedItemId}
+            and user_id = ${authUserId}
+            and reaction_type = 'kudos'
+        `;
+        return rows.length;
+      })
+      .toBe(1);
+
+    await page.goto("/feed");
+    const refreshedDigest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
+    await refreshedDigest.getByText("Individual cards").click();
+    const refreshedCard = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await refreshedCard.getByPlaceholder(/Write a comment/i).fill(comment);
+    await refreshedCard.getByRole("button", { name: /^Post$/ }).click();
+
+    await expect
+      .poll(async () => {
+        const rows = await sql!`
+          select id
+          from fkh_feed_comments
+          where feed_item_id = ${data.friendFeedItemId}
+            and user_id = ${authUserId}
+            and body = ${comment}
+            and deleted_at is null
+        `;
+        return rows.length;
+      })
+      .toBe(1);
+
+    await page.goto("/feed");
+    const reportedDigest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
+    await reportedDigest.getByText("Individual cards").click();
+    const reportedCard = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await reportedCard.getByText("Controls").first().click();
+    const reportForm = reportedCard.locator("[data-feed-report-form]");
+    await expect(reportForm).toBeVisible();
+    await Promise.all([
+      page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/feed")),
+      reportForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
+    ]);
+
+    await expect
+      .poll(async () => {
+        const rows = await sql!`
+          select id
+          from fkh_social_reports
+          where reporter_user_id = ${authUserId}
+            and target_type = 'feed_item'
+            and target_id = ${data.friendFeedItemId}
+        `;
+        return rows.length;
+      }, { timeout: 60_000 })
+      .toBe(1);
+  });
+
+  test("blocking removes friend-scoped feed access", async ({ page }) => {
+    expect(fixture).not.toBeNull();
+    const data = fixture!;
+
+    await page.goto("/friends");
+    const row = page.locator(`[data-friend-user-id="${data.friendUserId}"]`).first();
+    const blockForm = row.locator("[data-friend-block-form]");
+    await expect(blockForm).toBeVisible();
+    await Promise.all([
+      page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/friends")),
+      blockForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
+    ]);
+
+    await expect
+      .poll(async () => {
+        const rows = await sql!`
+          select id
+          from fkh_user_blocks
+          where blocker_user_id = ${authUserId}
+            and blocked_user_id = ${data.friendUserId}
+        `;
+        return rows.length;
+      })
+      .toBe(1);
+
+    await page.goto("/feed");
+    await expectPageReady(page, /Social feed/i);
+    await expect(page.locator("body")).not.toContainText(data.friendHeadline);
+  });
 });
 
 async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFixture> {
@@ -112,7 +225,9 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
   const incomingUserId = randomUUID();
   const friendUserId = randomUUID();
   const strangerUserId = randomUUID();
+  const privateUserId = randomUUID();
   const targetUsername = `social-target-${token}`;
+  const privateUsername = `private-${token}`;
   const targetDisplayName = `Social target ${token}`;
   const incomingDisplayName = `Incoming friend ${token}`;
   const friendHeadline = `Friend PB visible ${token}`;
@@ -136,7 +251,8 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
       (${targetUserId}, ${`social-target-${token}@example.test`}, ${targetDisplayName}, ${now}),
       (${incomingUserId}, ${`social-incoming-${token}@example.test`}, ${incomingDisplayName}, ${now}),
       (${friendUserId}, ${`social-friend-${token}@example.test`}, ${`Feed friend ${token}`}, ${now}),
-      (${strangerUserId}, ${`social-stranger-${token}@example.test`}, ${`Feed stranger ${token}`}, ${now})
+      (${strangerUserId}, ${`social-stranger-${token}@example.test`}, ${`Feed stranger ${token}`}, ${now}),
+      (${privateUserId}, ${`social-private-${token}@example.test`}, ${`Private golfer ${token}`}, ${now})
   `;
   await sql`
     insert into fkh_user_profiles (
@@ -146,7 +262,8 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
       (${targetUserId}, ${targetUsername}, ${targetDisplayName}, true, true, 'friends', 'friends', ${now}),
       (${incomingUserId}, ${`incoming-${token}`}, ${incomingDisplayName}, true, true, 'friends', 'friends', ${now}),
       (${friendUserId}, ${`feed-friend-${token}`}, ${`Feed friend ${token}`}, true, true, 'friends', 'friends', ${now}),
-      (${strangerUserId}, ${`feed-stranger-${token}`}, ${`Feed stranger ${token}`}, true, true, 'friends', 'friends', ${now})
+      (${strangerUserId}, ${`feed-stranger-${token}`}, ${`Feed stranger ${token}`}, true, true, 'friends', 'friends', ${now}),
+      (${privateUserId}, ${privateUsername}, ${`Private golfer ${token}`}, false, false, 'private', 'private', ${now})
   `;
   await sql`
     insert into fkh_friend_requests (id, requester_user_id, recipient_user_id, status, created_at, updated_at)
@@ -173,7 +290,9 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
     incomingUserId,
     friendUserId,
     strangerUserId,
+    privateUserId,
     targetUsername,
+    privateUsername,
     targetDisplayName,
     incomingDisplayName,
     friendHeadline,
@@ -192,6 +311,23 @@ async function cleanupSocialFixture(sql: Sql, fixture: SocialFixture, authUserId
     where id in (${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
   `;
   await sql`
+    delete from fkh_social_reports
+    where reporter_user_id = ${authUserId}
+      and target_type = 'feed_item'
+      and target_id in (${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
+  `;
+  await sql`
+    delete from fkh_moderation_events
+    where actor_user_id = ${authUserId}
+      and target_type = 'feed_item'
+      and target_id in (${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
+  `;
+  await sql`
+    delete from fkh_user_blocks
+    where blocker_user_id = ${authUserId}
+       or blocked_user_id = ${authUserId}
+  `;
+  await sql`
     delete from fkh_friend_requests
     where id = ${fixture.incomingRequestId}
        or (requester_user_id = ${authUserId} and recipient_user_id = ${fixture.targetUserId})
@@ -203,11 +339,11 @@ async function cleanupSocialFixture(sql: Sql, fixture: SocialFixture, authUserId
   `;
   await sql`
     delete from fkh_user_profiles
-    where user_id in (${fixture.targetUserId}, ${fixture.incomingUserId}, ${fixture.friendUserId}, ${fixture.strangerUserId})
+    where user_id in (${fixture.targetUserId}, ${fixture.incomingUserId}, ${fixture.friendUserId}, ${fixture.strangerUserId}, ${fixture.privateUserId})
   `;
   await sql`
     delete from fkh_users
-    where id in (${fixture.targetUserId}, ${fixture.incomingUserId}, ${fixture.friendUserId}, ${fixture.strangerUserId})
+    where id in (${fixture.targetUserId}, ${fixture.incomingUserId}, ${fixture.friendUserId}, ${fixture.strangerUserId}, ${fixture.privateUserId})
   `;
 }
 

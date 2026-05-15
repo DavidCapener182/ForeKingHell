@@ -10,9 +10,10 @@ import {
   feedReactions,
   friendRequests,
   friendships,
+  moderationEvents,
+  socialReports,
   sessions,
   shots,
-  socialReports,
   userBlocks,
   userFollows,
   userProfiles,
@@ -197,6 +198,11 @@ export async function getFriendsPageData(searchQuery: string | null) {
       request.requesterUserId === userId ? request.recipientUserId : request.requesterUserId,
     ),
   ]);
+  const blockedRows = await getDb()
+    .select({ blockedUserId: userBlocks.blockedUserId })
+    .from(userBlocks)
+    .where(eq(userBlocks.blockerUserId, userId));
+  const blockedUserIds = blockedRows.map((row) => row.blockedUserId);
   const relatedProfiles = relatedIds.size > 0 ? await profilesByUserId([...relatedIds]) : new Map<string, ProfileRow>();
   const searchResults = await searchDiscoverableProfiles({
     viewerUserId: userId,
@@ -205,6 +211,13 @@ export async function getFriendsPageData(searchQuery: string | null) {
     blockedIds,
     pendingRequests,
   });
+  const suggestedProfiles = await suggestDiscoverableProfiles({
+    viewerUserId: userId,
+    friendIds,
+    blockedIds,
+    pendingRequests,
+  });
+  const blockedProfiles = blockedUserIds.length > 0 ? await profilesByUserId(blockedUserIds) : new Map<string, ProfileRow>();
 
   return {
     profile: profileSummary(profile, "self"),
@@ -227,6 +240,11 @@ export async function getFriendsPageData(searchQuery: string | null) {
       }))
       .filter((row) => row.profile),
     searchResults,
+    suggestedProfiles,
+    blockedUsers: blockedUserIds
+      .map((blockedUserId) => blockedProfiles.get(blockedUserId))
+      .filter((row): row is ProfileRow => Boolean(row))
+      .map((row) => profileSummary(row, "blocked")),
   };
 }
 
@@ -307,7 +325,10 @@ export async function updateCurrentSocialProfile(input: {
       friendProfile: input.friendProfile,
       feedVisibilityDefault: input.feedVisibilityDefault,
       leaderboardVisibility: input.leaderboardVisibility,
-      visibilitySettingsJson: input.visibilitySettingsJson,
+      visibilitySettingsJson: {
+        ...input.visibilitySettingsJson,
+        hiddenFeedTypes: current.visibilitySettingsJson.hiddenFeedTypes ?? [],
+      },
       updatedAt: new Date(),
     })
     .where(eq(userProfiles.userId, userId));
@@ -481,6 +502,14 @@ export async function blockUser(blockedUserId: string) {
   revalidateSocialPaths();
 }
 
+export async function unblockUser(blockedUserId: string) {
+  const blockerUserId = await requireCurrentUserId();
+  await getDb()
+    .delete(userBlocks)
+    .where(and(eq(userBlocks.blockerUserId, blockerUserId), eq(userBlocks.blockedUserId, blockedUserId)));
+  revalidateSocialPaths();
+}
+
 export async function getFeedPageData() {
   const viewerUserId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(viewerUserId);
@@ -519,8 +548,13 @@ export async function getVisibleFeedItemsForViewer(
   viewerUserId: string,
   options: { ownerUserId?: string; limit?: number } = {},
 ) {
-  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const [friendIds, blockedIds, hiddenTypes] = await Promise.all([
+    getFriendIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+    getHiddenFeedTypes(viewerUserId),
+  ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
+  const hiddenTypeSet = new Set(hiddenTypes);
   const limit = Math.min(Math.max(options.limit ?? 30, 1), 80);
   const rows = await getDb()
     .select()
@@ -536,7 +570,7 @@ export async function getVisibleFeedItemsForViewer(
     .orderBy(desc(feedItems.createdAt))
     .limit(limit * 3);
   const visible = rows
-    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds))
+    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds, hiddenTypeSet))
     .slice(0, limit);
 
   return hydrateFeedItems(visible, viewerUserId);
@@ -590,78 +624,6 @@ export async function removeFeedReaction(feedItemId: string) {
 
   revalidatePath("/feed");
   revalidatePath("/dashboard");
-}
-
-
-export async function updateFeedItemVisibility(feedItemId: string, visibility: SocialVisibility) {
-  const userId = await requireCurrentUserId();
-  await getDb()
-    .update(feedItems)
-    .set({
-      visibility,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
-
-  revalidatePath("/feed");
-  revalidatePath("/dashboard");
-}
-
-export async function hideFeedItem(feedItemId: string) {
-  const userId = await requireCurrentUserId();
-  await getDb()
-    .update(feedItems)
-    .set({
-      visibility: "private",
-      metadataJson: { hiddenByOwner: true },
-      updatedAt: new Date(),
-    })
-    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
-
-  revalidatePath("/feed");
-  revalidatePath("/dashboard");
-}
-
-
-export async function muteFeedItemType(feedItemId: string) {
-  const userId = await requireCurrentUserId();
-  const item = await getVisibleFeedItem(feedItemId, userId);
-
-  if (!item) {
-    throw new Error("Feed item not found.");
-  }
-
-  await getDb().insert(socialReports).values({
-    reporterUserId: userId,
-    reportedUserId: null,
-    targetType: "feed_type_mute",
-    targetId: item.itemType,
-    reason: "hide_this_type",
-    details: `Muted from feed item ${feedItemId}.`,
-  });
-
-  revalidatePath("/feed");
-}
-
-export async function reportFeedItem(feedItemId: string, reason = "feed_safety") {
-  const userId = await requireCurrentUserId();
-  const item = await getVisibleFeedItem(feedItemId, userId);
-
-  if (!item) {
-    throw new Error("Feed item not found.");
-  }
-
-  await getDb().insert(socialReports).values({
-    reporterUserId: userId,
-    reportedUserId: item.userId === userId ? null : item.userId,
-    targetType: "feed_item",
-    targetId: feedItemId,
-    reason: reason.slice(0, 120),
-    details: "Reported from feed card controls.",
-  });
-
-  revalidatePath("/feed");
-  revalidatePath("/admin/moderation");
 }
 
 export async function addFeedComment(feedItemId: string, body: string) {
@@ -749,6 +711,151 @@ export async function removeFeedCommentReaction(commentId: string) {
 
   revalidatePath("/feed");
   revalidatePath("/dashboard");
+}
+
+export async function updateFeedItemVisibility(feedItemId: string, visibility: SocialVisibility) {
+  const userId = await requireCurrentUserId();
+  const [item] = await getDb()
+    .select()
+    .from(feedItems)
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)))
+    .limit(1);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb()
+    .update(feedItems)
+    .set({
+      visibility: parseVisibility(visibility, parseVisibility(item.visibility)),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+  revalidatePath(`/profile/${item.userId}`);
+}
+
+export async function deleteFeedItem(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const [item] = await getDb()
+    .select()
+    .from(feedItems)
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)))
+    .limit(1);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb().delete(feedItems).where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+  revalidatePath(`/profile/${item.userId}`);
+}
+
+export async function hideFeedItem(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  const hiddenBy = new Set(hiddenByUserIds(item.metadataJson));
+  hiddenBy.add(userId);
+
+  await getDb()
+    .update(feedItems)
+    .set({
+      metadataJson: {
+        ...item.metadataJson,
+        hiddenByUserIds: [...hiddenBy],
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(feedItems.id, item.id));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function hideFeedItemType(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  const [profile] = await getDb().select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const settings = profile?.visibilitySettingsJson ?? {};
+  const hiddenFeedTypes = new Set(Array.isArray(settings.hiddenFeedTypes) ? settings.hiddenFeedTypes : []);
+  hiddenFeedTypes.add(item.itemType);
+
+  await getDb()
+    .update(userProfiles)
+    .set({
+      visibilitySettingsJson: {
+        ...settings,
+        hiddenFeedTypes: [...hiddenFeedTypes].slice(0, 40),
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(userProfiles.userId, userId));
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+}
+
+export async function reportFeedItem(feedItemId: string, reason = "feed_report") {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item) {
+    throw new Error("Feed item not found.");
+  }
+
+  await getDb().transaction(async (tx) => {
+    await tx.insert(socialReports).values({
+      reporterUserId: userId,
+      reportedUserId: item.userId === userId ? null : item.userId,
+      targetType: "feed_item",
+      targetId: item.id,
+      reason: reason.slice(0, 120),
+      details: item.headline,
+    });
+    await tx.insert(moderationEvents).values({
+      targetType: "feed_item",
+      targetId: item.id,
+      actorUserId: userId,
+      eventType: "user_report",
+      severity: reason.toLowerCase().includes("cheat") ? "medium" : "low",
+      status: "open",
+      reason: reason.slice(0, 120),
+      metadataJson: {
+        headline: item.headline,
+        ownerUserId: item.userId,
+      },
+    });
+  });
+
+  revalidatePath("/feed");
+  revalidatePath("/social-intelligence");
+}
+
+export async function muteFeedItemUser(feedItemId: string) {
+  const userId = await requireCurrentUserId();
+  const item = await getVisibleFeedItem(feedItemId, userId);
+
+  if (!item || item.userId === userId) {
+    throw new Error("Feed item not found.");
+  }
+
+  await blockUser(item.userId);
 }
 
 export async function createFeedItem(input: {
@@ -983,9 +1090,13 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
     return null;
   }
 
-  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const [friendIds, blockedIds, hiddenTypes] = await Promise.all([
+    getFriendIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+    getHiddenFeedTypes(viewerUserId),
+  ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds) ? item : null;
+  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes)) ? item : null;
 }
 
 async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
@@ -1003,9 +1114,13 @@ async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
     return null;
   }
 
-  const [friendIds, blockedIds] = await Promise.all([getFriendIds(viewerUserId), getBlockedUserIds(viewerUserId)]);
+  const [friendIds, blockedIds, hiddenTypes] = await Promise.all([
+    getFriendIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+    getHiddenFeedTypes(viewerUserId),
+  ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds) ? row.comment : null;
+  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes)) ? row.comment : null;
 }
 
 async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Promise<FeedItemView[]> {
@@ -1114,8 +1229,17 @@ function canViewFeedItem(
   viewerUserId: string,
   socialIds: Set<string>,
   blockedIds: Set<string>,
+  hiddenTypes: Set<string> = new Set(),
 ) {
   if (blockedIds.has(item.userId)) {
+    return false;
+  }
+
+  if (hiddenTypes.has(item.itemType)) {
+    return false;
+  }
+
+  if (hiddenByUserIds(item.metadataJson).includes(viewerUserId)) {
     return false;
   }
 
@@ -1172,6 +1296,34 @@ async function searchDiscoverableProfiles(input: {
     .filter((row) => row.publicProfile || (row.friendProfile && friendIdSet.has(row.userId)))
     .map((row) => profileSummary(row, relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests)))
     .filter((profile) => profile.relationship !== "blocked");
+}
+
+async function suggestDiscoverableProfiles(input: {
+  viewerUserId: string;
+  friendIds: string[];
+  blockedIds: Set<string>;
+  pendingRequests: FriendRequestRow[];
+}) {
+  const rows = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.publicProfile, true))
+    .orderBy(desc(userProfiles.updatedAt))
+    .limit(24);
+  const friendIdSet = new Set(input.friendIds);
+  const pendingIds = new Set(
+    input.pendingRequests.map((request) =>
+      request.requesterUserId === input.viewerUserId ? request.recipientUserId : request.requesterUserId,
+    ),
+  );
+
+  return rows
+    .filter((row) => row.userId !== input.viewerUserId)
+    .filter((row) => !friendIdSet.has(row.userId))
+    .filter((row) => !input.blockedIds.has(row.userId))
+    .filter((row) => !pendingIds.has(row.userId))
+    .slice(0, 6)
+    .map((row) => profileSummary(row, "none"));
 }
 
 async function getPendingFriendRequestsForUser(userId: string) {
@@ -1318,6 +1470,23 @@ function profileSummary(
     feedVisibilityDefault: parseVisibility(profile.feedVisibilityDefault),
     relationship,
   };
+}
+
+function hiddenByUserIds(metadata: Record<string, unknown>) {
+  return Array.isArray(metadata.hiddenByUserIds)
+    ? metadata.hiddenByUserIds.filter((value): value is string => typeof value === "string")
+    : [];
+}
+
+async function getHiddenFeedTypes(userId: string) {
+  const [profile] = await getDb()
+    .select({ visibilitySettingsJson: userProfiles.visibilitySettingsJson })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
+
+  const hidden = profile?.visibilitySettingsJson.hiddenFeedTypes;
+  return Array.isArray(hidden) ? hidden.filter((value): value is string => typeof value === "string") : [];
 }
 
 function relationshipFromContext(

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, MessageCircle } from "lucide-react";
 
 import { trackPlausibleEvent } from "@/lib/analytics";
@@ -15,11 +15,21 @@ type CoachChatResponse = {
   generatedAt: string;
 };
 
-export function CoachChatCard() {
+export function CoachChatCard({
+  questionId = "coach-question",
+}: {
+  questionId?: string;
+}) {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<CoachChatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const readyTimer = window.setTimeout(() => setIsReady(true), 0);
+    return () => window.clearTimeout(readyTimer);
+  }, []);
 
   async function askCoach() {
     const message = question.trim();
@@ -57,20 +67,21 @@ export function CoachChatCard() {
   }
 
   return (
-    <CardContent className="space-y-4">
+    <CardContent className="space-y-4" data-coach-chat-ready={isReady ? "true" : "false"}>
       <div className="grid gap-3">
-        <label className="grid gap-2 text-sm font-medium" htmlFor="coach-question">
+        <label className="grid gap-2 text-sm font-medium" htmlFor={questionId}>
           Ask from your shot data
           <textarea
-            id="coach-question"
+            id={questionId}
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="How can I improve my 7 iron dispersion?"
             className="min-h-24 resize-y rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             maxLength={600}
+            disabled={!isReady}
           />
         </label>
-        <Button type="button" onClick={askCoach} disabled={isPending || !question.trim()} className="w-fit">
+        <Button type="button" onClick={askCoach} disabled={!isReady || isPending || !question.trim()} className="w-fit">
           {isPending ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />}
           Ask coach
         </Button>

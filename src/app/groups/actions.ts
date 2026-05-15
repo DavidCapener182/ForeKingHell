@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 
-import { createGroup, createGroupPost, groupTypes, joinGroup } from "@/lib/groups";
+import { createGroup, createGroupPost, groupTypes, joinGroup, joinGroupByInviteCode } from "@/lib/groups";
 import { parseVisibility } from "@/lib/social";
 
 export async function createGroupAction(formData: FormData) {
@@ -20,6 +20,11 @@ export async function createGroupAction(formData: FormData) {
 export async function joinGroupAction(formData: FormData) {
   await joinGroup(requiredString(formData, "groupId"), formString(formData, "inviteCode"));
   redirect(`/groups?joined=1`);
+}
+
+export async function joinGroupByInviteCodeAction(formData: FormData) {
+  const slug = await joinGroupByInviteCode(requiredString(formData, "inviteCode"));
+  redirect(`/groups/${slug}?joined=1`);
 }
 
 export async function createGroupPostAction(formData: FormData) {

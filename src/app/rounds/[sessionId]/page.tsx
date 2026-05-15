@@ -171,7 +171,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         ) : null}
 
         <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
-        <Card className="premium-card">
+        <Card id="share" className="premium-card scroll-mt-28">
           <CardHeader>
             <CardTitle>Round context</CardTitle>
             <CardDescription>

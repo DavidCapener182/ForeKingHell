@@ -359,6 +359,8 @@ export async function getAdminOperationsSnapshot() {
   const sponsorCount = await countRows(sponsors);
   const partnerOfferCount = await countRows(partnerOffers);
   const aiSummaryCount = await countRows(aiSocialSummaries);
+  const billingFailureCount = await countRows(subscriptions, inArray(subscriptions.status, ["past_due", "unpaid", "incomplete_expired"]));
+  const providerImportFailureCount = await countRows(importJobs, eq(importJobs.status, "failed"));
 
   return {
     groups: groupCount,
@@ -370,6 +372,8 @@ export async function getAdminOperationsSnapshot() {
     sponsors: sponsorCount,
     partnerOffers: partnerOfferCount,
     aiSummaries: aiSummaryCount,
+    billingFailures: billingFailureCount,
+    providerImportFailures: providerImportFailureCount,
   };
 }
 

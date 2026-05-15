@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Globe2, Lock, MessageCircle, Plus, Trophy, Users } from "lucide-react";
+import { Copy, Globe2, Lock, MessageCircle, Plus, Settings, Trophy, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { createGroupPostAction } from "@/app/groups/actions";
@@ -78,8 +78,16 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             ) : null}
           </header>
 
+          <nav className="flex flex-wrap gap-2 rounded-xl border bg-white p-3 shadow-sm" aria-label="Group sections">
+            {["Feed", "Leaderboard", "Challenges", "Members", "Invite", "Settings"].map((tab) => (
+              <a key={tab} href={`#${tab.toLowerCase()}`} className="rounded-lg border bg-slate-50 px-3 py-1.5 text-sm font-medium hover:bg-white">
+                {tab}
+              </a>
+            ))}
+          </nav>
+
           {data.canPost ? (
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <section id="feed" className="rounded-xl border bg-white p-4 shadow-sm">
               <form action={createGroupPostAction} className="grid gap-3">
                 <input type="hidden" name="groupId" value={data.group.id} />
                 <input type="hidden" name="slug" value={data.group.slug} />
@@ -124,6 +132,44 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               ))
             )}
           </section>
+
+          <section id="leaderboard" className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Group leaderboard</p>
+                <p className="mt-1 text-sm text-muted-foreground">Use linked challenge boards for group-scoped competition.</p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/leaderboard" prefetch={false}>Open leaderboards</Link>
+              </Button>
+            </div>
+          </section>
+
+          <section id="members" className="rounded-xl border bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Members</p>
+              <Badge variant="secondary">{data.members.length}</Badge>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {data.members.map((member) => (
+                <div key={member.userId} className="flex items-center gap-3 rounded-xl border bg-slate-50 px-3 py-2 text-sm">
+                  <SocialAvatar
+                    displayName={member.displayName}
+                    username={member.username}
+                    avatarUrl={member.avatarUrl}
+                    href={`/profile/${member.username}`}
+                    size="sm"
+                  />
+                  <div className="min-w-0">
+                    <Link href={`/profile/${member.username}`} prefetch={false} className="truncate font-medium hover:underline">
+                      {member.displayName}
+                    </Link>
+                    <p className="truncate text-xs text-muted-foreground">@{member.username} · {label(member.role)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
@@ -136,7 +182,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section id="challenges" className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Linked challenges</p>
             <div className="mt-3 grid gap-2">
               {data.challenges.length === 0 ? (
@@ -165,11 +211,33 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           ) : null}
 
           {data.group.inviteCode ? (
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold">Invite code</p>
+            <section id="invite" className="rounded-xl border bg-white p-4 shadow-sm">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Copy className="size-4 text-emerald-600" />
+                Invite
+              </p>
+              <div className="mt-3 rounded-xl border bg-white p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/groups/qr/${data.group.inviteCode}`}
+                  alt={`QR invite for ${data.group.name}`}
+                  className="mx-auto aspect-square w-full max-w-36"
+                />
+              </div>
               <p className="mt-2 break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs">{data.group.inviteCode}</p>
             </section>
           ) : null}
+
+          <section id="settings" className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <Settings className="size-4 text-slate-700" />
+              Settings
+            </p>
+            <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
+              <p>Groups are private by default. Admin controls can manage rules, invites and linked challenges.</p>
+              <Badge variant="outline" className="w-fit">{data.group.ownerUserId ? "Admin controls ready" : "Member view"}</Badge>
+            </div>
+          </section>
         </aside>
       </section>
     </PageShell>

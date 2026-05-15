@@ -134,6 +134,13 @@
       "when": 1778803200000,
       "tag": "0018_challenge_template_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1778847000000,
+      "tag": "0019_billing_webhook_templates",
+      "breakpoints": true
     }
   ]
 }

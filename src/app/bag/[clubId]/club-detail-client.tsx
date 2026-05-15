@@ -106,7 +106,16 @@ export function ClubDetailClient({
         metricLabel={isShortGameTouch ? "Touch median" : "Stock carry"}
         metricValue={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
         metricDetail={`${selectedShots.length} in ${selectedRange.compactLabel}`}
-        visual={<ClubArtwork clubType={club.type} alt="" className="h-full w-full rounded-xl" sizes="64px" />}
+        visual={
+          <ClubArtwork
+            clubType={club.type}
+            brand={club.brand}
+            model={club.model}
+            alt=""
+            className="h-full w-full rounded-xl"
+            sizes="64px"
+          />
+        }
         action={
           <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
             <Link href={`/bag/${club.id}/analytics`} prefetch={false}>Coach</Link>
@@ -190,7 +199,15 @@ export function ClubDetailClient({
                 />
               </div>
             </div>
-            <ClubArtwork clubType={club.type} alt="" className="hidden h-full min-h-36 xl:block" priority sizes="240px" />
+            <ClubArtwork
+              clubType={club.type}
+              brand={club.brand}
+              model={club.model}
+              alt=""
+              className="hidden h-full min-h-36 xl:block"
+              priority
+              sizes="240px"
+            />
           </div>
         </div>
       </header>

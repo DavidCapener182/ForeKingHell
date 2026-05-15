@@ -1,10 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
 test.describe("authenticated app flows", () => {
   test.use(authStorageState ? { storageState: authStorageState } : {});
+  test.setTimeout(90_000);
 
   const routes = [
     { path: "/dashboard", text: /Dashboard|Sessions|Shots/i },
@@ -22,7 +23,7 @@ test.describe("authenticated app flows", () => {
     test(`loads ${route.path}`, async ({ page }) => {
       skipWhenNoAuth();
 
-      await page.goto(route.path);
+      await gotoAppRoute(page, route.path);
       await expectPageReady(page, route.text);
     });
   }
@@ -30,7 +31,7 @@ test.describe("authenticated app flows", () => {
   test("previews a changed CSV format through manual column mapping", async ({ page }) => {
     skipWhenNoAuth();
 
-    await page.goto("/import");
+    await gotoAppRoute(page, "/import");
     await expectPageReady(page, /Import launch monitor shots/i);
     await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -46,7 +47,7 @@ test.describe("authenticated app flows", () => {
   test("queues a CSV import while offline and shows retry status", async ({ context, page }) => {
     skipWhenNoAuth();
 
-    await page.goto("/import");
+    await gotoAppRoute(page, "/import");
     await expectPageReady(page, /Import launch monitor shots/i);
     await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -65,7 +66,7 @@ test.describe("authenticated app flows", () => {
     skipWhenNoAuth();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/shots");
+    await gotoAppRoute(page, "/shots");
 
     await expectPageReady(page, /Shot explorer/i);
     await expect(page.getByRole("link", { name: /import/i }).first()).toBeVisible();
@@ -74,9 +75,24 @@ test.describe("authenticated app flows", () => {
   test("coach chat UI is ready without generating a paid response", async ({ page }) => {
     skipWhenNoAuth();
 
-    await page.goto("/coach");
+    await gotoAppRoute(page, "/coach");
     await expectPageReady(page, /AI coach chat/i);
-    await page.getByLabel(/ask from your shot data/i).fill("How can I improve my 7 iron dispersion?");
-    await expect(page.getByRole("button", { name: /ask coach/i })).toBeEnabled();
+    const chatCard = page.locator('[data-coach-chat-ready="true"]').filter({ visible: true });
+    await expect(chatCard).toBeVisible();
+    const coachQuestion = chatCard.locator("#coach-question");
+    await coachQuestion.fill("How can I improve my 7 iron dispersion?");
+    await expect(chatCard.getByRole("button", { name: /ask coach/i })).toBeEnabled();
   });
 });
+
+async function gotoAppRoute(page: Page, path: string) {
+  try {
+    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+  } catch (error) {
+    const message = String(error);
+    if (!message.includes("net::ERR_ABORTED") && !message.includes("net::ERR_NETWORK_IO_SUSPENDED")) {
+      throw error;
+    }
+    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+  }
+}

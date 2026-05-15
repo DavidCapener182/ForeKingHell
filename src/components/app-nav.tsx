@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMemo, useState } from "react";
 import {
   Award,
   Brain,
@@ -209,15 +210,16 @@ const navGroups = [
         icon: Cable,
         isActive: (pathname: string) => pathname.startsWith("/providers"),
       },
-      {
-        href: "/partners",
-        label: "Partners",
-        icon: Gift,
-        isActive: (pathname: string) => pathname.startsWith("/partners"),
-      },
     ],
   },
 ];
+
+const partnerNavItem = {
+  href: "/partners",
+  label: "Partners",
+  icon: Gift,
+  isActive: (pathname: string) => pathname.startsWith("/partners"),
+};
 
 const adminNavItem = {
   href: "/admin",
@@ -260,7 +262,7 @@ const mobilePrimaryItems = [
   },
 ];
 
-const moreGroups = [
+const mobileMoreGroups = [
   {
     label: "Play",
     items: [
@@ -278,6 +280,7 @@ const moreGroups = [
       { href: "/shots", label: "Shots", icon: Database },
       { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
       { href: "/progress", label: "Progress", icon: LineChart },
+      { href: "/achievements", label: "Achievements", icon: Award },
     ],
   },
   {
@@ -287,10 +290,8 @@ const moreGroups = [
       { href: "/friends", label: "Friends", icon: Users },
       { href: "/groups", label: "Groups", icon: Users },
       { href: "/challenges", label: "Challenges", icon: Trophy },
-      { href: "/achievements", label: "Achievements", icon: Award },
       { href: "/leaderboard", label: "Leaderboards", icon: Users },
       { href: "/profile", label: "Profile", icon: UserRound },
-      { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
     ],
   },
   {
@@ -299,6 +300,7 @@ const moreGroups = [
       { href: "/billing", label: "Billing", icon: CreditCard },
       { href: "/providers", label: "Providers", icon: Cable },
       { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
     ],
   },
 ];
@@ -309,11 +311,44 @@ const xpFormatter = new Intl.NumberFormat("en-GB");
 
 export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?: boolean }) {
   const pathname = usePathname();
+  const [moreQuery, setMoreQuery] = useState("");
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
-  const visibleMoreGroups = isAdmin
-    ? [...moreGroups, { label: "Admin", items: [{ href: "/partners", label: "Partners", icon: Gift }, adminMoreItem] }]
-    : moreGroups;
+  const desktopNavGroups = useMemo(
+    () =>
+      navGroups.map((group) => {
+        if (group.label !== "Platform") {
+          return group;
+        }
+
+        return {
+          ...group,
+          items: isAdmin ? [...group.items, partnerNavItem, adminNavItem] : group.items,
+        };
+      }),
+    [isAdmin],
+  );
+  const visibleMoreGroups = useMemo(() => {
+    const adminGroup = isAdmin
+      ? [
+          {
+            label: "Admin",
+            items: [
+              { href: "/partners", label: "Partners", icon: Gift },
+              adminMoreItem,
+            ],
+          },
+        ]
+      : [];
+    const query = moreQuery.trim().toLowerCase();
+
+    return [...mobileMoreGroups, ...adminGroup]
+      .map((group) => ({
+        ...group,
+        items: query ? group.items.filter((item) => item.label.toLowerCase().includes(query)) : group.items,
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [isAdmin, moreQuery]);
 
   if (
     pathname.startsWith("/login") ||
@@ -343,13 +378,8 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
           </Link>
 
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
-            {navGroups.map((group) => {
-              const items = group.label === "Platform"
-                ? [
-                    ...group.items.filter((item) => item.href !== "/partners" || isAdmin),
-                    ...(isAdmin ? [adminNavItem] : []),
-                  ]
-                : group.items;
+            {desktopNavGroups.map((group) => {
+              const items = group.items;
               const groupActive = items.some((item) =>
                 item.isActive(pathname),
               );
@@ -504,16 +534,16 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
               <MoreHorizontal className="size-4" />
               More
             </summary>
-            <div className="absolute bottom-full right-0 mb-2 grid max-h-[72vh] min-w-64 gap-3 overflow-y-auto rounded-2xl border bg-white p-3 shadow-xl">
+            <div className="absolute bottom-full right-0 mb-2 grid max-h-[70vh] min-w-72 gap-3 overflow-y-auto rounded-2xl border bg-white p-3 shadow-xl">
               <input
-                type="search"
+                value={moreQuery}
+                onChange={(event) => setMoreQuery(event.target.value)}
                 placeholder="Search menu"
                 className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
-                aria-label="Search more menu"
               />
               {visibleMoreGroups.map((group) => (
-                <section key={group.label} className="grid gap-1">
-                  <p className="px-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{group.label}</p>
+                <div key={group.label} className="grid gap-1">
+                  <p className="px-1 text-xs font-semibold uppercase text-muted-foreground">{group.label}</p>
                   {group.items.map((item) => {
                     const Icon = item.icon;
                     return (
@@ -527,7 +557,7 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                       </Link>
                     );
                   })}
-                </section>
+                </div>
               ))}
             </div>
           </details>

@@ -4,12 +4,15 @@ import {
   addFeedComment,
   addFeedCommentReaction,
   addFeedReaction,
+  deleteFeedItem,
   deleteFeedComment,
   hideFeedItem,
-  muteFeedItemType,
+  hideFeedItemType,
+  muteFeedItemUser,
+  parseVisibility,
+  reportFeedItem,
   removeFeedCommentReaction,
   removeFeedReaction,
-  reportFeedItem,
   updateFeedItemVisibility,
 } from "@/lib/social";
 
@@ -38,24 +41,27 @@ export async function removeFeedCommentReactionAction(formData: FormData) {
 }
 
 export async function updateFeedItemVisibilityAction(formData: FormData) {
-  const visibility = requiredString(formData, "visibility");
-  if (visibility !== "private" && visibility !== "friends" && visibility !== "public") {
-    throw new Error("Invalid visibility.");
-  }
+  await updateFeedItemVisibility(requiredString(formData, "feedItemId"), parseVisibility(formData.get("visibility"), "private"));
+}
 
-  await updateFeedItemVisibility(requiredString(formData, "feedItemId"), visibility);
+export async function deleteFeedItemAction(formData: FormData) {
+  await deleteFeedItem(requiredString(formData, "feedItemId"));
 }
 
 export async function hideFeedItemAction(formData: FormData) {
   await hideFeedItem(requiredString(formData, "feedItemId"));
 }
 
-export async function muteFeedItemTypeAction(formData: FormData) {
-  await muteFeedItemType(requiredString(formData, "feedItemId"));
+export async function hideFeedItemTypeAction(formData: FormData) {
+  await hideFeedItemType(requiredString(formData, "feedItemId"));
 }
 
 export async function reportFeedItemAction(formData: FormData) {
-  await reportFeedItem(requiredString(formData, "feedItemId"), optionalString(formData, "reason") ?? "feed_safety");
+  await reportFeedItem(requiredString(formData, "feedItemId"), optionalString(formData, "reason") ?? "feed_report");
+}
+
+export async function muteFeedItemUserAction(formData: FormData) {
+  await muteFeedItemUser(requiredString(formData, "feedItemId"));
 }
 
 function requiredString(formData: FormData, key: string) {

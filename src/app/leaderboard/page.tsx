@@ -30,6 +30,8 @@ type LeaderboardTab = "friends" | "monthly" | "challenges" | "public";
 type LeaderboardPageProps = {
   searchParams?: Promise<{
     tab?: string;
+    provider?: string;
+    verification?: string;
   }>;
 };
 
@@ -41,6 +43,7 @@ type PlayerRow = {
   relationship: string;
   totalXp: number;
   monthlyXp: number;
+  previousMonthlyXp: number;
   monthlyShots: number;
   bestRoundScore: number | null;
   longestDriveYd: number | null;
@@ -53,7 +56,8 @@ const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams;
   const activeTab = parseTab(params?.tab);
-  const data = await getLeaderboardData(activeTab);
+  const filters = parseLeaderboardFilters(params);
+  const data = await getLeaderboardData(activeTab, filters);
 
   return (
     <PageShell>
@@ -144,22 +148,56 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         <TabLink tab="public" activeTab={activeTab} icon={<Globe2 className="size-4" />} label="Public opt-in" />
       </div>
 
+      <section className="rounded-xl border bg-white p-3 shadow-sm">
+        <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
+          <input type="hidden" name="tab" value={activeTab} />
+          <label className="grid gap-1 text-xs font-medium">
+            <span>Provider</span>
+            <select name="provider" defaultValue={filters.provider} className="h-9 rounded-lg border bg-slate-50 px-2 text-sm">
+              <option value="all">All</option>
+              <option value="rapsodo">Rapsodo CSV</option>
+              <option value="rapsodo_cloud">Rapsodo Cloud</option>
+              <option value="manual">Manual</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-medium">
+            <span>Verification</span>
+            <select name="verification" defaultValue={filters.verification} className="h-9 rounded-lg border bg-slate-50 px-2 text-sm">
+              <option value="all">All</option>
+              <option value="verified">Verified only</option>
+              <option value="mixed">Mixed</option>
+              <option value="manual">Manual only</option>
+            </select>
+          </label>
+          <Button type="submit" variant="outline" size="sm">Apply filters</Button>
+          <Badge variant="outline" className="px-3 py-1.5">Scope: {titleCase(activeTab)}</Badge>
+          <Badge variant="outline" className="px-3 py-1.5">Month: {formatMonth(data.monthStart)}</Badge>
+        </form>
+      </section>
+
       {activeTab === "challenges" ? (
         <ChallengeBoards boards={data.challengeBoards} />
       ) : (
-        <PlayerLeaderboard players={data.players} activeTab={activeTab} monthStart={data.monthStart} />
+        <PlayerLeaderboard players={data.players} activeTab={activeTab} monthStart={data.monthStart} filters={filters} />
       )}
     </PageShell>
   );
 }
 
-async function getLeaderboardData(activeTab: LeaderboardTab) {
+type LeaderboardFilters = {
+  provider: "all" | "rapsodo" | "rapsodo_cloud" | "manual";
+  verification: "all" | "verified" | "mixed" | "manual";
+};
+
+async function getLeaderboardData(activeTab: LeaderboardTab, filters: LeaderboardFilters) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   await ensureSocialProfileForUser(userId);
   const monthStart = new Date();
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
+  const previousMonthStart = new Date(monthStart);
+  previousMonthStart.setUTCMonth(previousMonthStart.getUTCMonth() - 1);
 
   const friendIds = await getFriendIds(userId);
   const scopedIds = activeTab === "public" ? [userId] : [userId, ...friendIds];
@@ -198,11 +236,15 @@ async function getLeaderboardData(activeTab: LeaderboardTab) {
         : [];
   const visibleProfiles = profileRows.filter((profile) => profile.id === userId || allowsLeaderboard(profile, activeTab));
   const visibleIds = visibleProfiles.map((profile) => profile.id);
-  const [xpRows, monthlyXpRows, shotRows, roundRows] =
+  const [xpRows, monthlyXpRows, previousMonthlyXpRows, rawShotRows, roundRows] =
     visibleIds.length > 0
       ? await Promise.all([
           db.select().from(xpLedger).where(inArray(xpLedger.userId, visibleIds)),
           db.select().from(xpLedger).where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart))),
+          db
+            .select()
+            .from(xpLedger)
+            .where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, previousMonthStart))),
           db
             .select({
               userId: shots.userId,
@@ -222,9 +264,29 @@ async function getLeaderboardData(activeTab: LeaderboardTab) {
             .where(and(inArray(sessions.userId, visibleIds), gte(sessions.date, monthStart)))
             .orderBy(desc(sessions.date)),
         ])
-      : [[], [], [], []];
+      : [[], [], [], [], []];
+  const shotRows = rawShotRows.filter((shot) => {
+    const verification = verificationLabelForSource(shot.source);
+
+    if (filters.provider !== "all" && shot.source !== filters.provider) {
+      return false;
+    }
+
+    if (filters.verification === "verified") {
+      return verification !== "Manual" && verification !== "Unverified";
+    }
+
+    if (filters.verification === "manual") {
+      return verification === "Manual";
+    }
+
+    return true;
+  });
   const totalXpByUser = sumXpByUser(xpRows);
   const monthlyXpByUser = sumXpByUser(monthlyXpRows);
+  const previousMonthlyXpByUser = sumXpByUser(
+    previousMonthlyXpRows.filter((row) => row.createdAt < monthStart),
+  );
   const monthlyShotsByUser = countByUser(shotRows.map((shot) => shot.userId));
   const longestDriveByUser = longestDriveRowsByUser(shotRows);
   const bestRoundByUser = minByUser(
@@ -245,6 +307,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab) {
         relationship: profile.id === userId ? "You" : friendIdSet.has(profile.id) ? "Friend" : "Public opt-in",
         totalXp: totalXpByUser.get(profile.id) ?? 0,
         monthlyXp: monthlyXpByUser.get(profile.id) ?? 0,
+        previousMonthlyXp: previousMonthlyXpByUser.get(profile.id) ?? 0,
         monthlyShots: monthlyShotsByUser.get(profile.id) ?? 0,
         bestRoundScore: bestRoundByUser.get(profile.id) ?? null,
         longestDriveYd: longDrive?.totalYd ?? null,
@@ -273,69 +336,125 @@ function PlayerLeaderboard({
   players,
   activeTab,
   monthStart,
+  filters,
 }: {
   players: PlayerRow[];
   activeTab: LeaderboardTab;
   monthStart: Date;
+  filters: LeaderboardFilters;
 }) {
+  const currentUserIndex = players.findIndex((player) => player.isCurrentUser);
+  const currentUser = currentUserIndex >= 0 ? players[currentUserIndex] : null;
+  const podium = players.slice(0, 3);
+
   return (
-    <DataPanel>
-      <SectionHeader
-        title={activeTab === "public" ? "Public opt-in leaderboard" : activeTab === "monthly" ? "Monthly leaderboard" : "Friend leaderboard"}
-        description="Ranks only include players with both profile leaderboard visibility and the existing account leaderboard opt-in enabled."
-        action={<Badge variant="outline">{formatMonth(monthStart)}</Badge>}
-      />
-      <CardContent>
-        <DataTableFrame>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Player</TableHead>
-                <TableHead className="text-right">Total XP</TableHead>
-                <TableHead className="text-right">Monthly XP</TableHead>
-                <TableHead className="text-right">Monthly shots</TableHead>
-                <TableHead className="text-right">Best round</TableHead>
-                <TableHead className="text-right">Longest drive</TableHead>
-                <TableHead className="text-right">Source</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {players.map((player, index) => (
-                <TableRow key={player.userId}>
-                  <TableCell>
-                    <Badge variant={index === 0 ? "default" : "outline"}>{index + 1}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <Link href={`/profile/${player.username}`} prefetch={false} className="font-medium hover:underline">
-                        {player.displayName}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">{player.relationship}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">{integerFormatter.format(player.totalXp)}</TableCell>
-                  <TableCell className="text-right">{integerFormatter.format(player.monthlyXp)}</TableCell>
-                  <TableCell className="text-right">{integerFormatter.format(player.monthlyShots)}</TableCell>
-                  <TableCell className="text-right">{player.bestRoundScore ?? "--"}</TableCell>
-                  <TableCell className="text-right">
-                    {player.longestDriveYd ? `${numberFormatter.format(player.longestDriveYd)} yd` : "--"}
-                  </TableCell>
-                  <TableCell className="text-right">{player.verificationLabel}</TableCell>
-                </TableRow>
-              ))}
-              {players.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    No opted-in players in this scope yet.
-                  </TableCell>
-                </TableRow>
+    <section className="grid gap-4">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Podium</p>
+              <p className="mt-1 text-sm text-muted-foreground">Top three in the active leaderboard scope.</p>
+            </div>
+            <Badge variant="outline">{formatMonth(monthStart)}</Badge>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {podium.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-3">No opted-in players yet.</p>
+            ) : (
+              podium.map((player, index) => <LeaderboardPodiumCard key={player.userId} player={player} rank={index + 1} activeTab={activeTab} />)
+            )}
+          </div>
+        </article>
+
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold">Your rank</p>
+          {currentUser ? (
+            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+              <Badge variant="secondary">#{currentUserIndex + 1}</Badge>
+              <p className="mt-3 text-2xl font-semibold tracking-normal">{integerFormatter.format(scoreForTab(currentUser, activeTab))} XP</p>
+              <p className="mt-1 text-sm text-muted-foreground">{movementLabel(currentUser)}</p>
+              {currentUserIndex === 3 ? (
+                <p className="mt-2 text-sm text-muted-foreground">Best route to climb: enter a challenge board with verified attempts.</p>
               ) : null}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
-      </CardContent>
-    </DataPanel>
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Enable leaderboard visibility in your profile.</p>
+          )}
+        </article>
+      </section>
+
+      <DataPanel>
+        <SectionHeader
+          title={activeTab === "public" ? "Public opt-in leaderboard" : activeTab === "monthly" ? "Monthly leaderboard" : "Friend leaderboard"}
+          description={`Ranks include opted-in players. Provider filter: ${label(filters.provider)}. Verification filter: ${label(filters.verification)}.`}
+          action={<Badge variant="outline">{formatMonth(monthStart)}</Badge>}
+        />
+        <CardContent>
+          <DataTableFrame>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>Player</TableHead>
+                  <TableHead className="text-right">Total XP</TableHead>
+                  <TableHead className="text-right">Monthly XP</TableHead>
+                  <TableHead className="text-right">Monthly shots</TableHead>
+                  <TableHead className="text-right">Best round</TableHead>
+                  <TableHead className="text-right">Longest drive</TableHead>
+                  <TableHead className="text-right">Source</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {players.map((player, index) => (
+                  <TableRow key={player.userId}>
+                    <TableCell>
+                      <Badge variant={index === 0 ? "default" : "outline"}>{index + 1}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <Link href={`/profile/${player.username}`} prefetch={false} className="font-medium hover:underline">
+                          {player.displayName}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{player.relationship}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{integerFormatter.format(player.totalXp)}</TableCell>
+                    <TableCell className="text-right">{integerFormatter.format(player.monthlyXp)}</TableCell>
+                    <TableCell className="text-right">{integerFormatter.format(player.monthlyShots)}</TableCell>
+                    <TableCell className="text-right">{player.bestRoundScore ?? "--"}</TableCell>
+                    <TableCell className="text-right">
+                      {player.longestDriveYd ? `${numberFormatter.format(player.longestDriveYd)} yd` : "--"}
+                    </TableCell>
+                    <TableCell className="text-right">{player.verificationLabel}</TableCell>
+                  </TableRow>
+                ))}
+                {players.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                      No opted-in players in this scope yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </CardContent>
+      </DataPanel>
+    </section>
+  );
+}
+
+function LeaderboardPodiumCard({ player, rank, activeTab }: { player: PlayerRow; rank: number; activeTab: LeaderboardTab }) {
+  return (
+    <article className={rank === 1 ? "rounded-xl border border-amber-200 bg-amber-50 p-4" : "rounded-xl border bg-slate-50 p-4"}>
+      <Badge variant={rank === 1 ? "default" : "outline"}>#{rank}</Badge>
+      <Link href={`/profile/${player.username}`} prefetch={false} className="mt-3 block text-lg font-semibold tracking-normal hover:underline">
+        {player.displayName}
+      </Link>
+      <p className="mt-1 text-2xl font-semibold tracking-normal">{integerFormatter.format(scoreForTab(player, activeTab))}</p>
+      <p className="text-sm text-muted-foreground">{activeTab === "monthly" ? "monthly XP" : "total XP"}</p>
+    </article>
   );
 }
 
@@ -515,6 +634,20 @@ function scoreForTab(player: PlayerRow, tab: LeaderboardTab) {
   return tab === "monthly" ? player.monthlyXp : player.totalXp;
 }
 
+function movementLabel(player: PlayerRow) {
+  const delta = player.monthlyXp - player.previousMonthlyXp;
+
+  if (delta > 0) {
+    return `Movement since last month: +${integerFormatter.format(delta)} XP.`;
+  }
+
+  if (delta < 0) {
+    return `Movement since last month: ${integerFormatter.format(delta)} XP.`;
+  }
+
+  return "Movement since last month: level with your previous monthly pace.";
+}
+
 function verificationLabelForSource(source: string) {
   switch (source) {
     case "rapsodo_cloud":
@@ -536,6 +669,26 @@ function parseTab(value: string | undefined): LeaderboardTab {
   return value === "monthly" || value === "challenges" || value === "public" ? value : "friends";
 }
 
+function parseLeaderboardFilters(params: Awaited<LeaderboardPageProps["searchParams"]>): LeaderboardFilters {
+  return {
+    provider:
+      params?.provider === "rapsodo" || params?.provider === "rapsodo_cloud" || params?.provider === "manual"
+        ? params.provider
+        : "all",
+    verification:
+      params?.verification === "verified" || params?.verification === "mixed" || params?.verification === "manual"
+        ? params.verification
+        : "all",
+  };
+}
+
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function label(value: string) {
+  return value
+    .split("_")
+    .map((part) => titleCase(part))
+    .join(" ");
 }

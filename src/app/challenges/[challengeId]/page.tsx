@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, MessageCircle, Plus, Send, Target, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, MessageCircle, Plus, Send, ShieldCheck, Target, Trophy, Users } from "lucide-react";
 
 import {
   addChallengeCommentAction,
@@ -43,6 +43,10 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
     notFound();
   }
 
+  const podium = data.results.slice(0, 3);
+  const viewerResult = data.results.find((row) => row.result.userId === data.viewerUserId);
+  const verificationMode = boardVerificationMode(data.results.map((row) => row.verificationLabel));
+
   return (
     <PageShell size="7xl">
       <div className="flex items-center justify-between gap-3">
@@ -74,45 +78,71 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <Badge variant="secondary" className="w-fit">Invite sent</Badge>
       ) : null}
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Your attempt</CardTitle>
-            <CardDescription>{data.challenge.viewerJoined ? "Submit another verified score when you improve." : "Join before submitting an attempt."}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Badge variant={data.challenge.viewerJoined ? "secondary" : "outline"}>{data.challenge.viewerJoined ? "Entered" : "Not entered"}</Badge>
-            <p className="mt-3 text-2xl font-semibold">{data.challenge.viewerRank ? `#${data.challenge.viewerRank}` : "--"}</p>
-            <p className="text-sm text-muted-foreground">Current rank</p>
-          </CardContent>
-        </Card>
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Rules</CardTitle>
-            <CardDescription>{data.challenge.scoringDirection === "desc" ? "Highest score wins." : "Lowest score wins."}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Badge variant="outline">{data.challenge.templateName}</Badge>
-            <Badge variant="outline">{titleCase(data.challenge.visibility)}</Badge>
-            <Badge variant="secondary">Verified or mixed board</Badge>
-          </CardContent>
-        </Card>
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Anti-gaming checks</CardTitle>
-            <CardDescription>Public boards flag outliers without making private friend challenges heavy.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Badge variant="outline">Duplicate attempt</Badge>
-            <Badge variant="outline">Outside date window</Badge>
-            <Badge variant="outline">Wrong club type</Badge>
-          </CardContent>
-        </Card>
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <article className="rounded-xl border bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <StatusPill tone="green">Event board</StatusPill>
+              <h2 className="mt-3 text-2xl font-semibold tracking-normal">Podium</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Top verified attempts first. Full rankings stay below for dense review.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="gap-1">
+                <ShieldCheck className="size-3" />
+                {verificationMode}
+              </Badge>
+              {data.challenge.endsAt ? (
+                <Badge variant="outline" className="gap-1">
+                  <CalendarDays className="size-3" />
+                  Ends {formatDate(data.challenge.endsAt)}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {podium.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">No attempts yet. Join and set the first score.</p>
+            ) : (
+              podium.map((row) => <PodiumCard key={row.result.id} row={row} />)
+            )}
+          </div>
+        </article>
+
+        <article className="rounded-xl border bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold">Your attempt</p>
+          {viewerResult ? (
+            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+              <Badge variant="secondary">Rank #{viewerResult.result.rank}</Badge>
+              <p className="mt-3 text-2xl font-semibold tracking-normal">{viewerResult.result.scoreLabel}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{viewerResult.verificationLabel}</p>
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              {data.challenge.viewerJoined ? "Submit your first attempt to enter the board." : "Join the challenge before submitting an attempt."}
+            </p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {!data.challenge.viewerJoined ? (
+              <form action={joinChallengeAction}>
+                <input type="hidden" name="challengeId" value={data.challenge.id} />
+                <Button type="submit">
+                  <Plus className="size-4" />
+                  Join
+                </Button>
+              </form>
+            ) : null}
+            <Button asChild variant="outline">
+              <Link href="#submit-attempt" prefetch={false}>Submit attempt</Link>
+            </Button>
+          </div>
+        </article>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
         <div className="grid gap-4">
-          <DataPanel>
+          <DataPanel id="submit-attempt">
             <SectionHeader
               title="Submit attempt"
               description={data.challenge.coachNote}
@@ -120,23 +150,23 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             />
             <CardContent>
               {data.challenge.viewerJoined ? (
-                <form action={submitChallengeAttemptAction} className="grid gap-4">
+                <form action={submitChallengeAttemptAction} className="grid gap-4" data-challenge-attempt-form>
                   <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <label className="grid gap-2 text-sm font-medium">
+                  <label className="grid gap-2 text-sm font-medium" htmlFor="challenge-attempt-score">
                     <span>Score</span>
-                    <Input name="metricValue" inputMode="decimal" placeholder="e.g. 190.4" className="h-10 rounded-xl bg-white" required />
+                    <Input id="challenge-attempt-score" name="metricValue" inputMode="decimal" placeholder="e.g. 190.4" className="h-10 rounded-xl bg-white" required />
                   </label>
-                  <label className="grid gap-2 text-sm font-medium">
+                  <label className="grid gap-2 text-sm font-medium" htmlFor="challenge-attempt-verification">
                     <span>Verification</span>
-                    <select name="verificationLabel" defaultValue="Manual" className="h-10 rounded-xl border bg-white px-3 text-sm">
+                    <select id="challenge-attempt-verification" name="verificationLabel" defaultValue="Manual" className="h-10 rounded-xl border bg-white px-3 text-sm">
                       {challengeVerificationLabels.map((label) => (
                         <option key={label} value={label}>{label}</option>
                       ))}
                     </select>
                   </label>
-                  <label className="grid gap-2 text-sm font-medium">
+                  <label className="grid gap-2 text-sm font-medium" htmlFor="challenge-attempt-notes">
                     <span>Notes</span>
-                    <textarea name="notes" rows={3} className="rounded-xl border bg-white px-3 py-2 text-sm" />
+                    <textarea id="challenge-attempt-notes" name="notes" rows={3} className="rounded-xl border bg-white px-3 py-2 text-sm" />
                   </label>
                   <Button type="submit" className="rounded-xl bg-[#111827] text-white">
                     <Send className="size-4" />
@@ -152,6 +182,28 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
                   </Button>
                 </form>
               )}
+            </CardContent>
+          </DataPanel>
+
+          <DataPanel>
+            <SectionHeader
+              title="Rules"
+              description="Anti-gaming checks are shown as labels, not heavy-handed blockers."
+              action={<ShieldCheck className="size-5 text-emerald-600" />}
+            />
+            <CardContent className="grid gap-2">
+              {Object.entries(data.challenge.rulesJson).slice(0, 8).map(([key, value]) => (
+                <div key={key} className="rounded-lg border bg-white px-3 py-2 text-sm">
+                  <p className="font-medium">{titleCase(key.replace(/([A-Z])/g, " $1").replace(/_/g, " "))}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatRuleValue(value)}</p>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Badge variant="outline">Verified import</Badge>
+                <Badge variant="outline">Manual entry</Badge>
+                <Badge variant="outline">Outside date window flagged</Badge>
+                <Badge variant="outline">Insufficient shots flagged</Badge>
+              </div>
             </CardContent>
           </DataPanel>
 
@@ -187,54 +239,43 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <div className="grid gap-4">
           <DataPanel>
             <SectionHeader
-              title="Leaderboard"
-              description="Challenge ranking uses the template scoring direction and best attempt per player."
+              title="Full leaderboard"
+              description="Expanded ranking uses the template scoring direction and best attempt per player."
               action={<Trophy className="size-5 text-amber-600" />}
             />
             <CardContent>
-              <div className="mb-4 grid gap-3 sm:grid-cols-3">
-                {data.results.slice(0, 3).map(({ result, profile, verificationLabel }) => (
-                  <div key={result.id} className="rounded-xl border bg-gradient-to-br from-amber-50 to-white p-3 text-sm">
-                    <Badge variant={result.rank === 1 ? "default" : "secondary"}>#{result.rank ?? "--"}</Badge>
-                    <p className="mt-3 font-semibold">{profile.displayName}</p>
-                    <p className="text-muted-foreground">{result.scoreLabel}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{verificationLabel}</p>
-                  </div>
-                ))}
-                {data.results.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground sm:col-span-3">No podium yet. Submit the first attempt.</p>
-                ) : null}
-              </div>
-              <details className="rounded-xl border bg-white" open>
-                <summary className="cursor-pointer px-3 py-2 text-sm font-semibold">View full leaderboard</summary>
-                <div className="border-t">
-              <DataTableFrame>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Rank</TableHead>
-                      <TableHead>Player</TableHead>
-                      <TableHead className="text-right">Score</TableHead>
-                      <TableHead className="text-right">Verification</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.results.map(({ result, profile, verificationLabel }) => (
-                      <TableRow key={result.id}>
-                        <TableCell><Badge variant={result.rank === 1 ? "default" : "outline"}>{result.rank ?? "--"}</Badge></TableCell>
-                        <TableCell>{profile.displayName}</TableCell>
-                        <TableCell className="text-right">{result.scoreLabel}</TableCell>
-                        <TableCell className="text-right">{verificationLabel}</TableCell>
-                      </TableRow>
-                    ))}
-                    {data.results.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No attempts yet.</TableCell>
-                      </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </DataTableFrame>
+              <details className="rounded-xl border bg-slate-50">
+                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                  View full leaderboard
+                </summary>
+                <div className="border-t bg-white p-3">
+                  <DataTableFrame>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Rank</TableHead>
+                          <TableHead>Player</TableHead>
+                          <TableHead className="text-right">Score</TableHead>
+                          <TableHead className="text-right">Verification</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.results.map(({ result, profile, verificationLabel }) => (
+                          <TableRow key={result.id}>
+                            <TableCell><Badge variant={result.rank === 1 ? "default" : "outline"}>{result.rank ?? "--"}</Badge></TableCell>
+                            <TableCell>{profile.displayName}</TableCell>
+                            <TableCell className="text-right">{result.scoreLabel}</TableCell>
+                            <TableCell className="text-right">{verificationLabel}</TableCell>
+                          </TableRow>
+                        ))}
+                        {data.results.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No attempts yet.</TableCell>
+                          </TableRow>
+                        ) : null}
+                      </TableBody>
+                    </Table>
+                  </DataTableFrame>
                 </div>
               </details>
             </CardContent>
@@ -284,6 +325,53 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
       </section>
     </PageShell>
   );
+}
+
+type PodiumRow = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>["results"][number];
+
+function PodiumCard({ row }: { row: PodiumRow }) {
+  const rank = row.result.rank ?? 0;
+
+  return (
+    <article className={rank === 1 ? "rounded-xl border border-amber-200 bg-amber-50 p-4" : "rounded-xl border bg-slate-50 p-4"}>
+      <Badge variant={rank === 1 ? "default" : "outline"}>#{rank || "--"}</Badge>
+      <p className="mt-3 text-lg font-semibold tracking-normal">{row.profile.displayName}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-normal">{row.result.scoreLabel}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{row.verificationLabel}</p>
+    </article>
+  );
+}
+
+function boardVerificationMode(labels: string[]) {
+  if (labels.length === 0) {
+    return "Awaiting attempts";
+  }
+
+  if (labels.every((label) => label === "Manual" || label === "Unverified")) {
+    return "Manual-only board";
+  }
+
+  if (labels.some((label) => label === "Manual" || label === "Unverified")) {
+    return "Mixed board";
+  }
+
+  return "Verified board";
+}
+
+function formatRuleValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.join(", ");
+  }
+
+  if (value !== null && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
+}
+
+function formatDate(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(value);
 }
 
 function titleCase(value: string) {

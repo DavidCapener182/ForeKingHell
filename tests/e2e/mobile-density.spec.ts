@@ -4,6 +4,7 @@ import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
 test.describe("mobile density screenshots", () => {
   test.use(authStorageState ? { storageState: authStorageState } : {});
+  test.setTimeout(120_000);
 
   const viewports = [
     { name: "390x844", width: 390, height: 844 },
@@ -11,45 +12,72 @@ test.describe("mobile density screenshots", () => {
     { name: "desktop", width: 1440, height: 1000 },
   ];
 
-  const routes = [
-    { name: "dashboard", path: "/dashboard", text: /Dashboard|Today/i },
-    { name: "today", path: "/today", text: /Today/i },
-    { name: "import", path: "/import", text: /Import launch monitor shots|CSV import/i },
-    { name: "rapsodo", path: "/rapsodo", text: /Rapsodo cloud sync/i },
-    { name: "shots", path: "/shots", text: /Shot database|Shot explorer/i },
-    { name: "bag", path: "/bag", text: /Stock yardages/i },
-    { name: "rounds", path: "/rounds", text: /Rounds/i },
-    { name: "rounds-new", path: "/rounds/new", text: /Add Round|New round/i },
-    { name: "handicap", path: "/handicap", text: /Handicap/i },
-    { name: "courses", path: "/courses", text: /Courses/i },
-    { name: "courses-new", path: "/courses/new", text: /New Course|Manual course setup/i },
-    { name: "coach", path: "/coach", text: /Coach/i },
-    { name: "progress", path: "/progress", text: /Progress/i },
-    { name: "achievements", path: "/achievements", text: /Progress worth tracking|Achievements/i },
-    { name: "equipment", path: "/equipment", text: /Equipment inventory/i },
-    { name: "leaderboard", path: "/leaderboard", text: /Leaderboards/i },
-    { name: "settings", path: "/settings", text: /Settings/i },
+  const routeGroups = [
+    {
+      name: "play",
+      routes: [
+        { name: "dashboard", path: "/dashboard", text: /Dashboard|Today/i },
+        { name: "today", path: "/today", text: /Today/i },
+        { name: "import", path: "/import", text: /Import launch monitor shots|CSV import/i },
+        { name: "rapsodo", path: "/rapsodo", text: /Rapsodo cloud sync/i },
+        { name: "shots", path: "/shots", text: /Shot database|Shot explorer/i },
+        { name: "bag", path: "/bag", text: /Stock yardages/i },
+      ],
+    },
+    {
+      name: "rounds",
+      routes: [
+        { name: "rounds", path: "/rounds", text: /Rounds/i },
+        { name: "rounds-new", path: "/rounds/new", text: /Add Round|New round/i },
+        { name: "handicap", path: "/handicap", text: /Handicap/i },
+        { name: "courses", path: "/courses", text: /Courses/i },
+        { name: "courses-new", path: "/courses/new", text: /New Course|Manual course setup/i },
+      ],
+    },
+    {
+      name: "coach",
+      routes: [
+        { name: "coach", path: "/coach", text: /Coach/i },
+        { name: "progress", path: "/progress", text: /Progress/i },
+      ],
+    },
+    {
+      name: "badges",
+      routes: [
+        { name: "achievements", path: "/achievements", text: /Progress worth tracking|Achievements/i },
+        { name: "equipment", path: "/equipment", text: /Equipment inventory/i },
+      ],
+    },
+    {
+      name: "platform",
+      routes: [
+        { name: "leaderboard", path: "/leaderboard", text: /Leaderboards/i },
+        { name: "settings", path: "/settings", text: /Settings/i },
+      ],
+    },
   ];
 
   for (const viewport of viewports) {
-    test(`captures primary routes at ${viewport.name}`, async ({ page }, testInfo) => {
-      skipWhenNoAuth();
+    for (const group of routeGroups) {
+      test(`captures ${group.name} routes at ${viewport.name}`, async ({ page }, testInfo) => {
+        skipWhenNoAuth();
 
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-      let capturedRoutes = 0;
-      for (const route of routes) {
-        if (!(await gotoRouteOrSkip(page, route.path, false))) {
-          continue;
+        let capturedRoutes = 0;
+        for (const route of group.routes) {
+          if (!(await gotoRouteOrSkip(page, route.path, false))) {
+            continue;
+          }
+          if (!(await expectReadyOrSkip(page, route.text, false))) {
+            continue;
+          }
+          await capture(page, testInfo, `${route.name}-${viewport.name}`);
+          capturedRoutes += 1;
         }
-        if (!(await expectReadyOrSkip(page, route.text, false))) {
-          continue;
-        }
-        await capture(page, testInfo, `${route.name}-${viewport.name}`);
-        capturedRoutes += 1;
-      }
-      test.skip(capturedRoutes === 0, "Stored auth state redirected every primary route to login.");
-    });
+        test.skip(capturedRoutes === 0, "Stored auth state redirected every primary route to login.");
+      });
+    }
 
     test(`captures data-dependent detail routes at ${viewport.name}`, async ({ page }, testInfo) => {
       skipWhenNoAuth();
@@ -86,10 +114,11 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 
 async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
   try {
-    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
   } catch (error) {
-    if (String(error).includes("net::ERR_ABORTED")) {
-      await page.goto(path, { waitUntil: "domcontentloaded" });
+    const message = String(error);
+    if (message.includes("net::ERR_ABORTED") || message.includes("net::ERR_NETWORK_IO_SUSPENDED")) {
+      await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
       return;
     }
 

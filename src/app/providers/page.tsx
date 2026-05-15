@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Cable, CheckCircle2, Database, FileSpreadsheet, FlaskConical, Upload } from "lucide-react";
+import { Cable, CheckCircle2, Database, FileSpreadsheet, FlaskConical, GitCompareArrows, Upload } from "lucide-react";
 
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ export default async function ProvidersPage() {
             <StatusPill tone="sky">Import expansion</StatusPill>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal">Launch monitor providers</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Rapsodo stays live while Square and TrackMan adapters share the same normalised metrics, provider sessions and import jobs.
+              ForeKingHell becomes your cross-device golf performance history. Rapsodo is live; Square and TrackMan use the same adapter contract as they move through beta.
             </p>
           </div>
           <Button asChild>
@@ -53,6 +53,19 @@ export default async function ProvidersPage() {
               <Mini label="Sessions" value={provider.sessionCount} />
               <Mini label="Jobs" value={provider.jobCount} />
             </div>
+            <div className="mt-4 grid gap-2 text-sm">
+              <ProviderStep done={provider.status === "live"} label="Connect" />
+              <ProviderStep done={provider.status === "live"} label="Import file" />
+              <ProviderStep done={provider.mappingCount > 0} label="Map fields" />
+              <ProviderStep done={provider.sessionCount > 0} label="Review sessions" />
+              <ProviderStep done={provider.sessionCount > 0} label="Normalise metrics" />
+            </div>
+            <Button asChild variant={provider.status === "live" ? "default" : "outline"} className="mt-4 w-full">
+              <Link href={provider.status === "live" ? "/import" : "/billing"} prefetch={false}>
+                {provider.status === "live" ? <Upload className="size-4" /> : <GitCompareArrows className="size-4" />}
+                {provider.status === "live" ? "Import from provider" : "View adapter access"}
+              </Link>
+            </Button>
           </article>
         ))}
       </section>
@@ -98,6 +111,22 @@ export default async function ProvidersPage() {
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="flex items-center gap-2 text-sm font-semibold">
+              <FlaskConical className="size-4 text-amber-600" />
+              Import job status
+            </p>
+            <div className="mt-3 grid gap-2">
+              {data.jobs.slice(0, 6).map((job) => (
+                <div key={job.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                  <p className="font-medium">{job.providerKind} · {job.status}</p>
+                  <p className="text-xs text-muted-foreground">{job.detectedProviderKind ?? "No detected provider"}{job.errorMessage ? ` · ${job.errorMessage}` : ""}</p>
+                </div>
+              ))}
+              {data.jobs.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No import jobs yet.</p> : null}
+            </div>
+          </section>
+
+          <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-semibold">
               <Cable className="size-4 text-slate-700" />
               Adapter contract
             </p>
@@ -116,6 +145,17 @@ function Mini({ label, value }: { label: string; value: number }) {
     <div className="rounded-lg border bg-slate-50 px-2 py-2">
       <p className="text-lg font-semibold tracking-normal">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function ProviderStep({ done, label }: { done: boolean; label: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={done ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
+        {done ? "Ready" : "Queued"}
+      </span>
     </div>
   );
 }

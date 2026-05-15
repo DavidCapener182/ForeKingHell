@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Flame, Plus, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, Sparkles, Trophy, Users } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import {
@@ -13,13 +13,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChallengesPage() {
-  const data = await getChallengesPageData();
+  const [data, billing] = await Promise.all([getChallengesPageData(), getBillingPageData()]);
+  const featured = data.active[0] ?? data.challenges[0] ?? null;
+  const friendsCompeting = data.challenges.filter((challenge) => !challenge.viewerJoined && challenge.participantCount > 0).slice(0, 4);
+  const activePlanName = billing.plans.find((plan) => plan.key === billing.activePlanKey)?.name ?? titleCase(billing.activePlanKey);
+  const privateChallengeLimit = billing.planLimits.find(
+    (limit) => limit.planKey === billing.activePlanKey && limit.limitKey === "max_private_challenges",
+  );
+  const privateChallengeLimitText = privateChallengeLimit ? limitValue(privateChallengeLimit.limitValueJson) : "Public boards only";
+  const showPrivateChallengeUpgrade = billing.activePlanKey === "free";
 
   return (
     <PageShell size="7xl">
@@ -40,8 +49,8 @@ export default async function ChallengesPage() {
 
       <PageHeader
         eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
-        title="Challenges"
-        description="Create private friend challenges, join monthly boards, submit verified attempts, and turn results into feed cards."
+        title="Competition hub"
+        description="Join monthly boards, follow friends competing, and create private launch-monitor challenges without exposing account access."
         metrics={[
           { label: "Active", value: data.active.length, detail: "Visible open challenges" },
           { label: "Joined", value: data.mine.length, detail: "Your active entries" },
@@ -50,131 +59,202 @@ export default async function ChallengesPage() {
         ]}
       />
 
-      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="premium-card overflow-hidden">
-          <div className="bg-[linear-gradient(135deg,#111827,#047857_55%,#f59e0b)] p-5 text-white">
-            <Badge variant="secondary" className="gap-1"><Flame className="size-3" /> Featured monthly challenge</Badge>
-            <h2 className="mt-3 text-3xl font-semibold tracking-normal">{data.active[0]?.title ?? "Wedge Window"}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-white/80">
-              {data.active[0]?.description ?? "Dial in a scoring-club window and see where you stand against friends and public opt-in boards."}
-            </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <HeroMetric label="Your status" value={data.active[0]?.viewerJoined ? "Entered" : "Not entered"} />
-              <HeroMetric label="Friends entered" value={data.active[0]?.participantCount ?? 0} />
-              <HeroMetric label="Verification" value={data.active[0]?.leader?.verificationLabel ?? "Mixed"} />
-            </div>
-            {data.active[0] ? (
-              <Button asChild className="mt-4 bg-white text-[#111827] hover:bg-white/90">
-                <Link href={`/challenges/${data.active[0].id}`} prefetch={false}>Join challenge</Link>
-              </Button>
-            ) : null}
-          </div>
-        </Card>
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Competition hub</CardTitle>
-            <CardDescription>Jump into active entries, friend boards, templates and past results.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2 text-sm">
-            <HubRow label="My active entries" value={data.mine.length} />
-            <HubRow label="Friends competing" value={data.active.reduce((total, challenge) => total + challenge.participantCount, 0)} />
-            <HubRow label="Public Rapsodo boards" value={data.active.filter((challenge) => challenge.visibility === "public").length} />
-            <HubRow label="Challenge templates" value={data.templates.length} />
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
-        <DataPanel>
-          <SectionHeader
-            title="Create challenge"
-            description="Start with a template, then invite friends from the detail page."
-            action={<Plus className="size-5 text-emerald-600" />}
-          />
-          <CardContent>
-            <form action={createChallengeAction} className="grid gap-4">
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Template</span>
-                <select name="templateId" className="h-10 rounded-xl border bg-white px-3 text-sm">
-                  {data.templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Title</span>
-                <Input name="title" placeholder="May Wedge Control Challenge" className="h-10 rounded-xl bg-white" required />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Description</span>
-                <textarea name="description" rows={3} className="rounded-xl border bg-white px-3 py-2 text-sm" />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Visibility</span>
-                <select name="visibility" defaultValue="friends" className="h-10 rounded-xl border bg-white px-3 text-sm">
-                  {socialVisibilityOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {titleCase(option)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Starts</span>
-                  <Input name="startsAt" type="date" className="h-10 rounded-xl bg-white" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Ends</span>
-                  <Input name="endsAt" type="date" className="h-10 rounded-xl bg-white" />
-                </label>
+      {featured ? (
+        <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
+          <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+            <div>
+              <StatusPill tone="green">Featured monthly challenge</StatusPill>
+              <h2 className="mt-3 text-3xl font-semibold tracking-normal">{featured.title}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {featured.description ?? `${featured.templateName} board with ${featured.participantCount} players entered.`}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">{featured.templateName}</Badge>
+                <Badge variant="outline">{featured.viewerJoined ? "Entered" : "Not entered"}</Badge>
+                <Badge variant="outline">{featured.participantCount} friends and players</Badge>
+                {featured.viewerRank ? <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge> : null}
               </div>
-              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
-                <Plus className="size-4" />
-                Create
-              </Button>
-            </form>
-          </CardContent>
-        </DataPanel>
+            </div>
+            <div className="grid gap-3 rounded-xl border bg-slate-50 p-4">
+              {featured.leader ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">Current leader</p>
+                  <p className="mt-1 text-xl font-semibold tracking-normal">{featured.leader.displayName}</p>
+                  <p className="text-sm text-muted-foreground">{featured.leader.scoreLabel} · {featured.leader.verificationLabel}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No attempts yet. Be the first verified entry.</p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link href={`/challenges/${featured.id}`} prefetch={false}>
+                    <Trophy className="size-4" />
+                    Open event
+                  </Link>
+                </Button>
+                {!featured.viewerJoined ? (
+                  <form action={joinChallengeAction}>
+                    <input type="hidden" name="challengeId" value={featured.id} />
+                    <Button type="submit" variant="outline">Join challenge</Button>
+                  </form>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)]">
         <DataPanel>
           <SectionHeader
-            title="Visible challenges"
-            description="Friends, public opt-in and joined challenge scopes."
+            title="My active entries"
+            description="Challenges you have joined or created."
             action={<Trophy className="size-5 text-amber-600" />}
           />
           <CardContent>
-            <ChallengeGrid challenges={data.challenges} />
+            <ChallengeGrid challenges={data.mine} empty="Join a public board or create a private friend challenge." />
           </CardContent>
         </DataPanel>
+
+        <DataPanel>
+          <SectionHeader
+            title="Friends competing"
+            description="Boards with activity from visible players."
+            action={<Users className="size-5 text-sky-600" />}
+          />
+          <CardContent>
+            <ChallengeGrid challenges={friendsCompeting} empty="No friends are competing on visible boards yet." />
+          </CardContent>
+        </DataPanel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <DataPanel>
+          <SectionHeader
+            title="Public and friend boards"
+            description="Verified and mixed-source boards you can open or join."
+            action={<Trophy className="size-5 text-amber-600" />}
+          />
+          <CardContent>
+            <ChallengeGrid challenges={data.challenges} empty="No challenges are visible yet." />
+          </CardContent>
+        </DataPanel>
+
+        <div className="grid gap-4">
+          <DataPanel>
+            <SectionHeader title="Templates" description="Rapsodo-friendly formats for private leagues and public boards." />
+            <CardContent className="grid gap-2">
+              {data.templates.map((template) => (
+                <div key={template.id} className="rounded-lg border bg-slate-50 px-3 py-2 text-sm">
+                  <p className="font-medium">{template.name}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{template.description}</p>
+                </div>
+              ))}
+            </CardContent>
+          </DataPanel>
+
+          <DataPanel>
+            <SectionHeader
+              title="Create private challenge"
+              description="Start with a template, then invite friends from the event page."
+              action={<Plus className="size-5 text-emerald-600" />}
+            />
+            <CardContent>
+              <div className="mb-3 rounded-xl border bg-slate-50 p-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold">Private challenge entitlement</p>
+                    <p className="mt-1 text-muted-foreground">
+                      Current plan: {activePlanName}. Limit: {privateChallengeLimitText}.
+                    </p>
+                  </div>
+                  {showPrivateChallengeUpgrade ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/billing" prefetch={false}>
+                        <Sparkles className="size-4" />
+                        Upgrade
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary">Private leagues enabled</Badge>
+                  )}
+                </div>
+              </div>
+              {showPrivateChallengeUpgrade ? (
+                <div className="rounded-xl border border-dashed bg-white p-4 text-sm">
+                  <p className="font-semibold">Upgrade to create friend and private leagues.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Free players can join public boards and social challenges. Plus unlocks private friend challenges.
+                  </p>
+                  <Button asChild className="mt-3" variant="outline">
+                    <Link href="/billing" prefetch={false}>
+                      <Sparkles className="size-4" />
+                      View plans
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <details className="rounded-xl border bg-slate-50">
+                  <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    Create challenge
+                  </summary>
+                  <form action={createChallengeAction} className="grid gap-4 border-t bg-white p-4">
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Template</span>
+                      <select name="templateId" className="h-10 rounded-xl border bg-white px-3 text-sm">
+                        {data.templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Title</span>
+                      <Input name="title" placeholder="May Wedge Control Challenge" className="h-10 rounded-xl bg-white" required />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Description</span>
+                      <textarea name="description" rows={3} className="rounded-xl border bg-white px-3 py-2 text-sm" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Visibility</span>
+                      <select name="visibility" defaultValue="friends" className="h-10 rounded-xl border bg-white px-3 text-sm">
+                        {socialVisibilityOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {titleCase(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="grid gap-2 text-sm font-medium">
+                        <span>Starts</span>
+                        <Input name="startsAt" type="date" className="h-10 rounded-xl bg-white" />
+                      </label>
+                      <label className="grid gap-2 text-sm font-medium">
+                        <span>Ends</span>
+                        <Input name="endsAt" type="date" className="h-10 rounded-xl bg-white" />
+                      </label>
+                    </div>
+                    <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                      <Plus className="size-4" />
+                      Create
+                    </Button>
+                  </form>
+                </details>
+              )}
+            </CardContent>
+          </DataPanel>
+        </div>
       </section>
     </PageShell>
   );
 }
 
-function HeroMetric({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2">
-      <p className="text-xs text-white/70">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function HubRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-semibold">{value}</span>
-    </div>
-  );
-}
-
-function ChallengeGrid({ challenges }: { challenges: ChallengeListItem[] }) {
+function ChallengeGrid({ challenges, empty = "No challenges are visible yet. Create the first private friend challenge." }: { challenges: ChallengeListItem[]; empty?: string }) {
   if (challenges.length === 0) {
-    return <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">No challenges are visible yet. Create the first private friend challenge.</p>;
+    return <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">{empty}</p>;
   }
 
   return (
@@ -234,4 +314,20 @@ function formatDate(value: Date) {
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function limitValue(value: Record<string, unknown>) {
+  if (typeof value.label === "string") {
+    return value.label;
+  }
+
+  if (typeof value.value === "number") {
+    return value.value >= 999999 ? "Unlimited" : new Intl.NumberFormat("en-GB").format(value.value);
+  }
+
+  if (typeof value.value === "boolean") {
+    return value.value ? "Included" : "Not included";
+  }
+
+  return "Included";
 }

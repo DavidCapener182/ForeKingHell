@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 
 import { offerClicks, partnerOffers, sponsors } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { requireAdminUser } from "@/lib/admin";
 import { requireCurrentUserId } from "@/lib/current-user";
 
 export async function getPartnersPageData() {
+  await requireAdminUser();
   const userId = await requireCurrentUserId();
   const [sponsorRows, offerRows, clickRows] = await Promise.all([
     getDb().select().from(sponsors).orderBy(desc(sponsors.createdAt)).limit(40),
@@ -29,6 +31,7 @@ export async function createSponsor(input: {
   websiteUrl?: string | null;
   contactEmail?: string | null;
 }) {
+  await requireAdminUser();
   const userId = await requireCurrentUserId();
   const name = cleanRequired(input.name, "New sponsor").slice(0, 160);
   const slug = await uniqueSponsorSlug(name);
@@ -58,6 +61,7 @@ export async function createPartnerOffer(input: {
   offerUrl?: string | null;
   couponCode?: string | null;
 }) {
+  await requireAdminUser();
   const userId = await requireCurrentUserId();
   const [sponsor] = await getDb().select().from(sponsors).where(eq(sponsors.id, input.sponsorId)).limit(1);
 

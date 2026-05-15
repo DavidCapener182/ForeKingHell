@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, Ban, Check, Search, UserMinus, UserPlus, X } from "lucide-react";
+import { headers } from "next/headers";
+import { ArrowLeft, Ban, Check, Copy, QrCode, Search, Trophy, UserMinus, UserPlus, Users, X } from "lucide-react";
 
 import {
   acceptFriendRequestAction,
@@ -8,6 +9,7 @@ import {
   declineFriendRequestAction,
   removeFriendAction,
   sendFriendRequestAction,
+  unblockUserAction,
 } from "@/app/friends/actions";
 import {
   DataPanel,
@@ -35,9 +37,10 @@ type FriendsPageProps = {
 };
 
 export default async function FriendsPage({ searchParams }: FriendsPageProps) {
-  const params = await searchParams;
+  const [params, requestHeaders] = await Promise.all([searchParams, headers()]);
   const query = params?.q?.trim() ?? "";
   const data = await getFriendsPageData(query);
+  const profileUrl = `${getRequestOrigin(requestHeaders)}/profile/${data.profile.username}`;
 
   return (
     <PageShell size="6xl">
@@ -87,6 +90,47 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           </div>
         </div>
       </header>
+
+      <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <DataPanel>
+          <SectionHeader
+            title="Invite"
+            description="Use a profile link or QR code when sharing inside Rapsodo groups."
+            action={<QrCode className="size-5 text-emerald-600" />}
+          />
+          <CardContent className="grid gap-3">
+            <div className="rounded-xl border bg-white p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/friends/qr/${data.profile.username}`}
+                alt={`QR invite for @${data.profile.username}`}
+                className="mx-auto aspect-square w-full max-w-40"
+              />
+            </div>
+            <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
+              <p className="font-medium">Invite link</p>
+              <code className="mt-1 block break-all text-muted-foreground">{profileUrl}</code>
+            </div>
+            <Button asChild variant="outline">
+              <Link href={profileUrl} prefetch={false}>
+                <Copy className="size-4" />
+                Open invite page
+              </Link>
+            </Button>
+          </CardContent>
+        </DataPanel>
+
+        <DataPanel>
+          <SectionHeader
+            title="Suggested friends"
+            description="Public profiles outside your current graph."
+            action={<Users className="size-5 text-sky-600" />}
+          />
+          <CardContent>
+            <ProfileList empty="No public suggestions yet." profiles={data.suggestedProfiles} mode="search" />
+          </CardContent>
+        </DataPanel>
+      </section>
 
       {params?.request || params?.friend || params?.user ? (
         <Alert>
@@ -142,6 +186,27 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           </CardContent>
         </DataPanel>
       </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <DataPanel>
+          <SectionHeader title="Active this week" description="Shortcuts for friend-scoped competition." action={<Trophy className="size-5 text-amber-600" />} />
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <Button asChild variant="outline">
+              <Link href="/leaderboard?tab=friends" prefetch={false}>Friends leaderboard</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/challenges" prefetch={false}>Start challenge</Link>
+            </Button>
+          </CardContent>
+        </DataPanel>
+
+        <DataPanel>
+          <SectionHeader title="Blocked users" description="Blocked users cannot see friend-scoped profile or feed activity." action={<Ban className="size-5 text-red-600" />} />
+          <CardContent>
+            <BlockedList profiles={data.blockedUsers} />
+          </CardContent>
+        </DataPanel>
+      </section>
     </PageShell>
   );
 }
@@ -162,7 +227,11 @@ function ProfileList({
   return (
     <div className="grid gap-2">
       {profiles.map((profile) => (
-        <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm">
+        <div
+          key={profile.userId}
+          className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm"
+          data-friend-user-id={profile.userId}
+        >
           <div className="flex min-w-0 items-center gap-3">
             <SocialAvatar
               displayName={profile.displayName}
@@ -187,7 +256,7 @@ function ProfileList({
                     Remove
                   </Button>
                 </form>
-                <form action={blockUserAction}>
+                <form action={blockUserAction} data-friend-block-form>
                   <input type="hidden" name="blockedUserId" value={profile.userId} />
                   <Button type="submit" variant="ghost" size="sm">
                     <Ban className="size-4" />
@@ -226,6 +295,29 @@ function SearchResultAction({ profile }: { profile: SocialProfileSummary }) {
         Add
       </Button>
     </form>
+  );
+}
+
+function BlockedList({ profiles }: { profiles: SocialProfileSummary[] }) {
+  if (profiles.length === 0) {
+    return <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No blocked users.</p>;
+  }
+
+  return (
+    <div className="grid gap-2">
+      {profiles.map((profile) => (
+        <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{profile.displayName}</p>
+            <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
+          </div>
+          <form action={unblockUserAction}>
+            <input type="hidden" name="blockedUserId" value={profile.userId} />
+            <Button type="submit" variant="outline" size="sm">Unblock</Button>
+          </form>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -298,4 +390,10 @@ function SocialStat({ label, value, detail }: { label: string; value: number | s
       <p className="text-xs text-muted-foreground">{detail}</p>
     </div>
   );
+}
+
+function getRequestOrigin(requestHeaders: Headers) {
+  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  return `${proto}://${host}`;
 }

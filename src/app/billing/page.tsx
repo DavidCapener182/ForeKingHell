@@ -1,4 +1,6 @@
-import { Check, CreditCard, Sparkles, Zap } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { Check, CreditCard, Sparkles, Trophy, Zap } from "lucide-react";
 
 import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
 import { PageShell, StatusPill } from "@/components/premium";
@@ -26,16 +28,23 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       <header className="rounded-xl border bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <StatusPill tone="sky">Monetisation</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Pricing</h1>
+            <StatusPill tone="sky">Pricing</StatusPill>
+            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Choose the plan for your golf network</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Start with free Rapsodo CSV tracking, then upgrade when you need advanced reports, AI coaching, private leagues or coach/club tools.
+              Social basics stay free. Upgrade when you need deeper analytics, AI coaching, private leagues, provider adapters or coach/club tools.
             </p>
           </div>
-          <Badge variant={data.stripeConfigured ? "secondary" : "outline"} className="gap-1">
+          {data.latestSubscription ? (
+            <Badge variant="secondary" className="gap-1">
+              <CreditCard className="size-3" />
+              Current plan: {planLabel(data.plans, data.activePlanKey)}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="gap-1">
             <CreditCard className="size-3" />
-            {data.stripeConfigured ? "Secure checkout ready" : "Checkout unavailable"}
-          </Badge>
+              Free plan
+            </Badge>
+          )}
         </div>
         {params?.checkout || params?.portal ? (
           <div className="mt-4 rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
@@ -47,7 +56,13 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <main className="grid gap-4 md:grid-cols-2">
           {visiblePlans.map((plan) => (
-            <PlanCard key={plan.key} plan={plan} active={plan.key === data.activePlanKey} stripeConfigured={data.stripeConfigured} />
+            <PlanCard
+              key={plan.key}
+              plan={plan}
+              active={plan.key === data.activePlanKey}
+              stripeConfigured={data.stripeConfigured}
+              limits={data.planLimits.filter((limit) => limit.planKey === plan.key).slice(0, 4)}
+            />
           ))}
         </main>
 
@@ -72,36 +87,32 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
               >
                 <CreditCard className="size-4" />
-                Manage billing
+                Customer portal
               </Button>
             </form>
           </section>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Upgrade prompts</p>
-            <div className="mt-3 grid gap-2 text-sm">
-              <UpgradePrompt text="You have 5 free monthly imports before Plus unlocks unlimited history." />
-              <UpgradePrompt text="Private challenges and friend leagues unlock on Plus." />
-              <UpgradePrompt text="AI comparison against friends is a Pro feature." />
-              <UpgradePrompt text="Coach dashboard and player seats are for Coach / Club." />
+            <div className="mt-3 grid gap-2">
+              <Prompt icon={<Trophy className="size-4 text-amber-600" />} text="Private challenges are unlimited on Plus and above." />
+              <Prompt icon={<Sparkles className="size-4 text-emerald-600" />} text="AI comparison and coaching unlock on Pro." />
+              <Prompt icon={<CreditCard className="size-4 text-sky-600" />} text="Coach dashboard and player seats unlock on Coach / Club." />
             </div>
           </section>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold">Included in your plan</p>
+            <p className="text-sm font-semibold">Manage access</p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Billing changes update plan entitlements through the Stripe webhook. Social privacy stays controlled from your profile.
+            </p>
             <div className="mt-3 grid gap-2">
-              {data.planLimits
-                .filter((limit) => limit.planKey === data.activePlanKey)
-                .slice(0, 6)
-                .map((limit) => (
-                  <div key={limit.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                    <p className="font-medium">{label(limit.limitKey)}</p>
-                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">{JSON.stringify(limit.limitValueJson)}</p>
-                  </div>
-                ))}
-              {data.planLimits.filter((limit) => limit.planKey === data.activePlanKey).length === 0 ? (
-                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">Free social and import defaults apply.</p>
-              ) : null}
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/profile" prefetch={false}>Profile privacy</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/providers" prefetch={false}>Provider adapters</Link>
+              </Button>
             </div>
           </section>
         </aside>
@@ -110,7 +121,17 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
 }
 
-function PlanCard({ plan, active, stripeConfigured }: { plan: BillingPlan; active: boolean; stripeConfigured: boolean }) {
+function PlanCard({
+  plan,
+  active,
+  stripeConfigured,
+  limits,
+}: {
+  plan: BillingPlan;
+  active: boolean;
+  stripeConfigured: boolean;
+  limits: Array<{ id: string; limitKey: string; limitValueJson: Record<string, unknown> }>;
+}) {
   return (
     <article className="rounded-xl border bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -133,6 +154,16 @@ function PlanCard({ plan, active, stripeConfigured }: { plan: BillingPlan; activ
           </li>
         ))}
       </ul>
+      {limits.length > 0 ? (
+        <div className="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Usage limits</p>
+          {limits.map((limit) => (
+            <p key={limit.id} className="text-sm">
+              {label(limit.limitKey)}: <span className="font-medium">{limitValue(limit.limitValueJson)}</span>
+            </p>
+          ))}
+        </div>
+      ) : null}
       <form action={createCheckoutAction} className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
         <input type="hidden" name="planKey" value={plan.key} />
         <select name="interval" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm" disabled={plan.key === "free"}>
@@ -147,10 +178,11 @@ function PlanCard({ plan, active, stripeConfigured }: { plan: BillingPlan; activ
   );
 }
 
-function UpgradePrompt({ text }: { text: string }) {
+function Prompt({ icon, text }: { icon: ReactNode; text: string }) {
   return (
-    <div className="rounded-lg border bg-slate-50 px-3 py-2 text-muted-foreground">
-      {text}
+    <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+      {icon}
+      <span>{text}</span>
     </div>
   );
 }
@@ -197,6 +229,22 @@ function label(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function limitValue(value: Record<string, unknown>) {
+  if (typeof value.label === "string") {
+    return value.label;
+  }
+
+  if (typeof value.value === "boolean") {
+    return value.value ? "Included" : "Not included";
+  }
+
+  if (typeof value.value === "number") {
+    return value.value >= 999999 ? "Unlimited" : new Intl.NumberFormat("en-GB").format(value.value);
+  }
+
+  return "Included";
 }
 
 function planLabel(plans: BillingPlan[], value: string) {

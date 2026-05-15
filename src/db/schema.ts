@@ -97,6 +97,7 @@ export const userProfiles = pgTable(
         handicap?: "private" | "friends" | "public";
         practice?: "private" | "friends" | "public";
         exactShots?: "private" | "friends" | "public";
+        hiddenFeedTypes?: string[];
       }>()
       .notNull()
       .default({}),

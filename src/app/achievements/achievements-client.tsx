@@ -440,7 +440,11 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             <CardDescription>Last 10 unlocks with source evidence where available.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[22rem] space-y-3 overflow-y-auto pr-2">
+            <div
+              aria-label="Latest achievements gained list"
+              className="max-h-[22rem] space-y-3 overflow-y-auto pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              tabIndex={0}
+            >
               {data.recentUnlocks.map((achievement) => (
                 <RecentUnlock key={achievement.id} achievement={achievement} />
               ))}
@@ -771,7 +775,12 @@ function AchievementUnlockCalendar({
             </div>
 
             {selectedAchievements.length > 0 ? (
-              <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "28rem" }}>
+              <div
+                aria-label="Selected calendar day achievements"
+                className="space-y-2 overflow-y-auto pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                style={{ maxHeight: "28rem" }}
+                tabIndex={0}
+              >
                 {selectedAchievements.map((achievement) => (
                   <CalendarUnlockItem key={achievement.id} achievement={achievement} />
                 ))}
@@ -796,7 +805,11 @@ function MobileAchievementTabs({
   onTabChange: (tab: MobileAchievementTab) => void;
 }) {
   return (
-    <nav aria-label="Achievement views" className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden">
+    <nav
+      aria-label="Achievement views"
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+      tabIndex={0}
+    >
       {mobileAchievementTabs.map((item) => (
         <button
           key={item.id}

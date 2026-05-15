@@ -9,6 +9,7 @@ import {
   LineChart,
   Sparkles,
   Target,
+  Trophy,
   Upload,
 } from "lucide-react";
 
@@ -46,6 +47,9 @@ import { getProgressData } from "@/lib/progress-data";
 import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
 import { CoachChatCard } from "@/app/coach/coach-chat-card";
+import { getActivePlanKeyForUser, planAllowsAiCoach } from "@/lib/billing";
+import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
+import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +58,12 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 export default async function CoachPage() {
-  const data = await getProgressData();
+  const userId = await requireCurrentUserId();
+  const [data, activePlanKey, challengeData] = await Promise.all([
+    getProgressData(userId),
+    getActivePlanKeyForUser(userId),
+    getChallengesPageData(),
+  ]);
   const coach = buildCoachSummary(data.clubs);
   const topClub = coach.clubCards[0] ?? null;
   const drillChallenges = buildCoachDrillChallenges(coach);
@@ -65,6 +74,7 @@ export default async function CoachPage() {
       (status.won && !status.wonAwarded),
   );
   const aiPayload = buildAiCoachPayload(coach);
+  const canUseAiCoach = planAllowsAiCoach(activePlanKey);
 
   return (
     <PageShell>
@@ -299,13 +309,15 @@ export default async function CoachPage() {
                 </CardContent>
               </DataPanel>
 
+              <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
+
               <DataPanel className="hidden sm:flex">
                 <SectionHeader
                   title="AI coach note"
-                  description="Optional AI layer for a sharper plain-English readout."
+                  description={canUseAiCoach ? "Optional AI layer for a sharper plain-English readout." : "AI coaching is a Pro entitlement."}
                   action={<Sparkles className="size-5 text-sky-500" />}
                 />
-                <AiCoachCard payload={aiPayload} />
+                {canUseAiCoach ? <AiCoachCard payload={aiPayload} /> : <UpgradeAiCoachCard />}
               </DataPanel>
 
               <MobileAccordionSection
@@ -314,18 +326,24 @@ export default async function CoachPage() {
                 count="2 tools"
               >
                 <div className="grid gap-3">
-                  <AiCoachCard payload={aiPayload} />
-                  <CoachChatCard />
+                  {canUseAiCoach ? (
+                    <>
+                      <AiCoachCard payload={aiPayload} />
+                      <CoachChatCard questionId="coach-question-mobile" />
+                    </>
+                  ) : (
+                    <UpgradeAiCoachCard />
+                  )}
                 </div>
               </MobileAccordionSection>
 
               <DataPanel className="hidden sm:flex">
                 <SectionHeader
                   title="AI coach chat"
-                  description="Ask questions answered from cited SQL context in your personal shot database."
+                  description={canUseAiCoach ? "Ask questions answered from cited SQL context in your personal shot database." : "Upgrade to Pro for AI coach chat."}
                   action={<Sparkles className="size-5 text-emerald-500" />}
                 />
-                <CoachChatCard />
+                {canUseAiCoach ? <CoachChatCard /> : <UpgradeAiCoachCard />}
               </DataPanel>
             </div>
           </section>
@@ -359,6 +377,58 @@ export default async function CoachPage() {
         </>
       )}
     </PageShell>
+  );
+}
+
+function CoachSocialPrompt({
+  topClub,
+  challenges,
+}: {
+  topClub: CoachClubCard | null;
+  challenges: ChallengeListItem[];
+}) {
+  const challenge = challenges.find((item) => item.status === "open") ?? null;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Social comparison"
+        description="Framed as a next step, not a judgement against friends."
+        action={<Trophy className="size-5 text-amber-600" />}
+      />
+      <CardContent className="grid gap-3">
+        <p className="rounded-xl border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+          {topClub
+            ? `${topClub.clubName} is the current practice priority. Use a challenge board when you want an opt-in comparison against friends.`
+            : "Build a clean club baseline before comparing with friends."}
+        </p>
+        <Button asChild variant="outline" className="w-fit">
+          <Link href={challenge ? `/challenges/${challenge.id}` : "/challenges"} prefetch={false}>
+            <Trophy className="size-4" />
+            {challenge ? `Suggested: ${challenge.title}` : "Open challenges"}
+          </Link>
+        </Button>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function UpgradeAiCoachCard() {
+  return (
+    <CardContent>
+      <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm">
+        <p className="font-semibold">AI coach is a Pro feature.</p>
+        <p className="mt-1 leading-6 text-muted-foreground">
+          Rule-based coaching stays available. Upgrade when you want AI summaries and chat over your personal SQL context.
+        </p>
+        <Button asChild variant="outline" className="mt-3">
+          <Link href="/billing" prefetch={false}>
+            <Sparkles className="size-4" />
+            View Pro
+          </Link>
+        </Button>
+      </div>
+    </CardContent>
   );
 }
 

@@ -24,10 +24,10 @@ export default async function SocialIntelligencePage() {
   return (
     <PageShell size="7xl">
       <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="sky">AI and safety</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Social intelligence</h1>
+        <StatusPill tone="sky">Recaps and safety</StatusPill>
+        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Recaps & Safety</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Generate shareable improvement summaries, challenge coach notes and tournament recaps while keeping reports and moderation visible early.
+          Generate weekly and challenge recaps while keeping suspicious attempts, reported comments and moderation records visible early.
         </p>
       </header>
 
@@ -88,7 +88,7 @@ export default async function SocialIntelligencePage() {
           </section>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
-            <p className="text-sm font-semibold">Recent AI social summaries</p>
+            <p className="text-sm font-semibold">Weekly and challenge recaps</p>
             <div className="mt-4 grid gap-3">
               {data.summaries.length === 0 ? (
                 <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No summaries generated yet.</p>
