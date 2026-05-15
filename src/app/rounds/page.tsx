@@ -30,6 +30,7 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -58,7 +59,9 @@ export default async function RoundsPage() {
 
   return (
     <PageShell size="6xl">
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
+
+        <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -255,7 +258,7 @@ export default async function RoundsPage() {
           </Card>
         </section>
         <StickyMobileAction>
-          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href="/rounds/new">
               <Plus className="size-4" />
               Add round
@@ -306,7 +309,7 @@ function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds
 
 function RoundSharingPanel({ latestRound }: { latestRound: Awaited<ReturnType<typeof getRounds>>[number] | null }) {
   return (
-    <section className="rounded-xl border bg-white p-4 shadow-sm">
+    <section className="premium-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Shareable round cards</p>
@@ -411,7 +414,7 @@ function handicapTrendText(summary: HandicapSummary) {
 
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">
         {typeof value === "number" ? integerFormatter.format(value) : value ?? "--"}

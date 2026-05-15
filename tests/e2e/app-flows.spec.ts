@@ -16,7 +16,7 @@ test.describe("authenticated app flows", () => {
     { path: "/coach", text: /Coach/i },
     { path: "/achievements", text: /Achievements/i },
     { path: "/equipment", text: /Equipment/i },
-    { path: "/strokes-gained", text: /Strokes-gained dashboard/i },
+    { path: "/strokes-gained", text: /Strokes gained/i },
   ];
 
   for (const route of routes) {

@@ -266,7 +266,7 @@ export function CourseHoleMapEditor({
               key={holeNumber}
               type="button"
               variant={selectedHoleNumber === holeNumber ? "default" : "outline"}
-              className={cn("h-10 rounded-xl", selectedHoleNumber === holeNumber ? "bg-[#111827] text-white" : "bg-white")}
+              className={cn("h-10 rounded-lg", selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-white")}
               onClick={() => {
                 const nextHole = holes.find((hole) => hole.holeNumber === holeNumber) ?? null;
                 setSelectedHoleNumber(holeNumber);
@@ -283,7 +283,7 @@ export function CourseHoleMapEditor({
           <Button
             type="button"
             variant={placementTarget === "tee" ? "default" : "outline"}
-            className={placementTarget === "tee" ? "bg-[#111827] text-white" : "bg-white"}
+            className={placementTarget === "tee" ? "bg-[#0B7A3B] text-white" : "bg-white"}
             onClick={() => setPlacementTarget("tee")}
           >
             Tee point
@@ -291,7 +291,7 @@ export function CourseHoleMapEditor({
           <Button
             type="button"
             variant={placementTarget === "green" ? "default" : "outline"}
-            className={placementTarget === "green" ? "bg-[#111827] text-white" : "bg-white"}
+            className={placementTarget === "green" ? "bg-[#0B7A3B] text-white" : "bg-white"}
             onClick={() => setPlacementTarget("green")}
           >
             Green point
@@ -321,7 +321,7 @@ export function CourseHoleMapEditor({
               <Crosshair className="size-4" />
               Focus hole
             </Button>
-            <Button type="submit" className="flex-1 bg-[#111827] text-white">
+            <Button type="submit" className="flex-1 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Save className="size-4" />
               Save geometry
             </Button>

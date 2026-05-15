@@ -18,6 +18,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,9 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
   return (
     <PageShell size="7xl">
-      <div className="flex items-center justify-between gap-4">
+      <MobileRouteHeader title="Analyse" group="analyse" activeKey="equipment" />
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/bag" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -162,7 +165,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
             <form action={createBallModelAction} className="grid gap-3">
               <FormField label="Brand" name="brand" placeholder="Titleist" />
               <FormField label="Model" name="model" placeholder="Pro V1" required />
-              <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+              <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
                 <Save className="size-4" />
                 Save ball
               </Button>
@@ -195,7 +198,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
               </div>
               <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
               <FormField label="Notes" name="notes" placeholder="Grip, length, adapter setting, build notes" />
-              <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+              <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
                 <Save className="size-4" />
                 Save specification
               </Button>

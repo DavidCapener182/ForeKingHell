@@ -13,6 +13,16 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import {
+  BottomSheet,
+  CompactLeaderboard,
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -100,7 +110,111 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
+      <MobileAppShell>
+        <MobileTopBar title="Leaderboards" />
+        <MobileRouteTabs group="social" activeKey="leaderboard" />
+        <MobileTabBar
+          activeKey={activeTab}
+          className="-mt-4"
+          tabs={[
+            { key: "friends", label: "Friends", href: "/leaderboard?tab=friends" },
+            { key: "courses", label: "Courses", href: "/leaderboard?tab=courses" },
+            { key: "challenges", label: "Challenges", href: "/leaderboard?tab=challenges" },
+            { key: "tournaments", label: "Tournaments", href: "/leaderboard?tab=tournaments" },
+            { key: "public", label: "Public", href: "/leaderboard?tab=public" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Your rank"
+          value={mobileYourRankLabel(data.players, activeTab)}
+          detail="Best way to climb: Wedge Window or a verified course-record attempt."
+          action={
+            <BottomSheet
+              label={<><Target className="size-4" /> Filters</>}
+              title="Leaderboard filters"
+              triggerClassName="bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+            >
+              <form className="grid gap-3" action="/leaderboard">
+                <input type="hidden" name="tab" value={activeTab} />
+                <label className="grid gap-1 text-sm font-medium">
+                  Provider
+                  <select name="provider" defaultValue={filters.provider} className="h-11 rounded-lg border bg-white px-3 text-sm">
+                    <option value="all">All</option>
+                    <option value="rapsodo">Rapsodo CSV</option>
+                    <option value="rapsodo_cloud">Rapsodo Cloud</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  Verification
+                  <select name="verification" defaultValue={filters.verification} className="h-11 rounded-lg border bg-white px-3 text-sm">
+                    <option value="all">All</option>
+                    <option value="verified">Verified only</option>
+                    <option value="mixed">Mixed</option>
+                    <option value="manual">Manual only</option>
+                  </select>
+                </label>
+                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">Apply filters</Button>
+              </form>
+            </BottomSheet>
+          }
+        />
+        {activeTab === "courses" ? (
+          <NativeListSection title="Course champions">
+            <CompactLeaderboard
+              current={data.courseChampionBoards[0] ? `${data.courseChampionBoards[0].courseName} · ${data.courseChampionBoards[0].scoreLabel}` : "No course champions yet"}
+              items={data.courseChampionBoards.slice(0, 5).map((board, index) => ({
+                rank: index + 1,
+                name: board.champion.displayName,
+                value: board.scoreLabel,
+                detail: board.courseName,
+              }))}
+              viewAllHref="/course-records"
+            />
+          </NativeListSection>
+        ) : activeTab === "challenges" ? (
+          <NativeListSection title="Challenge boards">
+            <CompactLeaderboard
+              current={data.challengeBoards[0]?.title ?? "No challenge results yet"}
+              items={data.challengeBoards.slice(0, 5).map((board, index) => ({
+                rank: index + 1,
+                name: board.leader?.displayName ?? "Open",
+                value: board.leader?.scoreLabel ?? "--",
+                detail: board.title,
+              }))}
+              viewAllHref="/challenges"
+            />
+          </NativeListSection>
+        ) : activeTab === "tournaments" ? (
+          <NativeListSection title="Tournament boards">
+            <CompactLeaderboard
+              current={data.tournamentBoards[0]?.title ?? "No tournament standings yet"}
+              items={data.tournamentBoards.slice(0, 5).map((board, index) => ({
+                rank: index + 1,
+                name: board.champion.displayName,
+                value: board.grossTotal,
+                detail: `${board.title} · ${board.roundsCompleted} rounds`,
+              }))}
+              viewAllHref="/tournaments"
+            />
+          </NativeListSection>
+        ) : (
+          <NativeListSection title="Podium">
+            <CompactLeaderboard
+              current={mobileCurrentUserSummary(data.players, activeTab)}
+              items={data.players.slice(0, 5).map((player, index) => ({
+                rank: index + 1,
+                name: player.displayName,
+                value: integerFormatter.format(scoreForTab(player, activeTab)),
+                detail: activeTab === "monthly" ? "monthly XP" : player.relationship,
+              }))}
+              viewAllHref="#full-leaderboard"
+            />
+          </NativeListSection>
+        )}
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -115,6 +229,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         </Button>
       </div>
 
+      <div className="hidden sm:contents">
       <PageHeader
         eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
         title="Leaderboards"
@@ -202,12 +317,12 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
       </div>
 
       {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
-      <section className="rounded-xl border bg-white p-3 shadow-sm">
+      <section className="premium-card p-3">
         <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
           <input type="hidden" name="tab" value={activeTab} />
           <label className="grid gap-1 text-xs font-medium">
             <span>Provider</span>
-            <select name="provider" defaultValue={filters.provider} className="h-9 rounded-lg border bg-slate-50 px-2 text-sm">
+            <select name="provider" defaultValue={filters.provider} className="h-9 rounded-lg border bg-white px-2 text-sm">
               <option value="all">All</option>
               <option value="rapsodo">Rapsodo CSV</option>
               <option value="rapsodo_cloud">Rapsodo Cloud</option>
@@ -216,7 +331,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           </label>
           <label className="grid gap-1 text-xs font-medium">
             <span>Verification</span>
-            <select name="verification" defaultValue={filters.verification} className="h-9 rounded-lg border bg-slate-50 px-2 text-sm">
+            <select name="verification" defaultValue={filters.verification} className="h-9 rounded-lg border bg-white px-2 text-sm">
               <option value="all">All</option>
               <option value="verified">Verified only</option>
               <option value="mixed">Mixed</option>
@@ -239,6 +354,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
       ) : (
         <PlayerLeaderboard players={data.players} activeTab={activeTab} monthStart={data.monthStart} filters={filters} />
       )}
+      </div>
     </PageShell>
   );
 }
@@ -496,7 +612,7 @@ function PlayerLeaderboard({
   return (
     <section className="grid gap-4">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <article className="premium-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">Podium</p>
@@ -513,10 +629,10 @@ function PlayerLeaderboard({
           </div>
         </article>
 
-        <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <article className="premium-card p-4">
           <p className="text-sm font-semibold">Your rank</p>
           {currentUser ? (
-            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
               <Badge variant="secondary">#{currentUserIndex + 1}</Badge>
               <p className="mt-3 text-2xl font-semibold tracking-normal">{integerFormatter.format(scoreForTab(currentUser, activeTab))} XP</p>
               <p className="mt-1 text-sm text-muted-foreground">{movementLabel(currentUser)}</p>
@@ -591,9 +707,30 @@ function PlayerLeaderboard({
   );
 }
 
+function mobileYourRankLabel(players: PlayerRow[], activeTab: LeaderboardTab) {
+  const index = players.findIndex((player) => player.isCurrentUser);
+
+  if (index < 0) {
+    return "Hidden";
+  }
+
+  return `#${index + 1} this ${activeTab === "monthly" ? "month" : "board"}`;
+}
+
+function mobileCurrentUserSummary(players: PlayerRow[], activeTab: LeaderboardTab) {
+  const index = players.findIndex((player) => player.isCurrentUser);
+  const player = index >= 0 ? players[index] : null;
+
+  if (!player) {
+    return "Enable leaderboard visibility in You";
+  }
+
+  return `You are #${index + 1} · ${integerFormatter.format(scoreForTab(player, activeTab))} XP`;
+}
+
 function LeaderboardPodiumCard({ player, rank, activeTab }: { player: PlayerRow; rank: number; activeTab: LeaderboardTab }) {
   return (
-    <article className={rank === 1 ? "rounded-xl border border-amber-200 bg-amber-50 p-4" : "rounded-xl border bg-slate-50 p-4"}>
+    <article className={rank === 1 ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border bg-[#F5F6F4] p-4"}>
       <Badge variant={rank === 1 ? "default" : "outline"}>#{rank}</Badge>
       <Link href={`/profile/${player.username}`} prefetch={false} className="mt-3 block text-lg font-semibold tracking-normal hover:underline">
         {player.displayName}
@@ -660,7 +797,7 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
 
   return (
     <section className="grid gap-4">
-      <article className="rounded-xl border bg-white p-4 shadow-sm">
+      <article className="premium-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Course Champions</p>
@@ -689,7 +826,7 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
             key={board.id}
             href={`/course-records/${board.id}`}
             prefetch={false}
-            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+            className="premium-card p-4 transition hover:border-emerald-300"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -714,7 +851,7 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
 
   return (
     <section className="grid gap-4">
-      <article className="rounded-xl border bg-white p-4 shadow-sm">
+      <article className="premium-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Tournament Leaders</p>
@@ -743,7 +880,7 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
             key={board.id}
             href={`/tournaments/${board.id}`}
             prefetch={false}
-            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+            className="premium-card p-4 transition hover:border-emerald-300"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

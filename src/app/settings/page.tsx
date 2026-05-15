@@ -18,6 +18,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <PageShell size="6xl">
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
+      <MobileRouteHeader title="Improve" group="improve" activeKey="settings" />
+
       <PageHeader
         eyebrow={<StatusPill tone="sky">Account</StatusPill>}
         title="Settings"
@@ -165,7 +168,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <SelectField label="Table density" name="tableDensity" defaultValue={profile.tableDensity} values={tableDensityOptions} />
             </div>
 
-            <fieldset className="grid gap-3 rounded-2xl border bg-white/70 p-4">
+            <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
               <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
               <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
                 {dashboardPinOptions.map((pin) => (
@@ -180,7 +183,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               </div>
             </fieldset>
 
-            <fieldset className="grid gap-3 rounded-2xl border bg-white/70 p-4">
+            <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
               <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
               <div className="grid gap-2">
                 <CheckboxField name="allowCoachAccess" label="Allow invited coaches to read my golf data" defaultChecked={privacy.allowCoachAccess} />
@@ -189,7 +192,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               </div>
             </fieldset>
 
-            <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+            <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
               <UserCog className="size-4" />
               Save settings
             </Button>
@@ -206,10 +209,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           action={<UserPlus className="size-5 text-emerald-600" />}
         />
         <CardContent className="grid gap-5">
-          <form action={createInvitationAction} className="grid gap-3 rounded-2xl border bg-white/70 p-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+          <form action={createInvitationAction} className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end">
             <FormField label="Invite email" name="invitedEmail" type="email" placeholder="coach@example.com" required />
             <SelectField label="Role" name="role" defaultValue="viewer" values={collaborationRoles} />
-            <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <UserPlus className="size-4" />
               Create invite
             </Button>
@@ -460,7 +463,7 @@ function CheckboxField({
         name={name}
         value={value}
         defaultChecked={defaultChecked}
-        className="size-4 rounded border-input accent-[#111827]"
+        className="size-4 rounded border-input accent-[#0B7A3B]"
       />
       <span>{label}</span>
     </label>
@@ -482,7 +485,7 @@ function CollaborationList({
   }>;
 }) {
   return (
-    <div className="rounded-2xl border bg-white/70 p-4">
+    <div className="rounded-lg border bg-[#F5F6F4] p-4">
       <h3 className="font-semibold">{title}</h3>
       <div className="mt-3 grid gap-2">
         {rows.length > 0 ? (

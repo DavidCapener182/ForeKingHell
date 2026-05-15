@@ -1,5 +1,7 @@
-import { formatClubType } from "@/lib/club-format";
+import { clubSortValue, formatClubType } from "@/lib/club-format";
 import type { ClubAnalytics } from "@/lib/club-analytics";
+
+type ProgressTone = "green" | "sky" | "pink" | "amber" | "slate";
 
 export type ProgressClub = {
   clubId: string;
@@ -12,7 +14,7 @@ export type ProgressSignal = {
   label: string;
   value: string;
   detail: string;
-  tone: "green" | "sky" | "pink" | "amber" | "slate";
+  tone: ProgressTone;
   clubId?: string;
 };
 
@@ -23,7 +25,8 @@ export type PracticePriority = {
   reason: string;
   drill: string;
   score: number;
-  tone: "green" | "sky" | "pink" | "amber" | "slate";
+  priorityLabel: "High priority" | "Medium priority" | "Low priority";
+  tone: ProgressTone;
 };
 
 export type ProgressClubRow = {
@@ -47,9 +50,56 @@ export type ProgressClubRow = {
 export type JourneyEvent = {
   clubId: string;
   clubType: string;
+  dateLabel: string;
   title: string;
   detail: string;
-  tone: "green" | "sky" | "pink" | "amber" | "slate";
+  tone: ProgressTone;
+};
+
+export type ProgressTrend = {
+  label: string;
+  value: string;
+  detail: string;
+  points: number[];
+  goodDirection: "up" | "down" | "neutral";
+  tone: ProgressTone;
+};
+
+export type BestSignal = {
+  clubId?: string;
+  title: string;
+  value: string;
+  detail: string;
+  why: string;
+  tone: ProgressTone;
+};
+
+export type CoachSummaryGroup = {
+  title: "Positive signals" | "Warnings" | "Data gaps";
+  tone: ProgressTone;
+  items: Array<{
+    label: string;
+    detail?: string;
+    clubId?: string;
+  }>;
+};
+
+export type DataGap = {
+  clubId: string;
+  clubType: string;
+  cleanShots: number;
+  recommendation: string;
+  detail: string;
+};
+
+export type TrustLadderItem = {
+  clubId: string;
+  clubType: string;
+  trustIndex: number | null;
+  sampleSize: number;
+  label: string;
+  note: string;
+  tone: ProgressTone;
 };
 
 export type ProgressSummary = {
@@ -61,7 +111,12 @@ export type ProgressSummary = {
     trackedCleanShots: number;
   };
   signals: ProgressSignal[];
+  trends: ProgressTrend[];
   practicePlan: PracticePriority[];
+  bestSignal: BestSignal | null;
+  coachSummary: CoachSummaryGroup[];
+  dataGaps: DataGap[];
+  trustLadder: TrustLadderItem[];
   clubRows: ProgressClubRow[];
   journey: JourneyEvent[];
   rankings: {
@@ -71,6 +126,13 @@ export type ProgressSummary = {
     mostVolatile: ProgressClubRow | null;
   };
 };
+
+const journeyDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/London",
+});
 
 export function buildProgressSummary(clubs: ProgressClub[]): ProgressSummary {
   const clubRows = clubs
@@ -110,7 +172,12 @@ export function buildProgressSummary(clubs: ProgressClub[]): ProgressSummary {
       trackedCleanShots: clubs.reduce((total, club) => total + club.analytics.sample.stockShots, 0),
     },
     signals: buildSignals(clubs, clubRows, rankings),
+    trends: buildTrends(clubs, clubRows),
     practicePlan: buildPracticePlan(clubs),
+    bestSignal: buildBestSignal(clubRows),
+    coachSummary: buildCoachSummaryGroups(clubs, clubRows, rankings),
+    dataGaps: buildDataGaps(clubRows),
+    trustLadder: buildTrustLadder(clubRows, rankings),
     clubRows,
     journey: buildJourney(clubs, clubRows),
     rankings,
@@ -205,7 +272,7 @@ function buildSignals(
       label: "Needs work",
       value: `${formatClubType(rankings.needsWork.clubType)} / ${rankings.needsWork.trustIndex}%`,
       detail: "Lowest trust club with enough data to make a useful call.",
-      tone: "pink",
+      tone: "amber",
       clubId: rankings.needsWork.clubId,
     });
   }
@@ -220,6 +287,204 @@ function buildSignals(
   }
 
   return signals.slice(0, 5);
+}
+
+function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTrend[] {
+  const sortedRows = [...rows].sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+  const trustPoints = sortedRows.map((row) => row.trustIndex);
+  const playablePoints = sortedRows.map((row) => row.playableRate).filter(isNumber);
+  const carryBaseline = average(
+    clubs
+      .map((club) => club.analytics.progress.baseline?.carryMedianYd)
+      .filter(isNumber),
+  );
+  const carryCurrent = average(
+    clubs
+      .map((club) => club.analytics.progress.current?.carryMedianYd)
+      .filter(isNumber),
+  );
+  const offlineBaseline = average(
+    clubs
+      .map((club) => club.analytics.progress.baseline?.absoluteOfflineAverageYd)
+      .filter(isNumber),
+  );
+  const offlineCurrent = average(
+    clubs
+      .map((club) => club.analytics.progress.current?.absoluteOfflineAverageYd)
+      .filter(isNumber),
+  );
+  const carryDelta = nullableDelta(carryCurrent, carryBaseline);
+  const offlineDelta = nullableDelta(offlineCurrent, offlineBaseline);
+  const averageTrust = average(trustPoints);
+  const averagePlayable = average(playablePoints);
+
+  return [
+    {
+      label: "Trust by club",
+      value: averageTrust === null ? "--" : `${Math.round(averageTrust)}% avg`,
+      detail: "Current trust spread across tracked clubs.",
+      points: trustPoints,
+      goodDirection: "up",
+      tone: "sky",
+    },
+    {
+      label: "Offline movement",
+      value:
+        offlineDelta === null
+          ? "--"
+          : `${Math.abs(offlineDelta)} yd ${offlineDelta <= 0 ? "tighter" : "wider"}`,
+      detail: "Average offline, latest clean baseline vs first clean baseline.",
+      points: [offlineBaseline, offlineCurrent].filter(isNumber),
+      goodDirection: "down",
+      tone: offlineDelta === null ? "slate" : offlineDelta <= 0 ? "green" : "amber",
+    },
+    {
+      label: "Carry movement",
+      value: carryDelta === null ? "--" : `${signed(carryDelta)} yd`,
+      detail: "Bag-average carry, latest clean baseline vs first clean baseline.",
+      points: [carryBaseline, carryCurrent].filter(isNumber),
+      goodDirection: "up",
+      tone: carryDelta === null ? "slate" : carryDelta >= 0 ? "green" : "amber",
+    },
+    {
+      label: "Playable rate",
+      value: averagePlayable === null ? "--" : `${Math.round(averagePlayable)}% avg`,
+      detail: "Current playable-shot rate across clubs with directional data.",
+      points: playablePoints,
+      goodDirection: "up",
+      tone: "green",
+    },
+  ];
+}
+
+function buildBestSignal(rows: ProgressClubRow[]): BestSignal | null {
+  const improvedDispersion = sortBy(
+    rows.filter((row) => row.sampleSize >= 10 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2),
+    (row) => Math.abs(row.offlineDeltaYd ?? 0) + row.sampleSize / 20,
+  )[0];
+
+  if (improvedDispersion && isNumber(improvedDispersion.offlineDeltaYd)) {
+    return {
+      clubId: improvedDispersion.clubId,
+      title: "Best signal",
+      value: `${formatClubType(improvedDispersion.clubType)} dispersion improved by ${Math.abs(improvedDispersion.offlineDeltaYd)} yd.`,
+      detail: `This is based on ${improvedDispersion.sampleSize} clean stock shots.`,
+      why: `${formatClubType(improvedDispersion.clubType)} is trending tighter without relying on one outlier distance gain.`,
+      tone: "green",
+    };
+  }
+
+  const carryGain = sortBy(
+    rows.filter((row) => row.sampleSize >= 10 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1),
+    (row) => (row.carryDeltaYd ?? 0) + row.sampleSize / 30,
+  )[0];
+
+  if (carryGain && isNumber(carryGain.carryDeltaYd)) {
+    return {
+      clubId: carryGain.clubId,
+      title: "Best signal",
+      value: `${formatClubType(carryGain.clubType)} carry improved by ${signed(carryGain.carryDeltaYd)} yd.`,
+      detail: `This is based on ${carryGain.sampleSize} clean stock shots.`,
+      why: "The distance gain is large enough to change the bag readout and has enough sample depth to treat as a real trend.",
+      tone: "green",
+    };
+  }
+
+  return null;
+}
+
+function buildCoachSummaryGroups(
+  clubs: ProgressClub[],
+  rows: ProgressClubRow[],
+  rankings: ProgressSummary["rankings"],
+): CoachSummaryGroup[] {
+  const groups: CoachSummaryGroup[] = [
+    { title: "Positive signals", tone: "green", items: [] },
+    { title: "Warnings", tone: "amber", items: [] },
+    { title: "Data gaps", tone: "slate", items: [] },
+  ];
+  const positives = groups[0];
+  const warnings = groups[1];
+  const gaps = groups[2];
+  const carryGain = sortBy(
+    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1),
+    (row) => row.carryDeltaYd ?? 0,
+  )[0];
+  const tighter = sortBy(
+    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2),
+    (row) => Math.abs(row.offlineDeltaYd ?? 0),
+  )[0];
+  const speedDrop = sortBy(
+    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.ballSpeedDeltaMph) && row.ballSpeedDeltaMph <= -1),
+    (row) => Math.abs(row.ballSpeedDeltaMph ?? 0),
+  )[0];
+
+  if (carryGain && isNumber(carryGain.carryDeltaYd)) {
+    positives.items.push({
+      label: `${formatClubType(carryGain.clubType)} carry improved by ${signed(carryGain.carryDeltaYd)} yd`,
+      clubId: carryGain.clubId,
+    });
+  }
+
+  if (tighter && isNumber(tighter.offlineDeltaYd)) {
+    positives.items.push({
+      label: `${formatClubType(tighter.clubType)} dispersion is ${Math.abs(tighter.offlineDeltaYd)} yd tighter`,
+      clubId: tighter.clubId,
+    });
+  }
+
+  if (rankings.mostTrusted) {
+    positives.items.push({
+      label: `${formatClubType(rankings.mostTrusted.clubType)} is the most trusted club at ${rankings.mostTrusted.trustIndex}%`,
+      detail: `${rankings.mostTrusted.sampleSize} clean stock shots`,
+      clubId: rankings.mostTrusted.clubId,
+    });
+  }
+
+  if (rankings.needsWork) {
+    warnings.items.push({
+      label: `${formatClubType(rankings.needsWork.clubType)} is still the lowest-trust club at ${rankings.needsWork.trustIndex}%`,
+      detail: `${rankings.needsWork.primaryMiss.toLowerCase()} miss pattern`,
+      clubId: rankings.needsWork.clubId,
+    });
+  }
+
+  if (speedDrop && isNumber(speedDrop.ballSpeedDeltaMph)) {
+    warnings.items.push({
+      label: `${formatClubType(speedDrop.clubType)} ball speed is down ${Math.abs(speedDrop.ballSpeedDeltaMph)} mph`,
+      clubId: speedDrop.clubId,
+    });
+  }
+
+  if (rankings.mostVolatile && rankings.mostVolatile.clubId !== rankings.needsWork?.clubId) {
+    warnings.items.push({
+      label: `${formatClubType(rankings.mostVolatile.clubType)} has the most volatile pattern`,
+      detail: `${rankings.mostVolatile.sampleSize} clean stock shots`,
+      clubId: rankings.mostVolatile.clubId,
+    });
+  }
+
+  for (const gap of buildDataGaps(rows).slice(0, 2)) {
+    gaps.items.push({
+      label: `${formatClubType(gap.clubType)} needs more clean stock shots`,
+      detail: gap.recommendation,
+      clubId: gap.clubId,
+    });
+  }
+
+  if (positives.items.length === 0) {
+    positives.items.push({ label: "No strong positive movement yet", detail: "Keep importing comparable stock-shot sessions." });
+  }
+
+  if (warnings.items.length === 0) {
+    warnings.items.push({ label: "No clear warning has separated yet", detail: "The next import may make the trend clearer." });
+  }
+
+  if (gaps.items.length === 0) {
+    gaps.items.push({ label: "Tracked clubs have enough samples for a first read", detail: `${clubs.length} clubs are included.` });
+  }
+
+  return groups;
 }
 
 function buildPracticePlan(clubs: ProgressClub[]): PracticePriority[] {
@@ -243,15 +508,74 @@ function buildPracticePlan(clubs: ProgressClub[]): PracticePriority[] {
       return {
         clubId: club.clubId,
         clubType: club.clubType,
-        title: `${formatClubType(club.clubType)}: ${analytics.practice.title}`,
+        title: practiceTitle(club.clubType, analytics),
         reason: practiceReason(analytics),
         drill: analytics.practice.drill,
         score: Math.round(score),
-        tone: score >= 62 ? "pink" : score >= 46 ? "amber" : score >= 34 ? "sky" : "green",
+        priorityLabel: priorityLabel(score),
+        tone: score >= 62 ? "amber" : score >= 46 ? "amber" : score >= 34 ? "sky" : "green",
       } satisfies PracticePriority;
     })
     .sort((left, right) => right.score - left.score)
     .slice(0, 4);
+}
+
+function buildDataGaps(rows: ProgressClubRow[]): DataGap[] {
+  return [...rows]
+    .filter((row) => row.sampleSize < 10 || row.confidenceLabel === "Not enough data")
+    .sort((left, right) => left.sampleSize - right.sampleSize)
+    .map((row) => ({
+      clubId: row.clubId,
+      clubType: row.clubType,
+      cleanShots: row.sampleSize,
+      recommendation: "Add 10 full stock shots to build a reliable baseline.",
+      detail:
+        row.sampleSize === 0
+          ? "No clean stock-shot baseline yet."
+          : `${row.sampleSize} clean stock shots is not enough for a confident trend.`,
+    }));
+}
+
+function buildTrustLadder(
+  rows: ProgressClubRow[],
+  rankings: ProgressSummary["rankings"],
+): TrustLadderItem[] {
+  return [...rows]
+    .sort((left, right) => {
+      if (left.sampleSize < 3 && right.sampleSize >= 3) {
+        return 1;
+      }
+
+      if (right.sampleSize < 3 && left.sampleSize >= 3) {
+        return -1;
+      }
+
+      return right.trustIndex - left.trustIndex;
+    })
+    .map((row) => {
+      const hasEnoughData = row.sampleSize >= 3;
+      const isVolatile = row.clubId === rankings.mostVolatile?.clubId;
+      const isNeedsWork = row.clubId === rankings.needsWork?.clubId;
+      const speedWarning = isNumber(row.ballSpeedDeltaMph) && row.ballSpeedDeltaMph <= -1;
+
+      return {
+        clubId: row.clubId,
+        clubType: row.clubType,
+        trustIndex: hasEnoughData ? row.trustIndex : null,
+        sampleSize: row.sampleSize,
+        label: hasEnoughData ? trustLabel(row.trustIndex) : "Needs data",
+        note: !hasEnoughData
+          ? "Needs data"
+          : isNeedsWork
+            ? "Needs work"
+            : isVolatile
+              ? "Reliable but volatile"
+              : speedWarning
+                ? "Watch ball speed"
+                : row.confidenceLabel,
+        tone: !hasEnoughData ? "slate" : row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber",
+      };
+    });
 }
 
 function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEvent[] {
@@ -262,6 +586,7 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
       events.push({
         clubId: row.clubId,
         clubType: row.clubType,
+        dateLabel: journeyDateForClub(clubs, row.clubId),
         title: `${formatClubType(row.clubType)} carry moved up`,
         detail: `${signed(row.carryDeltaYd)} yd versus the first clean baseline.`,
         tone: "green",
@@ -272,6 +597,7 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
       events.push({
         clubId: row.clubId,
         clubType: row.clubType,
+        dateLabel: journeyDateForClub(clubs, row.clubId),
         title: `${formatClubType(row.clubType)} miss pattern tightened`,
         detail: `${Math.abs(roundOne(row.offlineDeltaYd) ?? 0)} yd less average offline.`,
         tone: "sky",
@@ -282,6 +608,7 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
       events.push({
         clubId: row.clubId,
         clubType: row.clubType,
+        dateLabel: journeyDateForClub(clubs, row.clubId),
         title: `${formatClubType(row.clubType)} is becoming playable`,
         detail: `${row.trustIndex}% trust with ${row.sampleSize} clean stock shots.`,
         tone: "green",
@@ -302,9 +629,10 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
     events.push({
       clubId: club.clubId,
       clubType: club.clubType,
+      dateLabel: journeyDate(club.analytics.sample.latestShotAt),
       title: `${formatClubType(club.clubType)} personal best`,
       detail: `${club.analytics.progress.personalBestCarryYd} yd carry in the saved data.`,
-      tone: "pink",
+      tone: "sky",
     });
   }
 
@@ -312,6 +640,7 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
     events.push({
       clubId: clubs[0].clubId,
       clubType: clubs[0].clubType,
+      dateLabel: journeyDate(clubs[0].analytics.sample.latestShotAt),
       title: "Baseline started",
       detail: "ForeKingHell has enough data to begin building personal comparisons.",
       tone: "slate",
@@ -365,6 +694,64 @@ function practiceReason(analytics: ClubAnalytics) {
   return analytics.insights[0]?.body ?? "Highest-value club to keep moving based on the current trust profile.";
 }
 
+function practiceTitle(clubType: string, analytics: ClubAnalytics) {
+  const club = formatClubType(clubType);
+
+  if (analytics.sample.stockShots < 10) {
+    return `Build ${club} baseline`;
+  }
+
+  if ((analytics.accuracy.bigMissRate ?? 0) >= 30) {
+    return `Stabilise ${club} start line`;
+  }
+
+  if ((analytics.strike.lowSmashRate ?? 0) >= 25) {
+    return `Centre ${club} strike`;
+  }
+
+  if (analytics.accuracy.primaryMiss !== "Balanced" && analytics.accuracy.primaryMiss !== "Unknown") {
+    return `Guard against ${club} ${analytics.accuracy.primaryMiss.toLowerCase()} miss`;
+  }
+
+  return `Confirm ${club} stock distance`;
+}
+
+function priorityLabel(score: number): PracticePriority["priorityLabel"] {
+  if (score >= 62) {
+    return "High priority";
+  }
+
+  if (score >= 34) {
+    return "Medium priority";
+  }
+
+  return "Low priority";
+}
+
+function trustLabel(value: number) {
+  if (value >= 72) {
+    return "Trusted";
+  }
+
+  if (value >= 66) {
+    return "Reliable";
+  }
+
+  if (value >= 58) {
+    return "Developing";
+  }
+
+  return "Needs work";
+}
+
+function journeyDateForClub(clubs: ProgressClub[], clubId: string) {
+  return journeyDate(findClub(clubs, clubId)?.analytics.sample.latestShotAt ?? null);
+}
+
+function journeyDate(date: Date | null) {
+  return date ? journeyDateFormatter.format(date) : "Latest data";
+}
+
 function findClub(clubs: ProgressClub[], clubId: string) {
   return clubs.find((club) => club.clubId === clubId);
 }
@@ -384,6 +771,10 @@ function isNumber(value: number | null | undefined): value is number {
 
 function roundOne(value: number | null) {
   return value === null ? null : Math.round(value * 10) / 10;
+}
+
+function nullableDelta(current: number | null, baseline: number | null) {
+  return current === null || baseline === null ? null : roundOne(current - baseline);
 }
 
 function signed(value: number) {

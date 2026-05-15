@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -11,6 +11,8 @@ import {
   challengeResults,
   challengeTemplates,
   challenges,
+  sessions,
+  shots,
   userProfiles,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -65,6 +67,8 @@ export type ChallengeDetailData = {
     creatorUserId: string;
     rulesJson: Record<string, unknown>;
     coachNote: string;
+    rulesSummary: string;
+    rulesBullets: string[];
   };
   templates: ChallengeTemplateRow[];
   entries: Array<{
@@ -155,14 +159,12 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
     return null;
   }
 
-  const [templates, templateRows, entryRows, attemptRows, resultRows, commentRows, friendIds] = await Promise.all([
+  const [templates, templateRows, entryRows, commentRows, friendIds] = await Promise.all([
     db.select().from(challengeTemplates).where(eq(challengeTemplates.active, true)).orderBy(asc(challengeTemplates.name)),
     challenge.templateId
       ? db.select().from(challengeTemplates).where(eq(challengeTemplates.id, challenge.templateId)).limit(1)
       : Promise.resolve([]),
     db.select().from(challengeEntries).where(eq(challengeEntries.challengeId, challengeId)).orderBy(asc(challengeEntries.joinedAt)),
-    db.select().from(challengeAttempts).where(eq(challengeAttempts.challengeId, challengeId)).orderBy(desc(challengeAttempts.attemptedAt)),
-    db.select().from(challengeResults).where(eq(challengeResults.challengeId, challengeId)).orderBy(asc(challengeResults.rank)),
     db
       .select()
       .from(challengeComments)
@@ -171,12 +173,14 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
     getFriendIds(viewerUserId),
   ]);
   const template = templateRows[0] ?? defaultTemplateForChallenge(challenge);
+  const importedAttempts = await calculateImportedChallengeAttempts(challenge, template, entryRows);
+  const importedResults = rankImportedChallengeAttempts(challenge, template, importedAttempts);
   const userIds = [
     ...new Set([
       challenge.creatorUserId,
       ...entryRows.map((entry) => entry.userId),
-      ...attemptRows.map((attempt) => attempt.userId),
-      ...resultRows.map((result) => result.userId),
+      ...importedAttempts.map((attempt) => attempt.userId),
+      ...importedResults.map((result) => result.userId),
       ...commentRows.map((comment) => comment.userId),
       ...friendIds,
     ]),
@@ -195,6 +199,8 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
       creatorUserId: challenge.creatorUserId,
       rulesJson: normalizedRules(challenge, template),
       coachNote: challengeCoachNote(template),
+      rulesSummary: challengeRulesSummary(challenge, template),
+      rulesBullets: challengeRuleBullets(challenge, template),
     },
     templates,
     entries: entryRows
@@ -203,17 +209,17 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
         return profile ? { entry, profile } : null;
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row)),
-    attempts: attemptRows
+    attempts: importedAttempts
       .map((attempt) => {
         const profile = profileMap.get(attempt.userId);
         return profile ? { attempt, profile } : null;
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row)),
-    results: resultRows
+    results: importedResults
       .map((result) => {
         const profile = profileMap.get(result.userId);
-        const attempt = attemptRows.find((item) => item.id === result.bestAttemptId);
-        return profile ? { result, verificationLabel: attempt?.verificationLabel ?? "Unverified", profile } : null;
+        const attempt = importedAttempts.find((item) => item.userId === result.userId);
+        return profile ? { result, verificationLabel: attempt?.verificationLabel ?? "Imported shots", profile } : null;
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row)),
     comments: commentRows
@@ -590,22 +596,19 @@ async function hydrateChallengeListItems(
   }
 
   const challengeIds = challengeRows.map((challenge) => challenge.id);
-  const [entryRows, resultRows, attemptRows] = await Promise.all([
-    getDb().select().from(challengeEntries).where(inArray(challengeEntries.challengeId, challengeIds)),
-    getDb().select().from(challengeResults).where(inArray(challengeResults.challengeId, challengeIds)),
-    getDb().select().from(challengeAttempts).where(inArray(challengeAttempts.challengeId, challengeIds)),
-  ]);
-  const userIds = [...new Set(resultRows.map((result) => result.userId))];
+  const entryRows = await getDb().select().from(challengeEntries).where(inArray(challengeEntries.challengeId, challengeIds));
+  const userIds = [...new Set(entryRows.map((entry) => entry.userId))];
   const profileMap = await challengeProfilesByUserId(userIds);
   const templateMap = new Map(templates.map((template) => [template.id, template]));
 
-  return challengeRows.map((challenge) => {
+  return Promise.all(challengeRows.map(async (challenge) => {
     const template = (challenge.templateId ? templateMap.get(challenge.templateId) : null) ?? defaultTemplateForChallenge(challenge);
     const entries = entryRows.filter((entry) => entry.challengeId === challenge.id);
-    const results = resultRows.filter((result) => result.challengeId === challenge.id);
+    const attempts = await calculateImportedChallengeAttempts(challenge, template, entries);
+    const results = rankImportedChallengeAttempts(challenge, template, attempts);
     const leader = results.find((result) => result.rank === 1) ?? results.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0];
     const leaderProfile = leader ? profileMap.get(leader.userId) : null;
-    const leaderAttempt = leader ? attemptRows.find((attempt) => attempt.id === leader.bestAttemptId) : null;
+    const leaderAttempt = leader ? attempts.find((attempt) => attempt.userId === leader.userId) : null;
     const viewerResult = results.find((result) => result.userId === viewerUserId);
 
     return {
@@ -633,7 +636,235 @@ async function hydrateChallengeListItems(
             }
           : null,
     };
-  });
+  }));
+}
+
+async function calculateImportedChallengeAttempts(
+  challenge: ChallengeRow,
+  template: ChallengeTemplateRow,
+  entries: ChallengeEntryRow[],
+): Promise<ChallengeAttemptRow[]> {
+  const userIds = [...new Set(entries.map((entry) => entry.userId))];
+
+  if (userIds.length === 0) {
+    return [];
+  }
+
+  const clauses: SQL[] = [
+    inArray(shots.userId, userIds),
+    ne(sessions.source, "manual"),
+    gte(shots.shotAt, challenge.startsAt),
+  ];
+
+  if (challenge.endsAt) {
+    clauses.push(lte(shots.shotAt, challenge.endsAt));
+  }
+
+  const shotRows = await getDb()
+    .select({
+      id: shots.id,
+      userId: shots.userId,
+      sessionId: shots.sessionId,
+      shotAt: shots.shotAt,
+      clubType: shots.clubType,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: shots.sideCarryYd,
+      launchDirectionDeg: shots.launchDirectionDeg,
+      source: sessions.source,
+      sessionDate: sessions.date,
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .where(and(...clauses))
+    .orderBy(asc(shots.shotAt));
+
+  const rowsByUserId = new Map<string, typeof shotRows>();
+  for (const row of shotRows) {
+    const rows = rowsByUserId.get(row.userId) ?? [];
+    rows.push(row);
+    rowsByUserId.set(row.userId, rows);
+  }
+
+  const attempts: ChallengeAttemptRow[] = [];
+
+  for (const entry of entries) {
+    const scored = scoreImportedChallengeRows(challenge, template, rowsByUserId.get(entry.userId) ?? []);
+
+    if (!scored) {
+      continue;
+    }
+
+    attempts.push({
+      id: `imported:${challenge.id}:${entry.userId}`,
+      challengeId: challenge.id,
+      entryId: entry.id,
+      userId: entry.userId,
+      sourceType: "imported_shots",
+      sourceId: scored.latestSessionId,
+      metricValue: scored.score,
+      metricLabel: metricLabelForTemplate(template),
+      verificationLabel: scored.verificationLabel,
+      notes: `${scored.shotCount} imported shots counted from ${scored.sessionCount} session${scored.sessionCount === 1 ? "" : "s"}.`,
+      metadataJson: {
+        source: "imported_shots",
+        shotCount: scored.shotCount,
+        sessionCount: scored.sessionCount,
+        latestSessionId: scored.latestSessionId,
+        latestShotAt: scored.latestShotAt.toISOString(),
+        rulesSummary: challengeRulesSummary(challenge, template),
+      },
+      attemptedAt: scored.latestShotAt,
+      createdAt: scored.latestShotAt,
+    });
+  }
+
+  return attempts;
+}
+
+function rankImportedChallengeAttempts(
+  challenge: ChallengeRow,
+  template: ChallengeTemplateRow,
+  attempts: ChallengeAttemptRow[],
+): ChallengeResultRow[] {
+  const direction = scoringDirection(template);
+  const now = new Date();
+
+  return [...attempts]
+    .sort((a, b) => {
+      const scoreDelta = direction === "desc" ? b.metricValue - a.metricValue : a.metricValue - b.metricValue;
+      return scoreDelta || a.attemptedAt.getTime() - b.attemptedAt.getTime();
+    })
+    .map((attempt, index) => ({
+      id: `imported-result:${challenge.id}:${attempt.userId}`,
+      challengeId: challenge.id,
+      userId: attempt.userId,
+      bestAttemptId: null,
+      rank: index + 1,
+      score: attempt.metricValue,
+      scoreLabel: scoreLabel(attempt.metricValue, template),
+      status: "active",
+      metadataJson: {
+        source: "imported_shots",
+        attemptId: attempt.id,
+        ...attempt.metadataJson,
+      },
+      calculatedAt: now,
+      createdAt: attempt.createdAt,
+      updatedAt: now,
+    }));
+}
+
+function scoreImportedChallengeRows(
+  challenge: ChallengeRow,
+  template: ChallengeTemplateRow,
+  rows: Array<{
+    userId: string;
+    sessionId: string;
+    shotAt: Date;
+    clubType: string;
+    carryYd: number | null;
+    totalYd: number | null;
+    sideCarryYd: number | null;
+    launchDirectionDeg: number | null;
+    source: string;
+  }>,
+) {
+  const rules = normalizedRules(challenge, template);
+  const kind = challengeTemplateKind(template);
+  const metric = typeof rules.metric === "string" ? rules.metric : "";
+  const minShots = ruleNumber(rules, "minShots", kind === "practice_streak" ? 1 : 1);
+  const clubTypes = ruleStringArray(rules, "clubTypes");
+  const eligibleRows = rows.filter((row) => clubTypes.length === 0 || clubMatches(row.clubType, clubTypes));
+
+  if (kind === "practice_streak") {
+    const dayCount = new Set(eligibleRows.map((row) => row.shotAt.toISOString().slice(0, 10))).size;
+    if (dayCount <= 0) {
+      return null;
+    }
+    return importedScore(dayCount, eligibleRows);
+  }
+
+  if (eligibleRows.length < minShots) {
+    return null;
+  }
+
+  if (kind === "longest_drive") {
+    const distances = eligibleRows.map((row) => row.totalYd ?? row.carryYd).filter(isNumber);
+    return distances.length >= minShots ? importedScore(Math.max(...distances), eligibleRows) : null;
+  }
+
+  if (kind === "straightest_drive") {
+    const offlineValues = eligibleRows.map(offlineYards).filter(isNumber);
+    return offlineValues.length >= minShots ? importedScore(Math.min(...offlineValues), eligibleRows) : null;
+  }
+
+  if (kind === "wedge_ladder") {
+    const carries = eligibleRows.map((row) => row.carryYd).filter(isNumber);
+    const targets = ladderTargets(rules);
+    const errors = carries.map((carry) => Math.min(...targets.map((target) => Math.abs(carry - target))));
+    return errors.length >= minShots ? importedScore(average(errors), eligibleRows) : null;
+  }
+
+  if (kind === "wedge_window") {
+    const carries = eligibleRows.map((row) => row.carryYd).filter(isNumber);
+    const [low, high] = targetRange(rules, [50, 90]);
+    const errors = carries.map((carry) => {
+      if (carry < low) return low - carry;
+      if (carry > high) return carry - high;
+      return 0;
+    });
+    return errors.length >= minShots ? importedScore(average(errors), eligibleRows) : null;
+  }
+
+  if (kind === "consistency") {
+    const carries = eligibleRows.map((row) => row.carryYd).filter(isNumber);
+    if (carries.length < minShots) {
+      return null;
+    }
+    const score = metric === "carry_stddev" ? standardDeviation(carries) : Math.max(...carries) - Math.min(...carries);
+    return importedScore(score, eligibleRows);
+  }
+
+  if (kind === "closest_to_pin") {
+    const target = ruleNumber(rules, "targetYards", ruleNumber(rules, "targetYardage", 0));
+    const distances = eligibleRows
+      .map((row) => {
+        const offline = offlineYards(row) ?? 0;
+        if (target > 0 && isNumber(row.carryYd)) {
+          return Math.hypot(row.carryYd - target, offline);
+        }
+        return offlineYards(row);
+      })
+      .filter(isNumber);
+    return distances.length >= minShots ? importedScore(Math.min(...distances), eligibleRows) : null;
+  }
+
+  return null;
+}
+
+function importedScore(
+  score: number,
+  rows: Array<{
+    sessionId: string;
+    shotAt: Date;
+    source: string;
+  }>,
+) {
+  const latestRow = rows.reduce((latest, row) => (row.shotAt > latest.shotAt ? row : latest), rows[0]);
+
+  if (!latestRow) {
+    return null;
+  }
+
+  return {
+    score: roundMetric(score),
+    verificationLabel: verificationLabelForImportedShots(rows),
+    shotCount: rows.length,
+    sessionCount: new Set(rows.map((row) => row.sessionId)).size,
+    latestSessionId: latestRow.sessionId,
+    latestShotAt: latestRow.shotAt,
+  };
 }
 
 async function requireVisibleChallenge(viewerUserId: string, challengeId: string) {
@@ -704,6 +935,80 @@ function normalizedRules(challenge: ChallengeRow, template: ChallengeTemplateRow
   };
 }
 
+function challengeRulesSummary(challenge: ChallengeRow, template: ChallengeTemplateRow) {
+  const rules = normalizedRules(challenge, template);
+  const clubs = clubRuleLabel(ruleStringArray(rules, "clubTypes"));
+  const minShots = ruleNumber(rules, "minShots", 1);
+
+  switch (challengeTemplateKind(template)) {
+    case "straightest_drive":
+      return `Only ${clubs || "driver"} shots imported while the challenge is active count. The closest drive to the centre line wins automatically.`;
+    case "wedge_ladder":
+      return `Only ${clubs || "wedge"} shots imported while the challenge is active count. Each carry is scored against the ${ladderTargets(rules).join(", ")} yd ladder; lowest average error wins.`;
+    case "wedge_window": {
+      const [low, high] = targetRange(rules, [50, 90]);
+      return `Only ${clubs || "wedge"} shots imported while the challenge is active count. Carries inside ${low}-${high} yd score best; lowest average miss wins.`;
+    }
+    case "consistency":
+      return `Only ${clubs || "7i"} shots imported while the challenge is active count. You need ${minShots} qualifying shots; tightest carry window wins.`;
+    case "longest_drive":
+      return `Only ${clubs || "driver"} shots imported while the challenge is active count. The longest qualifying drive wins automatically.`;
+    case "closest_to_pin":
+      return "Only imported shots inside the challenge window count. Closest combined carry and side miss wins automatically.";
+    case "practice_streak":
+      return "Imported practice sessions inside the challenge window count automatically. Most active days wins.";
+    default:
+      return "Imported launch-monitor shots inside the challenge window count automatically. There is no separate challenge upload.";
+  }
+}
+
+function challengeRuleBullets(challenge: ChallengeRow, template: ChallengeTemplateRow) {
+  const rules = normalizedRules(challenge, template);
+  const clubs = clubRuleLabel(ruleStringArray(rules, "clubTypes"));
+  const minShots = ruleNumber(rules, "minShots", 1);
+  const activeWindow = challenge.endsAt
+    ? `${formatShortDate(challenge.startsAt)} to ${formatShortDate(challenge.endsAt)}`
+    : `from ${formatShortDate(challenge.startsAt)}`;
+  const bullets = [
+    `Active window: ${activeWindow}. Only imported Rapsodo or launch-monitor shots in this window count.`,
+    "New imports update the board automatically. There is no manual challenge upload or submit attempt.",
+  ];
+
+  switch (challengeTemplateKind(template)) {
+    case "straightest_drive":
+      bullets.unshift(`${clubs || "Driver"} shots only. Your score is the smallest side miss from the centre line; lowest score wins.`);
+      break;
+    case "wedge_ladder":
+      bullets.unshift(`${clubs || "Wedge"} shots only. Score each carry against the ${ladderTargets(rules).join(", ")} yd ladder; lowest average error wins.`);
+      break;
+    case "wedge_window": {
+      const [low, high] = targetRange(rules, [50, 90]);
+      bullets.unshift(`${clubs || "Wedge"} shots only. Carries inside ${low}-${high} yd are on target; lowest average miss wins.`);
+      break;
+    }
+    case "consistency": {
+      const metric = rules.metric === "carry_stddev" ? "carry standard deviation" : "carry spread";
+      bullets.unshift(`${clubs || "7i"} shots only. Your score is ${metric}; lowest score wins.`);
+      break;
+    }
+    case "longest_drive":
+      bullets.unshift(`${clubs || "Driver"} shots only. Longest total distance wins.`);
+      break;
+    case "practice_streak":
+      bullets.unshift("Each day with at least one imported practice shot counts once; most days wins.");
+      break;
+    default:
+      bullets.unshift(`${clubs ? `${clubs} shots only. ` : ""}The template metric decides the score from imported shot data.`);
+      break;
+  }
+
+  if (minShots > 1) {
+    bullets.splice(1, 0, `Minimum requirement: ${minShots} qualifying shots before a player appears on the board.`);
+  }
+
+  return bullets;
+}
+
 function scoringDirection(template: ChallengeTemplateRow | undefined | null): "asc" | "desc" {
   return template?.scoringDirection === "asc" ? "asc" : "desc";
 }
@@ -751,6 +1056,134 @@ function scoreLabel(score: number, template: ChallengeTemplateRow | undefined | 
   }
 }
 
+function ruleStringArray(rules: Record<string, unknown>, key: string) {
+  const value = rules[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function ruleNumber(rules: Record<string, unknown>, key: string, fallback: number) {
+  const value = rules[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function ruleNumberArray(rules: Record<string, unknown>, key: string) {
+  const value = rules[key];
+  return Array.isArray(value) ? value.filter(isNumber) : [];
+}
+
+function clubMatches(clubType: string, allowedClubTypes: string[]) {
+  const club = normalizeClubType(clubType);
+  const allowed = allowedClubTypes.map(normalizeClubType);
+
+  return allowed.some((allowedClub) => {
+    if (allowedClub === "wedge") {
+      return ["pw", "gw", "aw", "sw", "lw", "wedge"].includes(club);
+    }
+    return club === allowedClub;
+  });
+}
+
+function normalizeClubType(value: string) {
+  const normalized = value.toLowerCase().replace(/[\s_-]+/g, "");
+  const ironMatch = normalized.match(/^([1-9])iron$/);
+
+  if (ironMatch) {
+    return `${ironMatch[1]}i`;
+  }
+
+  if (normalized === "1w" || normalized === "dr" || normalized === "drv") {
+    return "driver";
+  }
+
+  return normalized;
+}
+
+function clubRuleLabel(clubTypes: string[]) {
+  if (clubTypes.length === 0) {
+    return "";
+  }
+
+  const labels = [...new Set(clubTypes.map(formatClubLabel))];
+  return labels.length <= 2 ? labels.join(" and ") : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+function formatClubLabel(clubType: string) {
+  const normalized = normalizeClubType(clubType);
+  if (normalized === "driver") return "Driver";
+  if (normalized === "wedge") return "wedge";
+  if (/^[1-9]i$/.test(normalized)) return normalized;
+  return clubType.toUpperCase();
+}
+
+function ladderTargets(rules: Record<string, unknown>) {
+  const explicit = ruleNumberArray(rules, "targetLadderYards");
+  if (explicit.length > 0) {
+    return explicit;
+  }
+
+  const [low, high] = targetRange(rules, [50, 100]);
+  const targets: number[] = [];
+  for (let target = low; target <= high; target += 10) {
+    targets.push(target);
+  }
+  return targets;
+}
+
+function targetRange(rules: Record<string, unknown>, fallback: [number, number]): [number, number] {
+  const range = ruleNumberArray(rules, "targetRangeYards");
+  if (range.length >= 2) {
+    return [Math.min(range[0], range[1]), Math.max(range[0], range[1])];
+  }
+  return fallback;
+}
+
+function offlineYards(row: { sideCarryYd: number | null; launchDirectionDeg: number | null }) {
+  if (isNumber(row.sideCarryYd)) {
+    return Math.abs(row.sideCarryYd);
+  }
+
+  if (isNumber(row.launchDirectionDeg)) {
+    return Math.abs(row.launchDirectionDeg * 2);
+  }
+
+  return null;
+}
+
+function average(values: number[]) {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function standardDeviation(values: number[]) {
+  const mean = average(values);
+  return Math.sqrt(average(values.map((value) => (value - mean) ** 2)));
+}
+
+function roundMetric(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function verificationLabelForImportedShots(rows: Array<{ source: string }>) {
+  const sources = new Set(rows.map((row) => row.source));
+
+  if (sources.has("rapsodo_cloud")) {
+    return "Rapsodo Cloud";
+  }
+
+  if (sources.has("rapsodo")) {
+    return "Rapsodo CSV";
+  }
+
+  return "Imported shots";
+}
+
+function formatShortDate(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(value);
+}
+
 function challengeCoachNote(template: ChallengeTemplateRow) {
   switch (challengeTemplateKind(template)) {
     case "longest_drive":
@@ -768,7 +1201,7 @@ function challengeCoachNote(template: ChallengeTemplateRow) {
     case "practice_streak":
       return "Keep sessions short enough to repeat. A clean 20-shot session is better than one long session that disrupts the week.";
     default:
-      return "Submit a clean, repeatable attempt and use verified launch-monitor data when possible.";
+      return "Import qualifying launch-monitor shots during the challenge window; the board updates from those rows automatically.";
   }
 }
 
@@ -781,12 +1214,15 @@ function challengeTemplateKind(template: ChallengeTemplateRow | undefined | null
     case "longest-drive":
       return "longest_drive";
     case "straightest-drive":
+    case "demo-straightest-drive":
       return "straightest_drive";
     case "wedge-window":
       return "wedge_window";
     case "wedge-ladder":
+    case "demo-wedge-ladder":
       return "wedge_ladder";
     case "7i-consistency":
+    case "demo-7i-consistency":
       return "consistency";
     case "closest-to-pin":
       return "closest_to_pin";

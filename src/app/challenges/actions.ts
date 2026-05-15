@@ -4,12 +4,9 @@ import { redirect } from "next/navigation";
 
 import {
   addChallengeComment,
-  challengeVerificationLabels,
   createChallenge,
   inviteFriendToChallenge,
   joinChallenge,
-  submitChallengeAttempt,
-  type ChallengeVerificationLabel,
 } from "@/lib/challenges";
 import { parseVisibility } from "@/lib/social";
 
@@ -31,17 +28,6 @@ export async function joinChallengeAction(formData: FormData) {
   const challengeId = requiredString(formData, "challengeId");
   await joinChallenge(challengeId);
   redirect(`/challenges/${challengeId}`);
-}
-
-export async function submitChallengeAttemptAction(formData: FormData) {
-  const challengeId = requiredString(formData, "challengeId");
-  await submitChallengeAttempt({
-    challengeId,
-    metricValue: numberFromForm(formData, "metricValue"),
-    verificationLabel: parseVerificationLabel(formData.get("verificationLabel")),
-    notes: nullableString(formData, "notes"),
-  });
-  redirect(`/challenges/${challengeId}?attempt=saved`);
 }
 
 export async function addChallengeCommentAction(formData: FormData) {
@@ -71,16 +57,6 @@ function nullableString(formData: FormData, key: string) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function numberFromForm(formData: FormData, key: string) {
-  const value = Number(formData.get(key));
-
-  if (!Number.isFinite(value)) {
-    throw new Error(`${key} must be a number.`);
-  }
-
-  return value;
-}
-
 function dateFromForm(formData: FormData, key: string) {
   const value = nullableString(formData, key);
 
@@ -90,10 +66,4 @@ function dateFromForm(formData: FormData, key: string) {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function parseVerificationLabel(value: FormDataEntryValue | null): ChallengeVerificationLabel {
-  return challengeVerificationLabels.includes(value as ChallengeVerificationLabel)
-    ? (value as ChallengeVerificationLabel)
-    : "Manual";
 }

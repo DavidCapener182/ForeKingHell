@@ -26,6 +26,16 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import {
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+  PBCard,
+  ProgressCard,
+} from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -49,6 +59,7 @@ import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
 import { CoachChatCard } from "@/app/coach/coach-chat-card";
 import { getActivePlanKeyForUser, planAllowsAiCoach } from "@/lib/billing";
+import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
 
@@ -80,7 +91,52 @@ export default async function CoachPage() {
   return (
     <PageShell>
       <CoachDrillAutoSync enabled={shouldSyncDrillAwards} />
-      <div className="flex items-center justify-between gap-4">
+      <MobileAppShell>
+        <MobileTopBar title="Improve" />
+        <MobileRouteTabs group="improve" activeKey="coach" />
+        <MobileStatusAction
+          label="Do this next"
+          value={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
+          detail={topClub?.drill ?? "Import enough clean shots for a prescription."}
+        />
+        <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
+          <p className="text-sm font-semibold text-[#0B7A3B]">Why</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-normal">{topClub?.reason ?? coach.headline}</h2>
+          <p className="mt-1 text-sm leading-5 text-[#6B7280]">
+            {topClub ? `${topClub.trustIndex}% trust · ${targetForCard(topClub)}` : coach.subhead}
+          </p>
+        </section>
+        <MobileTabBar
+          activeKey="drill"
+          tabs={[
+            { key: "drill", label: "Drill", href: "/coach" },
+            { key: "more", label: "More drills", href: "#more-drills" },
+            { key: "evidence", label: "Evidence", href: "#evidence" },
+            { key: "history", label: "History", href: "/progress" },
+          ]}
+        />
+        <NativeListSection title="Drill">
+          <ProgressCard
+            title={coach.sessionPlan[0]?.title ?? "12 stock shots"}
+            value={coach.sessionPlan[0]?.duration ?? "12 shots"}
+            detail={coach.sessionPlan[0]?.detail ?? "Build a clean comparable sample."}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <PBCard title="Trust" value={`${coach.summary.totals.averageTrust}%`} detail={`${coach.summary.totals.clubs} clubs`} />
+            <PBCard title="Clean shots" value={coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")} detail="Tracked" />
+          </div>
+        </NativeListSection>
+        <NativeListSection id="more-drills" title="More drills">
+          {drillChallenges.slice(0, 4).map((challenge) => (
+            <div key={challenge.id} className="rounded-lg border border-[#E5E7EB] p-3">
+              <p className="font-semibold">{challenge.title}</p>
+              <p className="mt-1 text-sm text-[#6B7280]">{challenge.detail}</p>
+            </div>
+          ))}
+        </NativeListSection>
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -103,6 +159,7 @@ export default async function CoachPage() {
         </div>
       </div>
 
+      <div className="hidden sm:contents">
       <PageHeader
         eyebrow={
           <StatusPill tone={toneForFocus(coach.focusArea)}>
@@ -119,7 +176,7 @@ export default async function CoachPage() {
             <Button
               asChild
               size="lg"
-              className="rounded-xl bg-[#111827] text-white"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
             >
               <Link href={`/bag/${topClub.clubId}/analytics`} prefetch={false}>
                 <Brain className="size-4" />
@@ -130,7 +187,7 @@ export default async function CoachPage() {
             <Button
               asChild
               size="lg"
-              className="rounded-xl bg-[#111827] text-white"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
             >
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
@@ -377,6 +434,7 @@ export default async function CoachPage() {
           </DataPanel>
         </>
       )}
+      </div>
     </PageShell>
   );
 }
@@ -388,7 +446,7 @@ function CoachSocialPrompt({
   topClub: CoachClubCard | null;
   challenges: ChallengeListItem[];
 }) {
-  const challenge = challenges.find((item) => item.status === "open") ?? null;
+  const challenge = findRelevantChallenge(challenges, topClub?.clubType);
 
   return (
     <DataPanel>
@@ -398,7 +456,7 @@ function CoachSocialPrompt({
         action={<Trophy className="size-5 text-amber-600" />}
       />
       <CardContent className="grid gap-3">
-        <p className="rounded-xl border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+        <p className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-muted-foreground">
           {topClub
             ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
             : "Build a clean club baseline before comparing with friends or entering verified boards."}
@@ -431,7 +489,7 @@ function CoachSocialPrompt({
 function UpgradeAiCoachCard() {
   return (
     <CardContent>
-      <div className="rounded-xl border border-dashed bg-slate-50 p-4 text-sm">
+      <div className="rounded-lg border border-dashed bg-[#F5F6F4] p-4 text-sm">
         <p className="font-semibold">AI coach is a Pro feature.</p>
         <p className="mt-1 leading-6 text-muted-foreground">
           Rule-based coaching stays available. Upgrade when you want AI summaries and chat over your personal SQL context.

@@ -205,7 +205,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                       />
                       <FormField label="Yards" name="yards" type="number" defaultValue={primaryTeeSet.yards ?? undefined} />
                     </div>
-                    <Button type="submit" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+                    <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
                       <Save className="size-4" />
                       Save tee set
                     </Button>

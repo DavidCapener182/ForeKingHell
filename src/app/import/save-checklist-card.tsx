@@ -46,7 +46,7 @@ export function SaveChecklistCard({
           <ChecklistItem complete={hasCompleteCourseMapping}>Round mapping complete</ChecklistItem>
           <ChecklistItem complete={hasNoWarnings}>Warnings reviewed</ChecklistItem>
         </div>
-        <Button type="button" size="lg" disabled={!canSave} onClick={onSave} className="bg-[#111827] text-white">
+        <Button type="button" size="lg" disabled={!canSave} onClick={onSave} className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           {!isOnline ? <WifiOff className="size-4" /> : <Upload className="size-4" />}
           {isPending ? "Saving..." : isOnline ? "Save import" : "Queue offline"}
         </Button>

@@ -7,7 +7,8 @@ import { SocialFeedRail } from "@/components/social/social-feed-rail";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { getTotalXpForCurrentUser } from "@/lib/achievements/service";
 import { isCurrentUserAdmin } from "@/lib/admin";
-import { getCurrentUserPreferences } from "@/lib/current-user";
+import { getCurrentUser, getCurrentUserPreferences, ensureUserProfile } from "@/lib/current-user";
+import { ensureSocialProfileForUser } from "@/lib/social";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,7 +43,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [totalXp, achievementNotifications, preferences, isAdmin] = await Promise.all([
+  const [totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile] = await Promise.all([
     getTotalXpForCurrentUser().catch(() => 0),
     getAchievementUnlockFlash().catch(() => []),
     getCurrentUserPreferences().catch(() => ({
@@ -51,6 +52,7 @@ export default async function RootLayout({
       tableDensity: "comfortable" as const,
     })),
     isCurrentUserAdmin().catch(() => false),
+    getMobileNavProfile().catch(() => null),
   ]);
 
   return (
@@ -63,10 +65,9 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
-        <DevServiceWorkerResetScript />
         <PlausibleScript />
         <PwaRegister />
-        <AppNav totalXp={totalXp} isAdmin={isAdmin} />
+        <AppNav totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile} />
         <AchievementNotificationProvider initialNotifications={achievementNotifications}>
           {children}
         </AchievementNotificationProvider>
@@ -74,6 +75,23 @@ export default async function RootLayout({
       </body>
     </html>
   );
+}
+
+async function getMobileNavProfile() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return null;
+  }
+
+  await ensureUserProfile(user);
+  const profile = await ensureSocialProfileForUser(user.id);
+
+  return {
+    displayName: profile.displayName,
+    username: profile.username,
+    avatarUrl: profile.avatarUrl,
+  };
 }
 
 function PlausibleScript() {
@@ -89,58 +107,6 @@ function PlausibleScript() {
       data-domain={domain}
       src="https://plausible.io/js/script.js"
       strategy="afterInteractive"
-    />
-  );
-}
-
-function DevServiceWorkerResetScript() {
-  if (process.env.NODE_ENV === "production") {
-    return null;
-  }
-
-  return (
-    <Script
-      id="dev-service-worker-reset"
-      strategy="beforeInteractive"
-      dangerouslySetInnerHTML={{
-        __html: `
-(function () {
-  if (!("serviceWorker" in navigator)) return;
-
-  var wasControlled = Boolean(navigator.serviceWorker.controller);
-
-  function clearForeKingHellCaches() {
-    if (!("caches" in window)) return Promise.resolve();
-
-    return caches.keys().then(function (keys) {
-      return Promise.all(
-        keys
-          .filter(function (key) { return key.indexOf("forekinghell-pwa") === 0; })
-          .map(function (key) { return caches.delete(key); })
-      );
-    });
-  }
-
-  navigator.serviceWorker.getRegistrations()
-    .then(function (registrations) {
-      return Promise.all(
-        registrations.map(function (registration) { return registration.unregister(); })
-      );
-    })
-    .then(function (results) {
-      return clearForeKingHellCaches().then(function () {
-        return results.some(Boolean);
-      });
-    })
-    .then(function (didUnregister) {
-      if (!wasControlled || !didUnregister || sessionStorage.getItem("fkh-sw-reset")) return;
-      sessionStorage.setItem("fkh-sw-reset", "1");
-      window.location.reload();
-    })
-    .catch(function () {});
-})();
-        `,
-      }}
     />
   );
 }

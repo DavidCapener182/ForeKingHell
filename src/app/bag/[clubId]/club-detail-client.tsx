@@ -117,7 +117,7 @@ export function ClubDetailClient({
           />
         }
         action={
-          <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href={`/bag/${club.id}/analytics`} prefetch={false}>Coach</Link>
           </Button>
         }
@@ -356,7 +356,7 @@ function RangeToggle({
             onClick={() => onChange(option.value)}
             className={cn(
               "h-8 min-w-0 rounded-lg px-1 text-xs sm:px-1.5 lg:px-2",
-              value === option.value && "bg-[#111827] text-white",
+              value === option.value && "bg-[#0B7A3B] text-white",
             )}
             title={option.label}
           >

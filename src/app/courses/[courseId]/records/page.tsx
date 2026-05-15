@@ -4,6 +4,15 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Medal, Send, ShieldCheck, Target, Trophy, Users } from "lucide-react";
 
 import { PageShell, StatusPill } from "@/components/premium";
+import {
+  BottomSheet,
+  CourseRecordCard,
+  MobileAppShell,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +38,107 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
 
   return (
     <PageShell size="7xl">
-      <div className="flex items-center justify-between gap-3">
+      <MobileAppShell>
+        <MobileTopBar
+          title={data.course.name}
+          leading={
+            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
+              <Link href="/course-records" prefetch={false} aria-label="Records">
+                <ArrowLeft className="size-5" />
+              </Link>
+            </Button>
+          }
+          actions={
+            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
+              <Link href={`/courses/${data.course.id}/tournaments`} prefetch={false} aria-label="Events">
+                <Trophy className="size-5" />
+              </Link>
+            </Button>
+          }
+        />
+        <MobileStatusAction
+          label="Course Champion"
+          value={champion?.profile?.displayName ?? "Open board"}
+          detail={
+            champion?.profile
+              ? `${champion.result.scoreLabel} · ${verificationTierLabel(champion.result.verificationTier)}`
+              : "Submit a verified round to become the first champion."
+          }
+          action={
+            champion ? (
+              <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                <Link href={`/course-records/${champion.record.id}`} prefetch={false}>Challenge</Link>
+              </Button>
+            ) : null
+          }
+        />
+        <PageArtwork
+          variant="fairway"
+          alt=""
+          crop="random"
+          cropKey={data.course.id}
+          className="block h-40 min-h-0 rounded-lg"
+          sizes="100vw"
+        />
+        <MobileTabBar
+          activeKey={activeTab}
+          tabs={[
+            { key: "all_time", label: "Records", href: `/courses/${data.course.id}/records?tab=all_time` },
+            { key: "holes", label: "Holes", href: `/courses/${data.course.id}/records?tab=holes` },
+            { key: "month", label: "Monthly", href: `/courses/${data.course.id}/records?tab=month` },
+            { key: "friends", label: "Friends", href: `/courses/${data.course.id}/records?tab=friends` },
+          ]}
+        />
+        {data.previousRounds.length > 0 ? (
+          <BottomSheet label="Submit attempt" title="Eligible saved rounds">
+            <div className="grid gap-3">
+              {data.previousRounds.map((round) => (
+                <div key={round.id} className="rounded-lg border border-[#E5E7EB] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{round.title}</p>
+                      <p className="mt-1 text-sm text-[#6B7280]">
+                        {round.teeSetName ?? "Any tee"} · {round.holeCount} holes · {round.proofLabel}
+                      </p>
+                    </div>
+                    <p className="text-2xl font-semibold">{round.totalScore}</p>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {round.suggestions.map((suggestion) => (
+                      <Button key={suggestion.recordId} asChild variant="outline" className="justify-between rounded-full">
+                        <Link href={`/course-records/${suggestion.recordId}?sessionId=${round.id}#submit-record`} prefetch={false}>
+                          {suggestion.label}
+                          <span>{suggestion.value}</span>
+                        </Link>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </BottomSheet>
+        ) : null}
+        <NativeListSection title="Record boards">
+          {data.recordCards.map(({ record, category, champion: recordChampion, viewerBest }) => (
+            <CourseRecordCard
+              key={record.id}
+              href={`/course-records/${record.id}`}
+              title={category.name}
+              champion={recordChampion?.profile?.displayName}
+              score={recordChampion?.result.scoreLabel}
+              proof={recordChampion?.result.verificationTier}
+              cta={viewerBest ? `You ${viewerBest.result.scoreLabel}` : "Challenge"}
+            />
+          ))}
+          {data.recordCards.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+              No boards match this scope yet.
+            </p>
+          ) : null}
+        </NativeListSection>
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-3 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/course-records" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -44,7 +153,8 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
         </Button>
       </div>
 
-      <header className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <div className="hidden sm:contents">
+      <header className="premium-hero overflow-hidden">
         <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
           <div>
             <StatusPill tone="amber">Course champion</StatusPill>
@@ -58,7 +168,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
               <Badge variant="outline">Verified board first</Badge>
             </div>
           </div>
-          <div className="rounded-xl border bg-slate-50 p-3">
+          <div className="rounded-lg border bg-[#F5F6F4] p-3">
             <PageArtwork
               variant="fairway"
               alt=""
@@ -77,7 +187,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
                 <p className="mt-1 text-sm text-muted-foreground">
                   {champion.result.scoreLabel} · {verificationTierLabel(champion.result.verificationTier)}
                 </p>
-                <Button asChild className="mt-3 w-full rounded-xl bg-[#111827] text-white">
+                <Button asChild className="mt-3 w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                   <Link href={`/course-records/${champion.record.id}`} prefetch={false}>Challenge record</Link>
                 </Button>
               </div>
@@ -94,7 +204,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
         </div>
       </header>
 
-      <section className="rounded-xl border bg-white p-4 shadow-sm">
+      <section className="premium-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Previous rounds you can submit</p>
@@ -106,7 +216,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.previousRounds.map((round) => (
-            <article key={round.id} className="rounded-xl border bg-slate-50 p-3">
+            <article key={round.id} className="rounded-lg border bg-[#F5F6F4] p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{round.title}</p>
@@ -152,7 +262,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
             key={record.id}
             href={`/course-records/${record.id}`}
             prefetch={false}
-            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+            className="premium-card p-4 transition hover:border-emerald-300"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -164,7 +274,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
               </div>
               <Trophy className="size-5 shrink-0 text-amber-600" />
             </div>
-            <div className="mt-4 rounded-lg bg-slate-50 p-3 text-sm">
+            <div className="mt-4 rounded-lg bg-[#F5F6F4] p-3 text-sm">
               {recordChampion?.profile ? (
                 <>
                   <p className="font-medium">{recordChampion.profile.displayName}</p>
@@ -191,6 +301,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
           </div>
         ) : null}
       </section>
+      </div>
     </PageShell>
   );
 }
@@ -218,7 +329,7 @@ function TabLink({
       prefetch={false}
       className={
         active
-          ? "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-[#111827] px-3 text-sm font-semibold text-white"
+          ? "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-[#0B7A3B] px-3 text-sm font-semibold text-white"
           : "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-semibold"
       }
     >

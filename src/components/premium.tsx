@@ -41,13 +41,13 @@ export function PageShell({
   return (
     <main
       className={cn(
-        "min-h-screen px-4 py-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 lg:px-8",
+        "min-h-screen px-4 py-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
         className,
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full flex-col gap-5 sm:gap-6",
+          "mx-auto flex w-full flex-col gap-4 sm:gap-5",
           shellWidths[size],
           contentClassName,
         )}
@@ -137,25 +137,25 @@ export function PageHeader({
       </header>
 
       <header
-        className={cn("premium-hero hidden p-4 sm:block sm:p-7", className)}
+        className={cn("desktop-page-header hidden sm:block", className)}
       >
         <div
           className={cn(
-            "grid gap-4 sm:gap-6",
+            "grid gap-4",
             visual
-              ? "lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.38fr)] lg:items-stretch"
+              ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center"
               : "",
           )}
         >
-          <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-2 sm:space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl space-y-1.5">
               {eyebrow ? <div>{eyebrow}</div> : null}
-              <div className="space-y-2">
-                <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance sm:text-5xl">
+              <div className="space-y-1.5">
+                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance">
                   {title}
                 </h1>
                 {description ? (
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base sm:leading-7">
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                     {description}
                   </p>
                 ) : null}
@@ -168,17 +168,17 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="hidden min-h-40 lg:block">{visual}</div>
+            <div className="hidden h-28 overflow-hidden rounded-lg lg:block">{visual}</div>
           ) : null}
         </div>
         {metrics?.length ? (
-          <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto px-1 pb-1 sm:mx-0 sm:mt-6 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
+          <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto border-y border-[#E5E7EB] bg-white px-1 py-2 sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
             {metrics.map((metric) => (
-              <div key={metric.label} className="metric-tile">
+              <div key={metric.label} className="metric-tile desktop-metric-tile">
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {metric.label}
                 </p>
-                <p className="mt-2 truncate text-2xl font-semibold tracking-normal sm:text-3xl">
+                <p className="mt-1 truncate text-2xl font-semibold tracking-normal sm:text-[1.5rem]">
                   {metric.value}
                 </p>
                 {metric.detail ? (
@@ -289,7 +289,7 @@ export function MobileSectionChips({
         <a
           key={item.href}
           href={item.href}
-          className="min-h-10 shrink-0 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur"
+          className="min-h-10 shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
         >
           {item.label}
         </a>
@@ -312,7 +312,7 @@ export function StickyMobileAction({
         className,
       )}
     >
-      <div className="rounded-2xl border border-white/70 bg-white/90 p-2 shadow-xl shadow-slate-950/15 backdrop-blur">
+      <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         {children}
       </div>
     </div>
@@ -376,7 +376,7 @@ export function MobileFilterSheet({
           </Badge>
         ) : null}
       </summary>
-      <div className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-2xl shadow-slate-950/20">
+      <div className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-lg shadow-slate-950/10">
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
         {children}
       </div>
@@ -567,7 +567,7 @@ export function MobileAccordionSection({
     <details
       open={defaultOpen}
       className={cn(
-        "group rounded-xl border border-slate-200 bg-white/92 shadow-sm sm:hidden",
+        "group rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
         className,
       )}
     >
@@ -737,21 +737,21 @@ export function MetricCard({
   const card = (
     <Card
       className={cn(
-        "premium-card h-full transition group-hover:-translate-y-0.5",
+        "premium-card h-full transition-colors group-hover:border-[#0B7A3B]",
         className,
       )}
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-4">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
         <div className="space-y-1">
           <CardDescription>{label}</CardDescription>
-          <CardTitle className="text-3xl font-semibold tracking-normal sm:text-4xl">
+          <CardTitle className="text-2xl font-semibold tracking-normal">
             {value}
           </CardTitle>
         </div>
         {Icon ? (
           <div
             className={cn(
-              "grid size-10 place-items-center rounded-full ring-1",
+              "grid size-8 place-items-center rounded-md ring-1",
               toneClasses[tone],
             )}
           >
@@ -761,7 +761,7 @@ export function MetricCard({
       </CardHeader>
       {detail ? (
         <CardContent>
-          <p className="text-sm text-muted-foreground">{detail}</p>
+          <p className="text-sm leading-5 text-muted-foreground">{detail}</p>
         </CardContent>
       ) : null}
     </Card>
@@ -788,7 +788,7 @@ export function DataPanel({
   id?: string;
 }) {
   return (
-    <Card id={id} className={cn("premium-card", className)}>
+    <Card id={id} className={cn("premium-card desktop-data-panel", className)}>
       {children}
     </Card>
   );
@@ -804,9 +804,9 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <CardHeader className="gap-3">
+    <CardHeader className="gap-1 border-b border-[#E5E7EB] px-4 py-3">
       <div>
-        <CardTitle className="text-xl tracking-normal sm:text-2xl">
+        <CardTitle className="text-base font-semibold tracking-normal sm:text-lg">
           {title}
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
@@ -829,7 +829,7 @@ export function StatusPill({
     <Badge
       variant="outline"
       className={cn(
-        "w-fit border-0 px-2.5 py-1 ring-1 hover:bg-transparent",
+        "w-fit border-0 px-2.5 py-1 text-xs font-medium ring-1 hover:bg-transparent",
         toneClasses[tone],
         className,
       )}
@@ -880,7 +880,7 @@ export function CompactReadoutGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+        "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
         className,
       )}
     >
@@ -973,7 +973,7 @@ export function CompactLinkGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+        "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
         className,
       )}
     >

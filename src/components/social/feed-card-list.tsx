@@ -176,7 +176,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
         <DigestComments items={group.items} />
 
         {achievements.length > 0 ? (
-          <details className="group rounded-xl border bg-slate-50/80">
+          <details className="group rounded-lg border bg-[#F5F6F4]">
             <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
               <span className="flex items-center gap-2 text-sm font-semibold">
                 <Award className="size-4 text-emerald-600" />
@@ -199,7 +199,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
           </details>
         ) : null}
 
-        <details className="group rounded-xl border bg-slate-50/80">
+        <details className="group rounded-lg border bg-[#F5F6F4]">
           <summary className="flex min-h-12 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 [&::-webkit-details-marker]:hidden">
             <span className="flex items-center gap-2 text-sm font-semibold">
               <MoreHorizontal className="size-4 text-slate-600" />
@@ -233,7 +233,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
 function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
   return (
     <article
-      className="overflow-hidden rounded-xl border border-slate-200 bg-white/92 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200"
       data-feed-item-id={item.id}
     >
       <div className={compact ? "grid gap-3 p-3" : "grid gap-4 p-4"}>
@@ -269,12 +269,12 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
 
         <div className="grid gap-3">
           {item.metricValue ? (
-            <div className="grid gap-2 rounded-xl border border-slate-200 bg-slate-50/85 p-3">
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
               <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 <BarChart3 className="size-3.5" />
                 {item.metricLabel ?? "Metric"}
               </p>
-              <p className="text-3xl font-semibold tracking-normal text-[#111827]">{item.metricValue}</p>
+              <p className="text-3xl font-semibold tracking-normal text-[#050505]">{item.metricValue}</p>
             </div>
           ) : null}
           {item.context ? <p className="text-sm leading-6 text-muted-foreground">{item.context}</p> : null}
@@ -327,7 +327,7 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               ) : null}
               <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <Input name="body" placeholder="Write a comment" className="h-9 rounded-xl bg-slate-50" />
+                <Input name="body" placeholder="Write a comment" className="h-9 rounded-lg bg-white" />
                 <Button type="submit" variant="outline">
                   <MessageCircle className="size-4" />
                   Post
@@ -381,7 +381,7 @@ function DigestComments({ items }: { items: FeedItemView[] }) {
       </div>
       <div className="mt-3 grid gap-3">
         {commentedItems.map((item) => (
-          <article key={item.id} className="rounded-lg bg-slate-50/80 p-3">
+          <article key={item.id} className="rounded-lg bg-[#F5F6F4] p-3">
             <p className="line-clamp-2 text-sm font-medium">{item.headline}</p>
             <div className="mt-2 grid gap-2">
               {item.comments.map((comment) => (
@@ -467,7 +467,7 @@ function ActivityActions({
               <MessageCircle className="size-4" />
               Comments {item.commentCount > 0 ? item.commentCount : ""}
             </summary>
-            <div className="mt-2 grid min-w-72 gap-2 rounded-xl border bg-slate-50 p-2">
+            <div className="mt-2 grid min-w-72 gap-2 rounded-lg border bg-[#F5F6F4] p-2">
               {item.comments.length > 0 ? (
                 <div className="grid gap-2">
                   {item.comments.map((comment) => (
@@ -507,7 +507,7 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
   const isOwnItem = item.profile.relationship === "self";
 
   return (
-    <details className="group rounded-xl border bg-slate-50/80">
+    <details className="group rounded-lg border bg-[#F5F6F4]">
       <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
         <span className="flex items-center gap-2">
           <ShieldCheck className="size-4 text-slate-600" />

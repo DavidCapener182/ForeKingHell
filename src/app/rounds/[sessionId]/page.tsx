@@ -216,7 +216,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 <span>Equipment notes</span>
                 <Input name="equipmentNotes" defaultValue={round.session.equipmentNotes ?? ""} className="h-10 rounded-xl bg-white" />
               </label>
-              <Button type="submit" className="rounded-xl bg-[#111827] text-white lg:w-fit">
+              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] lg:w-fit">
                 <Save className="size-4" />
                 Save context
               </Button>
@@ -255,7 +255,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   <option value="0">No expiry</option>
                 </select>
               </label>
-              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 <Share2 className="size-4" />
                 Create share link
               </Button>
@@ -319,7 +319,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   ))}
                 </select>
               </label>
-              <Button type="submit" className="h-11 rounded-xl bg-[#111827] text-white">
+              <Button type="submit" className="h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 <Save className="size-4" />
                 Update link
               </Button>
@@ -395,7 +395,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                     Current split assigns {integerFormatter.format(round.shots.length - round.unmappedShots.length)}
                     /{integerFormatter.format(round.shots.length)} CSV shots.
                   </p>
-                  <Button type="submit" className="bg-[#111827] text-white">
+                  <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                     <Save className="size-4" />
                     Re-split round
                   </Button>
@@ -736,7 +736,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           </Card>
         ) : null}
         <StickyMobileAction>
-          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <a href="#current-hole">
               Edit current hole
             </a>
@@ -762,7 +762,7 @@ function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
         {round.recordOpportunities.slice(0, 4).map((item) => (
-          <div key={item.record.id} className="rounded-xl border bg-slate-50 p-3 text-sm">
+          <div key={item.record.id} className="rounded-lg border bg-[#F5F6F4] p-3 text-sm">
             <p className="font-semibold">{item.category.name}</p>
             <p className="mt-1 text-muted-foreground">{item.record.period === "month" ? "Monthly board" : "Course record"}</p>
             <Button asChild variant="outline" size="sm" className="mt-3 w-full">
@@ -771,7 +771,7 @@ function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
           </div>
         ))}
         {round.tournamentOpportunities.slice(0, 4).map((event) => (
-          <div key={event.id} className="rounded-xl border bg-slate-50 p-3 text-sm">
+          <div key={event.id} className="rounded-lg border bg-[#F5F6F4] p-3 text-sm">
             <p className="font-semibold">{event.title}</p>
             <p className="mt-1 text-muted-foreground">Round submission available</p>
             <Button asChild variant="outline" size="sm" className="mt-3 w-full">
@@ -882,7 +882,7 @@ function CurrentHoleCard({
             <MiniMetric label="Yards" value={hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"} />
             <MiniMetric label="Shots" value={hasClubData ? hole.shots.length.toString() : "Score"} />
           </div>
-          <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+          <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Save className="size-4" />
             Save hole
           </Button>

@@ -17,6 +17,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,9 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
   return (
     <PageShell size="6xl">
-      <div className="flex items-center justify-between gap-3">
+      <MobileRouteHeader title="Social" group="social" activeKey="friends" />
+
+      <div className="hidden items-center justify-between gap-3 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -58,7 +61,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </Button>
       </div>
 
-      <header className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <header className="premium-hero overflow-hidden">
         <div className="h-24 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)]" />
         <div className="grid gap-4 p-5 pt-0">
           <div className="-mt-9 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
@@ -107,7 +110,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
                 className="mx-auto aspect-square w-full max-w-40"
               />
             </div>
-            <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
+            <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs">
               <p className="font-medium">Invite link</p>
               <code className="mt-1 block break-all text-muted-foreground">{profileUrl}</code>
             </div>
@@ -149,7 +152,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         <CardContent className="grid gap-4">
           <form className="grid gap-2 sm:grid-cols-[1fr_auto]" action="/friends">
             <Input name="q" defaultValue={query} placeholder="Search by username" className="h-10 rounded-xl bg-white" />
-            <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Search className="size-4" />
               Search
             </Button>
@@ -324,7 +327,7 @@ function BlockedList({ profiles }: { profiles: SocialProfileSummary[] }) {
   return (
     <div className="grid gap-2">
       {profiles.map((profile) => (
-        <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm">
+        <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{profile.displayName}</p>
             <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
@@ -353,7 +356,7 @@ function RequestList({
   return (
     <div className="grid gap-2">
       {rows.map((row) => (
-        <div key={row.request.id} className="grid gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm">
+        <div key={row.request.id} className="grid gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm">
           <div className="flex min-w-0 items-center gap-3">
             <SocialAvatar
               displayName={row.profile.displayName}
@@ -402,7 +405,7 @@ function RequestList({
 
 function SocialStat({ label, value, detail }: { label: string; value: number | string; detail: string }) {
   return (
-    <div className="rounded-lg border bg-slate-50 px-3 py-2">
+    <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
       <p className="text-xl font-semibold tracking-normal">{value}</p>
       <p className="text-xs font-medium">{label}</p>
       <p className="text-xs text-muted-foreground">{detail}</p>

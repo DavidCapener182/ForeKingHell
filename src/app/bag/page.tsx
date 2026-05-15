@@ -38,6 +38,16 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import {
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+  PBCard,
+  ProgressCard,
+} from "@/components/mobile-sports";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -49,6 +59,7 @@ import {
 } from "@/components/ui/table";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { buildClubBenchmarkRows, type ClubBenchmarkRow } from "@/lib/club-benchmarks";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -120,7 +131,81 @@ export default async function BagPage() {
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <div className="flex items-center justify-between gap-4">
+      <MobileAppShell>
+        <MobileTopBar title="Analyse" />
+        <MobileRouteTabs group="analyse" activeKey="bag" />
+        <MobileTabBar
+          activeKey="gapping"
+          className="-mt-4 text-sm"
+          tabs={[
+            { key: "gapping", label: "Gapping", href: "/bag" },
+            { key: "clubs", label: "Clubs", href: "#clubs" },
+            { key: "longest", label: "Longest", href: "/bag/longest" },
+            { key: "equipment", label: "Equipment", href: "/equipment" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Gapping ladder"
+          value={bestClub ? formatClubType(bestClub.type) : "--"}
+          detail={weakestGap ? `Problem gap: ${formatClubType(weakestGap.clubType)} · ${workOnText(weakestGap)}` : `${bag.length} clubs · ${totalShots} shots`}
+          action={
+            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Link href="/import" prefetch={false}>Import</Link>
+            </Button>
+          }
+        />
+        <NativeListSection title="Gapping">
+          <ProgressCard
+            title="Bag trust"
+            value={`${averageConfidence}%`}
+            detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
+          >
+            <div className="grid gap-2">
+              {gappingRows.slice(0, 8).map((row) => (
+                <Link
+                  key={row.id}
+                  href={`/bag/${row.id}`}
+                  prefetch={false}
+                  className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
+                >
+                  <span className="font-semibold">{formatClubType(row.clubType)}</span>
+                  <span className="h-2 rounded-full bg-[#E5E7EB]">
+                    <span
+                      className="block h-2 rounded-full bg-[#0B7A3B]"
+                      style={{ width: `${Math.max(8, Math.min(100, row.confidenceScore))}%` }}
+                    />
+                  </span>
+                  <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
+                </Link>
+              ))}
+            </div>
+          </ProgressCard>
+          <div className="grid grid-cols-2 gap-2">
+            <PBCard title="Best club" value={bestClub ? formatClubType(bestClub.type) : "--"} detail="Highest trust" />
+            <PBCard title="Weakest gap" value={weakestGap ? formatClubType(weakestGap.clubType) : "--"} detail={weakestGap ? workOnText(weakestGap) : "Need samples"} />
+          </div>
+        </NativeListSection>
+        <NativeListSection title="Club rail">
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {bag.map((club) => (
+              <Link key={club.id} href={`/bag/${club.id}`} prefetch={false} className="grid min-w-36 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3">
+                <ClubArtwork
+                  clubType={club.type}
+                  brand={club.brand}
+                  model={club.model}
+                  alt=""
+                  className="h-14 rounded-lg"
+                  sizes="144px"
+                />
+                <span className="font-semibold">{formatClubType(club.type)}</span>
+                <span className="text-sm text-[#6B7280]">{formatMetric(club.stock.carryMedianYd)} yd</span>
+              </Link>
+            ))}
+          </div>
+        </NativeListSection>
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard">
             <ArrowLeft className="size-4" />
@@ -135,6 +220,7 @@ export default async function BagPage() {
         </Button>
       </div>
 
+      <div className="hidden sm:contents">
       <PageHeader
         eyebrow={<StatusPill>Bag map</StatusPill>}
         title="Stock yardages"
@@ -210,7 +296,7 @@ export default async function BagPage() {
           <Button
             asChild
             size="sm"
-            className="rounded-xl bg-[#111827] text-white"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
           >
             <Link href="#clubs">Clubs</Link>
           </Button>
@@ -437,10 +523,11 @@ export default async function BagPage() {
         </Card>
       ) : null}
       <StickyMobileAction>
-        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+        <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="#clubs">Find club</Link>
         </Button>
       </StickyMobileAction>
+      </div>
     </PageShell>
   );
 }
@@ -661,7 +748,7 @@ function BagSocialComparison({
   leaderboardOptedIn: boolean;
   challenges: ChallengeListItem[];
 }) {
-  const challenge = challenges.find((item) => item.status === "open") ?? null;
+  const challenge = findRelevantChallenge(challenges, bestClub?.type);
 
   return (
     <DataPanel>
@@ -671,7 +758,7 @@ function BagSocialComparison({
         action={<Users className="size-5 text-emerald-600" />}
       />
       <CardContent className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="rounded-xl border bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+        <div className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-muted-foreground">
           {leaderboardOptedIn && bestClub
             ? `${formatClubType(bestClub.type)} is your most trusted active club. Compare it through friend boards or a private challenge when you want a fair opt-in benchmark.`
             : "Leaderboard comparison is off in your profile, so this page is keeping the bag readout private."}

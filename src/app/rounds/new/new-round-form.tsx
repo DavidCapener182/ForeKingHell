@@ -233,7 +233,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
         </div>
       </div>
 
-      <Button type="submit" size="lg" className="hidden w-full rounded-xl bg-[#111827] text-white sm:flex sm:w-fit">
+      <Button type="submit" size="lg" className="hidden w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:flex sm:w-fit">
         <Save className="size-4" />
         Save real round
       </Button>
@@ -251,14 +251,14 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             Back
           </Button>
           {mobileStep === "review" ? (
-            <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Save className="size-4" />
               Save round
             </Button>
           ) : (
             <Button
               type="button"
-              className="rounded-xl bg-[#111827] text-white"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
               onClick={() => setMobileStep(mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id)}
             >
               Next

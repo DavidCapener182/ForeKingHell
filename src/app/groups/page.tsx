@@ -1,13 +1,25 @@
 import Link from "next/link";
-import { Award, Globe2, Lock, Plus, Radio, Search, Trophy, Users } from "lucide-react";
+import { Award, Globe2, Lock, MessageCircle, Plus, Radio, Search, Settings, Trophy, Users } from "lucide-react";
 
 import { createGroupAction, joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
+import {
+  BottomSheet,
+  ChallengeCard,
+  MobileAppShell,
+  MobileIconButton,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getGroupsPageData, type GroupListItem } from "@/lib/groups";
+import { getChallengesPageData } from "@/lib/challenges";
 import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -17,18 +29,143 @@ type GroupsPageProps = {
     created?: string;
     joined?: string;
     invite?: string;
+    tab?: string;
   }>;
 };
 
 export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   const params = await searchParams;
-  const data = await getGroupsPageData(params?.invite);
+  const [data, challengeData] = await Promise.all([
+    getGroupsPageData(params?.invite),
+    getChallengesPageData(),
+  ]);
+  const activeTab = parseGroupsTab(params?.tab);
+  const featuredChallenge = challengeData.active[0] ?? challengeData.challenges[0] ?? null;
 
   return (
     <PageShell size="7xl">
-      <section className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+      <MobileAppShell>
+        <MobileTopBar
+          title="Groups"
+          leading={<MobileIconButton href="/groups" label="Search groups" icon={Search} />}
+          actions={
+            <>
+              <MobileIconButton href="/friends" label="Messages" icon={MessageCircle} />
+              <MobileIconButton href="/settings" label="Settings" icon={Settings} />
+            </>
+          }
+        />
+        <MobileRouteTabs group="social" activeKey="groups" />
+        <MobileTabBar
+          activeKey={activeTab}
+          className="-mt-4"
+          tabs={[
+            { key: "active", label: "Active", href: "/groups" },
+            { key: "challenges", label: "Challenges", href: "/groups?tab=challenges" },
+            { key: "clubs", label: "Clubs", href: "/groups?tab=clubs" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Competition network"
+          value={`${data.mine.length} active groups`}
+          detail={`${challengeData.active.length} live challenges · ${data.discoverable.length} discoverable clubs`}
+          action={
+            <BottomSheet label={<><Plus className="size-4" /> Create</>} title="Create group">
+              <form action={createGroupAction} className="grid gap-3">
+                <label className="grid gap-1 text-sm font-medium">
+                  <span>Name</span>
+                  <Input name="name" placeholder="ForeKingHell Rapsodo UK League" className="h-11 rounded-lg bg-white" required />
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  <span>Type</span>
+                  <select name="groupType" className="h-11 rounded-lg border bg-white px-3 text-sm">
+                    {data.groupTypes.map((type) => (
+                      <option key={type} value={type}>{label(type)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-medium">
+                  <span>Visibility</span>
+                  <select name="visibility" defaultValue="private" className="h-11 rounded-lg border bg-white px-3 text-sm">
+                    {socialVisibilityOptions.map((option) => (
+                      <option key={option} value={option}>{label(option)}</option>
+                    ))}
+                  </select>
+                </label>
+                <textarea name="description" rows={3} placeholder="Description" className="rounded-lg border bg-white px-3 py-2 text-sm" />
+                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                  <Plus className="size-4" />
+                  Create group
+                </Button>
+              </form>
+            </BottomSheet>
+          }
+        />
+        {activeTab === "challenges" ? (
+          <NativeListSection title="Challenges">
+            {featuredChallenge ? (
+              <ChallengeCard
+                title={featuredChallenge.title}
+                description={featuredChallenge.description ?? featuredChallenge.templateName}
+                href={`/challenges/${featuredChallenge.id}`}
+                cta={featuredChallenge.viewerJoined ? "Open" : "Join"}
+                leader={
+                  featuredChallenge.leader
+                    ? `Leader: ${featuredChallenge.leader.displayName} · ${featuredChallenge.leader.scoreLabel}`
+                    : "No attempts yet"
+                }
+                meta={
+                  <>
+                    <span>{featuredChallenge.participantCount} players</span>
+                    <span>{featuredChallenge.viewerJoined ? "Joined" : "Not entered"}</span>
+                  </>
+                }
+              />
+            ) : null}
+            {challengeData.challenges.slice(1, 8).map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                title={challenge.title}
+                description={challenge.templateName}
+                href={`/challenges/${challenge.id}`}
+                cta={challenge.viewerJoined ? "Open" : "Join"}
+                leader={challenge.leader ? `Leader: ${challenge.leader.displayName}` : undefined}
+                meta={<span>{challenge.participantCount} players</span>}
+              />
+            ))}
+          </NativeListSection>
+        ) : activeTab === "clubs" ? (
+          <NativeListSection title="Clubs and societies">
+            {[...data.mine, ...data.discoverable].slice(0, 12).map((group) => (
+              <MobileGroupCard key={group.id} group={group} />
+            ))}
+          </NativeListSection>
+        ) : (
+          <NativeListSection title="Active now">
+            {data.mine.slice(0, 8).map((group) => (
+              <MobileGroupCard key={group.id} group={group} />
+            ))}
+            {data.mine.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+                Join a public league or create a private friend group.
+              </p>
+            ) : null}
+            {challengeData.active.slice(0, 3).map((challenge) => (
+              <ChallengeCard
+                key={challenge.id}
+                title={challenge.title}
+                description="Live group challenge"
+                href={`/challenges/${challenge.id}`}
+                meta={<span>{challenge.participantCount} players</span>}
+              />
+            ))}
+          </NativeListSection>
+        )}
+      </MobileAppShell>
+
+      <section className="hidden gap-4 sm:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
         <aside className="order-2 grid gap-4 lg:order-none lg:sticky lg:top-28">
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <div className="flex items-center gap-3">
               <SocialAvatar
                 displayName={data.profile.displayName}
@@ -47,16 +184,16 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Create group</p>
             <form action={createGroupAction} className="mt-3 grid gap-3">
               <label className="grid gap-1 text-sm font-medium">
                 <span>Name</span>
-                <Input name="name" placeholder="ForeKingHell Rapsodo UK League" className="h-9 rounded-xl bg-slate-50" required />
+                <Input name="name" placeholder="ForeKingHell Rapsodo UK League" className="h-9 rounded-lg bg-white" required />
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Type</span>
-                <select name="groupType" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+                <select name="groupType" className="h-9 rounded-lg border bg-white px-3 text-sm">
                   {data.groupTypes.map((type) => (
                     <option key={type} value={type}>{label(type)}</option>
                   ))}
@@ -64,7 +201,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Visibility</span>
-                <select name="visibility" defaultValue="private" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+                <select name="visibility" defaultValue="private" className="h-9 rounded-lg border bg-white px-3 text-sm">
                   {socialVisibilityOptions.map((option) => (
                     <option key={option} value={option}>{label(option)}</option>
                   ))}
@@ -72,9 +209,9 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Description</span>
-                <textarea name="description" rows={3} className="rounded-xl border bg-slate-50 px-3 py-2 text-sm" />
+                <textarea name="description" rows={3} className="rounded-lg border bg-white px-3 py-2 text-sm" />
               </label>
-              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 <Plus className="size-4" />
                 Create group
               </Button>
@@ -83,7 +220,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
         </aside>
 
         <main className="order-1 grid gap-4 lg:order-none">
-          <header className="rounded-xl border bg-white p-5 shadow-sm">
+          <header className="premium-hero p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <StatusPill tone="green">Groups and leagues</StatusPill>
@@ -115,7 +252,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
           </header>
 
           {params?.invite ? (
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <section className="premium-card p-4">
               {data.invitePreview ? (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -141,7 +278,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </section>
           ) : null}
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">My groups</p>
@@ -152,7 +289,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <GroupGrid groups={data.mine} empty="You have not joined a group yet." />
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">Discoverable leagues</p>
@@ -176,7 +313,7 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
   return (
     <div className="mt-4 grid gap-3 md:grid-cols-2">
       {groups.map((group) => (
-        <article key={group.id} className="rounded-xl border bg-slate-50/80 p-4">
+        <article key={group.id} className="rounded-lg border bg-[#F5F6F4] p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Link href={`/groups/${group.slug}`} prefetch={false} className="font-semibold hover:underline">
@@ -241,11 +378,48 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border bg-slate-50 px-3 py-2">
+    <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
       <p className="text-lg font-semibold tracking-normal">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   );
+}
+
+function MobileGroupCard({ group }: { group: GroupListItem }) {
+  return (
+    <Link
+      href={`/groups/${group.slug}`}
+      prefetch={false}
+      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-lg font-semibold tracking-normal">{group.name}</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
+            {group.description ?? label(group.groupType)}
+          </p>
+        </div>
+        <Badge variant="outline" className="gap-1">
+          {group.visibility === "public" ? <Globe2 className="size-3" /> : <Lock className="size-3" />}
+          {label(group.visibility)}
+        </Badge>
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs font-medium text-[#6B7280]">
+        <span>{group.memberCount} members</span>
+        <span>{group.challengeCount} live events</span>
+        <span>{group.postCount} posts</span>
+      </div>
+      <span className="text-sm font-semibold text-[#0B7A3B]">Open</span>
+    </Link>
+  );
+}
+
+function parseGroupsTab(value?: string) {
+  if (value === "challenges" || value === "clubs") {
+    return value;
+  }
+
+  return "active";
 }
 
 function label(value: string) {

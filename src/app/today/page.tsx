@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -6,22 +7,15 @@ import {
   ChevronDown,
   Crosshair,
   Database,
-  Minus,
-  Target,
   Trophy,
-  TrendingDown,
-  TrendingUp,
   Upload,
-  Zap,
 } from "lucide-react";
 
 import {
   ActiveFilterChips,
-  CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
-  MetricCard,
   MobileAccordionSection,
   MobileFilterSheet,
   MobileDataCard,
@@ -33,8 +27,14 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import {
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -50,6 +50,7 @@ import {
   TodayShotCharts,
   type TodayChartShot,
 } from "@/app/today/today-shot-charts";
+import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
@@ -71,6 +72,11 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const smashFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 2,
+});
+const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
 });
 
 type MetricUnit = "yd" | "mph" | "deg" | "ft" | "ratio";
@@ -131,6 +137,64 @@ export default async function TodayPage({
 
   return (
     <PageShell size="full" contentClassName="pb-4 sm:pb-5">
+      <MobileAppShell className="min-h-0 pb-0">
+        <MobileTopBar
+          title="Dashboard"
+          actions={
+            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-[#050505]">
+              <Link href="/import" prefetch={false} aria-label="Import CSV">
+                <Upload className="size-5" />
+              </Link>
+            </Button>
+          }
+        />
+        <MobileRouteTabs group="dashboard" activeKey="today" />
+        <MobileStatusAction
+          label="Today’s practice"
+          value="Today"
+          detail={data.overall.summary}
+          action={
+            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Link href={shotDatabaseHref} prefetch={false}>
+                Shot rows
+              </Link>
+            </Button>
+          }
+        />
+        <MobileMetricStrip
+          items={[
+            {
+              label: "Date",
+              value: data.dateLabel,
+              detail: `${integerFormatter.format(data.allTodayShotCount)} shots imported that day`,
+              tone: "green",
+            },
+            {
+              label: "Selected",
+              value: integerFormatter.format(data.shots.length),
+              detail: `${integerFormatter.format(data.comparisonShots.length)} comparison shots`,
+              tone: "sky",
+            },
+            {
+              label: "Straight",
+              value: formatRate(data.overall.today.straightRate),
+              detail: deltaText(data.overall.straightRateDelta, "pp", true),
+              tone: "amber",
+            },
+          ]}
+        />
+        <NativeListSection title="Today’s work" description="Filtered shot rows, charts and club scope.">
+          <MobilePlayRoute
+            href={shotDatabaseHref}
+            title="Today"
+            value={`${integerFormatter.format(data.shots.length)} selected`}
+            detail="Filtered shot rows, charts and club scope."
+            icon={<Database className="size-5" />}
+          />
+        </NativeListSection>
+      </MobileAppShell>
+
+      <div className="hidden sm:contents">
       <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
@@ -142,7 +206,7 @@ export default async function TodayPage({
           <Button asChild variant="outline">
             <Link href={shotDatabaseHref} prefetch={false}>
               <Database className="size-4" />
-              Shot rows
+              View shot rows
             </Link>
           </Button>
           <Button
@@ -157,54 +221,8 @@ export default async function TodayPage({
         </div>
       </div>
 
-      <PageHeader
-        eyebrow={
-          <StatusPill tone={verdictTone(data.overall.verdict)}>
-            Today’s practice
-          </StatusPill>
-        }
-        title="Today"
-        description={data.overall.summary}
-        visual={
-          <PageArtwork variant="range" alt="" className="h-full min-h-44" />
-        }
-        actions={
-          <Button
-            asChild
-            size="lg"
-            className="rounded-xl bg-[#111827] text-white"
-          >
-            <Link href={shotDatabaseHref} prefetch={false}>
-              <Database className="size-4" />
-              Open filtered shots
-            </Link>
-          </Button>
-        }
-        metrics={[
-          {
-            label: "Date",
-            value: data.dateLabel,
-            detail: `${integerFormatter.format(data.allTodayShotCount)} shots imported that day`,
-          },
-          {
-            label: "Selected shots",
-            value: integerFormatter.format(data.shots.length),
-            detail: `${integerFormatter.format(data.comparisonShots.length)} full comparison shots`,
-          },
-          {
-            label: "Straight rate",
-            value: formatRate(data.overall.today.straightRate),
-            detail: deltaText(data.overall.straightRateDelta, "pp", true),
-          },
-          {
-            label: "Avg offline",
-            value: formatYards(data.overall.today.offlineAverageYd),
-            detail: offlineDeltaText(data.overall.offlineDeltaYd),
-          },
-        ]}
-      />
-
-      <TodaySocialLine data={data} challenges={challengeData.active} />
+      <TodayReviewHero data={data} />
+      </div>
 
       <MobileSectionChips
         items={[
@@ -257,7 +275,7 @@ export default async function TodayPage({
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="submit"
-                className="rounded-lg bg-[#111827] text-white"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
               >
                 Analyse
               </Button>
@@ -272,85 +290,41 @@ export default async function TodayPage({
         <ActiveFilterChips items={activeFilterChips} />
       </div>
 
-      <DataPanel className="hidden sm:block">
-        <SectionHeader
-          title="Session scope"
-          description="Date, session, and club scope."
-          action={<CalendarDays className="size-5 text-emerald-600" />}
-        />
-        <CardContent>
-          <form className="apple-panel grid gap-3 p-3 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto]">
-            <TodayScopeFields data={data} />
-            <div className="flex items-end">
-              <Button
-                type="submit"
-                className="h-10 w-full rounded-lg bg-[#111827] text-white"
-              >
-                Analyse
-              </Button>
-            </div>
-            <div className="flex items-end">
-              <Button
-                asChild
-                variant="outline"
-                className="h-10 w-full rounded-lg"
-              >
-                <Link href="/today" prefetch={false}>
-                  Reset
-                </Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </DataPanel>
+      <section
+        id="scope"
+        className="hidden scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-4 py-3 shadow-sm sm:block"
+      >
+        <form className="grid gap-3 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
+          <div className="hidden pb-2 pr-1 text-sm font-semibold text-slate-900 md:block">
+            Filters
+          </div>
+          <TodayScopeFields data={data} />
+          <Button
+            type="submit"
+            className="h-10 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
+            Apply
+          </Button>
+          <Button asChild variant="outline" className="h-10 rounded-lg">
+            <Link href="/today" prefetch={false}>
+              Reset
+            </Link>
+          </Button>
+        </form>
+      </section>
 
       {data.shots.length === 0 ? (
         <EmptyToday />
       ) : (
         <>
-          <section
-            id="focus"
-            className="hidden scroll-mt-28 gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4"
-          >
-            <MetricCard
-              label="Verdict"
-              value={data.overall.title}
-              detail={data.overall.summary}
-              icon={verdictIcon(data.overall.verdict)}
-              tone={verdictTone(data.overall.verdict)}
-            />
-            <MetricCard
-              label="Carry"
-              value={formatYards(data.overall.today.carryAverageYd)}
-              detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
-              icon={Zap}
-              tone={deltaTone(data.overall.carryDeltaYd, "higher")}
-            />
-            <MetricCard
-              label="Playable"
-              value={formatRate(data.overall.today.playableRate)}
-              detail={deltaText(data.overall.playableRateDelta, "pp", true)}
-              icon={Target}
-              tone={deltaTone(data.overall.playableRateDelta, "higher")}
-            />
-            <MetricCard
-              label="Straightest"
-              value={bestShotTitle(data.bestStraightShots[0])}
-              detail={bestShotDetail(data.bestStraightShots[0])}
-              icon={Crosshair}
-              tone="sky"
-            />
-          </section>
-
           <section id="charts" className="scroll-mt-28">
             <TodayShotCharts shots={chartShots} />
           </section>
 
-          <section id="clubs" className="scroll-mt-28">
-            <ClubMainStatsPanel stats={data.clubStats} />
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <section
+            id="clubs"
+            className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]"
+          >
             <DataPanel>
               <SectionHeader
                 title="Club by club"
@@ -408,7 +382,7 @@ export default async function TodayPage({
                               true,
                             )}
                           />
-                          <p className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm leading-5 text-muted-foreground">
+                          <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
                             {comparison.summary}
                           </p>
                         </MobileDataCard>
@@ -442,19 +416,17 @@ export default async function TodayPage({
               </CardContent>
             </DataPanel>
 
-            <DataPanel>
-              <SectionHeader
-                title="Straightest shots"
-                description="The day’s tightest start-line and side-carry results."
-                action={<Crosshair className="size-5 text-sky-600" />}
-              />
-              <CardContent className="space-y-2">
-                {data.bestStraightShots.map((shot) => (
-                  <StraightShotCard key={shot.id} shot={shot} />
-                ))}
-              </CardContent>
-            </DataPanel>
+            <StraightestShotsPanel
+              shots={data.bestStraightShots}
+              comparisonCount={data.clubComparisons.length}
+            />
           </section>
+
+          <section id="pbs" className="scroll-mt-28">
+            <ClubMainStatsPanel stats={data.clubStats} />
+          </section>
+
+          <TodaySocialLine data={data} challenges={challengeData.active} />
 
           <MobileAccordionSection
             title="Today’s shot list"
@@ -490,10 +462,10 @@ export default async function TodayPage({
               <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-6 py-5 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
                 <div>
                   <h2 className="text-xl font-semibold tracking-normal sm:text-2xl">
-                    Today’s shot list
+                    Raw shot list
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Only the selected day, session, and club.
+                    {integerFormatter.format(data.shots.length)} selected shots. Expand for the source rows.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -617,6 +589,166 @@ export default async function TodayPage({
   );
 }
 
+function TodayReviewHero({ data }: { data: TodayPracticeData }) {
+  const selectedClub = selectedClubLabel(data);
+  const selectedClubs = selectedClubCount(data);
+  const bestShot = data.bestStraightShots[0];
+  const scope = sessionScopeLabel(data);
+
+  return (
+    <section className="rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-6 shadow-sm">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0">
+          <StatusPill tone={verdictTone(data.overall.verdict)}>
+            Today’s practice
+          </StatusPill>
+          <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
+            Practice review
+          </h1>
+          <p className="mt-2 text-lg font-medium text-slate-800">
+            {data.dateLabel}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {integerFormatter.format(data.shots.length)} shots ·{" "}
+            {integerFormatter.format(selectedClubs)}{" "}
+            {selectedClubs === 1 ? "club" : "clubs"} · {scope}
+          </p>
+
+          <div className="mt-6 max-w-3xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Session verdict
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-slate-950">
+              {data.overall.title}
+            </h2>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-700">
+              {reviewNarrative(data)}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-emerald-100 bg-white/85 p-4 shadow-sm">
+          <p className="text-sm font-semibold text-slate-950">
+            Selected scope
+          </p>
+          <dl className="mt-4 grid gap-3 text-sm">
+            <ReviewScopeRow label="Club" value={selectedClub} />
+            <ReviewScopeRow
+              label="Selected shots"
+              value={integerFormatter.format(data.shots.length)}
+            />
+            <ReviewScopeRow
+              label="Comparison shots"
+              value={integerFormatter.format(data.comparisonShots.length)}
+            />
+            <ReviewScopeRow
+              label="Shot of the day"
+              value={bestShot ? bestShotTitle(bestShot) : "--"}
+            />
+          </dl>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <ReviewKpi
+          label="Offline"
+          value={formatYards(data.overall.today.offlineAverageYd)}
+          detail={offlineDeltaText(data.overall.offlineDeltaYd)}
+          tone={deltaTone(data.overall.offlineDeltaYd, "lower")}
+        />
+        <ReviewKpi
+          label="Straight rate"
+          value={formatRate(data.overall.today.straightRate)}
+          detail={deltaText(data.overall.straightRateDelta, "pp", true)}
+          tone={deltaTone(data.overall.straightRateDelta, "higher")}
+        />
+        <ReviewKpi
+          label="Playable"
+          value={formatRate(data.overall.today.playableRate)}
+          detail={deltaText(data.overall.playableRateDelta, "pp", true)}
+          tone={deltaTone(data.overall.playableRateDelta, "higher")}
+        />
+        <ReviewKpi
+          label="Carry"
+          value={formatYards(data.overall.today.carryAverageYd)}
+          detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
+          tone={deltaTone(data.overall.carryDeltaYd, "higher")}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ReviewScopeRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="max-w-40 truncate text-right font-semibold text-slate-950">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function ReviewKpi({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "green" | "sky" | "pink" | "amber" | "slate";
+}) {
+  return (
+    <div className="min-h-[118px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <span className={`size-2.5 rounded-full ring-4 ${reviewDotClass(tone)}`} />
+      </div>
+      <p className="mt-3 text-3xl font-semibold leading-tight tracking-normal text-slate-950">
+        {value}
+      </p>
+      <p className={reviewDeltaClass(tone)}>{detail}</p>
+    </div>
+  );
+}
+
+function MobilePlayRoute({
+  href,
+  icon,
+  title,
+  value,
+  detail,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <Link href={href} prefetch={false} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#E5E7EB] bg-white py-3">
+      <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-base font-semibold text-[#050505]">{title}</span>
+        <span className="mt-1 block text-sm font-medium text-[#050505]">{value}</span>
+        <span className="mt-0.5 block line-clamp-2 text-sm leading-5 text-[#6B7280]">{detail}</span>
+      </span>
+      <ArrowRight className="size-4 text-[#6B7280]" />
+    </Link>
+  );
+}
+
 function TodayScopeFields({ data }: { data: TodayPracticeData }) {
   return (
     <>
@@ -700,25 +832,27 @@ function TodaySocialLine({
     return null;
   }
 
-  const bestClub = data.clubComparisons[0]?.clubLabel ?? data.clubs[0]?.label ?? "This session";
-  const challenge = challenges.find((item) => item.status === "open") ?? null;
+  const bestClubRow = data.clubComparisons[0] ?? null;
+  const bestClub = bestClubRow?.clubLabel ?? data.clubs[0]?.label ?? "This session";
+  const bestClubType = bestClubRow?.clubType ?? data.clubs[0]?.type ?? "";
+  const challenge = findRelevantChallenge(challenges, bestClubType);
 
   return (
     <section className="rounded-xl border bg-white p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">Social context</p>
+          <p className="text-sm font-semibold">Compare this session</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {challenge
-              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Compare it with ${challenge.title}, then look for course boards or event entries after import.`
-              : `${bestClub} is ready to share, and imported rounds can now qualify for records or tournaments.`}
+              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Use the closest matching challenge, records, or event boards after the review.`
+              : `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Use matching imports for relevant records, tournaments, or friend boards.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm">
             <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
               <Trophy className="size-4" />
-              {challenge ? "Open challenge" : "Open feed"}
+              {challenge ? challenge.title : "Open feed"}
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm">
@@ -793,18 +927,62 @@ function HighlightGroup({
           {highlights.length}
         </Badge>
       </div>
-      <CompactReadoutGrid
-        columnsClassName="md:grid-cols-2 xl:grid-cols-3"
-        items={highlights.map((highlight) => ({
-          label: highlight.clubLabel,
-          value: `${highlight.metricLabel}: ${highlight.value}`,
-          detail: highlight.target
-            ? `${highlight.detail} ${highlight.target}`
-            : highlight.detail,
-          tone: highlightTone(highlight.kind),
-        }))}
-      />
+      <div
+        className={
+          title === "Close to PB"
+            ? "grid gap-2 md:grid-cols-2"
+            : "grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+        }
+      >
+        {highlights.map((highlight) => (
+          <HighlightCard key={highlight.id} highlight={highlight} />
+        ))}
+      </div>
     </section>
+  );
+}
+
+function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
+  const close = highlight.kind === "close";
+
+  return (
+    <div
+      className={
+        close
+          ? "rounded-xl border border-amber-100 bg-amber-50/45 px-4 py-3"
+          : "rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm"
+      }
+    >
+      <div className="flex items-center justify-between gap-3">
+        <Badge
+          variant="outline"
+          className={
+            close
+              ? "border-amber-200 bg-white/70 text-amber-800"
+              : "border-emerald-200 bg-white/70 text-emerald-700"
+          }
+        >
+          {highlight.clubLabel}
+        </Badge>
+        <span className={close ? "text-xs font-medium text-amber-800" : "text-xs font-medium text-emerald-700"}>
+          {highlight.kind === "tie" ? "Tied PB" : close ? "Close" : "New PB"}
+        </span>
+      </div>
+      <p className="mt-3 text-sm font-medium text-muted-foreground">
+        {highlight.metricLabel}
+      </p>
+      <p className={close ? "mt-1 text-xl font-semibold tracking-normal text-slate-950" : "mt-1 text-2xl font-semibold tracking-normal text-slate-950"}>
+        {highlight.value}
+      </p>
+      <p className="mt-1 text-sm leading-5 text-slate-700">
+        {highlight.detail}
+      </p>
+      {highlight.target ? (
+        <p className="mt-1 text-xs font-medium text-muted-foreground">
+          {highlight.target}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -819,10 +997,6 @@ function buildClubHighlights(stats: ClubMainStats[]) {
       (left, right) =>
         left.priority - right.priority || left.closeness - right.closeness,
     );
-}
-
-function highlightTone(kind: HighlightKind) {
-  return kind === "record" ? "green" : kind === "tie" ? "sky" : "amber";
 }
 
 function statHighlightDescriptors(
@@ -1020,8 +1194,11 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
         direction="higher"
         isRate
       />
-      <TableCell className="max-w-80 text-sm text-muted-foreground">
-        {comparison.summary}
+      <TableCell
+        className="max-w-56 text-sm text-muted-foreground"
+        title={comparison.summary}
+      >
+        {shortSignal(comparison)}
       </TableCell>
     </TableRow>
   );
@@ -1043,6 +1220,22 @@ function formatDeltaPair(
       </span>
     </span>
   );
+}
+
+function shortSignal(comparison: ClubDayComparison) {
+  const parts = [
+    isNumber(comparison.offlineDeltaYd)
+      ? offlineDeltaText(comparison.offlineDeltaYd)
+      : null,
+    isNumber(comparison.straightRateDelta)
+      ? `${deltaText(comparison.straightRateDelta, "pp", true)} straight`
+      : null,
+    isNumber(comparison.carryDeltaYd)
+      ? `${deltaText(comparison.carryDeltaYd, "yd", true)} carry`
+      : null,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.slice(0, 2).join(" · ") : comparison.summary;
 }
 
 function MetricDeltaCell({
@@ -1070,9 +1263,76 @@ function MetricDeltaCell({
   );
 }
 
-function StraightShotCard({ shot }: { shot: TodayPracticeShot }) {
+function StraightestShotsPanel({
+  shots,
+  comparisonCount,
+}: {
+  shots: TodayPracticeShot[];
+  comparisonCount: number;
+}) {
+  const visibleShots = shots.slice(0, 5);
+  const hiddenShots = shots.slice(5);
+  const panelHeight = Math.max(520, 210 + comparisonCount * 56);
+  const panelStyle = {
+    "--shot-panel-height": `${panelHeight}px`,
+  } as CSSProperties;
+
   return (
-    <div className="apple-panel-strong p-3">
+    <div style={panelStyle}>
+      <DataPanel className="xl:h-[var(--shot-panel-height)] xl:overflow-hidden">
+        <SectionHeader
+          title="Shot of the day"
+          description="Top 5 straightest shots, ranked by offline and start line."
+          action={<Crosshair className="size-5 text-sky-600" />}
+        />
+        <CardContent className="space-y-2 xl:max-h-[calc(var(--shot-panel-height)-6rem)] xl:overflow-y-auto xl:pr-3 xl:[scrollbar-gutter:stable]">
+          {visibleShots.length > 0 ? (
+            visibleShots.map((shot, index) => (
+              <StraightShotCard
+                key={shot.id}
+                shot={shot}
+                featured={index === 0}
+              />
+            ))
+          ) : (
+            <div className="apple-panel p-4 text-sm text-muted-foreground">
+              No directional shot data for this selection.
+            </div>
+          )}
+          {hiddenShots.length > 0 ? (
+            <details className="group">
+              <summary className="mt-2 flex min-h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                View all straightest shots
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-2 space-y-2">
+                {hiddenShots.map((shot) => (
+                  <StraightShotCard key={shot.id} shot={shot} />
+                ))}
+              </div>
+            </details>
+          ) : null}
+        </CardContent>
+      </DataPanel>
+    </div>
+  );
+}
+
+function StraightShotCard({
+  shot,
+  featured = false,
+}: {
+  shot: TodayPracticeShot;
+  featured?: boolean;
+}) {
+  return (
+    <div
+      className={
+        featured
+          ? "rounded-xl border border-sky-200 bg-sky-50/70 p-4"
+          : "apple-panel-strong p-3"
+      }
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold">
@@ -1080,14 +1340,14 @@ function StraightShotCard({ shot }: { shot: TodayPracticeShot }) {
             {shot.shotNumber ? `shot ${shot.shotNumber}` : ""}
           </p>
           <p className="mt-0.5 max-w-72 truncate text-sm text-muted-foreground">
-            {shot.fileName ?? shot.courseName ?? "Today"}
+            {shotSessionLabel(shot)}
           </p>
         </div>
         <Badge
           variant="outline"
           className="border-sky-200 bg-sky-50 text-sky-700"
         >
-          {formatSignedYards(shot.sideCarryYd)}
+          {formatOfflineYards(shot.sideCarryYd)}
         </Badge>
       </div>
       <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
@@ -1190,11 +1450,99 @@ function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
   }));
 }
 
-function verdictIcon(verdict: TodayPracticeData["overall"]["verdict"]) {
-  if (verdict === "better") return TrendingUp;
-  if (verdict === "worse") return TrendingDown;
-  if (verdict === "mixed") return Minus;
-  return CalendarDays;
+function reviewNarrative(data: TodayPracticeData) {
+  const { verdict, offlineDeltaYd, straightRateDelta, carryDeltaYd } =
+    data.overall;
+
+  if (
+    !isNumber(offlineDeltaYd) &&
+    !isNumber(straightRateDelta) &&
+    !isNumber(carryDeltaYd)
+  ) {
+    return data.overall.summary;
+  }
+
+  const intro =
+    verdict === "better"
+      ? "Your dispersion improved today."
+      : verdict === "worse"
+        ? "Today finished behind your previous baseline."
+        : verdict === "mixed"
+          ? "Today was a mixed session."
+          : "Today is building a new baseline.";
+  const parts: string[] = [];
+
+  if (isNumber(offlineDeltaYd)) {
+    parts.push(
+      offlineDeltaYd <= 0
+        ? `Shots finished ${numberFormatter.format(Math.abs(offlineDeltaYd))} yd closer to target on average`
+        : `Shots finished ${numberFormatter.format(offlineDeltaYd)} yd farther from target on average`,
+    );
+  }
+
+  if (isNumber(straightRateDelta)) {
+    parts.push(
+      straightRateDelta >= 0
+        ? `straight-shot rate rose by ${numberFormatter.format(straightRateDelta)} percentage points`
+        : `straight-shot rate fell by ${numberFormatter.format(Math.abs(straightRateDelta))} percentage points`,
+    );
+  }
+
+  if (isNumber(carryDeltaYd)) {
+    parts.push(
+      carryDeltaYd >= 0
+        ? `carry distance was up ${numberFormatter.format(carryDeltaYd)} yd`
+        : `carry distance was down ${numberFormatter.format(Math.abs(carryDeltaYd))} yd`,
+    );
+  }
+
+  return `${intro} ${sentenceJoin(parts)}.`;
+}
+
+function sentenceJoin(parts: string[]) {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+function selectedClubLabel(data: TodayPracticeData) {
+  if (!data.filters.club) return "All clubs";
+  return (
+    data.clubs.find((club) => club.type === data.filters.club)?.label ??
+    formatClubType(data.filters.club)
+  );
+}
+
+function selectedClubCount(data: TodayPracticeData) {
+  return new Set(data.shots.map((shot) => shot.clubType)).size;
+}
+
+function sessionScopeLabel(data: TodayPracticeData) {
+  const session = data.sessions.find(
+    (item) => item.id === data.filters.sessionId,
+  );
+  if (session) return session.label;
+  return "All sessions today";
+}
+
+function reviewDotClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
+  if (tone === "green") return "bg-emerald-500 ring-emerald-100";
+  if (tone === "pink") return "bg-pink-500 ring-pink-100";
+  if (tone === "amber") return "bg-amber-500 ring-amber-100";
+  if (tone === "sky") return "bg-sky-500 ring-sky-100";
+  return "bg-slate-400 ring-slate-200";
+}
+
+function reviewDeltaClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
+  const color =
+    tone === "green"
+      ? "text-emerald-700"
+      : tone === "pink"
+        ? "text-pink-700"
+        : tone === "amber"
+          ? "text-amber-800"
+          : "text-muted-foreground";
+  return `mt-2 text-sm font-medium ${color}`;
 }
 
 function verdictTone(verdict: TodayPracticeData["overall"]["verdict"]) {
@@ -1262,11 +1610,6 @@ function bestShotTitle(shot: TodayPracticeShot | undefined) {
   return `${formatClubType(shot.clubType)} ${shot.shotNumber ? `#${shot.shotNumber}` : ""}`;
 }
 
-function bestShotDetail(shot: TodayPracticeShot | undefined) {
-  if (!shot) return "Need directional data";
-  return `${formatSignedYards(shot.sideCarryYd)} side, ${formatYards(shot.carryYd)} carry`;
-}
-
 function formatRate(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)}%`;
 }
@@ -1279,6 +1622,36 @@ function formatSignedYards(value: number | null) {
   if (value === null) return "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${numberFormatter.format(value)} yd`;
+}
+
+function formatOfflineYards(value: number | null) {
+  if (value === null) return "--";
+  return `${numberFormatter.format(Math.abs(value))} yd offline`;
+}
+
+function shotSessionLabel(shot: TodayPracticeShot) {
+  const date = shortDateFormatter.format(shot.sessionDate);
+
+  if (shot.courseName) {
+    return `${shot.courseName} · ${date}`;
+  }
+
+  if (!shot.fileName) {
+    return `Range session · ${date}`;
+  }
+
+  const cleanName = shot.fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lowerName = cleanName.toLowerCase();
+  const label =
+    lowerName.includes("rapsodo") && lowerName.includes("range")
+      ? "Range session"
+      : titleCase(cleanName).slice(0, 36);
+
+  return `${label} · ${date}`;
 }
 
 function formatMph(value: number | null) {
@@ -1320,6 +1693,14 @@ function formatShotCategory(value: string | null) {
     .split("_")
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function titleCase(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
 }
 

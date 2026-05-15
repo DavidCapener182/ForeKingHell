@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MapPinned, Plus, RefreshCw, Route, Settings, Trophy } from "lucide-react";
+import { ArrowLeft, Filter, MapPinned, Plus, RefreshCw, Route, Search, Settings, Trophy } from "lucide-react";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { seedKnownCoursesAction } from "@/app/courses/actions";
@@ -18,6 +18,17 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import {
+  BottomSheet,
+  CourseCard,
+  MobileAppShell,
+  MobileIconButton,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +55,7 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 export default async function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const query = first(params.q).trim().slice(0, 80);
+  const activeTab = parseCourseTab(first(params.tab));
   const data = await getCoursesData();
   const displayedCourses = query
     ? data.courses.filter((course) =>
@@ -57,7 +69,141 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
+      <MobileAppShell>
+        <MobileTopBar
+          title="Courses"
+          leading={<MobileIconButton href="/courses" label="Search courses" icon={Search} />}
+          actions={
+            <BottomSheet
+              label={<><Filter className="size-4" /> Filter</>}
+              title="Course filters"
+              triggerClassName="bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+            >
+              <form className="grid gap-3">
+                <input type="hidden" name="tab" value={activeTab} />
+                <label className="grid gap-1 text-sm font-medium">
+                  Course search
+                  <input
+                    name="q"
+                    defaultValue={query}
+                    placeholder="Search course, country, or provider"
+                    className="h-11 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                    Search
+                  </Button>
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link href="/courses" prefetch={false}>Reset</Link>
+                  </Button>
+                </div>
+              </form>
+            </BottomSheet>
+          }
+        />
+        <MobileRouteTabs group="play" activeKey="courses" />
+        <MobileTabBar
+          activeKey={activeTab}
+          className="-mt-4"
+          tabs={[
+            { key: "records", label: "Records", href: "/courses" },
+            { key: "played", label: "Played", href: "/courses?tab=played" },
+            { key: "favourites", label: "Favourites", href: "/courses?tab=favourites" },
+            { key: "manage", label: "Manage", href: "/courses?tab=manage" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Course records"
+          value={`${integerFormatter.format(data.recordCount)} boards`}
+          detail={`${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`}
+          action={
+            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Link href="/course-records" prefetch={false}>Records</Link>
+            </Button>
+          }
+        />
+        {activeTab === "manage" ? (
+          <NativeListSection
+            title="Course management"
+            description="Search, seed, create and edit course data from here."
+            action={
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link href="/courses/new" prefetch={false}>New</Link>
+              </Button>
+            }
+          >
+            <div className="grid gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3">
+              <form action={seedKnownCoursesAction}>
+                <Button type="submit" variant="outline" className="w-full rounded-full">
+                  <RefreshCw className="size-4" />
+                  Seed known courses
+                </Button>
+              </form>
+              {displayedCourses.slice(0, 8).map((course) => (
+                <Link
+                  key={course.id}
+                  href={`/courses/${course.id}/holes`}
+                  prefetch={false}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-[#E5E7EB] py-3 text-sm first:border-t-0"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{course.name}</span>
+                    <span className="block truncate text-[#6B7280]">
+                      {course.teeSetCount} tee sets · {course.holeCount} mapped holes
+                    </span>
+                  </span>
+                  <Settings className="size-4 text-[#6B7280]" />
+                </Link>
+              ))}
+            </div>
+          </NativeListSection>
+        ) : (
+          <NativeListSection
+            title={activeTab === "played" ? "Played courses" : activeTab === "favourites" ? "Favourite courses" : "Record boards"}
+            description={activeTab === "records" ? "Champions and live record boards first." : undefined}
+          >
+            {(activeTab === "played" ? displayedCourses.filter((course) => course.roundCount > 0) : displayedCourses)
+              .slice(0, activeTab === "records" ? 12 : 8)
+              .map((course) => (
+                <CourseCard
+                  key={course.id}
+                  href={`/courses/${course.id}/records`}
+                  title={course.name}
+                  subtitle={course.country ?? "Course board"}
+                  media={
+                    <PageArtwork
+                      variant="fairway"
+                      alt=""
+                      crop="random"
+                      cropKey={course.id}
+                      className="block h-36 min-h-0 rounded-lg"
+                      sizes="100vw"
+                    />
+                  }
+                  champion={
+                    course.champion ? (
+                      <span>
+                        Champion: <span className="font-semibold">{course.champion.displayName}</span>
+                      </span>
+                    ) : (
+                      <span>No verified champion yet</span>
+                    )
+                  }
+                  stats={
+                    <>
+                      <span>{course.recordCount} record boards</span>
+                      <span>{course.roundCount} played rounds</span>
+                      <span>{course.teeSetCount} tee sets</span>
+                    </>
+                  }
+                />
+              ))}
+          </NativeListSection>
+        )}
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -80,6 +226,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         </div>
       </div>
 
+      <div className="hidden sm:contents">
       <PageHeader
         eyebrow={<StatusPill tone="green">Course hub</StatusPill>}
         title="Courses"
@@ -131,7 +278,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
               />
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+              <Button type="submit" className="rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 Search
               </Button>
               <Button asChild variant="outline" className="rounded-xl">
@@ -155,7 +302,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                 className="h-11 rounded-xl border bg-white px-3 text-sm"
               />
             </label>
-            <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+            <Button type="submit" className="rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               Search
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
@@ -218,9 +365,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             <p className="truncate font-semibold tracking-normal">{course.name}</p>
             <p className="mt-1 truncate text-sm text-muted-foreground">{course.country ?? "Country not set"}</p>
             <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.recordCount} records</span>
-              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.teeSetCount} tees</span>
-              <span className="rounded-lg bg-slate-50 px-2 py-2">{course.roundCount} rounds</span>
+              <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">{course.recordCount} records</span>
+              <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">{course.teeSetCount} tees</span>
+              <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">{course.roundCount} rounds</span>
             </div>
           </Link>
         ))}
@@ -366,6 +513,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
           </DataTableFrame>
         </CardContent>
       </DataPanel>
+      </div>
     </PageShell>
   );
 }
@@ -455,4 +603,12 @@ function countBy(values: string[]) {
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function parseCourseTab(value: string) {
+  if (value === "played" || value === "favourites" || value === "manage") {
+    return value;
+  }
+
+  return "records";
 }

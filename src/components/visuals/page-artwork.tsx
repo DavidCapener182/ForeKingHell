@@ -88,7 +88,7 @@ export function PageArtwork({
   return (
     <div
       className={cn(
-        "pointer-events-none relative hidden min-h-40 overflow-hidden rounded-2xl border border-white/60 bg-white/35 shadow-sm md:block",
+        "pointer-events-none relative hidden h-full min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F5F6F4] md:block",
         className,
       )}
       aria-hidden={alt === ""}

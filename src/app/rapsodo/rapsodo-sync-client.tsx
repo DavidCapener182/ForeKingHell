@@ -48,6 +48,7 @@ import {
   MobileDataList,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -550,9 +551,11 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
+    <main className="min-h-screen px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 sm:gap-6">
+        <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
+
+        <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -580,7 +583,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               size="sm"
               disabled={!canSave}
               onClick={savePreview}
-              className="rounded-xl bg-[#111827] text-white"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
             >
               <Upload className="size-4" />
               Import
@@ -714,7 +717,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                   />
-                  <Button type="submit" className="w-full bg-[#111827] text-white" disabled={isPending}>
+                  <Button type="submit" className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]" disabled={isPending}>
                     {loadingLabel === "Signing in" ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
                     Sign in to R-Cloud
                   </Button>
@@ -869,7 +872,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                       {preview.shotCount} shots, {preview.rawRowCount} raw rows, {preview.distanceUnit}
                     </CardDescription>
                   </div>
-                  <Button type="button" onClick={savePreview} disabled={!canSave} className="bg-[#111827] text-white">
+                  <Button type="button" onClick={savePreview} disabled={!canSave} className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                     {loadingLabel === "Saving shots" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
                     Save confirmed shots
                   </Button>
@@ -885,7 +888,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   <Button
                     type="button"
                     variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
-                    className={clubSelectionMode === "recommendations" ? "bg-[#111827] text-white" : ""}
+                    className={clubSelectionMode === "recommendations" ? "bg-[#0B7A3B] text-white" : ""}
                     onClick={() => applyClubSelectionMode("recommendations")}
                     disabled={isPending}
                   >
@@ -895,7 +898,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   <Button
                     type="button"
                     variant={clubSelectionMode === "rapsodo" ? "default" : "outline"}
-                    className={clubSelectionMode === "rapsodo" ? "bg-[#111827] text-white" : ""}
+                    className={clubSelectionMode === "rapsodo" ? "bg-[#0B7A3B] text-white" : ""}
                     onClick={() => applyClubSelectionMode("rapsodo")}
                     disabled={isPending}
                   >
@@ -1065,7 +1068,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     <Button
                       type="button"
                       variant={courseImportMode === "shot_only" ? "default" : "outline"}
-                      className={courseImportMode === "shot_only" ? "bg-[#111827] text-white" : ""}
+                      className={courseImportMode === "shot_only" ? "bg-[#0B7A3B] text-white" : ""}
                       onClick={() => setCourseImportMode("shot_only")}
                       disabled={isPending}
                     >
@@ -1075,7 +1078,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     <Button
                       type="button"
                       variant={courseImportMode === "scored_round" ? "default" : "outline"}
-                      className={courseImportMode === "scored_round" ? "bg-[#111827] text-white" : ""}
+                      className={courseImportMode === "scored_round" ? "bg-[#0B7A3B] text-white" : ""}
                       onClick={() => setCourseImportMode("scored_round")}
                       disabled={isPending}
                     >
@@ -1192,14 +1195,14 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               Back
             </Button>
             {visibleMobileStep === "import" ? (
-              <Button type="button" disabled={!canSave} onClick={savePreview} className="rounded-xl bg-[#111827] text-white">
+              <Button type="button" disabled={!canSave} onClick={savePreview} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 <Upload className="size-4" />
                 Import selected sessions
               </Button>
             ) : (
               <Button
                 type="button"
-                className="rounded-xl bg-[#111827] text-white"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
                 onClick={() => setMobileStep(mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id)}
               >
                 Next

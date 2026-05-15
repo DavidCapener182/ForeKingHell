@@ -101,7 +101,7 @@ export default function NewCoursePage() {
                 <FormField label="Yards" name="yards" type="number" min={1} placeholder="5839" />
               </div>
 
-              <Button type="submit" size="lg" className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+              <Button type="submit" size="lg" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
                 <Save className="size-4" />
                 Create course
               </Button>

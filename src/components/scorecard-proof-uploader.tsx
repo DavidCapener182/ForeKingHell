@@ -90,7 +90,7 @@ export function ScorecardProofUploader({
   }
 
   return (
-    <div className="grid gap-3 rounded-xl border bg-slate-50 p-3">
+    <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-3">
       <input
         type="hidden"
         name="scorecardProofToken"

@@ -3,6 +3,17 @@ import { ArrowLeft, CalendarDays, Plus, Sparkles, Trophy, Users } from "lucide-r
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import {
+  BottomSheet,
+  ChallengeCard,
+  EventHeroCard,
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
+import {
   DataPanel,
   PageHeader,
   PageShell,
@@ -13,14 +24,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChallengesPage() {
+type ChallengesPageProps = {
+  searchParams?: Promise<{ tab?: string }>;
+};
+
+export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
+  const params = await searchParams;
   const [data, billing] = await Promise.all([getChallengesPageData(), getBillingPageData()]);
+  const activeTab = parseChallengeHubTab(params?.tab);
   const featured = data.active[0] ?? data.challenges[0] ?? null;
   const friendsCompeting = data.challenges.filter((challenge) => !challenge.viewerJoined && challenge.participantCount > 0).slice(0, 4);
   const activePlanName = billing.plans.find((plan) => plan.key === billing.activePlanKey)?.name ?? titleCase(billing.activePlanKey);
@@ -32,7 +50,113 @@ export default async function ChallengesPage() {
 
   return (
     <PageShell size="7xl">
-      <div className="flex items-center justify-between gap-3">
+      <MobileAppShell>
+        <MobileTopBar title="Challenges" />
+        <MobileRouteTabs group="social" activeKey="challenges" />
+        <MobileTabBar
+          activeKey={activeTab}
+          className="-mt-4"
+          tabs={[
+            { key: "live", label: "Live", href: "/challenges" },
+            { key: "joined", label: "Joined", href: "/challenges?tab=joined" },
+            { key: "templates", label: "Templates", href: "/challenges?tab=templates" },
+            { key: "past", label: "Past", href: "/challenges?tab=past" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Live challenge boards"
+          value={`${data.active.length} active`}
+          detail={`${data.mine.length} joined · ${data.templates.length} templates`}
+          action={
+            <BottomSheet label={<><Plus className="size-4" /> Create</>} title="Create challenge">
+              {showPrivateChallengeUpgrade ? (
+                <div className="grid gap-3 text-sm text-[#6B7280]">
+                  <p>Free players can join public boards. Plus unlocks private friend challenges.</p>
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link href="/billing" prefetch={false}>View plans</Link>
+                  </Button>
+                </div>
+              ) : (
+                <form action={createChallengeAction} className="grid gap-3">
+                  <label className="grid gap-1 text-sm font-medium">
+                    Template
+                    <select name="templateId" className="h-11 rounded-lg border bg-white px-3 text-sm">
+                      {data.templates.map((template) => (
+                        <option key={template.id} value={template.id}>{template.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <Input name="title" placeholder="May Wedge Window" className="h-11 rounded-lg bg-white" required />
+                  <textarea name="description" rows={3} placeholder="Description" className="rounded-lg border bg-white px-3 py-2 text-sm" />
+                  <select name="visibility" defaultValue="friends" className="h-11 rounded-lg border bg-white px-3 text-sm">
+                    {socialVisibilityOptions.map((option) => (
+                      <option key={option} value={option}>{titleCase(option)}</option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input name="startsAt" type="date" className="h-11 rounded-lg bg-white" />
+                    <Input name="endsAt" type="date" className="h-11 rounded-lg bg-white" />
+                  </div>
+                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                    <Plus className="size-4" />
+                    Create
+                  </Button>
+                </form>
+              )}
+            </BottomSheet>
+          }
+        />
+        {activeTab === "templates" ? (
+          <NativeListSection title="Templates">
+            {data.templates.map((template) => (
+              <div key={template.id} className="rounded-lg border border-[#E5E7EB] bg-white p-3">
+                <p className="font-semibold">{template.name}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-[#6B7280]">{template.description}</p>
+              </div>
+            ))}
+          </NativeListSection>
+        ) : (
+          <>
+            {featured ? (
+              <EventHeroCard
+                eyebrow="Featured challenge"
+                title={featured.title}
+                description={featured.description ?? `${featured.templateName} · ${featured.participantCount} players`}
+                href={`/challenges/${featured.id}`}
+                actionLabel="Open"
+                media={<PageArtwork variant="range" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
+                meta={
+                  <span>
+                    {featured.endsAt ? `${formatDate(featured.endsAt)} · ` : ""}
+                    {featured.leader ? `Leader: ${featured.leader.displayName}` : "Awaiting qualifying imports"}
+                  </span>
+                }
+                joined={featured.viewerJoined ? <Badge variant="secondary">Joined</Badge> : null}
+              />
+            ) : null}
+            <NativeListSection title={activeTab === "joined" ? "Joined" : "Recommended"}>
+              {(activeTab === "joined" ? data.mine : data.challenges).slice(0, 10).map((challenge) => (
+                <ChallengeCard
+                  key={challenge.id}
+                  title={challenge.title}
+                  description={challenge.description ?? challenge.templateName}
+                  href={`/challenges/${challenge.id}`}
+                  cta="Open"
+                  leader={challenge.leader ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}` : undefined}
+                  meta={
+                    <>
+                      <span>{challenge.participantCount} players</span>
+                      <span>{titleCase(challenge.visibility)}</span>
+                    </>
+                  }
+                />
+              ))}
+            </NativeListSection>
+          </>
+        )}
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-3 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -47,6 +171,7 @@ export default async function ChallengesPage() {
         </Button>
       </div>
 
+      <div className="hidden sm:contents">
       <PageHeader
         eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
         title="Competition hub"
@@ -60,7 +185,7 @@ export default async function ChallengesPage() {
       />
 
       {featured ? (
-        <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <section className="premium-card overflow-hidden">
           <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
             <div>
               <StatusPill tone="green">Featured monthly challenge</StatusPill>
@@ -75,7 +200,7 @@ export default async function ChallengesPage() {
                 {featured.viewerRank ? <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge> : null}
               </div>
             </div>
-            <div className="grid gap-3 rounded-xl border bg-slate-50 p-4">
+            <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
               {featured.leader ? (
                 <div>
                   <p className="text-sm text-muted-foreground">Current leader</p>
@@ -83,7 +208,7 @@ export default async function ChallengesPage() {
                   <p className="text-sm text-muted-foreground">{featured.leader.scoreLabel} · {featured.leader.verificationLabel}</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No attempts yet. Be the first verified entry.</p>
+                <p className="text-sm text-muted-foreground">Awaiting qualifying imports. New imported shots update the board automatically.</p>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
@@ -132,7 +257,7 @@ export default async function ChallengesPage() {
         <DataPanel>
           <SectionHeader
             title="Public and friend boards"
-            description="Verified and mixed-source boards you can open or join."
+            description="Import-scored boards you can open or join."
             action={<Trophy className="size-5 text-amber-600" />}
           />
           <CardContent>
@@ -145,7 +270,7 @@ export default async function ChallengesPage() {
             <SectionHeader title="Templates" description="Rapsodo-friendly formats for private leagues and public boards." />
             <CardContent className="grid gap-2">
               {data.templates.map((template) => (
-                <div key={template.id} className="rounded-lg border bg-slate-50 px-3 py-2 text-sm">
+                <div key={template.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="font-medium">{template.name}</p>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{template.description}</p>
                 </div>
@@ -160,7 +285,7 @@ export default async function ChallengesPage() {
               action={<Plus className="size-5 text-emerald-600" />}
             />
             <CardContent>
-              <div className="mb-3 rounded-xl border bg-slate-50 p-3 text-sm">
+              <div className="mb-3 rounded-lg border bg-[#F5F6F4] p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-semibold">Private challenge entitlement</p>
@@ -194,14 +319,14 @@ export default async function ChallengesPage() {
                   </Button>
                 </div>
               ) : (
-                <details className="rounded-xl border bg-slate-50">
+                <details className="rounded-lg border bg-[#F5F6F4]">
                   <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                     Create challenge
                   </summary>
                   <form action={createChallengeAction} className="grid gap-4 border-t bg-white p-4">
                     <label className="grid gap-2 text-sm font-medium">
                       <span>Template</span>
-                      <select name="templateId" className="h-10 rounded-xl border bg-white px-3 text-sm">
+                      <select name="templateId" className="h-10 rounded-lg border bg-white px-3 text-sm">
                         {data.templates.map((template) => (
                           <option key={template.id} value={template.id}>
                             {template.name}
@@ -215,11 +340,11 @@ export default async function ChallengesPage() {
                     </label>
                     <label className="grid gap-2 text-sm font-medium">
                       <span>Description</span>
-                      <textarea name="description" rows={3} className="rounded-xl border bg-white px-3 py-2 text-sm" />
+                      <textarea name="description" rows={3} className="rounded-lg border bg-white px-3 py-2 text-sm" />
                     </label>
                     <label className="grid gap-2 text-sm font-medium">
                       <span>Visibility</span>
-                      <select name="visibility" defaultValue="friends" className="h-10 rounded-xl border bg-white px-3 text-sm">
+                      <select name="visibility" defaultValue="friends" className="h-10 rounded-lg border bg-white px-3 text-sm">
                         {socialVisibilityOptions.map((option) => (
                           <option key={option} value={option}>
                             {titleCase(option)}
@@ -237,7 +362,7 @@ export default async function ChallengesPage() {
                         <Input name="endsAt" type="date" className="h-10 rounded-xl bg-white" />
                       </label>
                     </div>
-                    <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                    <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                       <Plus className="size-4" />
                       Create
                     </Button>
@@ -248,6 +373,7 @@ export default async function ChallengesPage() {
           </DataPanel>
         </div>
       </section>
+      </div>
     </PageShell>
   );
 }
@@ -281,7 +407,7 @@ function ChallengeGrid({ challenges, empty = "No challenges are visible yet. Cre
               ) : null}
             </div>
             {challenge.leader ? (
-              <div className="rounded-xl border bg-white/70 p-3 text-sm">
+              <div className="rounded-lg border bg-white p-3 text-sm">
                 <p className="font-medium">Leader: {challenge.leader.displayName}</p>
                 <p className="text-muted-foreground">{challenge.leader.scoreLabel} · {challenge.leader.verificationLabel}</p>
               </div>
@@ -314,6 +440,14 @@ function formatDate(value: Date) {
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function parseChallengeHubTab(value?: string) {
+  if (value === "joined" || value === "templates" || value === "past") {
+    return value;
+  }
+
+  return "live";
 }
 
 function limitValue(value: Record<string, unknown>) {

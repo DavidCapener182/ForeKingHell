@@ -26,6 +26,7 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,7 +93,9 @@ export default async function HandicapPage() {
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <div className="flex items-center justify-between gap-4">
+      <MobileRouteHeader title="Play" group="play" activeKey="handicap" />
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -526,7 +529,7 @@ export default async function HandicapPage() {
         </CardContent>
       </DataPanel>
       <StickyMobileAction>
-        <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+        <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
             Import scorecard

@@ -92,7 +92,15 @@ const itemDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
-const hiddenRoutePrefixes = ["/login", "/auth", "/privacy", "/share", "/settings/invitations", "/feed"];
+const hiddenRoutePrefixes = [
+  "/login",
+  "/auth",
+  "/privacy",
+  "/share",
+  "/settings/invitations",
+  "/feed",
+  "/dashboard",
+];
 const railMediaQuery = "(min-width: 1024px)";
 const seenStorageKey = "fkh-social-feed-seen-at";
 

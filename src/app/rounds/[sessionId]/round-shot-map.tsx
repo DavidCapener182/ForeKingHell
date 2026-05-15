@@ -406,7 +406,7 @@ export function RoundShotMap({
               size="sm"
               className={cn(
                 "h-11 rounded-lg text-sm font-semibold",
-                hole.holeNumber === selectedHoleNumber && "bg-[#111827] text-white",
+                hole.holeNumber === selectedHoleNumber && "bg-[#0B7A3B] text-white",
               )}
               onClick={() => setSelectedHoleNumber(hole.holeNumber)}
             >
@@ -495,7 +495,7 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={distanceMode === "total" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", distanceMode === "total" && "bg-[#111827] text-white")}
+                  className={cn("h-8 rounded-[6px]", distanceMode === "total" && "bg-[#0B7A3B] text-white")}
                   onClick={() => setDistanceMode("total")}
                 >
                   Total
@@ -504,7 +504,7 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={distanceMode === "carry" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", distanceMode === "carry" && "bg-[#111827] text-white")}
+                  className={cn("h-8 rounded-[6px]", distanceMode === "carry" && "bg-[#0B7A3B] text-white")}
                   onClick={() => setDistanceMode("carry")}
                 >
                   Carry
@@ -516,7 +516,7 @@ export function RoundShotMap({
                 variant={showAllHoleShots ? "default" : "secondary"}
                 className={cn(
                   "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
-                  showAllHoleShots && "bg-[#111827] text-white",
+                  showAllHoleShots && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setShowAllHoleShots((current) => !current)}
               >
@@ -528,7 +528,7 @@ export function RoundShotMap({
                 variant={showShotNumbers ? "default" : "secondary"}
                 className={cn(
                   "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
-                  showShotNumbers && "bg-[#111827] text-white",
+                  showShotNumbers && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setShowShotNumbers((current) => !current)}
               >
@@ -539,7 +539,7 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={mapMode === "course" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", mapMode === "course" && "bg-[#111827] text-white")}
+                  className={cn("h-8 rounded-[6px]", mapMode === "course" && "bg-[#0B7A3B] text-white")}
                   onClick={() => setMapMode("course")}
                 >
                   Course
@@ -548,7 +548,7 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={mapMode === "satellite" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", mapMode === "satellite" && "bg-[#111827] text-white")}
+                  className={cn("h-8 rounded-[6px]", mapMode === "satellite" && "bg-[#0B7A3B] text-white")}
                   onClick={() => setMapMode("satellite")}
                 >
                   Satellite

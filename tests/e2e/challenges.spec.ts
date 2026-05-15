@@ -9,6 +9,9 @@ type ChallengeFixture = {
   token: string;
   templateId: string;
   challengeId: string;
+  clubId: string;
+  sessionId: string;
+  shotId: string;
   creatorUserId: string;
   friendUserId: string;
   title: string;
@@ -45,7 +48,7 @@ test.describe("challenge competition flow", () => {
     await sql?.end();
   });
 
-  test("joins a challenge, submits an attempt, ranks on the leaderboard and comments", async ({ page }) => {
+  test("joins a challenge, ranks from imported shots and comments", async ({ page }) => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
     const comment = `Challenge comment ${data.token}`;
@@ -73,28 +76,9 @@ test.describe("challenge competition flow", () => {
       .toBe(1);
 
     await page.goto(`/challenges/${data.challengeId}`);
-    const attemptForm = page.locator("[data-challenge-attempt-form]");
-    await expect(attemptForm).toBeVisible();
-    await attemptForm.locator("#challenge-attempt-score").fill("286.4");
-    await attemptForm.locator("#challenge-attempt-verification").selectOption("Rapsodo CSV");
-    await Promise.all([
-      page.waitForRequest((request) => request.method() === "POST" && request.url().includes(`/challenges/${data.challengeId}`)),
-      attemptForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
-    ]);
-
-    await expect
-      .poll(async () => {
-        const rows = await sql!`
-          select rank, score_label
-          from fkh_challenge_results
-          where challenge_id = ${data.challengeId}
-            and user_id = ${authUserId}
-        `;
-        return rows[0]?.rank ?? null;
-      }, { timeout: 60_000 })
-      .toBe(1);
-
-    await page.goto(`/challenges/${data.challengeId}`);
+    await expect(page.locator("[data-challenge-attempt-form]")).toHaveCount(0);
+    await expect(page.locator("body")).toContainText("Imported shot status");
+    await expect(page.locator("body")).toContainText("Imported shots only");
     await expect(page.locator("body")).toContainText("286.4 yd");
     await page.getByPlaceholder("Add a comment").fill(comment);
     await page.getByRole("button", { name: /^Comment$/ }).click();
@@ -119,10 +103,14 @@ async function seedChallengeFixture(sql: Sql, authUserId: string): Promise<Chall
   const token = randomUUID().slice(0, 8);
   const templateId = randomUUID();
   const challengeId = randomUUID();
+  const clubId = randomUUID();
+  const sessionId = randomUUID();
+  const shotId = randomUUID();
   const creatorUserId = randomUUID();
   const friendUserId = randomUUID();
   const title = `Playwright Longest Drive ${token}`;
   const now = new Date();
+  const startsAt = new Date(now.getTime() - 60 * 60 * 1000);
 
   await sql`
     insert into fkh_users (id, email, name, updated_at)
@@ -166,16 +154,77 @@ async function seedChallengeFixture(sql: Sql, authUserId: string): Promise<Chall
       'public',
       'open',
       '{"metric":"total_yards","clubTypes":["driver"],"minShots":1}'::jsonb,
-      ${now},
+      ${startsAt},
       ${new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)},
       ${now}
     )
   `;
+  await sql`
+    insert into fkh_clubs (id, user_id, type, brand, model, normalized_club_key, active, updated_at)
+    values (${clubId}, ${authUserId}, 'driver', 'Playwright', 'Imported Driver', ${`playwright-driver-${token}`}, true, ${now})
+  `;
+  await sql`
+    insert into fkh_sessions (
+      id,
+      user_id,
+      source,
+      type,
+      date,
+      raw_upload_id,
+      file_name,
+      raw_csv_hash,
+      raw_csv_text
+    )
+    values (
+      ${sessionId},
+      ${authUserId},
+      'rapsodo',
+      'range',
+      ${now},
+      ${`playwright-challenge-${token}`},
+      ${`playwright-challenge-${token}.csv`},
+      ${`playwright-challenge-${token}`},
+      'club,total,carry,side'
+    )
+  `;
+  await sql`
+    insert into fkh_shots (
+      id,
+      user_id,
+      session_id,
+      club_id,
+      shot_at,
+      club_type,
+      shot_number,
+      carry_yd,
+      total_yd,
+      side_carry_yd,
+      shot_category,
+      source_raw_json
+    )
+    values (
+      ${shotId},
+      ${authUserId},
+      ${sessionId},
+      ${clubId},
+      ${now},
+      'driver',
+      1,
+      271.2,
+      286.4,
+      3.4,
+      'tee',
+      '{"source":"playwright"}'::jsonb
+    )
+  `;
 
-  return { token, templateId, challengeId, creatorUserId, friendUserId, title };
+  return { token, templateId, challengeId, clubId, sessionId, shotId, creatorUserId, friendUserId, title };
 }
 
 async function cleanupChallengeFixture(sql: Sql, fixture: ChallengeFixture, authUserId: string) {
+  await sql`delete from fkh_shots where id = ${fixture.shotId}`;
+  await sql`delete from fkh_sessions where id = ${fixture.sessionId}`;
+  await sql`delete from fkh_clubs where id = ${fixture.clubId}`;
   await sql`delete from fkh_challenges where id = ${fixture.challengeId}`;
   await sql`delete from fkh_challenge_templates where id = ${fixture.templateId}`;
   await sql`

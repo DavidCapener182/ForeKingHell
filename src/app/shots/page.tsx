@@ -25,6 +25,7 @@ import {
   PageShell,
   StickyMobileAction,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
@@ -79,7 +80,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
   return (
     <PageShell>
-        <div className="flex items-center justify-between gap-4">
+        <MobileRouteHeader title="Analyse" group="analyse" activeKey="shots" />
+
+        <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -111,7 +114,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           metricValue={integerFormatter.format(stats.shotCount)}
           metricDetail={`${integerFormatter.format(totalFilteredShots)} matching`}
           action={
-            <Button asChild size="sm" className="rounded-xl bg-[#111827] text-white">
+            <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Link href="#filters">Filter</Link>
             </Button>
           }
@@ -212,7 +215,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               )}
             </MobileDataList>
             {rowTypes.length > 0 ? (
-              <details className="mt-3 rounded-lg border bg-slate-50/80 px-3 py-2 text-sm">
+              <details className="mt-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
                 <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
                   Raw CSV archive
                 </summary>
@@ -354,7 +357,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                         <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                         <DataPair label="Total" value={formatMetric(shot.totalYd)} />
                         <DataPair label="Side" value={formatMetric(shot.sideCarryYd)} />
-                        <details className="rounded-lg bg-slate-50/80 px-3 py-2 text-sm">
+                        <details className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                           <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
                             Advanced
                           </summary>
@@ -441,7 +444,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           </CardContent>
         </Card>
         <StickyMobileAction>
-          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
+          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href="#filters">
               Filter / sort shots
             </Link>

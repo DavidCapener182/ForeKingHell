@@ -95,7 +95,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
         title={`${clubName} analytics`}
         description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved Rapsodo data.`}
         actions={
-          <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
+          <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href={`/bag/${club.id}`} prefetch={false}>
               <Target className="size-4" />
               Standard club view
@@ -134,7 +134,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
             action={<Brain className="size-5 text-emerald-500" />}
           />
           <CardContent className="space-y-4">
-            <div className="rounded-2xl border bg-[#111827] p-5 text-white shadow-sm">
+            <div className="rounded-xl border bg-[#0B7A3B] p-5 text-white shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-sm text-white/60">Recommended practice</p>

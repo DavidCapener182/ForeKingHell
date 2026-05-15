@@ -120,7 +120,7 @@ export function ClubAnalysisTabs({
               size="sm"
               variant={distanceView === "carry" ? "default" : "ghost"}
               onClick={() => setDistanceView("carry")}
-              className={distanceView === "carry" ? "bg-[#111827] text-white" : ""}
+              className={distanceView === "carry" ? "bg-[#0B7A3B] text-white" : ""}
             >
               Carry
             </Button>
@@ -129,7 +129,7 @@ export function ClubAnalysisTabs({
               size="sm"
               variant={distanceView === "total" ? "default" : "ghost"}
               onClick={() => setDistanceView("total")}
-              className={distanceView === "total" ? "bg-[#111827] text-white" : ""}
+              className={distanceView === "total" ? "bg-[#0B7A3B] text-white" : ""}
             >
               Total
             </Button>

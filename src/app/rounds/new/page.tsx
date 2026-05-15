@@ -10,6 +10,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -25,7 +26,9 @@ export default async function NewRoundPage() {
 
   return (
     <PageShell size="full">
-      <div className="flex items-center justify-between gap-4">
+      <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/rounds" prefetch={false}>
             <ArrowLeft className="size-4" />

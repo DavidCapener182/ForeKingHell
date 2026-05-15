@@ -87,7 +87,12 @@ function fakeCoachSummary() {
         averagePlayableRate: 58,
       },
       signals: [],
+      trends: [],
       practicePlan: [],
+      bestSignal: null,
+      coachSummary: [],
+      dataGaps: [],
+      trustLadder: [],
       clubRows: [],
       journey: [],
       rankings: {

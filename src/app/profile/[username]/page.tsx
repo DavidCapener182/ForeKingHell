@@ -134,7 +134,7 @@ function ProfileActions({
       <form action={sendFriendRequestAction}>
         <input type="hidden" name="recipientUserId" value={userId} />
         <input type="hidden" name="next" value={next} />
-        <Button type="submit" className="bg-[#111827] text-white">
+        <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <UserPlus className="size-4" />
           Add friend
         </Button>

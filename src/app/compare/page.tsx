@@ -16,6 +16,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
@@ -64,7 +65,9 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
 
   return (
     <PageShell size="full">
-      <div className="flex items-center justify-between gap-4">
+      <MobileRouteHeader title="Analyse" group="analyse" activeKey="compare" />
+
+      <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -90,7 +93,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             : "Pick two clubs to compare their saved shot data directly."
         }
         actions={
-          <Button asChild size="lg" className="rounded-xl bg-[#111827] text-white">
+          <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href="/shots" prefetch={false}>
               <Crosshair className="size-4" />
               Open shots
@@ -204,7 +207,7 @@ function ClubCompareForm({ data }: { data: ClubCompareData }) {
             ))}
           </SelectField>
           <div className="flex gap-2">
-            <Button type="submit" className="bg-[#111827] text-white">Compare</Button>
+            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">Compare</Button>
             <Button asChild variant="outline">
               <Link href="/compare" prefetch={false}>Reset</Link>
             </Button>

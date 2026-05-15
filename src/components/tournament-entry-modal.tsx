@@ -30,7 +30,7 @@ export function TournamentEntryModal({
 
   return (
     <>
-      <Button type="button" className="w-full rounded-xl bg-[#111827] text-white" onClick={() => setOpen(true)}>
+      <Button type="button" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]" onClick={() => setOpen(true)}>
         {triggerLabel}
       </Button>
 
@@ -64,7 +64,7 @@ export function TournamentEntryModal({
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                   Accept & enter tournament
                 </Button>
               </div>

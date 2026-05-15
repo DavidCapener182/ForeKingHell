@@ -568,7 +568,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           metricValue={aggregate.shotCount.toString()}
           metricDetail={uploadedFiles.length > 0 ? `${uploadedFiles.length} file${uploadedFiles.length === 1 ? "" : "s"}` : "No files"}
           action={
-            <Button type="button" size="sm" disabled={!canSave} onClick={saveImportBatch} className="rounded-xl bg-[#111827] text-white">
+            <Button type="button" size="sm" disabled={!canSave} onClick={saveImportBatch} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Upload className="size-4" />
               Save
             </Button>
@@ -607,7 +607,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                 size="lg"
                 disabled={!canSave}
                 onClick={saveImportBatch}
-                className="w-full bg-[#111827] text-white sm:w-auto"
+                className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-auto"
               >
                 <Upload className="size-4" />
                 {isPending ? "Saving..." : "Save batch"}
@@ -655,7 +655,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
               {saveState.status === "success" ? (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {saveState.savedSessionId ? (
-                    <Button asChild size="sm" className="bg-[#111827] text-white">
+                    <Button asChild size="sm" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                       <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
                         <GitCompareArrows className="size-4" />
                         Compare this session
@@ -737,7 +737,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                             <span className="text-muted-foreground"> - {achievement.description}</span>
                           </span>
                           <span className="flex shrink-0 items-center gap-2">
-                            <Badge className="w-fit bg-[#111827] text-white hover:bg-[#111827]">
+                            <Badge className="w-fit bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                               +{achievement.xpAwarded.toLocaleString("en-GB")} XP
                             </Badge>
                             <ExternalLink className="size-3.5 text-emerald-700" />
@@ -890,14 +890,14 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
               Back
             </Button>
             {visibleMobileStep === "save" ? (
-              <Button type="button" disabled={!canSave} onClick={saveImportBatch} className="rounded-xl bg-[#111827] text-white">
+              <Button type="button" disabled={!canSave} onClick={saveImportBatch} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
                 <Upload className="size-4" />
                 {isPending ? "Saving..." : "Save batch"}
               </Button>
             ) : (
               <Button
                 type="button"
-                className="rounded-xl bg-[#111827] text-white"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
                 onClick={() => setMobileStep(mobileImportSteps[Math.min(mobileImportSteps.length - 1, activeMobileStepIndex + 1)].id)}
               >
                 Next

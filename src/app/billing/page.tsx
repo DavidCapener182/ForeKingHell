@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Check, CreditCard, Sparkles, Trophy, Zap } from "lucide-react";
 
 import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
   return (
     <PageShell size="7xl">
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
+      <MobileRouteHeader title="Platform" group="platform" activeKey="billing" />
+
+      <header className="premium-hero p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <StatusPill tone="sky">Pricing</StatusPill>
@@ -47,7 +50,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           )}
         </div>
         {params?.checkout || params?.portal ? (
-          <div className="mt-4 rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+          <div className="mt-4 rounded-lg border bg-[#F5F6F4] px-4 py-3 text-sm text-muted-foreground">
             {billingStatusMessage(params.checkout, params.portal, params.plan)}
           </div>
         ) : null}
@@ -67,9 +70,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Current plan</p>
-            <div className="mt-3 rounded-xl bg-slate-50 p-4">
+            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
               <p className="text-2xl font-semibold tracking-normal">{planLabel(data.plans, data.activePlanKey)}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.activePlanKey === "full"
@@ -92,7 +95,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </form>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Upgrade prompts</p>
             <div className="mt-3 grid gap-2">
               <Prompt icon={<Trophy className="size-4 text-amber-600" />} text="Plus unlocks private course records and friend tournaments." />
@@ -101,7 +104,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Manage access</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               Billing changes update plan entitlements through the Stripe webhook. Social privacy stays controlled from your profile.
@@ -133,7 +136,7 @@ function PlanCard({
   limits: Array<{ id: string; limitKey: string; limitValueJson: Record<string, unknown> }>;
 }) {
   return (
-    <article className="rounded-xl border bg-white p-5 shadow-sm">
+    <article className="premium-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Badge variant={active ? "secondary" : "outline"}>{active ? "Current" : plan.audience}</Badge>
@@ -155,7 +158,7 @@ function PlanCard({
         ))}
       </ul>
       {limits.length > 0 ? (
-        <div className="mt-4 grid gap-2 rounded-xl bg-slate-50 p-3">
+        <div className="mt-4 grid gap-2 rounded-lg bg-[#F5F6F4] p-3">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Usage limits</p>
           {limits.map((limit) => (
             <p key={limit.id} className="text-sm">
@@ -166,7 +169,7 @@ function PlanCard({
       ) : null}
       <form action={createCheckoutAction} className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
         <input type="hidden" name="planKey" value={plan.key} />
-        <select name="interval" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm" disabled={plan.key === "free"}>
+        <select name="interval" className="h-9 rounded-lg border bg-white px-3 text-sm" disabled={plan.key === "free"}>
           <option value="monthly">Monthly</option>
           <option value="yearly">Yearly</option>
         </select>
@@ -180,7 +183,7 @@ function PlanCard({
 
 function Prompt({ icon, text }: { icon: ReactNode; text: string }) {
   return (
-    <div className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+    <div className="flex items-start gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
       {icon}
       <span>{text}</span>
     </div>
@@ -189,7 +192,7 @@ function Prompt({ icon, text }: { icon: ReactNode; text: string }) {
 
 function Price({ label: priceLabel, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-slate-50 px-3 py-2">
+    <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
       <p className="text-xs text-muted-foreground">{priceLabel}</p>
       <p className="mt-1 text-lg font-semibold tracking-normal">{value}</p>
     </div>

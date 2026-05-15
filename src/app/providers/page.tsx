@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Cable, CheckCircle2, Database, FileSpreadsheet, FlaskConical, GitCompareArrows, Upload } from "lucide-react";
 
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,9 @@ export default async function ProvidersPage() {
 
   return (
     <PageShell size="7xl">
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
+      <MobileRouteHeader title="Platform" group="platform" activeKey="providers" />
+
+      <header className="premium-hero p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <StatusPill tone="sky">Import expansion</StatusPill>
@@ -40,7 +43,7 @@ export default async function ProvidersPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {data.providers.map((provider) => (
-          <article key={provider.providerKind} className="rounded-xl border bg-white p-4 shadow-sm">
+          <article key={provider.providerKind} className="premium-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge variant={provider.status === "live" ? "secondary" : "outline"}>{provider.status}</Badge>
@@ -71,7 +74,7 @@ export default async function ProvidersPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-        <main className="rounded-xl border bg-white p-4 shadow-sm">
+        <main className="premium-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <Database className="size-4 text-sky-600" />
             Recent provider sessions
@@ -81,7 +84,7 @@ export default async function ProvidersPage() {
               <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No provider sessions recorded yet.</p>
             ) : (
               data.sessions.map((session) => (
-                <div key={session.id} className="rounded-xl border bg-slate-50 px-3 py-2 text-sm">
+                <div key={session.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="font-medium">{session.title ?? session.providerSessionId}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {session.providerKind} · {session.sessionDate ? dateFormatter.format(session.sessionDate) : "No date"} · {session.importedAt ? "imported" : "pending"}
@@ -93,14 +96,14 @@ export default async function ProvidersPage() {
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <FileSpreadsheet className="size-4 text-emerald-600" />
               Source files
             </p>
             <div className="mt-3 grid gap-2">
               {data.files.slice(0, 8).map((file) => (
-                <div key={file.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <div key={file.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="truncate font-medium">{file.fileName}</p>
                   <p className="text-xs text-muted-foreground">{file.providerKind} · {file.status}</p>
                 </div>
@@ -109,14 +112,14 @@ export default async function ProvidersPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <FlaskConical className="size-4 text-amber-600" />
               Import job status
             </p>
             <div className="mt-3 grid gap-2">
               {data.jobs.slice(0, 6).map((job) => (
-                <div key={job.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                <div key={job.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="font-medium">{job.providerKind} · {job.status}</p>
                   <p className="text-xs text-muted-foreground">{job.detectedProviderKind ?? "No detected provider"}{job.errorMessage ? ` · ${job.errorMessage}` : ""}</p>
                 </div>
@@ -125,7 +128,7 @@ export default async function ProvidersPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <Cable className="size-4 text-slate-700" />
               Adapter contract
@@ -142,7 +145,7 @@ export default async function ProvidersPage() {
 
 function Mini({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border bg-slate-50 px-2 py-2">
+    <div className="rounded-lg border bg-[#F5F6F4] px-2 py-2">
       <p className="text-lg font-semibold tracking-normal">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
@@ -151,7 +154,7 @@ function Mini({ label, value }: { label: string; value: number }) {
 
 function ProviderStep({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+    <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
       <span className="text-muted-foreground">{label}</span>
       <span className={done ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
         {done ? "Ready" : "Queued"}

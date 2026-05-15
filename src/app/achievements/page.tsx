@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, Award, Flag, Share2, Target, Trophy, Upload, Users } from "lucide-react";
 
 import { AchievementsClient } from "@/app/achievements/achievements-client";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { AchievementArtwork } from "@/components/visuals/achievement-artwork";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,9 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
 
   return (
     <PageShell>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <MobileRouteHeader title="Improve" group="improve" activeKey="achievements" />
+
+        <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -88,7 +91,7 @@ function AchievementSocialPanel({
   const rarePercent = data.totalCount > 0 ? Math.round((data.unlockedCount / data.totalCount) * 100) : 0;
 
   return (
-    <section className="grid gap-3 rounded-xl border bg-white p-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <section className="premium-card grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div>
         <p className="text-sm font-semibold">Achievement social layer</p>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">

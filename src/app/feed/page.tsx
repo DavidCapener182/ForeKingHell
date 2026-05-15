@@ -1,13 +1,25 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, BarChart3, Filter, Lock, MessageCircle, Plus, Radio, Trophy, Upload, Users, Zap } from "lucide-react";
+import { Award, BarChart3, Bell, Filter, Lock, MessageCircle, Plus, Radio, Search, Trophy, Upload, Users, Zap } from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import {
+  ActivityCard,
+  EventHeroCard,
+  MobileAppShell,
+  MobileIconButton,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
+import {
   PageShell,
   StatusPill,
 } from "@/components/premium";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { getFeedPageData } from "@/lib/social";
 
@@ -45,9 +57,88 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
 
   return (
     <PageShell size="7xl" className="bg-slate-50/20">
-      <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
+      <MobileAppShell>
+        <MobileTopBar
+          title="Social"
+          actions={
+            <>
+              <MobileIconButton href="/feed?filter=all" label="Search feed" icon={Search} />
+              <MobileIconButton href="/friends" label="Messages" icon={MessageCircle} />
+              <MobileIconButton href="/achievements" label="Notifications" icon={Bell} />
+            </>
+          }
+        />
+        <MobileRouteTabs group="social" activeKey="feed" />
+        <MobileTabBar
+          activeKey={mobileFeedTab(activeFilter)}
+          className="-mt-4"
+          tabs={[
+            { key: "all", label: "All", href: "/feed" },
+            { key: "friends", label: "Friends", href: "/feed?filter=friends" },
+            { key: "records", label: "Records", href: "/feed?filter=records" },
+            { key: "events", label: "Events", href: "/feed?filter=tournaments" },
+            { key: "me", label: "Me", href: "/feed?filter=me" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Today’s golf goal"
+          value="PW Launch Window"
+          detail="12 shots · 24-34° launch window · Rapsodo proof accepted"
+          action={
+            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Link href="/challenges" prefetch={false}>Start</Link>
+            </Button>
+          }
+        />
+        {filteredItems[0] ? (
+          <NativeListSection title="Latest activity">
+            {filteredItems.slice(0, 8).map((item) => (
+              <ActivityCard
+                key={item.id}
+                avatar={
+                  <SocialAvatar
+                    displayName={item.profile.displayName}
+                    username={item.profile.username}
+                    avatarUrl={item.profile.avatarUrl}
+                    href={`/profile/${item.profile.username}`}
+                    size="sm"
+                  />
+                }
+                actor={item.profile.displayName}
+                meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
+                title={item.headline}
+                description={item.context}
+                metric={item.metricValue ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}` : feedTypeLabel(item.itemType)}
+                reactionCount={item.reactionCount}
+                commentCount={item.commentCount}
+                media={
+                  <PageArtwork
+                    variant={artworkForFeedType(item.itemType)}
+                    alt=""
+                    crop="random"
+                    cropKey={item.id}
+                    className="block h-40 min-h-0"
+                    sizes="100vw"
+                  />
+                }
+              />
+            ))}
+          </NativeListSection>
+        ) : (
+          <EventHeroCard
+            eyebrow="No activity yet"
+            title="Import a Rapsodo session"
+            description="PBs, records, achievements and event eligibility will appear here first."
+            href="/import"
+            actionLabel="Import"
+            media={<PageArtwork variant="fairway" alt="" className="h-full min-h-0" sizes="100vw" />}
+          />
+        )}
+      </MobileAppShell>
+
+      <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
         <aside className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
-          <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
+          <section className="premium-card overflow-hidden">
             <div className="h-20 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)]" />
             <div className="grid gap-3 p-4 pt-0">
               <div className="-mt-8">
@@ -75,7 +166,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
+          <section className="premium-card p-3">
             <p className="px-1 text-sm font-semibold">Social shortcuts</p>
             <div className="mt-2 grid gap-1">
               <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
@@ -89,7 +180,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         </aside>
 
         <main className="grid gap-4">
-          <header className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+          <header className="premium-hero p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <StatusPill tone="green">Social feed</StatusPill>
@@ -115,7 +206,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </header>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold">
@@ -137,7 +228,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
               <SocialAvatar
                 displayName={data.profile.displayName}
@@ -196,7 +287,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </section>
           ) : null}
 
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
+          <section className="premium-card p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="flex items-center gap-1.5 px-1 text-sm font-semibold">
                 <Filter className="size-4 text-slate-600" />
@@ -216,7 +307,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Network pulse</p>
             <div className="mt-3 grid gap-2">
               <PulseRow icon={<Zap className="size-4 text-emerald-600" />} label="Total XP" value={numberFormatter.format(data.totalXp)} />
@@ -226,7 +317,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Privacy state</p>
             <div className="mt-3 grid gap-3 text-sm text-muted-foreground">
               <p>Default feed visibility is <span className="font-medium text-foreground">{data.profile.feedVisibilityDefault}</span>.</p>
@@ -243,6 +334,12 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
 }
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 const feedFilters: Array<{ key: FeedFilter; label: string }> = [
   { key: "all", label: "All" },
@@ -258,7 +355,7 @@ const feedFilters: Array<{ key: FeedFilter; label: string }> = [
 
 function MiniStat({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="rounded-lg border bg-slate-50 px-3 py-2">
+    <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
       <p className="text-lg font-semibold tracking-normal">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
@@ -267,7 +364,7 @@ function MiniStat({ label, value }: { label: string; value: ReactNode }) {
 
 function SideLink({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
-    <Link href={href} prefetch={false} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium hover:bg-slate-50">
+    <Link href={href} prefetch={false} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium hover:bg-[#F5F6F4]">
       {icon}
       {label}
     </Link>
@@ -276,7 +373,7 @@ function SideLink({ href, icon, label }: { href: string; icon: ReactNode; label:
 
 function PulseRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
       <span className="flex items-center gap-2 text-muted-foreground">
         {icon}
         {label}
@@ -288,7 +385,7 @@ function PulseRow({ icon, label, value }: { icon: ReactNode; label: string; valu
 
 function BadgeLike({ icon, label }: { icon: ReactNode; label: string }) {
   return (
-    <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-slate-50 px-2.5 text-xs font-medium">
+    <span className="inline-flex h-8 items-center gap-1.5 rounded-lg border bg-[#F5F6F4] px-2.5 text-xs font-medium">
       {icon}
       {label}
     </span>
@@ -302,6 +399,41 @@ function xpFromFeedItem(metricValue: string | null) {
 
 function parseFeedFilter(value: string | undefined): FeedFilter {
   return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "all";
+}
+
+function mobileFeedTab(filter: FeedFilter) {
+  if (filter === "friends") return "friends";
+  if (filter === "records") return "records";
+  if (filter === "tournaments" || filter === "challenges") return "events";
+  if (filter === "me") return "me";
+  return "all";
+}
+
+function artworkForFeedType(type: string) {
+  if (type.includes("tournament") || type.includes("round")) {
+    return "scorecard" as const;
+  }
+
+  if (type.includes("challenge")) {
+    return "range" as const;
+  }
+
+  if (type.includes("achievement")) {
+    return "achievements" as const;
+  }
+
+  if (type.includes("pb") || type.includes("drive")) {
+    return "stockYardages" as const;
+  }
+
+  return "fairway" as const;
+}
+
+function feedTypeLabel(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function filterFeedItems(items: Awaited<ReturnType<typeof getFeedPageData>>["items"], filter: FeedFilter, viewerUserId: string) {

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Brain, Flag, MessageSquareWarning, ShieldAlert, Sparkles } from "lucide-react";
 
 import { generateSocialSummaryAction, reportSocialTargetAction } from "@/app/social-intelligence/actions";
+import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ export default async function SocialIntelligencePage() {
 
   return (
     <PageShell size="7xl">
+      <MobileRouteHeader title="Social" group="social" activeKey="recaps" />
+
       <header className="rounded-xl border bg-white p-5 shadow-sm">
         <StatusPill tone="sky">Recaps and safety</StatusPill>
         <h1 className="mt-3 text-3xl font-semibold tracking-normal">Recaps & Safety</h1>

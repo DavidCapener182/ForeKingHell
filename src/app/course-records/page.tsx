@@ -1,6 +1,17 @@
 import Link from "next/link";
-import { ArrowLeft, Medal, ShieldCheck, Trophy } from "lucide-react";
+import { ArrowLeft, Medal, Search, ShieldCheck, Trophy } from "lucide-react";
 
+import {
+  CourseRecordCard,
+  EventHeroCard,
+  MobileAppShell,
+  MobileIconButton,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTabBar,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +28,80 @@ export default async function CourseRecordsPage() {
 
   return (
     <PageShell size="7xl">
-      <div className="flex items-center justify-between gap-3">
+      <MobileAppShell>
+        <MobileTopBar
+          title="Course Records"
+          leading={<MobileIconButton href="/courses" label="Courses" icon={ArrowLeft} />}
+          actions={<MobileIconButton href="/courses" label="Search records" icon={Search} />}
+        />
+        <MobileRouteTabs group="play" activeKey="records" />
+        <MobileTabBar
+          activeKey="all"
+          className="-mt-4"
+          tabs={[
+            { key: "all", label: "All", href: "/course-records" },
+            { key: "friends", label: "Friends", href: "/leaderboard?tab=courses" },
+            { key: "monthly", label: "Monthly", href: "/leaderboard?tab=monthly" },
+            { key: "mine", label: "Mine", href: "/profile?tab=records" },
+          ]}
+        />
+        <MobileStatusAction
+          label="Verified course champions"
+          value={integerFormatter.format(data.verifiedChampions)}
+          detail={`${integerFormatter.format(data.totalRecords)} record boards across visible courses`}
+          action={
+            featured ? (
+              <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                <Link href={`/courses/${featured.id}/records`} prefetch={false}>Open</Link>
+              </Button>
+            ) : null
+          }
+        />
+        {featured ? (
+          <EventHeroCard
+            eyebrow="Featured champion"
+            title={featured.name}
+            description={
+              featured.champion
+                ? `${featured.champion.displayName} leads with ${featured.champion.scoreLabel}`
+                : "No champion yet. Set the first verified mark."
+            }
+            href={`/courses/${featured.id}/records`}
+            actionLabel="Challenge"
+            meta={<span>{featured.recordCount} boards · {featured.liveAttemptCount} live attempts</span>}
+            media={
+              <PageArtwork
+                variant="fairway"
+                alt=""
+                crop="random"
+                cropKey={featured.id}
+                className="block h-full min-h-0 rounded-none"
+                sizes="100vw"
+              />
+            }
+          />
+        ) : null}
+        <NativeListSection title="Honours boards">
+          {data.courses.map((course) => (
+            <CourseRecordCard
+              key={course.id}
+              href={`/courses/${course.id}/records`}
+              title={course.name}
+              champion={course.champion?.displayName}
+              score={course.champion?.scoreLabel}
+              proof={course.champion?.verificationTier}
+              cta="Open"
+            />
+          ))}
+          {data.courses.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+              No courses are available yet. Seed known courses from Courses.
+            </p>
+          ) : null}
+        </NativeListSection>
+      </MobileAppShell>
+
+      <div className="hidden items-center justify-between gap-3 sm:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/courses" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -32,7 +116,8 @@ export default async function CourseRecordsPage() {
         </Button>
       </div>
 
-      <header className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <div className="hidden sm:contents">
+      <header className="premium-hero overflow-hidden">
         <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
           <div>
             <StatusPill tone="amber">Course records</StatusPill>
@@ -46,7 +131,7 @@ export default async function CourseRecordsPage() {
               <Badge variant="outline">Gold · Silver · Bronze proof</Badge>
             </div>
           </div>
-          <div className="rounded-xl border bg-slate-50 p-3">
+          <div className="rounded-lg border bg-[#F5F6F4] p-3">
             <p className="text-sm font-semibold">Today’s board</p>
             {featured ? (
               <Link href={`/courses/${featured.id}/records`} prefetch={false} className="mt-3 block">
@@ -78,7 +163,7 @@ export default async function CourseRecordsPage() {
             key={course.id}
             href={`/courses/${course.id}/records`}
             prefetch={false}
-            className="rounded-xl border bg-white p-4 shadow-sm transition hover:border-emerald-300"
+            className="premium-card p-4 transition hover:border-emerald-300"
           >
             <PageArtwork
               variant="fairway"
@@ -95,7 +180,7 @@ export default async function CourseRecordsPage() {
               </div>
               <Badge variant="outline">{course.recordCount}</Badge>
             </div>
-            <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
+            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-3 text-sm">
               {course.champion ? (
                 <>
                   <p className="flex items-center gap-2 font-medium">
@@ -121,6 +206,7 @@ export default async function CourseRecordsPage() {
           </div>
         ) : null}
       </section>
+      </div>
     </PageShell>
   );
 }

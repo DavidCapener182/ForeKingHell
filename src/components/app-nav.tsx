@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Award,
   Brain,
@@ -19,7 +19,6 @@ import {
   LineChart,
   LogOut,
   MapPinned,
-  MoreHorizontal,
   Radio,
   Settings,
   ShieldAlert,
@@ -242,11 +241,15 @@ const adminNavItem = {
 
 const mobilePrimaryItems = [
   {
-    href: "/today",
-    label: "Today",
-    icon: CalendarDays,
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: Gauge,
     isActive: (pathname: string) =>
-      pathname === "/" || pathname.startsWith("/today"),
+      pathname === "/" ||
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/today") ||
+      pathname.startsWith("/progress") ||
+      pathname.startsWith("/strokes-gained"),
   },
   {
     href: "/rounds",
@@ -256,80 +259,79 @@ const mobilePrimaryItems = [
       pathname.startsWith("/rounds") ||
       pathname.startsWith("/courses") ||
       pathname.startsWith("/course-records") ||
-      pathname.startsWith("/tournaments"),
+      pathname.startsWith("/tournaments") ||
+      pathname.startsWith("/handicap"),
   },
   {
     href: "/bag",
-    label: "Bag",
+    label: "Analyse",
     icon: Target,
-    isActive: (pathname: string) => pathname.startsWith("/bag"),
-  },
-  {
-    href: "/feed",
-    label: "Feed",
-    icon: Radio,
-    isActive: (pathname: string) => pathname.startsWith("/feed"),
+    isActive: (pathname: string) =>
+      pathname.startsWith("/bag") ||
+      pathname.startsWith("/shots") ||
+      pathname.startsWith("/compare") ||
+      pathname.startsWith("/equipment") ||
+      pathname.startsWith("/rapsodo"),
   },
   {
     href: "/coach",
-    label: "Coach",
+    label: "Improve",
     icon: Brain,
-    isActive: (pathname: string) => pathname.startsWith("/coach"),
-  },
-];
-
-const mobileMoreGroups = [
-  {
-    label: "Play",
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: Gauge },
-      { href: "/courses", label: "Courses", icon: MapPinned },
-      { href: "/handicap", label: "Handicap", icon: Calculator },
-    ],
+    isActive: (pathname: string) =>
+      pathname.startsWith("/coach") ||
+      pathname.startsWith("/achievements") ||
+      pathname.startsWith("/settings"),
   },
   {
-    label: "Analyse",
-    items: [
-      { href: "/compare", label: "Compare", icon: GitCompareArrows },
-      { href: "/equipment", label: "Equipment", icon: Wrench },
-      { href: "/rapsodo", label: "Rapsodo", icon: Upload },
-      { href: "/shots", label: "Shots", icon: Database },
-      { href: "/strokes-gained", label: "Strokes gained", icon: LineChart },
-      { href: "/progress", label: "Progress", icon: LineChart },
-      { href: "/achievements", label: "Achievements", icon: Award },
-    ],
-  },
-  {
+    href: "/feed",
     label: "Social",
-    items: [
-      { href: "/feed", label: "Feed", icon: Radio },
-      { href: "/friends", label: "Friends", icon: Users },
-      { href: "/groups", label: "Groups", icon: Users },
-      { href: "/challenges", label: "Challenges", icon: Trophy },
-      { href: "/leaderboard", label: "Leaderboards", icon: Users },
-      { href: "/profile", label: "Profile", icon: UserRound },
-    ],
-  },
-  {
-    label: "Platform",
-    items: [
-      { href: "/billing", label: "Billing", icon: CreditCard },
-      { href: "/providers", label: "Providers", icon: Cable },
-      { href: "/settings", label: "Settings", icon: Settings },
-      { href: "/social-intelligence", label: "Recaps & safety", icon: ShieldAlert },
-    ],
+    icon: Radio,
+    isActive: (pathname: string) =>
+      pathname.startsWith("/feed") ||
+      pathname.startsWith("/friends") ||
+      pathname.startsWith("/groups") ||
+      pathname.startsWith("/challenges") ||
+      pathname.startsWith("/leaderboard") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/social-intelligence"),
   },
 ];
-
-const adminMoreItem = { href: "/admin", label: "Admin", icon: ShieldCheck };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 
-export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?: boolean }) {
+type MobileNavProfile = {
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+} | null;
+
+type AppNavProps = {
+  totalXp: number;
+  isAdmin?: boolean;
+  profile?: MobileNavProfile;
+};
+
+function getProfileInitials(label: string) {
+  const initials = label
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
+  return initials || "FK";
+}
+
+export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps) {
   const pathname = usePathname();
-  const [moreQuery, setMoreQuery] = useState("");
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
+  const profileLabel = profile?.displayName || profile?.username || "Profile";
+  const profileInitials = getProfileInitials(profileLabel);
+  const profileAvatarStyle = profile?.avatarUrl
+    ? { backgroundImage: `url(${profile.avatarUrl})` }
+    : undefined;
   const desktopNavGroups = useMemo(
     () =>
       navGroups.map((group) => {
@@ -344,27 +346,6 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
       }),
     [isAdmin],
   );
-  const visibleMoreGroups = useMemo(() => {
-    const adminGroup = isAdmin
-      ? [
-          {
-            label: "Admin",
-            items: [
-              { href: "/partners", label: "Partners", icon: Gift },
-              adminMoreItem,
-            ],
-          },
-        ]
-      : [];
-    const query = moreQuery.trim().toLowerCase();
-
-    return [...mobileMoreGroups, ...adminGroup]
-      .map((group) => ({
-        ...group,
-        items: query ? group.items.filter((item) => item.label.toLowerCase().includes(query)) : group.items,
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [isAdmin, moreQuery]);
 
   if (
     pathname.startsWith("/login") ||
@@ -377,16 +358,16 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
 
   return (
     <>
-      <div className="sticky top-0 z-40 px-2 pt-2 sm:px-6 sm:pt-4 lg:px-8">
+      <div className="sticky top-0 z-40 hidden border-b border-[#E5E7EB] bg-white sm:block">
         <nav
           aria-label="Primary"
-          className="glass-toolbar mx-auto flex w-full max-w-7xl items-center gap-2 rounded-xl p-1.5 sm:rounded-2xl sm:p-2"
+          className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-6 lg:px-8"
         >
           <Link
             href="/dashboard"
-            className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-sm font-semibold sm:px-2.5 sm:py-2"
+            className="flex min-w-0 items-center gap-2 pr-4 text-sm font-semibold"
           >
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#111827] text-white sm:size-8">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#050505] text-white">
               <Flag className="size-3.5 sm:size-4" />
             </span>
             <span className="hidden truncate sm:inline">ForeKingHell</span>
@@ -410,8 +391,8 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                     aria-controls={menuId}
                     className={
                       groupActive
-                        ? "h-9 rounded-xl bg-[#111827] px-3 text-white shadow-sm hover:bg-[#111827] hover:text-white focus-visible:bg-[#111827] focus-visible:text-white"
-                        : "h-9 rounded-xl px-3 text-muted-foreground hover:bg-[#111827] hover:text-white focus-visible:bg-[#111827] focus-visible:text-white group-hover/desktop-nav:bg-[#111827] group-hover/desktop-nav:text-white group-focus-within/desktop-nav:bg-[#111827] group-focus-within/desktop-nav:text-white"
+                        ? "relative h-14 rounded-none bg-transparent px-2 text-[#050505] shadow-none hover:bg-transparent hover:text-[#050505] focus-visible:bg-transparent focus-visible:text-[#050505] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[#0B7A3B]"
+                        : "h-14 rounded-none px-2 text-muted-foreground hover:bg-transparent hover:text-[#050505] focus-visible:bg-transparent focus-visible:text-[#050505] group-hover/desktop-nav:text-[#050505] group-focus-within/desktop-nav:text-[#050505]"
                     }
                   >
                     {group.label}
@@ -421,7 +402,7 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                   <div
                     id={menuId}
                     role="menu"
-                    className="pointer-events-none invisible absolute left-0 top-full z-50 grid min-w-52 translate-y-1 gap-1 rounded-2xl border border-white/60 bg-white/95 p-2 opacity-0 shadow-xl shadow-black/10 backdrop-blur transition duration-150 group-hover/desktop-nav:pointer-events-auto group-hover/desktop-nav:visible group-hover/desktop-nav:translate-y-0 group-hover/desktop-nav:opacity-100 group-focus-within/desktop-nav:pointer-events-auto group-focus-within/desktop-nav:visible group-focus-within/desktop-nav:translate-y-0 group-focus-within/desktop-nav:opacity-100"
+                    className="pointer-events-none invisible absolute left-0 top-full z-50 grid min-w-56 translate-y-0 gap-1 border border-[#E5E7EB] bg-white p-2 opacity-0 shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition duration-150 group-hover/desktop-nav:pointer-events-auto group-hover/desktop-nav:visible group-hover/desktop-nav:opacity-100 group-focus-within/desktop-nav:pointer-events-auto group-focus-within/desktop-nav:visible group-focus-within/desktop-nav:opacity-100"
                   >
                     {items.map((item) => {
                       const Icon = item.icon;
@@ -435,14 +416,14 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                           aria-current={active ? "page" : undefined}
                           className={
                             active
-                              ? "flex items-center gap-2 rounded-xl bg-[#111827] px-3 py-2 text-sm font-semibold text-white"
-                              : "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                              ? "flex items-center gap-2 rounded-md bg-[#F5F6F4] px-3 py-2 text-sm font-semibold text-[#0B7A3B]"
+                              : "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-[#F5F6F4]"
                           }
                         >
                           <Icon
                             className={
                               active
-                                ? "size-4 text-emerald-300"
+                                ? "size-4 text-[#0B7A3B]"
                                 : "size-4 text-muted-foreground"
                             }
                           />
@@ -468,8 +449,8 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                   variant={active ? "default" : "ghost"}
                   className={
                     active
-                      ? "h-9 rounded-xl bg-[#111827] text-white"
-                      : "h-9 rounded-xl"
+                      ? "h-14 rounded-none bg-transparent text-[#0B7A3B] shadow-none"
+                      : "h-14 rounded-none"
                   }
                 >
                   <Link
@@ -486,7 +467,7 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
 
           <Button
             asChild
-            className="ml-auto hidden h-9 shrink-0 rounded-xl bg-emerald-700 text-white hover:bg-emerald-800 sm:inline-flex"
+            className="ml-auto hidden h-9 shrink-0 rounded-md bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:inline-flex"
           >
             <Link href="/import">
               <Upload className="size-4" />
@@ -497,7 +478,7 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
           <Link
             href="/achievements"
             aria-label={`Level ${level.level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
-            className="ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-[#111827] px-2.5 text-sm font-medium text-white shadow-sm sm:ml-0 sm:h-9 sm:px-3"
+            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-[#050505] px-3 text-sm font-medium text-white sm:ml-0"
           >
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>
@@ -511,7 +492,7 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
               type="submit"
               variant="ghost"
               size="icon"
-              className="h-9 w-9 rounded-xl"
+              className="h-9 w-9 rounded-md"
               aria-label="Sign out"
             >
               <LogOut className="size-4" />
@@ -520,11 +501,37 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
         </nav>
       </div>
 
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
+        <Link
+          href="/profile"
+          aria-label={`Open ${profileLabel} profile`}
+          className="pointer-events-auto absolute left-4 top-[calc(0.75rem+env(safe-area-inset-top))] grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#E5E7EB] bg-[#111827] bg-cover bg-center text-xs font-semibold uppercase text-white shadow-sm"
+          style={profileAvatarStyle}
+        >
+          {profile?.avatarUrl ? <span className="sr-only">{profileLabel}</span> : profileInitials}
+        </Link>
+        <Link
+          href="/dashboard"
+          aria-label="ForeKingHell dashboard"
+          className="pointer-events-auto absolute left-1/2 top-[calc(1.15rem+env(safe-area-inset-top))] max-w-[11rem] -translate-x-1/2 truncate px-3 text-center text-[1.05rem] font-semibold tracking-normal text-[#050505]"
+        >
+          ForeKingHell
+        </Link>
+        <Link
+          href="/achievements"
+          aria-label={`Level ${level.level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
+          className="pointer-events-auto absolute right-4 top-[calc(0.75rem+env(safe-area-inset-top))] inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[#111827] px-3 text-sm font-semibold text-white shadow-sm"
+        >
+          <Zap className="size-4 text-emerald-300" />
+          <span>Lvl {level.level}</span>
+        </Link>
+      </div>
+
       <nav
         aria-label="Mobile primary"
-        className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-50 sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
       >
-        <div className="glass-toolbar grid grid-cols-6 gap-1 rounded-2xl p-1.5">
+        <div className="grid grid-cols-5 border-t border-[#E5E7EB] bg-white px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
@@ -536,47 +543,17 @@ export function AppNav({ totalXp, isAdmin = false }: { totalXp: number; isAdmin?
                 aria-current={active ? "page" : undefined}
                 className={
                   active
-                    ? "flex flex-col items-center gap-0.5 rounded-xl bg-[#111827] px-1 py-2 text-[11px] font-semibold text-white"
-                    : "flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[11px] font-medium text-muted-foreground"
+                    ? "flex flex-col items-center gap-0.5 rounded-xl px-1 py-1 text-[11px] font-semibold text-[#0B7A3B]"
+                    : "flex flex-col items-center gap-0.5 rounded-xl px-1 py-1 text-[11px] font-medium text-[#6B7280]"
                 }
               >
-                <Icon className="size-4" />
+                <span className="grid size-7 place-items-center">
+                  <Icon className="size-5" />
+                </span>
                 {item.label}
               </Link>
             );
           })}
-          <details className="group relative">
-            <summary className="flex h-full cursor-pointer list-none flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-[11px] font-medium text-muted-foreground [&::-webkit-details-marker]:hidden">
-              <MoreHorizontal className="size-4" />
-              More
-            </summary>
-            <div className="absolute bottom-full right-0 mb-2 grid max-h-[70vh] min-w-72 gap-3 overflow-y-auto rounded-2xl border bg-white p-3 shadow-xl">
-              <input
-                value={moreQuery}
-                onChange={(event) => setMoreQuery(event.target.value)}
-                placeholder="Search menu"
-                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
-              />
-              {visibleMoreGroups.map((group) => (
-                <div key={group.label} className="grid gap-1">
-                  <p className="px-1 text-xs font-semibold uppercase text-muted-foreground">{group.label}</p>
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted"
-                      >
-                        <Icon className="size-4 text-muted-foreground" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </details>
         </div>
       </nav>
     </>

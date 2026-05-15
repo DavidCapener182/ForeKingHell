@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -17,16 +18,15 @@ import {
   Upload,
   UserRound,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
-  CompactLinkGrid,
   CompactReadoutGrid,
   DataPanel,
-  MetricCard,
   MobileAccordionSection,
   MobileHorizontalRail,
   MobileSectionChips,
@@ -77,6 +77,7 @@ import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 function MissingDatabaseUrlSetup() {
   return (
-    <PageShell>
+    <PageShell contentClassName="max-w-[1240px]">
       <PageHeader
         eyebrow={
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -159,6 +160,44 @@ export default async function DashboardPage() {
       detail: "Mapped into stock-yardage views",
       href: "/bag",
       icon: Target,
+      tone: "green" as const,
+    },
+    {
+      pin: "sessions" as const,
+      label: "Imported sessions",
+      value: integerFormatter.format(data.stats.sessionCount),
+      detail: `${integerFormatter.format(data.stats.roundCount)} saved rounds`,
+      href: "/handicap",
+      icon: CalendarDays,
+      tone: "green" as const,
+    },
+    {
+      pin: "handicap" as const,
+      label: "Scoring ceiling",
+      value: formatHandicapValue(data.stats.combinedHandicap.value),
+      detail: formatHandicapTrend(data.stats.combinedHandicap),
+      href: "/rounds",
+      icon: LineChart,
+      tone: "amber" as const,
+    },
+  ].filter((metric) => pinnedDashboardSections.has(metric.pin));
+  const mobileMetrics = [
+    {
+      pin: "shots" as const,
+      label: "Shots saved",
+      value: integerFormatter.format(data.stats.shotCount),
+      detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
+      href: "/shots",
+      icon: BarChart3,
+      tone: "sky" as const,
+    },
+    {
+      pin: "clubs" as const,
+      label: "Active clubs",
+      value: integerFormatter.format(data.stats.clubCount),
+      detail: "Mapped into stock-yardage views",
+      href: "/bag",
+      icon: Target,
       tone: "pink" as const,
     },
     {
@@ -186,6 +225,57 @@ export default async function DashboardPage() {
   ].filter((metric) => pinnedDashboardSections.has(metric.pin));
 
   const routeCards = [
+    {
+      title: "Import CSV",
+      description: "Upload Rapsodo range or simulated-course files.",
+      href: "/import",
+      metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
+      icon: Upload,
+      accent: "text-emerald-600 bg-emerald-50",
+    },
+    {
+      title: "Shot database",
+      description: "Inspect every normalized shot and preserved raw row.",
+      href: "/shots",
+      metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
+      icon: Database,
+      accent: "text-blue-700 bg-blue-50",
+    },
+    {
+      title: "Bag map",
+      description: "Review stock carry, confidence, and dispersion by club.",
+      href: "/bag",
+      metric: `${integerFormatter.format(data.stats.clubCount)} clubs`,
+      icon: Target,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Rounds",
+      description: "Open scorecards, course imports, and shot maps.",
+      href: "/rounds",
+      metric: `${integerFormatter.format(data.stats.roundCount)} rounds`,
+      icon: Flag,
+      accent: "text-amber-700 bg-amber-50",
+    },
+    {
+      title: "Progress",
+      description: "See what changed across the bag and what to practise next.",
+      href: "/progress",
+      metric: "Coach readout",
+      icon: LineChart,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Coach",
+      description:
+        "Open the next practice priority, diagnosis, and session plan.",
+      href: "/coach",
+      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
+      icon: Brain,
+      accent: "text-amber-800 bg-amber-50",
+    },
+  ];
+  const mobileRouteCards = [
     {
       title: "Today",
       description:
@@ -344,9 +434,119 @@ export default async function DashboardPage() {
       accent: "text-rose-600 bg-rose-50",
     },
   ];
+  const latestSession = data.recentSessions[0] ?? null;
+  const bestClub = getBestClub(data.bagPreview);
+  const firstSignal = data.whatChanged[0] ?? null;
 
   return (
-    <PageShell>
+    <PageShell contentClassName="max-w-[1240px]">
+      <DashboardMobileLayout
+        data={data}
+        social={social}
+        challenges={challengeData.active}
+        metrics={mobileMetrics}
+        routeCards={mobileRouteCards}
+        pinnedDashboardSections={pinnedDashboardSections}
+        primaryAction={primaryAction}
+        primaryActionLabel={primaryActionLabel}
+      />
+
+      <div className="hidden flex-col gap-6 sm:flex">
+        <DashboardSummaryHero
+          latestSession={latestSession}
+          bestClub={bestClub}
+          coachPreview={data.coachPreview}
+          firstSignal={firstSignal}
+          scoringCeiling={formatHandicapValue(data.stats.combinedHandicap.value)}
+          scoringTrend={formatHandicapTrend(data.stats.combinedHandicap)}
+          primaryAction={primaryAction}
+          primaryActionLabel={primaryActionLabel}
+        />
+
+        <TodayStatusStrip
+          latestSession={latestSession}
+          stats={data.stats}
+          firstSignal={firstSignal}
+        />
+
+        {pinnedDashboardSections.has("coach") ? (
+          <PracticeRecommendationCard
+            coachPreview={data.coachPreview}
+            primaryAction={primaryAction}
+            primaryActionLabel={primaryActionLabel}
+          />
+        ) : null}
+
+        {metrics.length > 0 ? <PerformanceSnapshot metrics={metrics} /> : null}
+
+        <section
+          id="bag"
+          className="grid scroll-mt-28 items-start gap-6 lg:grid-cols-[1.12fr_0.88fr]"
+        >
+          {pinnedDashboardSections.has("bag") ? (
+            <BagSnapshotPanel clubs={data.bagPreview} />
+          ) : null}
+
+          {pinnedDashboardSections.has("rounds") ? (
+            <LatestRoundPanel latestRound={data.latestRound} />
+          ) : null}
+        </section>
+
+        <CourseDecisionPanel items={data.courseAdvice.slice(0, 3)} />
+
+        <WhatChangedPanel insights={data.whatChanged} />
+
+        <DashboardSocialPulse
+          social={social}
+          challenges={challengeData.active}
+        />
+
+        <QuickRoutes routes={routeCards} />
+      </div>
+    </PageShell>
+  );
+}
+
+type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
+type DashboardTone = "green" | "sky" | "amber" | "slate" | "pink";
+type DashboardRoute = {
+  title: string;
+  description: string;
+  href: string;
+  metric: ReactNode;
+  icon: LucideIcon;
+  accent: string;
+};
+type DashboardMetric = {
+  label: string;
+  value: ReactNode;
+  detail: ReactNode;
+  href: string;
+  icon: LucideIcon;
+  tone: DashboardTone;
+};
+
+function DashboardMobileLayout({
+  data,
+  social,
+  challenges,
+  metrics,
+  routeCards,
+  pinnedDashboardSections,
+  primaryAction,
+  primaryActionLabel,
+}: {
+  data: DashboardData;
+  social: Awaited<ReturnType<typeof getFeedPageData>>;
+  challenges: ChallengeListItem[];
+  metrics: DashboardMetric[];
+  routeCards: DashboardRoute[];
+  pinnedDashboardSections: Set<DashboardPin>;
+  primaryAction: string;
+  primaryActionLabel: string;
+}) {
+  return (
+    <div className="grid gap-4 sm:hidden">
       <PageHeader
         eyebrow={<StatusPill>ForeKingHell</StatusPill>}
         title="Dashboard"
@@ -413,25 +613,11 @@ export default async function DashboardPage() {
           label: metric.label,
           value: metric.value,
           detail: metric.detail,
-          tone: metric.tone === "pink" ? "pink" : metric.tone,
+          tone: metric.tone,
         }))}
       />
 
-      <DashboardSocialPulse social={social} challenges={challengeData.active} />
-
-      <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <MetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            detail={metric.detail}
-            href={metric.href}
-            icon={metric.icon}
-            tone={metric.tone}
-          />
-        ))}
-      </section>
+      <DashboardMobileSocialPulse social={social} challenges={challenges} />
 
       <DataPanel id="decisions" className="scroll-mt-28">
         <SectionHeader
@@ -471,27 +657,6 @@ export default async function DashboardPage() {
         >
           <CompactReadoutGrid items={data.whatChanged} />
         </MobileAccordionSection>
-
-        <DataPanel className="hidden sm:flex">
-          <SectionHeader
-            title="What changed?"
-            description="A lightweight readout from the imported shots and saved rounds already in the database."
-            action={
-              <Button asChild variant="outline">
-                <Link href="/progress" prefetch={false}>
-                  <LineChart className="size-4" />
-                  Full progress
-                </Link>
-              </Button>
-            }
-          />
-          <CardContent>
-            <CompactReadoutGrid
-              items={data.whatChanged}
-              columnsClassName="md:grid-cols-3"
-            />
-          </CardContent>
-        </DataPanel>
 
         {pinnedDashboardSections.has("coach") ? (
           <DataPanel>
@@ -597,16 +762,6 @@ export default async function DashboardPage() {
             );
           })}
         </MobileHorizontalRail>
-
-        <DataPanel className="hidden sm:block">
-          <SectionHeader
-            title="Quick routes"
-            description="Direct links into the working parts of the app."
-          />
-          <CardContent>
-            <CompactLinkGrid items={routeCards} />
-          </CardContent>
-        </DataPanel>
       </section>
 
       <section
@@ -614,123 +769,49 @@ export default async function DashboardPage() {
         className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]"
       >
         {pinnedDashboardSections.has("bag") ? (
-          <>
-            <MobileHorizontalRail
-              title="Bag snapshot"
-              description="Stock numbers and confidence by club."
-              action={
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="min-h-10 rounded-xl"
-                >
-                  <Link href="/bag" prefetch={false}>
-                    View all
-                  </Link>
-                </Button>
-              }
-            >
-              {data.bagPreview.map((club) => (
-                <Link
-                  key={club.id}
-                  href={`/bag/${club.id}`}
-                  prefetch={false}
-                  className="apple-panel-strong block p-4"
-                >
-                  <p className="text-lg font-semibold tracking-normal">
-                    {formatClubType(club.type)}
-                  </p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {club.brandModel}
-                  </p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <MiniMetric
-                      label="Carry"
-                      value={formatYards(club.stock.carryMedianYd)}
-                    />
-                    <MiniMetric
-                      label="Trust"
-                      value={`${club.stock.confidenceScore}%`}
-                    />
-                  </div>
-                  <Progress
-                    value={club.stock.confidenceScore}
-                    className="mt-4"
-                  />
+          <MobileHorizontalRail
+            title="Bag snapshot"
+            description="Stock numbers and confidence by club."
+            action={
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="min-h-10 rounded-xl"
+              >
+                <Link href="/bag" prefetch={false}>
+                  View all
                 </Link>
-              ))}
-            </MobileHorizontalRail>
-
-            <DataPanel className="hidden sm:block">
-              <SectionHeader
-                title="Bag snapshot"
-                description="Active clubs with current stock-yardage confidence."
-                action={
-                  <Button asChild variant="outline">
-                    <Link href="/bag" prefetch={false}>
-                      <Target className="size-4" />
-                      Full bag
-                    </Link>
-                  </Button>
-                }
-              />
-              <CardContent className="space-y-3">
-                {data.bagPreview.map((club) => (
-                  <Link
-                    key={club.id}
-                    href={`/bag/${club.id}`}
-                    prefetch={false}
-                    className="apple-panel-strong grid gap-3 p-4 transition-colors hover:border-emerald-300 sm:grid-cols-[minmax(0,1fr)_auto]"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold tracking-normal">
-                          {formatClubType(club.type)}
-                        </p>
-                        <StatusPill
-                          tone={getClubDecisionTone(club.decisionLabel)}
-                        >
-                          {club.decisionLabel}
-                        </StatusPill>
-                      </div>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {club.brandModel}
-                      </p>
-                    </div>
-                    <div className="grid min-w-48 grid-cols-2 gap-3">
-                      <MiniMetric
-                        label="Carry"
-                        value={formatYards(club.stock.carryMedianYd)}
-                      />
-                      <MiniMetric
-                        label="Shots"
-                        value={integerFormatter.format(club.shotCount)}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Progress value={club.stock.confidenceScore} />
-                    </div>
-                  </Link>
-                ))}
-                {data.bagPreview.length === 0 ? (
-                  <div className="apple-panel p-6 text-center">
-                    <p className="font-medium">No active clubs yet</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Import a Rapsodo CSV and the bag map will build
-                      automatically.
-                    </p>
-                    <Button asChild className="mt-4">
-                      <Link href="/import" prefetch={false}>
-                        <Upload className="size-4" />
-                        Import CSV
-                      </Link>
-                    </Button>
-                  </div>
-                ) : null}
-              </CardContent>
-            </DataPanel>
-          </>
+              </Button>
+            }
+          >
+            {data.bagPreview.map((club) => (
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="apple-panel-strong block p-4"
+              >
+                <p className="text-lg font-semibold tracking-normal">
+                  {formatClubType(club.type)}
+                </p>
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  {club.brandModel}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <MiniMetric
+                    label="Carry"
+                    value={formatYards(club.stock.carryMedianYd)}
+                  />
+                  <MiniMetric
+                    label="Trust"
+                    value={`${club.stock.confidenceScore}%`}
+                  />
+                </div>
+                <Progress value={club.stock.confidenceScore} className="mt-4" />
+              </Link>
+            ))}
+          </MobileHorizontalRail>
         ) : null}
 
         {pinnedDashboardSections.has("rounds") ? (
@@ -759,10 +840,7 @@ export default async function DashboardPage() {
                       label="Score"
                       value={data.latestRound.totalScore}
                     />
-                    <RoundMetric
-                      label="Par"
-                      value={data.latestRound.totalPar}
-                    />
+                    <RoundMetric label="Par" value={data.latestRound.totalPar} />
                     <RoundMetric
                       label="Putts"
                       value={data.latestRound.totalPutts}
@@ -811,7 +889,7 @@ export default async function DashboardPage() {
           </DataPanel>
         ) : null}
       </section>
-    </PageShell>
+    </div>
   );
 }
 
@@ -824,14 +902,10 @@ function TodayPlan({
   primaryAction,
   primaryActionLabel,
 }: {
-  latestSession:
-    | Awaited<ReturnType<typeof getDashboardData>>["recentSessions"][number]
-    | null;
+  latestSession: DashboardData["recentSessions"][number] | null;
   totalShots: number;
-  bestClub:
-    | Awaited<ReturnType<typeof getDashboardData>>["bagPreview"][number]
-    | null;
-  biggestProblem: Awaited<ReturnType<typeof getDashboardData>>["coachPreview"];
+  bestClub: DashboardData["bagPreview"][number] | null;
+  biggestProblem: DashboardData["coachPreview"];
   firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
   primaryAction: string;
   primaryActionLabel: string;
@@ -862,9 +936,7 @@ function TodayPlan({
           items={[
             {
               label: "Latest session",
-              value: latestSession
-                ? formatDate(latestSession.date)
-                : "No import yet",
+              value: latestSession ? formatDate(latestSession.date) : "No import yet",
               detail: latestSession
                 ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}`
                 : "Import a CSV to build your baseline",
@@ -904,7 +976,7 @@ function TodayPlan({
   );
 }
 
-function DashboardSocialPulse({
+function DashboardMobileSocialPulse({
   social,
   challenges,
 }: {
@@ -912,12 +984,22 @@ function DashboardSocialPulse({
   challenges: ChallengeListItem[];
 }) {
   const topItems = social.items.slice(0, 3);
-  const pbCount = social.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
-  const recordCount = social.items.filter((item) => item.itemType.startsWith("course_record")).length;
-  const tournamentCount = social.items.filter((item) => item.itemType.startsWith("tournament")).length;
-  const closingSoon = challenges
-    .filter((challenge) => challenge.endsAt)
-    .sort((left, right) => (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0))[0] ?? null;
+  const pbCount = social.items.filter(
+    (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
+  ).length;
+  const recordCount = social.items.filter((item) =>
+    item.itemType.startsWith("course_record"),
+  ).length;
+  const tournamentCount = social.items.filter((item) =>
+    item.itemType.startsWith("tournament"),
+  ).length;
+  const closingSoon =
+    challenges
+      .filter((challenge) => challenge.endsAt)
+      .sort(
+        (left, right) =>
+          (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0),
+      )[0] ?? null;
 
   return (
     <DataPanel>
@@ -968,7 +1050,9 @@ function DashboardSocialPulse({
             {
               label: "Challenge closing",
               value: closingSoon?.title ?? "--",
-              detail: closingSoon?.endsAt ? `Ends ${formatDate(closingSoon.endsAt)}` : "No open closing board",
+              detail: closingSoon?.endsAt
+                ? `Ends ${formatDate(closingSoon.endsAt)}`
+                : "No open closing board",
               tone: closingSoon ? "sky" : "slate",
               href: closingSoon ? `/challenges/${closingSoon.id}` : "/challenges",
             },
@@ -976,10 +1060,13 @@ function DashboardSocialPulse({
         />
         <div className="grid gap-2">
           {topItems.length > 0 ? (
-            topItems.map((item) => <DashboardSocialMoment key={item.id} item={item} />)
+            topItems.map((item) => (
+              <DashboardMobileSocialMoment key={item.id} item={item} />
+            ))
           ) : (
             <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No visible social moments yet. Add friends or join a challenge to populate this pulse.
+              No visible social moments yet. Add friends or join a challenge to
+              populate this pulse.
             </p>
           )}
         </div>
@@ -988,7 +1075,7 @@ function DashboardSocialPulse({
   );
 }
 
-function DashboardSocialMoment({ item }: { item: FeedItemView }) {
+function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
   return (
     <Link
       href={item.proofUrl ?? "/feed"}
@@ -997,12 +1084,21 @@ function DashboardSocialMoment({ item }: { item: FeedItemView }) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">{item.headline}</p>
-        <StatusPill tone={item.verificationLabel === "Manual" || item.verificationLabel === "Unverified" ? "slate" : "green"}>
+        <StatusPill
+          tone={
+            item.verificationLabel === "Manual" ||
+            item.verificationLabel === "Unverified"
+              ? "slate"
+              : "green"
+          }
+        >
           {item.verificationLabel}
         </StatusPill>
       </div>
       <p className="text-muted-foreground">
-        {item.metricValue ? `${item.metricLabel ?? "Metric"} ${item.metricValue}` : item.context ?? "Social update"}
+        {item.metricValue
+          ? `${item.metricLabel ?? "Metric"} ${item.metricValue}`
+          : (item.context ?? "Social update")}
       </p>
     </Link>
   );
@@ -1036,6 +1132,945 @@ function RoundMetric({
   );
 }
 
+function DashboardPanel({
+  id,
+  title,
+  description,
+  action,
+  children,
+  className,
+}: {
+  id?: string;
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className={cn(
+        "scroll-mt-28 rounded-[18px] border border-[#DFE7DF] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+        className,
+      )}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-[#EDF1ED] px-6 py-5">
+        <div className="min-w-0">
+          <h2 className="text-[20px] font-semibold leading-7 tracking-normal text-[#111827]">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      <div className="px-6 py-5">{children}</div>
+    </section>
+  );
+}
+
+function DashboardSummaryHero({
+  latestSession,
+  bestClub,
+  coachPreview,
+  firstSignal,
+  scoringCeiling,
+  scoringTrend,
+  primaryAction,
+  primaryActionLabel,
+}: {
+  latestSession: DashboardData["recentSessions"][number] | null;
+  bestClub: DashboardData["bagPreview"][number] | null;
+  coachPreview: DashboardData["coachPreview"];
+  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+  scoringCeiling: string;
+  scoringTrend: string;
+  primaryAction: string;
+  primaryActionLabel: string;
+}) {
+  const practiceHref = coachPreview
+    ? `/bag/${coachPreview.clubId}/analytics`
+    : primaryAction;
+  const practiceTitle = coachPreview
+    ? `${coachPreview.clubName} ${coachPreview.issueLabel.toLowerCase()}`
+    : primaryActionLabel;
+
+  return (
+    <section className="overflow-hidden rounded-[24px] border border-[#CFE7D6] bg-white shadow-[0_12px_30px_rgba(8,122,61,0.06)]">
+      <div className="grid gap-6 px-7 py-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0">
+          <StatusPill className="bg-[#E8F7EE] text-[#087A3D] ring-[#CFE7D6]">
+            Dashboard
+          </StatusPill>
+          <h1 className="mt-4 text-[32px] font-bold leading-9 tracking-normal text-[#111827]">
+            ForeKingHell
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+            Your golf operating system: form, bag confidence, practice and
+            rounds.
+          </p>
+          <div className="mt-5 grid gap-3 text-sm leading-6 text-[#667085] md:grid-cols-3">
+            <HeroFact
+              label="Current form"
+              value={`${scoringCeiling} scoring ceiling`}
+            />
+            <HeroFact
+              label="Latest session"
+              value={
+                latestSession
+                  ? `${formatDate(latestSession.date)} · ${latestSession.shotCount} shots`
+                  : "No imported session yet"
+              }
+            />
+            <HeroFact
+              label="Best insight"
+              value={
+                firstSignal
+                  ? `${firstSignal.label}: ${firstSignal.value}`
+                  : "Import more shots to reveal movement"
+              }
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 lg:justify-end">
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-lg border-[#DFE7DF] bg-white"
+          >
+            <Link href="/shots" prefetch={false}>
+              <Database className="size-4" />
+              Shot database
+            </Link>
+          </Button>
+          <Button
+            asChild
+            className="rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+          >
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 border-t border-[#EDF1ED] bg-[#F8FAF8] px-7 py-4 lg:grid-cols-3">
+        <HeroInsightCard
+          title="Scoring ceiling"
+          value={scoringCeiling}
+          detail={scoringTrend}
+          href="/rounds"
+          tone="amber"
+        />
+        <HeroInsightCard
+          title="Best club"
+          value={bestClub ? formatClubType(bestClub.type) : "--"}
+          detail={
+            bestClub
+              ? `${bestClub.stock.confidenceScore}% trust · ${integerFormatter.format(bestClub.shotCount)} shots`
+              : "Import shots to build club trust"
+          }
+          href={bestClub ? `/bag/${bestClub.id}` : "/bag"}
+          tone="green"
+        />
+        <HeroInsightCard
+          title="Practise next"
+          value={practiceTitle}
+          detail={
+            coachPreview
+              ? `${coachPreview.trustIndex}% trust · Start practice`
+              : "Start with a clean import or coach review"
+          }
+          href={practiceHref}
+          tone="green"
+          primary
+          actionText="Start practice"
+        />
+      </div>
+    </section>
+  );
+}
+
+function HeroFact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <p>
+      <span className="font-semibold text-[#111827]">{label}:</span> {value}
+    </p>
+  );
+}
+
+function HeroInsightCard({
+  title,
+  value,
+  detail,
+  href,
+  tone,
+  primary = false,
+  actionText,
+}: {
+  title: string;
+  value: ReactNode;
+  detail: ReactNode;
+  href: string;
+  tone: DashboardTone;
+  primary?: boolean;
+  actionText?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className={cn(
+        "group block rounded-[18px] border bg-white p-4 transition-colors",
+        primary
+          ? "border-[#CFE7D6] shadow-[0_12px_30px_rgba(8,122,61,0.08)] hover:border-[#0F8F4D]"
+          : "border-[#DFE7DF] hover:border-[#CFE7D6]",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+          {title}
+        </p>
+        {actionText ? (
+          <span className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#087A3D] px-3 text-xs font-semibold text-white transition-colors group-hover:bg-[#065F32]">
+            Start
+            <ArrowRight className="size-3.5" />
+          </span>
+        ) : (
+          <DashboardDot tone={tone} />
+        )}
+      </div>
+      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
+        {value}
+      </p>
+      <p className="mt-1.5 text-sm leading-5 text-[#667085]">{detail}</p>
+    </Link>
+  );
+}
+
+function TodayStatusStrip({
+  latestSession,
+  stats,
+  firstSignal,
+}: {
+  latestSession: DashboardData["recentSessions"][number] | null;
+  stats: DashboardData["stats"];
+  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+}) {
+  return (
+    <DashboardPanel
+      id="today"
+      title="Today"
+      description="The fastest read on current data quality and what changed most recently."
+      action={<CalendarDays className="size-5 text-[#087A3D]" />}
+    >
+      <div className="grid gap-6 md:grid-cols-3">
+        <InlineStat
+          label="Latest session"
+          value={
+            latestSession
+              ? `${formatDate(latestSession.date)} · ${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
+              : "No session imported yet"
+          }
+        />
+        <InlineStat
+          label="Your game"
+          value={`${integerFormatter.format(stats.shotCount)} shots · ${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
+        />
+        <InlineStat
+          label="Best insight"
+          value={
+            firstSignal
+              ? `${firstSignal.value}. ${firstSignal.detail}`
+              : "Keep adding shots to surface trend changes."
+          }
+        />
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function PracticeRecommendationCard({
+  coachPreview,
+  primaryAction,
+  primaryActionLabel,
+}: {
+  coachPreview: DashboardData["coachPreview"];
+  primaryAction: string;
+  primaryActionLabel: string;
+}) {
+  const href = coachPreview
+    ? `/bag/${coachPreview.clubId}/analytics`
+    : primaryAction;
+  const taskCopy = coachPreview
+    ? getCompactPracticeTask(coachPreview.drill)
+    : "";
+
+  return (
+    <section
+      id="practice"
+      className="scroll-mt-28 rounded-[22px] border border-[#CFE7D6] bg-white p-5 shadow-[0_12px_30px_rgba(8,122,61,0.08)] sm:p-6"
+    >
+      {coachPreview ? (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+                Next practice
+              </p>
+              <StatusPill tone={normalizeDashboardTone(coachPreview.tone)}>
+                {coachPreview.trustIndex}% trust
+              </StatusPill>
+            </div>
+            <h2 className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
+              {coachPreview.clubName} delivery window
+            </h2>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <StatusPill tone={normalizeDashboardTone(coachPreview.tone)}>
+                {coachPreview.issueLabel}
+              </StatusPill>
+              <span className="text-sm leading-6 text-[#667085]">
+                Goal: path inside +/-5 degrees with a predictable start line.
+              </span>
+            </div>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">
+              {coachPreview.reason}
+            </p>
+          </div>
+
+          <div className="self-start rounded-2xl border border-[#EDF1ED] bg-[#F8FAF8] p-4">
+            <div className="flex items-center gap-2 text-[#B86B00]">
+              <Crosshair className="size-5" />
+              <p className="text-sm font-semibold">Practice task</p>
+            </div>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#111827]">
+              {taskCopy}
+            </p>
+            <Button
+              asChild
+              className="mt-3 h-9 w-full rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+            >
+              <Link href={href} prefetch={false}>
+                Start practice
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+              Next practice
+            </p>
+            <h2 className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
+              {primaryActionLabel}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-[#667085]">
+              Import enough shots to unlock a focused club recommendation.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="rounded-lg">
+            <Link href={href} prefetch={false}>
+              {primaryActionLabel}
+            </Link>
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
+  return (
+    <DashboardPanel
+      title="Performance snapshot"
+      description="Key totals from imported shots, active clubs, sessions, and scoring."
+    >
+      <div className="grid md:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((metric, index) => {
+          const Icon = metric.icon;
+
+          return (
+            <Link
+              key={metric.label}
+              href={metric.href}
+              prefetch={false}
+              className={cn(
+                "group min-w-0 px-0 py-4 transition-colors hover:bg-[#F8FAF8] md:px-5",
+                index > 0 ? "border-t border-[#EDF1ED] md:border-t-0" : "",
+                index % 2 === 1 ? "md:border-l md:border-[#EDF1ED]" : "",
+                index > 1 ? "xl:border-l xl:border-[#EDF1ED]" : "",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+                    {metric.label}
+                  </p>
+                  <p className="mt-2 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+                    {metric.value}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "grid size-9 shrink-0 place-items-center rounded-lg",
+                    toneSoftClass(metric.tone),
+                  )}
+                >
+                  <Icon className="size-5" />
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[#667085]">
+                {metric.detail}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function BagSnapshotPanel({
+  clubs,
+}: {
+  clubs: DashboardData["bagPreview"];
+}) {
+  return (
+    <DashboardPanel
+      title="Bag snapshot"
+      description="Active clubs with stock carry, shot depth, and trust."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/bag" prefetch={false}>
+            <Target className="size-4" />
+            Open bag map
+          </Link>
+        </Button>
+      }
+    >
+      {clubs.length > 0 ? (
+        <div className="-mx-6 -my-5">
+          {clubs.map((club) => (
+            <Link
+              key={club.id}
+              href={`/bag/${club.id}`}
+              prefetch={false}
+              className="grid gap-4 border-t border-[#EDF1ED] px-6 py-5 transition-colors first:border-t-0 hover:bg-[#F8FAF8] md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold tracking-normal text-[#111827]">
+                    {formatClubType(club.type)}
+                  </h3>
+                  <StatusPill
+                    tone={normalizeDashboardTone(
+                      getClubDecisionTone(club.decisionLabel),
+                    )}
+                  >
+                    {club.decisionLabel}
+                  </StatusPill>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-[#667085]">
+                  {club.brandModel}
+                </p>
+              </div>
+              <div className="min-w-0">
+                <div className="grid grid-cols-2 gap-4">
+                  <InlineStat
+                    label="Carry"
+                    value={formatYards(club.stock.carryMedianYd)}
+                  />
+                  <InlineStat
+                    label="Shots"
+                    value={integerFormatter.format(club.shotCount)}
+                  />
+                </div>
+                <TrustBar value={club.stock.confidenceScore} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm leading-6 text-[#667085]">
+            Import a Rapsodo CSV and the bag map will build automatically.
+          </p>
+          <Button asChild className="rounded-lg bg-[#087A3D] text-white">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
+      )}
+    </DashboardPanel>
+  );
+}
+
+function LatestRoundPanel({
+  latestRound,
+}: {
+  latestRound: DashboardData["latestRound"];
+}) {
+  return (
+    <DashboardPanel
+      title="Latest round"
+      description="Newest scorecard or simulated-course round."
+      action={<Flag className="size-5 text-[#2563EB]" />}
+    >
+      {latestRound ? (
+        <div>
+          <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+            {formatDate(latestRound.date)} · {formatSessionType(latestRound.type)}
+          </p>
+          <h3 className="mt-1 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+            {latestRound.courseName ?? latestRound.fileName ?? "Untitled round"}
+          </h3>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <InlineStat
+              label="Score"
+              value={formatScoreVsPar(
+                latestRound.totalScore,
+                latestRound.totalPar,
+              )}
+            />
+            <InlineStat
+              label="Putts"
+              value={
+                typeof latestRound.totalPutts === "number"
+                  ? integerFormatter.format(latestRound.totalPutts)
+                  : "--"
+              }
+            />
+            <InlineStat
+              label="Par"
+              value={
+                typeof latestRound.totalPar === "number"
+                  ? integerFormatter.format(latestRound.totalPar)
+                  : "--"
+              }
+            />
+            <InlineStat
+              label="Differential"
+              value={formatHandicapValue(latestRound.handicapDifferential)}
+            />
+          </div>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <Button
+              asChild
+              className="flex-1 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+            >
+              <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
+                <Flag className="size-4" />
+                Review round
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1 rounded-lg">
+              <Link href="/rounds" prefetch={false}>
+                All rounds
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-md text-sm leading-6 text-[#667085]">
+            Save a round CSV to unlock scorecards, hole review, and round shot
+            maps.
+          </p>
+          <Button asChild variant="outline" className="rounded-lg">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import round CSV
+            </Link>
+          </Button>
+        </div>
+      )}
+    </DashboardPanel>
+  );
+}
+
+function CourseDecisionPanel({
+  items,
+}: {
+  items: DashboardData["courseAdvice"];
+}) {
+  return (
+    <DashboardPanel
+      id="decisions"
+      title="On-course decisions"
+      description="Course-number reminders from the current bag map."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/bag" prefetch={false}>
+            <Target className="size-4" />
+            Full advice
+          </Link>
+        </Button>
+      }
+    >
+      <div className="grid md:grid-cols-3">
+        {items.map((item, index) => (
+          <Link
+            key={item.label}
+            href={item.clubId ? `/bag/${item.clubId}` : "/bag"}
+            prefetch={false}
+            className={cn(
+              "group min-w-0 py-3 transition-colors hover:bg-[#F8FAF8] md:px-5",
+              index > 0
+                ? "border-t border-[#EDF1ED] md:border-l md:border-t-0"
+                : "",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <DashboardDot tone={normalizeDashboardTone(item.tone)} />
+              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+                {item.label}
+              </p>
+            </div>
+            <p className="mt-3 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+              {item.value}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#667085]">
+              {item.detail}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function WhatChangedPanel({
+  insights,
+}: {
+  insights: ReturnType<typeof buildWhatChangedInsights>;
+}) {
+  return (
+    <DashboardPanel
+      id="progress"
+      title="What changed"
+      description="Latest imported-shot and round signals."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/progress" prefetch={false}>
+            <LineChart className="size-4" />
+            Full progress
+          </Link>
+        </Button>
+      }
+    >
+      <div className="grid md:grid-cols-3">
+        {insights.map((insight, index) => (
+          <div
+            key={`${insight.label}-${insight.value}`}
+            className={cn(
+              "min-w-0 py-3 md:px-5",
+              index > 0
+                ? "border-t border-[#EDF1ED] md:border-l md:border-t-0"
+                : "",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <DashboardDot tone={normalizeDashboardTone(insight.tone)} />
+              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+                {insight.label}
+              </p>
+            </div>
+            <p className="mt-3 text-xl font-bold leading-7 tracking-normal text-[#111827]">
+              {insight.value}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#667085]">
+              {insight.detail}
+            </p>
+          </div>
+        ))}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function DashboardSocialPulse({
+  social,
+  challenges,
+}: {
+  social: Awaited<ReturnType<typeof getFeedPageData>>;
+  challenges: ChallengeListItem[];
+}) {
+  const topItems = social.items.slice(0, 3);
+  const pbCount = social.items.filter(
+    (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
+  ).length;
+  const recordCount = social.items.filter((item) =>
+    item.itemType.startsWith("course_record"),
+  ).length;
+  const tournamentCount = social.items.filter((item) =>
+    item.itemType.startsWith("tournament"),
+  ).length;
+  const closingSoon = challenges
+    .filter((challenge) => challenge.endsAt)
+    .sort(
+      (left, right) =>
+        (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0),
+    )[0] ?? null;
+
+  return (
+    <DashboardPanel
+      title="Social pulse"
+      description="Network activity stays compact so performance remains the focus."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/feed" prefetch={false}>
+            <Radio className="size-4" />
+            Open feed
+          </Link>
+        </Button>
+      }
+    >
+      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SocialStatLink
+              href="/friends"
+              label="Friends active"
+              value={social.friendCount.toString()}
+              detail="Accepted golfer friendships"
+              icon={Users}
+            />
+            <SocialStatLink
+              href="/feed?filter=pbs"
+              label="Network PBs"
+              value={pbCount.toString()}
+              detail="Visible PB and longest-drive cards"
+            />
+            <SocialStatLink
+              href="/course-records"
+              label="Course records"
+              value={recordCount.toString()}
+              detail="Champion and defended marks"
+            />
+            <SocialStatLink
+              href="/tournaments"
+              label="Tournaments"
+              value={tournamentCount.toString()}
+              detail="Entries and verified submissions"
+            />
+          </div>
+          {closingSoon ? (
+            <p className="mt-5 text-sm leading-6 text-[#667085]">
+              <span className="font-semibold text-[#111827]">
+                Challenge closing:
+              </span>{" "}
+              {closingSoon.title} ends {formatDate(closingSoon.endsAt!)}.
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+            Latest activity
+          </p>
+          <div className="mt-3 divide-y divide-[#EDF1ED]">
+            {topItems.length > 0 ? (
+              topItems.map((item) => (
+                <DashboardSocialMoment key={item.id} item={item} />
+              ))
+            ) : (
+              <p className="py-4 text-sm leading-6 text-[#667085]">
+                No visible social moments yet. Add friends or join a challenge
+                to populate this pulse.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function SocialStatLink({
+  href,
+  label,
+  value,
+  detail,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  value: string;
+  detail: string;
+  icon?: LucideIcon;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="group block border-t border-[#EDF1ED] pt-4 first:border-t-0 first:pt-0 sm:[&:nth-child(-n+2)]:border-t-0 sm:[&:nth-child(-n+2)]:pt-0"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+          {label}
+        </p>
+        {Icon ? <Icon className="size-4 text-[#087A3D]" /> : null}
+      </div>
+      <p className="mt-1 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+        {value}
+      </p>
+      <p className="mt-1 text-sm leading-6 text-[#667085]">{detail}</p>
+    </Link>
+  );
+}
+
+function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
+  return (
+    <DashboardPanel
+      id="tools"
+      title="Quick routes"
+      description="Primary shortcuts only. The rest stay in navigation."
+    >
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+        {routes.map((route) => {
+          const Icon = route.icon;
+
+          return (
+            <Link
+              key={route.href}
+              href={route.href}
+              prefetch={false}
+              title={route.description}
+              className="group flex min-h-20 flex-col justify-between rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] p-3 transition-colors hover:border-[#0F8F4D] hover:bg-white"
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span
+                  className={`grid size-8 place-items-center rounded-lg ${route.accent}`}
+                >
+                  <Icon className="size-4" />
+                </span>
+                <ArrowRight className="size-4 text-[#667085] transition-transform group-hover:translate-x-0.5 group-hover:text-[#087A3D]" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold leading-5 text-[#111827]">
+                  {route.title}
+                </span>
+                <span className="mt-1 block text-xs font-medium leading-5 text-[#667085]">
+                  {route.metric}
+                </span>
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function DashboardSocialMoment({ item }: { item: FeedItemView }) {
+  return (
+    <Link
+      href={item.proofUrl ?? "/feed"}
+      prefetch={false}
+      className="block py-3 text-sm transition-colors hover:bg-[#F8FAF8]"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-semibold leading-6 text-[#111827]">
+          {item.headline}
+        </p>
+        <StatusPill
+          tone={
+            item.verificationLabel === "Manual" ||
+            item.verificationLabel === "Unverified"
+              ? "slate"
+              : "green"
+          }
+        >
+          {item.verificationLabel}
+        </StatusPill>
+      </div>
+      <p className="leading-6 text-[#667085]">
+        {item.metricValue
+          ? `${item.metricLabel ?? "Metric"} ${item.metricValue}`
+          : (item.context ?? "Social update")}
+      </p>
+    </Link>
+  );
+}
+
+function InlineStat({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-sm font-semibold leading-6 text-[#111827]">{label}</p>
+      <p className="mt-1 text-sm leading-6 text-[#667085]">{value}</p>
+    </div>
+  );
+}
+
+function TrustBar({ value }: { value: number }) {
+  return (
+    <div className="mt-4">
+      <div className="mb-2 flex items-center justify-between text-xs font-medium text-[#667085]">
+        <span>Trust</span>
+        <span>{value}%</span>
+      </div>
+      <Progress value={value} />
+    </div>
+  );
+}
+
+function DashboardDot({ tone }: { tone: DashboardTone }) {
+  return (
+    <span
+      className={cn("size-2.5 shrink-0 rounded-full ring-4", toneDotClass(tone))}
+    />
+  );
+}
+
+function getBestClub(clubs: DashboardData["bagPreview"]) {
+  return (
+    [...clubs].sort((left, right) => {
+      const trustDelta =
+        right.stock.confidenceScore - left.stock.confidenceScore;
+      return trustDelta || right.shotCount - left.shotCount;
+    })[0] ?? null
+  );
+}
+
+function formatHandicapTrend(summary: HandicapSummary) {
+  const trend = summary.trend.direction;
+
+  if (trend === "down") {
+    return `Trending down ${formatHandicapDelta(summary.trend.delta)}`;
+  }
+
+  if (trend === "up") {
+    return `Trending up ${formatHandicapDelta(summary.trend.delta)}`;
+  }
+
+  if (trend === "flat") {
+    return "Flat trend";
+  }
+
+  return `${summary.sampleSize} round sample`;
+}
+
+function formatScoreVsPar(score: number | null, par: number | null) {
+  if (typeof score !== "number") {
+    return "--";
+  }
+
+  if (typeof par !== "number") {
+    return integerFormatter.format(score);
+  }
+
+  const versusPar = score - par;
+  return `${integerFormatter.format(score)} (${versusPar >= 0 ? "+" : ""}${integerFormatter.format(versusPar)})`;
+}
+
 function formatCombinedHandicapDetail(
   realHandicap: HandicapSummary,
   simHandicap: HandicapSummary,
@@ -1052,6 +2087,42 @@ function formatCombinedHandicapDetail(
           : `${combinedHandicap.sampleSize} round sample`;
 
   return `Real ceiling ${formatHandicapValue(realHandicap.value)} | Sim ceiling ${formatHandicapValue(simHandicap.value)} | ${trendLabel}`;
+}
+
+function getCompactPracticeTask(drill: string) {
+  return drill.split(/\s+The goal\b/i)[0]?.trim() || drill;
+}
+
+function normalizeDashboardTone(
+  tone: DashboardTone,
+): Exclude<DashboardTone, "pink"> {
+  return tone === "pink" ? "amber" : tone;
+}
+
+function toneDotClass(tone: DashboardTone) {
+  switch (normalizeDashboardTone(tone)) {
+    case "green":
+      return "bg-[#0F8F4D] ring-[#E8F7EE]";
+    case "amber":
+      return "bg-[#B86B00] ring-[#FFF4DB]";
+    case "sky":
+      return "bg-[#2563EB] ring-[#EAF1FF]";
+    case "slate":
+      return "bg-[#98A2B3] ring-[#F2F4F7]";
+  }
+}
+
+function toneSoftClass(tone: DashboardTone) {
+  switch (normalizeDashboardTone(tone)) {
+    case "green":
+      return "bg-[#E8F7EE] text-[#087A3D]";
+    case "amber":
+      return "bg-[#FFF4DB] text-[#B86B00]";
+    case "sky":
+      return "bg-[#EAF1FF] text-[#2563EB]";
+    case "slate":
+      return "bg-[#F2F4F7] text-[#667085]";
+  }
 }
 
 function normalizeDashboardPins(
@@ -1322,7 +2393,7 @@ async function getDashboardData() {
   };
 }
 
-type InsightTone = "green" | "sky" | "pink" | "amber" | "slate";
+type InsightTone = "green" | "sky" | "amber" | "slate";
 
 function buildWhatChangedInsights({
   clubRows,
@@ -1499,7 +2570,7 @@ function buildWhatChangedInsights({
       label: "Latest round",
       value: `${latestRound.totalScore} (${versusPar >= 0 ? "+" : ""}${versusPar})`,
       detail: `${latestRound.courseName ?? "Latest scorecard"} on ${formatDate(latestRound.date)}.`,
-      tone: versusPar <= 10 ? "green" : "pink",
+      tone: versusPar <= 10 ? "green" : "amber",
     });
   }
 
