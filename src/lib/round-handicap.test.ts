@@ -5,6 +5,7 @@ import {
   calculatePlayingHandicapSummary,
   calculateRoundDifferential,
   formatHandicapDelta,
+  normaliseHandicapRoundInput,
 } from "./round-handicap";
 
 describe("round handicap", () => {
@@ -40,6 +41,26 @@ describe("round handicap", () => {
         holesPlayed: 9,
       }),
     ).toBeCloseTo(17.9, 1);
+  });
+
+  it("doubles 9-hole score, par, and rating for handicap display inputs", () => {
+    expect(
+      normaliseHandicapRoundInput({
+        totalScore: 43,
+        totalPar: 35,
+        courseRating: 34.3,
+        slopeRating: 110,
+        holesPlayed: 9,
+      }),
+    ).toMatchObject({
+      totalScore: 86,
+      totalPar: 70,
+      courseRating: 68.6,
+      slopeRating: 110,
+      holesPlayed: 18,
+      originalHolesPlayed: 9,
+      isNineHoleEquivalent: true,
+    });
   });
 
   it("reports a handicap trend from newest-first values", () => {

@@ -50,6 +50,7 @@ import {
   calculateRoundDifferential,
   formatHandicapDelta,
   formatHandicapValue,
+  normaliseHandicapRoundInput,
   type HandicapSummary,
   type PlayingHandicapSummary,
 } from "@/lib/round-handicap";
@@ -408,7 +409,7 @@ export default async function HandicapPage() {
 
       <MobileAccordionSection
         title="Score differential table"
-        description="Newest scorecards and calculation inputs."
+        description="Newest scorecards and 18-hole equivalent inputs."
         count={`${rounds.length} rounds`}
       >
         <MobileDataList>
@@ -439,10 +440,7 @@ export default async function HandicapPage() {
                   label="Differential"
                   value={formatHandicapValue(round.handicapDifferential)}
                 />
-                <DataPair
-                  label="Shots"
-                  value={integerFormatter.format(round.shotCount)}
-                />
+                <DataPair label="Holes" value={formatHolesPlayed(round)} />
               </MobileDataCard>
             ))
           ) : (
@@ -456,7 +454,7 @@ export default async function HandicapPage() {
       <DataPanel id="rounds" className="hidden scroll-mt-28 sm:flex">
         <SectionHeader
           title="Score differential table"
-          description="Best-form estimates use score differentials, newest scorecards first."
+          description="Best-form estimates use score differentials; 9-hole rounds are shown as 18-hole equivalents."
         />
         <CardContent>
           <DataTableFrame>
@@ -470,7 +468,7 @@ export default async function HandicapPage() {
                   <TableHead className="text-right">Rating</TableHead>
                   <TableHead className="text-right">Slope</TableHead>
                   <TableHead className="text-right">Diff</TableHead>
-                  <TableHead className="text-right">Shots</TableHead>
+                  <TableHead className="text-right">Holes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -508,7 +506,7 @@ export default async function HandicapPage() {
                       {formatHandicapValue(round.handicapDifferential)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {integerFormatter.format(round.shotCount)}
+                      {formatHolesPlayed(round)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -585,26 +583,33 @@ async function getHandicapRounds() {
 
   return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
-    const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
-    const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const totalPar =
+    const rawTotalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
+    const rawTotalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
+    const rawTotalPar =
       scorecard.length > 0
         ? scorecard.reduce((total, hole) => total + hole.par, 0)
         : null;
-    const handicapDifferential = calculateRoundDifferential({
-      totalScore,
-      totalPar,
+    const handicapInput = normaliseHandicapRoundInput({
+      totalScore: rawTotalScore,
+      totalPar: rawTotalPar,
       courseRating: session.courseRating,
       slopeRating: session.slopeRating,
       holesPlayed: scorecard.length,
     });
+    const handicapDifferential = calculateRoundDifferential(handicapInput);
 
     return {
       ...session,
-      totalScore,
-      totalPutts,
-      totalPar,
+      courseRating: handicapInput.courseRating,
+      totalScore: handicapInput.totalScore,
+      totalPutts: handicapInput.isNineHoleEquivalent
+        ? doubleNullable(rawTotalPutts)
+        : rawTotalPutts,
+      totalPar: handicapInput.totalPar ?? null,
       handicapDifferential,
+      holesPlayed: handicapInput.holesPlayed ?? null,
+      originalHolesPlayed: handicapInput.originalHolesPlayed,
+      isNineHoleEquivalent: handicapInput.isNineHoleEquivalent,
       shotCount: shotCountBySessionId.get(session.id) ?? 0,
     };
   });
@@ -869,6 +874,23 @@ function sumNullable(values: Array<number | null>) {
   return present.length > 0
     ? present.reduce((total, value) => total + value, 0)
     : null;
+}
+
+function doubleNullable(value: number | null) {
+  return typeof value === "number" ? value * 2 : null;
+}
+
+function formatHolesPlayed(round: {
+  holesPlayed: number | null;
+  isNineHoleEquivalent: boolean;
+}) {
+  if (round.isNineHoleEquivalent) {
+    return "18 eq";
+  }
+
+  return typeof round.holesPlayed === "number"
+    ? integerFormatter.format(round.holesPlayed)
+    : "--";
 }
 
 function handicapMethodDetail(summary: HandicapSummary) {

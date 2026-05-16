@@ -6,6 +6,11 @@ export type HandicapRoundInput = {
   holesPlayed?: number | null;
 };
 
+export type NormalisedHandicapRoundInput = HandicapRoundInput & {
+  originalHolesPlayed: number | null;
+  isNineHoleEquivalent: boolean;
+};
+
 export type HandicapTrendDirection = "down" | "up" | "flat" | "none";
 
 export type HandicapTrend = {
@@ -57,14 +62,46 @@ export function calculateRoundDifferential({
   slopeRating,
   holesPlayed,
 }: HandicapRoundInput) {
-  const rating = typeof courseRating === "number" ? courseRating : totalPar;
-  const slope = typeof slopeRating === "number" && slopeRating > 0 ? slopeRating : 113;
+  const input = normaliseHandicapRoundInput({
+    totalScore,
+    totalPar,
+    courseRating,
+    slopeRating,
+    holesPlayed,
+  });
+  const rating = typeof input.courseRating === "number" ? input.courseRating : input.totalPar;
+  const slope = typeof input.slopeRating === "number" && input.slopeRating > 0 ? input.slopeRating : 113;
 
-  if (typeof totalScore !== "number" || typeof rating !== "number") {
+  if (typeof input.totalScore !== "number" || typeof rating !== "number") {
     return null;
   }
 
-  return (((totalScore - rating) * 113) / slope) * differentialHolesFactor(holesPlayed);
+  return (((input.totalScore - rating) * 113) / slope) * differentialHolesFactor(input.holesPlayed);
+}
+
+export function normaliseHandicapRoundInput(input: HandicapRoundInput): NormalisedHandicapRoundInput {
+  const holesPlayed =
+    typeof input.holesPlayed === "number" && Number.isFinite(input.holesPlayed)
+      ? input.holesPlayed
+      : null;
+
+  if (holesPlayed !== 9) {
+    return {
+      ...input,
+      originalHolesPlayed: holesPlayed,
+      isNineHoleEquivalent: false,
+    };
+  }
+
+  return {
+    ...input,
+    totalScore: doubleNullable(input.totalScore),
+    totalPar: doubleNullable(input.totalPar ?? null),
+    courseRating: normaliseNineHoleCourseRating(input.courseRating),
+    holesPlayed: 18,
+    originalHolesPlayed: holesPlayed,
+    isNineHoleEquivalent: true,
+  };
 }
 
 export function averageRoundDifferential(values: Array<number | null>) {
@@ -173,6 +210,18 @@ function differentialHolesFactor(holesPlayed: number | null | undefined) {
   }
 
   return 18 / holesPlayed;
+}
+
+function doubleNullable(value: number | null | undefined) {
+  return typeof value === "number" ? value * 2 : null;
+}
+
+function normaliseNineHoleCourseRating(value: number | null) {
+  if (typeof value !== "number") {
+    return null;
+  }
+
+  return value <= 45 ? value * 2 : value;
 }
 
 export function formatHandicapValue(value: number | null) {
