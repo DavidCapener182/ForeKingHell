@@ -24,10 +24,18 @@ export function SocialAvatar({
   );
   const content = (
     <Avatar className={className}>
-      {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
-      <AvatarFallback className="bg-[#111827] font-semibold tracking-normal text-white">
-        {initials(displayName, username)}
-      </AvatarFallback>
+      {avatarUrl ? (
+        isDataImageUrl(avatarUrl) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className="aspect-square size-full rounded-full object-cover" />
+        ) : (
+          <AvatarImage src={avatarUrl} alt="" />
+        )
+      ) : (
+        <AvatarFallback className="bg-[#111827] font-semibold tracking-normal text-white">
+          {initials(displayName, username)}
+        </AvatarFallback>
+      )}
     </Avatar>
   );
 
@@ -51,4 +59,8 @@ export function initials(displayName: string, username?: string) {
   }
 
   return source.slice(0, 2).toUpperCase();
+}
+
+function isDataImageUrl(value: string) {
+  return value.startsWith("data:image/");
 }

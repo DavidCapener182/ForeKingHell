@@ -62,7 +62,10 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
       </div>
 
       <header className="premium-hero overflow-hidden">
-        <div className="h-24 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)]" />
+        <div
+          className="h-24 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)] bg-cover bg-center"
+          style={data.profile.headerImageUrl ? { backgroundImage: profileHeaderBackground(data.profile.headerImageUrl) } : undefined}
+        />
         <div className="grid gap-4 p-5 pt-0">
           <div className="-mt-9 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:gap-4">
@@ -417,4 +420,8 @@ function getRequestOrigin(requestHeaders: Headers) {
   const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   return `${proto}://${host}`;
+}
+
+function profileHeaderBackground(imageUrl: string) {
+  return `linear-gradient(90deg, rgba(15, 23, 42, 0.56), rgba(6, 78, 59, 0.18)), url("${imageUrl.replace(/"/g, "%22")}")`;
 }

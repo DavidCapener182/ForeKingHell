@@ -202,8 +202,11 @@ function ProfileDropdown({
           aria-label="Open account menu"
         >
           <Avatar>
-            {profile?.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt="" /> : null}
-            <AvatarFallback>{profileInitials}</AvatarFallback>
+            {profile?.avatarUrl ? (
+              <ProfileDropdownAvatarImage src={profile.avatarUrl} />
+            ) : (
+              <AvatarFallback>{profileInitials}</AvatarFallback>
+            )}
           </Avatar>
           <span className="grid min-w-0 flex-1 text-left group-data-[collapsible=icon]:hidden">
             <span className="truncate text-sm font-medium">{profileLabel}</span>
@@ -258,6 +261,15 @@ function ProfileDropdown({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function ProfileDropdownAvatarImage({ src }: { src: string }) {
+  if (src.startsWith("data:image/")) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" className="aspect-square size-full rounded-full object-cover" />;
+  }
+
+  return <AvatarImage src={src} alt="" />;
 }
 
 function isPublicRoute(pathname: string) {

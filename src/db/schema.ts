@@ -80,6 +80,7 @@ export const userProfiles = pgTable(
     username: varchar("username", { length: 40 }).notNull(),
     displayName: varchar("display_name", { length: 160 }).notNull(),
     avatarUrl: text("avatar_url"),
+    headerImageUrl: text("header_image_url"),
     bio: text("bio"),
     homeCourse: varchar("home_course", { length: 180 }),
     primaryLaunchMonitor: varchar("primary_launch_monitor", { length: 80 }),

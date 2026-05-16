@@ -99,7 +99,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                   <SocialAvatar
                     displayName={item.profile.displayName}
                     username={item.profile.username}
-                    avatarUrl={item.profile.avatarUrl}
+                    avatarUrl={feedItemAvatarUrl(item, data)}
                     href={`/profile/${item.profile.username}`}
                     size="sm"
                   />
@@ -139,7 +139,10 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
         <aside className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
           <section className="premium-card overflow-hidden">
-            <div className="h-20 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)]" />
+            <div
+              className="h-20 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)] bg-cover bg-center"
+              style={data.profile.headerImageUrl ? { backgroundImage: profileHeaderBackground(data.profile.headerImageUrl) } : undefined}
+            />
             <div className="grid gap-3 p-4 pt-0">
               <div className="-mt-8">
                 <SocialAvatar
@@ -401,6 +404,10 @@ function parseFeedFilter(value: string | undefined): FeedFilter {
   return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "all";
 }
 
+function profileHeaderBackground(imageUrl: string) {
+  return `linear-gradient(90deg, rgba(15, 23, 42, 0.56), rgba(6, 78, 59, 0.18)), url("${imageUrl.replace(/"/g, "%22")}")`;
+}
+
 function mobileFeedTab(filter: FeedFilter) {
   if (filter === "friends") return "friends";
   if (filter === "records") return "records";
@@ -457,4 +464,11 @@ function filterFeedItems(items: Awaited<ReturnType<typeof getFeedPageData>>["ite
     default:
       return items;
   }
+}
+
+function feedItemAvatarUrl(
+  item: Awaited<ReturnType<typeof getFeedPageData>>["items"][number],
+  data: Awaited<ReturnType<typeof getFeedPageData>>,
+) {
+  return item.userId === data.viewerUserId ? data.profile.avatarUrl : item.profile.avatarUrl;
 }
