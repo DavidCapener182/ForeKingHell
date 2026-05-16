@@ -132,7 +132,7 @@ export function MobileNav({
           <Link
             href="/dashboard"
             aria-label="ForeKingHell dashboard"
-            className="absolute left-1/2 top-1/2 z-0 max-w-[12rem] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[1.05rem] font-semibold leading-none tracking-normal text-foreground"
+            className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1.5 items-center justify-center truncate text-center text-[1.05rem] font-semibold leading-none tracking-normal text-foreground"
           >
             ForeKingHell
           </Link>

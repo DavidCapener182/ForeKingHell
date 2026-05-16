@@ -115,15 +115,15 @@ export default async function RoundsPage() {
           ]}
         />
 
-        <section id="stats" className="grid scroll-mt-28 gap-4 md:grid-cols-3">
-          <Card id="history" className="premium-card order-2 scroll-mt-28 md:order-1 md:col-span-2">
+        <section id="stats" className="grid min-w-0 scroll-mt-28 gap-4 md:grid-cols-3">
+          <Card id="history" className="premium-card order-2 min-w-0 scroll-mt-28 md:order-1 md:col-span-2">
             <CardHeader>
               <CardTitle>Round history</CardTitle>
               <CardDescription>
                 Open a real round to edit the scorecard, or a simulator round to review its club data.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0 overflow-hidden px-3 sm:px-4">
               <DataTableFrame
                 mobile={
                   <MobileDataList>
@@ -209,7 +209,7 @@ export default async function RoundsPage() {
             </CardContent>
           </Card>
 
-          <Card id="latest" className="premium-card order-1 scroll-mt-28 md:order-2">
+          <Card id="latest" className="premium-card order-1 min-w-0 scroll-mt-28 md:order-2">
             <CardHeader>
               <CardTitle>Latest</CardTitle>
               <CardDescription>Most recent saved round.</CardDescription>
@@ -276,7 +276,10 @@ function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds
       title={round.courseName ?? round.fileName ?? "Untitled round"}
       subtitle={formatDate(round.date)}
       action={
-        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+        <Badge
+          variant={round.type === "real_round" ? "default" : "secondary"}
+          className="max-w-28 truncate"
+        >
           {formatSessionType(round.type)}
         </Badge>
       }
@@ -286,7 +289,7 @@ function RoundMobileCard({ round }: { round: Awaited<ReturnType<typeof getRounds
         alt=""
         crop="random"
         cropKey={round.id}
-        className="block h-20 min-h-0 rounded-xl"
+        className="block h-20 min-h-0 w-full rounded-xl"
         sizes="100vw"
       />
       {round.roundStatus === "in_progress" ? <DataPair label="Status" value="Resume" /> : null}

@@ -1121,7 +1121,9 @@ export function DataTableFrame({
           {children}
         </ScrollArea>
       </div>
-      {mobile ? <div className="sm:hidden">{mobile}</div> : null}
+      {mobile ? (
+        <div className="min-w-0 overflow-hidden sm:hidden">{mobile}</div>
+      ) : null}
     </>
   );
 }
@@ -1138,7 +1140,7 @@ export function MobileDataList({
   const hasChildren = Children.count(children) > 0;
 
   return (
-    <div className={cn("grid gap-3", className)}>
+    <div className={cn("grid min-w-0 gap-3", className)}>
       {hasChildren ? children : empty}
     </div>
   );
@@ -1170,14 +1172,16 @@ export function MobileDataCard({
             </p>
           ) : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? (
+          <div className="max-w-[42%] shrink-0 overflow-hidden">{action}</div>
+        ) : null}
       </div>
-      {children ? <div className="mt-3 grid gap-2">{children}</div> : null}
+      {children ? <div className="mt-3 grid min-w-0 gap-2">{children}</div> : null}
     </>
   );
 
   const cardClassName = cn(
-    "apple-panel-strong block p-3 text-left transition-colors hover:border-emerald-300",
+    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
     className,
   );
 
@@ -1204,12 +1208,12 @@ export function DataPair({
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center justify-between gap-3 rounded-lg bg-slate-50/80 px-3 py-2 text-sm",
+        "flex min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg bg-slate-50/80 px-3 py-2 text-sm",
         className,
       )}
     >
-      <span className="min-w-0 text-muted-foreground">{label}</span>
-      <span className="min-w-0 text-right font-semibold tabular-nums">
+      <span className="min-w-0 truncate text-muted-foreground">{label}</span>
+      <span className="min-w-0 truncate text-right font-semibold tabular-nums">
         {value}
       </span>
     </div>

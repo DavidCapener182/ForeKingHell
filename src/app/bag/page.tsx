@@ -128,6 +128,7 @@ export default async function BagPage() {
             0,
           ) / stockConfidenceClubs.length,
         );
+  const maxGappingCarry = maxCarryYd(gappingRows);
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
@@ -168,14 +169,20 @@ export default async function BagPage() {
                   prefetch={false}
                   className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
                 >
-                  <span className="font-semibold">{formatClubType(row.clubType)}</span>
+                  <span className="font-semibold">
+                    {formatClubType(row.clubType)}
+                  </span>
                   <span className="h-2 rounded-full bg-[#E5E7EB]">
                     <span
                       className="block h-2 rounded-full bg-[#0B7A3B]"
-                      style={{ width: `${Math.max(8, Math.min(100, row.confidenceScore))}%` }}
+                      style={{
+                        width: `${carryWidthPercent(row.carryYd, maxGappingCarry)}%`,
+                      }}
                     />
                   </span>
-                  <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
+                  <span className="font-semibold">
+                    {formatMetric(row.carryYd)} yd
+                  </span>
                 </Link>
               ))}
             </div>
@@ -1241,13 +1248,12 @@ function workOnText(row: Pick<GappingRow, "targetMessage">) {
 }
 
 function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
-  const maxCarry = Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
+  const maxCarry = maxCarryYd(rows);
 
   return (
     <div className="apple-panel grid gap-3 p-3 sm:p-4">
       {rows.map((row) => {
-        const carry = row.carryYd ?? 0;
-        const width = Math.max(8, (carry / maxCarry) * 100);
+        const width = carryWidthPercent(row.carryYd, maxCarry);
 
         return (
           <Link
@@ -1275,6 +1281,14 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
       })}
     </div>
   );
+}
+
+function maxCarryYd(rows: Array<Pick<GappingRow, "carryYd">>) {
+  return Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
+}
+
+function carryWidthPercent(carryYd: number | null, maxCarry: number) {
+  return Math.max(8, ((carryYd ?? 0) / maxCarry) * 100);
 }
 
 function GapBadge({ gapYd }: { gapYd: number | null }) {

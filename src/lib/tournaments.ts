@@ -24,7 +24,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { evaluateVerification, verificationTierLabel, type VerificationDecision } from "@/lib/course-records";
 import { areFriends, createFeedItem, ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
-import { getScheduledTournamentSet, type ScheduledTournament, type ScheduledTournamentKind } from "@/lib/tournament-calendar";
+import { dailyTournamentCourseCount, getScheduledTournamentSet, type ScheduledTournament, type ScheduledTournamentKind } from "@/lib/tournament-calendar";
 
 export const tournamentFormats = [
   "four_round_major",
@@ -107,7 +107,7 @@ export async function getTournamentsPageData() {
       myEntries: [],
       templates: tournamentTemplates(),
       courseOptions: await getCourseOptions(),
-      dailyCourseCount: 365,
+      dailyCourseCount: dailyTournamentCourseCount,
     };
   }
 
@@ -144,13 +144,14 @@ export async function getTournamentsPageData() {
     myEntries: items.filter((item) => item.viewerEntered),
     templates: tournamentTemplates(),
     courseOptions: await getCourseOptions(),
-    dailyCourseCount: 365,
+    dailyCourseCount: dailyTournamentCourseCount,
   };
 }
 
 export async function getTournamentDetailData(tournamentId: string) {
   const viewerUserId = await requireCurrentUserId();
   await ensureSocialProfileForUser(viewerUserId);
+  await ensureScheduledTournaments(viewerUserId, getScheduledTournamentSet());
   const db = getDb();
   const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
 
@@ -807,6 +808,7 @@ async function ensureScheduledTournaments(userId: string, scheduledSet: Schedule
     const existing = await findScheduledTournament(scheduled.key);
 
     if (existing) {
+      await syncScheduledTournament(existing, userId, scheduled);
       continue;
     }
 
@@ -815,7 +817,7 @@ async function ensureScheduledTournaments(userId: string, scheduledSet: Schedule
     const [tournament] = await getDb()
       .insert(tournaments)
       .values({
-        title: `${scheduled.title}: ${scheduled.course.name}`,
+        title: scheduledTournamentTitle(scheduled),
         description: scheduled.description,
         courseId: course.id,
         teeSetId: teeSet.id,
@@ -837,13 +839,7 @@ async function ensureScheduledTournaments(userId: string, scheduledSet: Schedule
             ? { type: "sudden_death", holes: [18, 10] }
             : { type: "countback", order: ["back_nine", "last_six", "last_three"] },
         createdByUserId: userId,
-        metadataJson: {
-          scheduled: true,
-          scheduledKey: scheduled.key,
-          scheduledKind: scheduled.kind,
-          scheduleEyebrow: scheduled.eyebrow,
-          courseRotationSize: 365,
-        },
+        metadataJson: scheduledTournamentMetadata(scheduled),
         updatedAt: now,
       })
       .returning();
@@ -860,6 +856,105 @@ async function ensureScheduledTournaments(userId: string, scheduledSet: Schedule
       })),
     );
   }
+}
+
+async function syncScheduledTournament(
+  existing: typeof tournaments.$inferSelect,
+  userId: string,
+  scheduled: ScheduledTournament,
+) {
+  const existingMetadata = isRecord(existing.metadataJson) ? existing.metadataJson : {};
+  const existingCourseName =
+    typeof existingMetadata.scheduledCourseName === "string"
+      ? existingMetadata.scheduledCourseName
+      : null;
+  const existingRotationSize =
+    typeof existingMetadata.courseRotationSize === "number"
+      ? existingMetadata.courseRotationSize
+      : null;
+  const title = scheduledTournamentTitle(scheduled);
+
+  if (
+    existing.title === title &&
+    existing.description === scheduled.description &&
+    existingCourseName === scheduled.course.name &&
+    existingRotationSize === dailyTournamentCourseCount
+  ) {
+    return;
+  }
+
+  const db = getDb();
+  const [submission] = await db
+    .select({ id: tournamentSubmissions.id })
+    .from(tournamentSubmissions)
+    .where(eq(tournamentSubmissions.tournamentId, existing.id))
+    .limit(1);
+
+  if (submission) {
+    return;
+  }
+
+  const { course, teeSet } = await ensureScheduledCourse(userId, scheduled.course);
+  const now = new Date();
+  await db
+    .update(tournaments)
+    .set({
+      title,
+      description: scheduled.description,
+      courseId: course.id,
+      teeSetId: teeSet.id,
+      startsAt: scheduled.startsAt,
+      endsAt: scheduled.endsAt,
+      roundCount: scheduled.roundCount,
+      verificationPolicy: scheduled.verificationPolicy,
+      screenshotRequired: true,
+      directRapsodoRequired: scheduled.verificationPolicy === "gold",
+      metadataJson: {
+        ...existingMetadata,
+        ...scheduledTournamentMetadata(scheduled),
+        previousScheduledCourseName: existingCourseName,
+      },
+      updatedAt: now,
+    })
+    .where(eq(tournaments.id, existing.id));
+
+  const roundRows = await db
+    .select()
+    .from(tournamentRounds)
+    .where(eq(tournamentRounds.tournamentId, existing.id))
+    .orderBy(asc(tournamentRounds.roundNumber));
+
+  for (const round of roundRows) {
+    await db
+      .update(tournamentRounds)
+      .set({
+        title: scheduled.roundCount === 1 ? "Daily round" : `Round ${round.roundNumber}`,
+        startsAt: scheduled.startsAt,
+        endsAt: scheduled.endsAt,
+        updatedAt: now,
+      })
+      .where(eq(tournamentRounds.id, round.id));
+  }
+}
+
+function scheduledTournamentTitle(scheduled: ScheduledTournament) {
+  return `${scheduled.title}: ${scheduled.course.name}`;
+}
+
+function scheduledTournamentMetadata(scheduled: ScheduledTournament) {
+  return {
+    scheduled: true,
+    scheduledKey: scheduled.key,
+    scheduledKind: scheduled.kind,
+    scheduleEyebrow: scheduled.eyebrow,
+    scheduledCourseName: scheduled.course.name,
+    courseRotationSize: dailyTournamentCourseCount,
+    rapsodoCoursePolicy: "tour-venue-curated",
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 async function findScheduledTournament(scheduledKey: string) {

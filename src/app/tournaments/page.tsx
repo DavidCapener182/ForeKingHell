@@ -128,7 +128,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             <StatusPill tone="amber">Tournament schedule</StatusPill>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">Daily, weekly and monthly events</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} world courses, weekly opens run all week, and monthly majors use famous championship venues.
+              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} Rapsodo-friendly tour venues, weekly opens run all week, and monthly majors use famous championship venues.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
