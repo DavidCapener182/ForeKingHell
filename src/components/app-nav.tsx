@@ -501,7 +501,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
         </nav>
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
         <Link
           href="/profile"
           aria-label={`Open ${profileLabel} profile`}

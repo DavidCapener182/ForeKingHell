@@ -29,17 +29,17 @@ import {
   DataPanel,
   MobileAccordionSection,
   MobileHorizontalRail,
-  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileTabBar } from "@/components/mobile-sports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
-import { PageArtwork, ShotTraceMotif } from "@/components/visuals/page-artwork";
+import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   clubs,
   importRows,
@@ -547,54 +547,7 @@ function DashboardMobileLayout({
 }) {
   return (
     <div className="grid gap-4 sm:hidden">
-      <PageHeader
-        eyebrow={<StatusPill>ForeKingHell</StatusPill>}
-        title="Dashboard"
-        description="Your golf operating system: imported shots, bag confidence, rounds, course overlays, and the latest signals from your game."
-        visual={
-          <PageArtwork
-            variant="fairway"
-            alt=""
-            priority
-            className="h-full min-h-44"
-          />
-        }
-        actions={
-          <>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="w-full rounded-xl bg-white/70 sm:w-auto"
-            >
-              <Link href="/shots" prefetch={false}>
-                <Database className="size-4" />
-                View shots
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              className="w-full rounded-xl bg-[#111827] text-white sm:w-auto"
-            >
-              <Link href={primaryAction} prefetch={false}>
-                <ArrowRight className="size-4" />
-                {primaryActionLabel}
-              </Link>
-            </Button>
-          </>
-        }
-      />
-
-      <MobileSectionChips
-        items={[
-          { label: "Today", href: "#today" },
-          { label: "Decisions", href: "#decisions" },
-          { label: "Progress", href: "#progress" },
-          { label: "Tools", href: "#tools" },
-          { label: "Bag", href: "#bag" },
-        ]}
-      />
+      <DashboardMobileHeader />
 
       <section id="today" className="scroll-mt-28">
         <TodayPlan
@@ -890,6 +843,31 @@ function DashboardMobileLayout({
         ) : null}
       </section>
     </div>
+  );
+}
+
+function DashboardMobileHeader() {
+  return (
+    <section className="sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
+      <div className="-mx-4 h-12 px-4" aria-hidden="true" />
+      <header className="-mx-4 grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
+        <span aria-hidden="true" />
+        <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
+          Dashboard
+        </h1>
+        <span aria-hidden="true" />
+      </header>
+      <MobileTabBar
+        activeKey="today"
+        tabs={[
+          { key: "today", label: "Today", href: "#today" },
+          { key: "decisions", label: "Decisions", href: "#decisions" },
+          { key: "progress", label: "Progress", href: "#progress" },
+          { key: "tools", label: "Tools", href: "#tools" },
+          { key: "bag", label: "Bag", href: "#bag" },
+        ]}
+      />
+    </section>
   );
 }
 
