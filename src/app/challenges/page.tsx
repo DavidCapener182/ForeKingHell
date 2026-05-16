@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Plus, Sparkles, Trophy, Users } from "lucide-react";
+import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import {
@@ -27,6 +27,10 @@ import { Input } from "@/components/ui/input";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
+import { buildCoachDrillChallenges, buildCoachSummary, type CoachDrillChallenge } from "@/lib/coach";
+import { getCoachDrillAwardStatuses, type CoachDrillAwardStatus } from "@/lib/coach-drill-awards";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { getProgressData } from "@/lib/progress-data";
 import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +41,15 @@ type ChallengesPageProps = {
 
 export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
   const params = await searchParams;
-  const [data, billing] = await Promise.all([getChallengesPageData(), getBillingPageData()]);
+  const userId = await requireCurrentUserId();
+  const [data, billing, progressData] = await Promise.all([
+    getChallengesPageData(),
+    getBillingPageData(),
+    getProgressData(userId),
+  ]);
+  const coach = buildCoachSummary(progressData.clubs);
+  const drillChallenges = buildCoachDrillChallenges(coach);
+  const drillStatuses = await getCoachDrillAwardStatuses(drillChallenges);
   const activeTab = parseChallengeHubTab(params?.tab);
   const featured = data.active[0] ?? data.challenges[0] ?? null;
   const friendsCompeting = data.challenges.filter((challenge) => !challenge.viewerJoined && challenge.participantCount > 0).slice(0, 4);
@@ -106,6 +118,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             </BottomSheet>
           }
         />
+        <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
         {activeTab === "templates" ? (
           <NativeListSection title="Templates">
             {data.templates.map((template) => (
@@ -376,6 +389,86 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       </div>
     </PageShell>
   );
+}
+
+
+function MobileDailyCoachDrills({
+  challenges,
+  statuses,
+}: {
+  challenges: CoachDrillChallenge[];
+  statuses: Record<string, CoachDrillAwardStatus>;
+}) {
+  return (
+    <NativeListSection
+      title="Daily XP drills"
+      description="Coach-generated shot-count challenges refresh daily and award XP when today’s imports prove completion or a win."
+      action={
+        <Button asChild variant="outline" size="sm" className="rounded-full">
+          <Link href="/coach#more-drills" prefetch={false}>
+            <Brain className="size-4" />
+            Coach
+          </Link>
+        </Button>
+      }
+    >
+      {challenges.length > 0 ? (
+        challenges.slice(0, 3).map((challenge) => {
+          const status = statuses[challenge.id] ?? {
+            completed: false,
+            won: false,
+            uploadedShotCount: 0,
+            completionTarget: challenge.completionTarget,
+            winCount: 0,
+            winTarget: winTargetForChallenge(challenge),
+            completedAwarded: false,
+            wonAwarded: false,
+          };
+
+          return (
+            <Link
+              key={challenge.id}
+              href="/coach#more-drills"
+              prefetch={false}
+              className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 text-[#050505]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B7A3B]">
+                    {challenge.clubName} · {challenge.issueLabel}
+                  </p>
+                  <p className="mt-1 font-semibold">{challenge.title}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#6B7280]">{challenge.winCondition}</p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#111827] px-2.5 py-1 text-xs font-semibold text-white">
+                  <Zap className="size-3 text-emerald-300" />
+                  +{challenge.completeXp}/{challenge.winXp}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-lg bg-[#F5F6F4] px-3 py-2">
+                  <p className="text-xs text-[#6B7280]">Uploaded today</p>
+                  <p className="font-semibold">{status.uploadedShotCount}/{status.completionTarget}</p>
+                </div>
+                <div className="rounded-lg bg-[#F5F6F4] px-3 py-2">
+                  <p className="text-xs text-[#6B7280]">Win progress</p>
+                  <p className="font-semibold">{status.winCount}/{status.winTarget}</p>
+                </div>
+              </div>
+            </Link>
+          );
+        })
+      ) : (
+        <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+          Import at least three clean shots with one club to generate daily coach XP drills.
+        </div>
+      )}
+    </NativeListSection>
+  );
+}
+
+function winTargetForChallenge(challenge: CoachDrillChallenge) {
+  return "target" in challenge.winRule ? challenge.winRule.target : challenge.completionTarget;
 }
 
 function ChallengeGrid({ challenges, empty = "No challenges are visible yet. Create the first private friend challenge." }: { challenges: ChallengeListItem[]; empty?: string }) {
