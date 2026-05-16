@@ -1309,7 +1309,7 @@ function StraightestShotsPanel({
 }) {
   const visibleShots = shots.slice(0, 5);
   const hiddenShots = shots.slice(5);
-  const panelHeight = Math.max(520, 210 + comparisonCount * 56);
+  const panelHeight = Math.max(380, 132 + comparisonCount * 48);
   const panelStyle = {
     "--shot-panel-height": `${panelHeight}px`,
   } as CSSProperties;
@@ -1322,7 +1322,7 @@ function StraightestShotsPanel({
           description="Top 5 straightest shots by offline and start line."
           action={<Crosshair className="size-4 text-sky-600" />}
         />
-        <CardContent className="space-y-2 xl:max-h-[calc(var(--shot-panel-height)-6rem)] xl:overflow-y-auto xl:pr-3 xl:[scrollbar-gutter:stable]">
+        <CardContent className="mx-auto w-full max-w-md space-y-1.5 xl:mx-0 xl:max-w-none xl:max-h-[calc(var(--shot-panel-height)-5.5rem)] xl:overflow-y-auto xl:pr-2 xl:[scrollbar-gutter:stable]">
           {visibleShots.length > 0 ? (
             visibleShots.map((shot, index) => (
               <StraightShotCard
@@ -1363,50 +1363,48 @@ function StraightShotCard({
   featured?: boolean;
 }) {
   return (
-    <div
+    <article
       className={
         featured
-          ? "rounded-xl border border-sky-200 bg-sky-50/70 p-3.5"
-          : "apple-panel-strong p-3"
+          ? "rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2"
+          : "rounded-lg border border-slate-200/80 bg-white px-3 py-2"
       }
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">
-            {formatClubType(shot.clubType)}{" "}
-            {shot.shotNumber ? `shot ${shot.shotNumber}` : ""}
-          </p>
-          <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
-            {shotSessionLabel(shot)}
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <h4 className="text-sm font-semibold leading-tight text-slate-950">
+          {formatClubType(shot.clubType)}
+          {shot.shotNumber ? ` shot ${shot.shotNumber}` : ""}
+        </h4>
         <Badge
           variant="outline"
-          className="shrink-0 border-sky-200 bg-sky-50 text-sky-700"
+          className="h-5 shrink-0 border-sky-200 bg-white px-1.5 text-[11px] font-medium text-sky-700"
         >
           {formatOfflineYards(shot.sideCarryYd)}
         </Badge>
       </div>
-      <div className="mt-2.5 grid grid-cols-2 gap-2 text-sm">
-        <MiniMetric label="Carry" value={formatYards(shot.carryYd)} />
-        <MiniMetric label="Total" value={formatYards(shot.totalYd)} />
-        <MiniMetric
+      <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">
+        {shotSessionLabel(shot)}
+      </p>
+      <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+        <StraightShotMetric label="Carry" value={formatYards(shot.carryYd)} />
+        <StraightShotMetric label="Total" value={formatYards(shot.totalYd)} />
+        <StraightShotMetric
           label="Start"
           value={formatDegrees(shot.launchDirectionDeg)}
         />
-        <MiniMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
-      </div>
-    </div>
+        <StraightShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
+      </dl>
+    </article>
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function StraightShotMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-[11px] font-medium uppercase tracking-normal text-muted-foreground">
+    <div className="flex items-baseline gap-1 text-xs">
+      <dt className="text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
         {label}
-      </p>
-      <p className="font-semibold">{value}</p>
+      </dt>
+      <dd className="font-semibold text-slate-950">{value}</dd>
     </div>
   );
 }

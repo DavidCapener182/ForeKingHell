@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import {
   courses,
   moderationEvents,
+  rapsodoSyncSessions,
   sessions,
   teeSets,
   tournamentComments,
@@ -23,6 +24,7 @@ import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { evaluateVerification, verificationTierLabel, type VerificationDecision } from "@/lib/course-records";
 import { areFriends, createFeedItem, ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
+import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
 import { dailyTournamentCourseCount, getScheduledTournamentSet, type ScheduledTournament, type ScheduledTournamentKind } from "@/lib/tournament-calendar";
 
@@ -47,6 +49,18 @@ export type RankableTournamentStanding = {
 
 export type RankedTournamentStanding = RankableTournamentStanding & {
   rank: number;
+};
+
+type SessionRow = typeof sessions.$inferSelect;
+type TeeSetRow = typeof teeSets.$inferSelect;
+type RapsodoSyncRow = typeof rapsodoSyncSessions.$inferSelect;
+type ScorecardHole = NonNullable<SessionRow["scorecardJson"]>[number];
+
+type TournamentRoundSummary = {
+  totalScore: number | null;
+  totalNetScore: number | null;
+  stablefordPoints: number | null;
+  holeCount: number;
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
@@ -159,7 +173,7 @@ export async function getTournamentDetailData(tournamentId: string) {
     return null;
   }
 
-  const [roundRows, entryRows, submissionRows, standingRows, commentRows, courseRows, teeRows] = await Promise.all([
+  const [roundRows, entryRows, submissionRows, standingRows, commentRows, courseRows, teeRows, matchingRoundRows] = await Promise.all([
     db.select().from(tournamentRounds).where(eq(tournamentRounds.tournamentId, tournament.id)).orderBy(asc(tournamentRounds.roundNumber)),
     db.select().from(tournamentEntries).where(eq(tournamentEntries.tournamentId, tournament.id)).orderBy(asc(tournamentEntries.joinedAt)),
     db.select().from(tournamentSubmissions).where(eq(tournamentSubmissions.tournamentId, tournament.id)).orderBy(desc(tournamentSubmissions.submittedAt)),
@@ -171,6 +185,26 @@ export async function getTournamentDetailData(tournamentId: string) {
       .orderBy(asc(tournamentComments.createdAt)),
     tournament.courseId ? db.select().from(courses).where(eq(courses.id, tournament.courseId)).limit(1) : Promise.resolve([]),
     tournament.teeSetId ? db.select().from(teeSets).where(eq(teeSets.id, tournament.teeSetId)).limit(1) : Promise.resolve([]),
+    tournament.courseId
+      ? db
+          .select({
+            session: sessions,
+            teeSet: teeSets,
+            sync: rapsodoSyncSessions,
+          })
+          .from(sessions)
+          .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+          .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+          .where(
+            and(
+              eq(sessions.userId, viewerUserId),
+              eq(sessions.courseId, tournament.courseId),
+              inArray(sessions.type, [...roundSessionTypes]),
+            ),
+          )
+          .orderBy(desc(sessions.date))
+          .limit(12)
+      : Promise.resolve([] as Array<{ session: SessionRow; teeSet: TeeSetRow | null; sync: RapsodoSyncRow | null }>),
   ]);
   const userIds = [
     ...new Set([
@@ -184,6 +218,36 @@ export async function getTournamentDetailData(tournamentId: string) {
   const profiles = await profilesByUserId(userIds);
   const viewerEntry = entryRows.find((entry) => entry.userId === viewerUserId) ?? null;
   const viewerSubmissions = submissionRows.filter((submission) => submission.userId === viewerUserId);
+  const submittedSessionIds = new Set(viewerSubmissions.map((submission) => submission.sessionId).filter(Boolean));
+  const matchingRounds = matchingRoundRows
+    .filter(({ session, sync }) =>
+      isRoundHistorySession({
+        type: session.type,
+        providerKind: sync?.providerKind,
+        providerSessionMode: sync?.providerSessionMode,
+      }),
+    )
+    .map(({ session, teeSet, sync }) => {
+      const summary = summarizeTournamentRound(session);
+      const csvHash = session.rawCsvHash ?? sync?.exportRawCsvHash ?? null;
+
+      return {
+        id: session.id,
+        title: session.courseName ?? sync?.title ?? session.fileName ?? "Saved round",
+        date: session.date,
+        type: session.type,
+        teeSetName: teeSet?.name ?? null,
+        grossScore: summary.totalScore,
+        netScore: summary.totalNetScore,
+        stablefordPoints: summary.stablefordPoints,
+        holeCount: summary.holeCount,
+        proofLabel: proofLabelForTournamentRound(session, sync),
+        csvHash,
+        hasRapsodoDirect: Boolean(sync),
+        alreadySubmitted: submittedSessionIds.has(session.id),
+      };
+    })
+    .filter((round) => round.grossScore !== null);
 
   return {
     viewerUserId,
@@ -197,6 +261,7 @@ export async function getTournamentDetailData(tournamentId: string) {
     comments: commentRows.map((comment) => ({ comment, profile: profiles.get(comment.userId) ?? null })),
     viewerEntry,
     viewerSubmissions,
+    matchingRounds,
     nextRoundNumber: nextRoundNumber(tournament.roundCount, viewerSubmissions),
     viewerEntered: Boolean(viewerEntry),
   };
@@ -374,29 +439,45 @@ export async function submitTournamentRound(input: {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
   const tournament = await requireVisibleTournament(userId, input.tournamentId);
+  const db = getDb();
+  const sessionId = normaliseUuid(input.sessionId);
+  const roundSubmission = sessionId
+    ? await getTournamentRoundSubmissionContext({ userId, sessionId, tournament })
+    : null;
+  const grossScore = roundSubmission?.summary.totalScore ?? input.grossScore;
+  const netScore = roundSubmission?.summary.totalNetScore ?? input.netScore ?? null;
+  const stablefordPoints = roundSubmission?.summary.stablefordPoints ?? input.stablefordPoints ?? null;
+  const csvHash = input.csvHash ?? roundSubmission?.csvHash ?? null;
+  const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
+  const scorecardScreenshotPath =
+    input.scorecardScreenshotPath ?? (roundSubmission ? `saved-round:${roundSubmission.session.id}` : null);
+  const extractedScorecardTotal = input.extractedScorecardTotal ?? roundSubmission?.summary.totalScore ?? null;
+  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId) || Boolean(input.hasRapsodoDirect);
+  const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
+  const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
 
-  if (!Number.isFinite(input.grossScore) || input.grossScore < 1) {
+  if (!Number.isFinite(grossScore) || grossScore < 1) {
     throw new Error("Gross score is required.");
   }
 
   const roundNumber = Math.min(Math.max(Math.floor(input.roundNumber), 1), tournament.roundCount);
-  const duplicateImport = input.csvHash ? await hasDuplicateTournamentEvidence(userId, input.csvHash) : false;
+  const duplicateImport = csvHash ? await hasDuplicateTournamentEvidence(userId, csvHash) : false;
   const verification = evaluateVerification({
-    expectedScore: input.grossScore,
-    extractedScorecardTotal: input.extractedScorecardTotal,
-    hasRapsodoDirect: input.hasRapsodoDirect,
-    hasCsvHash: Boolean(input.csvHash),
-    hasScorecardScreenshot: Boolean(input.scorecardScreenshotPath),
-    courseMatches: input.courseMatches ?? true,
+    expectedScore: grossScore,
+    extractedScorecardTotal,
+    hasRapsodoDirect,
+    hasCsvHash: Boolean(csvHash),
+    hasScorecardScreenshot: Boolean(scorecardScreenshotPath),
+    courseMatches,
     dateMatches: input.dateMatches ?? true,
-    teeMatches: input.teeMatches ?? true,
+    teeMatches,
     duplicateImport,
     manualEdit: input.manualEdit,
     screenshotRequired: tournament.screenshotRequired,
     directRapsodoRequired: tournament.directRapsodoRequired,
   });
   const now = new Date();
-  const [entry] = await getDb()
+  const [entry] = await db
     .select()
     .from(tournamentEntries)
     .where(and(eq(tournamentEntries.tournamentId, tournament.id), eq(tournamentEntries.userId, userId)))
@@ -410,47 +491,51 @@ export async function submitTournamentRound(input: {
     throw new Error("Accept the current no-mulligans tournament terms before submitting a round.");
   }
 
-  const [submission] = await getDb()
+  const [submission] = await db
     .insert(tournamentSubmissions)
     .values({
       tournamentId: tournament.id,
       entryId: entry.id,
       userId,
       roundNumber,
-      sessionId: input.sessionId ?? null,
-      scorecardSessionId: input.sessionId ?? null,
-      grossScore: input.grossScore,
-      netScore: input.netScore ?? null,
-      stablefordPoints: input.stablefordPoints ?? null,
-      scorecardScreenshotPath: input.scorecardScreenshotPath ?? null,
-      extractedScorecardTotal: input.extractedScorecardTotal ?? null,
+      sessionId,
+      scorecardSessionId: sessionId,
+      grossScore,
+      netScore,
+      stablefordPoints,
+      rapsodoSyncSessionId,
+      scorecardScreenshotPath,
+      extractedScorecardTotal,
       verificationStatus: verification.status,
       verificationTier: verification.tier,
       proofStatus: verification.proofStatus,
       metadataJson: {
-        csvHash: input.csvHash ?? null,
+        csvHash,
         verificationReasons: verification.reasons,
         duplicateImport,
+        derivedFromRound: Boolean(roundSubmission),
       },
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [tournamentSubmissions.entryId, tournamentSubmissions.roundNumber],
       set: {
-        sessionId: input.sessionId ?? null,
-        scorecardSessionId: input.sessionId ?? null,
-        grossScore: input.grossScore,
-        netScore: input.netScore ?? null,
-        stablefordPoints: input.stablefordPoints ?? null,
-        scorecardScreenshotPath: input.scorecardScreenshotPath ?? null,
-        extractedScorecardTotal: input.extractedScorecardTotal ?? null,
+        sessionId,
+        scorecardSessionId: sessionId,
+        grossScore,
+        netScore,
+        stablefordPoints,
+        rapsodoSyncSessionId,
+        scorecardScreenshotPath,
+        extractedScorecardTotal,
         verificationStatus: verification.status,
         verificationTier: verification.tier,
         proofStatus: verification.proofStatus,
         metadataJson: {
-          csvHash: input.csvHash ?? null,
+          csvHash,
           verificationReasons: verification.reasons,
           duplicateImport,
+          derivedFromRound: Boolean(roundSubmission),
         },
         submittedAt: now,
         updatedAt: now,
@@ -458,15 +543,27 @@ export async function submitTournamentRound(input: {
     })
     .returning();
 
-  await saveTournamentEvidence(submission.id, verification, input, duplicateImport);
+  await saveTournamentEvidence(
+    submission.id,
+    verification,
+    {
+      csvHash,
+      scorecardScreenshotPath,
+      extractedScorecardTotal,
+      hasRapsodoDirect,
+      rapsodoSyncSessionId,
+      derivedFromRound: Boolean(roundSubmission),
+    },
+    duplicateImport,
+  );
 
   if (verification.status === "mismatch" || verification.status === "needs_review") {
     await createTournamentModerationEvent({
       submissionId: submission.id,
       userId,
       tournamentTitle: tournament.title,
-      importedScore: input.grossScore,
-      extractedScore: input.extractedScorecardTotal ?? null,
+      importedScore: grossScore,
+      extractedScore: extractedScorecardTotal ?? null,
       reasons: verification.reasons,
     });
   }
@@ -482,7 +579,7 @@ export async function submitTournamentRound(input: {
     itemType: verification.status === "verified" ? "tournament_round_submitted" : "tournament_round_pending",
     headline: `${profile.displayName} submitted round ${roundNumber} for ${tournament.title}`,
     metricLabel: "Gross",
-    metricValue: integerFormatter.format(input.grossScore),
+    metricValue: integerFormatter.format(grossScore),
     context: standing?.rank ? `Current standing #${standing.rank}` : verification.reasons.join("; "),
     proofUrl: `/tournaments/${tournament.id}`,
     sourceType: "tournament_submission",
@@ -618,6 +715,110 @@ export async function getEligibleTournamentsForSession(sessionId: string) {
   return rows.filter((row) => row.tournament.visibility === "public" || row.tournament.createdByUserId === userId);
 }
 
+async function getTournamentRoundSubmissionContext({
+  userId,
+  sessionId,
+  tournament,
+}: {
+  userId: string;
+  sessionId: string;
+  tournament: typeof tournaments.$inferSelect;
+}) {
+  const [row] = await getDb()
+    .select({
+      session: sessions,
+      teeSet: teeSets,
+      sync: rapsodoSyncSessions,
+    })
+    .from(sessions)
+    .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+    .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+
+  if (!row) {
+    throw new Error("Selected round was not found.");
+  }
+
+  if (
+    !isRoundHistorySession({
+      type: row.session.type,
+      providerKind: row.sync?.providerKind,
+      providerSessionMode: row.sync?.providerSessionMode,
+    })
+  ) {
+    throw new Error("Choose a saved round for this tournament.");
+  }
+
+  const summary = summarizeTournamentRound(row.session);
+
+  if (summary.totalScore === null) {
+    throw new Error("Choose a saved round with a scorecard total.");
+  }
+
+  return {
+    session: row.session,
+    summary,
+    csvHash: row.session.rawCsvHash ?? row.sync?.exportRawCsvHash ?? null,
+    rapsodoSyncSessionId: row.sync?.id ?? null,
+    courseMatches: tournament.courseId ? row.session.courseId === tournament.courseId : true,
+    teeMatches: !tournament.teeSetId || !row.session.teeSetId || row.session.teeSetId === tournament.teeSetId,
+  };
+}
+
+function summarizeTournamentRound(session: SessionRow): TournamentRoundSummary {
+  const holes = Array.isArray(session.scorecardJson) ? session.scorecardJson : [];
+  const scoredHoles = holes.filter((hole) => typeof hole.score === "number");
+  const netScoredHoles = holes.filter((hole) => typeof hole.netScore === "number");
+
+  return {
+    totalScore: sumHoleValues(scoredHoles, "score"),
+    totalNetScore: netScoredHoles.length > 0 ? sumHoleValues(netScoredHoles, "netScore") : null,
+    stablefordPoints: stablefordPoints(holes),
+    holeCount: scoredHoles.length,
+  };
+}
+
+function proofLabelForTournamentRound(session: SessionRow, sync: RapsodoSyncRow | null) {
+  if (sync) {
+    return "Rapsodo Cloud";
+  }
+
+  if (session.rawCsvHash) {
+    return "Imported CSV";
+  }
+
+  return "Saved scorecard";
+}
+
+function normaliseUuid(value: string | null | undefined) {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null;
+}
+
+function sumHoleValues(holes: ScorecardHole[], key: "score" | "netScore") {
+  return sumNullable(holes.map((hole) => hole[key] ?? null));
+}
+
+function sumNullable(values: Array<number | null | undefined>) {
+  const present = values.filter((value): value is number => typeof value === "number");
+  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+}
+
+function stablefordPoints(holes: ScorecardHole[]) {
+  const scored = holes.filter((hole) => typeof (hole.netScore ?? hole.score) === "number" && typeof hole.par === "number");
+
+  if (scored.length === 0) {
+    return null;
+  }
+
+  return scored.reduce((total, hole) => {
+    const score = hole.netScore ?? hole.score ?? 0;
+    return total + Math.max(0, 2 + hole.par - score);
+  }, 0);
+}
+
 async function saveTournamentEvidence(
   submissionId: string,
   verification: VerificationDecision,
@@ -626,6 +827,8 @@ async function saveTournamentEvidence(
     scorecardScreenshotPath?: string | null;
     extractedScorecardTotal?: number | null;
     hasRapsodoDirect?: boolean;
+    rapsodoSyncSessionId?: string | null;
+    derivedFromRound?: boolean;
   },
   duplicateImport: boolean,
 ) {
@@ -635,6 +838,7 @@ async function saveTournamentEvidence(
       ? {
           submissionId,
           evidenceType: "rapsodo_import",
+          rapsodoSyncSessionId: input.rapsodoSyncSessionId ?? null,
           metadataJson: { source: "rapsodo_cloud" },
           reviewStatus: verification.status === "verified" ? "approved" : "pending",
           updatedAt: now,
@@ -656,7 +860,10 @@ async function saveTournamentEvidence(
           evidenceType: "scorecard_screenshot",
           storagePath: input.scorecardScreenshotPath,
           extractedScorecardTotal: input.extractedScorecardTotal ?? null,
-          metadataJson: { extractedScorecardTotal: input.extractedScorecardTotal ?? null },
+          metadataJson: {
+            extractedScorecardTotal: input.extractedScorecardTotal ?? null,
+            source: input.derivedFromRound ? "saved_round_scorecard" : "scorecard_upload",
+          },
           reviewStatus: verification.status === "verified" ? "approved" : "pending",
           updatedAt: now,
         }

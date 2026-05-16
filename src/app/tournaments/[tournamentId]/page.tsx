@@ -30,7 +30,11 @@ type TournamentDetailPageProps = {
   searchParams?: Promise<{ joined?: string; submission?: string; comment?: string; entryError?: string; tab?: string }>;
 };
 
+type TournamentDetailData = NonNullable<Awaited<ReturnType<typeof getTournamentDetailData>>>;
+type MatchingTournamentRound = TournamentDetailData["matchingRounds"][number];
+
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
+const roundDateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
 
 export default async function TournamentDetailPage({ params, searchParams }: TournamentDetailPageProps) {
   const [{ tournamentId }, query] = await Promise.all([params, searchParams]);
@@ -74,29 +78,45 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
           action={
             data.viewerEntered && viewerTermsCurrent ? (
               <BottomSheet label={<><Send className="size-4" /> Submit</>} title="Submit tournament round">
-                <form action={submitTournamentRoundAction} className="grid gap-3" data-tournament-submit-form>
-                  <input type="hidden" name="tournamentId" value={data.tournament.id} />
-                  <Input name="roundNumber" type="number" min={1} max={data.tournament.roundCount} defaultValue={data.nextRoundNumber ?? data.tournament.roundCount} className="h-11 rounded-lg bg-white" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input name="grossScore" inputMode="numeric" placeholder="Gross" className="h-11 rounded-lg bg-white" required />
-                    <Input name="netScore" inputMode="numeric" placeholder="Net" className="h-11 rounded-lg bg-white" />
-                  </div>
-                  <Input name="sessionId" placeholder="Linked Rapsodo session" className="h-11 rounded-lg bg-white" />
-                  <Input name="csvHash" placeholder="CSV hash" className="h-11 rounded-lg bg-white" />
-                  <ScorecardProofUploader
-                    screenshotFieldName="scorecardScreenshotPath"
-                    extractedTotalFieldName="extractedScorecardTotal"
-                    extractedTotalLabel="Extracted total"
+                <div className="grid gap-4">
+                  <MatchingRoundSubmitList
+                    rounds={data.matchingRounds}
+                    tournamentId={data.tournament.id}
+                    roundNumber={data.nextRoundNumber}
+                    courseName={data.course?.name ?? null}
+                    compact
                   />
-                  <label className="flex items-center gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                    <input type="checkbox" name="hasRapsodoDirect" className="size-4 accent-[#0B7A3B]" />
-                    Direct Rapsodo import
-                  </label>
-                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                    <Send className="size-4" />
-                    Submit
-                  </Button>
-                </form>
+                  <div className="grid gap-2 border-t border-[#E5E7EB] pt-4">
+                    <p className="text-sm font-semibold">Manual score</p>
+                    <p className="text-xs leading-5 text-[#6B7280]">
+                      Use this only if the saved round has not appeared yet.
+                    </p>
+                    <form action={submitTournamentRoundAction} className="grid gap-3" data-tournament-submit-form>
+                      <input type="hidden" name="tournamentId" value={data.tournament.id} />
+                      <Input name="roundNumber" type="number" min={1} max={data.tournament.roundCount} defaultValue={data.nextRoundNumber ?? data.tournament.roundCount} className="h-11 rounded-lg bg-white" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input name="grossScore" inputMode="numeric" placeholder="Gross" className="h-11 rounded-lg bg-white" required />
+                        <Input name="netScore" inputMode="numeric" placeholder="Net" className="h-11 rounded-lg bg-white" />
+                      </div>
+                      <Input name="sessionId" placeholder="Linked imported round" className="h-11 rounded-lg bg-white" />
+                      <Input name="csvHash" placeholder="Import proof code (optional)" className="h-11 rounded-lg bg-white" />
+                      <ScorecardProofUploader
+                        screenshotFieldName="scorecardScreenshotPath"
+                        extractedTotalFieldName="extractedScorecardTotal"
+                        screenshotLabel="Scorecard image"
+                        extractedTotalLabel="Extracted total"
+                      />
+                      <label className="flex items-center gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
+                        <input type="checkbox" name="hasRapsodoDirect" className="size-4 accent-[#0B7A3B]" />
+                        Direct Rapsodo import
+                      </label>
+                      <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                        <Send className="size-4" />
+                        Submit
+                      </Button>
+                    </form>
+                  </div>
+                </div>
               </BottomSheet>
             ) : data.viewerEntered ? (
               <TournamentEntryModal
@@ -172,9 +192,19 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
           </NativeListSection>
         ) : activeTab === "submit" ? (
           <NativeListSection title="Submit">
-            <p className="rounded-lg border border-[#E5E7EB] p-3 text-sm text-[#6B7280]">
-              Use the submit sheet after importing the round and attaching scorecard proof.
-            </p>
+            {data.viewerEntered && viewerTermsCurrent ? (
+              <MatchingRoundSubmitList
+                rounds={data.matchingRounds}
+                tournamentId={data.tournament.id}
+                roundNumber={data.nextRoundNumber}
+                courseName={data.course?.name ?? null}
+                compact
+              />
+            ) : (
+              <p className="rounded-lg border border-[#E5E7EB] p-3 text-sm text-[#6B7280]">
+                {data.viewerEntered ? "Accept the current no-mulligans terms before submitting." : "Enter the tournament before submitting."}
+              </p>
+            )}
           </NativeListSection>
         ) : (
           <NativeListSection title="Podium">
@@ -340,50 +370,70 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
             Submit round
           </p>
           {data.viewerEntered && viewerTermsCurrent ? (
-            <form action={submitTournamentRoundAction} className="mt-4 grid gap-3" data-tournament-submit-form>
-              <input type="hidden" name="tournamentId" value={data.tournament.id} />
-              <label className="grid gap-1 text-sm font-medium">
-                Round
-                <Input name="roundNumber" type="number" min={1} max={data.tournament.roundCount} defaultValue={data.nextRoundNumber ?? data.tournament.roundCount} className="h-10 rounded-xl bg-white" />
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="grid gap-1 text-sm font-medium">
-                  Gross
-                  <Input name="grossScore" inputMode="numeric" className="h-10 rounded-xl bg-white" required />
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  Net
-                  <Input name="netScore" inputMode="numeric" className="h-10 rounded-xl bg-white" />
-                </label>
-              </div>
-              <label className="grid gap-1 text-sm font-medium">
-                Imported session id
-                <Input name="sessionId" placeholder="Optional linked round/session id" className="h-10 rounded-xl bg-white" />
-              </label>
-              <label className="grid gap-1 text-sm font-medium">
-                CSV hash
-                <Input name="csvHash" placeholder="Rapsodo CSV hash" className="h-10 rounded-xl bg-white" />
-              </label>
-              <ScorecardProofUploader
-                screenshotFieldName="scorecardScreenshotPath"
-                extractedTotalFieldName="extractedScorecardTotal"
-                extractedTotalLabel="Extracted total"
+            <div className="mt-4 grid gap-4">
+              <MatchingRoundSubmitList
+                rounds={data.matchingRounds}
+                tournamentId={data.tournament.id}
+                roundNumber={data.nextRoundNumber}
+                courseName={data.course?.name ?? null}
               />
-              <div className="grid gap-2 rounded-lg bg-[#F5F6F4] p-3 text-sm">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" name="hasRapsodoDirect" className="size-4 accent-[#0B7A3B]" />
-                  Direct Rapsodo import
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" name="manualEdit" className="size-4 accent-[#0B7A3B]" />
-                  Manual edit flagged
-                </label>
+              <div className="grid gap-3 border-t border-[#E5E7EB] pt-4">
+                <div>
+                  <p className="text-sm font-semibold">Manual score</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Keep this for scorecards that have not been imported yet.
+                  </p>
+                </div>
+                <form action={submitTournamentRoundAction} className="grid gap-3" data-tournament-submit-form>
+                  <input type="hidden" name="tournamentId" value={data.tournament.id} />
+                  <label className="grid gap-1 text-sm font-medium">
+                    Round
+                    <Input name="roundNumber" type="number" min={1} max={data.tournament.roundCount} defaultValue={data.nextRoundNumber ?? data.tournament.roundCount} className="h-10 rounded-xl bg-white" />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="grid gap-1 text-sm font-medium">
+                      Gross
+                      <Input name="grossScore" inputMode="numeric" className="h-10 rounded-xl bg-white" required />
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium">
+                      Net
+                      <Input name="netScore" inputMode="numeric" className="h-10 rounded-xl bg-white" />
+                    </label>
+                  </div>
+                  <label className="grid gap-1 text-sm font-medium">
+                    Linked imported round
+                    <Input name="sessionId" placeholder="Optional imported round reference" className="h-10 rounded-xl bg-white" />
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">
+                    Import proof code
+                    <Input name="csvHash" placeholder="Optional proof code from imported CSV" className="h-10 rounded-xl bg-white" />
+                    <span className="text-xs leading-5 text-muted-foreground">
+                      Used to detect duplicate uploads. Leave blank if you are entering a manual scorecard.
+                    </span>
+                  </label>
+                  <ScorecardProofUploader
+                    screenshotFieldName="scorecardScreenshotPath"
+                    extractedTotalFieldName="extractedScorecardTotal"
+                    screenshotLabel="Scorecard image"
+                    extractedTotalLabel="Extracted total"
+                  />
+                  <div className="grid gap-2 rounded-lg bg-[#F5F6F4] p-3 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" name="hasRapsodoDirect" className="size-4 accent-[#0B7A3B]" />
+                      Direct Rapsodo import
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" name="manualEdit" className="size-4 accent-[#0B7A3B]" />
+                      Manual edit flagged
+                    </label>
+                  </div>
+                  <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                    <Send className="size-4" />
+                    Submit manual score
+                  </Button>
+                </form>
               </div>
-              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <Send className="size-4" />
-                Submit
-              </Button>
-            </form>
+            </div>
           ) : (
             <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
               {data.viewerEntered ? "Accept the current no-mulligans terms before submitting." : "Enter the tournament before submitting."}
@@ -416,8 +466,8 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
               <Rule label="Rounds" value={String(data.tournament.roundCount)} />
               <Rule label="Mulligans" value="Not allowed in any tournament round" />
               <Rule label="Gimmes" value="10 ft for 1-putt, 20 ft for 2-putt; outside that, hole out or use event scoring." />
-              <Rule label="Cut" value={JSON.stringify(data.tournament.cutRuleJson)} />
-              <Rule label="Tiebreaker" value={JSON.stringify(data.tournament.playoffRuleJson)} />
+              <Rule label="Cut" value={formatCutRule(data.tournament.cutRuleJson)} />
+              <Rule label="Tiebreaker" value={formatTiebreakerRule(data.tournament.playoffRuleJson)} />
             </div>
           </section>
 
@@ -467,11 +517,195 @@ function ProofRow({ label, active }: { label: string; active: boolean }) {
   );
 }
 
+function MatchingRoundSubmitList({
+  rounds,
+  tournamentId,
+  roundNumber,
+  courseName,
+  compact = false,
+}: {
+  rounds: MatchingTournamentRound[];
+  tournamentId: string;
+  roundNumber: number | null;
+  courseName: string | null;
+  compact?: boolean;
+}) {
+  const courseLabel = courseName ?? "this course";
+
+  return (
+    <div className="grid gap-3">
+      <div>
+        <p className="text-sm font-semibold">Saved rounds for {courseLabel}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          Upload/import a round as usual. If the course matches this event, it appears here automatically.
+        </p>
+      </div>
+      {rounds.length > 0 ? (
+        <div className="grid gap-2">
+          {rounds.map((round) => {
+            const canSubmit = roundNumber !== null && round.grossScore !== null && !round.alreadySubmitted;
+            const buttonLabel = round.alreadySubmitted
+              ? "Already submitted"
+              : roundNumber === null
+                ? "All rounds submitted"
+                : `Submit as round ${roundNumber}`;
+
+            return (
+              <div key={round.id} className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{round.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {roundDateFormatter.format(round.date)}
+                      {round.teeSetName ? ` · ${round.teeSetName}` : ""}
+                      {round.holeCount ? ` · ${round.holeCount} holes` : ""}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">
+                    {round.grossScore ?? "--"}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="secondary">{round.proofLabel}</Badge>
+                  {round.netScore !== null ? <Badge variant="outline">Net {round.netScore}</Badge> : null}
+                  {round.alreadySubmitted ? <Badge variant="outline">Submitted</Badge> : null}
+                </div>
+                <form action={submitTournamentRoundAction} className={compact ? "mt-3" : "mt-4"} data-tournament-submit-form>
+                  <input type="hidden" name="tournamentId" value={tournamentId} />
+                  <input type="hidden" name="roundNumber" value={roundNumber ?? ""} />
+                  <input type="hidden" name="sessionId" value={round.id} />
+                  <input type="hidden" name="grossScore" value={round.grossScore ?? ""} />
+                  {round.netScore !== null ? <input type="hidden" name="netScore" value={round.netScore} /> : null}
+                  {round.stablefordPoints !== null ? <input type="hidden" name="stablefordPoints" value={round.stablefordPoints} /> : null}
+                  {round.csvHash ? <input type="hidden" name="csvHash" value={round.csvHash} /> : null}
+                  {round.grossScore !== null ? <input type="hidden" name="extractedScorecardTotal" value={round.grossScore} /> : null}
+                  <input type="hidden" name="scorecardScreenshotPath" value={`saved-round:${round.id}`} />
+                  {round.hasRapsodoDirect ? <input type="hidden" name="hasRapsodoDirect" value="on" /> : null}
+                  <Button
+                    type="submit"
+                    disabled={!canSubmit}
+                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                  >
+                    <Send className="size-4" />
+                    {buttonLabel}
+                  </Button>
+                </form>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-3 text-sm leading-5 text-muted-foreground">
+          No saved scored rounds for {courseLabel} yet. Once you upload or import a matching round, it will be ready to submit here.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatCutRule(rule: unknown) {
+  const data = asRuleRecord(rule);
+
+  if (!data || data.enabled === false) {
+    return "None";
+  }
+
+  const afterRound =
+    typeof data.afterRound === "number" ? ` after round ${data.afterRound}` : "";
+  const topAndTies =
+    typeof data.topAndTies === "number"
+      ? `top ${data.topAndTies} and ties`
+      : "top players and ties";
+  const label = data.optional === true ? "Optional cut" : "Cut";
+
+  return `${label}${afterRound}: ${topAndTies}.`;
+}
+
+function formatTiebreakerRule(rule: unknown) {
+  const data = asRuleRecord(rule);
+
+  if (!data) {
+    return "Earliest valid submission if scores are tied.";
+  }
+
+  if (data.type === "sudden_death") {
+    const holes = Array.isArray(data.holes)
+      ? data.holes.filter((hole): hole is number => typeof hole === "number")
+      : [];
+    const netTieBreakers = Array.isArray(data.netTieBreakers)
+      ? data.netTieBreakers.map(formatRuleToken)
+      : [];
+    const playoffText =
+      holes.length > 0
+        ? `Sudden-death playoff starting on ${holes.map((hole) => `hole ${hole}`).join(", ")}.`
+        : "Sudden-death playoff.";
+
+    return netTieBreakers.length > 0
+      ? `${playoffText} Net ties use ${listText(netTieBreakers)}.`
+      : playoffText;
+  }
+
+  if (data.type === "countback") {
+    const order = Array.isArray(data.order)
+      ? data.order.map(formatRuleToken)
+      : [];
+
+    return order.length > 0
+      ? `Countback: ${listText(order)}.`
+      : "Countback if scores are tied.";
+  }
+
+  if (Array.isArray(data.tieBreakers)) {
+    return `Tiebreakers: ${listText(data.tieBreakers.map(formatRuleToken))}.`;
+  }
+
+  return "Earliest valid submission if scores are tied.";
+}
+
+function asRuleRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return Object.keys(value).length > 0 ? (value as Record<string, unknown>) : null;
+}
+
+function formatRuleToken(value: unknown) {
+  if (typeof value !== "string") {
+    return String(value);
+  }
+
+  const labels: Record<string, string> = {
+    back_nine: "back nine",
+    countback: "countback",
+    earliest_submission: "earliest valid submission",
+    final_round: "final round",
+    last_six: "last six",
+    last_three: "last three",
+    net_total: "net total",
+    sudden_death: "sudden death",
+  };
+
+  return labels[value] ?? value.replaceAll("_", " ");
+}
+
+function listText(items: string[]) {
+  if (items.length <= 1) {
+    return items[0] ?? "";
+  }
+
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 function Rule({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
-      <p className="mt-1 break-words">{value === "{}" ? "None" : value}</p>
+      <p className="mt-1 break-words">{value}</p>
     </div>
   );
 }
