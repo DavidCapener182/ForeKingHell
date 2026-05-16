@@ -548,7 +548,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
 
   return (
     <section className="px-4 py-6 sm:px-6 lg:px-8" data-import-ready={isHydrated ? "true" : "false"}>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">

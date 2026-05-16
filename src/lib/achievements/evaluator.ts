@@ -8,6 +8,7 @@ import {
   GENERATED_CLUB_MILEAGE_BY_CLUB,
   GENERATED_CLUB_METRICS_BY_CLUB,
   GENERATED_CLUB_PERSONAL_BEST_BY_CLUB,
+  GENERATED_CLUB_SESSION_VOLUME_BY_CLUB,
   GENERATED_CLUB_VOLUME_BY_CLUB,
   GENERATED_HIDDEN_SHOTS_BY_CLUB,
   YARDS_PER_MILE,
@@ -510,6 +511,7 @@ function evaluateSession(collector: Collector, session: AchievementSession, sess
   evaluateFiveWoodSession(collector, session, fiveWoodShots);
   evaluateShortGameSession(collector, session, byClub);
   evaluateConsistencySession(collector, session, byClub);
+  evaluateGeneratedClubSessionVolume(collector, session, byClub);
   evaluateGeneratedClubMasterySession(collector, session, byClub);
   evaluateSessionHidden(collector, session, sessionShots);
 }
@@ -644,6 +646,49 @@ function evaluateConsistencySession(
     })
   ) {
     collector.unlock("no_outlier_session", { sourceSessionId: session.id, unlockedAt: session.date });
+  }
+}
+
+function evaluateGeneratedClubSessionVolume(
+  collector: Collector,
+  session: AchievementSession,
+  byClub: Map<string, AchievementShot[]>,
+) {
+  for (const [clubType, clubShots] of byClub.entries()) {
+    const generatedAchievements = GENERATED_CLUB_SESSION_VOLUME_BY_CLUB.get(clubType) ?? [];
+
+    if (generatedAchievements.length === 0) {
+      continue;
+    }
+
+    const sortedClubShots = sortShots(clubShots);
+    const shotCount = sortedClubShots.length;
+
+    for (const generated of generatedAchievements) {
+      collector.progressCandidate(
+        generated.id,
+        Math.min(shotCount, generated.shotCount),
+        generated.shotCount,
+        { clubType, sessionShotCount: shotCount },
+      );
+
+      if (shotCount < generated.shotCount) {
+        continue;
+      }
+
+      const thresholdShot = sortedClubShots[generated.shotCount - 1] ?? sortedClubShots[sortedClubShots.length - 1];
+
+      collector.unlock(generated.id, {
+        sourceSessionId: session.id,
+        sourceShotId: thresholdShot?.id,
+        unlockedAt: thresholdShot?.shotAt ?? session.date,
+        metadata: {
+          clubType,
+          sessionShotCount: shotCount,
+          targetShots: generated.shotCount,
+        },
+      });
+    }
   }
 }
 

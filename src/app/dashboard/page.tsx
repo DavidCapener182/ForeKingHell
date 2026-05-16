@@ -88,7 +88,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 function MissingDatabaseUrlSetup() {
   return (
-    <PageShell contentClassName="max-w-[1240px]">
+    <PageShell>
       <PageHeader
         eyebrow={
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -439,7 +439,7 @@ export default async function DashboardPage() {
   const firstSignal = data.whatChanged[0] ?? null;
 
   return (
-    <PageShell contentClassName="max-w-[1240px]">
+    <PageShell>
       <DashboardMobileLayout
         data={data}
         social={social}

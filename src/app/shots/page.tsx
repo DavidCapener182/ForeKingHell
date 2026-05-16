@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Upload } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Search, Upload } from "lucide-react";
 import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
+import { DateFilterPopover } from "@/components/app/date-filter-popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   ActiveFilterChips,
   CompactReadoutGrid,
@@ -28,6 +38,13 @@ import {
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -467,45 +484,59 @@ function ShotFilterFields({
 }) {
   return (
     <>
-      <label className="grid gap-1 text-sm font-medium">
-        Search file/course
-        <input name="q" defaultValue={filters.q} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" placeholder="Session name" />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Club
-        <select name="club" defaultValue={filters.club} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-          <option value="">All clubs</option>
+      <Field>
+        <FieldLabel>Search file/course</FieldLabel>
+        <InputGroup className="h-10 bg-white/90">
+          <InputGroupAddon>
+            <Search className="size-4" />
+          </InputGroupAddon>
+          <InputGroupInput name="q" defaultValue={filters.q} placeholder="Session name" />
+        </InputGroup>
+      </Field>
+      <Field>
+        <FieldLabel>Club</FieldLabel>
+        <Select name="club" defaultValue={filters.club || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90">
+            <SelectValue placeholder="All clubs" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All clubs</SelectItem>
           {clubsForFilter.map((club) => (
-            <option key={club} value={club}>{formatClubType(club)}</option>
+              <SelectItem key={club} value={club}>{formatClubType(club)}</SelectItem>
           ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Session
-        <select name="sessionId" defaultValue={filters.sessionId} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-          <option value="">All sessions</option>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field>
+        <FieldLabel>Session</FieldLabel>
+        <Select name="sessionId" defaultValue={filters.sessionId || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90">
+            <SelectValue placeholder="All sessions" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All sessions</SelectItem>
           {sessionSummaries.map((session) => (
-            <option key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</option>
+              <SelectItem key={session.id} value={session.id}>{session.fileName ?? formatDate(session.date)}</SelectItem>
           ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Category
-        <select name="category" defaultValue={filters.category} className="rounded-lg border bg-white/90 px-3 py-2 text-sm">
-          <option value="">All categories</option>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field>
+        <FieldLabel>Category</FieldLabel>
+        <Select name="category" defaultValue={filters.category || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90">
+            <SelectValue placeholder="All categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All categories</SelectItem>
           {categories.map((category) => (
-            <option key={category} value={category}>{formatSessionType(category)}</option>
+              <SelectItem key={category} value={category}>{formatSessionType(category)}</SelectItem>
           ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        From
-        <input type="date" name="from" defaultValue={filters.from} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        To
-        <input type="date" name="to" defaultValue={filters.to} className="rounded-lg border bg-white/90 px-3 py-2 text-sm" />
-      </label>
+          </SelectContent>
+        </Select>
+      </Field>
+      <DateFilterPopover name="from" label="From" defaultValue={filters.from} />
+      <DateFilterPopover name="to" label="To" defaultValue={filters.to} />
     </>
   );
 }
@@ -612,13 +643,17 @@ function parseFilters(params: Awaited<SearchParams>): ShotFilters {
 
   return {
     page,
-    club: first(params.club),
-    sessionId: first(params.sessionId),
-    category: first(params.category),
+    club: allToEmpty(first(params.club)),
+    sessionId: allToEmpty(first(params.sessionId)),
+    category: allToEmpty(first(params.category)),
     q: first(params.q).trim().slice(0, 120),
     from: dateParam(first(params.from)),
     to: dateParam(first(params.to)),
   };
+}
+
+function allToEmpty(value: string) {
+  return value === "__all" ? "" : value;
 }
 
 function pageHref(filters: ShotFilters, page: number) {

@@ -3,7 +3,18 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Activity, CreditCard, Flag, ShieldCheck, Users } from "lucide-react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", icon: Activity },
@@ -15,26 +26,27 @@ const adminLinks = [
 
 export function AdminNav({ active }: { active: string }) {
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Admin sections">
+    <nav aria-label="Admin sections">
+      <ButtonGroup className="flex-wrap">
       {adminLinks.map((item) => {
         const Icon = item.icon;
         const current = item.href === active;
 
         return (
-          <Link
+          <Button
             key={item.href}
-            href={item.href}
-            className={
-              current
-                ? "inline-flex h-9 items-center gap-2 rounded-xl bg-[#111827] px-3 text-sm font-semibold text-white"
-                : "inline-flex h-9 items-center gap-2 rounded-xl border bg-white px-3 text-sm font-medium text-muted-foreground shadow-sm hover:bg-slate-50"
-            }
+            asChild
+            variant={current ? "default" : "outline"}
+            size="sm"
           >
-            <Icon className="size-4" />
-            {item.label}
-          </Link>
+            <Link href={item.href} aria-current={current ? "page" : undefined}>
+              <Icon className="size-4" />
+              {item.label}
+            </Link>
+          </Button>
         );
       })}
+      </ButtonGroup>
     </nav>
   );
 }
@@ -45,37 +57,39 @@ export function AdminNotice({ status, error }: { status?: string; error?: string
   }
 
   return (
-    <div className={error ? "rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" : "rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"}>
-      {error ?? status}
-    </div>
+    <Alert variant={error ? "destructive" : "default"}>
+      <AlertDescription>{error ?? status}</AlertDescription>
+    </Alert>
   );
 }
 
 export function AdminMetric({ icon: Icon, label, value, detail }: { icon: LucideIcon; label: string; value: ReactNode; detail?: ReactNode }) {
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Icon className="size-4 text-emerald-600" />
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
-    </div>
+    <Card className="premium-card">
+      <CardHeader>
+        <CardDescription className="flex items-center gap-2">
+          <Icon className="size-4 text-emerald-600" />
+          {label}
+        </CardDescription>
+        <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>
+      </CardHeader>
+      {detail ? <CardContent className="text-xs text-muted-foreground">{detail}</CardContent> : null}
+    </Card>
   );
 }
 
 export function AdminSection({ title, description, action, children }: { title: string; description?: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-xl border bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <Card className="premium-card">
+      <CardHeader>
         <div>
-          <h2 className="text-base font-semibold tracking-normal">{title}</h2>
-          {description ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+          <CardTitle className="text-base font-semibold tracking-normal">{title}</CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
         </div>
-        {action}
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
+        {action ? <CardAction>{action}</CardAction> : null}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 

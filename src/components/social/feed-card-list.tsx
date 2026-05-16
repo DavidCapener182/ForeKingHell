@@ -34,7 +34,16 @@ import {
 } from "@/app/feed/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/app/empty-state";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { socialVisibilityOptions, type FeedItemView } from "@/lib/social";
@@ -72,12 +81,10 @@ export function FeedCardList({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white/80 p-6 text-sm text-muted-foreground shadow-sm">
-        <p className="font-medium text-foreground">No activity yet.</p>
-        <p className="mt-1">
-          Import a session, set a course record, enter an event, unlock an achievement, or join a challenge to start the feed.
-        </p>
-      </div>
+      <EmptyState
+        title="No activity yet"
+        description="Import a session, set a course record, enter an event, unlock an achievement, or join a challenge to start the feed."
+      />
     );
   }
 
@@ -105,8 +112,8 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
   const hasXp = group.xpGained > 0;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white/95 shadow-sm">
-      <div className="grid gap-4 p-4">
+    <Card role="article" className="premium-card">
+      <CardContent className="grid gap-4">
         <header className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -225,18 +232,19 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
             </Link>
           </Button>
         </div>
-      </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }
 
 function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
   return (
-    <article
-      className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition hover:border-emerald-200"
+    <Card
+      role="article"
+      className="premium-card transition hover:border-emerald-200"
       data-feed-item-id={item.id}
     >
-      <div className={compact ? "grid gap-3 p-3" : "grid gap-4 p-4"}>
+      <CardContent className={compact ? "grid gap-3" : "grid gap-4"}>
         <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
           <SocialAvatar
             displayName={item.profile.displayName}
@@ -327,7 +335,7 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               ) : null}
               <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <Input name="body" placeholder="Write a comment" className="h-9 rounded-lg bg-white" />
+                <Textarea name="body" placeholder="Write a comment" rows={2} className="min-h-10 resize-none rounded-lg bg-white" />
                 <Button type="submit" variant="outline">
                   <MessageCircle className="size-4" />
                   Post
@@ -337,8 +345,8 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
           ) : null}
           <FeedItemControls item={item} compact={compact} />
         </div>
-      </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -390,7 +398,7 @@ function DigestComments({ items }: { items: FeedItemView[] }) {
             </div>
             <form action={addFeedCommentAction} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
               <input type="hidden" name="feedItemId" value={item.id} />
-              <Input name="body" placeholder="Write a comment" className="h-9 rounded-xl bg-white" />
+              <Textarea name="body" placeholder="Write a comment" rows={2} className="min-h-10 resize-none rounded-xl bg-white" />
               <Button type="submit" variant="outline">
                 <MessageCircle className="size-4" />
                 Post
@@ -507,15 +515,21 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
   const isOwnItem = item.profile.relationship === "self";
 
   return (
-    <details className="group rounded-lg border bg-[#F5F6F4]">
-      <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size={compact ? "xs" : "sm"}
+          className="w-fit"
+        >
           <ShieldCheck className="size-4 text-slate-600" />
           Controls
-        </span>
-        <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-      </summary>
-      <div className={compact ? "grid gap-2 border-t p-2" : "grid gap-3 border-t p-3 sm:grid-cols-2"}>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className={compact ? "w-72" : "w-80"}>
+        <DropdownMenuLabel>Feed controls</DropdownMenuLabel>
+        <div className={compact ? "grid gap-2 p-1" : "grid gap-3 p-1"}>
         {isOwnItem ? (
           <>
             <form action={updateFeedItemVisibilityAction} className="grid gap-2 rounded-lg bg-white p-2">
@@ -578,8 +592,9 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
             Report
           </Button>
         </form>
-      </div>
-    </details>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

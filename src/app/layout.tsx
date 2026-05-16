@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
-import { AppNav } from "@/components/app-nav";
+import { AppShell } from "@/components/app/app-shell";
 import { PwaRegister } from "@/components/pwa-register";
 import { SocialFeedRail } from "@/components/social/social-feed-rail";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { getTotalXpForCurrentUser } from "@/lib/achievements/service";
 import { isCurrentUserAdmin } from "@/lib/admin";
@@ -66,12 +67,15 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col antialiased">
         <PlausibleScript />
-        <PwaRegister />
-        <AppNav totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile} />
-        <AchievementNotificationProvider initialNotifications={achievementNotifications}>
-          {children}
-        </AchievementNotificationProvider>
-        <SocialFeedRail />
+        <TooltipProvider delayDuration={200}>
+          <PwaRegister />
+          <AppShell totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile}>
+            <AchievementNotificationProvider initialNotifications={achievementNotifications}>
+              {children}
+            </AchievementNotificationProvider>
+          </AppShell>
+          <SocialFeedRail />
+        </TooltipProvider>
       </body>
     </html>
   );

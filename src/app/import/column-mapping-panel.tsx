@@ -5,6 +5,8 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -87,19 +89,19 @@ export function ColumnMappingPanel({
   }
 
   return (
-    <div className="rounded-xl border bg-white p-4">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+    <Card className="premium-card">
+      <CardHeader className="sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div>
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="size-4 text-emerald-700" />
-            <p className="text-sm font-semibold">Manual column mapping</p>
+            <CardTitle>Manual column mapping</CardTitle>
             <Badge variant={needsMapping ? "default" : "outline"}>
               {needsMapping ? "Mapping needed" : "Auto detected"}
             </Badge>
           </div>
-          <p className="text-xs leading-5 text-muted-foreground">
+          <CardDescription>
             If a Rapsodo export changes header names, map the first file&apos;s columns before previewing and saving.
-          </p>
+          </CardDescription>
         </div>
         <div className="flex shrink-0 gap-2">
           {hasSuggestions ? (
@@ -118,13 +120,14 @@ export function ColumnMappingPanel({
             </Button>
           ) : null}
         </div>
-      </div>
+      </CardHeader>
+      <CardContent className="grid gap-3">
       <div className="grid gap-3 sm:grid-cols-2">
         {MAPPABLE_FIELDS.map((field) => (
-          <div key={field} className="space-y-1.5">
-            <label className="text-xs font-medium" htmlFor={`column-map-${field}`}>
+          <Field key={field} className="gap-1.5">
+            <FieldLabel className="text-xs" htmlFor={`column-map-${field}`}>
               {RAPSODO_COLUMN_FIELD_LABELS[field]}
-            </label>
+            </FieldLabel>
             <Select value={columnMapping[field] ?? AUTO_VALUE} onValueChange={(value) => setField(field, value)}>
               <SelectTrigger id={`column-map-${field}`} className="h-9 w-full text-xs">
                 <SelectValue placeholder="Auto detect" />
@@ -138,12 +141,13 @@ export function ColumnMappingPanel({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </Field>
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <FieldDescription>
         Header row: {primaryAnalysis?.headerRowNumber ?? "--"}. Mapping applies to this batch and is saved with queued offline imports.
-      </p>
-    </div>
+      </FieldDescription>
+      </CardContent>
+    </Card>
   );
 }

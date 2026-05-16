@@ -34,6 +34,8 @@ import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -290,11 +292,13 @@ function ComparisonBar() {
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Period</p>
         <p className="mt-1 font-semibold">All saved data</p>
       </div>
-      <div className="flex flex-wrap gap-2 sm:justify-end">
-        <StatusPill tone="green">All data</StatusPill>
-        <StatusPill tone="slate">Last 30 days</StatusPill>
-        <StatusPill tone="slate">Last 10 sessions</StatusPill>
-      </div>
+      <Tabs defaultValue="all" className="sm:justify-self-end">
+        <TabsList>
+          <TabsTrigger value="all">All data</TabsTrigger>
+          <TabsTrigger value="30d">Last 30 days</TabsTrigger>
+          <TabsTrigger value="10s">Last 10 sessions</TabsTrigger>
+        </TabsList>
+      </Tabs>
     </section>
   );
 }
@@ -606,12 +610,7 @@ function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
           >
             <p className="font-semibold">{formatClubType(item.clubType)}</p>
             <div className="min-w-0">
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn("h-full rounded-full", barClassForTone(item.tone))}
-                  style={{ width: `${item.trustIndex ?? 8}%` }}
-                />
-              </div>
+              <Progress value={item.trustIndex ?? 8} className="h-2" />
               <p className="mt-1 truncate text-xs text-muted-foreground">{item.note}</p>
             </div>
             <div className="text-right">
@@ -744,18 +743,6 @@ function strokeForTone(tone: Tone) {
   };
 
   return strokes[tone];
-}
-
-function barClassForTone(tone: Tone) {
-  const classes: Record<Tone, string> = {
-    green: "bg-emerald-600",
-    sky: "bg-sky-600",
-    pink: "bg-pink-600",
-    amber: "bg-amber-500",
-    slate: "bg-slate-400",
-  };
-
-  return classes[tone];
 }
 
 function findAnalytics(

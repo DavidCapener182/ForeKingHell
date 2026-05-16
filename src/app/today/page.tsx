@@ -323,9 +323,9 @@ export default async function TodayPage({
 
           <section
             id="clubs"
-            className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]"
+            className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)]"
           >
-            <DataPanel>
+            <DataPanel className="min-w-0">
               <SectionHeader
                 title="Club by club"
                 description="Today against the latest previous shots for the same club."
@@ -337,6 +337,7 @@ export default async function TodayPage({
               />
               <CardContent>
                 <DataTableFrame
+                  className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
                   mobile={
                     <MobileHorizontalRail
                       title="Club changes"
@@ -390,17 +391,19 @@ export default async function TodayPage({
                     </MobileHorizontalRail>
                   }
                 >
-                  <Table className="min-w-[980px]">
+                  <Table className="w-full" containerClassName="overflow-x-visible">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Club</TableHead>
-                        <TableHead>Call</TableHead>
-                        <TableHead className="text-right">Shots</TableHead>
-                        <TableHead className="text-right">Carry</TableHead>
-                        <TableHead className="text-right">Offline</TableHead>
-                        <TableHead className="text-right">Straight</TableHead>
-                        <TableHead className="text-right">Playable</TableHead>
-                        <TableHead>Signal</TableHead>
+                        <TableHead className="px-2">Club</TableHead>
+                        <TableHead className="px-2">Call</TableHead>
+                        <TableHead className="px-2 text-right">Shots</TableHead>
+                        <TableHead className="px-2 text-right">Carry</TableHead>
+                        <TableHead className="px-2 text-right">Offline</TableHead>
+                        <TableHead className="px-2 text-right">Straight</TableHead>
+                        <TableHead className="px-2 text-right">Playable</TableHead>
+                        <TableHead className="max-w-[10.5rem] whitespace-normal px-2">
+                          Signal
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -930,7 +933,7 @@ function HighlightGroup({
       <div
         className={
           title === "Close to PB"
-            ? "grid gap-2 md:grid-cols-2"
+            ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
             : "grid gap-3 md:grid-cols-2 xl:grid-cols-3"
         }
       >
@@ -944,34 +947,58 @@ function HighlightGroup({
 
 function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
   const close = highlight.kind === "close";
+  const statusLabel =
+    highlight.kind === "tie" ? "Tied PB" : close ? "Close" : "New PB";
+
+  if (close) {
+    return (
+      <div className="rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant="outline"
+            className="border-amber-200 bg-white/70 text-amber-800"
+          >
+            {highlight.clubLabel}
+          </Badge>
+          <span className="text-xs font-medium text-amber-800">
+            {statusLabel}
+          </span>
+        </div>
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            {highlight.metricLabel}
+          </p>
+          <p className="shrink-0 text-lg font-semibold tracking-normal text-slate-950">
+            {highlight.value}
+          </p>
+        </div>
+        <p className="mt-1 text-xs leading-5 text-slate-700">
+          {highlight.detail}
+          {highlight.target ? (
+            <span className="text-muted-foreground"> · {highlight.target}</span>
+          ) : null}
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={
-        close
-          ? "rounded-xl border border-amber-100 bg-amber-50/45 px-4 py-3"
-          : "rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm"
-      }
-    >
+    <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <Badge
           variant="outline"
-          className={
-            close
-              ? "border-amber-200 bg-white/70 text-amber-800"
-              : "border-emerald-200 bg-white/70 text-emerald-700"
-          }
+          className="border-emerald-200 bg-white/70 text-emerald-700"
         >
           {highlight.clubLabel}
         </Badge>
-        <span className={close ? "text-xs font-medium text-amber-800" : "text-xs font-medium text-emerald-700"}>
-          {highlight.kind === "tie" ? "Tied PB" : close ? "Close" : "New PB"}
+        <span className="text-xs font-medium text-emerald-700">
+          {statusLabel}
         </span>
       </div>
       <p className="mt-3 text-sm font-medium text-muted-foreground">
         {highlight.metricLabel}
       </p>
-      <p className={close ? "mt-1 text-xl font-semibold tracking-normal text-slate-950" : "mt-1 text-2xl font-semibold tracking-normal text-slate-950"}>
+      <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
         {highlight.value}
       </p>
       <p className="mt-1 text-sm leading-5 text-slate-700">
@@ -1154,15 +1181,17 @@ function improvementOverPrevious(
 }
 
 function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
+  const signalLines = buildSignalLines(comparison);
+
   return (
     <TableRow>
-      <TableCell className="font-medium">{comparison.clubLabel}</TableCell>
-      <TableCell>
+      <TableCell className="px-2 font-medium">{comparison.clubLabel}</TableCell>
+      <TableCell className="px-2">
         <Badge className={verdictBadgeClass(comparison.verdict)}>
           {verdictLabel(comparison.verdict)}
         </Badge>
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="px-2 text-right">
         {comparison.today.shotCount}
         <span className="text-muted-foreground">
           /{comparison.previous.shotCount}
@@ -1195,10 +1224,14 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
         isRate
       />
       <TableCell
-        className="max-w-56 text-sm text-muted-foreground"
+        className="max-w-[10.5rem] whitespace-normal px-2 align-top text-sm leading-snug text-muted-foreground"
         title={comparison.summary}
       >
-        {shortSignal(comparison)}
+        {signalLines.map((line, index) => (
+          <span key={`${line}-${index}`} className="block">
+            {line}
+          </span>
+        ))}
       </TableCell>
     </TableRow>
   );
@@ -1222,7 +1255,7 @@ function formatDeltaPair(
   );
 }
 
-function shortSignal(comparison: ClubDayComparison) {
+function buildSignalLines(comparison: ClubDayComparison) {
   const parts = [
     isNumber(comparison.offlineDeltaYd)
       ? offlineDeltaText(comparison.offlineDeltaYd)
@@ -1233,9 +1266,13 @@ function shortSignal(comparison: ClubDayComparison) {
     isNumber(comparison.carryDeltaYd)
       ? `${deltaText(comparison.carryDeltaYd, "yd", true)} carry`
       : null,
-  ].filter(Boolean);
+  ].filter(Boolean) as string[];
 
-  return parts.length > 0 ? parts.slice(0, 2).join(" · ") : comparison.summary;
+  if (parts.length > 0) {
+    return parts.slice(0, 2);
+  }
+
+  return [comparison.summary];
 }
 
 function MetricDeltaCell({
@@ -1252,7 +1289,7 @@ function MetricDeltaCell({
   isRate?: boolean;
 }) {
   return (
-    <TableCell className="text-right">
+    <TableCell className="px-2 text-right whitespace-normal">
       <div className="font-medium">
         {isRate ? formatRate(value) : formatYards(value)}
       </div>
@@ -1278,12 +1315,12 @@ function StraightestShotsPanel({
   } as CSSProperties;
 
   return (
-    <div style={panelStyle}>
+    <div className="min-w-0" style={panelStyle}>
       <DataPanel className="xl:h-[var(--shot-panel-height)] xl:overflow-hidden">
         <SectionHeader
           title="Shot of the day"
-          description="Top 5 straightest shots, ranked by offline and start line."
-          action={<Crosshair className="size-5 text-sky-600" />}
+          description="Top 5 straightest shots by offline and start line."
+          action={<Crosshair className="size-4 text-sky-600" />}
         />
         <CardContent className="space-y-2 xl:max-h-[calc(var(--shot-panel-height)-6rem)] xl:overflow-y-auto xl:pr-3 xl:[scrollbar-gutter:stable]">
           {visibleShots.length > 0 ? (
@@ -1329,28 +1366,28 @@ function StraightShotCard({
     <div
       className={
         featured
-          ? "rounded-xl border border-sky-200 bg-sky-50/70 p-4"
+          ? "rounded-xl border border-sky-200 bg-sky-50/70 p-3.5"
           : "apple-panel-strong p-3"
       }
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-semibold">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold leading-tight">
             {formatClubType(shot.clubType)}{" "}
             {shot.shotNumber ? `shot ${shot.shotNumber}` : ""}
           </p>
-          <p className="mt-0.5 max-w-72 truncate text-sm text-muted-foreground">
+          <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
             {shotSessionLabel(shot)}
           </p>
         </div>
         <Badge
           variant="outline"
-          className="border-sky-200 bg-sky-50 text-sky-700"
+          className="shrink-0 border-sky-200 bg-sky-50 text-sky-700"
         >
           {formatOfflineYards(shot.sideCarryYd)}
         </Badge>
       </div>
-      <div className="mt-3 grid grid-cols-4 gap-2 text-sm">
+      <div className="mt-2.5 grid grid-cols-2 gap-2 text-sm">
         <MiniMetric label="Carry" value={formatYards(shot.carryYd)} />
         <MiniMetric label="Total" value={formatYards(shot.totalYd)} />
         <MiniMetric

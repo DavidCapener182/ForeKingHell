@@ -20,6 +20,7 @@ import {
 
 import { syncAchievementsAction } from "@/app/achievements/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
+import { EmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +30,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { MobileFilterSheet } from "@/components/premium";
@@ -639,9 +648,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           ) : null}
 
           {shownAchievements.length === 0 ? (
-            <div className="apple-panel p-8 text-center text-sm text-muted-foreground">
-              No achievements match this filter.
-            </div>
+            <EmptyState title="No achievements match this filter" />
           ) : null}
         </CardContent>
       </Card>
@@ -1011,14 +1018,35 @@ function AchievementCard({
   focused: boolean;
 }) {
   return (
-    <div
-      id={achievementDomId(achievement.id)}
-      className={cn(
-        "apple-panel-strong flex min-h-40 flex-col justify-between p-4",
-        achievement.unlocked ? "border-emerald-300" : "border-border",
-        focused && "ring-2 ring-emerald-500/40",
-      )}
-    >
+    <Dialog>
+      <DialogTrigger asChild>
+        <Card
+          id={achievementDomId(achievement.id)}
+          role="button"
+          tabIndex={0}
+          className={cn(
+            "apple-panel-strong flex min-h-40 cursor-pointer flex-col justify-between p-4 text-left transition hover:border-emerald-300",
+            achievement.unlocked ? "border-emerald-300" : "border-border",
+            focused && "ring-2 ring-emerald-500/40",
+          )}
+        >
+          <AchievementCardBody achievement={achievement} />
+        </Card>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{achievement.displayName}</DialogTitle>
+          <DialogDescription>{achievement.displayDescription}</DialogDescription>
+        </DialogHeader>
+        <AchievementCardBody achievement={achievement} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AchievementCardBody({ achievement }: { achievement: AchievementView }) {
+  return (
+    <>
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <AchievementBadgeIcon achievement={achievement} />
@@ -1051,7 +1079,7 @@ function AchievementCard({
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 

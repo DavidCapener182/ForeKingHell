@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export function SocialAvatar({
@@ -15,28 +16,30 @@ export function SocialAvatar({
   size?: "sm" | "md" | "lg";
   href?: string;
 }) {
-  const content = avatarUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-  ) : (
-    <span className="font-semibold tracking-normal">{initials(displayName, username)}</span>
-  );
   const className = cn(
-    "grid shrink-0 place-items-center overflow-hidden rounded-full border border-white/80 bg-[#111827] text-white shadow-sm ring-1 ring-slate-950/10",
+    "shadow-sm ring-1 ring-slate-950/10",
     size === "sm" && "size-8 text-xs",
     size === "md" && "size-11 text-sm",
     size === "lg" && "size-16 text-lg",
   );
+  const content = (
+    <Avatar className={className}>
+      {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+      <AvatarFallback className="bg-[#111827] font-semibold tracking-normal text-white">
+        {initials(displayName, username)}
+      </AvatarFallback>
+    </Avatar>
+  );
 
   if (href) {
     return (
-      <Link href={href} prefetch={false} className={className}>
+      <Link href={href} prefetch={false} className="shrink-0">
         {content}
       </Link>
     );
   }
 
-  return <div className={className}>{content}</div>;
+  return content;
 }
 
 export function initials(displayName: string, username?: string) {

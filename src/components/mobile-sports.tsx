@@ -14,6 +14,14 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 type MobileAppShellProps = {
@@ -319,27 +327,28 @@ export function BottomSheet({
   triggerClassName?: string;
 }) {
   return (
-    <details className="group sm:hidden">
-      <summary
-        className={cn(
-          "inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-full bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-sm [&::-webkit-details-marker]:hidden",
-          triggerClassName,
-        )}
-      >
-        {label}
-        <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[84vh] overflow-y-auto rounded-t-[1.25rem] border border-[#E5E7EB] bg-white p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] shadow-lg shadow-black/10">
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#E5E7EB]" />
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-normal text-[#050505]">
-            {title}
-          </h2>
-          <MoreHorizontal className="size-5 text-[#6B7280]" />
-        </div>
-        {children}
-      </div>
-    </details>
+    <div className="sm:hidden">
+      <Drawer>
+        <DrawerTrigger
+          className={cn(
+            "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-sm",
+            triggerClassName,
+          )}
+        >
+          {label}
+          <ChevronDown className="size-4" aria-hidden />
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[86vh]">
+          <DrawerHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-left">
+            <DrawerTitle className="text-xl tracking-normal">{title}</DrawerTitle>
+            <MoreHorizontal className="size-5 text-[#6B7280]" aria-hidden />
+          </DrawerHeader>
+          <ScrollArea className="overflow-y-auto px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+            {children}
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+    </div>
   );
 }
 

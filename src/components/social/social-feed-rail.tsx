@@ -19,7 +19,27 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type SocialFeedPreviewItem = {
   id: string;
@@ -99,9 +119,7 @@ const hiddenRoutePrefixes = [
   "/share",
   "/settings/invitations",
   "/feed",
-  "/dashboard",
 ];
-const railMediaQuery = "(min-width: 1024px)";
 const seenStorageKey = "fkh-social-feed-seen-at";
 
 export function SocialFeedRail() {
@@ -116,6 +134,7 @@ export function SocialFeedRail() {
 function SocialFeedRailContent() {
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
+  const isMobile = useIsMobile();
   const [status, setStatus] = useState<FeedStatus>("loading");
   const [items, setItems] = useState<SocialFeedPreviewItem[]>([]);
   const [newCount, setNewCount] = useState(0);
@@ -127,10 +146,6 @@ function SocialFeedRailContent() {
 
   useEffect(() => {
     if (status !== "loading") {
-      return;
-    }
-
-    if (!window.matchMedia(railMediaQuery).matches) {
       return;
     }
 
@@ -175,15 +190,16 @@ function SocialFeedRailContent() {
   }, [status]);
 
   function openRail() {
-    expandedRef.current = true;
-    markItemsSeen(items);
-    setNewCount(0);
-    setExpanded(true);
+    setRailOpen(true);
   }
 
-  function collapseRail() {
-    expandedRef.current = false;
-    setExpanded(false);
+  function setRailOpen(open: boolean) {
+    expandedRef.current = open;
+    if (open) {
+      markItemsSeen(items);
+      setNewCount(0);
+    }
+    setExpanded(open);
   }
 
   function refreshFeed() {
@@ -330,119 +346,220 @@ function SocialFeedRailContent() {
     }
   }
 
+  const feedContent = (
+    <SocialFeedPreviewContent
+      busyCommentId={busyCommentId}
+      busyItemId={busyItemId}
+      commentingItemId={commentingItemId}
+      commentDrafts={commentDrafts}
+      groups={groups}
+      status={status}
+      onCommentDelete={deleteComment}
+      onCommentDraftChange={(itemId, value) =>
+        setCommentDrafts((current) => ({ ...current, [itemId]: value }))
+      }
+      onCommentReactionToggle={toggleCommentReaction}
+      onCommentToggle={(itemId) =>
+        setCommentingItemId((current) => (current === itemId ? null : itemId))
+      }
+      onReactionToggle={toggleReaction}
+      onSubmitComment={submitComment}
+    />
+  );
+
   return (
-    <aside
-      className="fixed top-28 right-3 z-40 hidden w-48 lg:block xl:w-52 2xl:w-56 min-[2040px]:w-64 print:hidden"
-      style={{ right: "max(1rem, calc((100vw - 1500px) / 2 - 17rem))" }}
-      aria-label="Social feed preview"
-    >
-      {!expanded ? (
-        <Button
-          type="button"
-          className="relative w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white text-slate-950 shadow-xl shadow-slate-950/10 hover:bg-slate-50"
-          onClick={openRail}
-          aria-expanded={expanded}
-        >
-          <Radio className="size-4 text-emerald-600" />
-          Social feed
-          {newCount > 0 ? (
-            <span className="ml-auto rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
-              {newCount > 99 ? "99+" : numberFormatter.format(newCount)}
-            </span>
-          ) : null}
-        </Button>
+    <aside aria-label="Social feed preview" className="print:hidden">
+      <Button
+        type="button"
+        variant="outline"
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 h-11 gap-2 rounded-full border-slate-200 bg-white px-3 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 sm:bottom-5 sm:right-5 sm:px-4"
+        onClick={openRail}
+        aria-expanded={expanded}
+        aria-controls="social-feed-preview"
+        aria-label="Open social feed preview"
+      >
+        <Radio className="size-4 text-emerald-600" />
+        <span className="sm:hidden">Feed</span>
+        <span className="hidden sm:inline">Social feed</span>
+        {newCount > 0 ? (
+          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+            {newCount > 99 ? "99+" : numberFormatter.format(newCount)}
+          </span>
+        ) : null}
+      </Button>
+
+      {isMobile ? (
+        <Drawer open={expanded} onOpenChange={setRailOpen}>
+          <DrawerContent id="social-feed-preview" className="max-h-[86vh]">
+            <DrawerHeader className="text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <DrawerTitle className="flex items-center gap-2">
+                    <Radio className="size-4 text-emerald-600" />
+                    Social feed
+                  </DrawerTitle>
+                  <DrawerDescription>
+                    Daily digests match the full feed.
+                  </DrawerDescription>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={refreshFeed}
+                    aria-label="Refresh social feed"
+                  >
+                    {status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                  </Button>
+                  <DrawerClose asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      Close
+                    </Button>
+                  </DrawerClose>
+                </div>
+              </div>
+            </DrawerHeader>
+            <ScrollArea className="min-h-0 flex-1 px-3">
+              {feedContent}
+            </ScrollArea>
+            <DrawerFooter>
+              <Button asChild className="w-full">
+                <Link href="/feed" prefetch={false}>
+                  Open feed
+                  <ExternalLink className="size-4" />
+                </Link>
+              </Button>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
       ) : (
-        <section className="flex h-[calc(100vh-8rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-xl shadow-slate-950/10 backdrop-blur">
-          <header className="border-b border-slate-100 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Radio className="size-4 text-emerald-600" />
-                Social feed
-              </p>
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={refreshFeed}
-                  aria-label="Refresh social feed"
-                >
-                  {status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={collapseRail}
-                  aria-label="Collapse social feed"
-                >
-                  Collapse
-                </Button>
+        <Sheet open={expanded} onOpenChange={setRailOpen}>
+          <SheetContent
+            id="social-feed-preview"
+            side="right"
+            showCloseButton={false}
+            className="w-[min(420px,calc(100vw-1rem))] max-w-none gap-0 p-0 sm:max-w-none"
+          >
+            <SheetHeader className="border-b border-slate-100 p-4 text-left">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <SheetTitle className="flex items-center gap-2">
+                    <Radio className="size-4 text-emerald-600" />
+                    Social feed
+                  </SheetTitle>
+                  <SheetDescription>
+                    Daily digests match the full feed.
+                  </SheetDescription>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={refreshFeed}
+                    aria-label="Refresh social feed"
+                  >
+                    {status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                  </Button>
+                  <SheetClose asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      Close
+                    </Button>
+                  </SheetClose>
+                </div>
               </div>
-            </div>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              Daily digests match the full feed.
-            </p>
-          </header>
-
-          <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
-            {status === "loading" ? (
-              <div className="grid gap-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className="h-24 animate-pulse rounded-xl bg-slate-100" />
-                ))}
-              </div>
-            ) : null}
-
-            {status === "error" ? (
-              <div className="rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
-                Feed preview is unavailable.
-              </div>
-            ) : null}
-
-            {status === "ready" && groups.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
-                No visible activity yet.
-              </div>
-            ) : null}
-
-            {status === "ready" && groups.length > 0 ? (
-              <div className="grid gap-2">
-                {groups.map((group) => (
-                  <RailDayDigest
-                    key={group.key}
-                    busyItemId={busyItemId}
-                    busyCommentId={busyCommentId}
-                    commentingItemId={commentingItemId}
-                    commentDrafts={commentDrafts}
-                    group={group}
-                    onCommentDraftChange={(itemId, value) =>
-                      setCommentDrafts((current) => ({ ...current, [itemId]: value }))
-                    }
-                    onCommentToggle={(itemId) =>
-                      setCommentingItemId((current) => (current === itemId ? null : itemId))
-                    }
-                    onReactionToggle={toggleReaction}
-                    onCommentReactionToggle={toggleCommentReaction}
-                    onCommentDelete={deleteComment}
-                    onSubmitComment={submitComment}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <footer className="border-t border-slate-100 p-2.5">
-            <Button asChild className="w-full">
-              <Link href="/feed" prefetch={false}>
-                Open feed
-                <ExternalLink className="size-4" />
-              </Link>
-            </Button>
-          </footer>
-        </section>
+            </SheetHeader>
+            <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+              {feedContent}
+            </ScrollArea>
+            <SheetFooter className="border-t border-slate-100 p-3">
+              <Button asChild className="w-full">
+                <Link href="/feed" prefetch={false}>
+                  Open feed
+                  <ExternalLink className="size-4" />
+                </Link>
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
       )}
     </aside>
+  );
+}
+
+function SocialFeedPreviewContent({
+  busyCommentId,
+  busyItemId,
+  commentingItemId,
+  commentDrafts,
+  groups,
+  status,
+  onCommentDraftChange,
+  onCommentDelete,
+  onCommentReactionToggle,
+  onCommentToggle,
+  onReactionToggle,
+  onSubmitComment,
+}: {
+  busyCommentId: string | null;
+  busyItemId: string | null;
+  commentingItemId: string | null;
+  commentDrafts: Record<string, string>;
+  groups: RailDayGroup[];
+  status: FeedStatus;
+  onCommentDraftChange: (itemId: string, value: string) => void;
+  onCommentDelete: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentReactionToggle: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentToggle: (itemId: string) => void;
+  onReactionToggle: (item: SocialFeedPreviewItem) => void;
+  onSubmitComment: (event: FormEvent<HTMLFormElement>, itemId: string) => void;
+}) {
+  if (status === "loading") {
+    return (
+      <div className="grid gap-2 py-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+        ))}
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="my-3 rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
+        Feed preview is unavailable.
+      </div>
+    );
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="my-3 rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
+        No visible activity yet.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-2 py-3">
+      {groups.map((group) => (
+        <RailDayDigest
+          key={group.key}
+          busyItemId={busyItemId}
+          busyCommentId={busyCommentId}
+          commentingItemId={commentingItemId}
+          commentDrafts={commentDrafts}
+          group={group}
+          onCommentDraftChange={onCommentDraftChange}
+          onCommentToggle={onCommentToggle}
+          onReactionToggle={onReactionToggle}
+          onCommentReactionToggle={onCommentReactionToggle}
+          onCommentDelete={onCommentDelete}
+          onSubmitComment={onSubmitComment}
+        />
+      ))}
+    </div>
   );
 }
 

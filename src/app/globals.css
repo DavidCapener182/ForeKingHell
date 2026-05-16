@@ -123,7 +123,7 @@
   html[data-table-density="compact"] .apple-panel,
   html[data-table-density="compact"] .apple-panel-strong,
   html[data-table-density="compact"] .soft-panel {
-    border-radius: 10px;
+    border-radius: 0.875rem;
   }
 
   html[data-table-density="compact"] th,
@@ -134,7 +134,7 @@
 
   .premium-card {
     border-color: var(--surface-border);
-    border-radius: 8px;
+    border-radius: 0.875rem;
     background: var(--surface);
     box-shadow: var(--surface-shadow-soft);
   }
@@ -156,7 +156,7 @@
   [data-slot="card"] {
     border-color: var(--surface-border);
     box-shadow: var(--surface-shadow-soft);
-    border-radius: 8px;
+    border-radius: 0.875rem;
   }
 
   [data-slot="button"].bg-\[\#111827\] {
@@ -189,18 +189,19 @@
 
   .premium-hero {
     overflow: hidden;
-    border: 0;
-    border-bottom: 1px solid var(--surface-border);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: var(--surface-shadow);
+    border: 1px solid #d9ded8;
+    border-radius: 1rem;
+    background: #ffffff;
+    box-shadow: var(--surface-shadow-soft);
   }
 
   .desktop-page-header {
-    border: 1px solid #e5e7eb;
-    border-radius: 0;
-    padding: 1rem 1.125rem;
+    overflow: hidden;
+    border: 1px solid #d9ded8;
+    border-radius: 1rem;
+    padding: 1.5rem;
     background: #ffffff;
+    box-shadow: var(--surface-shadow-soft);
   }
 
   .desktop-data-panel {
@@ -209,7 +210,7 @@
 
   @media (min-width: 641px) {
     .desktop-data-panel {
-      border-radius: 0;
+      border-radius: 0.875rem;
       border-color: #d9ded8;
       background: #ffffff;
     }
@@ -250,19 +251,19 @@
 
   .soft-panel {
     border: 1px solid var(--surface-border);
-    border-radius: 10px;
+    border-radius: 0.875rem;
     background: var(--surface-soft);
   }
 
   .apple-panel {
     border: 1px solid var(--surface-border);
-    border-radius: 10px;
+    border-radius: 0.875rem;
     background: var(--surface-soft);
   }
 
   .apple-panel-strong {
     border: 1px solid var(--surface-border);
-    border-radius: 10px;
+    border-radius: 0.875rem;
     background: var(--surface-strong);
     box-shadow: var(--surface-shadow-soft);
   }
@@ -282,12 +283,13 @@
 
     .premium-hero {
       border: 1px solid var(--surface-border);
-      border-radius: 0.75rem;
+      border-radius: 1rem;
       background: #ffffff;
     }
 
     .desktop-page-header {
-      border-bottom: 0;
+      border: 1px solid var(--surface-border);
+      border-radius: 1rem;
       padding: 1rem;
       background: #ffffff;
     }
@@ -298,7 +300,7 @@
   }
 
   .data-table-scroll {
-    border-radius: 10px;
+    border-radius: 0.875rem;
     background: #ffffff;
     border: 1px solid var(--surface-border);
   }

@@ -2,7 +2,7 @@ import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club
 
 import type { Achievement, AchievementCategory, AchievementTier, AchievementTriggerType } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-15-course-records-tournaments-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-05-16-bronze-silver-gold-expansion-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -232,6 +232,13 @@ export type GeneratedClubVolumeAchievement = {
   shotCount: number;
 };
 
+export type GeneratedClubSessionVolumeAchievement = {
+  id: string;
+  clubType: string;
+  shotCount: number;
+  tier: AchievementTier;
+};
+
 export type GeneratedClubMileageAchievement = {
   id: string;
   clubType: string;
@@ -356,7 +363,16 @@ const GENERATED_CLUB_METRIC_CONFIG: GeneratedClubMetricConfig = {
   lw: { carryYd: range(5, 90, 5), totalYd: range(10, 100, 5) },
 };
 
-const GENERATED_VOLUME_SHOT_COUNTS = [1, 10, 25, 50, 100];
+const GENERATED_VOLUME_SHOT_COUNTS = [1, 5, 10, 15, 25, 35, 50, 100];
+const GENERATED_SESSION_VOLUME_SHOT_COUNTS: Array<{ shotCount: number; tier: AchievementTier }> = [
+  { shotCount: 5, tier: "bronze" },
+  { shotCount: 8, tier: "bronze" },
+  { shotCount: 10, tier: "silver" },
+  { shotCount: 15, tier: "silver" },
+  { shotCount: 20, tier: "gold" },
+  { shotCount: 30, tier: "gold" },
+  { shotCount: 40, tier: "gold" },
+];
 const GENERATED_MILEAGE_MILESTONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100];
 const GENERATED_MASTERY_SAMPLE_CLUBS = GENERATED_FULL_SHOT_CLUBS;
 const GENERATED_MASTERY_MIN_SHOTS = 10;
@@ -373,6 +389,8 @@ export const GENERATED_CLUB_METRIC_ACHIEVEMENTS = buildGeneratedClubMetricAchiev
 export const GENERATED_CLUB_METRICS_BY_CLUB = new Map<string, GeneratedClubMetricAchievement[]>();
 export const GENERATED_CLUB_VOLUME_ACHIEVEMENTS = buildGeneratedClubVolumeAchievements();
 export const GENERATED_CLUB_VOLUME_BY_CLUB = new Map<string, GeneratedClubVolumeAchievement[]>();
+export const GENERATED_CLUB_SESSION_VOLUME_ACHIEVEMENTS = buildGeneratedClubSessionVolumeAchievements();
+export const GENERATED_CLUB_SESSION_VOLUME_BY_CLUB = new Map<string, GeneratedClubSessionVolumeAchievement[]>();
 export const GENERATED_CLUB_MILEAGE_ACHIEVEMENTS = buildGeneratedClubMileageAchievements();
 export const GENERATED_CLUB_MILEAGE_BY_CLUB = new Map<string, GeneratedClubMileageAchievement[]>();
 export const GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS = buildGeneratedClubPersonalBestAchievements();
@@ -394,6 +412,12 @@ for (const generated of GENERATED_CLUB_VOLUME_ACHIEVEMENTS) {
   const existing = GENERATED_CLUB_VOLUME_BY_CLUB.get(generated.clubType) ?? [];
   existing.push(generated);
   GENERATED_CLUB_VOLUME_BY_CLUB.set(generated.clubType, existing);
+}
+
+for (const generated of GENERATED_CLUB_SESSION_VOLUME_ACHIEVEMENTS) {
+  const existing = GENERATED_CLUB_SESSION_VOLUME_BY_CLUB.get(generated.clubType) ?? [];
+  existing.push(generated);
+  GENERATED_CLUB_SESSION_VOLUME_BY_CLUB.set(generated.clubType, existing);
 }
 
 for (const generated of GENERATED_CLUB_MILEAGE_ACHIEVEMENTS) {
@@ -430,6 +454,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   ...CORE_ACHIEVEMENTS,
   ...GENERATED_CLUB_METRIC_ACHIEVEMENTS.map(toGeneratedAchievement),
   ...GENERATED_CLUB_VOLUME_ACHIEVEMENTS.map(toGeneratedVolumeAchievement),
+  ...GENERATED_CLUB_SESSION_VOLUME_ACHIEVEMENTS.map(toGeneratedSessionVolumeAchievement),
   ...GENERATED_CLUB_MILEAGE_ACHIEVEMENTS.map(toGeneratedMileageAchievement),
   ...GENERATED_CLUB_PERSONAL_BEST_ACHIEVEMENTS.map(toGeneratedPersonalBestAchievement),
   ...GENERATED_CLUB_MASTERY_ACHIEVEMENTS.map(toGeneratedMasteryAchievement),
@@ -494,6 +519,23 @@ function buildGeneratedClubVolumeAchievements(): GeneratedClubVolumeAchievement[
         id: `club_${clubType}_volume_${shotCount}`,
         clubType,
         shotCount,
+      });
+    }
+  }
+
+  return generated;
+}
+
+function buildGeneratedClubSessionVolumeAchievements(): GeneratedClubSessionVolumeAchievement[] {
+  const generated: GeneratedClubSessionVolumeAchievement[] = [];
+
+  for (const clubType of GENERATED_VOLUME_CLUBS) {
+    for (const { shotCount, tier } of GENERATED_SESSION_VOLUME_SHOT_COUNTS) {
+      generated.push({
+        id: `club_${clubType}_session_${shotCount}`,
+        clubType,
+        shotCount,
+        tier,
       });
     }
   }
@@ -811,6 +853,22 @@ function toGeneratedVolumeAchievement(generated: GeneratedClubVolumeAchievement)
   );
 }
 
+function toGeneratedSessionVolumeAchievement(generated: GeneratedClubSessionVolumeAchievement): Achievement {
+  const clubLabel = formatClubLabel(generated.clubType);
+
+  return achievement(
+    generated.id,
+    `${clubLabel} Session ${generated.shotCount}`,
+    `Hit ${generated.shotCount}+ ${clubLabel} shots in one session.`,
+    isShortGameGeneratedClub(generated.clubType) ? "shortGame" : "consistency",
+    generated.tier,
+    "session",
+    generated.shotCount,
+    undefined,
+    [generated.clubType],
+  );
+}
+
 function toGeneratedMileageAchievement(generated: GeneratedClubMileageAchievement): Achievement {
   const clubLabel = formatClubLabel(generated.clubType);
   const tier = tierForGeneratedMileageAchievement(generated.miles);
@@ -931,8 +989,11 @@ function personalBestMetricId(metric: GeneratedClubPersonalBestMetric) {
 function volumeNameForShotCount(shotCount: number) {
   if (shotCount >= 100) return "Bag Veteran";
   if (shotCount >= 50) return "Trusted Club";
+  if (shotCount >= 35) return "Grooved In";
   if (shotCount >= 25) return "Proper Sample";
+  if (shotCount >= 15) return "Warming Up";
   if (shotCount >= 10) return "Getting Acquainted";
+  if (shotCount >= 5) return "Range Intro";
   return "First Strike";
 }
 

@@ -28,7 +28,8 @@ import {
 } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -381,52 +382,100 @@ function CategoryCards({
   categories: CategorySummary[];
   bestCategory: CategorySummary | null;
 }) {
-  return (
+  const overallCards = (
     <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {categories.map((category) => (
-        <article
+        <CategoryCard
           key={category.category}
-          className={cn(
-            "premium-card grid min-h-40 content-between gap-4 border p-4",
-            categoryCardClassName(category.total),
-          )}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-950">{category.label}</p>
-              <p className={cn("mt-2 text-3xl font-semibold tracking-normal tabular-nums", sgTextClassName(category.total))}>
-                {formatSg(category.total, "No data")}
-              </p>
-            </div>
-            <div
-              className={cn(
-                "grid size-9 place-items-center rounded-md ring-1",
-                categoryIconClassName(category.total),
-              )}
-            >
-              <Target className="size-5" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className={cn("text-sm font-semibold", sgTextClassName(category.total))}>
-              {categoryStatus(category, bestCategory)}
-            </p>
-            <p className="text-sm leading-5 text-muted-foreground">
-              {category.eventCount > 0
-                ? `${integerFormatter.format(category.eventCount)} events - ${formatSg(category.average, "No avg")} avg`
-                : category.category === "putting"
-                  ? "Add putt distances to calculate putting SG"
-                  : "No mapped events yet"}
-            </p>
-            {category.pendingCount > 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {integerFormatter.format(category.pendingCount)} pending or unmapped
-              </p>
-            ) : null}
-          </div>
-        </article>
+          category={category}
+          bestCategory={bestCategory}
+        />
       ))}
     </section>
+  );
+
+  return (
+    <Tabs defaultValue="overall" className="gap-3">
+      <TabsList className="max-w-full overflow-x-auto" variant="line">
+        <TabsTrigger value="overall">Overall</TabsTrigger>
+        {categories.map((category) => (
+          <TabsTrigger key={category.category} value={category.category}>
+            {category.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      <TabsContent value="overall">{overallCards}</TabsContent>
+      {categories.map((category) => (
+        <TabsContent key={category.category} value={category.category}>
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <CategoryCard category={category} bestCategory={bestCategory} />
+            <Card className="premium-card sm:col-span-1 xl:col-span-3">
+              <CardContent className="grid gap-3">
+                <p className="text-sm font-semibold">
+                  {category.coachingLabel}
+                </p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {category.eventCount > 0
+                    ? `${integerFormatter.format(category.sampleSize)} calculated events and ${integerFormatter.format(category.pendingCount)} pending events are currently mapped to this category.`
+                    : "Map round shots into this category to build a strokes-gained readout."}
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
+function CategoryCard({
+  category,
+  bestCategory,
+}: {
+  category: CategorySummary;
+  bestCategory: CategorySummary | null;
+}) {
+  return (
+    <Card
+      className={cn(
+        "premium-card grid min-h-40 content-between gap-4 border p-4",
+        categoryCardClassName(category.total),
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">{category.label}</p>
+          <p className={cn("mt-2 text-3xl font-semibold tracking-normal tabular-nums", sgTextClassName(category.total))}>
+            {formatSg(category.total, "No data")}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "grid size-9 place-items-center rounded-md ring-1",
+            categoryIconClassName(category.total),
+          )}
+        >
+          <Target className="size-5" />
+        </div>
+      </div>
+      <div className="space-y-1">
+        <p className={cn("text-sm font-semibold", sgTextClassName(category.total))}>
+          {categoryStatus(category, bestCategory)}
+        </p>
+        <p className="text-sm leading-5 text-muted-foreground">
+          {category.eventCount > 0
+            ? `${integerFormatter.format(category.eventCount)} events - ${formatSg(category.average, "No avg")} avg`
+            : category.category === "putting"
+              ? "Add putt distances to calculate putting SG"
+              : "No mapped events yet"}
+        </p>
+        {category.pendingCount > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {integerFormatter.format(category.pendingCount)} pending or unmapped
+          </p>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 

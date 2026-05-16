@@ -110,7 +110,7 @@ export function TodayShotCharts({ shots }: { shots: TodayChartShot[] }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
   const [selectedClub, setSelectedClub] = useState("all");
   const [trajectoryView, setTrajectoryView] =
-    useState<TrajectoryView>("averages");
+    useState<TrajectoryView>("shots");
   const visibleShots = useMemo(
     () =>
       shots
@@ -237,7 +237,7 @@ export function TodayShotCharts({ shots }: { shots: TodayChartShot[] }) {
             title="Trajectory"
             detail={
               trajectoryView === "averages"
-                ? "Average flight per visible club."
+                ? "Every visible shot, with club averages highlighted."
                 : "Individual flight profiles for visible shots."
             }
             empty={!visibleShots.some(hasTrajectoryData)}
@@ -487,6 +487,30 @@ function TrajectoryChart({
       <text x={chartWidth / 2} y={chartHeight - 5} textAnchor="middle" className="fill-slate-600 text-[12px]">
         carry yd
       </text>
+      {points.map((shot) => {
+        const carry = shot.carryYd ?? shot.totalYd ?? 0;
+        const apex = shot.apexFt ?? fallbackApex(shot) ?? 0;
+        const startX = xScale(0);
+        const startY = yScale(0);
+        const endX = xScale(carry);
+        const endY = yScale(0);
+        const controlX = xScale(carry / 2);
+        const controlY = yScale(apex);
+
+        return (
+          <path
+            key={shot.id}
+            d={`M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`}
+            fill="none"
+            stroke={shot.color}
+            strokeWidth={view === "averages" ? 1.25 : 1.8}
+            strokeOpacity={view === "averages" ? 0.16 : 0.34}
+            strokeLinecap="round"
+          >
+            <title>{shotTitle(shot)}</title>
+          </path>
+        );
+      })}
       {view === "averages"
         ? averageTrajectories.map((trajectory) => {
             const startX = xScale(0);
@@ -519,30 +543,7 @@ function TrajectoryChart({
               </g>
             );
           })
-        : points.map((shot) => {
-            const carry = shot.carryYd ?? shot.totalYd ?? 0;
-            const apex = shot.apexFt ?? fallbackApex(shot) ?? 0;
-            const startX = xScale(0);
-            const startY = yScale(0);
-            const endX = xScale(carry);
-            const endY = yScale(0);
-            const controlX = xScale(carry / 2);
-            const controlY = yScale(apex);
-
-            return (
-              <path
-                key={shot.id}
-                d={`M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`}
-                fill="none"
-                stroke={shot.color}
-                strokeWidth={1.8}
-                strokeOpacity={0.3}
-                strokeLinecap="round"
-              >
-                <title>{shotTitle(shot)}</title>
-              </path>
-            );
-          })}
+        : null}
     </svg>
   );
 }

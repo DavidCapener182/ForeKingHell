@@ -8,7 +8,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -17,11 +19,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const shellWidths = {
-  "6xl": "max-w-6xl",
-  "7xl": "max-w-7xl",
+  "6xl": "max-w-[1500px]",
+  "7xl": "max-w-[1500px]",
   full: "max-w-[1500px]",
 };
 
@@ -36,7 +47,7 @@ export function PageShell({
   children,
   className,
   contentClassName,
-  size = "7xl",
+  size = "full",
 }: PageShellProps) {
   return (
     <main
@@ -363,24 +374,39 @@ export function MobileFilterSheet({
   className?: string;
 }) {
   return (
-    <details className={cn("group sm:hidden", className)}>
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold shadow-sm [&::-webkit-details-marker]:hidden">
-        <SlidersHorizontal className="size-4" aria-hidden />
-        {label}
-        {activeCount > 0 ? (
-          <Badge
-            variant="secondary"
-            className="ml-1 rounded-full px-1.5 py-0 text-[11px]"
+    <div className={cn("sm:hidden", className)}>
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 w-full justify-center rounded-xl bg-background shadow-sm"
           >
-            {activeCount}
-          </Badge>
-        ) : null}
-      </summary>
-      <div className="fixed inset-x-0 bottom-0 z-[60] max-h-[82vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-white p-4 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-lg shadow-slate-950/10">
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
-        {children}
-      </div>
-    </details>
+            <SlidersHorizontal className="size-4" aria-hidden />
+            {label}
+            {activeCount > 0 ? (
+              <Badge
+                variant="secondary"
+                className="ml-1 rounded-full px-1.5 py-0 text-[11px]"
+              >
+                {activeCount}
+              </Badge>
+            ) : null}
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[86vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>{label}</DrawerTitle>
+            <DrawerDescription>
+              Refine the current view without leaving the page.
+            </DrawerDescription>
+          </DrawerHeader>
+          <ScrollArea className="overflow-y-auto px-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+            {children}
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+    </div>
   );
 }
 
@@ -1091,7 +1117,9 @@ export function DataTableFrame({
           className,
         )}
       >
-        {children}
+        <ScrollArea className="w-full">
+          {children}
+        </ScrollArea>
       </div>
       {mobile ? <div className="sm:hidden">{mobile}</div> : null}
     </>
@@ -1200,24 +1228,13 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="apple-panel grid place-items-center px-4 py-12 text-center">
-      <div className="flex max-w-md flex-col items-center gap-4">
-        {icon ? (
-          <div className="grid size-11 place-items-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-            {icon}
-          </div>
-        ) : null}
-        <div>
-          <p className="text-lg font-semibold tracking-normal">{title}</p>
-          {description ? (
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {description}
-            </p>
-          ) : null}
-        </div>
-        {action}
-      </div>
-    </div>
+    <AppEmptyState
+      icon={icon}
+      title={title}
+      description={description}
+      action={action}
+      className="apple-panel min-h-64"
+    />
   );
 }
 

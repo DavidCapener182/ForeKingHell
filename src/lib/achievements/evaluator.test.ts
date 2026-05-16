@@ -107,6 +107,11 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("fivewood_stock_built");
     expect(ids).toContain("focused_session");
     expect(ids).toContain("carry_consistency");
+    expect(ids).toContain("club_5w_session_5");
+    expect(ids).toContain("club_5w_session_10");
+    expect(ids).toContain("club_5w_session_15");
+    expect(ids).toContain("club_5w_session_20");
+    expect(ids).not.toContain("club_5w_session_30");
   });
 
   it("unlocks generated club-volume badges from the shot that crosses the threshold", () => {
@@ -124,7 +129,9 @@ describe("Rapsodo achievement evaluation", () => {
     const acquainted = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_10");
 
     expect(ids).toContain("club_7i_volume_1");
+    expect(ids).toContain("club_7i_volume_5");
     expect(ids).toContain("club_7i_volume_10");
+    expect(ids).toContain("club_7i_volume_15");
     expect(ids).not.toContain("club_7i_volume_25");
     expect(firstStrike?.sourceShotId).toBe("seveniron-0");
     expect(acquainted?.sourceShotId).toBe("seveniron-9");

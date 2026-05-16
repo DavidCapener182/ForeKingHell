@@ -8,6 +8,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import type { DistanceUnit } from "@/lib/rapsodo/parser";
 import type { SessionType } from "@/app/import/import-types";
 
@@ -29,31 +31,24 @@ export function SessionSettings({
   onDistanceUnitChange: (value: DistanceUnit) => void;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">Step 2: Confirm session</p>
-          <p className="text-xs text-muted-foreground">
-            Type, date, unit fallback, and course details if needed.
-          </p>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="session-date">
-            Session date
-          </label>
+    <Card className="premium-card">
+      <CardHeader>
+        <CardTitle>Step 2: Confirm session</CardTitle>
+        <CardDescription>Type, date, unit fallback, and course details if needed.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="session-date">Session date</FieldLabel>
           <Input
             id="session-date"
             type="date"
             value={sessionDate}
             onChange={(event) => onSessionDateChange(event.target.value)}
           />
-        </div>
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="session-type">
-            Session type
-          </label>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="session-type">Session type</FieldLabel>
           <Select value={sessionType} onValueChange={(value) => onSessionTypeChange(value as SessionType)}>
             <SelectTrigger id="session-type" className="w-full">
               <SelectValue placeholder="Range" />
@@ -65,12 +60,10 @@ export function SessionSettings({
               <SelectItem value="simulated_course">Simulated course</SelectItem>
             </SelectContent>
           </Select>
+        </Field>
         </div>
-      </div>
-      <div className="mt-4 space-y-2">
-        <label className="text-sm font-medium" htmlFor="distance-unit">
-          Fallback distance unit
-        </label>
+      <Field>
+        <FieldLabel htmlFor="distance-unit">Fallback distance unit</FieldLabel>
         <Select value={distanceUnit} onValueChange={(value) => onDistanceUnitChange(value as DistanceUnit)}>
           <SelectTrigger id="distance-unit" className="w-full">
             <SelectValue placeholder="Yards" />
@@ -80,11 +73,12 @@ export function SessionSettings({
             <SelectItem value="meters">Metres</SelectItem>
           </SelectContent>
         </Select>
-        <p className="text-sm text-muted-foreground">
+        <FieldDescription>
           Saved shot distances are normalized to yards. Apex is normalized to feet. Detected units:{" "}
           {detectedUnits.length > 0 ? detectedUnits.join(", ") : "none yet"}.
-        </p>
-      </div>
-    </div>
+        </FieldDescription>
+      </Field>
+      </CardContent>
+    </Card>
   );
 }

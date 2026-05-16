@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { FileText, Upload, UploadCloud, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { GolfLoader } from "@/components/visuals/golf-loader";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { cn } from "@/lib/utils";
@@ -115,12 +116,7 @@ export function UploadDropzone({
             label="Reading launch data"
             className="mt-3 max-w-none border-0 bg-emerald-50/55 p-3 shadow-none [&_[data-loader-art]]:h-20"
           />
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-emerald-600 transition-[width]"
-              style={{ width: formatPercent(readProgress.loaded, readProgress.total) }}
-            />
-          </div>
+          <Progress value={progressValue(readProgress.loaded, readProgress.total)} className="mt-2 h-2" />
         </div>
       ) : null}
 
@@ -180,5 +176,13 @@ function formatPercent(loaded: number, total: number) {
     return "0%";
   }
 
-  return `${Math.min(100, Math.max(0, Math.round((loaded / total) * 100)))}%`;
+  return `${progressValue(loaded, total)}%`;
+}
+
+function progressValue(loaded: number, total: number) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  return Math.min(100, Math.max(0, Math.round((loaded / total) * 100)));
 }
