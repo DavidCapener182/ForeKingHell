@@ -4,7 +4,6 @@ import { ArrowLeft, Ban, ShieldCheck, UserPlus, Users } from "lucide-react";
 
 import { blockUserAction, sendFriendRequestAction } from "@/app/friends/actions";
 import { FeedCardList } from "@/components/social/feed-card-list";
-import { SocialAvatar } from "@/components/social/social-avatar";
 import {
   DataPair,
   DataPanel,
@@ -72,28 +71,6 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
           { label: "Connection", value: titleCase(profile.relationship), detail: profile.publicProfile ? "Public opt-in" : "Friend scoped" },
         ]}
       />
-
-      <article className="premium-card overflow-hidden">
-        <div
-          className="h-36 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)] bg-cover bg-center"
-          style={profile.headerImageUrl ? { backgroundImage: profileHeaderBackground(profile.headerImageUrl) } : undefined}
-        />
-        <div className="-mt-9 flex flex-wrap items-end justify-between gap-3 px-5 pb-5">
-          <div className="flex min-w-0 items-end gap-3">
-            <SocialAvatar
-              displayName={profile.displayName}
-              username={profile.username}
-              avatarUrl={profile.avatarUrl}
-              size="lg"
-            />
-            <div className="min-w-0 pb-1">
-              <h2 className="truncate text-2xl font-semibold tracking-normal">{profile.displayName}</h2>
-              <p className="text-sm text-muted-foreground">@{profile.username}</p>
-            </div>
-          </div>
-          <Badge variant="secondary">{titleCase(profile.relationship)}</Badge>
-        </div>
-      </article>
 
       <section className="grid gap-4 lg:grid-cols-[0.35fr_0.65fr]">
         <DataPanel>
@@ -180,8 +157,4 @@ function formatNullable(value: number | null) {
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function profileHeaderBackground(imageUrl: string) {
-  return `linear-gradient(90deg, rgba(15, 23, 42, 0.56), rgba(6, 78, 59, 0.18)), url("${imageUrl.replace(/"/g, "%22")}")`;
 }

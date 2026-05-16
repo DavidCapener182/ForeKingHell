@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Upload, X, Zap } from "lucide-react";
+import { Menu, Upload, Zap } from "lucide-react";
 
 import {
   buildDesktopNavGroups,
@@ -13,6 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 export type MobileNavProfile = {
@@ -46,25 +55,79 @@ export function MobileNav({
 
   return (
     <>
-      <input
-        id="mobile-navigation-toggle"
-        type="checkbox"
-        className="mobile-navigation-toggle sr-only"
-        aria-hidden="true"
-      />
       <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur sm:hidden">
         <div className="relative flex h-14 items-center">
-          <label
-            htmlFor="mobile-navigation-toggle"
-            role="button"
-            tabIndex={0}
-            className="mobile-navigation-trigger relative z-10 grid size-10 cursor-pointer place-items-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-            aria-controls="mobile-navigation-drawer"
-            aria-label="Toggle navigation"
-          >
-            <Menu className="mobile-navigation-open-icon size-5" />
-            <X className="mobile-navigation-close-icon hidden size-5" />
-          </label>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="relative z-10 size-10 rounded-full"
+                aria-label="Open navigation"
+              >
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="z-[70] w-[20rem] max-w-[calc(100vw-2rem)] gap-0 p-0"
+            >
+              <SheetHeader className="border-b border-border p-4 text-left">
+                <div className="flex items-center gap-3">
+                  <Avatar size="lg">
+                    {profile?.avatarUrl ? (
+                      <AvatarImage src={profile.avatarUrl} alt="" />
+                    ) : null}
+                    <AvatarFallback>{profileInitials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <SheetTitle className="truncate">ForeKingHell</SheetTitle>
+                    <SheetDescription className="truncate">
+                      {profileLabel}
+                    </SheetDescription>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Badge variant="secondary">Lvl {level}</Badge>
+                  <Badge variant="outline">
+                    {xpFormatter.format(totalXp)} XP
+                  </Badge>
+                  {isAdmin ? <Badge>Admin</Badge> : null}
+                </div>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100dvh-12rem)]">
+                <div className="grid gap-4 p-3">
+                  {groups.map((group) => (
+                    <MobileNavGroup
+                      key={group.label}
+                      group={group}
+                      pathname={pathname}
+                    />
+                  ))}
+                </div>
+              </ScrollArea>
+              <div className="mt-auto grid gap-2 border-t border-border p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button asChild className="justify-start">
+                  <SheetClose asChild>
+                    <Link href="/import" prefetch={false}>
+                      <Upload className="size-4" />
+                      Import CSV
+                    </Link>
+                  </SheetClose>
+                </Button>
+                <form action="/auth/sign-out" method="post">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    Sign out
+                  </Button>
+                </form>
+              </div>
+            </SheetContent>
+          </Sheet>
 
           <Link
             href="/dashboard"
@@ -85,64 +148,6 @@ export function MobileNav({
             </Link>
           </Button>
         </div>
-      </div>
-
-      <div className="mobile-navigation-panel fixed inset-0 z-[100] hidden sm:hidden">
-        <label
-          htmlFor="mobile-navigation-toggle"
-          aria-label="Close navigation"
-          className="absolute inset-0 cursor-pointer bg-black/20"
-        />
-        <aside
-          id="mobile-navigation-drawer"
-          aria-label="Navigation menu"
-          className="absolute inset-y-0 left-0 flex w-[20rem] max-w-[calc(100vw-2rem)] flex-col border-r border-border bg-popover text-popover-foreground shadow-xl"
-        >
-          <header className="border-b border-border p-4 pl-16 text-left">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar size="lg">
-                {profile?.avatarUrl ? (
-                  <ProfileAvatarImage src={profile.avatarUrl} />
-                ) : (
-                  <AvatarFallback>{profileInitials}</AvatarFallback>
-                )}
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate font-semibold">ForeKingHell</p>
-                <p className="truncate text-sm text-muted-foreground">{profileLabel}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 pt-3">
-              <Badge variant="secondary">Lvl {level}</Badge>
-              <Badge variant="outline">{xpFormatter.format(totalXp)} XP</Badge>
-              {isAdmin ? <Badge>Admin</Badge> : null}
-            </div>
-          </header>
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="grid gap-4 p-3">
-              {groups.map((group) => (
-                <MobileNavGroup
-                  key={group.label}
-                  group={group}
-                  pathname={pathname}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-          <div className="mt-auto grid gap-2 border-t border-border p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <Button asChild className="justify-start">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import CSV
-              </Link>
-            </Button>
-            <form action="/auth/sign-out" method="post">
-              <Button type="submit" variant="outline" className="w-full justify-start">
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </aside>
       </div>
 
       <nav
@@ -196,26 +201,27 @@ function MobileNavGroup({
           const active = item.isActive(pathname);
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              prefetch={false}
-              className={cn(
-                "grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-muted",
-              )}
-            >
-              <Icon className="size-4" aria-hidden />
-              <span className="truncate">{item.label}</span>
-              {item.badge ? (
-                <Badge variant="secondary" className="text-[10px]">
-                  {item.badge}
-                </Badge>
-              ) : null}
-            </Link>
+            <SheetClose key={item.href} asChild>
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                prefetch={false}
+                className={cn(
+                  "grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground hover:bg-muted",
+                )}
+              >
+                <Icon className="size-4" aria-hidden />
+                <span className="truncate">{item.label}</span>
+                {item.badge ? (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {item.badge}
+                  </Badge>
+                ) : null}
+              </Link>
+            </SheetClose>
           );
         })}
       </div>
@@ -234,13 +240,4 @@ export function getProfileInitials(label: string) {
     .join("");
 
   return initials || "FK";
-}
-
-function ProfileAvatarImage({ src }: { src: string }) {
-  if (src.startsWith("data:image/")) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt="" className="aspect-square size-full rounded-full object-cover" />;
-  }
-
-  return <AvatarImage src={src} alt="" />;
 }

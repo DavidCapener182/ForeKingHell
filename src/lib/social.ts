@@ -33,7 +33,6 @@ export type SocialProfileSummary = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
-  headerImageUrl: string | null;
   bio: string | null;
   homeCourse: string | null;
   primaryLaunchMonitor: string | null;
@@ -280,7 +279,6 @@ export async function updateCurrentSocialProfile(input: {
   username: string;
   displayName: string;
   avatarUrl?: string | null;
-  headerImageUrl?: string | null;
   bio?: string | null;
   homeCourse?: string | null;
   primaryLaunchMonitor?: string | null;
@@ -319,7 +317,6 @@ export async function updateCurrentSocialProfile(input: {
       username,
       displayName: cleanRequired(input.displayName, current.displayName),
       avatarUrl: nullableClean(input.avatarUrl),
-      headerImageUrl: nullableClean(input.headerImageUrl),
       bio: nullableClean(input.bio),
       homeCourse: nullableClean(input.homeCourse),
       primaryLaunchMonitor: nullableClean(input.primaryLaunchMonitor),
@@ -1463,7 +1460,6 @@ function profileSummary(
     username: profile.username,
     displayName: profile.displayName,
     avatarUrl: profile.avatarUrl,
-    headerImageUrl: profile.headerImageUrl,
     bio: profile.bio,
     homeCourse: profile.homeCourse,
     primaryLaunchMonitor: profile.primaryLaunchMonitor,

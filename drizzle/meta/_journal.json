@@ -148,13 +148,6 @@
       "when": 1778860800000,
       "tag": "0020_course_records_tournaments",
       "breakpoints": true
-    },
-    {
-      "idx": 21,
-      "version": "7",
-      "when": 1778955386375,
-      "tag": "0021_colossal_kulan_gath",
-      "breakpoints": true
     }
   ]
 }

@@ -23,10 +23,6 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  DashboardMobileHeader,
-  type DashboardTabKey,
-} from "@/app/dashboard/dashboard-mobile-header";
 import { Button } from "@/components/ui/button";
 import {
   CompactReadoutGrid,
@@ -38,6 +34,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { MobileTabBar } from "@/components/mobile-sports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -89,20 +86,6 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-function parseDashboardSection(section?: string): DashboardTabKey {
-  if (
-    section === "today" ||
-    section === "decisions" ||
-    section === "progress" ||
-    section === "tools" ||
-    section === "bag"
-  ) {
-    return section;
-  }
-
-  return "today";
-}
-
 function MissingDatabaseUrlSetup() {
   return (
     <PageShell>
@@ -145,24 +128,16 @@ function MissingDatabaseUrlSetup() {
   );
 }
 
-type DashboardPageProps = {
-  searchParams?: Promise<{
-    section?: string;
-  }>;
-};
-
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage() {
   if (!process.env.DATABASE_URL?.trim()) {
     return <MissingDatabaseUrlSetup />;
   }
 
-  const [params, data, social, challengeData] = await Promise.all([
-    searchParams,
+  const [data, social, challengeData] = await Promise.all([
     getDashboardData(),
     getFeedPageData(),
     getChallengesPageData(),
   ]);
-  const activeDashboardSection = parseDashboardSection(params?.section);
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel =
@@ -474,7 +449,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         pinnedDashboardSections={pinnedDashboardSections}
         primaryAction={primaryAction}
         primaryActionLabel={primaryActionLabel}
-        activeDashboardSection={activeDashboardSection}
       />
 
       <div className="hidden flex-col gap-6 sm:flex">
@@ -561,7 +535,6 @@ function DashboardMobileLayout({
   pinnedDashboardSections,
   primaryAction,
   primaryActionLabel,
-  activeDashboardSection,
 }: {
   data: DashboardData;
   social: Awaited<ReturnType<typeof getFeedPageData>>;
@@ -571,11 +544,10 @@ function DashboardMobileLayout({
   pinnedDashboardSections: Set<DashboardPin>;
   primaryAction: string;
   primaryActionLabel: string;
-  activeDashboardSection: DashboardTabKey;
 }) {
   return (
     <div className="grid gap-4 sm:hidden">
-      <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
+      <DashboardMobileHeader />
 
       <section id="today" className="scroll-mt-28">
         <TodayPlan
@@ -871,6 +843,31 @@ function DashboardMobileLayout({
         ) : null}
       </section>
     </div>
+  );
+}
+
+function DashboardMobileHeader() {
+  return (
+    <section className="sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
+      <div className="-mx-4 h-12 px-4" aria-hidden="true" />
+      <header className="-mx-4 grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
+        <span aria-hidden="true" />
+        <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
+          Dashboard
+        </h1>
+        <span aria-hidden="true" />
+      </header>
+      <MobileTabBar
+        activeKey="today"
+        tabs={[
+          { key: "today", label: "Today", href: "#today" },
+          { key: "decisions", label: "Decisions", href: "#decisions" },
+          { key: "progress", label: "Progress", href: "#progress" },
+          { key: "tools", label: "Tools", href: "#tools" },
+          { key: "bag", label: "Bag", href: "#bag" },
+        ]}
+      />
+    </section>
   );
 }
 

@@ -5,7 +5,6 @@ import { ArrowLeft, Award, Copy, Plus, QrCode, Settings, ShieldCheck, Target, Tr
 import { desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
-import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
 import {
   MobileAppShell,
   MobileIconButton,
@@ -24,6 +23,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const completion = profileCompletion(profile);
   const pbShowcase = profile.pbShowcaseJson.slice(0, 3);
   const achievementShowcase = profile.achievementShowcaseJson.slice(0, 4);
-  const profileFormId = "profile-settings-form";
 
   return (
     <PageShell size="6xl">
@@ -206,15 +205,26 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]">
         <article className="premium-card overflow-hidden">
-          <ProfileMediaEditor
-            displayName={profile.displayName}
-            username={profile.username}
-            initialAvatarUrl={profile.avatarUrl}
-            initialHeaderImageUrl={profile.headerImageUrl}
-            publicHref={`/profile/${profile.username}`}
-            formId={profileFormId}
-          />
-          <div className="grid gap-4 p-5 pt-1">
+          <div className="h-24 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)]" />
+          <div className="grid gap-4 p-5 pt-0">
+            <div className="-mt-9 flex flex-wrap items-end justify-between gap-3">
+              <div className="flex items-end gap-3">
+                <SocialAvatar
+                  displayName={profile.displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatarUrl}
+                  href={`/profile/${profile.username}`}
+                  size="lg"
+                />
+                <div className="pb-1">
+                  <h2 className="text-2xl font-semibold tracking-normal">{profile.displayName}</h2>
+                  <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                </div>
+              </div>
+              <Button asChild variant="outline">
+                <Link href={`/profile/${profile.username}`} prefetch={false}>Preview public page</Link>
+              </Button>
+            </div>
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
               {profile.bio ?? "Add a short goal, home setup or favourite club so friends understand what you are working on."}
             </p>
@@ -304,10 +314,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             action={<UserRound className="size-5 text-sky-600" />}
           />
           <CardContent>
-            <form id={profileFormId} action={updateSocialProfileAction} className="grid gap-5">
+            <form action={updateSocialProfileAction} className="grid gap-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Username" name="username" defaultValue={profile.username} required />
                 <FormField label="Display name" name="displayName" defaultValue={profile.displayName} required />
+                <FormField label="Avatar URL" name="avatarUrl" defaultValue={profile.avatarUrl ?? ""} />
                 <FormField label="Home course or venue" name="homeCourse" defaultValue={profile.homeCourse ?? ""} />
                 <FormField label="Primary launch monitor" name="primaryLaunchMonitor" defaultValue={profile.primaryLaunchMonitor ?? ""} />
                 <FormField label="Handicap band" name="handicapBand" defaultValue={profile.handicapBand ?? ""} placeholder="10-14, beginner, scratch" />
@@ -467,7 +478,6 @@ function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocia
     profile.username,
     profile.displayName,
     profile.avatarUrl,
-    profile.headerImageUrl,
     profile.bio,
     profile.homeCourse,
     profile.primaryLaunchMonitor,
