@@ -126,13 +126,47 @@ export default async function CoachPage() {
             <PBCard title="Clean shots" value={coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")} detail="Tracked" />
           </div>
         </NativeListSection>
-        <NativeListSection id="more-drills" title="More drills">
-          {drillChallenges.slice(0, 4).map((challenge) => (
-            <div key={challenge.id} className="rounded-lg border border-[#E5E7EB] p-3">
-              <p className="font-semibold">{challenge.title}</p>
-              <p className="mt-1 text-sm text-[#6B7280]">{challenge.detail}</p>
+        <NativeListSection
+          id="more-drills"
+          title="Daily XP drills"
+          description="Hit the shot-count target, then win the drill for the bigger XP unlock. Progress reads from today’s uploaded shots."
+        >
+          {drillChallenges.length > 0 ? (
+            drillChallenges.map((challenge) => (
+              <CoachDrillChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                status={
+                  drillStatuses[challenge.id] ?? {
+                    completed: false,
+                    won: false,
+                    uploadedShotCount: 0,
+                    completionTarget: challenge.completionTarget,
+                    winCount: 0,
+                    winTarget: winTargetForChallenge(challenge),
+                    completedAwarded: false,
+                    wonAwarded: false,
+                  }
+                }
+              />
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+              Import at least three clean shots with one club to generate today’s XP drills.
             </div>
-          ))}
+          )}
+        </NativeListSection>
+        <NativeListSection id="evidence" title="Evidence" description="What changed in your latest baselines.">
+          <TrainingFeedback impacts={coach.trainingImpact.slice(0, 2)} />
+        </NativeListSection>
+        <NativeListSection title="Club diagnosis" description="Every club-specific issue is visible on mobile again.">
+          {coach.clubCards.length > 0 ? (
+            coach.clubCards.map((card) => <CoachClubDiagnosis key={card.clubId} card={card} />)
+          ) : (
+            <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+              Import a Rapsodo CSV to unlock club-by-club coach diagnosis.
+            </div>
+          )}
         </NativeListSection>
       </MobileAppShell>
 
@@ -673,6 +707,10 @@ function CoachPracticePlan({
       </div>
     </CardContent>
   );
+}
+
+function winTargetForChallenge(challenge: CoachDrillChallenge) {
+  return "target" in challenge.winRule ? challenge.winRule.target : challenge.completionTarget;
 }
 
 function CoachDrillChallengeCard({
