@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Upload, Zap } from "lucide-react";
+import { Menu, Upload, Zap } from "lucide-react";
 
 import {
   buildDesktopNavGroups,
@@ -55,23 +55,18 @@ export function MobileNav({
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-background/95 px-4 pt-[calc(0.6rem+env(safe-area-inset-top))] backdrop-blur sm:hidden">
-        <div className="relative flex h-11 items-center">
+      <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur sm:hidden">
+        <div className="relative flex h-14 items-center">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative z-10 size-10 rounded-full p-0"
+                className="relative z-10 size-10 rounded-full"
                 aria-label="Open navigation"
               >
-                <Avatar size="lg" className="size-9">
-                  {profile?.avatarUrl ? (
-                    <AvatarImage src={profile.avatarUrl} alt="" />
-                  ) : null}
-                  <AvatarFallback>{profileInitials}</AvatarFallback>
-                </Avatar>
+                <Menu className="size-5" />
               </Button>
             </SheetTrigger>
             <SheetContent
@@ -137,7 +132,7 @@ export function MobileNav({
           <Link
             href="/dashboard"
             aria-label="ForeKingHell dashboard"
-            className="absolute left-1/2 top-1/2 z-0 max-w-[12rem] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[1.05rem] font-semibold tracking-normal text-foreground"
+            className="absolute left-1/2 top-1/2 z-0 max-w-[12rem] -translate-x-1/2 -translate-y-1/2 truncate text-center text-[1.05rem] font-semibold leading-none tracking-normal text-foreground"
           >
             ForeKingHell
           </Link>
