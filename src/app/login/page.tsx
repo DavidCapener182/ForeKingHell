@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         fill
         priority
         sizes="100vw"
-        className="-z-20 object-cover opacity-80 saturate-[1.05] brightness-[0.72]"
+        className="-z-20 object-cover object-[center_34%] opacity-80 saturate-[1.05] brightness-[0.72]"
       />
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(5,12,7,0.9)_0%,rgba(5,12,7,0.76)_42%,rgba(5,12,7,0.42)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(0deg,rgba(5,12,7,0.92),rgba(5,12,7,0))]" />
