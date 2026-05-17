@@ -116,7 +116,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             <Button asChild variant="outline">
               <Link href="/import">
                 <Upload className="size-4" />
-                <span className="hidden sm:inline">Import CSV</span>
+                <span className="hidden sm:inline">Import data</span>
                 <span className="sm:hidden">Import</span>
               </Link>
             </Button>
@@ -189,7 +189,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           <ActiveFilterChips items={activeFilterChips} className="sm:hidden" />
         </div>
 
-        <Card className="premium-card hidden sm:block">
+        <Card className="premium-card hidden sm:block lg:sticky lg:top-24 lg:z-20">
           <CardHeader>
             <CardTitle>Find shots</CardTitle>
             <CardDescription>{PAGE_SIZE} rows per page, scoped to the current player.</CardDescription>
@@ -390,8 +390,11 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       </MobileDataCard>
                     ))
                   ) : (
-                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                      No shots match these filters.
+                    <div className="apple-panel grid gap-3 p-6 text-center text-sm text-muted-foreground">
+                      <p>No shots match these filters.</p>
+                      <Button asChild variant="outline" className="mx-auto">
+                        <Link href="/shots">Clear filters</Link>
+                      </Button>
                     </div>
                   )}
                 </MobileDataList>
@@ -453,7 +456,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     </TableRow>
                   ))}
                   {savedShots.length === 0 ? (
-                    <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">No shots match these filters.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">No shots match these filters. Clear filters or import a launch-monitor session.</TableCell></TableRow>
                   ) : null}
                 </TableBody>
               </Table>

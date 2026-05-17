@@ -7,6 +7,7 @@ import {
   evaluateVerification,
   isBoardEligibleStatus,
   rankRecordAttempts,
+  summarizeRound,
 } from "@/lib/course-records";
 
 describe("course record verification", () => {
@@ -95,6 +96,35 @@ describe("course record ranking", () => {
     );
 
     expect(ranked[0]).toMatchObject({ userId: "user-b", rank: 1 });
+  });
+});
+
+describe("course record round summaries", () => {
+  it("normalises nine-hole scorecards into an eighteen-hole equivalent", () => {
+    const summary = summarizeRound(
+      {
+        scorecardJson: [5, 4, 4, 4, 5, 4, 4, 4, 5].map((score, index) => ({
+          holeNumber: index + 1,
+          par: 4,
+          yards: 360,
+          name: null,
+          score,
+          netScore: score,
+        })),
+      } as never,
+      { courseRating: 35, slopeRating: 113 } as never,
+    );
+
+    expect(summary).toMatchObject({
+      totalScore: 78,
+      totalNetScore: 78,
+      stablefordPoints: 30,
+      frontNineScore: 39,
+      backNineScore: 39,
+      holeCount: 18,
+      originalHoleCount: 9,
+      isNineHoleEquivalent: true,
+    });
   });
 });
 

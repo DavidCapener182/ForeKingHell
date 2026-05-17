@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
+  Activity,
   ArrowLeft,
+  BarChart3,
   Crosshair,
   GitCompareArrows,
+  Medal,
   Target,
   Upload,
+  Users,
 } from "lucide-react";
 
 import {
@@ -29,12 +33,18 @@ import {
 } from "@/components/ui/table";
 import {
   defaultClubCompareFilters,
+  defaultPlayerCompareFilters,
   getClubCompareData,
+  getPlayerCompareData,
   type ClubCompareData,
   type ClubCompareFilters,
   type ClubCompareSide,
   type CompareDelta,
   type DispersionPoint,
+  type PlayerCompareData,
+  type PlayerCompareFilters,
+  type PlayerCompareSide,
+  type PlayerCompareDelta,
 } from "@/lib/compare-data";
 
 export const dynamic = "force-dynamic";
@@ -59,12 +69,17 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
     );
   }
 
-  const data = await getClubCompareData(parseFilters(await searchParams));
+  const params = await searchParams;
+  const [playerData, data] = await Promise.all([
+    getPlayerCompareData(parsePlayerFilters(params)),
+    getClubCompareData(parseFilters(params)),
+  ]);
   const { clubA, clubB, delta } = data;
-  const ready = Boolean(clubA && clubB);
+  const { playerA, playerB, delta: playerDelta } = playerData;
+  const playersReady = Boolean(playerA && playerB);
 
   return (
-    <PageShell size="full">
+    <PageShell>
       <MobileRouteHeader title="Analyse" group="analyse" activeKey="compare" />
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -78,19 +93,19 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
           <Button asChild variant="outline">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="sky">Club vs club</StatusPill>}
-        title="Compare clubs"
+        eyebrow={<StatusPill tone="sky">Player and club comparisons</StatusPill>}
+        title="Compare"
         description={
-          ready
-            ? `${clubA?.label} against ${clubB?.label}. Differences are Club A minus Club B.`
-            : "Pick two clubs to compare their saved shot data directly."
+          playersReady
+            ? `${playerA?.displayName} against ${playerB?.displayName}. Player gaps are Player A minus Player B.`
+            : "Compare player profiles, handicap, scoring, stock yardages, tournament scores, then drill into club-vs-club data."
         }
         actions={
           <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -102,27 +117,70 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
         }
         metrics={[
           {
-            label: "Club A shots",
-            value: clubA ? integerFormatter.format(clubA.stockShots) : "--",
-            detail: clubA ? `${integerFormatter.format(clubA.rawShots)} raw shots` : "Choose a club",
+            label: "Player A best",
+            value: playerA ? formatScore(playerA.bestScore) : "--",
+            detail: playerA ? playerStatusLabel(playerA) : "Choose a player",
           },
           {
-            label: "Club B shots",
-            value: clubB ? integerFormatter.format(clubB.stockShots) : "--",
-            detail: clubB ? `${integerFormatter.format(clubB.rawShots)} raw shots` : "Choose a club",
+            label: "Player B best",
+            value: playerB ? formatScore(playerB.bestScore) : "--",
+            detail: playerB ? playerStatusLabel(playerB) : "Choose a player",
           },
           {
-            label: "Carry difference",
-            value: formatSignedYards(delta.carryDeltaYd),
-            detail: "Club A minus Club B",
+            label: "Latest gap",
+            value: playersReady ? formatSignedStrokes(playerDelta.latestScoreDelta) : "--",
+            detail: "Latest 18-hole score equivalent",
           },
           {
-            label: "Offline difference",
-            value: formatSignedYards(delta.offlineDeltaYd),
-            detail: "Lower is tighter",
+            label: "Tournament gap",
+            value: formatSignedStrokes(playerDelta.tournamentGrossDelta),
+            detail: "Lower total is better",
           },
         ]}
       />
+
+      <PlayerCompareForm data={playerData} />
+
+      {playerA && playerB ? (
+        <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <DataPanel>
+            <SectionHeader
+              title="Player side by side"
+              description="Handicap, scoring, stock yardages, accuracy and tournament totals."
+              action={<Users className="size-5 text-sky-500" />}
+            />
+            <CardContent className="grid gap-4 lg:grid-cols-2">
+              <PlayerSummaryCard side="Player A" player={playerA} tone="emerald" />
+              <PlayerSummaryCard side="Player B" player={playerB} tone="sky" />
+            </CardContent>
+          </DataPanel>
+
+          <DataPanel>
+            <SectionHeader
+              title="Player gaps"
+              description="Score and accuracy rows favour the lower number; distance and playable rate favour the higher number."
+              action={<Activity className="size-5 text-emerald-500" />}
+            />
+            <CardContent>
+              <PlayerDeltaTable playerA={playerA} playerB={playerB} delta={playerDelta} />
+            </CardContent>
+          </DataPanel>
+        </section>
+      ) : (
+        <DataPanel>
+          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+            <Users className="size-9 text-muted-foreground" />
+            <div>
+              <p className="text-xl font-semibold">Choose two players</p>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                Public profiles and your own profile are available for player comparisons.
+              </p>
+            </div>
+          </CardContent>
+        </DataPanel>
+      )}
+
+      {playerA && playerB ? <RecentTournamentScores playerA={playerA} playerB={playerB} /> : null}
 
       <ClubCompareForm data={data} />
 
@@ -178,6 +236,43 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
         </>
       )}
     </PageShell>
+  );
+}
+
+function PlayerCompareForm({ data }: { data: PlayerCompareData }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Choose players"
+        description="Compare handicap, scoring, shot patterns, stock yardages and recent tournament submissions."
+        action={<Medal className="size-5 text-amber-600" />}
+      />
+      <CardContent>
+        <form className="apple-panel grid items-end gap-3 p-3 md:grid-cols-[1fr_auto_1fr_auto]">
+          <SelectField label="Player A" name="playerAId" defaultValue={data.filters.playerAId}>
+            {data.players.map((player) => (
+              <option key={player.userId} value={player.userId}>
+                {playerOptionLabel(player)}
+              </option>
+            ))}
+          </SelectField>
+          <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">vs</div>
+          <SelectField label="Player B" name="playerBId" defaultValue={data.filters.playerBId}>
+            {data.players.map((player) => (
+              <option key={player.userId} value={player.userId}>
+                {playerOptionLabel(player)}
+              </option>
+            ))}
+          </SelectField>
+          <div className="flex gap-2">
+            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">Compare</Button>
+            <Button asChild variant="outline">
+              <Link href="/compare" prefetch={false}>Reset</Link>
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </DataPanel>
   );
 }
 
@@ -275,6 +370,237 @@ function ClubSummaryCard({
         <MiniStat label="Shot cone" value={formatYards(club.shotConeWidthYd)} />
         <MiniStat label="Playable" value={formatRate(club.playableRate)} />
         <MiniStat label="Big misses" value={formatRate(club.bigMissRate)} />
+      </div>
+    </div>
+  );
+}
+
+function PlayerSummaryCard({
+  side,
+  player,
+  tone,
+}: {
+  side: string;
+  player: PlayerCompareSide;
+  tone: "emerald" | "sky";
+}) {
+  const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
+
+  return (
+    <div className="apple-panel-strong p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            <span className={`size-2 rounded-full ${dotClass}`} />
+            {side}
+          </p>
+          <Link href={`/profile/${player.username}`} prefetch={false} className="mt-2 block truncate text-xl font-semibold tracking-normal hover:underline">
+            {player.displayName}
+          </Link>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            @{player.username}{player.homeCourse ? ` · ${player.homeCourse}` : ""}
+          </p>
+        </div>
+        <StatusPill tone={tone === "emerald" ? "green" : "sky"}>
+          {playerStatusLabel(player)}
+        </StatusPill>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <MiniStat label="Handicap" value={playerHandicapLabel(player)} />
+        <MiniStat label="Best score" value={formatScore(player.bestScore)} />
+        <MiniStat label="Scoring avg" value={formatScore(player.scoringAverage)} />
+        <MiniStat label="Latest score" value={formatScore(player.latestScore)} />
+        <MiniStat label="Tournament total" value={formatTournamentTotal(player)} />
+        <MiniStat label="Tournament rank" value={player.tournamentRank ? `#${integerFormatter.format(player.tournamentRank)}` : "--"} />
+        <MiniStat label="Driver carry" value={formatYards(player.driverCarryYd)} />
+        <MiniStat label="7i carry" value={formatYards(player.sevenIronCarryYd)} />
+        <MiniStat label="Playable" value={formatRate(player.playableRate)} />
+        <MiniStat label="Offline avg" value={formatYards(player.absoluteOfflineAverageYd)} />
+      </div>
+    </div>
+  );
+}
+
+function PlayerDeltaTable({
+  playerA,
+  playerB,
+  delta,
+}: {
+  playerA: PlayerCompareSide;
+  playerB: PlayerCompareSide;
+  delta: PlayerCompareDelta;
+}) {
+  const playerAHandicap = playerHandicapLabel(playerA);
+  const playerBHandicap = playerHandicapLabel(playerB);
+  const handicapEstimateDelta = delta.handicapEstimateDelta;
+  const handicapDiff = handicapEstimateDelta === null
+    ? playerAHandicap === playerBHandicap ? "Same" : "Different"
+    : formatSignedStrokes(handicapEstimateDelta);
+  const handicapOutcome = handicapEstimateDelta === null
+    ? contextOutcome()
+    : playerMetricOutcome(handicapEstimateDelta, "lower", "shots");
+  const rows = [
+    {
+      label: "Handicap",
+      a: playerAHandicap,
+      b: playerBHandicap,
+      diff: handicapDiff,
+      outcome: handicapOutcome,
+    },
+    {
+      label: "Best score",
+      a: formatScore(playerA.bestScore),
+      b: formatScore(playerB.bestScore),
+      diff: formatSignedStrokes(delta.bestScoreDelta),
+      outcome: playerMetricOutcome(delta.bestScoreDelta, "lower", "shots"),
+    },
+    {
+      label: "Scoring avg",
+      a: formatScore(playerA.scoringAverage),
+      b: formatScore(playerB.scoringAverage),
+      diff: formatSignedStrokes(delta.scoringAverageDelta),
+      outcome: playerMetricOutcome(delta.scoringAverageDelta, "lower", "shots"),
+    },
+    {
+      label: "Latest score",
+      a: formatScore(playerA.latestScore),
+      b: formatScore(playerB.latestScore),
+      diff: formatSignedStrokes(delta.latestScoreDelta),
+      outcome: playerMetricOutcome(delta.latestScoreDelta, "lower", "shots"),
+    },
+    {
+      label: "Tournament total",
+      a: formatTournamentTotal(playerA),
+      b: formatTournamentTotal(playerB),
+      diff: formatSignedStrokes(delta.tournamentGrossDelta),
+      outcome: playerMetricOutcome(delta.tournamentGrossDelta, "lower", "shots"),
+    },
+    {
+      label: "Driver carry",
+      a: formatYards(playerA.driverCarryYd),
+      b: formatYards(playerB.driverCarryYd),
+      diff: formatSignedYards(delta.driverCarryDeltaYd),
+      outcome: playerMetricOutcome(delta.driverCarryDeltaYd, "higher", "yd"),
+    },
+    {
+      label: "7i carry",
+      a: formatYards(playerA.sevenIronCarryYd),
+      b: formatYards(playerB.sevenIronCarryYd),
+      diff: formatSignedYards(delta.sevenIronCarryDeltaYd),
+      outcome: playerMetricOutcome(delta.sevenIronCarryDeltaYd, "higher", "yd"),
+    },
+    {
+      label: "Offline avg",
+      a: formatYards(playerA.absoluteOfflineAverageYd),
+      b: formatYards(playerB.absoluteOfflineAverageYd),
+      diff: formatSignedYards(delta.offlineDeltaYd),
+      outcome: playerMetricOutcome(delta.offlineDeltaYd, "lower", "yd"),
+    },
+    {
+      label: "Playable",
+      a: formatRate(playerA.playableRate),
+      b: formatRate(playerB.playableRate),
+      diff: formatSignedRate(delta.playableRateDelta),
+      outcome: playerMetricOutcome(delta.playableRateDelta, "higher", "pts"),
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-[8px] border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Metric</TableHead>
+            <TableHead className="text-right">Player A</TableHead>
+            <TableHead className="text-right">Player B</TableHead>
+            <TableHead className="text-right">Diff</TableHead>
+            <TableHead className="text-right">Better</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.label}>
+              <TableCell className="font-medium">{row.label}</TableCell>
+              <TableCell className="text-right">{row.a}</TableCell>
+              <TableCell className="text-right">{row.b}</TableCell>
+              <TableCell className={deltaClass(row.outcome.winner)}>{row.diff}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex flex-col items-end gap-1">
+                  <StatusPill tone={row.outcome.tone} className="justify-center">
+                    {row.outcome.label}
+                  </StatusPill>
+                  <span className="text-xs text-muted-foreground">{row.outcome.detail}</span>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function RecentTournamentScores({
+  playerA,
+  playerB,
+}: {
+  playerA: PlayerCompareSide;
+  playerB: PlayerCompareSide;
+}) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Recent tournament scores"
+        description="Most recent submitted tournament rounds for each selected player."
+        action={<BarChart3 className="size-5 text-emerald-500" />}
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-2">
+        <RecentScoresList player={playerA} tone="emerald" />
+        <RecentScoresList player={playerB} tone="sky" />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function RecentScoresList({ player, tone }: { player: PlayerCompareSide; tone: "emerald" | "sky" }) {
+  const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
+
+  return (
+    <div className="apple-panel p-4">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <span className={`size-2 rounded-full ${dotClass}`} />
+        <Link href={`/profile/${player.username}`} prefetch={false} className="hover:underline">
+          {player.displayName}
+        </Link>
+      </p>
+      <div className="mt-3 overflow-hidden rounded-[8px] border bg-white">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Round</TableHead>
+              <TableHead className="text-right">Gross</TableHead>
+              <TableHead className="text-right">Net</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {player.recentTournamentScores.length > 0 ? (
+              player.recentTournamentScores.map((score) => (
+                <TableRow key={`${player.userId}-${score.tournamentTitle}-${score.roundNumber}`}>
+                  <TableCell>R{score.roundNumber}</TableCell>
+                  <TableCell className="text-right font-medium">{score.grossScore}</TableCell>
+                  <TableCell className="text-right">{score.netScore ?? "--"}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                  No tournament submissions yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -455,8 +781,43 @@ function parseFilters(searchParams: Awaited<SearchParams>): ClubCompareFilters {
   };
 }
 
+function parsePlayerFilters(searchParams: Awaited<SearchParams>): PlayerCompareFilters {
+  const defaults = defaultPlayerCompareFilters();
+
+  return {
+    playerAId: stringParam(searchParams.playerAId) || defaults.playerAId,
+    playerBId: stringParam(searchParams.playerBId) || defaults.playerBId,
+  };
+}
+
 function stringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function playerOptionLabel(player: PlayerCompareData["players"][number]) {
+  const rank = player.worldRank
+    ? `OWGR #${player.worldRank}`
+    : player.handicapBand ?? (typeof player.handicapEstimate === "number" ? `Hcp ${numberFormatter.format(player.handicapEstimate)}` : "Player");
+  return `${player.displayName} (${rank})`;
+}
+
+function playerStatusLabel(player: PlayerCompareSide) {
+  if (player.worldRank) {
+    return `OWGR #${player.worldRank}`;
+  }
+
+  const handicap = playerHandicapLabel(player);
+  return handicap === "--" ? "Player" : handicap;
+}
+
+function playerHandicapLabel(player: PlayerCompareSide) {
+  if (player.handicapBand) {
+    return player.handicapBand;
+  }
+
+  return typeof player.handicapEstimate === "number"
+    ? `Hcp ${numberFormatter.format(player.handicapEstimate)}`
+    : "--";
 }
 
 function formatYards(value: number | null) {
@@ -475,6 +836,19 @@ function formatRate(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)}%`;
 }
 
+function formatScore(value: number | null) {
+  return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatTournamentTotal(player: PlayerCompareSide) {
+  if (player.tournamentGrossTotal === null) {
+    return "--";
+  }
+
+  const rounds = player.tournamentRoundsCompleted ?? 0;
+  return `${integerFormatter.format(player.tournamentGrossTotal)}${rounds > 0 ? ` / ${rounds} rd` : ""}`;
+}
+
 function formatSignedYards(value: number | null) {
   return value === null ? "--" : `${signed(value)} yd`;
 }
@@ -491,6 +865,10 @@ function formatSignedRate(value: number | null) {
   return value === null ? "--" : `${signed(value)} pts`;
 }
 
+function formatSignedStrokes(value: number | null) {
+  return value === null ? "--" : `${signed(value)} shots`;
+}
+
 function signed(value: number) {
   return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
 }
@@ -500,7 +878,8 @@ type MetricWinner = "a" | "b" | "tie" | "context" | "none";
 function metricOutcome(
   value: number | null,
   direction: "higher" | "lower",
-  unit: "yd" | "mph" | "pts",
+  unit: "yd" | "mph" | "pts" | "shots",
+  labels: { a: string; b: string } = { a: "Club A", b: "Club B" },
 ): {
   winner: MetricWinner;
   label: string;
@@ -521,10 +900,18 @@ function metricOutcome(
 
   return {
     winner: clubAWins ? "a" : "b",
-    label: clubAWins ? "Club A" : "Club B",
+    label: clubAWins ? labels.a : labels.b,
     detail: `by ${formatAbsoluteDelta(rounded, unit)}`,
     tone: clubAWins ? "green" : "sky",
   };
+}
+
+function playerMetricOutcome(
+  value: number | null,
+  direction: "higher" | "lower",
+  unit: "yd" | "mph" | "pts" | "shots",
+) {
+  return metricOutcome(value, direction, unit, { a: "Player A", b: "Player B" });
 }
 
 function contextOutcome() {
@@ -536,7 +923,7 @@ function contextOutcome() {
   };
 }
 
-function formatAbsoluteDelta(value: number, unit: "yd" | "mph" | "pts") {
+function formatAbsoluteDelta(value: number, unit: "yd" | "mph" | "pts" | "shots") {
   return `${numberFormatter.format(Math.abs(value))} ${unit}`;
 }
 

@@ -121,6 +121,79 @@ describe("strokes gained", () => {
       clubType: "driver",
     });
   });
+
+  it("keeps final simulator approaches on the green when the scorecard implies putts", () => {
+    const events = buildStrokesGainedEventsFromCourseShots({
+      userId: "user-1",
+      sessionId: "session-1",
+      holeScoring: [{ holeNumber: 1, csvShotCount: 2, score: 4, putts: null, penalties: 0 }],
+      courseShots: [
+        courseShot({
+          rowNumber: 1,
+          holeShotNumber: 1,
+          holeYards: 400,
+          progressBeforeYd: 0,
+          distanceRemainingYd: 150,
+          displaySideYd: 8,
+          shotCategory: "tee",
+        }),
+        courseShot({
+          rowNumber: 2,
+          holeShotNumber: 2,
+          holeYards: 400,
+          progressBeforeYd: 250,
+          distanceRemainingYd: 0,
+          displaySideYd: 3,
+          shotCategory: "approach",
+        }),
+      ],
+    });
+
+    expect(events[1]).toMatchObject({
+      category: "approach",
+      startLie: "fairway",
+      endLie: "green",
+      endDistanceYd: 12,
+      strokesGained: 0.5,
+      metadataJson: {
+        inferredPuttsAfterShot: 2,
+        scorecardScore: 4,
+      },
+    });
+  });
+
+  it("keeps zero-putt scorecard finishes as genuine holed shots", () => {
+    const events = buildStrokesGainedEventsFromCourseShots({
+      userId: "user-1",
+      sessionId: "session-1",
+      holeScoring: [{ holeNumber: 1, csvShotCount: 2, score: 2, putts: 0, penalties: 0 }],
+      courseShots: [
+        courseShot({
+          rowNumber: 1,
+          holeShotNumber: 1,
+          holeYards: 150,
+          progressBeforeYd: 0,
+          distanceRemainingYd: 20,
+          displaySideYd: 2,
+          shotCategory: "tee",
+        }),
+        courseShot({
+          rowNumber: 2,
+          holeShotNumber: 2,
+          holeYards: 150,
+          progressBeforeYd: 130,
+          distanceRemainingYd: 0,
+          displaySideYd: 1,
+          shotCategory: "chip",
+        }),
+      ],
+    });
+
+    expect(events[1]).toMatchObject({
+      endLie: "holed",
+      endDistanceYd: 0,
+    });
+  });
 });
 
 function courseShot({

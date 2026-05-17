@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useActionState } from "react";
-import { Apple, KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail } from "lucide-react";
 
 import {
   sendMagicLinkAction,
@@ -33,7 +34,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
   const magicIsError = magicState.status === "error";
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-5">
       <form action={passwordAction} className="grid gap-3">
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="email">
@@ -46,7 +47,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             inputMode="email"
             placeholder="you@example.com"
             required
-            className="h-11 rounded-xl border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+            className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
           />
         </label>
         <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="password">
@@ -59,14 +60,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             placeholder="Your password"
             required
             minLength={6}
-            className="h-11 rounded-xl border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+            className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
           />
         </label>
         <Button
           type="submit"
           size="lg"
           disabled={passwordPending}
-          className="h-11 rounded-xl bg-[#111827] text-white"
+          className="h-12 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
         >
           <KeyRound className="size-4" />
           {passwordPending ? "Signing in..." : "Sign in with password"}
@@ -75,8 +76,8 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           <p
             className={
               passwordIsError
-                ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
             }
             aria-live="polite"
           >
@@ -85,11 +86,38 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         ) : null}
       </form>
 
-      <div className="grid gap-2 border-t border-slate-200 pt-4">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
-          Or use a one-time link
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <p className="text-xs font-medium uppercase text-slate-500">or continue with</p>
+        <div className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <div className="grid gap-2">
+        <form action={signInWithOAuthAction}>
+          <input type="hidden" name="provider" value="google" />
+          {next ? <input type="hidden" name="next" value={next} /> : null}
+          <OAuthButton icon={<GoogleIcon />} label="Continue with Google" />
+        </form>
+        <form action={signInWithOAuthAction}>
+          <input type="hidden" name="provider" value="apple" />
+          {next ? <input type="hidden" name="next" value={next} /> : null}
+          <OAuthButton
+            icon={<AppleIcon />}
+            label="Continue with Apple"
+            className="border-slate-950 bg-slate-950 text-white hover:bg-black hover:text-white"
+          />
+        </form>
+      </div>
+
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">Create an account or skip the password</p>
+          <p className="mt-1 text-sm leading-5 text-slate-600">
+            We will email a secure link. If you are new, that link starts your account.
+          </p>
+        </div>
         <form action={magicAction} className="grid gap-2">
+          {next ? <input type="hidden" name="next" value={next} /> : null}
           <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="magic-email">
             <span className="sr-only">Magic link address</span>
             <Input
@@ -100,7 +128,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               inputMode="email"
               placeholder="you@example.com"
               required
-              className="h-11 rounded-xl border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+              className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
             />
           </label>
           <Button
@@ -108,17 +136,17 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             variant="outline"
             size="lg"
             disabled={magicPending}
-            className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900"
+            className="h-12 w-full rounded-lg border-slate-200 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900"
           >
             <Mail className="size-4" />
-            {magicPending ? "Sending..." : "Email sign-in link"}
+            {magicPending ? "Sending..." : "Email me a secure link"}
           </Button>
           {magicMessage ? (
             <p
               className={
                 magicIsError
-                  ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                  : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                  ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                  : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
               }
               aria-live="polite"
             >
@@ -127,23 +155,59 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           ) : null}
         </form>
       </div>
-
-      <div className="grid gap-2 border-t border-slate-200 pt-4">
-        <form action={signInWithOAuthAction}>
-          <input type="hidden" name="provider" value="google" />
-          <Button type="submit" variant="outline" size="lg" className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900">
-            <span className="grid size-4 place-items-center rounded-full border border-slate-300 text-[10px] font-semibold">G</span>
-            Continue with Google
-          </Button>
-        </form>
-        <form action={signInWithOAuthAction}>
-          <input type="hidden" name="provider" value="apple" />
-          <Button type="submit" variant="outline" size="lg" className="h-11 w-full rounded-xl border-slate-200 bg-white text-slate-900 hover:bg-slate-50 hover:text-slate-900">
-            <Apple className="size-4" />
-            Continue with Apple
-          </Button>
-        </form>
-      </div>
     </div>
+  );
+}
+
+function OAuthButton({
+  icon,
+  label,
+  className = "border-slate-200 bg-white text-slate-950 hover:bg-slate-50 hover:text-slate-950",
+}: {
+  icon: ReactNode;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <Button
+      type="submit"
+      variant="outline"
+      size="lg"
+      className={`h-12 w-full justify-center rounded-lg text-base font-semibold shadow-sm ${className}`}
+    >
+      {icon}
+      {label}
+    </Button>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.4a4.6 4.6 0 0 1-2 3v2.4h3.2c1.8-1.7 3-4.1 3-7.1Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.7 0 5-0.9 6.6-2.5l-3.2-2.4c-.9.6-2 .9-3.4.9-2.6 0-4.8-1.8-5.6-4.1H3.1v2.5A10 10 0 0 0 12 22Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.4 13.9A6 6 0 0 1 6 12c0-.7.1-1.3.4-1.9V7.6H3.1A10 10 0 0 0 2 12c0 1.6.4 3.1 1.1 4.4l3.3-2.5Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.6l3.3 2.5C7.2 7.8 9.4 6 12 6Z"
+      />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
+      <path d="M16.7 12.8c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.6-1.7-3.1-1.7-1.3-.1-2.6.8-3.3.8s-1.7-.8-2.8-.8c-1.4 0-2.7.8-3.5 2.1-1.5 2.7-.4 6.7 1.1 8.8.7 1.1 1.6 2.3 2.8 2.3 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1.1 2.7-2.2.8-1.2 1.1-2.3 1.1-2.4 0-.1-2.3-.9-2.4-3.7ZM14.6 6.5c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.6-1.3Z" />
+    </svg>
   );
 }

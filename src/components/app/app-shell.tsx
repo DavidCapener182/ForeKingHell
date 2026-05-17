@@ -146,7 +146,7 @@ export function AppShell({
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
               <span className="group-data-[collapsible=icon]:hidden">
-                Import CSV
+                Import data
               </span>
             </Link>
           </Button>

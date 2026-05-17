@@ -137,10 +137,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               <form className="grid gap-3" action="/leaderboard">
                 <input type="hidden" name="tab" value={activeTab} />
                 <label className="grid gap-1 text-sm font-medium">
-                  Provider
+                  Source
                   <select name="provider" defaultValue={filters.provider} className="h-11 rounded-lg border bg-white px-3 text-sm">
                     <option value="all">All</option>
-                    <option value="rapsodo">Rapsodo CSV</option>
+                    <option value="espn">ESPN</option>
+                    <option value="rapsodo">Rapsodo file</option>
                     <option value="rapsodo_cloud">Rapsodo Cloud</option>
                     <option value="manual">Manual</option>
                   </select>
@@ -166,6 +167,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               items={data.courseChampionBoards.slice(0, 5).map((board, index) => ({
                 rank: index + 1,
                 name: board.champion.displayName,
+                href: `/profile/${board.champion.username}`,
                 value: board.scoreLabel,
                 detail: board.courseName,
               }))}
@@ -179,6 +181,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               items={data.challengeBoards.slice(0, 5).map((board, index) => ({
                 rank: index + 1,
                 name: board.leader?.displayName ?? "Open",
+                href: board.leader ? `/profile/${board.leader.username}` : undefined,
                 value: board.leader?.scoreLabel ?? "--",
                 detail: board.title,
               }))}
@@ -192,6 +195,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               items={data.tournamentBoards.slice(0, 5).map((board, index) => ({
                 rank: index + 1,
                 name: board.champion.displayName,
+                href: `/profile/${board.champion.username}`,
                 value: board.grossTotal,
                 detail: `${board.title} · ${board.roundsCompleted} rounds`,
               }))}
@@ -205,6 +209,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               items={data.players.slice(0, 5).map((player, index) => ({
                 rank: index + 1,
                 name: player.displayName,
+                href: `/profile/${player.username}`,
                 value: integerFormatter.format(scoreForTab(player, activeTab)),
                 detail: activeTab === "monthly" ? "monthly XP" : player.relationship,
               }))}
@@ -321,10 +326,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
           <input type="hidden" name="tab" value={activeTab} />
           <label className="grid gap-1 text-xs font-medium">
-            <span>Provider</span>
+            <span>Source</span>
             <select name="provider" defaultValue={filters.provider} className="h-9 rounded-lg border bg-white px-2 text-sm">
               <option value="all">All</option>
-              <option value="rapsodo">Rapsodo CSV</option>
+              <option value="espn">ESPN</option>
+              <option value="rapsodo">Rapsodo file</option>
               <option value="rapsodo_cloud">Rapsodo Cloud</option>
               <option value="manual">Manual</option>
             </select>
@@ -359,8 +365,10 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   );
 }
 
+type LeaderboardProvider = "all" | "espn" | "rapsodo" | "rapsodo_cloud" | "manual";
+
 type LeaderboardFilters = {
-  provider: "all" | "rapsodo" | "rapsodo_cloud" | "manual";
+  provider: LeaderboardProvider;
   verification: "all" | "verified" | "mixed" | "manual";
 };
 
@@ -388,6 +396,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
             displayName: userProfiles.displayName,
             leaderboardVisibility: userProfiles.leaderboardVisibility,
             publicProfile: userProfiles.publicProfile,
+            visibilitySettingsJson: userProfiles.visibilitySettingsJson,
           })
           .from(userProfiles)
           .innerJoin(users, eq(userProfiles.userId, users.id))
@@ -404,6 +413,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
               displayName: userProfiles.displayName,
               leaderboardVisibility: userProfiles.leaderboardVisibility,
               publicProfile: userProfiles.publicProfile,
+              visibilitySettingsJson: userProfiles.visibilitySettingsJson,
             })
             .from(userProfiles)
             .innerJoin(users, eq(userProfiles.userId, users.id))
@@ -411,6 +421,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
         : [];
   const visibleProfiles = profileRows.filter((profile) => profile.id === userId || allowsLeaderboard(profile, activeTab));
   const visibleIds = visibleProfiles.map((profile) => profile.id);
+  const tourPlayerIds = new Set(visibleProfiles.filter(isTourPlayerProfile).map((profile) => profile.id));
   const [xpRows, monthlyXpRows, previousMonthlyXpRows, rawShotRows, roundRows] =
     visibleIds.length > 0
       ? await Promise.all([
@@ -440,23 +451,28 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
             .orderBy(desc(sessions.date)),
         ])
       : [[], [], [], [], []];
-  const shotRows = rawShotRows.filter((shot) => {
-    const verification = verificationLabelForSource(shot.source);
+  const shotRows = rawShotRows
+    .map((shot) => ({
+      ...shot,
+      source: effectiveLeaderboardSource(shot.source, tourPlayerIds.has(shot.userId)),
+    }))
+    .filter((shot) => {
+      const verification = verificationLabelForSource(shot.source);
 
-    if (filters.provider !== "all" && shot.source !== filters.provider) {
-      return false;
-    }
+      if (filters.provider !== "all" && shot.source !== filters.provider) {
+        return false;
+      }
 
-    if (filters.verification === "verified") {
-      return verification !== "Manual" && verification !== "Unverified";
-    }
+      if (filters.verification === "verified") {
+        return verification !== "Manual" && verification !== "Unverified";
+      }
 
-    if (filters.verification === "manual") {
-      return verification === "Manual";
-    }
+      if (filters.verification === "manual") {
+        return verification === "Manual";
+      }
 
-    return true;
-  });
+      return true;
+    });
   const totalXpByUser = sumXpByUser(xpRows);
   const monthlyXpByUser = sumXpByUser(monthlyXpRows);
   const previousMonthlyXpByUser = sumXpByUser(
@@ -649,7 +665,7 @@ function PlayerLeaderboard({
       <DataPanel>
         <SectionHeader
           title={activeTab === "public" ? "Public opt-in leaderboard" : activeTab === "monthly" ? "Monthly leaderboard" : "Friend leaderboard"}
-          description={`Ranks include opted-in players. Provider filter: ${label(filters.provider)}. Verification filter: ${label(filters.verification)}.`}
+          description={`Ranks include opted-in players. Source filter: ${label(filters.provider)}. Verification filter: ${label(filters.verification)}.`}
           action={<Badge variant="outline">{formatMonth(monthStart)}</Badge>}
         />
         <CardContent>
@@ -772,7 +788,15 @@ function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLead
                   </TableCell>
                   <TableCell>{board.templateName}</TableCell>
                   <TableCell className="text-right">{board.participantCount}</TableCell>
-                  <TableCell className="text-right">{board.leader?.displayName ?? "--"}</TableCell>
+                  <TableCell className="text-right">
+                    {board.leader ? (
+                      <Link href={`/profile/${board.leader.username}`} prefetch={false} className="font-medium hover:underline">
+                        {board.leader.displayName}
+                      </Link>
+                    ) : (
+                      "--"
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">{board.leader?.scoreLabel ?? "--"}</TableCell>
                   <TableCell className="text-right">{board.leader?.verificationLabel ?? "--"}</TableCell>
                 </TableRow>
@@ -810,7 +834,9 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
         {champion ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <Badge>Current champion</Badge>
-            <p className="mt-3 text-2xl font-semibold tracking-normal">{champion.champion.displayName}</p>
+            <Link href={`/profile/${champion.champion.username}`} prefetch={false} className="mt-3 block text-2xl font-semibold tracking-normal hover:underline">
+              {champion.champion.displayName}
+            </Link>
             <p className="mt-1 text-sm text-muted-foreground">
               {champion.courseName} · {champion.categoryName} · {champion.scoreLabel}
             </p>
@@ -864,7 +890,9 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
         {leader ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <Badge>Event leader</Badge>
-            <p className="mt-3 text-2xl font-semibold tracking-normal">{leader.champion.displayName}</p>
+            <Link href={`/profile/${leader.champion.username}`} prefetch={false} className="mt-3 block text-2xl font-semibold tracking-normal hover:underline">
+              {leader.champion.displayName}
+            </Link>
             <p className="mt-1 text-sm text-muted-foreground">
               {leader.title} · {leader.grossTotal} through {leader.roundsCompleted}
             </p>
@@ -937,6 +965,18 @@ function allowsLeaderboard(profile: {
   }
 
   return activeTab === "public" ? profileVisibility === "public" && profile.publicProfile : true;
+}
+
+function isTourPlayerProfile(profile: { username?: string | null; visibilitySettingsJson?: unknown }) {
+  const settings = profile.visibilitySettingsJson;
+
+  return Boolean(
+    (settings &&
+      typeof settings === "object" &&
+      ((settings as { tourPlayer?: unknown }).tourPlayer === true ||
+        (settings as { profileKind?: unknown }).profileKind === "tour-player")) ||
+      profile.username?.startsWith("tour-"),
+  );
 }
 
 function sumXpByUser(rows: Array<typeof xpLedger.$inferSelect>) {
@@ -1039,15 +1079,33 @@ function movementLabel(player: PlayerRow) {
 
 function verificationLabelForSource(source: string) {
   switch (source) {
+    case "espn":
+      return "ESPN";
+    case "espn-pga":
+      return "ESPN PGA";
+    case "pga_tour":
+      return "PGA Tour";
     case "rapsodo_cloud":
       return "Rapsodo Cloud";
     case "rapsodo":
-      return "Rapsodo CSV";
+      return "Rapsodo file";
     case "manual":
       return "Manual";
     default:
       return "Unverified";
   }
+}
+
+function effectiveLeaderboardSource(source: string, isTourPlayer: boolean) {
+  if (!isTourPlayer) {
+    return source;
+  }
+
+  if (source === "espn" || source === "espn-pga" || source === "pga_tour") {
+    return source;
+  }
+
+  return "espn";
 }
 
 function formatMonth(value: Date) {
@@ -1067,7 +1125,10 @@ function parseTab(value: string | undefined): LeaderboardTab {
 function parseLeaderboardFilters(params: Awaited<LeaderboardPageProps["searchParams"]>): LeaderboardFilters {
   return {
     provider:
-      params?.provider === "rapsodo" || params?.provider === "rapsodo_cloud" || params?.provider === "manual"
+      params?.provider === "espn" ||
+      params?.provider === "rapsodo" ||
+      params?.provider === "rapsodo_cloud" ||
+      params?.provider === "manual"
         ? params.provider
         : "all",
     verification:
@@ -1082,6 +1143,18 @@ function titleCase(value: string) {
 }
 
 function label(value: string) {
+  if (value === "espn") {
+    return "ESPN";
+  }
+
+  if (value === "espn-pga") {
+    return "ESPN PGA";
+  }
+
+  if (value === "pga_tour") {
+    return "PGA Tour";
+  }
+
   return value
     .split("_")
     .map((part) => titleCase(part))

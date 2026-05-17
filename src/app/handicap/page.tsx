@@ -8,7 +8,6 @@ import {
   Trophy,
   Upload,
 } from "lucide-react";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
   CompactReadoutGrid,
@@ -39,22 +38,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
-import { getDb } from "@/db/client";
-import { requireCurrentUserId } from "@/lib/current-user";
 import { buildCoachSummary } from "@/lib/coach";
+import { getCurrentHandicapRounds, type HandicapRound } from "@/lib/handicap-data";
 import { getProgressData } from "@/lib/progress-data";
 import {
   calculateHandicapSummary,
   calculatePlayingHandicapSummary,
-  calculateRoundDifferential,
   formatHandicapDelta,
   formatHandicapValue,
-  normaliseHandicapRoundInput,
   type HandicapSummary,
   type PlayingHandicapSummary,
 } from "@/lib/round-handicap";
-import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +59,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 export default async function HandicapPage() {
   const [rounds, progressData] = await Promise.all([
-    getHandicapRounds(),
+    getCurrentHandicapRounds(),
     getProgressData(),
   ]);
   const realRounds = rounds.filter((round) => round.type === "real_round");
@@ -538,83 +532,6 @@ export default async function HandicapPage() {
   );
 }
 
-async function getHandicapRounds() {
-  const db = getDb();
-  const userId = await requireCurrentUserId();
-  const [sessionRows, shotCounts] = await Promise.all([
-    db
-      .select({
-        id: sessions.id,
-        fileName: sessions.fileName,
-        type: sessions.type,
-        courseName: sessions.courseName,
-        date: sessions.date,
-        scorecardJson: sessions.scorecardJson,
-        courseRating: teeSets.courseRating,
-        slopeRating: teeSets.slopeRating,
-        providerKind: rapsodoSyncSessions.providerKind,
-        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
-      })
-      .from(sessions)
-      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(
-        rapsodoSyncSessions,
-        eq(sessions.id, rapsodoSyncSessions.importedSessionId),
-      )
-      .where(
-        and(
-          eq(sessions.userId, userId),
-          inArray(sessions.type, [...roundSessionTypes]),
-        ),
-      )
-      .orderBy(desc(sessions.date), asc(sessions.fileName)),
-    db
-      .select({
-        sessionId: shots.sessionId,
-        count: count(),
-      })
-      .from(shots)
-      .where(eq(shots.userId, userId))
-      .groupBy(shots.sessionId),
-  ]);
-  const shotCountBySessionId = new Map(
-    shotCounts.map((row) => [row.sessionId, row.count]),
-  );
-
-  return sessionRows.filter(isRoundHistorySession).map((session) => {
-    const scorecard = session.scorecardJson ?? [];
-    const rawTotalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
-    const rawTotalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const rawTotalPar =
-      scorecard.length > 0
-        ? scorecard.reduce((total, hole) => total + hole.par, 0)
-        : null;
-    const handicapInput = normaliseHandicapRoundInput({
-      totalScore: rawTotalScore,
-      totalPar: rawTotalPar,
-      courseRating: session.courseRating,
-      slopeRating: session.slopeRating,
-      holesPlayed: scorecard.length,
-    });
-    const handicapDifferential = calculateRoundDifferential(handicapInput);
-
-    return {
-      ...session,
-      courseRating: handicapInput.courseRating,
-      totalScore: handicapInput.totalScore,
-      totalPutts: handicapInput.isNineHoleEquivalent
-        ? doubleNullable(rawTotalPutts)
-        : rawTotalPutts,
-      totalPar: handicapInput.totalPar ?? null,
-      handicapDifferential,
-      holesPlayed: handicapInput.holesPlayed ?? null,
-      originalHolesPlayed: handicapInput.originalHolesPlayed,
-      isNineHoleEquivalent: handicapInput.isNineHoleEquivalent,
-      shotCount: shotCountBySessionId.get(session.id) ?? 0,
-    };
-  });
-}
-
 function HandicapPanel({
   title,
   summary,
@@ -740,7 +657,7 @@ function RangePerformancePanel({
 function HandicapTrendChart({
   rounds,
 }: {
-  rounds: Awaited<ReturnType<typeof getHandicapRounds>>;
+  rounds: HandicapRound[];
 }) {
   const points = rounds
     .map((round, index) => {
@@ -865,19 +782,6 @@ function trendSentence(summary: HandicapSummary) {
   }
 
   return `${summary.trend.direction === "down" ? "Improving" : "Drifting up"} ${formatHandicapDelta(summary.trend.delta)}`;
-}
-
-function sumNullable(values: Array<number | null>) {
-  const present = values.filter(
-    (value): value is number => typeof value === "number",
-  );
-  return present.length > 0
-    ? present.reduce((total, value) => total + value, 0)
-    : null;
-}
-
-function doubleNullable(value: number | null) {
-  return typeof value === "number" ? value * 2 : null;
 }
 
 function formatHolesPlayed(round: {

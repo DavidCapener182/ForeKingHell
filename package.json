@@ -14,8 +14,8 @@
     "test:lighthouse": "node scripts/lighthouse-audit.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "demo:seed-social": "node scripts/seed-demo-social.mjs",
-    "demo:reset-social": "node scripts/seed-demo-social.mjs --reset",
+    "tour:seed-social": "node scripts/seed-tour-social.mjs",
+    "tour:reset-social": "node scripts/seed-tour-social.mjs --reset",
     "user:migrate-default": "node scripts/migrate-default-user-to-auth.mjs"
   },
   "dependencies": {

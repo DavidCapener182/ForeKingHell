@@ -552,7 +552,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
 
   return (
     <main className="min-h-screen px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-5 sm:gap-6">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
 
         <div className="hidden items-center justify-between gap-4 sm:flex">

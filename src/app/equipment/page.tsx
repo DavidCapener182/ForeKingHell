@@ -73,7 +73,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         eyebrow={<StatusPill tone="amber">Equipment</StatusPill>}
         title="Equipment inventory"
         description="Track club specifications and ball models over time so performance changes can be compared against equipment changes."
-        visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-44" />}
+        visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-44" priority />}
         metrics={[
           { label: "Clubs", value: data.activeClubs.length.toString(), detail: "Active bag records" },
           { label: "Retired clubs", value: data.retiredClubs.length.toString(), detail: "Hidden from bag and dashboard" },

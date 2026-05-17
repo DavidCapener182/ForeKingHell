@@ -97,7 +97,7 @@ export function PageArtwork({
         src={artworkByVariant[variant]}
         alt={alt}
         fill
-        priority={priority}
+        loading={priority ? "eager" : "lazy"}
         sizes={sizes}
         className={cn(
           "object-cover opacity-80 saturate-[0.92]",

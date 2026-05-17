@@ -209,7 +209,7 @@ export default async function CourseRecordsForCoursePage({ params, searchParams 
           <div>
             <p className="text-sm font-semibold">Previous rounds you can submit</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Scores come from saved rounds. The record form locks to that round, then asks for proof before it can enter a verified board.
+              Scores come from saved rounds. Rapsodo imports enter as Gold or Silver, and saved scorecards seed Bronze review entries.
             </p>
           </div>
           <Badge variant="secondary">{data.previousRounds.length} rounds</Badge>

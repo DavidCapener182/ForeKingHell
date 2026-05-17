@@ -164,7 +164,7 @@ export default async function CoachPage() {
             coach.clubCards.map((card) => <CoachClubDiagnosis key={card.clubId} card={card} />)
           ) : (
             <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
-              Import a Rapsodo CSV to unlock club-by-club coach diagnosis.
+              Import launch-monitor shots to unlock club-by-club coach diagnosis.
             </div>
           )}
         </NativeListSection>
@@ -187,7 +187,7 @@ export default async function CoachPage() {
           <Button asChild>
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
@@ -203,7 +203,7 @@ export default async function CoachPage() {
         title="Coach"
         description={`${coach.headline} ${coach.subhead}`}
         visual={
-          <PageArtwork variant="coach" alt="" className="h-full min-h-44" />
+          <PageArtwork variant="coach" alt="" className="h-full min-h-44" priority />
         }
         actions={
           topClub ? (
@@ -225,7 +225,7 @@ export default async function CoachPage() {
             >
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
-                Import first CSV
+                Import first session
               </Link>
             </Button>
           )
@@ -262,15 +262,15 @@ export default async function CoachPage() {
             <div>
               <p className="text-xl font-semibold">Coach is waiting for data</p>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                Import a Rapsodo CSV and ForeKingHell will turn club data into
-                distance, strike, launch, direction, and delivery
+                Import launch-monitor shots and ForeKingHell will turn club
+                data into distance, strike, launch, direction, and delivery
                 recommendations.
               </p>
             </div>
             <Button asChild>
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
-                Import CSV
+                Import data
               </Link>
             </Button>
           </CardContent>

@@ -41,7 +41,7 @@ import {
 import { sessions, strokesGainedShotEvents } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { summarizeStrokesGained } from "@/lib/strokes-gained";
+import { estimatedFirstPuttDistanceYd, summarizeStrokesGained } from "@/lib/strokes-gained";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -258,6 +258,8 @@ async function getStrokesGainedData() {
       endDistanceYd: strokesGainedShotEvents.endDistanceYd,
       penaltyStrokes: strokesGainedShotEvents.penaltyStrokes,
       strokesGained: strokesGainedShotEvents.strokesGained,
+      metadataJson: strokesGainedShotEvents.metadataJson,
+      scorecardJson: sessions.scorecardJson,
       createdAt: strokesGainedShotEvents.createdAt,
     })
     .from(strokesGainedShotEvents)
@@ -266,7 +268,44 @@ async function getStrokesGainedData() {
     .orderBy(desc(strokesGainedShotEvents.createdAt))
     .limit(ANALYSIS_LIMIT);
 
-  return { events };
+  return { events: normalizeStoredStrokesGainedEvents(events) };
+}
+
+function normalizeStoredStrokesGainedEvents<
+  T extends {
+    category: string;
+    endLie: string | null;
+    endDistanceYd: number | null;
+    holeNumber: number | null;
+    metadataJson: Record<string, unknown>;
+    scorecardJson: unknown;
+    strokesGained: number | null;
+  },
+>(events: T[]): T[] {
+  return events.map((event) => {
+    if (event.category === "putting" || event.endLie !== "holed") {
+      return event;
+    }
+
+    const scorecardHole = scorecardHoleForEvent(event.scorecardJson, event.holeNumber);
+    const putts = scorecardHole ? finiteInteger(scorecardHole.putts) : null;
+
+    if (putts === null || putts <= 0) {
+      return event;
+    }
+
+    return {
+      ...event,
+      endLie: "green",
+      endDistanceYd: estimatedFirstPuttDistanceYd(putts),
+      strokesGained: typeof event.strokesGained === "number" ? roundOne(event.strokesGained - putts) : null,
+      metadataJson: {
+        ...event.metadataJson,
+        inferredPuttsAfterShot: putts,
+        legacyHoledEndLieAdjusted: true,
+      },
+    };
+  });
 }
 
 function buildStrokesGainedAnalysis(events: StrokesGainedEvent[]) {
@@ -695,7 +734,7 @@ function ShotHighlightPanel({
                     {titleCase(event.category)} - Hole {event.holeNumber ?? "?"}
                   </p>
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {formatPosition(event.startDistanceYd, event.startLie)} -&gt; {formatPosition(event.endDistanceYd, event.endLie)}
+                    {formatPosition(event.startDistanceYd, event.startLie)} -&gt; {formatEndPosition(event)}
                   </p>
                 </div>
                 <SgValue value={event.strokesGained} className="text-lg" />
@@ -976,7 +1015,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
               action={<SgValue value={event.strokesGained} />}
             >
               <DataPair label="Start" value={formatPosition(event.startDistanceYd, event.startLie)} />
-              <DataPair label="End" value={formatPosition(event.endDistanceYd, event.endLie)} />
+              <DataPair label="End" value={formatEndPosition(event)} />
               <DataPair label="Distance change" value={formatDistanceChange(event)} />
             </MobileDataCard>
           ))}
@@ -1010,7 +1049,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
                   <TableCell className="whitespace-nowrap">{holeShotLabel(event)}</TableCell>
                   <TableCell>{titleCase(event.category)}</TableCell>
                   <TableCell className="min-w-44">{formatPosition(event.startDistanceYd, event.startLie)}</TableCell>
-                  <TableCell className="min-w-44">{formatPosition(event.endDistanceYd, event.endLie)}</TableCell>
+                  <TableCell className="min-w-44">{formatEndPosition(event)}</TableCell>
                   <TableCell className="whitespace-nowrap">{formatDistanceChange(event)}</TableCell>
                   <TableCell className="text-right">
                     <SgValue value={event.strokesGained} />
@@ -1295,6 +1334,17 @@ function formatPosition(distanceYd: number | null, lie: string | null) {
   return `${formatNumber(distanceYd)} yd ${titleCase(lie ?? "unknown")}`;
 }
 
+function formatEndPosition(event: StrokesGainedEvent) {
+  const base = formatPosition(event.endDistanceYd, event.endLie);
+  const inferredPutts = inferredPuttsAfterShot(event.metadataJson);
+
+  if (event.endLie === "green" && inferredPutts !== null && inferredPutts > 0) {
+    return `${base} (${pluralise(inferredPutts, "putt")} inferred)`;
+  }
+
+  return base;
+}
+
 function formatDistanceChange(event: StrokesGainedEvent) {
   if (typeof event.startDistanceYd !== "number" || typeof event.endDistanceYd !== "number") {
     return "Distance pending";
@@ -1377,6 +1427,34 @@ function roundOne(value: number) {
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function finiteInteger(value: unknown) {
+  return isFiniteNumber(value) ? Math.max(0, Math.round(value)) : null;
+}
+
+function scorecardHoleForEvent(scorecardJson: unknown, holeNumber: number | null) {
+  if (!Array.isArray(scorecardJson) || typeof holeNumber !== "number") {
+    return null;
+  }
+
+  return (
+    scorecardJson.find((hole): hole is { holeNumber: number; putts?: unknown } => {
+      return Boolean(
+        hole &&
+          typeof hole === "object" &&
+          (hole as { holeNumber?: unknown }).holeNumber === holeNumber,
+      );
+    }) ?? null
+  );
+}
+
+function inferredPuttsAfterShot(metadataJson: unknown) {
+  if (!metadataJson || typeof metadataJson !== "object") {
+    return null;
+  }
+
+  return finiteInteger((metadataJson as { inferredPuttsAfterShot?: unknown }).inferredPuttsAfterShot);
 }
 
 function sortLies(values: string[]) {

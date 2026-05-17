@@ -27,6 +27,7 @@ type CourseRecordDetailProps = {
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" });
+type RecordProfile = { username: string; displayName: string } | null | undefined;
 
 export default async function CourseRecordDetailPage({ params, searchParams }: CourseRecordDetailProps) {
   const [{ recordId }, query] = await Promise.all([params, searchParams]);
@@ -56,7 +57,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
         />
         <MobileStatusAction
           label={`${data.course.name} · ${data.teeSet?.name ?? "Any tee"}`}
-          value={leader?.profile?.displayName ?? "Open board"}
+          value={<ProfileNameLink profile={leader?.profile} fallback="Open board" />}
           detail={
             leader
               ? `${leader.result.scoreLabel} · ${verificationTierLabel(leader.result.verificationTier)}`
@@ -111,7 +112,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
           <article className="rounded-lg border border-[#E5E7EB] bg-white p-3">
             <p className="text-sm font-semibold text-[#6B7280]">Champion</p>
             <p className="mt-2 text-2xl font-semibold tracking-normal">{leader?.result.scoreLabel ?? "--"}</p>
-            <p className="mt-1 truncate text-sm text-[#6B7280]">{leader?.profile?.displayName ?? "Open"}</p>
+            <ProfileNameLink profile={leader?.profile} fallback="Open" className="mt-1 block truncate text-sm text-[#6B7280] hover:underline" />
           </article>
           <article className="rounded-lg border border-[#E5E7EB] bg-white p-3">
             <p className="text-sm font-semibold text-[#6B7280]">Your best</p>
@@ -134,7 +135,9 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
           <NativeListSection title="Recent attempts">
             {data.attempts.map(({ attempt, profile }) => (
               <div key={attempt.id} className="rounded-lg border border-[#E5E7EB] p-3 text-sm">
-                <p className="font-semibold">{profile?.displayName ?? "Player"} · {attempt.metricValue}</p>
+                <p className="font-semibold">
+                  <ProfileNameLink profile={profile} className="hover:underline" /> · {attempt.metricValue}
+                </p>
                 <p className="mt-1 text-[#6B7280]">
                   {attempt.verificationStatus.replace(/_/g, " ")} · {dateFormatter.format(attempt.submittedAt)}
                 </p>
@@ -166,6 +169,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
               items={data.results.slice(0, 5).map(({ result, profile }) => ({
                 rank: result.rank,
                 name: profile?.displayName ?? "Player",
+                href: profileHref(profile),
                 value: result.scoreLabel,
                 detail: verificationTierLabel(result.verificationTier),
               }))}
@@ -216,7 +220,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
               </p>
               {leader?.profile ? (
                 <>
-                  <p className="mt-3 text-3xl font-semibold tracking-normal">{leader.profile.displayName}</p>
+                  <ProfileNameLink profile={leader.profile} className="mt-3 block text-3xl font-semibold tracking-normal hover:underline" />
                   <p className="mt-1 text-4xl font-semibold tracking-normal">{leader.result.scoreLabel}</p>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {verificationTierLabel(leader.result.verificationTier)} · {dateFormatter.format(leader.result.calculatedAt)}
@@ -311,7 +315,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
                 <div key={result.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                   <Badge variant={result.rank === 1 ? "default" : "outline"}>#{result.rank ?? "--"}</Badge>
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{profile?.displayName ?? "Player"}</p>
+                    <ProfileNameLink profile={profile} className="block truncate font-medium hover:underline" />
                     <p className="text-xs text-muted-foreground">{verificationTierLabel(result.verificationTier)}</p>
                   </div>
                   <p className="font-semibold">{result.scoreLabel}</p>
@@ -330,7 +334,9 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
             <div className="grid gap-2 border-t p-4">
               {data.attempts.map(({ attempt, profile }) => (
                 <div key={attempt.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                  <p className="font-medium">{profile?.displayName ?? "Player"} · {attempt.metricValue}</p>
+                  <p className="font-medium">
+                    <ProfileNameLink profile={profile} className="hover:underline" /> · {attempt.metricValue}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {attempt.verificationStatus.replace(/_/g, " ")} · {dateFormatter.format(attempt.submittedAt)}
                   </p>
@@ -343,6 +349,33 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
       </section>
       </div>
     </PageShell>
+  );
+}
+
+function profileHref(profile: RecordProfile) {
+  return profile?.username ? `/profile/${profile.username}` : undefined;
+}
+
+function ProfileNameLink({
+  profile,
+  className,
+  fallback = "Player",
+}: {
+  profile: RecordProfile;
+  className?: string;
+  fallback?: string;
+}) {
+  const label = profile?.displayName ?? fallback;
+  const href = profileHref(profile);
+
+  if (!href) {
+    return <span className={className}>{label}</span>;
+  }
+
+  return (
+    <Link href={href} prefetch={false} className={className}>
+      {label}
+    </Link>
   );
 }
 

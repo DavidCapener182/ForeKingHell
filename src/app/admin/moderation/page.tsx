@@ -41,7 +41,7 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <AdminSection title="User reports" description="Reports created from the social intelligence/reporting flow.">
+        <AdminSection title="User reports" description="Reports created from the Recaps & Safety reporting flow.">
           <div className="grid gap-3">
             {data.reports.length === 0 ? (
               <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No reports yet.</p>

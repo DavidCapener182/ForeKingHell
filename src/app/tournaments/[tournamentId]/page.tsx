@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, MessageCircle, Send, ShieldCheck, Trophy } from "lucide-react";
+import { ArrowLeft, CalendarDays, Eye, EyeOff, MessageCircle, Send, ShieldCheck, Trophy } from "lucide-react";
 
 import { addTournamentCommentAction, submitTournamentRoundAction } from "@/app/tournaments/actions";
 import { PageShell, StatusPill } from "@/components/premium";
@@ -27,11 +27,12 @@ export const dynamic = "force-dynamic";
 
 type TournamentDetailPageProps = {
   params: Promise<{ tournamentId: string }>;
-  searchParams?: Promise<{ joined?: string; submission?: string; comment?: string; entryError?: string; tab?: string }>;
+  searchParams?: Promise<{ joined?: string; submission?: string; comment?: string; entryError?: string; tab?: string; hideTour?: string }>;
 };
 
 type TournamentDetailData = NonNullable<Awaited<ReturnType<typeof getTournamentDetailData>>>;
 type MatchingTournamentRound = TournamentDetailData["matchingRounds"][number];
+type ProfileIdentity = { username: string; displayName: string } | null | undefined;
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" });
 const roundDateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
@@ -44,7 +45,16 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
     notFound();
   }
 
-  const podium = data.standings.slice(0, 3);
+  const hideTourPlayers = query?.hideTour === "1";
+  const tourStandingCount = data.standings.filter(({ profile }) => isTourPlayerProfile(profile)).length;
+  const visibleStandings = hideTourPlayers
+    ? data.standings.filter(({ profile }) => !isTourPlayerProfile(profile))
+    : data.standings;
+  const hiddenTourStandingCount = hideTourPlayers ? tourStandingCount : 0;
+  const leaderboardToggleHref = hideTourPlayers
+    ? `/tournaments/${data.tournament.id}#standings`
+    : `/tournaments/${data.tournament.id}?hideTour=1#standings`;
+  const podium = visibleStandings.slice(0, 3);
   const viewerStanding = data.standings.find((row) => row.standing.userId === data.viewerUserId) ?? null;
   const viewerTermsCurrent = data.viewerEntry
     ? hasCurrentTournamentEntryTermsMetadata(data.viewerEntry.metadataJson)
@@ -180,7 +190,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
           <NativeListSection title="Chat">
             {data.comments.map(({ comment, profile }) => (
               <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                <p className="font-semibold">{profile?.displayName ?? "Player"}</p>
+                <ProfileNameLink profile={profile} className="font-semibold hover:underline" />
                 <p className="mt-1 text-[#6B7280]">{comment.body}</p>
               </div>
             ))}
@@ -208,11 +218,22 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
           </NativeListSection>
         ) : (
           <NativeListSection title="Podium">
+            {tourStandingCount > 0 ? (
+              <div className="mb-3 flex justify-end">
+                <Button asChild variant="outline" size="sm" className="h-9 rounded-full">
+                  <Link href={leaderboardToggleHref} prefetch={false}>
+                    {hideTourPlayers ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    {hideTourPlayers ? "Show tour" : "Hide tour"}
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
             <CompactLeaderboard
               current={viewerStanding ? `You are #${viewerStanding.standing.rank} · ${viewerStanding.standing.grossTotal}` : "Enter to appear on the board"}
               items={podium.map(({ standing, profile }) => ({
                 rank: standing.rank,
                 name: profile?.displayName ?? "Player",
+                href: profileHref(profile),
                 value: standing.grossTotal,
                 detail: `${standing.roundsCompleted}/${data.tournament.roundCount} rounds`,
               }))}
@@ -334,8 +355,11 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
             {podium.length > 0 ? (
               podium.map(({ standing, profile }) => (
                 <div key={standing.id} className={standing.rank === 1 ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border bg-[#F5F6F4] p-4"}>
-                  <Badge variant={standing.rank === 1 ? "default" : "outline"}>#{standing.rank ?? "--"}</Badge>
-                  <p className="mt-3 font-semibold tracking-normal">{profile?.displayName ?? "Player"}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={standing.rank === 1 ? "default" : "outline"}>#{standing.rank ?? "--"}</Badge>
+                    {isTourPlayerProfile(profile) ? <Badge variant="secondary">Tour</Badge> : null}
+                  </div>
+                  <ProfileNameLink profile={profile} className="mt-3 block font-semibold tracking-normal hover:underline" />
                   <p className="mt-1 text-2xl font-semibold tracking-normal">{standing.grossTotal}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{standing.roundsCompleted} rounds</p>
                 </div>
@@ -443,19 +467,37 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
 
         <main className="grid gap-4">
           <section id="standings" className="premium-card scroll-mt-28 p-4">
-            <p className="text-sm font-semibold">Standings</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Standings</p>
+                {hideTourPlayers && hiddenTourStandingCount > 0 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{hiddenTourStandingCount} tour players hidden</p>
+                ) : null}
+              </div>
+              {tourStandingCount > 0 ? (
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link href={leaderboardToggleHref} prefetch={false}>
+                    {hideTourPlayers ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                    {hideTourPlayers ? "Show tour players" : "Hide tour players"}
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
             <div className="mt-4 grid gap-2">
-              {data.standings.map(({ standing, profile }) => (
+              {visibleStandings.map(({ standing, profile }) => (
                 <div key={standing.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                   <Badge variant={standing.rank === 1 ? "default" : "outline"}>#{standing.rank ?? "--"}</Badge>
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{profile?.displayName ?? "Player"}</p>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <ProfileNameLink profile={profile} className="block truncate font-medium hover:underline" />
+                      {isTourPlayerProfile(profile) ? <Badge variant="secondary" className="shrink-0">Tour</Badge> : null}
+                    </div>
                     <p className="text-xs text-muted-foreground">{standing.roundsCompleted}/{data.tournament.roundCount} rounds</p>
                   </div>
                   <p className="font-semibold">{standing.grossTotal}</p>
                 </div>
               ))}
-              {data.standings.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No standings yet.</p> : null}
+              {visibleStandings.length === 0 ? <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No standings yet.</p> : null}
             </div>
           </section>
 
@@ -479,7 +521,7 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
             <div className="mt-4 grid gap-2">
               {data.comments.map(({ comment, profile }) => (
                 <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                  <p className="font-medium">{profile?.displayName ?? "Player"}</p>
+                  <ProfileNameLink profile={profile} className="font-medium hover:underline" />
                   <p className="text-muted-foreground">{comment.body}</p>
                 </div>
               ))}
@@ -497,6 +539,40 @@ export default async function TournamentDetailPage({ params, searchParams }: Tou
       </section>
       </div>
     </PageShell>
+  );
+}
+
+function isTourPlayerProfile(profile: TournamentDetailData["standings"][number]["profile"]) {
+  return (
+    profile?.visibilitySettingsJson?.profileKind === "tour-player" ||
+    profile?.visibilitySettingsJson?.tourPlayer === true
+  );
+}
+
+function profileHref(profile: ProfileIdentity) {
+  return profile?.username ? `/profile/${profile.username}` : undefined;
+}
+
+function ProfileNameLink({
+  profile,
+  className,
+  fallback = "Player",
+}: {
+  profile: ProfileIdentity;
+  className?: string;
+  fallback?: string;
+}) {
+  const label = profile?.displayName ?? fallback;
+  const href = profileHref(profile);
+
+  if (!href) {
+    return <span className={className}>{label}</span>;
+  }
+
+  return (
+    <Link href={href} prefetch={false} className={className}>
+      {label}
+    </Link>
   );
 }
 

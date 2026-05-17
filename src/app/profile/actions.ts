@@ -17,7 +17,6 @@ export async function updateSocialProfileAction(formData: FormData) {
     bio: formString(formData, "bio"),
     homeCourse: formString(formData, "homeCourse"),
     primaryLaunchMonitor: formString(formData, "primaryLaunchMonitor"),
-    handicapBand: formString(formData, "handicapBand"),
     publicProfile: formData.get("publicProfile") === "on",
     friendProfile: formData.get("friendProfile") === "on",
     feedVisibilityDefault: parseVisibility(formData.get("feedVisibilityDefault"), "private"),

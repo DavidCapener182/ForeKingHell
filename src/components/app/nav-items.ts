@@ -180,7 +180,7 @@ export const navGroups: AppNavGroup[] = [
       },
       {
         href: "/social-intelligence",
-        label: "Recaps & safety",
+        label: "Recaps & Safety",
         icon: ShieldAlert,
         isActive: (pathname) => pathname.startsWith("/social-intelligence"),
       },
@@ -302,17 +302,32 @@ export const mobilePrimaryItems: AppNavItem[] = [
   },
 ];
 
-export function buildDesktopNavGroups(isAdmin: boolean) {
-  return navGroups.map((group) => {
-    if (group.label !== "Platform") {
-      return group;
-    }
+const desktopNavOrder = new Map([
+  ["Overview", 0],
+  ["Play", 1],
+  ["Analyse", 2],
+  ["Improve", 3],
+  ["Platform", 4],
+  ["Social", 5],
+]);
 
-    return {
-      ...group,
-      items: isAdmin
-        ? [...group.items, partnerNavItem, adminNavItem]
-        : group.items,
-    };
-  });
+export function buildDesktopNavGroups(isAdmin: boolean) {
+  return [...navGroups]
+    .sort(
+      (left, right) =>
+        (desktopNavOrder.get(left.label) ?? 99) -
+        (desktopNavOrder.get(right.label) ?? 99),
+    )
+    .map((group) => {
+      if (group.label !== "Platform") {
+        return group;
+      }
+
+      return {
+        ...group,
+        items: isAdmin
+          ? [...group.items, partnerNavItem, adminNavItem]
+          : group.items,
+      };
+    });
 }

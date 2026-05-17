@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Archive, Award, FileClock, RefreshCw, ShieldCheck, Upload } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 
@@ -8,7 +9,6 @@ import { MobileRapsodoConnect } from "@/app/import/mobile-rapsodo-connect";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import {
   BottomSheet,
-  EventHeroCard,
   MobileAppShell,
   MobileStatusAction,
   MobileTabBar,
@@ -28,7 +28,6 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
@@ -73,62 +72,43 @@ export default async function ImportPage() {
       <MobileAppShell>
         <MobileTopBar title="Import" />
         <MobileTabBar
-          activeKey="rapsodo"
+          activeKey="connect"
           className="sticky top-[calc(6.75rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
           tabs={[
-            { key: "rapsodo", label: "Rapsodo", href: "#rapsodo-connect" },
+            { key: "connect", label: "Connect", href: "#rapsodo-connect" },
             { key: "csv", label: "CSV", href: "#csv-import" },
-            { key: "scorecard", label: "Scorecard", href: "/import#scorecard" },
             { key: "manual", label: "Manual", href: "/rounds/new" },
             { key: "proof", label: "Proof", href: "/import#proof" },
           ]}
         />
         <MobileStatusAction
-          label="Rapsodo import"
-          value="Import verified session"
-          detail={`${integerFormatter.format(visibleFiles.length)} recent files · ${integerFormatter.format(duplicateFiles)} duplicates detected`}
+          label="Launch monitor import"
+          value="Connect or import data"
+          detail={`${integerFormatter.format(visibleFiles.length)} recent files · ${integerFormatter.format(duplicateFiles)} duplicates detected · Rapsodo live`}
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <a href="#rapsodo-connect">
                 <Upload className="size-4" />
-                Rapsodo
+                Provider
               </a>
             </Button>
           }
         />
-        <MobileRapsodoConnect initialStatus={connectionStatus} />
-        <EventHeroCard
-          eyebrow="After import"
-          title="Eligible submissions appear here"
-          description="Course records, tournaments, challenges and friend boards are suggested after Rapsodo data is saved."
-          href="#rapsodo-connect"
-          actionLabel="Connect Rapsodo"
-          media={<PageArtwork variant="import" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
-        />
-        <NativeListSection title="This round qualifies for">
-          {eligibleSubmissionCards.map((item) => (
-            <div key={item.title} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{item.title}</p>
-                <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
-              </div>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href={item.href} prefetch={false}>Submit</Link>
-              </Button>
-            </div>
-          ))}
-        </NativeListSection>
-        <NativeListSection id="import-sources" title="Other sources">
+        <NativeListSection
+          id="import-sources"
+          title="Import routes"
+          description="Provider sync, CSV upload, and manual rounds all feed the same performance history."
+        >
           <div className="grid gap-2">
             <Link
-              href="/rapsodo"
+              href="#rapsodo-connect"
               prefetch={false}
               className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
             >
               <Upload className="size-5 text-[#0B7A3B]" />
               <span className="min-w-0">
-                <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
-                <span className="block text-sm text-[#6B7280]">Load session list, preview shots and import verified data</span>
+                <span className="block font-semibold">Connect provider</span>
+                <span className="block text-sm text-[#6B7280]">Rapsodo R-Cloud is live; adapter-ready providers share the same history layer</span>
               </span>
               <ProofBadge tier="gold" />
             </Link>
@@ -136,44 +116,66 @@ export default async function ImportPage() {
               label={
                 <span id="csv-import" className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-left">
                   <Upload className="size-5 text-[#0B7A3B]" />
-                  <span>
+                    <span>
                     <span className="block font-semibold">CSV files</span>
-                    <span className="block text-sm font-normal text-[#6B7280]">Fallback upload for exported Rapsodo CSVs</span>
+                    <span className="block text-sm font-normal text-[#6B7280]">Upload exported launch-monitor or simulator files</span>
                   </span>
                   <ProofBadge tier="silver" />
                 </span>
               }
-              title="Import CSV files"
+              title="Upload CSV files"
               triggerClassName="w-full rounded-lg bg-white p-3 text-[#050505] ring-1 ring-[#E5E7EB]"
             >
               <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
             </BottomSheet>
-            <BottomSheet
-              label={<><ShieldCheck className="size-4" /> Upload scorecard proof</>}
-              title="Scorecard proof"
-              triggerClassName="w-full rounded-lg bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
-            >
-              <div className="grid gap-3 text-sm text-[#6B7280]">
-                <p>Use proof upload after selecting an eligible record, tournament or challenge. Strong proof combines direct Rapsodo import, scorecard screenshot, course/date/tee match and duplicate checks.</p>
-                <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
-                  <a href="#rapsodo-connect">Continue to Rapsodo</a>
-                </Button>
-              </div>
-            </BottomSheet>
-            <Button asChild variant="outline" className="justify-start rounded-lg">
+            <Button asChild variant="outline" className="h-auto justify-start rounded-lg p-3">
               <Link href="/rounds/new" prefetch={false}>
                 <Award className="size-4" />
-                Manual round
+                <span className="grid text-left">
+                  <span className="font-semibold">Manual round</span>
+                  <span className="text-sm font-normal text-[#6B7280]">Add a real scorecard when there is no device file</span>
+                </span>
               </Link>
             </Button>
           </div>
         </NativeListSection>
+        <MobileRapsodoConnect initialStatus={connectionStatus} />
+        <MobileAccordionSection
+          title="Proof and submissions"
+          description="Use after a round or verified provider import is saved."
+          count={eligibleSubmissionCards.length}
+        >
+          <MobileDataList>
+            <BottomSheet
+              label={<><ShieldCheck className="size-4" /> Scorecard proof</>}
+              title="Scorecard proof"
+              triggerClassName="w-full rounded-lg bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+            >
+              <div className="grid gap-3 text-sm text-[#6B7280]">
+                <p>Use proof upload after selecting an eligible record, tournament or challenge. Strong proof combines direct provider import, scorecard screenshot, course/date/tee match and duplicate checks.</p>
+                <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
+                  <a href="#rapsodo-connect">Continue to provider sync</a>
+                </Button>
+              </div>
+            </BottomSheet>
+            {eligibleSubmissionCards.map((item) => (
+              <MobileDataCard
+                key={item.title}
+                href={item.href}
+                title={item.title}
+                subtitle={item.detail}
+                action={<StatusPill tone="slate">Submit</StatusPill>}
+              />
+            ))}
+          </MobileDataList>
+        </MobileAccordionSection>
+        <ImportFileLibrary files={visibleFiles} />
       </MobileAppShell>
       <div className="hidden sm:contents">
       <PageHeader
         eyebrow={<StatusPill tone="green">Import</StatusPill>}
-        title="CSV import"
-        description="Upload Rapsodo files, review duplicates, and keep a versioned file history for reprocessing."
+        title="Launch monitor import"
+        description="Connect or import from any launch monitor. Rapsodo is live; Square, TrackMan and other sources use the same adapter-ready import contract."
         metrics={[
           { label: "Files", value: integerFormatter.format(visibleFiles.length), detail: "Saved import-file records" },
           { label: "Duplicates", value: integerFormatter.format(duplicateFiles), detail: "Detected before save" },
@@ -181,13 +183,98 @@ export default async function ImportPage() {
         ]}
       />
 
+      <ImportSourceGrid />
+      <DesktopCsvImportPanel preferredDistanceUnit={library.preferredDistanceUnit} />
       <ImportFileLibrary files={visibleFiles} />
       </div>
     </PageShell>
-    <div id="rapsodo-import" className="hidden sm:block">
-      <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
-    </div>
     </>
+  );
+}
+
+function DesktopCsvImportPanel({
+  preferredDistanceUnit,
+}: {
+  preferredDistanceUnit: "meters" | "yards";
+}) {
+  return (
+    <section
+      id="desktop-csv-import"
+      className="hidden scroll-mt-28 overflow-hidden rounded-lg border border-[#d9ded8] bg-white sm:block"
+    >
+      <ImportForm defaultDistanceUnit={preferredDistanceUnit} />
+    </section>
+  );
+}
+
+function ImportSourceGrid() {
+  return (
+    <section className="grid gap-4 lg:grid-cols-3">
+      <ImportSourceCard
+        title="Connect provider"
+        description="Rapsodo R-Cloud is live. Provider accounts keep verified sessions tied to the original source."
+        href="/rapsodo"
+        cta="Open Rapsodo"
+        badge="Rapsodo live"
+        icon={<ShieldCheck className="size-5" />}
+      />
+      <ImportSourceCard
+        title="Upload CSV"
+        description="Upload exported launch-monitor or simulator files, map columns, preserve raw rows and normalize metrics."
+        href="#desktop-csv-import"
+        cta="Upload files"
+        badge="Adapter-ready"
+        icon={<Upload className="size-5" />}
+      />
+      <ImportSourceCard
+        title="Manual round"
+        description="Add real scorecards when there is no device file, keeping course form separate from simulator data."
+        href="/rounds/new"
+        cta="Add round"
+        badge="Course data"
+        icon={<Award className="size-5" />}
+      />
+    </section>
+  );
+}
+
+function ImportSourceCard({
+  title,
+  description,
+  href,
+  cta,
+  badge,
+  icon,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+  badge: string;
+  icon: ReactNode;
+}) {
+  return (
+    <DataPanel className="h-full">
+      <CardContent className="grid h-full gap-4 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="grid size-11 place-items-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+            {icon}
+          </div>
+          <StatusPill tone="sky">{badge}</StatusPill>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <Button asChild variant="outline" className="mt-auto w-fit">
+          <Link href={href} prefetch={false}>
+            {cta}
+          </Link>
+        </Button>
+      </CardContent>
+    </DataPanel>
   );
 }
 

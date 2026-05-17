@@ -113,7 +113,7 @@ export function ScorecardProofUploader({
             Proof check
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Upload a scorecard screenshot for OCR, then confirm the total against the imported Rapsodo round.
+            Upload a scorecard screenshot for OCR, then confirm the total against the imported provider round.
           </p>
         </div>
         <Button

@@ -4,6 +4,7 @@ import { Award, BarChart3, Bell, Filter, Lock, MessageCircle, Plus, Radio, Searc
 
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
+import { StatusUpdateComposer } from "@/app/feed/status-update-composer";
 import {
   ActivityCard,
   EventHeroCard,
@@ -80,10 +81,17 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             { key: "me", label: "Me", href: "/feed?filter=me" },
           ]}
         />
+        <StatusUpdateComposer
+          displayName={data.profile.displayName}
+          username={data.profile.username}
+          avatarUrl={data.profile.avatarUrl}
+          defaultVisibility={data.profile.feedVisibilityDefault}
+          variant="mobile"
+        />
         <MobileStatusAction
           label="Today’s golf goal"
           value="PW Launch Window"
-          detail="12 shots · 24-34° launch window · Rapsodo proof accepted"
+          detail="12 shots · 24-34° launch window · launch-monitor proof accepted"
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Link href="/challenges" prefetch={false}>Start</Link>
@@ -106,38 +114,29 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 }
                 actor={item.profile.displayName}
                 meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
-                title={item.headline}
-                description={item.context}
-                metric={item.metricValue ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}` : feedTypeLabel(item.itemType)}
+                title={item.itemType === "status_update" ? "Status update" : item.headline}
+                description={item.itemType === "status_update" ? item.context ?? item.headline : item.context}
+                metric={item.metricValue ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}` : item.itemType === "status_update" ? null : feedTypeLabel(item.itemType)}
                 reactionCount={item.reactionCount}
                 commentCount={item.commentCount}
-                media={
-                  <PageArtwork
-                    variant={artworkForFeedType(item.itemType)}
-                    alt=""
-                    crop="random"
-                    cropKey={item.id}
-                    className="block h-40 min-h-0"
-                    sizes="100vw"
-                  />
-                }
+                media={mobileFeedMedia(item)}
               />
             ))}
           </NativeListSection>
         ) : (
           <EventHeroCard
             eyebrow="No activity yet"
-            title="Import a Rapsodo session"
+            title="Import a launch-monitor session"
             description="PBs, records, achievements and event eligibility will appear here first."
             href="/import"
             actionLabel="Import"
-            media={<PageArtwork variant="fairway" alt="" className="h-full min-h-0" sizes="100vw" />}
+            media={<PageArtwork variant="fairway" alt="" className="h-full min-h-0" sizes="100vw" priority />}
           />
         )}
       </MobileAppShell>
 
       <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
-        <aside className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
+        <aside className="hidden lg:grid lg:sticky lg:top-6 lg:gap-4">
           <section className="premium-card overflow-hidden">
             <div
               className="h-20 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)] bg-cover bg-center"
@@ -231,45 +230,40 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <section className="premium-card p-4">
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-              <SocialAvatar
-                displayName={data.profile.displayName}
-                username={data.profile.username}
-                avatarUrl={data.profile.avatarUrl}
-                href="/profile"
-              />
-              <div className="grid gap-3">
-                <div className="rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
-                  Your feed is automatic right now. Import a session, complete a round, or join a challenge to post a verified update.
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/rounds/new" prefetch={false}>
-                      <Radio className="size-4" />
-                      Log round
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/course-records" prefetch={false}>
-                      <Award className="size-4" />
-                      Submit record
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/profile" prefetch={false}>
-                      <Lock className="size-4" />
-                      Privacy
-                    </Link>
-                  </Button>
-                </div>
-              </div>
+          <StatusUpdateComposer
+            displayName={data.profile.displayName}
+            username={data.profile.username}
+            avatarUrl={data.profile.avatarUrl}
+            defaultVisibility={data.profile.feedVisibilityDefault}
+          />
+
+          <section className="premium-card p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-1 text-sm font-semibold">Verified activity</span>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/import" prefetch={false}>
+                  <Upload className="size-4" />
+                  Import
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/rounds/new" prefetch={false}>
+                  <Radio className="size-4" />
+                  Log round
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/course-records" prefetch={false}>
+                  <Award className="size-4" />
+                  Submit record
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/profile" prefetch={false}>
+                  <Lock className="size-4" />
+                  Privacy
+                </Link>
+              </Button>
             </div>
           </section>
 
@@ -306,10 +300,12 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <FeedCardList items={filteredItems} />
+          <section className="mx-auto w-full max-w-4xl">
+            <FeedCardList items={filteredItems} compact />
+          </section>
         </main>
 
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <aside className="grid gap-4 lg:sticky lg:top-6">
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Network pulse</p>
             <div className="mt-3 grid gap-2">
@@ -434,6 +430,44 @@ function artworkForFeedType(type: string) {
   }
 
   return "fairway" as const;
+}
+
+function mobileFeedMedia(item: Awaited<ReturnType<typeof getFeedPageData>>["items"][number]) {
+  const imageUrl = imageProofUrl(item.proofUrl);
+
+  if (imageUrl) {
+    return <FeedActivityImage src={imageUrl} alt={`Status image by ${item.profile.displayName}`} />;
+  }
+
+  if (item.itemType === "status_update") {
+    return null;
+  }
+
+  return (
+    <PageArtwork
+      variant={artworkForFeedType(item.itemType)}
+      alt=""
+      crop="random"
+      cropKey={item.id}
+      className="block h-40 min-h-0"
+      sizes="100vw"
+    />
+  );
+}
+
+function FeedActivityImage({ src, alt }: { src: string; alt: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} className="block max-h-80 w-full object-cover" />
+  );
+}
+
+function imageProofUrl(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  return value.startsWith("data:image/") ? value : null;
 }
 
 function feedTypeLabel(value: string) {

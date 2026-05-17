@@ -32,6 +32,8 @@ import {
   CompactReadoutGrid,
   DataPanel,
   MobileAccordionSection,
+  MobileDataCard,
+  MobileDataList,
   MobileHorizontalRail,
   PageHeader,
   PageShell,
@@ -166,7 +168,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel =
-    data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
+    data.stats.shotCount > 0 ? "Open bag map" : "Import first session";
 
   const metrics = [
     {
@@ -251,8 +253,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const routeCards = [
     {
-      title: "Import CSV",
-      description: "Upload Rapsodo range or simulated-course files.",
+      title: "Import",
+      description: "Connect a launch monitor, upload CSV files, or add a round.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
@@ -311,29 +313,20 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-emerald-700 bg-emerald-50",
     },
     {
-      title: "Import CSV",
-      description: "Upload Rapsodo range or simulated-course files.",
+      title: "Import",
+      description: "Connect a provider, upload CSV files, or add a manual round.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
       accent: "text-emerald-600 bg-emerald-50",
     },
     {
-      title: "Shot database",
+      title: "Shots",
       description: "Inspect every normalized shot and preserved raw row.",
       href: "/shots",
       metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
       icon: Database,
       accent: "text-sky-600 bg-sky-50",
-    },
-    {
-      title: "Compare",
-      description:
-        "Compare a focused session against the previous-session baseline.",
-      href: "/compare",
-      metric: "Session delta",
-      icon: GitCompareArrows,
-      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Bag map",
@@ -344,12 +337,38 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-pink-600 bg-pink-50",
     },
     {
+      title: "Progress",
+      description: "See what changed across the bag and what to practise next.",
+      href: "/progress",
+      metric: "Coach readout",
+      icon: LineChart,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Coach",
+      description:
+        "Open the next practice priority, diagnosis, and session plan.",
+      href: "/coach",
+      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
+      icon: Brain,
+      accent: "text-rose-700 bg-rose-50",
+    },
+    {
       title: "Rounds",
       description: "Open scorecards, course imports, and shot maps.",
       href: "/rounds",
       metric: `${integerFormatter.format(data.stats.roundCount)} rounds`,
       icon: Flag,
       accent: "text-amber-700 bg-amber-50",
+    },
+    {
+      title: "Compare",
+      description:
+        "Compare a focused session against the previous-session baseline.",
+      href: "/compare",
+      metric: "Session delta",
+      icon: GitCompareArrows,
+      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Handicap",
@@ -383,23 +402,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       metric: "Events",
       icon: Trophy,
       accent: "text-emerald-700 bg-emerald-50",
-    },
-    {
-      title: "Progress",
-      description: "See what changed across the bag and what to practise next.",
-      href: "/progress",
-      metric: "Coach readout",
-      icon: LineChart,
-      accent: "text-emerald-700 bg-emerald-50",
-    },
-    {
-      title: "Coach",
-      description:
-        "Open the next practice priority, diagnosis, and session plan.",
-      href: "/coach",
-      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
-      icon: Brain,
-      accent: "text-rose-700 bg-rose-50",
     },
     {
       title: "Longest shots",
@@ -522,12 +524,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         <WhatChangedPanel insights={data.whatChanged} />
 
+        <QuickRoutes routes={routeCards} />
+
         <DashboardSocialPulse
           social={social}
           challenges={challengeData.active}
         />
-
-        <QuickRoutes routes={routeCards} />
       </div>
     </PageShell>
   );
@@ -597,8 +599,6 @@ function DashboardMobileLayout({
           tone: metric.tone,
         }))}
       />
-
-      <DashboardMobileSocialPulse social={social} challenges={challenges} />
 
       <DataPanel id="decisions" className="scroll-mt-28">
         <SectionHeader
@@ -702,8 +702,8 @@ function DashboardMobileLayout({
 
       <section id="tools" className="grid scroll-mt-28 gap-4">
         <MobileHorizontalRail
-          title="Tools"
-          description="Fast routes into the main workflows."
+          title="Top actions"
+          description="The main performance workflows."
           action={
             <Button
               asChild
@@ -717,7 +717,7 @@ function DashboardMobileLayout({
             </Button>
           }
         >
-          {routeCards.slice(0, 8).map((card) => {
+          {routeCards.slice(0, 6).map((card) => {
             const Icon = card.icon;
 
             return (
@@ -743,6 +743,33 @@ function DashboardMobileLayout({
             );
           })}
         </MobileHorizontalRail>
+        {routeCards.length > 6 ? (
+          <MobileAccordionSection
+            title="More tools"
+            description="Secondary routes stay available without crowding the dashboard."
+            count={routeCards.length - 6}
+          >
+            <MobileDataList>
+              {routeCards.slice(6).map((card) => {
+                const Icon = card.icon;
+
+                return (
+                  <MobileDataCard
+                    key={card.href}
+                    href={card.href}
+                    title={card.title}
+                    subtitle={card.description}
+                    action={<Icon className="size-4 text-[#0B7A3B]" />}
+                  >
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {card.metric}
+                    </p>
+                  </MobileDataCard>
+                );
+              })}
+            </MobileDataList>
+          </MobileAccordionSection>
+        ) : null}
       </section>
 
       <section
@@ -870,6 +897,8 @@ function DashboardMobileLayout({
           </DataPanel>
         ) : null}
       </section>
+
+      <DashboardMobileSocialPulse social={social} challenges={challenges} />
     </div>
   );
 }
@@ -1059,12 +1088,12 @@ function DashboardMobileSocialPulse({
 function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
   return (
     <Link
-      href={item.proofUrl ?? "/feed"}
+      href={feedItemHref(item)}
       prefetch={false}
       className="grid gap-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-white"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{item.headline}</p>
+        <p className="font-medium">{item.itemType === "status_update" ? "Status update" : item.headline}</p>
         <StatusPill
           tone={
             item.verificationLabel === "Manual" ||
@@ -1191,8 +1220,8 @@ function DashboardSummaryHero({
             ForeKingHell
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-            Your golf operating system: form, bag confidence, practice and
-            rounds.
+            The performance history layer for launch monitors, simulator rounds
+            and real course scorecards.
           </p>
           <div className="mt-5 grid gap-3 text-sm leading-6 text-[#667085] md:grid-cols-3">
             <HeroFact
@@ -1234,7 +1263,7 @@ function DashboardSummaryHero({
           >
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
@@ -1581,12 +1610,12 @@ function BagSnapshotPanel({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm leading-6 text-[#667085]">
-            Import a Rapsodo CSV and the bag map will build automatically.
+            Import launch-monitor shots and the bag map will build automatically.
           </p>
           <Button asChild className="rounded-lg bg-[#087A3D] text-white">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
@@ -1915,7 +1944,7 @@ function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
       title="Quick routes"
       description="Primary shortcuts only. The rest stay in navigation."
     >
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-2 md:grid-cols-3">
         {routes.map((route) => {
           const Icon = route.icon;
 
@@ -1954,13 +1983,13 @@ function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
 function DashboardSocialMoment({ item }: { item: FeedItemView }) {
   return (
     <Link
-      href={item.proofUrl ?? "/feed"}
+      href={feedItemHref(item)}
       prefetch={false}
       className="block py-3 text-sm transition-colors hover:bg-[#F8FAF8]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold leading-6 text-[#111827]">
-          {item.headline}
+          {item.itemType === "status_update" ? "Status update" : item.headline}
         </p>
         <StatusPill
           tone={
@@ -1980,6 +2009,10 @@ function DashboardSocialMoment({ item }: { item: FeedItemView }) {
       </p>
     </Link>
   );
+}
+
+function feedItemHref(item: FeedItemView) {
+  return item.proofUrl && !item.proofUrl.startsWith("data:image/") ? item.proofUrl : "/feed";
 }
 
 function InlineStat({ label, value }: { label: string; value: ReactNode }) {
@@ -2583,7 +2616,7 @@ function buildWhatChangedInsights({
       detail:
         bagPreview.length > 0
           ? "Keep adding shots to unlock stronger trend comparisons."
-          : "Upload a Rapsodo CSV to start building the personal baseline.",
+          : "Import launch-monitor shots to start building the personal baseline.",
       tone: "slate",
     },
     {

@@ -680,11 +680,13 @@ function RailActivityItem({
   onReactionToggle: () => void;
   onSubmitComment: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const isStatusUpdate = item.itemType === "status_update";
+
   return (
     <div className="rounded-xl border bg-slate-50/70 p-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="line-clamp-2 text-sm font-medium leading-5">{item.headline}</p>
+          <p className="line-clamp-2 text-sm font-medium leading-5">{isStatusUpdate ? "Status update" : item.headline}</p>
           <p className="mt-1 text-xs text-muted-foreground">{itemDateFormatter.format(new Date(item.createdAt))}</p>
         </div>
       </div>
@@ -727,7 +729,9 @@ function RailActivityItem({
             <div className="grid gap-1.5">
               {item.comments.map((comment) => (
                 <div key={comment.id} className="rounded-lg bg-white px-2 py-1.5 text-xs">
-                  <p className="font-medium">{comment.profile.displayName}</p>
+                  <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-medium hover:underline">
+                    {comment.profile.displayName}
+                  </Link>
                   <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
                   <div className="mt-1 flex flex-wrap gap-1">
                     <Button
@@ -832,6 +836,7 @@ function pluralFeedTypeLabel(type: string, count: number) {
     longest_drive: ["longest drive", "longest drives"],
     new_pb: ["PB", "PBs"],
     round_completed: ["round", "rounds"],
+    status_update: ["status update", "status updates"],
   };
   const fallback = feedTypeLabel(type).toLowerCase();
   const [single, plural] = labels[type] ?? [fallback, `${fallback}s`];

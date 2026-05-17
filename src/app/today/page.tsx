@@ -21,7 +21,6 @@ import {
   MobileDataCard,
   MobileDataList,
   MobileHorizontalRail,
-  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -136,13 +135,13 @@ export default async function TodayPage({
   const activeFilterChips = buildTodayFilterChips(data);
 
   return (
-    <PageShell size="full" contentClassName="pb-4 sm:pb-5">
+    <PageShell size="wide" contentClassName="pb-4 sm:pb-5">
       <MobileAppShell className="min-h-0 pb-0">
         <MobileTopBar
-          title="Dashboard"
+          title="Today"
           actions={
             <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-[#050505]">
-              <Link href="/import" prefetch={false} aria-label="Import CSV">
+              <Link href="/import" prefetch={false} aria-label="Import data">
                 <Upload className="size-5" />
               </Link>
             </Button>
@@ -183,15 +182,134 @@ export default async function TodayPage({
             },
           ]}
         />
-        <NativeListSection title="Today’s work" description="Filtered shot rows, charts and club scope.">
+        <div id="mobile-scope" className="grid gap-3">
+          <MobileFilterSheet
+            label="Session scope"
+            activeCount={activeFilterChips.length}
+          >
+            <form className="grid gap-3">
+              <TodayScopeFields data={data} />
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="submit"
+                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                >
+                  Analyse
+                </Button>
+                <Button asChild variant="outline" className="rounded-lg">
+                  <Link href="/today" prefetch={false}>
+                    Reset
+                  </Link>
+                </Button>
+              </div>
+            </form>
+          </MobileFilterSheet>
+          <ActiveFilterChips items={activeFilterChips} />
+        </div>
+        <NativeListSection title="Actions" description="Open the filtered rows or add a new launch-monitor session.">
           <MobilePlayRoute
             href={shotDatabaseHref}
-            title="Today"
+            title="Shot rows"
             value={`${integerFormatter.format(data.shots.length)} selected`}
             detail="Filtered shot rows, charts and club scope."
             icon={<Database className="size-5" />}
           />
+          <MobilePlayRoute
+            href="/import"
+            title="Import"
+            value="Launch monitor"
+            detail="Connect a provider, upload CSV files, or add a manual round."
+            icon={<Upload className="size-5" />}
+          />
         </NativeListSection>
+        {data.shots.length === 0 ? (
+          <EmptyToday />
+        ) : (
+          <>
+            <NativeListSection
+              id="mobile-charts"
+              title="Shot patterns"
+              description="Dispersion and trajectory for the selected scope."
+            >
+              <TodayShotCharts shots={chartShots} />
+            </NativeListSection>
+            <MobileHorizontalRail
+              title="Club changes"
+              description="Today against the latest previous shots."
+            >
+              {data.clubComparisons.map((comparison) => (
+                <MobileDataCard
+                  key={comparison.clubType}
+                  title={comparison.clubLabel}
+                  subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
+                  action={
+                    <Badge className={verdictBadgeClass(comparison.verdict)}>
+                      {verdictLabel(comparison.verdict)}
+                    </Badge>
+                  }
+                >
+                  <DataPair
+                    label="Carry"
+                    value={formatDeltaPair(
+                      comparison.today.carryAverageYd,
+                      comparison.carryDeltaYd,
+                      "yd",
+                      true,
+                    )}
+                  />
+                  <DataPair
+                    label="Offline"
+                    value={formatDeltaPair(
+                      comparison.today.offlineAverageYd,
+                      comparison.offlineDeltaYd,
+                      "yd",
+                      false,
+                    )}
+                  />
+                  <DataPair
+                    label="Straight"
+                    value={formatDeltaPair(
+                      comparison.today.straightRate,
+                      comparison.straightRateDelta,
+                      "pp",
+                      true,
+                    )}
+                  />
+                  <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
+                    {comparison.summary}
+                  </p>
+                </MobileDataCard>
+              ))}
+            </MobileHorizontalRail>
+            <MobileAccordionSection
+              title="Raw selected shots"
+              count={integerFormatter.format(data.shots.length)}
+              description="Open for source shot rows."
+            >
+              <MobileDataList>
+                {data.shots.map((shot) => (
+                  <MobileDataCard
+                    key={shot.id}
+                    title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
+                    subtitle={shot.fileName ?? shot.courseName ?? "Session"}
+                    action={
+                      <Badge variant="outline">
+                        {formatShotCategory(shot.shotCategory)}
+                      </Badge>
+                    }
+                  >
+                    <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
+                    <DataPair label="Total" value={formatYards(shot.totalYd)} />
+                    <DataPair
+                      label="Side"
+                      value={formatSignedYards(shot.sideCarryYd)}
+                    />
+                  </MobileDataCard>
+                ))}
+              </MobileDataList>
+            </MobileAccordionSection>
+          </>
+        )}
       </MobileAppShell>
 
       <div className="hidden sm:contents">
@@ -215,80 +333,13 @@ export default async function TodayPage({
           >
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
       </div>
 
       <TodayReviewHero data={data} />
-      </div>
-
-      <MobileSectionChips
-        items={[
-          { label: "Scope", href: "#scope" },
-          { label: "Focus", href: "#focus" },
-          { label: "Charts", href: "#charts" },
-          { label: "Clubs", href: "#clubs" },
-          { label: "Shots", href: "#shots" },
-        ]}
-      />
-
-      {data.shots.length > 0 ? (
-        <MobileMetricStrip
-          items={[
-            {
-              label: "Selected",
-              value: integerFormatter.format(data.shots.length),
-              detail: `${integerFormatter.format(data.comparisonShots.length)} comparison`,
-              tone: "green",
-            },
-            {
-              label: "Straight",
-              value: formatRate(data.overall.today.straightRate),
-              detail: deltaText(data.overall.straightRateDelta, "pp", true),
-              tone: verdictTone(data.overall.verdict),
-            },
-            {
-              label: "Carry",
-              value: formatYards(data.overall.today.carryAverageYd),
-              detail: deltaText(data.overall.carryDeltaYd, "yd", true),
-              tone: deltaTone(data.overall.carryDeltaYd, "higher"),
-            },
-            {
-              label: "Offline",
-              value: formatYards(data.overall.today.offlineAverageYd),
-              detail: offlineDeltaText(data.overall.offlineDeltaYd),
-              tone: deltaTone(data.overall.offlineDeltaYd, "lower"),
-            },
-          ]}
-        />
-      ) : null}
-
-      <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
-        <MobileFilterSheet
-          label="Session scope"
-          activeCount={activeFilterChips.length}
-        >
-          <form className="grid gap-3">
-            <TodayScopeFields data={data} />
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="submit"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
-                Analyse
-              </Button>
-              <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/today" prefetch={false}>
-                  Reset
-                </Link>
-              </Button>
-            </div>
-          </form>
-        </MobileFilterSheet>
-        <ActiveFilterChips items={activeFilterChips} />
-      </div>
 
       <section
         id="scope"
@@ -317,148 +368,64 @@ export default async function TodayPage({
         <EmptyToday />
       ) : (
         <>
-          <section id="charts" className="scroll-mt-28">
-            <TodayShotCharts shots={chartShots} />
-          </section>
-
           <section
-            id="clubs"
-            className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)]"
+            id="charts"
+            className="grid scroll-mt-28 items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]"
           >
-            <DataPanel className="min-w-0">
-              <SectionHeader
-                title="Club by club"
-                description="Today against the latest previous shots for the same club."
-                action={
-                  <StatusPill tone={verdictTone(data.overall.verdict)}>
-                    {data.overall.title}
-                  </StatusPill>
-                }
-              />
-              <CardContent>
-                <DataTableFrame
-                  className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
-                  mobile={
-                    <MobileHorizontalRail
-                      title="Club changes"
-                      description="Today against the latest previous shots."
-                    >
-                      {data.clubComparisons.map((comparison) => (
-                        <MobileDataCard
-                          key={comparison.clubType}
-                          title={comparison.clubLabel}
-                          subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
-                          action={
-                            <Badge
-                              className={verdictBadgeClass(comparison.verdict)}
-                            >
-                              {verdictLabel(comparison.verdict)}
-                            </Badge>
-                          }
-                        >
-                          <DataPair
-                            label="Carry"
-                            value={formatDeltaPair(
-                              comparison.today.carryAverageYd,
-                              comparison.carryDeltaYd,
-                              "yd",
-                              true,
-                            )}
-                          />
-                          <DataPair
-                            label="Offline"
-                            value={formatDeltaPair(
-                              comparison.today.offlineAverageYd,
-                              comparison.offlineDeltaYd,
-                              "yd",
-                              false,
-                            )}
-                          />
-                          <DataPair
-                            label="Straight"
-                            value={formatDeltaPair(
-                              comparison.today.straightRate,
-                              comparison.straightRateDelta,
-                              "pp",
-                              true,
-                            )}
-                          />
-                          <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
-                            {comparison.summary}
-                          </p>
-                        </MobileDataCard>
-                      ))}
-                    </MobileHorizontalRail>
+            <div className="grid min-w-0 gap-4">
+              <TodayShotCharts shots={chartShots} />
+              <ClubMainStatsPanel stats={data.clubStats} />
+            </div>
+
+            <div id="clubs" className="grid min-w-0 gap-4 scroll-mt-28">
+              <DataPanel className="min-w-0">
+                <SectionHeader
+                  title="Club by club"
+                  description="Today against the latest previous shots for the same club."
+                  action={
+                    <StatusPill tone={verdictTone(data.overall.verdict)}>
+                      {data.overall.title}
+                    </StatusPill>
                   }
-                >
-                  <Table className="w-full" containerClassName="overflow-x-visible">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="px-2">Club</TableHead>
-                        <TableHead className="px-2">Call</TableHead>
-                        <TableHead className="px-2 text-right">Shots</TableHead>
-                        <TableHead className="px-2 text-right">Carry</TableHead>
-                        <TableHead className="px-2 text-right">Offline</TableHead>
-                        <TableHead className="px-2 text-right">Straight</TableHead>
-                        <TableHead className="px-2 text-right">Playable</TableHead>
-                        <TableHead className="max-w-[10.5rem] whitespace-normal px-2">
-                          Signal
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.clubComparisons.map((comparison) => (
-                        <ClubComparisonRow
-                          key={comparison.clubType}
-                          comparison={comparison}
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </DataTableFrame>
-              </CardContent>
-            </DataPanel>
+                />
+                <CardContent>
+                  <DataTableFrame>
+                    <Table className="min-w-[760px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="px-2">Club</TableHead>
+                          <TableHead className="px-2">Call</TableHead>
+                          <TableHead className="px-2 text-right">Shots</TableHead>
+                          <TableHead className="px-2 text-right">Carry</TableHead>
+                          <TableHead className="px-2 text-right">Offline</TableHead>
+                          <TableHead className="px-2 text-right">Straight</TableHead>
+                          <TableHead className="px-2 text-right">Playable</TableHead>
+                          <TableHead className="max-w-[10.5rem] whitespace-normal px-2">
+                            Signal
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {data.clubComparisons.map((comparison) => (
+                          <ClubComparisonRow
+                            key={comparison.clubType}
+                            comparison={comparison}
+                          />
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </DataTableFrame>
+                </CardContent>
+              </DataPanel>
 
-            <StraightestShotsPanel
-              shots={data.bestStraightShots}
-              comparisonCount={data.clubComparisons.length}
-            />
-          </section>
-
-          <section id="pbs" className="scroll-mt-28">
-            <ClubMainStatsPanel stats={data.clubStats} />
+              <StraightestShotsPanel
+                shots={data.bestStraightShots}
+                comparisonCount={data.clubComparisons.length}
+              />
+            </div>
           </section>
 
           <TodaySocialLine data={data} challenges={challengeData.active} />
-
-          <MobileAccordionSection
-            title="Today’s shot list"
-            count={integerFormatter.format(data.shots.length)}
-            description="Open for raw selected shots."
-            className="scroll-mt-28"
-          >
-            <MobileDataList>
-              {data.shots.map((shot) => (
-                <MobileDataCard
-                  key={shot.id}
-                  title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
-                  subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                  action={
-                    <Badge variant="outline">
-                      {formatShotCategory(shot.shotCategory)}
-                    </Badge>
-                  }
-                >
-                  <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
-                  <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                  <DataPair
-                    label="Side"
-                    value={formatSignedYards(shot.sideCarryYd)}
-                  />
-                </MobileDataCard>
-              ))}
-            </MobileDataList>
-          </MobileAccordionSection>
 
           <DataPanel id="shots" className="hidden scroll-mt-28 overflow-hidden sm:block">
             <details className="group">
@@ -588,6 +555,7 @@ export default async function TodayPage({
           </DataPanel>
         </>
       )}
+      </div>
     </PageShell>
   );
 }
@@ -806,7 +774,7 @@ function EmptyToday() {
         <div>
           <p className="text-xl font-semibold">No shots for this selection</p>
           <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-            Import a Rapsodo CSV for the day, or clear the session and club
+            Import a launch-monitor session for the day, or clear the session and club
             filters.
           </p>
         </div>
@@ -816,7 +784,7 @@ function EmptyToday() {
         >
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
-            Import CSV
+            Import data
           </Link>
         </Button>
       </CardContent>

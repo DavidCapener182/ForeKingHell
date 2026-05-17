@@ -115,7 +115,9 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
           <NativeListSection title="Imported shots" description="This board is calculated from qualifying imported shots. New imports update it automatically.">
             {data.attempts.slice(0, 8).map(({ attempt, profile }) => (
               <div key={attempt.id} className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm">
-                <p className="font-semibold">{profile.displayName}</p>
+                <Link href={`/profile/${profile.username}`} prefetch={false} className="font-semibold hover:underline">
+                  {profile.displayName}
+                </Link>
                 <p className="mt-1 text-[#6B7280]">{attemptScoreLabel(attempt)} · {attempt.verificationLabel}</p>
                 <p className="mt-1 text-xs text-[#6B7280]">{attemptMetadataLabel(attempt.metadataJson)}</p>
               </div>
@@ -130,7 +132,9 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
           <NativeListSection title="Chat">
             {data.comments.map((comment) => (
               <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                <p className="font-semibold">{comment.profile.displayName}</p>
+                <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-semibold hover:underline">
+                  {comment.profile.displayName}
+                </Link>
                 <p className="mt-1 text-[#6B7280]">{comment.body}</p>
               </div>
             ))}
@@ -147,6 +151,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               items={podium.map((row) => ({
                 rank: row.result.rank,
                 name: row.profile.displayName,
+                href: `/profile/${row.profile.username}`,
                 value: row.result.scoreLabel,
                 detail: row.verificationLabel,
               }))}
@@ -367,7 +372,11 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
                         {data.results.map(({ result, profile, verificationLabel }) => (
                           <TableRow key={result.id}>
                             <TableCell><Badge variant={result.rank === 1 ? "default" : "outline"}>{result.rank ?? "--"}</Badge></TableCell>
-                            <TableCell>{profile.displayName}</TableCell>
+                            <TableCell>
+                              <Link href={`/profile/${profile.username}`} prefetch={false} className="font-medium hover:underline">
+                                {profile.displayName}
+                              </Link>
+                            </TableCell>
                             <TableCell className="text-right">{result.scoreLabel}</TableCell>
                             <TableCell className="text-right">{verificationLabel}</TableCell>
                           </TableRow>
@@ -394,7 +403,9 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               <CardContent className="grid gap-2">
                 {data.attempts.slice(0, 6).map(({ attempt, profile }) => (
                   <div key={attempt.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-                    <p className="font-medium">{profile.displayName}</p>
+                    <Link href={`/profile/${profile.username}`} prefetch={false} className="font-medium hover:underline">
+                      {profile.displayName}
+                    </Link>
                     <p className="text-muted-foreground">{attemptScoreLabel(attempt)} · {attempt.verificationLabel}</p>
                     <p className="text-xs text-muted-foreground">{attemptMetadataLabel(attempt.metadataJson)}</p>
                   </div>
@@ -411,7 +422,9 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               <CardContent className="grid gap-3">
                 {data.comments.map((comment) => (
                   <div key={comment.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-                    <p className="font-medium">{comment.profile.displayName}</p>
+                    <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-medium hover:underline">
+                      {comment.profile.displayName}
+                    </Link>
                     <p className="text-muted-foreground">{comment.body}</p>
                   </div>
                 ))}
@@ -441,7 +454,9 @@ function PodiumCard({ row }: { row: PodiumRow }) {
   return (
     <article className={rank === 1 ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border bg-[#F5F6F4] p-4"}>
       <Badge variant={rank === 1 ? "default" : "outline"}>#{rank || "--"}</Badge>
-      <p className="mt-3 text-lg font-semibold tracking-normal">{row.profile.displayName}</p>
+      <Link href={`/profile/${row.profile.username}`} prefetch={false} className="mt-3 block text-lg font-semibold tracking-normal hover:underline">
+        {row.profile.displayName}
+      </Link>
       <p className="mt-1 text-2xl font-semibold tracking-normal">{row.result.scoreLabel}</p>
       <p className="mt-1 text-sm text-muted-foreground">{row.verificationLabel}</p>
     </article>

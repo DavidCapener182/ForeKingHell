@@ -140,7 +140,7 @@ const mobileRouteGroups = {
     { key: "challenges", label: "Challenges", href: "/challenges" },
     { key: "leaderboard", label: "Leaderboards", href: "/leaderboard" },
     { key: "profile", label: "Profile", href: "/profile" },
-    { key: "recaps", label: "Recaps", href: "/social-intelligence" },
+    { key: "recaps", label: "Recaps & Safety", href: "/social-intelligence" },
   ],
   platform: [
     { key: "billing", label: "Billing", href: "/billing" },
@@ -676,6 +676,7 @@ export function PodiumStrip({
   items: Array<{
     rank: number | null;
     name: ReactNode;
+    href?: string;
     value: ReactNode;
     detail?: ReactNode;
   }>;
@@ -692,7 +693,7 @@ export function PodiumStrip({
     <div className="grid gap-2">
       {items.slice(0, 3).map((item) => (
         <div
-          key={`${item.rank}-${String(item.name)}`}
+          key={`${item.rank}-${item.href ?? String(item.name)}`}
           className={cn(
             "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2",
             item.rank === 1
@@ -704,7 +705,13 @@ export function PodiumStrip({
             #{item.rank ?? "--"}
           </Badge>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{item.name}</p>
+            {item.href ? (
+              <Link href={item.href} prefetch={false} className="block truncate text-sm font-semibold hover:underline">
+                {item.name}
+              </Link>
+            ) : (
+              <p className="truncate text-sm font-semibold">{item.name}</p>
+            )}
             {item.detail ? (
               <p className="truncate text-xs text-[#6B7280]">{item.detail}</p>
             ) : null}
@@ -724,6 +731,7 @@ export function CompactLeaderboard({
   items: Array<{
     rank: number | null;
     name: ReactNode;
+    href?: string;
     value: ReactNode;
     detail?: ReactNode;
   }>;

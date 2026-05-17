@@ -23,7 +23,11 @@ import {
 
 import {
   DataPanel,
+  DataPair,
   MetricCard,
+  MobileAccordionSection,
+  MobileDataCard,
+  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -95,7 +99,7 @@ export default async function ProgressPage() {
           <Button asChild variant="outline">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
         </div>
@@ -105,7 +109,7 @@ export default async function ProgressPage() {
         eyebrow={<StatusPill tone="sky">Personal baseline</StatusPill>}
         title="Bag progress"
         description={bagVerdict(summary)}
-        visual={<PageArtwork variant="progress" alt="" className="h-full min-h-44" />}
+        visual={<PageArtwork variant="progress" alt="" className="h-full min-h-44" priority />}
         actions={
           mostImproved ? (
             <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -118,7 +122,7 @@ export default async function ProgressPage() {
             <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
-                Import first CSV
+                Import first session
               </Link>
             </Button>
           )
@@ -154,14 +158,14 @@ export default async function ProgressPage() {
             <div>
               <p className="text-xl font-semibold">No progress baseline yet</p>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                Import a Rapsodo CSV and ForeKingHell will build first-vs-latest club
-                comparisons automatically.
+                Import launch-monitor shots and ForeKingHell will build
+                first-vs-latest club comparisons automatically.
               </p>
             </div>
             <Button asChild>
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
-                Import CSV
+                Import data
               </Link>
             </Button>
           </CardContent>
@@ -250,15 +254,78 @@ export default async function ProgressPage() {
               action={<Brain className="size-5 text-emerald-600" />}
             />
             <CardContent>
-              <div className="grid items-start gap-3 lg:grid-cols-2 xl:grid-cols-4">
+              <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:px-0 lg:grid-cols-2 xl:grid-cols-4">
                 {summary.practicePlan.map((priority, index) => (
-                  <PracticePriorityCard key={priority.clubId} priority={priority} index={index} />
+                  <div key={priority.clubId} className="min-w-[82vw] snap-start sm:min-w-0">
+                    <PracticePriorityCard priority={priority} index={index} />
+                  </div>
                 ))}
               </div>
             </CardContent>
           </DataPanel>
 
-          <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+          <section className="grid gap-3 sm:hidden">
+            <MobileAccordionSection
+              title="Supporting insights"
+              description="Grouped coach signals without lengthening the main readout."
+              count={summary.coachSummary.length}
+            >
+              <MobileDataList>
+                {summary.coachSummary.map((group) => (
+                  <MobileDataCard
+                    key={group.title}
+                    title={group.title}
+                    subtitle={`${group.items.length} signal${group.items.length === 1 ? "" : "s"}`}
+                    action={<StatusPill tone={group.tone}>{group.title}</StatusPill>}
+                  >
+                    {group.items.slice(0, 3).map((item, index) => (
+                      <DataPair
+                        key={`${group.title}-${index}`}
+                        label={item.label}
+                        value={item.detail ?? "Open club"}
+                      />
+                    ))}
+                  </MobileDataCard>
+                ))}
+              </MobileDataList>
+            </MobileAccordionSection>
+            <MobileAccordionSection
+              title="Trust and data gaps"
+              description="Open for clubs needing more clean stock shots."
+              count={summary.dataGaps.length || summary.trustLadder.length}
+            >
+              <MobileDataList>
+                {summary.dataGaps.length > 0
+                  ? summary.dataGaps.map((gap) => (
+                      <MobileDataCard
+                        key={gap.clubId}
+                        href={`/bag/${gap.clubId}/analytics`}
+                        title={formatClubType(gap.clubType)}
+                        subtitle={gap.detail}
+                        action={<StatusPill tone="slate">{gap.cleanShots} clean</StatusPill>}
+                      >
+                        <DataPair label="Next" value={gap.recommendation} />
+                      </MobileDataCard>
+                    ))
+                  : summary.trustLadder.slice(0, 5).map((item) => (
+                      <MobileDataCard
+                        key={item.clubId}
+                        href={`/bag/${item.clubId}/analytics`}
+                        title={formatClubType(item.clubType)}
+                        subtitle={item.note}
+                        action={<StatusPill tone="green">{item.label}</StatusPill>}
+                      >
+                        <DataPair
+                          label="Trust"
+                          value={item.trustIndex === null ? "--" : `${item.trustIndex}%`}
+                        />
+                      </MobileDataCard>
+                    ))}
+              </MobileDataList>
+            </MobileAccordionSection>
+          </section>
+
+          <section className="hidden items-start gap-4 sm:grid xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
             <CoachSummaryPanel groups={summary.coachSummary} />
 
             <div className="grid gap-4">
@@ -267,12 +334,14 @@ export default async function ProgressPage() {
             </div>
           </section>
 
-          <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="hidden items-start gap-4 sm:grid xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <BagMovementPanel rows={summary.clubRows} />
             <TrustLadderPanel items={summary.trustLadder} />
           </section>
 
-          <JourneyPanel events={summary.journey} />
+          <div className="hidden sm:block">
+            <JourneyPanel events={summary.journey} />
+          </div>
         </>
       )}
     </PageShell>

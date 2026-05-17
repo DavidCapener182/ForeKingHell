@@ -109,8 +109,8 @@ export function ProfileMediaEditor({
         </div>
       </div>
 
-      <div className="-mt-11 flex flex-wrap items-end justify-between gap-3 px-5 pb-4">
-        <div className="flex min-w-0 items-end gap-3">
+      <div className="px-5 pb-5">
+        <div className="-mt-10 flex items-end justify-between gap-3">
           <button
             type="button"
             className="group relative shrink-0 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -131,35 +131,37 @@ export function ProfileMediaEditor({
             </span>
           </button>
 
-          <div className="min-w-0 pb-1">
-            <h2 className="truncate text-2xl font-semibold tracking-normal">{displayName}</h2>
-            <p className="text-sm text-muted-foreground">@{username}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
-                <Camera className="size-4" />
-                {avatarUrl ? "Change avatar" : "Add avatar"}
-              </Button>
-              {avatarUrl ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setAvatarUrl("");
-                    setStatus("Avatar photo removed. Save profile to keep it removed.");
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                  Remove
-                </Button>
-              ) : null}
-            </div>
-          </div>
+          <Button asChild variant="outline" className="mb-1 bg-white">
+            <Link href={publicHref} prefetch={false}>Preview public page</Link>
+          </Button>
         </div>
 
-        <Button asChild variant="outline" className="mb-1 bg-white">
-          <Link href={publicHref} prefetch={false}>Preview public page</Link>
-        </Button>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-2xl font-semibold tracking-normal text-foreground">{displayName}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">@{username}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
+              <Camera className="size-4" />
+              {avatarUrl ? "Change avatar" : "Add avatar"}
+            </Button>
+            {avatarUrl ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAvatarUrl("");
+                  setStatus("Avatar photo removed. Save profile to keep it removed.");
+                }}
+              >
+                <Trash2 className="size-4" />
+                Remove
+              </Button>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <p className="sr-only" aria-live="polite">

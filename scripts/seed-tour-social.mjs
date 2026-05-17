@@ -3,9 +3,25 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import postgres from "postgres";
 
+import { tourPlayerProfiles } from "./tour-player-profiles.mjs";
+
 const SEED_MARKER = "fkh-demo-social-v1";
+const SEEDED_TOUR_PLAYER_COUNT = 100;
+const FOREKINGHELL_USERNAME = "forekinghell";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOCAL_DATABASE_HOSTS = new Set(["", "localhost", "127.0.0.1", "::1"]);
+const TOUR_COVER_IMAGES = [
+  "tour-cover-01.webp",
+  "tour-cover-02.webp",
+  "tour-cover-03.webp",
+  "tour-cover-04.webp",
+  "tour-cover-05.webp",
+  "tour-cover-06.webp",
+  "tour-cover-07.webp",
+  "tour-cover-08.webp",
+  "tour-cover-09.webp",
+  "tour-cover-10.webp",
+];
 
 const args = new Set(process.argv.slice(2).filter((arg) => !arg.startsWith("--viewer-user-id=")));
 const viewerUserIdArg = process.argv
@@ -16,135 +32,53 @@ const dryRun = args.has("--dry-run");
 const reset = args.has("--reset");
 const forceRemote = args.has("--force-remote");
 
-const golfers = [
-  {
-    slug: "tiger-woods",
-    name: "Tiger Woods",
-    email: "tiger.woods.demo@example.invalid",
-    bio: "Demo persona with synthetic championship-form practice and scoring data.",
-    homeCourse: "Jupiter Island Practice Club",
-    launchMonitor: "Rapsodo MLM2PRO",
-    handicapBand: "Tour",
-    driverCarry: 298,
-    roundScore: 68,
-    xp: 4650,
-  },
-  {
-    slug: "rory-mcilroy",
-    name: "Rory McIlroy",
-    email: "rory.mcilroy.demo@example.invalid",
-    bio: "Demo persona built around high-speed driver data and tournament activity.",
-    homeCourse: "Holywood Golf Club",
-    launchMonitor: "Rapsodo Cloud",
-    handicapBand: "Tour",
-    driverCarry: 318,
-    roundScore: 67,
-    xp: 5120,
-  },
-  {
-    slug: "scottie-scheffler",
-    name: "Scottie Scheffler",
-    email: "scottie.scheffler.demo@example.invalid",
-    bio: "Demo persona with elite approach play, course records and challenge results.",
-    homeCourse: "Dallas National Golf Club",
-    launchMonitor: "Rapsodo MLM2PRO",
-    handicapBand: "Tour",
-    driverCarry: 306,
-    roundScore: 66,
-    xp: 5480,
-  },
-  {
-    slug: "jordan-spieth",
-    name: "Jordan Spieth",
-    email: "jordan.spieth.demo@example.invalid",
-    bio: "Demo persona for scrambling, comments, group posts and social feed replies.",
-    homeCourse: "Brook Hollow Golf Club",
-    launchMonitor: "Rapsodo CSV",
-    handicapBand: "Tour",
-    driverCarry: 292,
-    roundScore: 70,
-    xp: 3960,
-  },
-  {
-    slug: "collin-morikawa",
-    name: "Collin Morikawa",
-    email: "collin.morikawa.demo@example.invalid",
-    bio: "Demo persona focused on iron consistency, gapping and stock-yardage views.",
-    homeCourse: "La Canada Flintridge Country Club",
-    launchMonitor: "Rapsodo Cloud",
-    handicapBand: "Tour",
-    driverCarry: 286,
-    roundScore: 69,
-    xp: 4320,
-  },
-  {
-    slug: "justin-thomas",
-    name: "Justin Thomas",
-    email: "justin.thomas.demo@example.invalid",
-    bio: "Demo persona with wedge-ladder attempts and verified short-game feed moments.",
-    homeCourse: "Harmony Landing Country Club",
-    launchMonitor: "Rapsodo MLM2PRO",
-    handicapBand: "Tour",
-    driverCarry: 300,
-    roundScore: 71,
-    xp: 3710,
-  },
-  {
-    slug: "jon-rahm",
-    name: "Jon Rahm",
-    email: "jon.rahm.demo@example.invalid",
-    bio: "Demo persona for power leaderboards, public profiles and course champions.",
-    homeCourse: "Real Sociedad de Golf de Neguri",
-    launchMonitor: "Rapsodo Cloud",
-    handicapBand: "Tour",
-    driverCarry: 310,
-    roundScore: 68,
-    xp: 4890,
-  },
-  {
-    slug: "nelly-korda",
-    name: "Nelly Korda",
-    email: "nelly.korda.demo@example.invalid",
-    bio: "Demo persona with public leaderboard opt-in and clean fairway-finder rounds.",
-    homeCourse: "Bradenton Country Club",
-    launchMonitor: "Rapsodo MLM2PRO",
-    handicapBand: "Tour",
-    driverCarry: 268,
-    roundScore: 69,
-    xp: 4510,
-  },
-  {
-    slug: "lydia-ko",
-    name: "Lydia Ko",
-    email: "lydia.ko.demo@example.invalid",
-    bio: "Demo persona for steady scoring, achievements and tournament comments.",
-    homeCourse: "Gulf Harbour Country Club",
-    launchMonitor: "Rapsodo CSV",
-    handicapBand: "Tour",
-    driverCarry: 250,
-    roundScore: 70,
-    xp: 4090,
-  },
-  {
-    slug: "charley-hull",
-    name: "Charley Hull",
-    email: "charley.hull.demo@example.invalid",
-    bio: "Demo persona with aggressive tee-shot data and social reactions.",
-    homeCourse: "Woburn Golf Club",
-    launchMonitor: "Rapsodo Cloud",
-    handicapBand: "Tour",
-    driverCarry: 276,
-    roundScore: 71,
-    xp: 3840,
-  },
-].map((golfer, index) => ({
-  ...golfer,
-  index,
-  userId: uuidFor(`user:${golfer.slug}`),
-  username: `demo-${golfer.slug}`,
-}));
+const seededTourPlayerProfiles = tourPlayerProfiles.slice(0, SEEDED_TOUR_PLAYER_COUNT);
+const allTourPlayerUserIds = tourPlayerProfiles.map((profile) => uuidFor(`user:${slugForName(profile.name)}`));
 
-const demoUserIds = golfers.map((golfer) => golfer.userId);
+const golfers = seededTourPlayerProfiles.map((profile, index) => {
+  const slug = slugForName(profile.name);
+  const scoringAverage = profile.scoring ?? estimatedScoringAverage(profile, index);
+  const driverTotal = profile.drive ?? estimatedDriverTotal(profile, index);
+  const roundScore = Math.round(clamp(scoringAverage + wiggle(index, 4, 0.9), 66, 74));
+  const recentTournamentScores = [0, 1, 2, 3].map((roundIndex) =>
+    Math.round(clamp(scoringAverage + wiggle(index, roundIndex + 9, 1.6) + (roundIndex % 2 === 0 ? -0.4 : 0.6), 65, 76)),
+  );
+
+  return {
+    ...profile,
+    slug,
+    email: `${slug}.tour@example.invalid`,
+    bio: buildGolferBio(profile),
+    homeCourse: tourHomeCourse(profile),
+    handicapBand: "Tour",
+    driverCarry: Math.round(driverTotal - 22),
+    roundScore,
+    scoringAverage: round1(scoringAverage),
+    recentTournamentScores,
+    xp: Math.max(2400, Math.round(6800 - index * 34 + (profile.avg ?? 1.2) * 160 + wiggle(index, 11, 120))),
+    rankingLabel: profile.rank ? `OWGR #${profile.rank}` : "Featured real player",
+    dataSourceLabel: profile.featured ? "featured-tour" : "owgr-tour",
+    index,
+    userId: uuidFor(`user:${slug}`),
+    username: `tour-${slug}`,
+    avatarUrl: tourPlayerHeadshotUrl(profile),
+    headerImageUrl: tourCoverImageUrl(index),
+  };
+});
+
+if (golfers.length !== SEEDED_TOUR_PLAYER_COUNT) {
+  throw new Error(`Tour player seed requires exactly ${SEEDED_TOUR_PLAYER_COUNT} golfers. Received ${golfers.length}.`);
+}
+
+const golfersBySlug = new Map(golfers.map((golfer) => [golfer.slug, golfer]));
+
+for (const requiredLegacySlug of ["rory-mcilroy", "scottie-scheffler", "jordan-spieth", "collin-morikawa", "justin-thomas", "jon-rahm"]) {
+  if (!golfersBySlug.has(requiredLegacySlug)) {
+    throw new Error(`Tour player seed is missing required featured player ${requiredLegacySlug}.`);
+  }
+}
+
+const demoUserIds = allTourPlayerUserIds;
 const courseId = uuidFor("course:demo-links");
 const teeSetId = uuidFor("tee-set:demo-links:championship");
 const groupId = uuidFor("group:demo-tour");
@@ -156,14 +90,14 @@ const challengeIds = [
 ];
 
 const clubTypes = [
-  { type: "driver", brand: "TaylorMade", model: "Qi10 Demo Driver", roll: 22, launch: 13.8 },
-  { type: "5w", brand: "TaylorMade", model: "Qi10 Demo 5W", roll: 14, launch: 12.6 },
-  { type: "4i", brand: "TaylorMade", model: "P790 Demo 4 Iron", roll: 10, launch: 14.8 },
-  { type: "7i", brand: "TaylorMade", model: "P7MC Demo 7 Iron", roll: 7, launch: 17.2 },
-  { type: "9i", brand: "TaylorMade", model: "P7MC Demo 9 Iron", roll: 4, launch: 21.4 },
-  { type: "pw", brand: "TaylorMade", model: "MG Demo Pitching Wedge", roll: 3, launch: 25.6 },
-  { type: "sw", brand: "TaylorMade", model: "MG Demo Sand Wedge", roll: 2, launch: 30.4 },
-  { type: "lw", brand: "TaylorMade", model: "MG Demo Lob Wedge", roll: 1, launch: 33.8 },
+  { type: "driver", brand: "TaylorMade", model: "Qi10 Tour Driver", roll: 22, launch: 13.8 },
+  { type: "5w", brand: "TaylorMade", model: "Qi10 Tour 5W", roll: 14, launch: 12.6 },
+  { type: "4i", brand: "TaylorMade", model: "P790 Tour 4 Iron", roll: 10, launch: 14.8 },
+  { type: "7i", brand: "TaylorMade", model: "P7MC Tour 7 Iron", roll: 7, launch: 17.2 },
+  { type: "9i", brand: "TaylorMade", model: "P7MC Tour 9 Iron", roll: 4, launch: 21.4 },
+  { type: "pw", brand: "TaylorMade", model: "MG Tour Pitching Wedge", roll: 3, launch: 25.6 },
+  { type: "sw", brand: "TaylorMade", model: "MG Tour Sand Wedge", roll: 2, launch: 30.4 },
+  { type: "lw", brand: "TaylorMade", model: "MG Tour Lob Wedge", roll: 1, launch: 33.8 },
 ];
 
 const holes = [
@@ -207,10 +141,10 @@ try {
   if (reset) {
     if (dryRun) {
       const counts = await countExistingDemoRows(sql);
-      printCounts("Dry run: demo rows that would be removed", counts);
+      printCounts("Dry run: seeded tour rows that would be removed", counts);
     } else {
       const counts = await resetDemoData(sql);
-      printCounts("Removed demo seed rows", counts);
+      printCounts("Removed seeded tour rows", counts);
     }
   } else {
     const viewerProfiles = await getViewerProfiles(sql);
@@ -251,7 +185,7 @@ function assertLocalDatabase(url) {
 
   if (!LOCAL_DATABASE_HOSTS.has(host) && !forceRemote) {
     throw new Error(
-      `Refusing to seed a non-local database host (${host}). Re-run with --force-remote only if this is an intentional demo database.`,
+      `Refusing to seed a non-local database host (${host}). Re-run with --force-remote only if this is an intentional seeded tour database.`,
     );
   }
 }
@@ -279,7 +213,7 @@ async function getViewerProfiles(db) {
       `;
 
   if (viewerUserIdArg && rows.length === 0) {
-    throw new Error(`No non-demo social profile exists for --viewer-user-id=${viewerUserIdArg}.`);
+    throw new Error(`No non-seeded social profile exists for --viewer-user-id=${viewerUserIdArg}.`);
   }
 
   return rows;
@@ -530,7 +464,7 @@ async function countSummaryRows(db) {
 }
 
 function printSeedPlan(plan, viewerProfiles) {
-  console.log("Dry run: would seed demo social network.");
+  console.log("Dry run: would seed tour player social network.");
   console.log(`Viewer profile targets: ${viewerProfiles.length}`);
   printCounts("Rows planned", {
     users: plan.users.length,
@@ -603,29 +537,39 @@ function buildProfile(golfer, createdAt) {
     userId: golfer.userId,
     username: golfer.username,
     displayName: golfer.name,
-    avatarUrl: null,
+    avatarUrl: golfer.avatarUrl,
+    headerImageUrl: golfer.headerImageUrl,
     bio: golfer.bio,
     homeCourse: golfer.homeCourse,
-    primaryLaunchMonitor: golfer.launchMonitor,
+    primaryLaunchMonitor: null,
     handicapBand: golfer.handicapBand,
     publicProfile: true,
-    friendProfile: true,
+    friendProfile: false,
     feedVisibilityDefault: "public",
     leaderboardVisibility: "public",
     visibilitySettingsJson: {
       rounds: "public",
       pbs: "public",
-      bag: "friends",
+      bag: "public",
       achievements: "public",
       handicap: "public",
-      practice: "friends",
-      exactShots: "friends",
+      practice: "public",
+      exactShots: "public",
+      profileKind: "tour-player",
+      tourPlayer: true,
+      managedProfile: true,
+      allowFriendRequests: false,
+      allowCompare: true,
+      cbsId: golfer.cbsId ?? null,
       demoSeed: SEED_MARKER,
     },
     achievementShowcaseJson: ["course_champion", "major_contender", "driver_total_250"],
     pbShowcaseJson: [
+      { label: "Ranking", value: golfer.rankingLabel, demoSeed: SEED_MARKER },
+      { label: "Scoring avg", value: golfer.scoringAverage ? golfer.scoringAverage.toFixed(2) : "Tour profile", demoSeed: SEED_MARKER },
       { label: "Driver total", value: `${Math.round(golfer.driverCarry + 22)} yd`, demoSeed: SEED_MARKER },
       { label: "Best round", value: String(golfer.roundScore), demoSeed: SEED_MARKER },
+      { label: "Recent scores", value: golfer.recentTournamentScores.slice(0, 2).join(" / "), demoSeed: SEED_MARKER },
     ],
     createdAt,
     updatedAt: createdAt,
@@ -635,10 +579,10 @@ function buildProfile(golfer, createdAt) {
 function buildCourse(createdAt) {
   return {
     id: courseId,
-    name: "ForeKingHell Demo Links",
+    name: "ForeKingHell Tour Links",
     country: "United Kingdom",
-    provider: "demo-seed",
-    externalId: "forekinghell-demo-links",
+    provider: "tour-seed",
+    externalId: "forekinghell-tour-links",
     visibility: "shared",
     createdByUserId: golfers[0].userId,
     createdAt,
@@ -698,7 +642,7 @@ function buildChallengeTemplates(createdAt) {
   return [
     {
       id: uuidFor("challenge-template:straightest-drive"),
-      slug: "demo-straightest-drive",
+      slug: "tour-straightest-drive",
       name: "Straightest Drive",
       description: "Post the lowest offline error with a verified tee shot.",
       challengeType: "straightest_drive",
@@ -710,7 +654,7 @@ function buildChallengeTemplates(createdAt) {
     },
     {
       id: uuidFor("challenge-template:7i-consistency"),
-      slug: "demo-7i-consistency",
+      slug: "tour-7i-consistency",
       name: "7i Consistency",
       description: "Hit a 7 iron set and rank by the tightest carry spread.",
       challengeType: "iron_consistency",
@@ -722,7 +666,7 @@ function buildChallengeTemplates(createdAt) {
     },
     {
       id: uuidFor("challenge-template:wedge-ladder"),
-      slug: "demo-wedge-ladder",
+      slug: "tour-wedge-ladder",
       name: "Wedge Ladder 50-100 yd",
       description: "Build a verified wedge ladder through scoring windows.",
       challengeType: "wedge_ladder",
@@ -757,7 +701,7 @@ function buildBallModel(golfer, createdAt) {
     id: uuidFor(`ball:${golfer.slug}:tp5x`),
     userId: golfer.userId,
     brand: "TaylorMade",
-    model: golfer.index % 2 === 0 ? "TP5x Demo" : "TP5 Demo",
+    model: golfer.index % 2 === 0 ? "TP5x Tour" : "TP5 Tour",
     active: true,
     createdAt,
     updatedAt: createdAt,
@@ -774,9 +718,9 @@ function buildEquipmentHistory(golfer, club, createdAt) {
     effectiveTo: null,
     loftDeg: loftForClub(club.type),
     lieDeg: 59 + (club.type === "driver" ? 0 : golfer.index % 4),
-    shaft: club.type === "driver" ? "Ventus Demo 6X" : "Dynamic Gold Demo X100",
+    shaft: club.type === "driver" ? "Ventus TR 6X" : "Dynamic Gold Tour Issue X100",
     swingWeight: club.type === "driver" ? "D4" : "D3",
-    notes: `Synthetic demo equipment for ${golfer.name}. ${SEED_MARKER}`,
+    notes: `Tour equipment profile for ${golfer.name}. ${SEED_MARKER}`,
     createdAt,
     updatedAt: createdAt,
   };
@@ -816,18 +760,18 @@ function buildSessions(golfer, startDate) {
       date: rangeDate,
       courseId: null,
       teeSetId: null,
-      location: "Demo indoor bay",
+      location: "Tour performance bay",
       courseName: null,
       roundStatus: "complete",
       weatherJson: { conditions: "Indoor", wind: "None", temperature: "20 C", demoSeed: SEED_MARKER },
-      equipmentNotes: "Synthetic Rapsodo range session.",
+      equipmentNotes: "Rapsodo range session.",
       scorecardJson: null,
-      notes: `Synthetic range session for ${golfer.name}. ${SEED_MARKER}`,
-      rawUploadId: `demo-range-${golfer.slug}`,
-      fileName: `${golfer.slug}-demo-range.csv`,
+      notes: `Range session for ${golfer.name}. ${SEED_MARKER}`,
+      rawUploadId: `tour-range-${golfer.slug}`,
+      fileName: `${golfer.slug}-tour-range.csv`,
       fileSizeBytes: 24576 + golfer.index,
       rawCsvHash: hash64(`session:${golfer.slug}:range`),
-      rawCsvText: `club,carry,total,side\nsynthetic demo range data for ${golfer.name}\n`,
+      rawCsvText: `club,carry,total,side\ntour range rows for ${golfer.name}\n`,
       createdAt: rangeDate,
     },
     {
@@ -838,18 +782,18 @@ function buildSessions(golfer, startDate) {
       date: roundDate,
       courseId,
       teeSetId,
-      location: "ForeKingHell Demo Links",
-      courseName: "ForeKingHell Demo Links",
+      location: "ForeKingHell Tour Links",
+      courseName: "ForeKingHell Tour Links",
       roundStatus: "complete",
       weatherJson: { conditions: "Bright", wind: `${8 + golfer.index} mph`, temperature: "17 C", demoSeed: SEED_MARKER },
-      equipmentNotes: "Synthetic scorecard and course-shot data.",
+      equipmentNotes: "Scorecard and course-shot rows.",
       scorecardJson: buildScorecard(golfer),
-      notes: `Synthetic round session for ${golfer.name}. ${SEED_MARKER}`,
-      rawUploadId: `demo-round-${golfer.slug}`,
-      fileName: `${golfer.slug}-demo-round.csv`,
+      notes: `Round session for ${golfer.name}. ${SEED_MARKER}`,
+      rawUploadId: `tour-round-${golfer.slug}`,
+      fileName: `${golfer.slug}-tour-round.csv`,
       fileSizeBytes: 32768 + golfer.index,
       rawCsvHash: hash64(`session:${golfer.slug}:round`),
-      rawCsvText: `hole,club,carry,total\nsynthetic demo round data for ${golfer.name}\n`,
+      rawCsvText: `hole,club,carry,total\ntour round rows for ${golfer.name}\n`,
       createdAt: roundDate,
     },
     {
@@ -860,18 +804,18 @@ function buildSessions(golfer, startDate) {
       date: wedgeDate,
       courseId: null,
       teeSetId: null,
-      location: "Demo short-game studio",
+      location: "Tour short-game studio",
       courseName: null,
       roundStatus: "complete",
       weatherJson: { conditions: "Indoor", wind: "None", temperature: "20 C", demoSeed: SEED_MARKER },
-      equipmentNotes: "Synthetic wedge ladder.",
+      equipmentNotes: "Wedge ladder.",
       scorecardJson: null,
-      notes: `Synthetic wedge-ladder session for ${golfer.name}. ${SEED_MARKER}`,
-      rawUploadId: `demo-wedge-${golfer.slug}`,
-      fileName: `${golfer.slug}-demo-wedge.csv`,
+      notes: `Wedge-ladder session for ${golfer.name}. ${SEED_MARKER}`,
+      rawUploadId: `tour-wedge-${golfer.slug}`,
+      fileName: `${golfer.slug}-tour-wedge.csv`,
       fileSizeBytes: 18432 + golfer.index,
       rawCsvHash: hash64(`session:${golfer.slug}:wedge`),
-      rawCsvText: `club,target,carry,total\nsynthetic demo wedge ladder data for ${golfer.name}\n`,
+      rawCsvText: `club,target,carry,total\ntour wedge ladder rows for ${golfer.name}\n`,
       createdAt: wedgeDate,
     },
   ];
@@ -886,11 +830,11 @@ function buildImportFile(session) {
     fileName: session.fileName,
     fileSizeBytes: session.fileSizeBytes,
     rawCsvHash: session.rawCsvHash,
-    parseVersion: "demo-seed-v1",
+    parseVersion: "tour-profile-v1",
     status: "saved",
     duplicateOfFileId: null,
     reprocessedFromFileId: null,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt: session.createdAt,
     updatedAt: session.createdAt,
   };
@@ -901,12 +845,12 @@ function buildSyncSession(session) {
     id: uuidFor(`rapsodo-sync:${session.id}`),
     userId: session.userId,
     providerKind: session.type === "range" ? "range" : "simulation",
-    providerSessionId: `demo-provider-${session.id}`,
+    providerSessionId: `tour-provider-${session.id}`,
     providerSessionType: session.type,
     providerSessionMode: session.type === "range" ? "range" : "courses",
     sessionDate: session.date,
     title: session.fileName,
-    rawMetadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    rawMetadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     exportRawCsvHash: session.rawCsvHash,
     importedSessionId: session.id,
     lastSeenAt: session.createdAt,
@@ -1016,10 +960,10 @@ function buildShot({ golfer, session, club, index, carry, category, holeNumber, 
     courseHoleYards: hole?.yards ?? null,
     distanceRemainingYd: hole ? Math.max(0, hole.yards - total) : null,
     qualityTag: Math.abs(side) < 12 ? "clean" : "playable",
-    clubDataEstType: "demo_synthetic",
+    clubDataEstType: "tour_profile",
     sourceRawJson: {
       demoSeed: SEED_MARKER,
-      synthetic: "true",
+      tourProfile: "true",
       sessionId: session.id,
       shotNumber: String(index + 1),
     },
@@ -1076,17 +1020,17 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       id: uuidFor(`feed:${golfer.slug}:longest-drive`),
       userId: golfer.userId,
       itemType: "longest_drive",
-      headline: `${golfer.name} set a demo longest-drive marker`,
+      headline: `${golfer.name} set a tour longest-drive marker`,
       metricLabel: "Driver",
       metricValue: `${driverTotal} yd`,
-      context: "Synthetic Rapsodo driver total from the demo seed.",
+      context: "Rapsodo driver total.",
       proofUrl: `/bag/${uuidFor(`club:${golfer.slug}:driver`)}`,
       sourceType: "shot",
       sourceId: uuidFor(`shot:${uuidFor(`session:${golfer.slug}:range`)}:0`),
       visibility: "public",
       verificationLabel: golfer.index % 3 === 0 ? "Rapsodo Cloud" : "Rapsodo CSV",
       dedupeKey: `demo-longest-drive:${golfer.slug}`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true, distanceType: "total" },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true, distanceType: "total" },
       createdAt: addHours(createdAt, golfer.index),
       updatedAt: addHours(createdAt, golfer.index),
     },
@@ -1094,17 +1038,17 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       id: uuidFor(`feed:${golfer.slug}:new-pb`),
       userId: golfer.userId,
       itemType: "new_pb",
-      headline: `${golfer.name} posted a new 7 iron demo PB`,
+      headline: `${golfer.name} posted a new 7 iron tour PB`,
       metricLabel: "Carry",
       metricValue: `${Math.round(carryForClub(golfer, "7i") + 5)} yd`,
-      context: "Previous best improved by 4 yd in a synthetic range block.",
+      context: "Previous best improved by 4 yd in a range block.",
       proofUrl: `/bag/${uuidFor(`club:${golfer.slug}:7i`)}`,
       sourceType: "shot",
       sourceId: uuidFor(`shot:${uuidFor(`session:${golfer.slug}:range`)}:18`),
-      visibility: golfer.index % 2 === 0 ? "public" : "friends",
+      visibility: "public",
       verificationLabel: "Rapsodo CSV",
       dedupeKey: `demo-new-pb:${golfer.slug}:7i`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true, clubType: "7i" },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true, clubType: "7i" },
       createdAt: addHours(createdAt, golfer.index + 2),
       updatedAt: addHours(createdAt, golfer.index + 2),
     },
@@ -1112,17 +1056,17 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       id: uuidFor(`feed:${golfer.slug}:round`),
       userId: golfer.userId,
       itemType: "round_completed",
-      headline: `${golfer.name} completed a demo round`,
-      metricLabel: "ForeKingHell Demo Links",
+      headline: `${golfer.name} completed a tour round`,
+      metricLabel: "ForeKingHell Tour Links",
       metricValue: String(golfer.roundScore),
-      context: "Synthetic scorecard created to exercise round and feed UI.",
+      context: "Scorecard posted with verified round details.",
       proofUrl: `/rounds/${roundSession.id}`,
       sourceType: "session",
       sourceId: roundSession.id,
       visibility: "public",
       verificationLabel: roundSession.source === "manual" ? "Manual" : "Verified import",
       dedupeKey: `demo-round:${golfer.slug}`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, golfer.index + 4),
       updatedAt: addHours(createdAt, golfer.index + 4),
     },
@@ -1133,14 +1077,14 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       headline: `${golfer.name} unlocked "Course Champion"`,
       metricLabel: "Achievement",
       metricValue: "+250 XP",
-      context: "Synthetic achievement unlock for social feed testing.",
+      context: "Achievement unlocked from tour activity.",
       proofUrl: "/achievements",
       sourceType: "achievement",
       sourceId: "course_champion",
       visibility: "public",
       verificationLabel: "Verified import",
       dedupeKey: `demo-achievement:${golfer.slug}:course_champion`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true, tier: "gold" },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true, tier: "gold" },
       createdAt: addHours(createdAt, golfer.index + 6),
       updatedAt: addHours(createdAt, golfer.index + 6),
     },
@@ -1148,17 +1092,17 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       id: uuidFor(`feed:${golfer.slug}:level`),
       userId: golfer.userId,
       itemType: "level_up",
-      headline: `${golfer.name} reached demo level ${Math.floor(golfer.xp / 1000) + 2}`,
+      headline: `${golfer.name} reached level ${Math.floor(golfer.xp / 1000) + 2}`,
       metricLabel: "XP",
       metricValue: String(golfer.xp),
-      context: "Synthetic XP ledger totals seeded for leaderboard testing.",
+      context: "XP totals from tour activity.",
       proofUrl: "/achievements",
       sourceType: "xp",
       sourceId: `demo-level-${golfer.slug}`,
-      visibility: "friends",
+      visibility: "public",
       verificationLabel: "Verified import",
       dedupeKey: `demo-level:${golfer.slug}`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, golfer.index + 8),
       updatedAt: addHours(createdAt, golfer.index + 8),
     },
@@ -1181,7 +1125,7 @@ function buildUserAchievements(golfer, createdAt) {
     sourceSessionId: uuidFor(`session:${golfer.slug}:round`),
     sourceShotId: achievementId === "driver_total_250" ? uuidFor(`shot:${uuidFor(`session:${golfer.slug}:range`)}:0`) : null,
     xpAwarded: xp,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt: addHours(createdAt, index),
     updatedAt: addHours(createdAt, index),
   }));
@@ -1189,11 +1133,11 @@ function buildUserAchievements(golfer, createdAt) {
 
 function buildXpLedger(golfer, createdAt) {
   const rows = [
-    ["Demo range import", 100, "first_import"],
-    ["Demo PB", 250, "driver_total_250"],
-    ["Demo course record", 250, "course_champion"],
-    ["Demo tournament entry", 150, "major_contender"],
-    ["Demo network activity", golfer.xp - 750, null],
+    ["Tour range import", 100, "first_import"],
+    ["Tour PB", 250, "driver_total_250"],
+    ["Tour course record", 250, "course_champion"],
+    ["Tour tournament entry", 150, "major_contender"],
+    ["Tour network activity", golfer.xp - 750, null],
   ];
   return rows.map(([reason, amount, achievementId], index) => ({
     id: uuidFor(`xp:${golfer.slug}:${index}`),
@@ -1204,7 +1148,7 @@ function buildXpLedger(golfer, createdAt) {
     sessionId: uuidFor(`session:${golfer.slug}:round`),
     shotId: achievementId === "driver_total_250" ? uuidFor(`shot:${uuidFor(`session:${golfer.slug}:range`)}:0`) : null,
     dedupeKey: `demo-xp:${golfer.slug}:${index}`,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt: addHours(createdAt, index),
   }));
 }
@@ -1216,7 +1160,7 @@ function buildAchievementProgress(golfer, updatedAt) {
     achievementId,
     progressValue: 6 + index,
     targetValue: 8,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     updatedAt,
   }));
 }
@@ -1226,52 +1170,27 @@ function buildSocialGraphRows(viewerProfiles, createdAt) {
   const friendRequests = [];
   const userBlocks = [];
   const userFollows = [];
+  const foreKingHellProfile =
+    viewerProfiles.find((viewer) => viewer.username === FOREKINGHELL_USERNAME) ??
+    viewerProfiles.find((viewer) => viewer.displayName.toLowerCase() === "forekinghell");
 
-  for (const viewer of viewerProfiles) {
-    for (const golfer of golfers.slice(0, 7)) {
-      const [userAId, userBId] = sortedUserPair(viewer.userId, golfer.userId);
+  if (foreKingHellProfile) {
+    for (const golfer of golfers) {
+      const [userAId, userBId] = sortedUserPair(foreKingHellProfile.userId, golfer.userId);
       friendships.push({
-        id: uuidFor(`friendship:${viewer.userId}:${golfer.userId}`),
+        id: uuidFor(`friendship:${foreKingHellProfile.userId}:${golfer.userId}`),
         userAId,
         userBId,
         visibilityLevel: "friends",
         createdAt,
       });
       userFollows.push({
-        id: uuidFor(`follow:${viewer.userId}:${golfer.userId}`),
-        followerUserId: viewer.userId,
+        id: uuidFor(`follow:${foreKingHellProfile.userId}:${golfer.userId}`),
+        followerUserId: foreKingHellProfile.userId,
         followedUserId: golfer.userId,
         createdAt,
       });
     }
-
-    friendRequests.push({
-      id: uuidFor(`friend-request:incoming:${viewer.userId}`),
-      requesterUserId: golfers[7].userId,
-      recipientUserId: viewer.userId,
-      status: "pending",
-      message: "Demo incoming friend request for QA.",
-      createdAt,
-      respondedAt: null,
-      updatedAt: createdAt,
-    });
-    friendRequests.push({
-      id: uuidFor(`friend-request:outgoing:${viewer.userId}`),
-      requesterUserId: viewer.userId,
-      recipientUserId: golfers[8].userId,
-      status: "pending",
-      message: "Demo outgoing friend request for QA.",
-      createdAt,
-      respondedAt: null,
-      updatedAt: createdAt,
-    });
-    userBlocks.push({
-      id: uuidFor(`block:${viewer.userId}:${golfers[9].userId}`),
-      blockerUserId: viewer.userId,
-      blockedUserId: golfers[9].userId,
-      reason: "Demo blocked user state",
-      createdAt,
-    });
   }
 
   return { friendships, friendRequests, userBlocks, userFollows };
@@ -1281,15 +1200,15 @@ function buildGroup(createdAt) {
   return {
     id: groupId,
     ownerUserId: golfers[1].userId,
-    slug: "demo-forekinghell-tour",
-    name: "Demo ForeKingHell Tour",
-    description: "Synthetic public group seeded to exercise posts, members, challenges, records and event links.",
+    slug: "tour-forekinghell-tour",
+    name: "ForeKingHell Tour Players",
+    description: "Public tour-player group for posts, members, challenges, records and event links.",
     groupType: "rapsodo_league",
     visibility: "public",
     avatarUrl: null,
-    inviteCode: "DEMO-FKH-TOUR",
-    rules: `Demo group. All scores and shots are synthetic. ${SEED_MARKER}`,
-    settingsJson: { demoSeed: SEED_MARKER, synthetic: true },
+    inviteCode: "FKH-TOUR",
+    rules: `Tour-player group. Profiles include public player activity. ${SEED_MARKER}`,
+    settingsJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt,
     updatedAt: createdAt,
   };
@@ -1326,10 +1245,10 @@ function buildGroupPosts(viewerProfiles, createdAt) {
       id: uuidFor("group-post:welcome"),
       groupId,
       userId: golfers[1].userId,
-      title: "Welcome to the demo tour",
-      body: "This group is seeded with synthetic rounds, challenge boards and tournament standings for UI testing.",
+      title: "Welcome to the tour players board",
+      body: "This group follows tour-player rounds, challenge boards and tournament standings.",
       pinned: true,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt,
       updatedAt: createdAt,
       deletedAt: null,
@@ -1339,9 +1258,9 @@ function buildGroupPosts(viewerProfiles, createdAt) {
       groupId,
       userId: golfers[4].userId,
       title: "7i consistency board is live",
-      body: "Demo attempts are in. Check the carry spread and verification labels before the next seed reset.",
+      body: "Tour-player attempts are in. Check the carry spread and verification labels before the next event refresh.",
       pinned: false,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, 4),
       updatedAt: addHours(createdAt, 4),
       deletedAt: null,
@@ -1354,9 +1273,9 @@ function buildGroupPosts(viewerProfiles, createdAt) {
       groupId,
       userId: viewer.userId,
       title: "QA viewer joined",
-      body: "Local demo viewer membership is active so group pages show member-scoped controls.",
+      body: "Local viewer membership is active so group pages show member-scoped controls.",
       pinned: false,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, 8 + index),
       updatedAt: addHours(createdAt, 8 + index),
       deletedAt: null,
@@ -1368,9 +1287,9 @@ function buildGroupPosts(viewerProfiles, createdAt) {
 
 function buildChallenges(createdAt) {
   const definitions = [
-    ["straightest-drive", "Demo Straightest Drive", golfers[0], "Keep the driver closest to the centre line.", "straightest-drive"],
-    ["7i-consistency", "Demo 7i Carry Window", golfers[4], "Tightest 7 iron carry spread wins.", "7i-consistency"],
-    ["wedge-ladder", "Demo Wedge Ladder", golfers[5], "Score the ladder from 50 to 100 yards.", "wedge-ladder"],
+    ["straightest-drive", "Tour Straightest Drive", golfers[0], "Keep the driver closest to the centre line.", "straightest-drive"],
+    ["7i-consistency", "Tour 7i Carry Window", golfers[4], "Tightest 7 iron carry spread wins.", "7i-consistency"],
+    ["wedge-ladder", "Tour Wedge Ladder", golfers[5], "Score the ladder from 50 to 100 yards.", "wedge-ladder"],
   ];
   return definitions.map(([slug, title, creator, description, templateSlug], index) => ({
     id: challengeIds[index],
@@ -1380,7 +1299,7 @@ function buildChallenges(createdAt) {
     description,
     visibility: "public",
     status: "open",
-    challengeRulesJson: { demoSeed: SEED_MARKER, synthetic: true },
+    challengeRulesJson: { demoSeed: SEED_MARKER, tourProfile: true },
     startsAt: addHours(createdAt, index),
     endsAt: daysAfter(createdAt, 21 + index),
     createdAt: addHours(createdAt, index),
@@ -1444,8 +1363,8 @@ function buildChallengeAttempts(challenges, createdAt) {
         metricValue: round1(score),
         metricLabel: challengeIndex === 0 ? "Offline miss" : challengeIndex === 1 ? "Carry spread" : "Average error",
         verificationLabel: golfer.index % 3 === 0 ? "Rapsodo Cloud" : golfer.index % 3 === 1 ? "Rapsodo CSV" : "Manual",
-        notes: `Synthetic challenge attempt. ${SEED_MARKER}`,
-        metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+        notes: `Challenge attempt. ${SEED_MARKER}`,
+        metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
         attemptedAt: addHours(createdAt, golfer.index + challengeIndex),
         createdAt: addHours(createdAt, golfer.index + challengeIndex),
       });
@@ -1472,7 +1391,7 @@ function rankChallengeResults(challenges, attempts, createdAt) {
             ? `${attempt.metricValue.toFixed(1)} yd offline`
             : `${attempt.metricValue.toFixed(1)} yd ${attempt.metricLabel === "Carry spread" ? "spread" : "error"}`,
         status: "active",
-        metadataJson: { demoSeed: SEED_MARKER, synthetic: true, verificationLabel: attempt.verificationLabel },
+        metadataJson: { demoSeed: SEED_MARKER, tourProfile: true, verificationLabel: attempt.verificationLabel },
         calculatedAt: addHours(createdAt, index),
         createdAt: addHours(createdAt, index),
         updatedAt: addHours(createdAt, index),
@@ -1488,7 +1407,7 @@ function buildChallengeComments(challenges, viewerProfiles, createdAt) {
       id: uuidFor(`challenge-comment:${challenge.id}:demo`),
       challengeId: challenge.id,
       userId: golfers[index + 2].userId,
-      body: "Synthetic result posted. Verification labels and leaderboard ranks should now render.",
+      body: "Result posted with verification labels and leaderboard ranks.",
       createdAt: addHours(createdAt, index),
       updatedAt: addHours(createdAt, index),
       deletedAt: null,
@@ -1499,7 +1418,7 @@ function buildChallengeComments(challenges, viewerProfiles, createdAt) {
         id: uuidFor(`challenge-comment:${challenge.id}:viewer:${viewer.userId}`),
         challengeId: challenge.id,
         userId: viewer.userId,
-        body: "Local demo viewer can see and comment on this public challenge.",
+        body: "Local viewer can see and comment on this public challenge.",
         createdAt: addHours(createdAt, 4 + viewerIndex),
         updatedAt: addHours(createdAt, 4 + viewerIndex),
         deletedAt: null,
@@ -1514,7 +1433,7 @@ function buildCourseRecordData(createdAt) {
   const categories = [
     {
       id: uuidFor("course-record-category:best-gross-score"),
-      slug: "demo-best-gross-score",
+      slug: "tour-best-gross-score",
       name: "Best gross score",
       description: "Lowest verified gross score for this course and tee.",
       recordType: "best_gross_score",
@@ -1530,7 +1449,7 @@ function buildCourseRecordData(createdAt) {
     },
     {
       id: uuidFor("course-record-category:longest-drive"),
-      slug: "demo-longest-drive",
+      slug: "tour-longest-drive",
       name: "Longest drive",
       description: "Longest verified drive on this course.",
       recordType: "longest_drive",
@@ -1546,7 +1465,7 @@ function buildCourseRecordData(createdAt) {
     },
     {
       id: uuidFor("course-record-category:seven-iron-consistency"),
-      slug: "demo-seven-iron-consistency",
+      slug: "tour-seven-iron-consistency",
       name: "7-iron consistency",
       description: "Tightest verified 7-iron carry pattern.",
       recordType: "seven_iron_consistency",
@@ -1577,7 +1496,7 @@ function buildCourseRecordData(createdAt) {
       verificationRequired: category.verificationRequired,
       status: "active",
       bestResultId: null,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt,
       updatedAt: createdAt,
     })),
@@ -1610,10 +1529,10 @@ function buildCourseRecordData(createdAt) {
         metricLabel: metricLabelForRecord(category),
         verificationStatus: "verified",
         verificationTier: category.verificationRequired === "gold" ? "gold" : "silver",
-        sourceKind: "demo_seed",
+        sourceKind: "tour_profile",
         proofStatus: "verified",
         submittedAt: addHours(createdAt, golfer.index),
-        metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+        metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
         createdAt: addHours(createdAt, golfer.index),
         updatedAt: addHours(createdAt, golfer.index),
         category,
@@ -1631,7 +1550,7 @@ function buildCourseRecordData(createdAt) {
     rapsodoSyncSessionId: null,
     csvHash: hash64(`course-record-evidence:${attempt.id}`),
     extractedScorecardTotal: attempt.score,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     reviewStatus: "approved",
     reviewedBy: null,
     reviewedAt: addHours(createdAt, 8),
@@ -1682,16 +1601,16 @@ function rankCourseRecordResults(records, attempts, categories, createdAt) {
 function buildTournamentData(viewerProfiles, createdAt) {
   const tournament = {
     id: tournamentId,
-    title: "Demo Players Spring Major",
-    description: "Synthetic multi-round event for local tournament, leaderboard and feed testing.",
+    title: "Tour Players Spring Major",
+    description: "Four-round tour-player event for local tournament, leaderboard, recent-score and feed testing.",
     courseId,
     teeSetId,
-    format: "two_round_open",
+    format: "four_round_major",
     visibility: "public",
     status: "open",
     startsAt: createdAt,
     endsAt: daysAfter(createdAt, 14),
-    roundCount: 2,
+    roundCount: 4,
     verificationPolicy: "silver",
     screenshotRequired: true,
     directRapsodoRequired: false,
@@ -1699,19 +1618,19 @@ function buildTournamentData(viewerProfiles, createdAt) {
     playoffRuleJson: { demoSeed: SEED_MARKER, tieBreakers: ["net_total", "final_round", "earliest_submission"] },
     createdByUserId: golfers[2].userId,
     groupId,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt,
     updatedAt: createdAt,
   };
-  const rounds = [1, 2].map((roundNumber) => ({
+  const rounds = [1, 2, 3, 4].map((roundNumber) => ({
     id: uuidFor(`tournament-round:${roundNumber}`),
     tournamentId,
     roundNumber,
-    title: `Demo Round ${roundNumber}`,
+    title: `Tour Round ${roundNumber}`,
     startsAt: daysAfter(createdAt, roundNumber - 1),
     endsAt: daysAfter(createdAt, roundNumber + 3),
     status: roundNumber === 1 ? "open" : "scheduled",
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt,
     updatedAt: createdAt,
   }));
@@ -1724,7 +1643,7 @@ function buildTournamentData(viewerProfiles, createdAt) {
       seed: index + 1,
       joinedAt: addHours(createdAt, index),
       withdrawnAt: null,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, index),
       updatedAt: addHours(createdAt, index),
     })),
@@ -1736,14 +1655,16 @@ function buildTournamentData(viewerProfiles, createdAt) {
       seed: golfers.length + index + 1,
       joinedAt: addHours(createdAt, 20 + index),
       withdrawnAt: null,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, 20 + index),
       updatedAt: addHours(createdAt, 20 + index),
     })),
   ];
   const submissions = golfers.flatMap((golfer) =>
-    [1, 2].map((roundNumber) => {
-      const grossScore = golfer.roundScore + roundNumber - 1 + (golfer.index % 3);
+    [1, 2, 3, 4].map((roundNumber) => {
+      const grossScore =
+        golfer.recentTournamentScores[roundNumber - 1] ??
+        golfer.roundScore + roundNumber - 1 + (golfer.index % 3);
       return {
         id: uuidFor(`tournament-submission:${golfer.userId}:${roundNumber}`),
         tournamentId,
@@ -1757,14 +1678,14 @@ function buildTournamentData(viewerProfiles, createdAt) {
         stablefordPoints: 42 - (grossScore - 68),
         rapsodoSyncSessionId: golfer.index % 2 === 0 ? uuidFor(`rapsodo-sync:${uuidFor(`session:${golfer.slug}:round`)}`) : null,
         importSourceFileId: null,
-        scorecardScreenshotPath: `/demo-scorecards/${golfer.slug}-round-${roundNumber}.png`,
+        scorecardScreenshotPath: `/tour-scorecards/${golfer.slug}-round-${roundNumber}.png`,
         extractedScorecardTotal: grossScore,
         verificationStatus: "verified",
         verificationTier: golfer.index % 2 === 0 ? "gold" : "silver",
         proofStatus: "verified",
         submittedAt: addHours(createdAt, golfer.index + roundNumber),
         reviewedAt: addHours(createdAt, golfer.index + roundNumber + 1),
-        metadataJson: { demoSeed: SEED_MARKER, synthetic: true, csvHash: hash64(`tournament:${golfer.slug}:${roundNumber}`) },
+        metadataJson: { demoSeed: SEED_MARKER, tourProfile: true, csvHash: hash64(`tournament:${golfer.slug}:${roundNumber}`) },
         createdAt: addHours(createdAt, golfer.index + roundNumber),
         updatedAt: addHours(createdAt, golfer.index + roundNumber + 1),
       };
@@ -1779,7 +1700,7 @@ function buildTournamentData(viewerProfiles, createdAt) {
     rapsodoSyncSessionId: submission.rapsodoSyncSessionId,
     csvHash: submission.metadataJson.csvHash,
     extractedScorecardTotal: submission.extractedScorecardTotal,
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     reviewStatus: "approved",
     reviewedBy: null,
     reviewedAt: submission.reviewedAt,
@@ -1792,7 +1713,7 @@ function buildTournamentData(viewerProfiles, createdAt) {
       id: uuidFor("tournament-comment:rory"),
       tournamentId,
       userId: golfers[1].userId,
-      body: "Synthetic leaderboard is live. Check gross totals, verification tiers and event feed cards.",
+      body: "Leaderboard is live with gross totals, verification tiers and event feed cards.",
       createdAt: addHours(createdAt, 7),
       updatedAt: addHours(createdAt, 7),
       deletedAt: null,
@@ -1801,7 +1722,7 @@ function buildTournamentData(viewerProfiles, createdAt) {
       id: uuidFor(`tournament-comment:viewer:${viewer.userId}`),
       tournamentId,
       userId: viewer.userId,
-      body: "Local viewer entry seeded so event pages show joined state.",
+      body: "Local viewer entry keeps event pages in joined state.",
       createdAt: addHours(createdAt, 10 + index),
       updatedAt: addHours(createdAt, 10 + index),
       deletedAt: null,
@@ -1868,14 +1789,14 @@ function buildCompetitionFeedItems(challenges, challengeResults, recordData, tou
       headline: `${golfer.name} leads ${challenge.title}`,
       metricLabel: "Challenge",
       metricValue: leader.scoreLabel,
-      context: "Synthetic challenge result for demo leaderboards.",
+      context: "Tour-player challenge result for leaderboards.",
       proofUrl: `/challenges/${challenge.id}`,
       sourceType: "challenge_result",
       sourceId: `${challenge.id}:${leader.userId}`,
       visibility: "public",
       verificationLabel: leader.metadataJson.verificationLabel ?? "Rapsodo CSV",
       dedupeKey: `demo-challenge-leader:${challenge.id}:${leader.userId}`,
-      metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+      metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
       createdAt: addHours(createdAt, 20 + index),
       updatedAt: addHours(createdAt, 20 + index),
     };
@@ -1891,17 +1812,17 @@ function buildCompetitionFeedItems(challenges, challengeResults, recordData, tou
         id: uuidFor(`feed:course-record:${result.id}`),
         userId: result.userId,
         itemType: "course_record_set",
-        headline: `${golfer.name} became Course Champion at ForeKingHell Demo Links`,
+        headline: `${golfer.name} became Course Champion at ForeKingHell Tour Links`,
         metricLabel: category.name,
         metricValue: result.scoreLabel,
         context: `${result.verificationTier === "gold" ? "Gold verified" : "Silver verified"} on the ${record.scope} board.`,
         proofUrl: `/course-records/${record.id}`,
         sourceType: "course_record",
         sourceId: record.id,
-        visibility: record.scope === "public" ? "public" : "friends",
+        visibility: "public",
         verificationLabel: result.verificationTier === "gold" ? "Gold verified" : "Silver verified",
         dedupeKey: `demo-course-record:${result.id}`,
-        metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+        metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
         createdAt: addHours(createdAt, 24 + index),
         updatedAt: addHours(createdAt, 24 + index),
       };
@@ -1912,17 +1833,17 @@ function buildCompetitionFeedItems(challenges, challengeResults, recordData, tou
     id: uuidFor("feed:tournament:leader"),
     userId: tournamentLeader.userId,
     itemType: "tournament_round_submitted",
-    headline: `${tournamentGolfer.name} submitted round 2 for ${tournamentData.tournament.title}`,
+    headline: `${tournamentGolfer.name} submitted round 4 for ${tournamentData.tournament.title}`,
     metricLabel: "Gross",
     metricValue: String(tournamentLeader.grossTotal),
     context: `Current standing #${tournamentLeader.rank}`,
     proofUrl: `/tournaments/${tournamentId}`,
     sourceType: "tournament_submission",
-    sourceId: tournamentData.submissions.find((submission) => submission.userId === tournamentLeader.userId && submission.roundNumber === 2).id,
+    sourceId: tournamentData.submissions.find((submission) => submission.userId === tournamentLeader.userId && submission.roundNumber === 4).id,
     visibility: "public",
     verificationLabel: "Gold verified",
     dedupeKey: "demo-tournament-leader",
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt: addHours(createdAt, 30),
     updatedAt: addHours(createdAt, 30),
   };
@@ -1930,17 +1851,17 @@ function buildCompetitionFeedItems(challenges, challengeResults, recordData, tou
     id: uuidFor("feed:group:created"),
     userId: golfers[1].userId,
     itemType: "group_created",
-    headline: `${golfers[1].name} created Demo ForeKingHell Tour`,
+    headline: `${golfers[1].name} created ForeKingHell Tour Players`,
     metricLabel: "Group",
     metricValue: "Rapsodo League",
-    context: "Synthetic public group for local multi-user testing.",
-    proofUrl: "/groups/demo-forekinghell-tour",
+    context: "Public tour-player group for local multi-user testing.",
+    proofUrl: "/groups/tour-forekinghell-tour",
     sourceType: "group",
     sourceId: groupId,
     visibility: "public",
     verificationLabel: "Manual",
     dedupeKey: "demo-group-created",
-    metadataJson: { demoSeed: SEED_MARKER, synthetic: true },
+    metadataJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt: addHours(createdAt, 31),
     updatedAt: addHours(createdAt, 31),
   };
@@ -1987,7 +1908,7 @@ function buildFeedSocialRows(feedItems, viewerProfiles, createdAt) {
         id: uuidFor(`feed-comment:${item.id}:${commenter.userId}`),
         feedItemId: item.id,
         userId: commenter.userId,
-        body: "Demo comment: this card should show reactions, comments and verification labels.",
+        body: "Tour-player comment: this card should show reactions, comments and verification labels.",
         createdAt: addMinutes(createdAt, index + 4),
         updatedAt: addMinutes(createdAt, index + 4),
         deletedAt: null,
@@ -2008,7 +1929,7 @@ function buildFeedSocialRows(feedItems, viewerProfiles, createdAt) {
           id: uuidFor(`feed-comment:${item.id}:viewer:${viewer.userId}`),
           feedItemId: item.id,
           userId: viewer.userId,
-          body: "Local viewer demo comment for interaction testing.",
+          body: "Local viewer comment for interaction testing.",
           createdAt: addMinutes(createdAt, index + 6),
           updatedAt: addMinutes(createdAt, index + 6),
           deletedAt: null,
@@ -2034,11 +1955,11 @@ function buildSocialIntelligenceRows(viewerProfiles, feedItems, createdAt) {
       summaryType: "import_recap",
       subjectType: "feed_item",
       subjectId: targetFeedItem.id,
-      headline: `${viewer.displayName}'s demo network recap`,
-      body: "Synthetic recap: your demo network has PBs, course records, tournament movement, comments and verification events ready to review.",
-      evidenceJson: { demoSeed: SEED_MARKER, synthetic: true, feedItemIds: feedItems.slice(0, 6).map((item) => item.id) },
+      headline: `${viewer.displayName}'s tour network recap`,
+      body: "Tour-player recap: your network has PBs, course records, tournament movement, comments and verification events ready to review.",
+      evidenceJson: { demoSeed: SEED_MARKER, tourProfile: true, feedItemIds: feedItems.slice(0, 6).map((item) => item.id) },
       visibility: "private",
-      model: "demo-seed-v1",
+      model: "tour-profile-v1",
       createdAt: addMinutes(createdAt, index),
       updatedAt: addMinutes(createdAt, index),
     });
@@ -2048,11 +1969,11 @@ function buildSocialIntelligenceRows(viewerProfiles, feedItems, createdAt) {
       summaryType: "tournament_recap",
       subjectType: "tournament",
       subjectId: tournamentId,
-      headline: `${viewer.displayName}'s demo tournament recap`,
-      body: "Synthetic recap: tournament standings include multiple submitted rounds, evidence rows and a visible event leader.",
-      evidenceJson: { demoSeed: SEED_MARKER, synthetic: true, tournamentId },
-      visibility: "friends",
-      model: "demo-seed-v1",
+      headline: `${viewer.displayName}'s tour tournament recap`,
+      body: "Tour-player recap: tournament standings include multiple submitted rounds, evidence rows and a visible event leader.",
+      evidenceJson: { demoSeed: SEED_MARKER, tourProfile: true, tournamentId },
+      visibility: "public",
+      model: "tour-profile-v1",
       createdAt: addMinutes(createdAt, index + 3),
       updatedAt: addMinutes(createdAt, index + 3),
     });
@@ -2062,8 +1983,8 @@ function buildSocialIntelligenceRows(viewerProfiles, feedItems, createdAt) {
       reportedUserId: golfers[9].userId,
       targetType: "feed_item",
       targetId: targetFeedItem.id,
-      reason: "demo_suspicious_result",
-      details: `Synthetic social report for moderation queue testing. ${SEED_MARKER}`,
+      reason: "tour_score_review",
+      details: `Social report for moderation queue review. ${SEED_MARKER}`,
       status: "open",
       createdAt: addMinutes(createdAt, index + 5),
       resolvedAt: null,
@@ -2076,11 +1997,11 @@ function buildSocialIntelligenceRows(viewerProfiles, feedItems, createdAt) {
       eventType: "tournament_score_mismatch",
       severity: "medium",
       status: "open",
-      reason: "Synthetic review event: screenshot and imported score need QA review.",
+      reason: "Review event: screenshot and imported score need QA review.",
       metadataJson: {
         demoSeed: SEED_MARKER,
-        synthetic: true,
-        tournament: "Demo Players Spring Major",
+        tourProfile: true,
+        tournament: "Tour Players Spring Major",
         imported: 68,
         screenshot: 69,
       },
@@ -2122,12 +2043,12 @@ async function seedProfiles(tx, rows) {
   for (const row of rows) {
     await tx`
       insert into fkh_user_profiles (
-        user_id, username, display_name, avatar_url, bio, home_course, primary_launch_monitor, handicap_band,
+        user_id, username, display_name, avatar_url, header_image_url, bio, home_course, primary_launch_monitor, handicap_band,
         public_profile, friend_profile, feed_visibility_default, leaderboard_visibility, visibility_settings_json,
         achievement_showcase_json, pb_showcase_json, created_at, updated_at
       )
       values (
-        ${row.userId}, ${row.username}, ${row.displayName}, ${row.avatarUrl}, ${row.bio}, ${row.homeCourse},
+        ${row.userId}, ${row.username}, ${row.displayName}, ${row.avatarUrl}, ${row.headerImageUrl}, ${row.bio}, ${row.homeCourse},
         ${row.primaryLaunchMonitor}, ${row.handicapBand}, ${row.publicProfile}, ${row.friendProfile},
         ${row.feedVisibilityDefault}, ${row.leaderboardVisibility}, ${tx.json(row.visibilitySettingsJson)},
         ${tx.json(row.achievementShowcaseJson)}, ${tx.json(row.pbShowcaseJson)}, ${row.createdAt}, ${row.updatedAt}
@@ -2136,6 +2057,7 @@ async function seedProfiles(tx, rows) {
         username = excluded.username,
         display_name = excluded.display_name,
         avatar_url = excluded.avatar_url,
+        header_image_url = excluded.header_image_url,
         bio = excluded.bio,
         home_course = excluded.home_course,
         primary_launch_monitor = excluded.primary_launch_monitor,
@@ -2215,7 +2137,8 @@ async function seedChallengeTemplates(tx, rows) {
         ${row.id}, ${row.slug}, ${row.name}, ${row.description}, ${row.challengeType}, ${tx.json(row.rulesJson)},
         ${row.scoringDirection}, ${row.active}, ${row.createdAt}, ${row.updatedAt}
       )
-      on conflict (slug) do update set
+      on conflict (id) do update set
+        slug = excluded.slug,
         name = excluded.name,
         description = excluded.description,
         challenge_type = excluded.challenge_type,
@@ -2525,7 +2448,9 @@ async function seedSocialGraph(tx, friendships, friendRequests, blocks, follows)
       values (
         ${row.id}, ${row.requesterUserId}, ${row.recipientUserId}, ${row.status}, ${row.message}, ${row.createdAt}, ${row.respondedAt}, ${row.updatedAt}
       )
-      on conflict (requester_user_id, recipient_user_id) do update set
+      on conflict (id) do update set
+        requester_user_id = excluded.requester_user_id,
+        recipient_user_id = excluded.recipient_user_id,
         status = excluded.status,
         message = excluded.message,
         responded_at = excluded.responded_at,
@@ -2728,7 +2653,8 @@ async function seedCourseRecords(tx, categories, records, attempts, results, evi
         ${row.scopeDefault}, ${row.verificationRequired}, ${row.active}, ${row.sortOrder}, ${tx.json(row.metadataJson)},
         ${row.createdAt}, ${row.updatedAt}
       )
-      on conflict (slug) do update set
+      on conflict (id) do update set
+        slug = excluded.slug,
         name = excluded.name,
         description = excluded.description,
         record_type = excluded.record_type,
@@ -3202,6 +3128,67 @@ function loftForClub(clubType) {
   }[clubType];
 }
 
+function buildGolferBio(profile) {
+  const rankLabel = profile.rank ? `Current ${profile.country} player listed at OWGR #${profile.rank}` : `${profile.country} featured player`;
+  const scoringLabel = profile.scoring ? `public scoring average ${profile.scoring.toFixed(2)}` : "tour scoring profile";
+
+  return `${rankLabel}. Tour profile uses ${scoringLabel}. ForeKingHell shows shots, stock yardages, scorecards, social activity and tournament evidence.`;
+}
+
+function tourPlayerHeadshotUrl(profile) {
+  return profile.cbsId
+    ? `https://sportshub.cbsistatic.com/i/sports/player/headshot/${profile.cbsId}.png?width=200`
+    : null;
+}
+
+function tourCoverImageUrl(index) {
+  const image = TOUR_COVER_IMAGES[index % TOUR_COVER_IMAGES.length];
+  return `/assets/tour-covers/${image}`;
+}
+
+function tourHomeCourse(profile) {
+  const countryNames = {
+    AUS: "Australia",
+    AUT: "Austria",
+    BEL: "Belgium",
+    CAN: "Canada",
+    CHN: "China",
+    COL: "Colombia",
+    DEU: "Germany",
+    DNK: "Denmark",
+    ENG: "England",
+    ESP: "Spain",
+    FIN: "Finland",
+    IRL: "Ireland",
+    JPN: "Japan",
+    KOR: "Korea",
+    NIR: "Northern Ireland",
+    NOR: "Norway",
+    NZL: "New Zealand",
+    PHL: "Philippines",
+    SCO: "Scotland",
+    SWE: "Sweden",
+    USA: "United States",
+    ZAF: "South Africa",
+  };
+
+  return `${countryNames[profile.country] ?? profile.country} Performance Centre`;
+}
+
+function estimatedScoringAverage(profile, index) {
+  const rankFactor = profile.rank ? Math.min(2.6, profile.rank * 0.021) : 1.1;
+  return round1(69.55 + rankFactor + wiggle(index, 15, 0.45));
+}
+
+function estimatedDriverTotal(profile, index) {
+  const rankFactor = profile.rank ? Math.max(-4, 28 - profile.rank) * 0.18 : 0;
+  return round1(302 + rankFactor + wiggle(index, 17, 10));
+}
+
+function slugForName(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 function metricLabelForRecord(category) {
   if (category.recordType === "best_gross_score") {
     return "Gross score";
@@ -3232,6 +3219,10 @@ function wiggle(a, b, scale) {
 
 function round1(value) {
   return Math.round(value * 10) / 10;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function daysAgo(date, days) {

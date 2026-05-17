@@ -41,7 +41,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Import shots",
         short_name: "Import",
-        description: "Import a Rapsodo CSV session.",
+        description: "Import a launch-monitor session.",
         url: "/import",
         icons: [{ src: "/icons/fkh-icon-192.png", sizes: "192x192" }],
       },

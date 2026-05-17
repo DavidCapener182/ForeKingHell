@@ -56,7 +56,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
 
   return (
-    <PageShell size="full">
+    <PageShell size="wide">
       <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/courses" prefetch={false}>
@@ -80,7 +80,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
             : "Use this shared course for scoring and overlays. Only the course creator can edit tee sets and hole geometry."
         }
-        visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={courseId} className="h-full min-h-44" />}
+        visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={courseId} className="h-full min-h-44" priority />}
         metrics={[
           {
             label: "Provider",

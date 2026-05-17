@@ -46,6 +46,14 @@ export type StrokesGainedShotInput = {
   penaltyStrokes?: number | null;
 };
 
+export type StrokesGainedHoleScoringInput = {
+  holeNumber: number;
+  csvShotCount?: number | null;
+  score?: number | null;
+  putts?: number | null;
+  penalties?: number | null;
+};
+
 export function calculateShotStrokesGained(input: StrokesGainedShotInput) {
   if (!isFiniteNumber(input.startExpectedStrokes) || !isFiniteNumber(input.endExpectedStrokes)) {
     return null;
@@ -131,22 +139,31 @@ export function buildStrokesGainedEventsFromCourseShots({
   userId,
   sessionId,
   courseShots,
+  holeScoring = [],
   shotIdByRowNumber = new Map(),
   baselineBuckets = DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
 }: {
   userId: string;
   sessionId: string;
   courseShots: InferredCourseShot[];
+  holeScoring?: StrokesGainedHoleScoringInput[];
   shotIdByRowNumber?: Map<number, string>;
   baselineBuckets?: StrokesGainedBaselineBucket[];
 }): NewStrokesGainedShotEvent[] {
+  const scoringByHole = new Map(holeScoring.map((hole) => [hole.holeNumber, hole]));
+  const shotsByHole = groupCourseShotsByHole(courseShots);
+
   return courseShots.map((courseShot) => {
     const startDistanceYd = roundOne(Math.max(0, courseShot.holeYards - courseShot.progressBeforeYd));
     const endDistanceYd = roundOne(Math.max(0, courseShot.distanceRemainingYd));
+    const holeShots = shotsByHole.get(courseShot.holeNumber) ?? [];
+    const isFinalTrackedShot = holeShots.at(-1) === courseShot;
+    const holeScoringRow = isFinalTrackedShot ? scoringByHole.get(courseShot.holeNumber) ?? null : null;
+    const inferredPutts = inferPuttsAfterTrackedShots(holeScoringRow, holeShots.length);
+    const endPosition = endPositionForCourseShot(courseShot, endDistanceYd, inferredPutts);
     const category = strokesGainedCategory(courseShot, startDistanceYd);
     const startLie = startLieForCourseShot(courseShot, startDistanceYd);
-    const endLie = endLieForCourseShot(courseShot, endDistanceYd);
-    const endCategory = categoryForLieAndDistance(endLie, endDistanceYd);
+    const endCategory = categoryForLieAndDistance(endPosition.lie, endPosition.distanceYd);
     const startBucket = findBaselineBucket(baselineBuckets, {
       category,
       lie: startLie,
@@ -154,12 +171,12 @@ export function buildStrokesGainedEventsFromCourseShots({
     });
     const endBucket = findBaselineBucket(baselineBuckets, {
       category: endCategory,
-      lie: endLie,
-      distanceYd: endDistanceYd,
+      lie: endPosition.lie,
+      distanceYd: endPosition.distanceYd,
     });
     const strokesGained = calculateShotStrokesGained({
       startExpectedStrokes: startBucket?.expectedStrokes ?? null,
-      endExpectedStrokes: endBucket?.expectedStrokes ?? null,
+      endExpectedStrokes: endPosition.expectedStrokes ?? endBucket?.expectedStrokes ?? null,
     });
 
     return {
@@ -170,9 +187,9 @@ export function buildStrokesGainedEventsFromCourseShots({
       strokeNumber: courseShot.holeShotNumber,
       category,
       startLie,
-      endLie,
+      endLie: endPosition.lie,
       startDistanceYd,
-      endDistanceYd,
+      endDistanceYd: endPosition.distanceYd,
       penaltyStrokes: 0,
       strokesGained,
       metadataJson: {
@@ -184,6 +201,14 @@ export function buildStrokesGainedEventsFromCourseShots({
         totalYd: courseShot.sourceShot.totalYd,
         forwardDistanceYd: courseShot.forwardDistanceYd,
         shotCategory: courseShot.shotCategory,
+        ...(inferredPutts !== null
+          ? {
+              inferredPuttsAfterShot: inferredPutts,
+              scorecardScore: holeScoringRow?.score ?? null,
+              scorecardPenaltyStrokes: holeScoringRow?.penalties ?? null,
+              originalDistanceRemainingYd: endDistanceYd,
+            }
+          : {}),
       },
     };
   });
@@ -243,4 +268,68 @@ function endLieForCourseShot(courseShot: InferredCourseShot, endDistanceYd: numb
   }
 
   return Math.abs(courseShot.displaySideYd) > 25 ? "rough" : "fairway";
+}
+
+function endPositionForCourseShot(
+  courseShot: InferredCourseShot,
+  endDistanceYd: number,
+  inferredPutts: number | null,
+) {
+  if (isFiniteNumber(inferredPutts) && inferredPutts > 0) {
+    return {
+      lie: "green",
+      distanceYd: estimatedFirstPuttDistanceYd(inferredPutts),
+      expectedStrokes: inferredPutts,
+    };
+  }
+
+  const lie = endLieForCourseShot(courseShot, endDistanceYd);
+
+  return {
+    lie,
+    distanceYd: endDistanceYd,
+    expectedStrokes: null,
+  };
+}
+
+export function estimatedFirstPuttDistanceYd(putts: number) {
+  if (putts <= 1) {
+    return 3;
+  }
+
+  if (putts === 2) {
+    return 12;
+  }
+
+  return 31;
+}
+
+function inferPuttsAfterTrackedShots(
+  scoring: StrokesGainedHoleScoringInput | null,
+  trackedShotCount: number,
+) {
+  if (!scoring) {
+    return null;
+  }
+
+  if (isFiniteNumber(scoring.putts)) {
+    return Math.max(0, Math.round(scoring.putts));
+  }
+
+  if (!isFiniteNumber(scoring.score)) {
+    return null;
+  }
+
+  const penalties = isFiniteNumber(scoring.penalties) ? Math.max(0, scoring.penalties) : 0;
+  return Math.max(0, Math.round(scoring.score - trackedShotCount - penalties));
+}
+
+function groupCourseShotsByHole(courseShots: InferredCourseShot[]) {
+  const grouped = new Map<number, InferredCourseShot[]>();
+
+  for (const courseShot of courseShots) {
+    grouped.set(courseShot.holeNumber, [...(grouped.get(courseShot.holeNumber) ?? []), courseShot]);
+  }
+
+  return grouped;
 }

@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, Award, Ban, Check, Copy, QrCode, Search, Trophy, UserMinus, UserPlus, Users, X } from "lucide-react";
+import { ArrowLeft, Award, Ban, Check, Copy, QrCode, Search, Trophy, UserCheck, UserMinus, UserPlus, Users, X } from "lucide-react";
 
 import {
   acceptFriendRequestAction,
   blockUserAction,
   cancelFriendRequestAction,
   declineFriendRequestAction,
+  followUserAction,
   removeFriendAction,
   sendFriendRequestAction,
+  unfollowUserAction,
   unblockUserAction,
 } from "@/app/friends/actions";
 import {
@@ -33,6 +35,7 @@ type FriendsPageProps = {
     q?: string;
     request?: string;
     friend?: string;
+    follow?: string;
     user?: string;
   }>;
 };
@@ -80,7 +83,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
                 <StatusPill tone="green">Social graph</StatusPill>
                 <h1 className="mt-2 text-3xl font-semibold tracking-normal">Friends</h1>
                 <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Find golfers by username, approve requests, and keep friendships separate from coach/viewer/editor access. Friend scopes now power records, boards and private events.
+                  Find golfers by username, approve friend requests, and follow tour player profiles for comparison without opening friend-scoped access.
                 </p>
               </div>
             </div>
@@ -128,8 +131,8 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
         <DataPanel>
           <SectionHeader
-            title="Suggested friends"
-            description="Public profiles outside your current graph."
+            title="Suggested golfers"
+            description="Public profiles and tour players outside your current graph."
             action={<Users className="size-5 text-sky-600" />}
           />
           <CardContent>
@@ -138,7 +141,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </DataPanel>
       </section>
 
-      {params?.request || params?.friend || params?.user ? (
+      {params?.request || params?.friend || params?.follow || params?.user ? (
         <Alert>
           <Check className="size-4" />
           <AlertTitle>Social graph updated</AlertTitle>
@@ -148,8 +151,8 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
       <DataPanel>
         <SectionHeader
-          title="Find friends"
-          description="Private profiles do not appear in search. Search requires public profile opt-in."
+          title="Find golfers"
+          description="Private profiles do not appear in search. Tour player profiles can be followed, not added as friends."
           action={<Search className="size-5 text-sky-600" />}
         />
         <CardContent className="grid gap-4">
@@ -272,7 +275,10 @@ function ProfileList({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {mode === "friends" ? (
-              <>
+              profile.isTourPlayer ? (
+                <SearchResultAction profile={profile} />
+              ) : (
+                <>
                 <form action={removeFriendAction}>
                   <input type="hidden" name="friendUserId" value={profile.userId} />
                   <Button type="submit" variant="ghost" size="sm">
@@ -287,7 +293,8 @@ function ProfileList({
                     Block
                   </Button>
                 </form>
-              </>
+                </>
+              )
             ) : (
               <SearchResultAction profile={profile} />
             )}
@@ -299,6 +306,26 @@ function ProfileList({
 }
 
 function SearchResultAction({ profile }: { profile: SocialProfileSummary }) {
+  if (profile.isTourPlayer) {
+    return profile.isFollowing ? (
+      <form action={unfollowUserAction}>
+        <input type="hidden" name="followedUserId" value={profile.userId} />
+        <Button type="submit" variant="outline" size="sm">
+          <UserCheck className="size-4" />
+          Following
+        </Button>
+      </form>
+    ) : (
+      <form action={followUserAction}>
+        <input type="hidden" name="followedUserId" value={profile.userId} />
+        <Button type="submit" size="sm">
+          <UserPlus className="size-4" />
+          Follow
+        </Button>
+      </form>
+    );
+  }
+
   if (profile.relationship === "friend") {
     return <Badge variant="secondary">Friend</Badge>;
   }
@@ -332,7 +359,9 @@ function BlockedList({ profiles }: { profiles: SocialProfileSummary[] }) {
       {profiles.map((profile) => (
         <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{profile.displayName}</p>
+            <Link href={`/profile/${profile.username}`} prefetch={false} className="block truncate text-sm font-semibold hover:underline">
+              {profile.displayName}
+            </Link>
             <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
           </div>
           <form action={unblockUserAction}>

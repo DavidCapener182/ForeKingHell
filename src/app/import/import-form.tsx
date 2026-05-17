@@ -548,7 +548,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
 
   return (
     <section className="px-4 py-6 sm:px-6 lg:px-8" data-import-ready={isHydrated ? "true" : "false"}>
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-none flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
@@ -557,7 +557,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
             </Link>
           </Button>
           <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
-            {isCourseUpload ? "Simulated course CSV" : "Batch Rapsodo CSV"}
+            {isCourseUpload ? "Simulated course CSV" : "Launch monitor CSV"}
           </Badge>
         </div>
 
@@ -591,8 +591,9 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                 Import launch monitor shots
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Upload one or more Rapsodo MLM2PRO CSVs, review the normalized shot rows, then save
-                each file as its own session in Postgres.
+                Upload one or more launch-monitor CSVs, review the normalized
+                shot rows, then save each file as its own session with raw data
+                preserved.
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -760,7 +761,7 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           >
             <CardHeader>
               <CardTitle>{mobileImportCardTitle(visibleMobileStep)}</CardTitle>
-              <CardDescription>Drag in one or more Rapsodo files. Obvious parse issues appear before save.</CardDescription>
+              <CardDescription>Drag in one or more launch-monitor files. Obvious parse issues appear before save.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className={visibleMobileStep === "upload" ? "block" : "hidden sm:block"}>

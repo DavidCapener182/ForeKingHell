@@ -25,7 +25,7 @@ export default async function NewRoundPage() {
   const courseOptions = await getRoundCourseOptions();
 
   return (
-    <PageShell size="full">
+    <PageShell>
       <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -47,7 +47,7 @@ export default async function NewRoundPage() {
         eyebrow={<StatusPill tone="green">Real round</StatusPill>}
         title="Add Round"
         description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
-        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" />}
+        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />}
         metrics={[
           {
             label: "Course source",

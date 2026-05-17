@@ -137,7 +137,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                 description={featured.description ?? `${featured.templateName} · ${featured.participantCount} players`}
                 href={`/challenges/${featured.id}`}
                 actionLabel="Open"
-                media={<PageArtwork variant="range" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
+                media={<PageArtwork variant="range" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" priority />}
                 meta={
                   <span>
                     {featured.endsAt ? `${formatDate(featured.endsAt)} · ` : ""}
@@ -280,7 +280,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 
         <div className="grid gap-4">
           <DataPanel>
-            <SectionHeader title="Templates" description="Rapsodo-friendly formats for private leagues and public boards." />
+            <SectionHeader title="Templates" description="Launch-monitor-friendly formats for private leagues and public boards." />
             <CardContent className="grid gap-2">
               {data.templates.map((template) => (
                 <div key={template.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">

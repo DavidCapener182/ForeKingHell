@@ -23,6 +23,7 @@ export async function sendMagicLinkAction(
   }
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
   if (!email) {
     return { status: "error", message: "Enter an email address." };
@@ -32,7 +33,7 @@ export async function sendMagicLinkAction(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${await siteOrigin()}/auth/callback`,
+      emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
       shouldCreateUser: true,
     },
   });
@@ -60,8 +61,7 @@ export async function signInWithPasswordAction(
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const nextRaw = String(formData.get("next") ?? "");
-  const next = nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "/dashboard";
+  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
   if (!email || !password) {
     return { status: "error", message: "Enter your email and password." };
@@ -95,6 +95,7 @@ export async function signInWithOAuthAction(formData: FormData) {
   }
 
   const provider = String(formData.get("provider") ?? "");
+  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
   if (provider !== "google" && provider !== "apple") {
     redirect("/login?error=Unsupported%20auth%20provider");
@@ -104,7 +105,7 @@ export async function signInWithOAuthAction(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${await siteOrigin()}/auth/callback`,
+      redirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -130,4 +131,8 @@ async function siteOrigin() {
 
 function stringMetadata(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function safeNextPath(value: string) {
+  return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }

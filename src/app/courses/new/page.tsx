@@ -37,7 +37,7 @@ export default function NewCoursePage() {
         eyebrow={<StatusPill tone="green">Manual course setup</StatusPill>}
         title="New Course"
         description="Create the course and first tee set now. The next screen lets you enter tee and green coordinates for each hole so round overlays can use the real course."
-        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" />}
+        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" priority />}
         metrics={[
           {
             label: "Required",

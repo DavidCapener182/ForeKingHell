@@ -177,7 +177,7 @@ const navGroups = [
       },
       {
         href: "/social-intelligence",
-        label: "Recaps & safety",
+        label: "Recaps & Safety",
         icon: ShieldAlert,
         isActive: (pathname: string) => pathname.startsWith("/social-intelligence"),
       },
@@ -471,7 +471,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
           >
             <Link href="/import">
               <Upload className="size-4" />
-              Import CSV
+              Import data
             </Link>
           </Button>
 

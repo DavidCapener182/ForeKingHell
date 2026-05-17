@@ -7,14 +7,26 @@ import {
   blockUser,
   cancelFriendRequest,
   declineFriendRequest,
+  followUser,
   removeFriend,
   sendFriendRequest,
+  unfollowUser,
   unblockUser,
 } from "@/lib/social";
 
 export async function sendFriendRequestAction(formData: FormData) {
   await sendFriendRequest(requiredString(formData, "recipientUserId"), nullableString(formData, "message"));
   redirect(safeNext(formData, "/friends?request=sent"));
+}
+
+export async function followUserAction(formData: FormData) {
+  await followUser(requiredString(formData, "followedUserId"));
+  redirect(safeNext(formData, "/friends?follow=added"));
+}
+
+export async function unfollowUserAction(formData: FormData) {
+  await unfollowUser(requiredString(formData, "followedUserId"));
+  redirect(safeNext(formData, "/friends?follow=removed"));
 }
 
 export async function acceptFriendRequestAction(formData: FormData) {

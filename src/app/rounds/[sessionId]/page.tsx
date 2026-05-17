@@ -137,7 +137,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             <Button asChild>
               <Link href="/import">
                 <Upload className="size-4" />
-                Import CSV
+                Import data
               </Link>
             </Button>
           </div>
@@ -157,7 +157,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             { label: "Putts", value: formatNullableInteger(round.totalPutts) },
             { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
           ]}
-          visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={sessionId} className="h-full min-h-44" />}
+          visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={sessionId} className="h-full min-h-44" priority />}
         />
 
         <MobileSectionChips

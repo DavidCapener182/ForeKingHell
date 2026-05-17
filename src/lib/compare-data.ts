@@ -1,9 +1,25 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray, or } from "drizzle-orm";
 
-import { clubs, sessions, shots } from "@/db/schema";
+import {
+  clubs,
+  sessions,
+  shots,
+  stockYardages,
+  teeSets,
+  tournamentStandings,
+  tournamentSubmissions,
+  tournaments,
+  userProfiles,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import {
+  calculateHandicapSummary,
+  calculateRoundDifferential,
+  handicapBandFromValue,
+  normaliseHandicapRoundInput,
+} from "@/lib/round-handicap";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 
 export type CompareFocusMode = "today" | "latest-session" | "session" | "last-7" | "last-30" | "custom";
@@ -163,6 +179,71 @@ export type ClubCompareData = {
   delta: CompareDelta;
 };
 
+export type PlayerCompareFilters = {
+  playerAId: string;
+  playerBId: string;
+};
+
+export type PlayerCompareOption = {
+  userId: string;
+  username: string;
+  displayName: string;
+  label: string;
+  handicapBand: string | null;
+  handicapEstimate: number | null;
+  worldRank: number | null;
+};
+
+export type PlayerTournamentScore = {
+  tournamentTitle: string;
+  roundNumber: number;
+  grossScore: number;
+  netScore: number | null;
+  submittedAt: Date;
+};
+
+export type PlayerCompareSide = CompareSampleSummary & {
+  userId: string;
+  username: string;
+  displayName: string;
+  handicapBand: string | null;
+  homeCourse: string | null;
+  launchMonitor: string | null;
+  worldRank: number | null;
+  handicapEstimate: number | null;
+  rounds: number;
+  bestScore: number | null;
+  scoringAverage: number | null;
+  latestScore: number | null;
+  driverCarryYd: number | null;
+  sevenIronCarryYd: number | null;
+  tournamentRank: number | null;
+  tournamentGrossTotal: number | null;
+  tournamentNetTotal: number | null;
+  tournamentRoundsCompleted: number | null;
+  recentTournamentScores: PlayerTournamentScore[];
+};
+
+export type PlayerCompareDelta = {
+  handicapEstimateDelta: number | null;
+  bestScoreDelta: number | null;
+  scoringAverageDelta: number | null;
+  latestScoreDelta: number | null;
+  driverCarryDeltaYd: number | null;
+  sevenIronCarryDeltaYd: number | null;
+  offlineDeltaYd: number | null;
+  playableRateDelta: number | null;
+  tournamentGrossDelta: number | null;
+};
+
+export type PlayerCompareData = {
+  filters: PlayerCompareFilters;
+  players: PlayerCompareOption[];
+  playerA: PlayerCompareSide | null;
+  playerB: PlayerCompareSide | null;
+  delta: PlayerCompareDelta;
+};
+
 export type DispersionPoint = {
   id: string;
   clubType: string;
@@ -177,6 +258,45 @@ type Selection = {
   shots: CompareShot[];
   start: Date | null;
   end: Date | null;
+};
+
+type PlayerProfileRow = typeof userProfiles.$inferSelect;
+type PlayerSessionRow = {
+  id: string;
+  userId: string;
+  type: string;
+  date: Date;
+  courseName: string | null;
+  location: string | null;
+  fileName: string | null;
+  scorecardJson:
+    | Array<{
+        score?: number | null;
+        netScore?: number | null;
+        par?: number | null;
+      }>
+    | null;
+  courseRating: number | null;
+  slopeRating: number | null;
+};
+type PlayerStockRow = {
+  userId: string;
+  clubType: string;
+  calculatedAt: Date;
+  carryMedianYd: number | null;
+  totalMedianYd: number | null;
+};
+type PlayerTournamentStandingRow = {
+  userId: string;
+  rank: number | null;
+  grossTotal: number;
+  netTotal: number | null;
+  roundsCompleted: number;
+  calculatedAt: Date;
+  tournamentTitle: string;
+};
+type PlayerTournamentSubmissionRow = PlayerTournamentScore & {
+  userId: string;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -410,6 +530,209 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
   };
 }
 
+export async function getPlayerCompareData(filters: PlayerCompareFilters): Promise<PlayerCompareData> {
+  const db = getDb();
+  const viewerUserId = await requireCurrentUserId();
+  const profileRows = await db
+    .select()
+    .from(userProfiles)
+    .where(or(eq(userProfiles.publicProfile, true), eq(userProfiles.userId, viewerUserId)))
+    .orderBy(asc(userProfiles.displayName));
+
+  const players = profileRows
+    .map((profile) => ({
+      userId: profile.userId,
+      username: profile.username,
+      displayName: profile.displayName,
+      label: `${profile.displayName} (@${profile.username})`,
+      handicapBand: profile.handicapBand,
+      handicapEstimate: null,
+      worldRank: profileWorldRank(profile.pbShowcaseJson),
+    }))
+    .sort((left, right) => {
+      const rankDelta = (left.worldRank ?? Number.POSITIVE_INFINITY) - (right.worldRank ?? Number.POSITIVE_INFINITY);
+      return rankDelta || left.displayName.localeCompare(right.displayName);
+    });
+  const selectedA = players.find((player) => player.userId === filters.playerAId) ?? players[0] ?? null;
+  const selectedB =
+    players.find((player) => player.userId === filters.playerBId && player.userId !== selectedA?.userId) ??
+    players.find((player) => player.userId !== selectedA?.userId) ??
+    null;
+  const selectedIds = [selectedA?.userId, selectedB?.userId].filter((value): value is string => Boolean(value));
+
+  if (selectedIds.length === 0) {
+    return {
+      filters: { playerAId: "", playerBId: "" },
+      players,
+      playerA: null,
+      playerB: null,
+      delta: emptyPlayerDelta(),
+    };
+  }
+
+  const [shotRows, sessionRows, stockRows, tournamentRows, submissionRows] = await Promise.all([
+    db
+      .select({
+        id: shots.id,
+        userId: shots.userId,
+        sessionId: shots.sessionId,
+        sessionDate: sessions.date,
+        sessionCreatedAt: sessions.createdAt,
+        sessionType: sessions.type,
+        sessionFileName: sessions.fileName,
+        sessionCourseName: sessions.courseName,
+        sessionLocation: sessions.location,
+        clubId: shots.clubId,
+        clubType: shots.clubType,
+        shotAt: shots.shotAt,
+        shotNumber: shots.shotNumber,
+        carryYd: shots.carryYd,
+        totalYd: shots.totalYd,
+        sideCarryYd: shots.sideCarryYd,
+        ballSpeedMph: shots.ballSpeedMph,
+        clubSpeedMph: shots.clubSpeedMph,
+        launchAngleDeg: shots.launchAngleDeg,
+        launchDirectionDeg: shots.launchDirectionDeg,
+        apexFt: shots.apexFt,
+        attackAngleDeg: shots.attackAngleDeg,
+        clubPathDeg: shots.clubPathDeg,
+        descentAngleDeg: shots.descentAngleDeg,
+        smashFactor: shots.smashFactor,
+        spinRate: shots.spinRate,
+        spinAxis: shots.spinAxis,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
+        clubDataEstType: shots.clubDataEstType,
+        courseHoleNumber: shots.courseHoleNumber,
+      })
+      .from(shots)
+      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+      .where(inArray(shots.userId, selectedIds))
+      .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
+    db
+      .select({
+        id: sessions.id,
+        userId: sessions.userId,
+        type: sessions.type,
+        date: sessions.date,
+        courseName: sessions.courseName,
+        location: sessions.location,
+        fileName: sessions.fileName,
+        scorecardJson: sessions.scorecardJson,
+        courseRating: teeSets.courseRating,
+        slopeRating: teeSets.slopeRating,
+      })
+      .from(sessions)
+      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+      .where(inArray(sessions.userId, selectedIds))
+      .orderBy(desc(sessions.date)),
+    db
+      .select({
+        userId: stockYardages.userId,
+        clubType: clubs.type,
+        calculatedAt: stockYardages.calculatedAt,
+        carryMedianYd: stockYardages.carryMedianYd,
+        totalMedianYd: stockYardages.totalMedianYd,
+      })
+      .from(stockYardages)
+      .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
+      .where(inArray(stockYardages.userId, selectedIds))
+      .orderBy(desc(stockYardages.calculatedAt)),
+    db
+      .select({
+        userId: tournamentStandings.userId,
+        rank: tournamentStandings.rank,
+        grossTotal: tournamentStandings.grossTotal,
+        netTotal: tournamentStandings.netTotal,
+        roundsCompleted: tournamentStandings.roundsCompleted,
+        calculatedAt: tournamentStandings.calculatedAt,
+        tournamentTitle: tournaments.title,
+      })
+      .from(tournamentStandings)
+      .innerJoin(tournaments, eq(tournamentStandings.tournamentId, tournaments.id))
+      .where(inArray(tournamentStandings.userId, selectedIds))
+      .orderBy(desc(tournamentStandings.calculatedAt)),
+    db
+      .select({
+        userId: tournamentSubmissions.userId,
+        tournamentTitle: tournaments.title,
+        roundNumber: tournamentSubmissions.roundNumber,
+        grossScore: tournamentSubmissions.grossScore,
+        netScore: tournamentSubmissions.netScore,
+        submittedAt: tournamentSubmissions.submittedAt,
+      })
+      .from(tournamentSubmissions)
+      .innerJoin(tournaments, eq(tournamentSubmissions.tournamentId, tournaments.id))
+      .where(inArray(tournamentSubmissions.userId, selectedIds))
+      .orderBy(desc(tournamentSubmissions.submittedAt)),
+  ]);
+
+  const shotRowsByUser = groupBy(
+    shotRows
+      .filter((shot) => isTrackedClubType(shot.clubType))
+      .map((shot) => ({
+        ...shot,
+        sessionLabel:
+          shot.sessionCourseName ??
+          shot.sessionFileName ??
+          shot.sessionLocation ??
+          `${formatSessionType(shot.sessionType)} session`,
+      })),
+    (shot) => shot.userId,
+  );
+  const sessionsByUser = groupBy(sessionRows, (session) => session.userId);
+  const stockByUser = groupBy(stockRows, (stock) => stock.userId);
+  const tournamentsByUser = groupBy(tournamentRows, (standing) => standing.userId);
+  const submissionsByUser = groupBy(submissionRows, (submission) => submission.userId);
+
+  const profileByUserId = new Map(profileRows.map((profile) => [profile.userId, profile]));
+  const playerA = selectedA
+    ? buildPlayerCompareSide({
+        profile: profileByUserId.get(selectedA.userId),
+        option: selectedA,
+        shots: shotRowsByUser.get(selectedA.userId) ?? [],
+        sessions: sessionsByUser.get(selectedA.userId) ?? [],
+        stockRows: stockByUser.get(selectedA.userId) ?? [],
+        tournamentRows: tournamentsByUser.get(selectedA.userId) ?? [],
+        submissionRows: submissionsByUser.get(selectedA.userId) ?? [],
+      })
+    : null;
+  const playerB = selectedB
+    ? buildPlayerCompareSide({
+        profile: profileByUserId.get(selectedB.userId),
+        option: selectedB,
+        shots: shotRowsByUser.get(selectedB.userId) ?? [],
+        sessions: sessionsByUser.get(selectedB.userId) ?? [],
+        stockRows: stockByUser.get(selectedB.userId) ?? [],
+        tournamentRows: tournamentsByUser.get(selectedB.userId) ?? [],
+        submissionRows: submissionsByUser.get(selectedB.userId) ?? [],
+      })
+    : null;
+
+  const playersWithSelectedEstimates = players.map((player) => {
+    if (player.userId === playerA?.userId) {
+      return { ...player, handicapEstimate: playerA.handicapEstimate };
+    }
+
+    if (player.userId === playerB?.userId) {
+      return { ...player, handicapEstimate: playerB.handicapEstimate };
+    }
+
+    return player;
+  });
+
+  return {
+    filters: {
+      playerAId: selectedA?.userId ?? "",
+      playerBId: selectedB?.userId ?? "",
+    },
+    players: playersWithSelectedEstimates,
+    playerA,
+    playerB,
+    delta: playerA && playerB ? buildPlayerDelta(playerA, playerB) : emptyPlayerDelta(),
+  };
+}
+
 export function defaultCompareFilters(): CompareFilters {
   return {
     focus: "today",
@@ -430,6 +753,13 @@ export function defaultClubCompareFilters(): ClubCompareFilters {
   return {
     clubAId: "",
     clubBId: "",
+  };
+}
+
+export function defaultPlayerCompareFilters(): PlayerCompareFilters {
+  return {
+    playerAId: "",
+    playerBId: "",
   };
 }
 
@@ -781,6 +1111,151 @@ function buildClubCompareSide(club: ClubCompareClubOption, clubShots: CompareSho
     active: club.active,
     dateRange: dateRangeLabel(start, end),
   };
+}
+
+function buildPlayerCompareSide({
+  profile,
+  option,
+  shots,
+  sessions: playerSessions,
+  stockRows,
+  tournamentRows,
+  submissionRows,
+}: {
+  profile: PlayerProfileRow | undefined;
+  option: PlayerCompareOption;
+  shots: CompareShot[];
+  sessions: PlayerSessionRow[];
+  stockRows: PlayerStockRow[];
+  tournamentRows: PlayerTournamentStandingRow[];
+  submissionRows: PlayerTournamentSubmissionRow[];
+}): PlayerCompareSide {
+  const start = minDate(shots.map((shot) => shot.shotAt));
+  const end = maxDate(shots.map((shot) => shot.shotAt));
+  const summary = summarizeSelection({
+    label: option.displayName,
+    detail: dateRangeLabel(start, end),
+    shots,
+    start,
+    end,
+  });
+  const scoreRows = playerSessions
+    .map((session) => normalisedScorecardRound(session))
+    .filter((row): row is NormalisedScorecardRound => row !== null);
+  const scores = scoreRows.map((row) => row.score);
+  const latestScore = [...scoreRows].sort((left, right) => right.date.getTime() - left.date.getTime())[0]?.score ?? null;
+  const handicapEstimate = calculateHandicapSummary(scoreRows.map((row) => row.handicapDifferential)).value;
+  const generatedHandicapBand = handicapBandFromValue(handicapEstimate);
+  const latestStanding = [...tournamentRows].sort((left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime())[0];
+
+  return {
+    ...summary,
+    userId: option.userId,
+    username: option.username,
+    displayName: option.displayName,
+    handicapBand: generatedHandicapBand ?? option.handicapBand,
+    homeCourse: profile?.homeCourse ?? null,
+    launchMonitor: profile?.primaryLaunchMonitor ?? null,
+    worldRank: option.worldRank,
+    handicapEstimate,
+    rounds: scores.length,
+    bestScore: scores.length > 0 ? Math.min(...scores) : null,
+    scoringAverage: roundOne(mean(scores)),
+    latestScore,
+    driverCarryYd: latestStockCarry(stockRows, "driver"),
+    sevenIronCarryYd: latestStockCarry(stockRows, "7i"),
+    tournamentRank: latestStanding?.rank ?? null,
+    tournamentGrossTotal: latestStanding?.grossTotal ?? null,
+    tournamentNetTotal: latestStanding?.netTotal ?? null,
+    tournamentRoundsCompleted: latestStanding?.roundsCompleted ?? null,
+    recentTournamentScores: submissionRows
+      .sort((left, right) => right.submittedAt.getTime() - left.submittedAt.getTime())
+      .slice(0, 4)
+      .map((row) => ({
+        tournamentTitle: row.tournamentTitle,
+        roundNumber: row.roundNumber,
+        grossScore: row.grossScore,
+        netScore: row.netScore,
+        submittedAt: row.submittedAt,
+      })),
+  };
+}
+
+function buildPlayerDelta(playerA: PlayerCompareSide, playerB: PlayerCompareSide): PlayerCompareDelta {
+  return {
+    handicapEstimateDelta: diff(playerA.handicapEstimate, playerB.handicapEstimate),
+    bestScoreDelta: diff(playerA.bestScore, playerB.bestScore),
+    scoringAverageDelta: diff(playerA.scoringAverage, playerB.scoringAverage),
+    latestScoreDelta: diff(playerA.latestScore, playerB.latestScore),
+    driverCarryDeltaYd: diff(playerA.driverCarryYd, playerB.driverCarryYd),
+    sevenIronCarryDeltaYd: diff(playerA.sevenIronCarryYd, playerB.sevenIronCarryYd),
+    offlineDeltaYd: diff(playerA.absoluteOfflineAverageYd, playerB.absoluteOfflineAverageYd),
+    playableRateDelta: diff(playerA.playableRate, playerB.playableRate),
+    tournamentGrossDelta: diff(playerA.tournamentGrossTotal, playerB.tournamentGrossTotal),
+  };
+}
+
+function emptyPlayerDelta(): PlayerCompareDelta {
+  return {
+    handicapEstimateDelta: null,
+    bestScoreDelta: null,
+    scoringAverageDelta: null,
+    latestScoreDelta: null,
+    driverCarryDeltaYd: null,
+    sevenIronCarryDeltaYd: null,
+    offlineDeltaYd: null,
+    playableRateDelta: null,
+    tournamentGrossDelta: null,
+  };
+}
+
+function profileWorldRank(showcase: Array<Record<string, unknown>>) {
+  const ranking = showcase.find((item) => item.label === "Ranking")?.value;
+  const match = typeof ranking === "string" ? ranking.match(/#(\d+)/) : null;
+  return match ? Number(match[1]) : null;
+}
+
+type NormalisedScorecardRound = {
+  score: number;
+  handicapDifferential: number | null;
+  date: Date;
+};
+
+function normalisedScorecardRound(session: PlayerSessionRow): NormalisedScorecardRound | null {
+  const scorecard = session.scorecardJson ?? [];
+  const rawTotalScore = scorecardGrossTotal(scorecard);
+
+  if (!isNumber(rawTotalScore)) {
+    return null;
+  }
+
+  const rawTotalPar = scorecard.length > 0
+    ? scorecard.reduce((total, hole) => total + (hole.par ?? 0), 0)
+    : null;
+  const handicapInput = normaliseHandicapRoundInput({
+    totalScore: rawTotalScore,
+    totalPar: rawTotalPar,
+    courseRating: session.courseRating,
+    slopeRating: session.slopeRating,
+    holesPlayed: scorecard.length,
+  });
+
+  return {
+    score: handicapInput.totalScore ?? rawTotalScore,
+    handicapDifferential: calculateRoundDifferential(handicapInput),
+    date: session.date,
+  };
+}
+
+function scorecardGrossTotal(scorecard: PlayerSessionRow["scorecardJson"]) {
+  const scores = (scorecard ?? []).map((hole) => hole.score).filter(isNumber);
+  return scores.length > 0 ? scores.reduce((total, score) => total + score, 0) : null;
+}
+
+function latestStockCarry(stockRows: PlayerStockRow[], clubType: string) {
+  return [...stockRows]
+    .filter((row) => row.clubType === clubType)
+    .sort((left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime())[0]?.carryMedianYd ?? null;
 }
 
 function formatCompareClubLabel(club: { type: string; brand: string | null; model: string | null; active: boolean }) {

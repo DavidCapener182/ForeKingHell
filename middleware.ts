@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_FILE = /\.[\w-]+$/;
-const PUBLIC_PATH_PREFIXES = ["/_next/", "/icons/", "/assets/", "/auth/", "/share/"];
+const PUBLIC_PATH_PREFIXES = ["/_next/", "/icons/", "/assets/", "/auth/", "/share/", "/api/cron/"];
 const PUBLIC_PATHS = new Set([
   "/favicon.ico",
   "/login",

@@ -116,6 +116,8 @@ type RoundRecordSummary = {
   bestHoleScore: number | null;
   differential: number | null;
   holeCount: number;
+  originalHoleCount: number;
+  isNineHoleEquivalent: boolean;
 };
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
@@ -502,10 +504,32 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     return null;
   }
 
-  const [teeRows, categoryRows, recordRows, resultRows, viewerAttemptRows, previousRoundRows, friendIds] = await Promise.all([
+  const [teeRows, categoryRows, recordRows, previousRoundRows, friendIds] = await Promise.all([
     db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)),
     db.select().from(courseRecordCategories).where(eq(courseRecordCategories.active, true)).orderBy(asc(courseRecordCategories.sortOrder)),
     db.select().from(courseRecords).where(eq(courseRecords.courseId, courseId)).orderBy(asc(courseRecords.createdAt)),
+    db
+      .select({
+        session: sessions,
+        teeSet: teeSets,
+        sync: rapsodoSyncSessions,
+      })
+      .from(sessions)
+      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+      .where(and(eq(sessions.userId, viewerUserId), eq(sessions.courseId, courseId)))
+      .orderBy(desc(sessions.date))
+      .limit(40),
+    getFriendIds(viewerUserId),
+  ]);
+  await syncVerifiedRoundRecordAttempts({
+    userId: viewerUserId,
+    courseId,
+    records: recordRows,
+    categories: categoryRows,
+    rounds: previousRoundRows,
+  });
+  const [resultRows, viewerAttemptRows] = await Promise.all([
     db
       .select({
         result: courseRecordResults,
@@ -523,19 +547,6 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
       .where(and(eq(courseRecordAttempts.courseId, courseId), eq(courseRecordAttempts.userId, viewerUserId)))
       .orderBy(desc(courseRecordAttempts.submittedAt))
       .limit(40),
-    db
-      .select({
-        session: sessions,
-        teeSet: teeSets,
-        sync: rapsodoSyncSessions,
-      })
-      .from(sessions)
-      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
-      .where(and(eq(sessions.userId, viewerUserId), eq(sessions.courseId, courseId)))
-      .orderBy(desc(sessions.date))
-      .limit(8),
-    getFriendIds(viewerUserId),
   ]);
   const categoryById = new Map(categoryRows.map((category) => [category.id, category]));
   const filteredRecords = recordRows.filter((record) => {
@@ -571,7 +582,8 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
           }
         : null;
     })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((left, right) => left.category.sortOrder - right.category.sortOrder);
   const championCard = recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ?? recordCards.find((card) => card.champion) ?? null;
   const bestViewerAttempt = viewerAttemptRows[0] ?? null;
   const previousRounds = previousRoundRows
@@ -581,7 +593,7 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
   return {
     viewerUserId,
     course,
-    teeSets: teeRows,
+    teeSets: teeRows.map(normaliseTeeSetNameForCourseRecords),
     tabs: {
       allTimeCount: recordRows.filter((record) => record.period === "all_time" && record.scope === "public").length,
       monthCount: recordRows.filter((record) => record.period === "month").length,
@@ -617,7 +629,26 @@ export async function getCourseRecordDetailData(recordId: string) {
     return null;
   }
 
-  const [resultRows, attemptRows, recentSessions] = await Promise.all([
+  const recentSessions = await db
+    .select({
+      session: sessions,
+      teeSet: teeSets,
+      sync: rapsodoSyncSessions,
+    })
+    .from(sessions)
+    .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+    .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+    .where(and(eq(sessions.userId, viewerUserId), eq(sessions.courseId, row.record.courseId)))
+    .orderBy(desc(sessions.date))
+    .limit(20);
+  await syncVerifiedRoundRecordAttempts({
+    userId: viewerUserId,
+    courseId: row.record.courseId,
+    records: [row.record],
+    categories: [row.category],
+    rounds: recentSessions,
+  });
+  const [resultRows, attemptRows] = await Promise.all([
     db
       .select({
         result: courseRecordResults,
@@ -637,18 +668,6 @@ export async function getCourseRecordDetailData(recordId: string) {
       .where(eq(courseRecordAttempts.recordId, recordId))
       .orderBy(desc(courseRecordAttempts.submittedAt))
       .limit(20),
-    db
-      .select({
-        session: sessions,
-        teeSet: teeSets,
-        sync: rapsodoSyncSessions,
-      })
-      .from(sessions)
-      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
-      .where(and(eq(sessions.userId, viewerUserId), eq(sessions.courseId, row.record.courseId)))
-      .orderBy(desc(sessions.date))
-      .limit(20),
   ]);
   const recentRounds = recentSessions
     .map(({ session, teeSet, sync }) => {
@@ -666,7 +685,7 @@ export async function getCourseRecordDetailData(recordId: string) {
         fileName: session.fileName,
         type: session.type,
         source: session.source,
-        teeSetName: teeSet?.name ?? null,
+        teeSetName: displayTeeSetName(teeSet?.name ?? null, summary),
         rawCsvHash: session.rawCsvHash,
         hasRapsodoSync: Boolean(sync),
         totalScore: summary.totalScore,
@@ -681,6 +700,7 @@ export async function getCourseRecordDetailData(recordId: string) {
 
   return {
     ...row,
+    teeSet: row.teeSet ? normaliseTeeSetNameForCourseRecords(row.teeSet) : null,
     viewerUserId,
     results: resultRows,
     attempts: attemptRows,
@@ -1296,24 +1316,31 @@ function buildPreviousRoundSubmissionCard(
     return null;
   }
 
-  const suggestions = recordCards
-    .map(({ record, category }) => {
-      if (record.teeSetId && session.teeSetId && record.teeSetId !== session.teeSetId) {
-        return null;
-      }
+  const suggestions: Array<{ recordId: string; label: string; value: string }> = [];
+  const seenRecordTypes = new Set<string>();
 
-      const metricValue = metricValueForRecordType(record.recordType, summary);
+  for (const { record, category } of recordCards) {
+    if (suggestions.length >= 4 || seenRecordTypes.has(record.recordType)) {
+      continue;
+    }
 
-      return typeof metricValue === "number"
-        ? {
-            recordId: record.id,
-            label: category.name,
-            value: scoreLabel(metricValue, category),
-          }
-        : null;
-    })
-    .filter((suggestion): suggestion is NonNullable<typeof suggestion> => Boolean(suggestion))
-    .slice(0, 4);
+    if (record.teeSetId && session.teeSetId && record.teeSetId !== session.teeSetId) {
+      continue;
+    }
+
+    const metricValue = metricValueForRecordType(record.recordType, summary);
+
+    if (typeof metricValue !== "number") {
+      continue;
+    }
+
+    suggestions.push({
+      recordId: record.id,
+      label: category.name,
+      value: scoreLabel(metricValue, category),
+    });
+    seenRecordTypes.add(record.recordType);
+  }
 
   if (suggestions.length === 0) {
     return null;
@@ -1323,12 +1350,156 @@ function buildPreviousRoundSubmissionCard(
     id: session.id,
     date: session.date,
     title: session.courseName ?? session.fileName ?? "Previous round",
-    teeSetName: teeSet?.name ?? null,
+    teeSetName: displayTeeSetName(teeSet?.name ?? null, summary),
     totalScore: summary.totalScore,
     holeCount: summary.holeCount,
     proofLabel: proofLabelForRound(session, sync),
     suggestions,
   };
+}
+
+async function syncVerifiedRoundRecordAttempts({
+  userId,
+  courseId,
+  records,
+  categories,
+  rounds,
+}: {
+  userId: string;
+  courseId: string;
+  records: Array<typeof courseRecords.$inferSelect>;
+  categories: Array<typeof courseRecordCategories.$inferSelect>;
+  rounds: Array<{ session: SessionRow; teeSet: TeeSetRow | null; sync: RapsodoSyncRow | null }>;
+}) {
+  const verifiedRounds = rounds.filter(({ session, sync }) =>
+    session.courseId === courseId && isVerifiedRoundData(session, sync),
+  );
+
+  if (records.length === 0 || verifiedRounds.length === 0) {
+    return;
+  }
+
+  const db = getDb();
+  const sessionIds = verifiedRounds.map(({ session }) => session.id);
+  const existingAttempts = await db
+    .select({
+      recordId: courseRecordAttempts.recordId,
+      sessionId: courseRecordAttempts.sessionId,
+      verificationStatus: courseRecordAttempts.verificationStatus,
+    })
+    .from(courseRecordAttempts)
+    .where(
+      and(
+        eq(courseRecordAttempts.userId, userId),
+        eq(courseRecordAttempts.courseId, courseId),
+        inArray(courseRecordAttempts.sessionId, sessionIds),
+      ),
+    );
+  const existingKeys = new Set(
+    existingAttempts
+      .filter(
+        (attempt): attempt is { recordId: string; sessionId: string; verificationStatus: string } =>
+          Boolean(attempt.sessionId) && isBoardEligibleStatus(attempt.verificationStatus),
+      )
+      .map((attempt) => `${attempt.recordId}:${attempt.sessionId}`),
+  );
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const recalculationRecordIds = new Set<string>();
+  const now = new Date();
+
+  for (const record of records) {
+    const category = categoryById.get(record.categoryId);
+
+    if (!category) {
+      continue;
+    }
+
+    for (const { session, teeSet, sync } of verifiedRounds) {
+      if (!roundMatchesRecord(record, session)) {
+        continue;
+      }
+
+      const key = `${record.id}:${session.id}`;
+
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      if (!isWithinRecordPeriod(record, session.date)) {
+        continue;
+      }
+
+      const summary = summarizeRound(session, teeSet);
+      const metricValue = metricValueForRecordType(record.recordType, summary);
+
+      if (typeof metricValue !== "number" || !Number.isFinite(metricValue)) {
+        continue;
+      }
+
+      const autoProof = autoSyncedRoundProof(session, sync);
+      const csvHash = autoProof.csvHash;
+      const [attempt] = await db
+        .insert(courseRecordAttempts)
+        .values({
+          recordId: record.id,
+          categoryId: record.categoryId,
+          courseId: record.courseId,
+          teeSetId: record.teeSetId,
+          userId,
+          sessionId: session.id,
+          roundId: session.id,
+          score: summary.totalScore,
+          netScore: summary.totalNetScore,
+          stablefordPoints: summary.stablefordPoints,
+          metricValue,
+          metricLabel: metricLabelForCategory(category),
+          verificationStatus: autoProof.verificationStatus,
+          verificationTier: autoProof.verificationTier,
+          proofStatus: autoProof.proofStatus,
+          sourceKind: autoProof.sourceKind,
+          metadataJson: {
+            autoSyncedFromVerifiedRound: true,
+            derivedFromRound: true,
+            verificationReasons: autoProof.reasons,
+            originalHoleCount: summary.originalHoleCount,
+            normalisedHoleCount: summary.holeCount,
+            nineHoleEquivalent: summary.isNineHoleEquivalent,
+            originalRoundScore: summary.isNineHoleEquivalent && typeof summary.totalScore === "number"
+              ? summary.totalScore / 2
+              : summary.totalScore,
+          },
+          submittedAt: session.date,
+          updatedAt: now,
+        })
+        .returning();
+
+      if (autoProof.evidenceType) {
+        await db.insert(courseRecordEvidence).values({
+          attemptId: attempt.id,
+          evidenceType: autoProof.evidenceType,
+          rapsodoSyncSessionId: sync?.id ?? null,
+          csvHash,
+          extractedScorecardTotal: summary.totalScore,
+          metadataJson: {
+            source: autoProof.sourceKind,
+            autoSyncedFromVerifiedRound: true,
+            originalHoleCount: summary.originalHoleCount,
+            normalisedHoleCount: summary.holeCount,
+            nineHoleEquivalent: summary.isNineHoleEquivalent,
+          },
+          reviewStatus: autoProof.evidenceReviewStatus,
+          updatedAt: now,
+        });
+      }
+
+      existingKeys.add(key);
+      recalculationRecordIds.add(record.id);
+    }
+  }
+
+  for (const recordId of recalculationRecordIds) {
+    await recalculateCourseRecordResults(recordId);
+  }
 }
 
 async function getRoundRecordSubmissionContext({
@@ -1358,7 +1529,8 @@ async function getRoundRecordSubmissionContext({
     throw new Error("Selected round was not found.");
   }
 
-  const summary = summarizeRound(row.session, row.teeSet);
+  const teeSet = row.teeSet ? normaliseTeeSetNameForCourseRecords(row.teeSet) : null;
+  const summary = summarizeRound(row.session, teeSet);
   const metricValue = metricValueForRecordType(record.recordType, summary);
 
   if (metricValue === null) {
@@ -1379,33 +1551,40 @@ async function getRoundRecordSubmissionContext({
   };
 }
 
-function summarizeRound(session: SessionRow, teeSet: TeeSetRow | null): RoundRecordSummary {
+export function summarizeRound(session: SessionRow, teeSet: TeeSetRow | null): RoundRecordSummary {
   const holes = Array.isArray(session.scorecardJson) ? session.scorecardJson : [];
   const scoredHoles = holes.filter((hole) => typeof hole.score === "number");
   const netScoredHoles = holes.filter((hole) => typeof hole.netScore === "number");
-  const totalScore = sumHoleValues(scoredHoles, "score");
-  const totalNetScore = netScoredHoles.length > 0 ? sumHoleValues(netScoredHoles, "netScore") : null;
+  const rawTotalScore = sumHoleValues(scoredHoles, "score");
+  const rawTotalNetScore = netScoredHoles.length > 0 ? sumHoleValues(netScoredHoles, "netScore") : null;
   const totalPar = sumNullable(holes.map((hole) => hole.par));
   const holeCount = scoredHoles.length;
-  const putts = sumNullable(holes.map((hole) => hole.putts ?? null));
+  const isNineHoleEquivalent = holeCount === 9;
+  const normalisedHoleCount = isNineHoleEquivalent ? 18 : holeCount;
+  const rawStablefordPoints = stablefordPoints(holes);
+  const rawPutts = sumNullable(holes.map((hole) => hole.putts ?? null));
+  const rawBirdies = birdieCount(holes);
+  const frontNineScore = sumScoreRange(holes, 1, 9);
 
   return {
-    totalScore,
-    totalNetScore,
-    stablefordPoints: stablefordPoints(holes),
-    frontNineScore: sumScoreRange(holes, 1, 9),
-    backNineScore: sumScoreRange(holes, 10, 18),
-    birdies: birdieCount(holes),
-    putts,
+    totalScore: normaliseNineHoleTotal(rawTotalScore, isNineHoleEquivalent),
+    totalNetScore: normaliseNineHoleTotal(rawTotalNetScore, isNineHoleEquivalent),
+    stablefordPoints: normaliseNineHoleTotal(rawStablefordPoints, isNineHoleEquivalent),
+    frontNineScore,
+    backNineScore: isNineHoleEquivalent ? frontNineScore : sumScoreRange(holes, 10, 18),
+    birdies: normaliseNineHoleTotal(rawBirdies, isNineHoleEquivalent),
+    putts: normaliseNineHoleTotal(rawPutts, isNineHoleEquivalent),
     bestHoleScore: minNullable(holes.map((hole) => hole.score ?? null)),
     differential: calculateRoundDifferential({
-      totalScore,
+      totalScore: rawTotalScore,
       totalPar,
       courseRating: teeSet?.courseRating ?? null,
       slopeRating: teeSet?.slopeRating ?? null,
       holesPlayed: holeCount,
     }),
-    holeCount,
+    holeCount: normalisedHoleCount,
+    originalHoleCount: holeCount,
+    isNineHoleEquivalent,
   };
 }
 
@@ -1443,7 +1622,104 @@ function proofLabelForRound(session: SessionRow, sync: RapsodoSyncRow | null) {
     return "Rapsodo CSV round";
   }
 
-  return "Manual round - review only";
+  return "Saved scorecard";
+}
+
+function isVerifiedRoundData(session: SessionRow, sync: RapsodoSyncRow | null) {
+  return Boolean(sync || session.rawCsvHash || hasScoredScorecard(session));
+}
+
+function autoSyncedRoundProof(session: SessionRow, sync: RapsodoSyncRow | null): {
+  verificationStatus: VerificationState;
+  verificationTier: VerificationTier;
+  proofStatus: VerificationState;
+  sourceKind: "rapsodo_cloud" | "rapsodo_csv" | "manual_scorecard";
+  evidenceType: "rapsodo_import" | "csv_hash" | "saved_scorecard" | null;
+  evidenceReviewStatus: "approved" | "pending";
+  csvHash: string | null;
+  reasons: string[];
+} {
+  const csvHash = session.rawCsvHash ?? sync?.exportRawCsvHash ?? null;
+
+  if (sync) {
+    return {
+      verificationStatus: "verified",
+      verificationTier: "gold",
+      proofStatus: "verified",
+      sourceKind: "rapsodo_cloud",
+      evidenceType: "rapsodo_import",
+      evidenceReviewStatus: "approved",
+      csvHash,
+      reasons: ["Rapsodo Cloud round"],
+    };
+  }
+
+  if (csvHash) {
+    return {
+      verificationStatus: "verified",
+      verificationTier: "silver",
+      proofStatus: "verified",
+      sourceKind: "rapsodo_csv",
+      evidenceType: "csv_hash",
+      evidenceReviewStatus: "approved",
+      csvHash,
+      reasons: ["Rapsodo CSV round"],
+    };
+  }
+
+  return {
+    verificationStatus: "verified",
+    verificationTier: "bronze",
+    proofStatus: "manual_only",
+    sourceKind: "manual_scorecard",
+    evidenceType: hasScoredScorecard(session) ? "saved_scorecard" : null,
+    evidenceReviewStatus: "pending",
+    csvHash: null,
+    reasons: ["Saved scorecard"],
+  };
+}
+
+function hasScoredScorecard(session: SessionRow) {
+  const holes = Array.isArray(session.scorecardJson) ? session.scorecardJson : [];
+  return holes.filter((hole) => typeof hole.score === "number").length >= 9;
+}
+
+function roundMatchesRecord(record: typeof courseRecords.$inferSelect, session: SessionRow) {
+  return (
+    record.courseId === session.courseId &&
+    (!record.teeSetId || !session.teeSetId || record.teeSetId === session.teeSetId)
+  );
+}
+
+function isWithinRecordPeriod(record: typeof courseRecords.$inferSelect, date: Date) {
+  if (record.periodStart && date < record.periodStart) {
+    return false;
+  }
+
+  if (record.periodEnd && date >= record.periodEnd) {
+    return false;
+  }
+
+  return true;
+}
+
+function displayTeeSetName(name: string | null, summary: RoundRecordSummary) {
+  if (!name) {
+    return null;
+  }
+
+  return summary.isNineHoleEquivalent ? displayCourseRecordTeeSetName(name) : name;
+}
+
+function normaliseTeeSetNameForCourseRecords<T extends TeeSetRow>(teeSet: T): T {
+  return {
+    ...teeSet,
+    name: displayCourseRecordTeeSetName(teeSet.name),
+  };
+}
+
+function displayCourseRecordTeeSetName(name: string) {
+  return name.replace(/\(9 holes\)/gi, "(18 holes)");
 }
 
 function dedupeCoursesByName<T extends { id: string; name: string; createdByUserId: string | null }>(
@@ -1479,6 +1755,10 @@ function sumScoreRange(holes: ScorecardHole[], start: number, end: number) {
 
 function sumHoleValues(holes: ScorecardHole[], key: "score" | "netScore") {
   return sumNullable(holes.map((hole) => hole[key] ?? null));
+}
+
+function normaliseNineHoleTotal(value: number | null, isNineHoleEquivalent: boolean) {
+  return typeof value === "number" && isNineHoleEquivalent ? value * 2 : value;
 }
 
 function sumNullable(values: Array<number | null | undefined>) {

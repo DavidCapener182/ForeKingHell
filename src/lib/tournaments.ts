@@ -1010,7 +1010,7 @@ async function getCourseOptions() {
   return courseRows;
 }
 
-async function ensureScheduledTournaments(userId: string, scheduledSet: ScheduledTournament[]) {
+export async function ensureScheduledTournaments(userId: string, scheduledSet: ScheduledTournament[]) {
   for (const scheduled of scheduledSet) {
     const existing = await findScheduledTournament(scheduled.key);
 
@@ -1079,6 +1079,11 @@ async function syncScheduledTournament(
     typeof existingMetadata.courseRotationSize === "number"
       ? existingMetadata.courseRotationSize
       : null;
+
+  if (existingMetadata.actualTourEvent === true) {
+    return;
+  }
+
   const title = scheduledTournamentTitle(scheduled);
 
   if (
@@ -1240,6 +1245,7 @@ function hydrateTournamentListItem(input: {
   const scheduleEyebrow = typeof input.tournament.metadataJson.scheduleEyebrow === "string"
     ? input.tournament.metadataJson.scheduleEyebrow
     : null;
+  const actualTourEvent = input.tournament.metadataJson.actualTourEvent === true;
 
   return {
     id: input.tournament.id,
@@ -1256,6 +1262,7 @@ function hydrateTournamentListItem(input: {
     scheduleKind,
     scheduledKey,
     scheduleEyebrow,
+    actualTourEvent,
     courseName: input.course?.name ?? "Course TBD",
     teeSetName: input.teeSet?.name ?? "Any tee",
     entryCount: input.entries.length,

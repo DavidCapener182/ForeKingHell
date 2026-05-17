@@ -55,7 +55,6 @@ export default async function RoundsPage() {
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
   const realHandicap = calculateHandicapSummary(realRounds.map((round) => round.handicapDifferential));
   const simHandicap = calculateHandicapSummary(simulatorRounds.map((round) => round.handicapDifferential));
-  const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
 
   return (
     <PageShell size="6xl">
@@ -94,18 +93,14 @@ export default async function RoundsPage() {
           eyebrow={<StatusPill tone="sky">Round tracker</StatusPill>}
           title="Saved rounds"
           description="View real scorecards separately from simulator and launch-monitor rounds."
-          visual={<PageArtwork variant="rounds" alt="" className="h-full min-h-44" />}
+          visual={<PageArtwork variant="rounds" alt="" className="h-full min-h-44" priority />}
           metrics={[
             { label: "Real rounds", value: realRounds.length },
             { label: "Simulator", value: simulatorRounds.length },
             { label: "Real ceiling", value: formatHandicapValue(realHandicap.value), detail: handicapTrendText(realHandicap) },
             { label: "Sim ceiling", value: formatHandicapValue(simHandicap.value), detail: handicapTrendText(simHandicap) },
-            { label: "Best-form", value: formatHandicapValue(combinedHandicap.value), detail: handicapTrendText(combinedHandicap) },
-            { label: "Club shots", value: rounds.reduce((total, round) => total + round.shotCount, 0) },
           ]}
         />
-
-        <RoundSharingPanel latestRound={latestRound} />
 
         <MobileSectionChips
           items={[
@@ -257,6 +252,7 @@ export default async function RoundsPage() {
             </CardContent>
           </Card>
         </section>
+        <RoundSharingPanel latestRound={latestRound} />
         <StickyMobileAction>
           <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href="/rounds/new">

@@ -1,9 +1,11 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { and, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
+  clubs,
   feedCommentReactions,
   feedComments,
   feedItems,
@@ -13,7 +15,7 @@ import {
   moderationEvents,
   socialReports,
   sessions,
-  shots,
+  stockYardages,
   userBlocks,
   userFollows,
   userProfiles,
@@ -23,6 +25,8 @@ import {
 import { getDb } from "@/db/client";
 import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
 import { calculateUserLevel } from "@/lib/achievements/xp";
+import { formatClubType } from "@/lib/club-format";
+import { getUserHandicapProfile } from "@/lib/handicap-data";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 
 export const socialVisibilityOptions = ["private", "friends", "public"] as const;
@@ -43,6 +47,9 @@ export type SocialProfileSummary = {
   leaderboardVisibility: SocialVisibility;
   feedVisibilityDefault: SocialVisibility;
   relationship: "self" | "friend" | "incoming" | "outgoing" | "blocked" | "none";
+  isTourPlayer: boolean;
+  canReceiveFriendRequests: boolean;
+  isFollowing: boolean;
 };
 
 export type FeedItemView = {
@@ -77,7 +84,19 @@ type ProfileRow = typeof userProfiles.$inferSelect;
 type FriendRequestRow = typeof friendRequests.$inferSelect;
 type FeedItemRow = typeof feedItems.$inferSelect;
 
+export type ProfileGapRow = {
+  clubId: string;
+  clubType: string;
+  label: string;
+  carryMedianYd: number | null;
+  totalMedianYd: number | null;
+  sampleSize: number;
+  confidenceScore: number | null;
+};
+
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const STATUS_UPDATE_MAX_BODY_LENGTH = 800;
+const STATUS_UPDATE_MAX_IMAGE_DATA_URL_LENGTH = 650_000;
 
 export async function ensureSocialProfileForUser(userId: string) {
   const db = getDb();
@@ -139,6 +158,29 @@ export async function getFriendIds(userId: string) {
   return rows.map((row) => (row.userAId === userId ? row.userBId : row.userAId));
 }
 
+export async function getFollowingIds(userId: string) {
+  const rows = await getDb()
+    .select({ followedUserId: userFollows.followedUserId })
+    .from(userFollows)
+    .where(eq(userFollows.followerUserId, userId));
+
+  return rows.map((row) => row.followedUserId);
+}
+
+export async function isFollowing(followerUserId: string, followedUserId: string) {
+  if (followerUserId === followedUserId) {
+    return false;
+  }
+
+  const [row] = await getDb()
+    .select({ id: userFollows.id })
+    .from(userFollows)
+    .where(and(eq(userFollows.followerUserId, followerUserId), eq(userFollows.followedUserId, followedUserId)))
+    .limit(1);
+
+  return Boolean(row);
+}
+
 export async function areFriends(userAId: string, userBId: string) {
   if (userAId === userBId) {
     return true;
@@ -188,11 +230,13 @@ export async function getBlockedUserIds(userId: string) {
 export async function getFriendsPageData(searchQuery: string | null) {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
-  const [friendIds, blockedIds, pendingRequests] = await Promise.all([
+  const [friendIds, blockedIds, pendingRequests, followedIds] = await Promise.all([
     getFriendIds(userId),
     getBlockedUserIds(userId),
     getPendingFriendRequestsForUser(userId),
+    getFollowingIds(userId),
   ]);
+  const followedIdSet = new Set(followedIds);
   const relatedIds = new Set<string>([
     ...friendIds,
     ...pendingRequests.map((request) =>
@@ -209,12 +253,14 @@ export async function getFriendsPageData(searchQuery: string | null) {
     viewerUserId: userId,
     query: searchQuery,
     friendIds,
+    followedIds: followedIdSet,
     blockedIds,
     pendingRequests,
   });
   const suggestedProfiles = await suggestDiscoverableProfiles({
     viewerUserId: userId,
     friendIds,
+    followedIds: followedIdSet,
     blockedIds,
     pendingRequests,
   });
@@ -225,19 +271,23 @@ export async function getFriendsPageData(searchQuery: string | null) {
     friends: friendIds
       .map((friendId) => relatedProfiles.get(friendId))
       .filter((item): item is ProfileRow => Boolean(item))
-      .map((row) => profileSummary(row, "friend")),
+      .map((row) => profileSummary(row, "friend", { isFollowing: followedIdSet.has(row.userId) })),
     incomingRequests: pendingRequests
       .filter((request) => request.recipientUserId === userId)
       .map((request) => ({
         request,
-        profile: profileSummary(relatedProfiles.get(request.requesterUserId), "incoming"),
+        profile: profileSummary(relatedProfiles.get(request.requesterUserId), "incoming", {
+          isFollowing: followedIdSet.has(request.requesterUserId),
+        }),
       }))
       .filter((row) => row.profile),
     outgoingRequests: pendingRequests
       .filter((request) => request.requesterUserId === userId)
       .map((request) => ({
         request,
-        profile: profileSummary(relatedProfiles.get(request.recipientUserId), "outgoing"),
+        profile: profileSummary(relatedProfiles.get(request.recipientUserId), "outgoing", {
+          isFollowing: followedIdSet.has(request.recipientUserId),
+        }),
       }))
       .filter((row) => row.profile),
     searchResults,
@@ -245,7 +295,7 @@ export async function getFriendsPageData(searchQuery: string | null) {
     blockedUsers: blockedUserIds
       .map((blockedUserId) => blockedProfiles.get(blockedUserId))
       .filter((row): row is ProfileRow => Boolean(row))
-      .map((row) => profileSummary(row, "blocked")),
+      .map((row) => profileSummary(row, "blocked", { isFollowing: followedIdSet.has(row.userId) })),
   };
 }
 
@@ -262,7 +312,9 @@ export async function getProfilePageData(username: string) {
     return null;
   }
 
-  const relationship = viewerUserId ? await getRelationship(viewerUserId, profile.userId) : "none";
+  const [relationship, isFollowingProfile] = viewerUserId
+    ? await Promise.all([getRelationship(viewerUserId, profile.userId), isFollowing(viewerUserId, profile.userId)])
+    : ["none" as const, false];
   const recentFeed = viewerUserId
     ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
     : await getPublicFeedItemsForProfile(profile.userId, 6);
@@ -270,7 +322,7 @@ export async function getProfilePageData(username: string) {
 
   return {
     viewerProfile: viewerProfile ? profileSummary(viewerProfile, "self") : null,
-    profile: profileSummary(profile, relationship),
+    profile: profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
     stats,
     recentFeed,
   };
@@ -284,7 +336,6 @@ export async function updateCurrentSocialProfile(input: {
   bio?: string | null;
   homeCourse?: string | null;
   primaryLaunchMonitor?: string | null;
-  handicapBand?: string | null;
   publicProfile: boolean;
   friendProfile: boolean;
   feedVisibilityDefault: SocialVisibility;
@@ -323,7 +374,6 @@ export async function updateCurrentSocialProfile(input: {
       bio: nullableClean(input.bio),
       homeCourse: nullableClean(input.homeCourse),
       primaryLaunchMonitor: nullableClean(input.primaryLaunchMonitor),
-      handicapBand: nullableClean(input.handicapBand),
       publicProfile: input.publicProfile,
       friendProfile: input.friendProfile,
       feedVisibilityDefault: input.feedVisibilityDefault,
@@ -356,13 +406,17 @@ export async function sendFriendRequest(recipientUserId: string, message: string
   }
 
   const [recipient] = await getDb()
-    .select({ userId: userProfiles.userId })
+    .select()
     .from(userProfiles)
     .where(eq(userProfiles.userId, recipientUserId))
     .limit(1);
 
   if (!recipient) {
     throw new Error("Profile not found.");
+  }
+
+  if (!canReceiveFriendRequests(recipient)) {
+    throw new Error("This player profile can be followed but not added as a friend.");
   }
 
   const now = new Date();
@@ -388,6 +442,47 @@ export async function sendFriendRequest(recipientUserId: string, message: string
   revalidateSocialPaths();
 }
 
+export async function followUser(followedUserId: string) {
+  const followerUserId = await requireCurrentUserId();
+  await ensureSocialProfileForUser(followerUserId);
+
+  if (followerUserId === followedUserId) {
+    throw new Error("You cannot follow yourself.");
+  }
+
+  if (await isBlockedBetween(followerUserId, followedUserId)) {
+    throw new Error("Profile cannot be followed.");
+  }
+
+  const [profile] = await getDb()
+    .select({ userId: userProfiles.userId, publicProfile: userProfiles.publicProfile })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, followedUserId))
+    .limit(1);
+
+  if (!profile || !profile.publicProfile) {
+    throw new Error("Profile not found.");
+  }
+
+  await getDb()
+    .insert(userFollows)
+    .values({ followerUserId, followedUserId })
+    .onConflictDoNothing({
+      target: [userFollows.followerUserId, userFollows.followedUserId],
+    });
+
+  revalidateSocialPaths();
+}
+
+export async function unfollowUser(followedUserId: string) {
+  const followerUserId = await requireCurrentUserId();
+  await getDb()
+    .delete(userFollows)
+    .where(and(eq(userFollows.followerUserId, followerUserId), eq(userFollows.followedUserId, followedUserId)));
+
+  revalidateSocialPaths();
+}
+
 export async function acceptFriendRequest(requestId: string) {
   const userId = await requireCurrentUserId();
   const db = getDb();
@@ -400,6 +495,11 @@ export async function acceptFriendRequest(requestId: string) {
 
   if (!request || (await isBlockedBetween(request.requesterUserId, request.recipientUserId))) {
     throw new Error("Friend request not found.");
+  }
+
+  const requestProfiles = await profilesByUserId([request.requesterUserId, request.recipientUserId]);
+  if ([request.requesterUserId, request.recipientUserId].some((id) => !canReceiveFriendRequests(requestProfiles.get(id)))) {
+    throw new Error("This player profile can be followed but not added as a friend.");
   }
 
   const [userAId, userBId] = sortedUserPair(request.requesterUserId, request.recipientUserId);
@@ -861,6 +961,41 @@ export async function muteFeedItemUser(feedItemId: string) {
   await blockUser(item.userId);
 }
 
+export async function createStatusUpdate(input: {
+  body: string;
+  imageDataUrl?: string | null;
+  visibility?: SocialVisibility | null;
+}) {
+  const userId = await requireCurrentUserId();
+  const profile = await ensureSocialProfileForUser(userId);
+  const body = cleanStatusUpdateBody(input.body);
+  const imageDataUrl = cleanStatusUpdateImage(input.imageDataUrl);
+
+  if (!body && !imageDataUrl) {
+    throw new Error("Write an update or add an image before posting.");
+  }
+
+  await createFeedItem({
+    userId,
+    itemType: "status_update",
+    headline: statusUpdateHeadline(body, Boolean(imageDataUrl)),
+    context: body,
+    proofUrl: imageDataUrl,
+    sourceType: "status_update",
+    sourceId: randomUUID(),
+    visibility: parseVisibility(input.visibility, parseVisibility(profile.feedVisibilityDefault, "private")),
+    verificationLabel: "Player post",
+    metadataJson: {
+      kind: "status_update",
+      hasImage: Boolean(imageDataUrl),
+    },
+  });
+
+  revalidatePath("/feed");
+  revalidatePath("/dashboard");
+  revalidatePath(`/profile/${profile.username}`);
+}
+
 export async function createFeedItem(input: {
   userId: string;
   itemType: string;
@@ -1277,6 +1412,7 @@ async function searchDiscoverableProfiles(input: {
   viewerUserId: string;
   query: string | null;
   friendIds: string[];
+  followedIds: Set<string>;
   blockedIds: Set<string>;
   pendingRequests: FriendRequestRow[];
 }) {
@@ -1297,13 +1433,18 @@ async function searchDiscoverableProfiles(input: {
     .filter((row) => row.userId !== input.viewerUserId)
     .filter((row) => !input.blockedIds.has(row.userId))
     .filter((row) => row.publicProfile || (row.friendProfile && friendIdSet.has(row.userId)))
-    .map((row) => profileSummary(row, relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests)))
+    .map((row) =>
+      profileSummary(row, relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests), {
+        isFollowing: input.followedIds.has(row.userId),
+      }),
+    )
     .filter((profile) => profile.relationship !== "blocked");
 }
 
 async function suggestDiscoverableProfiles(input: {
   viewerUserId: string;
   friendIds: string[];
+  followedIds: Set<string>;
   blockedIds: Set<string>;
   pendingRequests: FriendRequestRow[];
 }) {
@@ -1326,7 +1467,7 @@ async function suggestDiscoverableProfiles(input: {
     .filter((row) => !input.blockedIds.has(row.userId))
     .filter((row) => !pendingIds.has(row.userId))
     .slice(0, 6)
-    .map((row) => profileSummary(row, "none"));
+    .map((row) => profileSummary(row, "none", { isFollowing: input.followedIds.has(row.userId) }));
 }
 
 async function getPendingFriendRequestsForUser(userId: string) {
@@ -1383,9 +1524,9 @@ async function getProfileStats(
 ) {
   const canSeePublic = relationship === "self" || relationship === "friend";
   const canSeeRounds = canSeePublic || visibilitySettings?.rounds === "public";
-  const canSeePractice = canSeePublic || visibilitySettings?.practice === "public";
-  const canSeePbs = canSeePublic || visibilitySettings?.pbs === "public";
-  const [roundCountRow, practiceCountRow, bestShotRow] = await Promise.all([
+  const canSeeBag = canSeePublic || visibilitySettings?.bag === "public";
+  const canSeeHandicap = canSeePublic || visibilitySettings?.handicap === "public";
+  const [roundCountRow, gapRows, handicapProfile] = await Promise.all([
     canSeeRounds
       ? getDb()
           .select({ value: sql<number>`count(*)::int` })
@@ -1393,31 +1534,60 @@ async function getProfileStats(
           .where(and(eq(sessions.userId, userId), or(eq(sessions.type, "real_round"), eq(sessions.type, "round"))))
           .then((rows) => rows[0]?.value ?? 0)
       : Promise.resolve(null),
-    canSeePractice
-      ? getDb()
-          .select({ value: sql<number>`count(*)::int` })
-          .from(shots)
-          .where(eq(shots.userId, userId))
-          .then((rows) => rows[0]?.value ?? 0)
-      : Promise.resolve(null),
-    canSeePbs
+    canSeeBag
       ? getDb()
           .select({
-            clubType: shots.clubType,
-            totalYd: shots.totalYd,
+            clubId: clubs.id,
+            clubType: clubs.type,
+            brand: clubs.brand,
+            model: clubs.model,
+            carryMedianYd: stockYardages.carryMedianYd,
+            totalMedianYd: stockYardages.totalMedianYd,
+            sampleSize: stockYardages.sampleSize,
+            confidenceScore: stockYardages.confidenceScore,
+            calculatedAt: stockYardages.calculatedAt,
           })
-          .from(shots)
-          .where(eq(shots.userId, userId))
-          .orderBy(desc(shots.totalYd))
-          .limit(1)
-          .then((rows) => rows[0] ?? null)
-      : Promise.resolve(null),
+          .from(stockYardages)
+          .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
+          .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
+          .orderBy(desc(stockYardages.calculatedAt), desc(stockYardages.carryMedianYd))
+          .then((rows) => {
+            const latestByClubId = new Map<string, (typeof rows)[number]>();
+
+            for (const row of rows) {
+              if (!latestByClubId.has(row.clubId)) {
+                latestByClubId.set(row.clubId, row);
+              }
+            }
+
+            return [...latestByClubId.values()]
+              .filter(
+                (row) =>
+                  typeof row.carryMedianYd === "number" &&
+                  row.sampleSize >= 5 &&
+                  typeof row.confidenceScore === "number" &&
+                  row.confidenceScore >= 30,
+              )
+              .sort((left, right) => (right.carryMedianYd ?? 0) - (left.carryMedianYd ?? 0))
+              .map((row) => ({
+                clubId: row.clubId,
+                clubType: row.clubType,
+                label: [formatClubType(row.clubType), row.brand, row.model].filter(Boolean).join(" - "),
+                carryMedianYd: row.carryMedianYd,
+                totalMedianYd: row.totalMedianYd,
+                sampleSize: row.sampleSize,
+                confidenceScore: row.confidenceScore,
+              }));
+          })
+      : Promise.resolve([] satisfies ProfileGapRow[]),
+    canSeeHandicap ? getUserHandicapProfile(userId) : Promise.resolve(null),
   ]);
 
   return {
     rounds: roundCountRow,
-    shots: practiceCountRow,
-    bestShot: bestShotRow,
+    gapLadder: gapRows,
+    handicapBand: handicapProfile?.band ?? null,
+    handicapEstimate: handicapProfile?.displayValue ?? null,
   };
 }
 
@@ -1453,10 +1623,13 @@ async function uniqueUsername(base: string) {
 function profileSummary(
   profile: ProfileRow | undefined,
   relationship: SocialProfileSummary["relationship"],
+  options: { isFollowing?: boolean } = {},
 ): SocialProfileSummary {
   if (!profile) {
     throw new Error("Profile not found.");
   }
+
+  const isTourPlayer = isTourPlayerProfile(profile);
 
   return {
     userId: profile.userId,
@@ -1473,7 +1646,23 @@ function profileSummary(
     leaderboardVisibility: parseVisibility(profile.leaderboardVisibility),
     feedVisibilityDefault: parseVisibility(profile.feedVisibilityDefault),
     relationship,
+    isTourPlayer,
+    canReceiveFriendRequests: canReceiveFriendRequests(profile),
+    isFollowing: options.isFollowing ?? false,
   };
+}
+
+function isTourPlayerProfile(profile: ProfileRow | undefined) {
+  const settings = profile?.visibilitySettingsJson;
+  return Boolean(settings?.tourPlayer || settings?.profileKind === "tour-player" || profile?.username.startsWith("tour-"));
+}
+
+function canReceiveFriendRequests(profile: ProfileRow | undefined) {
+  if (!profile || isTourPlayerProfile(profile)) {
+    return false;
+  }
+
+  return profile.visibilitySettingsJson?.allowFriendRequests !== false;
 }
 
 function hiddenByUserIds(metadata: Record<string, unknown>) {
@@ -1534,6 +1723,47 @@ function nullableClean(value: string | null | undefined) {
 
 function cleanRequired(value: string | null | undefined, fallback: string) {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function cleanStatusUpdateBody(value: string | null | undefined) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, STATUS_UPDATE_MAX_BODY_LENGTH);
+}
+
+function cleanStatusUpdateImage(value: string | null | undefined) {
+  const cleaned = nullableClean(value);
+
+  if (!cleaned) {
+    return null;
+  }
+
+  if (cleaned.length > STATUS_UPDATE_MAX_IMAGE_DATA_URL_LENGTH) {
+    throw new Error("Selected status image is too large.");
+  }
+
+  if (/^data:image\/(jpeg|jpg|png|webp);base64,[a-z0-9+/=]+$/i.test(cleaned)) {
+    return cleaned;
+  }
+
+  throw new Error("Status images must be JPG, PNG or WebP files.");
+}
+
+function statusUpdateHeadline(body: string, hasImage: boolean) {
+  const firstLine = body.split("\n").find((line) => line.trim())?.trim();
+
+  if (firstLine) {
+    return firstLine.length > 140 ? `${firstLine.slice(0, 137).trimEnd()}...` : firstLine;
+  }
+
+  return hasImage ? "Shared a golf photo" : "Shared a status update";
 }
 
 function safeSocialDisplayName(value: string | null | undefined) {

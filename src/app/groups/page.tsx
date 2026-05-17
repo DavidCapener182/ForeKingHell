@@ -74,7 +74,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               <form action={createGroupAction} className="grid gap-3">
                 <label className="grid gap-1 text-sm font-medium">
                   <span>Name</span>
-                  <Input name="name" placeholder="ForeKingHell Rapsodo UK League" className="h-11 rounded-lg bg-white" required />
+                  <Input name="name" placeholder="ForeKingHell Launch Monitor League" className="h-11 rounded-lg bg-white" required />
                 </label>
                 <label className="grid gap-1 text-sm font-medium">
                   <span>Type</span>
@@ -189,7 +189,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <form action={createGroupAction} className="mt-3 grid gap-3">
               <label className="grid gap-1 text-sm font-medium">
                 <span>Name</span>
-                <Input name="name" placeholder="ForeKingHell Rapsodo UK League" className="h-9 rounded-lg bg-white" required />
+                <Input name="name" placeholder="ForeKingHell Launch Monitor League" className="h-9 rounded-lg bg-white" required />
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Type</span>
@@ -226,7 +226,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <StatusPill tone="green">Groups and leagues</StatusPill>
                 <h1 className="mt-3 text-3xl font-semibold tracking-normal">Groups</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Build Rapsodo leagues, golf societies, coach stables and simulator venue communities with their own feed, records, events and leaderboards.
+                  Build launch-monitor leagues, golf societies, coach stables and simulator venue communities with their own feed, records, events and leaderboards.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -297,7 +297,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
               <Search className="size-5 text-sky-600" />
             </div>
-            <GroupGrid groups={data.discoverable} empty="No public groups yet. Create the first Rapsodo league." />
+            <GroupGrid groups={data.discoverable} empty="No public groups yet. Create the first golf league." />
           </section>
         </main>
       </section>

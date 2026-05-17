@@ -54,7 +54,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         <MobileStatusAction
           label="Live event schedule"
           value={`${data.tournaments.length} events`}
-          detail={`${data.myEntries.length} entered · Rapsodo + scorecard proof`}
+          detail={`${data.myEntries.length} entered · launch monitor + scorecard proof`}
           action={
             data.featured ? (
               <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -66,11 +66,11 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         {data.featured ? (
           <EventHeroCard
             eyebrow={data.featured.scheduleEyebrow ?? "Live event"}
-            title={data.featured.scheduleKind === "monthly" ? "Spring Major Week" : data.featured.title}
+            title={scheduledEventTitle(data.featured)}
             description={`${data.featured.roundCount} rounds · ${data.featured.directRapsodoRequired ? "Gold proof required" : "Silver proof accepted"}`}
             href={`/tournaments/${data.featured.id}`}
             actionLabel={data.featured.viewerEntered ? "Open" : "Enter"}
-            media={<PageArtwork variant="scorecard" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
+            media={<PageArtwork variant="scorecard" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" priority />}
             meta={
               <span>
                 {data.featured.leader ? `Leader: ${data.featured.leader.displayName} · ` : ""}
@@ -89,7 +89,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
           ).slice(0, 10).map((event) => (
             <MobileTournamentCard
               key={event.id}
-              title={event.scheduleKind === "monthly" ? "Spring Major Week" : event.title}
+              title={scheduledEventTitle(event)}
               description={`${event.courseName} · ${event.teeSetName}`}
               href={`/tournaments/${event.id}`}
               cta={event.viewerEntered ? "Open" : "Enter"}
@@ -128,13 +128,13 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             <StatusPill tone="amber">Tournament schedule</StatusPill>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">Daily, weekly and monthly events</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} Rapsodo-friendly tour venues, weekly opens run all week, and monthly majors use famous championship venues.
+              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} launch-monitor-friendly tour venues, weekly opens run all week, and monthly majors use famous championship venues.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{data.tournaments.length} live events</Badge>
             <Badge variant="outline">{data.myEntries.length} entered</Badge>
-            <Badge variant="outline">Rapsodo + scorecard proof</Badge>
+            <Badge variant="outline">Launch monitor + scorecard proof</Badge>
           </div>
         </div>
       </header>
@@ -202,6 +202,26 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
   );
 }
 
+function scheduledEventTitle(event: TournamentListItem) {
+  if (event.actualTourEvent) {
+    return event.title;
+  }
+
+  if (event.scheduleKind === "monthly") {
+    return "Monthly Major";
+  }
+
+  if (event.scheduleKind === "weekly") {
+    return "Weekly Open";
+  }
+
+  if (event.scheduleKind === "daily") {
+    return "Daily Tournament";
+  }
+
+  return event.title;
+}
+
 function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
   const tone =
     event.scheduleKind === "monthly"
@@ -215,7 +235,7 @@ function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <Badge variant="secondary">{event.scheduleEyebrow ?? "Live"}</Badge>
-          <h2 className="mt-3 text-xl font-semibold tracking-normal">{event.scheduleKind === "monthly" ? "Monthly Major" : event.scheduleKind === "weekly" ? "Weekly Open" : "Daily Tournament"}</h2>
+          <h2 className="mt-3 text-xl font-semibold tracking-normal">{scheduledEventTitle(event)}</h2>
           <p className="mt-1 text-sm font-medium">{event.courseName}</p>
           <p className="mt-1 text-sm text-muted-foreground">{event.teeSetName}</p>
         </div>

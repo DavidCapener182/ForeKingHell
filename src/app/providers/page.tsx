@@ -1,10 +1,19 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Cable, CheckCircle2, Database, FileSpreadsheet, FlaskConical, GitCompareArrows, Upload } from "lucide-react";
 
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getProviderIntegrationsPageData } from "@/lib/provider-integrations";
 
 export const dynamic = "force-dynamic";
@@ -23,30 +32,55 @@ export default async function ProvidersPage() {
     <PageShell size="7xl">
       <MobileRouteHeader title="Platform" group="platform" activeKey="providers" />
 
-      <header className="premium-hero p-5">
+      <header className="premium-hero p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <StatusPill tone="sky">Import expansion</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Launch monitor providers</h1>
+            <StatusPill tone="sky">Performance platform</StatusPill>
+            <h1 className="mt-3 text-3xl font-semibold tracking-normal">
+              Launch monitor providers
+            </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              ForeKingHell becomes your cross-device golf performance history. Rapsodo is live; Square and TrackMan use the same adapter contract as they move through beta.
+              ForeKingHell is the performance history layer for every launch
+              monitor, simulator and course round. Rapsodo is live; Square,
+              TrackMan and future sources use the same adapter contract as they
+              move through beta and research states.
             </p>
           </div>
           <Button asChild>
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import file
+              Import data
             </Link>
           </Button>
         </div>
       </header>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <PlatformPrinciple
+          icon={<GitCompareArrows className="size-5" />}
+          title="Metric normalisation"
+          detail="Carry, total, offline, speed, launch, spin, apex, path, face and smash land in one shared model."
+        />
+        <PlatformPrinciple
+          icon={<FileSpreadsheet className="size-5" />}
+          title="Raw data preserved"
+          detail="Provider rows and source files stay attached so parsers can improve without losing provenance."
+        />
+        <PlatformPrinciple
+          icon={<Database className="size-5" />}
+          title="One history layer"
+          detail="Range sessions, simulator rounds and real scorecards feed the same bag, progress and coach views."
+        />
+      </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         {data.providers.map((provider) => (
           <article key={provider.providerKind} className="premium-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Badge variant={provider.status === "live" ? "secondary" : "outline"}>{provider.status}</Badge>
+                <Badge variant={provider.status === "live" ? "secondary" : "outline"}>
+                  {statusLabel(provider.status)}
+                </Badge>
                 <h2 className="mt-3 text-xl font-semibold tracking-normal">{provider.label}</h2>
               </div>
               {provider.status === "live" ? <CheckCircle2 className="size-5 text-emerald-600" /> : <FlaskConical className="size-5 text-amber-600" />}
@@ -73,6 +107,61 @@ export default async function ProvidersPage() {
         ))}
       </section>
 
+      <section className="premium-card p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <Cable className="size-4 text-emerald-700" />
+              Provider comparison
+            </p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+              Live providers can connect today. Beta and research providers use
+              the same adapter shape, with metric coverage visible before full
+              release.
+            </p>
+          </div>
+          <StatusPill tone="green">Adapter contract</StatusPill>
+        </div>
+        <div className="mt-4">
+          <DataTableFrame>
+            <Table className="min-w-[760px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Provider</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Import paths</TableHead>
+                  <TableHead>Supported metrics</TableHead>
+                  <TableHead>Raw preservation</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.providers.map((provider) => (
+                  <TableRow key={provider.providerKind}>
+                    <TableCell className="font-medium">{provider.label}</TableCell>
+                    <TableCell>
+                      <StatusPill tone={statusTone(provider.status)}>
+                        {statusLabel(provider.status)}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {provider.status === "live"
+                        ? "Cloud connect and CSV upload"
+                        : "CSV adapter and mapping workflow"}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      Carry, total, offline, speed, launch, spin and strike metrics
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      Source file, raw headers, raw rows and parse job history
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
         <main className="premium-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
@@ -81,7 +170,9 @@ export default async function ProvidersPage() {
           </p>
           <div className="mt-4 grid gap-2">
             {data.sessions.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No provider sessions recorded yet.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                Connect a live provider or upload a launch-monitor file to start the shared provider history.
+              </p>
             ) : (
               data.sessions.map((session) => (
                 <div key={session.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
@@ -108,7 +199,7 @@ export default async function ProvidersPage() {
                   <p className="text-xs text-muted-foreground">{file.providerKind} · {file.status}</p>
                 </div>
               ))}
-              {data.files.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No source files yet.</p> : null}
+              {data.files.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No source files yet. Upload CSV data to preserve provider originals.</p> : null}
             </div>
           </section>
 
@@ -124,7 +215,7 @@ export default async function ProvidersPage() {
                   <p className="text-xs text-muted-foreground">{job.detectedProviderKind ?? "No detected provider"}{job.errorMessage ? ` · ${job.errorMessage}` : ""}</p>
                 </div>
               ))}
-              {data.jobs.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No import jobs yet.</p> : null}
+              {data.jobs.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No import jobs yet. Adapter jobs appear after provider import or CSV upload.</p> : null}
             </div>
           </section>
 
@@ -141,6 +232,38 @@ export default async function ProvidersPage() {
       </section>
     </PageShell>
   );
+}
+
+function PlatformPrinciple({
+  icon,
+  title,
+  detail,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <article className="premium-card p-4">
+      <div className="grid size-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+        {icon}
+      </div>
+      <h2 className="mt-4 text-lg font-semibold tracking-normal">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+    </article>
+  );
+}
+
+function statusLabel(status: string) {
+  if (status === "live") return "Live";
+  if (status === "beta") return "Beta";
+  return "Coming soon";
+}
+
+function statusTone(status: string): "green" | "amber" | "slate" {
+  if (status === "live") return "green";
+  if (status === "beta") return "amber";
+  return "slate";
 }
 
 function Mini({ label, value }: { label: string; value: number }) {

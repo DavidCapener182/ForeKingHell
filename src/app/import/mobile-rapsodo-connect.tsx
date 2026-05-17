@@ -41,7 +41,7 @@ export function MobileRapsodoConnect({
         profile: result.data.profile,
       });
       setPassword("");
-      setMessage("Rapsodo connected. Open R-Cloud sessions to choose what to import.");
+      setMessage("Provider connected. Open R-Cloud sessions to choose what to import.");
     });
   }
 
@@ -49,12 +49,12 @@ export function MobileRapsodoConnect({
     <section id="rapsodo-connect" className="rounded-lg border border-[#E5E7EB] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo R-Cloud</p>
+          <p className="text-sm font-semibold text-[#0B7A3B]">Provider sync · Rapsodo live</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal text-[#050505]">
-            {status.connected ? "Rapsodo connected" : "Log in to Rapsodo"}
+            {status.connected ? "Provider connected" : "Connect Rapsodo"}
           </h2>
           <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-            Pull your Rapsodo sessions, preview shots, confirm clubs, then import verified data into ForeKingHell.
+            Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into the shared ForeKingHell history.
           </p>
         </div>
         <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
@@ -71,7 +71,7 @@ export function MobileRapsodoConnect({
             </p>
           </div>
           <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href="/rapsodo" prefetch={false}>Open R-Cloud sessions</Link>
+            <Link href="/rapsodo" prefetch={false}>Open provider sessions</Link>
           </Button>
         </div>
       ) : (

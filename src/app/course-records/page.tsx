@@ -77,6 +77,7 @@ export default async function CourseRecordsPage() {
                 cropKey={featured.id}
                 className="block h-full min-h-0 rounded-none"
                 sizes="100vw"
+                priority
               />
             }
           />

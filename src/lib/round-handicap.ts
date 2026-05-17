@@ -228,6 +228,25 @@ export function formatHandicapValue(value: number | null) {
   return typeof value === "number" ? handicapFormatter.format(value) : "--";
 }
 
+export function handicapBandFromValue(value: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const rounded = Math.round(value);
+
+  if (rounded < 0) {
+    return "Plus / scratch";
+  }
+
+  if (rounded <= 3) {
+    return "0 - 3";
+  }
+
+  const lower = Math.floor((rounded - 1) / 3) * 3 + 1;
+  return `${lower} - ${lower + 2}`;
+}
+
 export function formatHandicapDelta(value: number | null) {
   if (typeof value !== "number") {
     return "--";

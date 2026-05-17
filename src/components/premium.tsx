@@ -31,9 +31,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 const shellWidths = {
-  "6xl": "max-w-[1500px]",
-  "7xl": "max-w-[1500px]",
-  full: "max-w-[1500px]",
+  "6xl": "max-w-none",
+  "7xl": "max-w-none",
+  wide: "max-w-none",
+  full: "max-w-none",
 };
 
 type PageShellProps = {
@@ -58,9 +59,10 @@ export function PageShell({
     >
       <div
         className={cn(
-          "mx-auto flex w-full flex-col gap-4 sm:gap-5",
+          "mx-auto flex min-w-0 w-full flex-col gap-4 sm:gap-5 [&>*]:min-w-0",
           shellWidths[size],
           contentClassName,
+          "!max-w-none",
         )}
       >
         {children}
@@ -457,7 +459,7 @@ export function MobileHorizontalRail({
   }
 
   return (
-    <section className={cn("grid gap-3 sm:hidden", className)}>
+    <section className={cn("grid min-w-0 gap-3 overflow-hidden sm:hidden", className)}>
       {title || action ? (
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
@@ -475,7 +477,7 @@ export function MobileHorizontalRail({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+      <div className="-mx-4 flex max-w-[calc(100%+2rem)] snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
         {items.map((item, index) => (
           <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
             {item}
@@ -593,7 +595,7 @@ export function MobileAccordionSection({
     <details
       open={defaultOpen}
       className={cn(
-        "group rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
+        "group min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
         className,
       )}
     >
@@ -814,7 +816,7 @@ export function DataPanel({
   id?: string;
 }) {
   return (
-    <Card id={id} className={cn("premium-card desktop-data-panel", className)}>
+    <Card id={id} className={cn("premium-card desktop-data-panel min-w-0", className)}>
       {children}
     </Card>
   );

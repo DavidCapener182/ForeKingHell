@@ -4,6 +4,7 @@ import {
   addFeedComment,
   addFeedCommentReaction,
   addFeedReaction,
+  createStatusUpdate,
   deleteFeedItem,
   deleteFeedComment,
   hideFeedItem,
@@ -15,6 +16,33 @@ import {
   removeFeedReaction,
   updateFeedItemVisibility,
 } from "@/lib/social";
+
+type StatusUpdateActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  resetKey: string;
+};
+
+export async function createStatusUpdateAction(
+  _previousState: StatusUpdateActionState,
+  formData: FormData,
+): Promise<StatusUpdateActionState> {
+  try {
+    await createStatusUpdate({
+      body: optionalString(formData, "body") ?? "",
+      imageDataUrl: optionalString(formData, "imageDataUrl"),
+      visibility: parseVisibility(formData.get("visibility"), "private"),
+    });
+
+    return { status: "success", message: "Status update posted.", resetKey: String(Date.now()) };
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Status update could not be posted.",
+      resetKey: _previousState.resetKey,
+    };
+  }
+}
 
 export async function addFeedReactionAction(formData: FormData) {
   await addFeedReaction(requiredString(formData, "feedItemId"));

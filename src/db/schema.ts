@@ -99,6 +99,12 @@ export const userProfiles = pgTable(
         practice?: "private" | "friends" | "public";
         exactShots?: "private" | "friends" | "public";
         hiddenFeedTypes?: string[];
+        profileKind?: "player" | "tour-player";
+        tourPlayer?: boolean;
+        managedProfile?: boolean;
+        allowFriendRequests?: boolean;
+        allowCompare?: boolean;
+        cbsId?: string | null;
       }>()
       .notNull()
       .default({}),

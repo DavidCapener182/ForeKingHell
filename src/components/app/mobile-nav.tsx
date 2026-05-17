@@ -112,7 +112,7 @@ export function MobileNav({
                   <SheetClose asChild>
                     <Link href="/import" prefetch={false}>
                       <Upload className="size-4" />
-                      Import CSV
+                      Import data
                     </Link>
                   </SheetClose>
                 </Button>

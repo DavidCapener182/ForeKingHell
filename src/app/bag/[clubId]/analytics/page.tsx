@@ -85,7 +85,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
         <Button asChild variant="outline">
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
-            Import CSV
+            Import data
           </Link>
         </Button>
       </div>
@@ -93,7 +93,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
       <PageHeader
         eyebrow={<StatusPill tone="sky">Advanced club analytics</StatusPill>}
         title={`${clubName} analytics`}
-        description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved Rapsodo data.`}
+        description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved launch-monitor data.`}
         actions={
           <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href={`/bag/${club.id}`} prefetch={false}>

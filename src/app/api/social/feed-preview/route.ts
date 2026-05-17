@@ -16,7 +16,7 @@ export async function GET() {
           metricLabel: item.metricLabel,
           metricValue: item.metricValue,
           context: item.context,
-          proofUrl: item.proofUrl,
+          proofUrl: item.proofUrl?.startsWith("data:image/") ? null : item.proofUrl,
           visibility: item.visibility,
           verificationLabel: item.verificationLabel,
           createdAt: item.createdAt.toISOString(),

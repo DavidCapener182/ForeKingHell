@@ -231,7 +231,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         eyebrow={<StatusPill tone="green">Course hub</StatusPill>}
         title="Courses"
         description="Open record boards, find live events, and manage the tee-set data behind round reviews and handicap estimates."
-        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" />}
+        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" priority />}
         metrics={[
           {
             label: "Courses",

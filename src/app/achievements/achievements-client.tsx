@@ -371,7 +371,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle>Trophy cabinet</CardTitle>
-              <CardDescription>Unlocked achievement tiers from Rapsodo and round data.</CardDescription>
+              <CardDescription>Unlocked achievement tiers from launch monitor and round data.</CardDescription>
             </div>
             <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-600">
               <Trophy className="size-5" />
@@ -437,7 +437,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             </div>
             {data.needsSync || isPending ? (
               <p className="text-sm text-zinc-300">
-                {isPending ? "Syncing historical rounds and Rapsodo sessions..." : "Achievement sync queued."}
+                {isPending ? "Syncing historical rounds and provider sessions..." : "Achievement sync queued."}
               </p>
             ) : null}
           </CardContent>
@@ -460,7 +460,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             </div>
             {data.recentUnlocks.length === 0 ? (
               <div className="apple-panel p-4 text-sm text-muted-foreground">
-                Import Rapsodo sessions or complete round scorecards to start unlocking.
+                Import provider sessions or complete round scorecards to start unlocking.
               </div>
             ) : null}
           </CardContent>
@@ -469,7 +469,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
 
       <section className={cn("grid gap-3 md:grid-cols-4", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
         <Metric label="Catalog" value={data.totalCount.toLocaleString("en-GB")} />
-        <Metric label="Rapsodo + round" value="Enabled" />
+        <Metric label="Provider + round" value="Enabled" />
         <Metric label="Hidden found" value={data.achievements.filter((achievement) => achievement.hidden && achievement.unlocked).length.toString()} />
         <Metric label="Completion" value={`${Math.round((data.unlockedCount / Math.max(1, data.totalCount)) * 100)}%`} />
       </section>
@@ -490,7 +490,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             <div>
               <CardTitle>Achievement catalog</CardTitle>
               <CardDescription>
-                Major badges plus generated club metric ladders from real Rapsodo and round data.
+                Major badges plus generated club metric ladders from launch monitor and round data.
               </CardDescription>
             </div>
           </div>

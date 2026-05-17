@@ -136,7 +136,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                       href={`/profile/${post.profile.username}`}
                     />
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold">{post.profile.displayName}</p>
+                      <Link href={`/profile/${post.profile.username}`} prefetch={false} className="text-sm font-semibold hover:underline">
+                        {post.profile.displayName}
+                      </Link>
                       <p className="text-xs text-muted-foreground">@{post.profile.username} · {dateFormatter.format(post.createdAt)}</p>
                     </div>
                     {post.pinned ? <Badge variant="secondary">Pinned</Badge> : null}

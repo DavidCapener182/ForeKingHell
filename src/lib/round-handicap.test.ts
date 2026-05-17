@@ -5,6 +5,7 @@ import {
   calculatePlayingHandicapSummary,
   calculateRoundDifferential,
   formatHandicapDelta,
+  handicapBandFromValue,
   normaliseHandicapRoundInput,
 } from "./round-handicap";
 
@@ -112,5 +113,12 @@ describe("round handicap", () => {
     expect(summary.sampleSize).toBe(2);
     expect(summary.usedDifferentialCount).toBe(2);
     expect(summary.methodLabel).toBe("Needs 3 eligible rounds; 2 available");
+  });
+
+  it("formats generated handicap bands from handicap estimates", () => {
+    expect(handicapBandFromValue(16.4)).toBe("16 - 18");
+    expect(handicapBandFromValue(0.2)).toBe("0 - 3");
+    expect(handicapBandFromValue(-1.1)).toBe("Plus / scratch");
+    expect(handicapBandFromValue(null)).toBeNull();
   });
 });

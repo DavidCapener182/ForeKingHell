@@ -323,7 +323,7 @@ export function ClubDetailClient({
               <p className="text-sm text-muted-foreground">
                 {orderedShots.length > 0
                   ? "Switch range to see older dispersion, trajectory, and club data."
-                  : "Import Rapsodo CSVs to unlock dispersion, trajectory, and club data."}
+                  : "Import launch-monitor shots to unlock dispersion, trajectory, and club data."}
               </p>
             </div>
           </CardContent>

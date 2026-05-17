@@ -522,6 +522,7 @@ async function persistImport(
         userId,
         sessionId: session.id,
         courseShots: input.coursePlan.shots,
+        holeScoring: input.courseHoleScoring,
         shotIdByRowNumber,
         baselineBuckets: baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
       });

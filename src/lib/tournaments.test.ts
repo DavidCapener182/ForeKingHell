@@ -5,6 +5,12 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { rankTournamentStandings } from "@/lib/tournaments";
 import {
+  isMajorTourEvent,
+  normalizeTourPlayerName,
+  parseEspnTourScores,
+  pickTourCalendarEvents,
+} from "@/lib/tour-event-sync";
+import {
   TOURNAMENT_ENTRY_TERMS_VERSION,
   hasAcceptedTournamentEntryTerms,
 } from "@/lib/tournament-entry-terms";
@@ -44,6 +50,68 @@ describe("tournament entry terms", () => {
     expect(hasAcceptedTournamentEntryTerms("accepted", TOURNAMENT_ENTRY_TERMS_VERSION)).toBe(true);
     expect(hasAcceptedTournamentEntryTerms(null, TOURNAMENT_ENTRY_TERMS_VERSION)).toBe(false);
     expect(hasAcceptedTournamentEntryTerms("accepted", "old-version")).toBe(false);
+  });
+});
+
+describe("tour event sync helpers", () => {
+  it("uses a major as the monthly event and a different tour event as the weekly event", () => {
+    const selections = pickTourCalendarEvents(
+      [
+        {
+          id: "major",
+          label: "PGA Championship",
+          startDate: "2026-05-14T07:00Z",
+          endDate: "2026-05-17T07:00Z",
+        },
+        {
+          id: "weekly",
+          label: "THE CJ CUP Byron Nelson",
+          startDate: "2026-05-21T07:00Z",
+          endDate: "2026-05-24T07:00Z",
+        },
+      ],
+      new Date("2026-05-21T12:00:00.000Z"),
+    );
+
+    expect(selections.map((selection) => [selection.kind, selection.event.id, selection.scheduledKey])).toEqual([
+      ["monthly", "major", "monthly-major-2026-05"],
+      ["weekly", "weekly", "weekly-open-2026-05-18"],
+    ]);
+  });
+
+  it("parses only completed ESPN round scores", () => {
+    const scores = parseEspnTourScores({
+      id: "event",
+      competitions: [
+        {
+          competitors: [
+            {
+              id: "9484",
+              order: 1,
+              score: "-6",
+              athlete: { displayName: "Ludvig Åberg" },
+              linescores: [
+                { period: 1, value: 67, displayValue: "-3" },
+                { period: 2, value: 69, displayValue: "-1" },
+                { period: 3, value: 0, displayValue: "-" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(scores[0]).toMatchObject({
+      externalAthleteId: "9484",
+      playerName: "Ludvig Åberg",
+      totalScore: "-6",
+      roundScores: [
+        { roundNumber: 1, grossScore: 67, displayScore: "-3" },
+        { roundNumber: 2, grossScore: 69, displayScore: "-1" },
+      ],
+    });
+    expect(normalizeTourPlayerName("Ludvig Åberg Jr.")).toBe("ludvig aberg");
+    expect(isMajorTourEvent("U.S. Open")).toBe(true);
   });
 });
 
