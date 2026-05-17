@@ -104,7 +104,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           <OAuthButton
             icon={<AppleIcon />}
             label="Continue with Apple"
-            className="border-slate-950 bg-slate-950 text-white hover:bg-black hover:text-white"
+            className="border-black bg-black text-white hover:bg-black/90 hover:text-white"
           />
         </form>
       </div>
@@ -162,7 +162,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
 function OAuthButton({
   icon,
   label,
-  className = "border-slate-200 bg-white text-slate-950 hover:bg-slate-50 hover:text-slate-950",
+  className = "border-[#DADCE0] bg-white text-[#3C4043] hover:bg-white hover:text-[#202124]",
 }: {
   icon: ReactNode;
   label: string;
