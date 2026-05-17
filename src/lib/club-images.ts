@@ -31,6 +31,8 @@ const brandLogoDomains: Record<string, string> = {
   cleveland: "clevelandgolf.com",
   cobra: "cobragolf.com",
   honma: "honmagolf.com",
+  macgreggor: "macgregorgolf.com",
+  macgregor: "macgregorgolf.com",
   mizuno: "mizunogolf.com",
   miura: "miuragolf.com",
   nike: "nike.com",
@@ -40,11 +42,22 @@ const brandLogoDomains: Record<string, string> = {
   srixon: "srixon.com",
   "scotty cameron": "scottycameron.com",
   taylormade: "taylormadegolf.com",
-  titleist: "titleist.co.uk",
+  titleist: "titleist.com",
   "tour edge": "touredge.com",
   wilson: "wilson.com",
   xxio: "xxiogolf.com",
   yonex: "yonex.com",
+};
+
+const brandLogoAliases: Record<string, string> = {
+  macgreggor: "macgregor",
+  macgreoor: "macgregor",
+  "mac gregor": "macgregor",
+  scottycameron: "scotty cameron",
+  taylormade: "taylormade",
+  "taylor made": "taylormade",
+  titlest: "titleist",
+  titlist: "titleist",
 };
 
 export function clubArtworkPath(
@@ -99,35 +112,64 @@ export function buildBrandLogoSearchQuery(brand: string | null | undefined) {
 }
 
 export function brandLogoIconUrl(brand: string | null | undefined) {
-  const domain = brandDomain(brand);
-
-  if (!domain) {
-    return null;
-  }
-
-  const url = new URL("https://www.google.com/s2/favicons");
-  url.searchParams.set("domain", domain);
-  url.searchParams.set("sz", "256");
-
-  return url.toString();
+  return brandLogoIconUrls(brand)[0] ?? null;
 }
 
-function brandDomain(brand: string | null | undefined) {
+export function brandLogoIconUrls(brand: string | null | undefined) {
+  return brandDomainCandidates(brand).map((domain) => {
+    const url = new URL("https://www.google.com/s2/favicons");
+    url.searchParams.set("domain", domain);
+    url.searchParams.set("sz", "256");
+
+    return url.toString();
+  });
+}
+
+function brandDomainCandidates(brand: string | null | undefined) {
   const normalized = normalizeBrandKey(brand);
 
   if (!normalized) {
-    return null;
+    return [];
   }
 
-  if (brandLogoDomains[normalized]) {
-    return brandLogoDomains[normalized];
+  const domains: string[] = [];
+  const compact = compactBrandKey(normalized);
+  const lookupKeys = [
+    normalized,
+    compact,
+    brandLogoAliases[normalized],
+    brandLogoAliases[compact],
+  ].filter((key): key is string => Boolean(key));
+
+  for (const lookupKey of [...new Set(lookupKeys)]) {
+    if (brandLogoDomains[lookupKey]) {
+      domains.push(brandLogoDomains[lookupKey]);
+    }
   }
 
   const fuzzyKey = Object.keys(brandLogoDomains).find(
-    (key) => normalized.includes(key) || key.includes(normalized),
+    (key) =>
+      normalized.includes(key) ||
+      key.includes(normalized) ||
+      compact.includes(compactBrandKey(key)) ||
+      compactBrandKey(key).includes(compact),
   );
 
-  return fuzzyKey ? brandLogoDomains[fuzzyKey] : null;
+  if (fuzzyKey) {
+    domains.push(brandLogoDomains[fuzzyKey]);
+  }
+
+  const hyphenated = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  if (compact) {
+    domains.push(`${compact}golf.com`, `${compact}.com`);
+  }
+
+  if (hyphenated && hyphenated !== compact) {
+    domains.push(`${hyphenated}golf.com`, `${hyphenated}.com`);
+  }
+
+  return [...new Set(domains)];
 }
 
 function formatSearchClubType(value: string | null | undefined) {
@@ -160,4 +202,8 @@ function normalizeBrandKey(value: string | null | undefined) {
     .replace(/golf\b/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim() ?? null;
+}
+
+function compactBrandKey(value: string) {
+  return value.replace(/[^a-z0-9]+/g, "");
 }
