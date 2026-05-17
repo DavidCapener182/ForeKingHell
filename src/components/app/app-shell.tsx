@@ -109,7 +109,7 @@ export function AppShell({
                           tooltip={item.label}
                           className={cn(
                             active &&
-                              "bg-sidebar-accent text-sidebar-accent-foreground",
+                              "bg-primary/8 font-medium text-primary hover:bg-primary/10 hover:text-primary",
                           )}
                         >
                           <Link

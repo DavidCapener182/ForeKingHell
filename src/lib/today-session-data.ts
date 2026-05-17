@@ -520,7 +520,7 @@ function buildOverallComparison(
     return {
       verdict: "new",
       title: "Baseline still building",
-      summary: "Today is visible, but there are not enough previous shots for the same clubs to call better or worse yet.",
+      summary: "This practice day is visible, but there are not enough previous shots for the same clubs to call better or worse yet.",
       today,
       previous,
       carryDeltaYd,
@@ -719,7 +719,7 @@ function clubSummary({
   previousShotCount: number;
 }) {
   if (verdict === "new") {
-    return previousShotCount > 0 ? "Need a few more today shots for a fair call." : "No previous baseline for this club yet.";
+    return previousShotCount > 0 ? "Need a few more review shots for a fair call." : "No previous baseline for this club yet.";
   }
 
   const signals = [

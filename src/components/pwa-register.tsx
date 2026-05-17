@@ -204,6 +204,7 @@ export function PwaRegister() {
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
+    pathname.startsWith("/today") ||
     dismissed ||
     (!installPrompt && !updateReady && isOnline && pendingOfflineActions === 0 && !syncMessage)
   ) {

@@ -4,10 +4,13 @@ import { ArrowLeft, Upload } from "lucide-react";
 import { and, desc, eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
+import { BagFeaturePanel } from "@/components/features/feature-panels";
+import { PageShell } from "@/components/premium";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { type AnalysisShot } from "./club-analysis-tabs";
 import { ClubDetailClient } from "./club-detail-client";
 
@@ -21,15 +24,14 @@ type PageProps = {
 
 export default async function ClubDetailPage({ params }: PageProps) {
   const { clubId } = await params;
-  const club = await getClubDetail(clubId);
+  const [club, featureData] = await Promise.all([getClubDetail(clubId), getFeatureIdeasData()]);
 
   if (!club) {
     notFound();
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-none flex-col gap-6">
+    <PageShell>
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/bag">
@@ -40,14 +42,14 @@ export default async function ClubDetailPage({ params }: PageProps) {
           <Button asChild variant="outline">
             <Link href="/import">
               <Upload className="size-4" />
-              Import data
+              Import CSV
             </Link>
           </Button>
         </div>
 
         <ClubDetailClient club={club} />
-      </div>
-    </main>
+        <BagFeaturePanel data={featureData} />
+    </PageShell>
   );
 }
 

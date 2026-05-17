@@ -9,6 +9,7 @@ const networkMigration = readFileSync(join(process.cwd(), "drizzle/0015_network_
 const adminMigration = readFileSync(join(process.cwd(), "drizzle/0016_admin_ops.sql"), "utf8");
 const commentReactionMigration = readFileSync(join(process.cwd(), "drizzle/0017_feed_comment_reactions.sql"), "utf8");
 const recordsTournamentsMigration = readFileSync(join(process.cwd(), "drizzle/0020_course_records_tournaments.sql"), "utf8");
+const featureFoundationsMigration = readFileSync(join(process.cwd(), "drizzle/0022_feature_foundations.sql"), "utf8");
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -167,5 +168,24 @@ describe("RLS migration", () => {
     expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_record_evidence_select_attempt_owner_or_admin"');
     expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournament_evidence_select_submission_owner_or_admin"');
     expect(recordsTournamentsMigration).toContain("public.fkh_can_read_course(course)");
+  });
+
+  it("keeps feature idea state user-owned behind RLS", () => {
+    for (const table of [
+      "fkh_shot_saved_views",
+      "fkh_practice_sessions",
+      "fkh_course_record_goals",
+      "fkh_course_follows",
+      "fkh_user_feature_preferences",
+      "fkh_weekly_recaps",
+    ]) {
+      expect(featureFoundationsMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+    }
+
+    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_practice_sessions_owner_all"');
+    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_course_record_goals_owner_all"');
+    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_user_feature_preferences_owner_all"');
+    expect(featureFoundationsMigration).toContain("auth.uid() IS NOT NULL");
+    expect(featureFoundationsMigration).toContain('"user_id" = auth.uid()');
   });
 });

@@ -55,8 +55,8 @@ export function MobileNav({
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.5rem+env(safe-area-inset-top))] border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur sm:hidden">
-        <div className="relative flex h-14 items-center">
+      <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-border bg-white/98 px-4 pt-[env(safe-area-inset-top)] sm:hidden">
+        <div className="relative flex h-[3.25rem] items-center">
           <Sheet>
             <SheetTrigger asChild>
               <Button
@@ -132,12 +132,12 @@ export function MobileNav({
           <Link
             href="/dashboard"
             aria-label="ForeKingHell dashboard"
-            className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1.5 items-center justify-center truncate text-center text-[1.05rem] font-semibold leading-none tracking-normal text-foreground"
+            className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1 items-center justify-center truncate text-center text-[1.02rem] font-semibold leading-none tracking-normal text-foreground"
           >
             ForeKingHell
           </Link>
 
-          <Button asChild variant="secondary" className="relative z-10 ml-auto h-10 rounded-full px-3">
+          <Button asChild variant="secondary" className="relative z-10 ml-auto h-9 rounded-full px-3">
             <Link
               href="/achievements"
               aria-label={`Level ${level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
@@ -154,7 +154,7 @@ export function MobileNav({
         aria-label="Mobile primary"
         className="fixed inset-x-0 bottom-0 z-40 sm:hidden"
       >
-        <div className="grid grid-cols-5 border-t border-border bg-background/96 px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)] backdrop-blur">
+        <div className="grid grid-cols-5 border-t border-border bg-white/98 px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
@@ -168,7 +168,7 @@ export function MobileNav({
                 className={cn(
                   "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] transition-colors",
                   active
-                    ? "bg-primary/8 font-semibold text-primary"
+                    ? "font-semibold text-primary"
                     : "font-medium text-muted-foreground hover:bg-muted",
                 )}
               >

@@ -12,6 +12,14 @@ export type PageArtworkVariant =
   | "equipment"
   | "achievements"
   | "import"
+  | "handicap"
+  | "courseRecords"
+  | "feedEmpty"
+  | "profileTrophy"
+  | "providerRapsodo"
+  | "providerSquare"
+  | "providerTrackman"
+  | "tourCover"
   | "progress"
   | "rounds"
   | "stockYardages";
@@ -25,10 +33,18 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   hole: greenComplexArtwork,
   range: "/assets/page-today.png",
   scorecard: greenComplexArtwork,
-  coach: greenComplexArtwork,
+  coach: "/assets/page-coach-drill-board.webp",
   equipment: "/assets/clubs/panel/driver-side.png",
-  achievements: greenComplexArtwork,
-  import: greenComplexArtwork,
+  achievements: "/assets/page-achievements.png",
+  import: "/assets/page-import-rapsodo.webp",
+  handicap: "/assets/page-handicap-scorecard.webp",
+  courseRecords: "/assets/page-course-records-honours.webp",
+  feedEmpty: "/assets/feed-empty-state.webp",
+  profileTrophy: "/assets/profile-trophy-shelf.webp",
+  providerRapsodo: "/assets/provider-rapsodo-device.webp",
+  providerSquare: "/assets/provider-square-device.webp",
+  providerTrackman: "/assets/provider-trackman-radar.webp",
+  tourCover: "/assets/tour-covers/tour-cover-01.webp",
   progress: "/assets/page-progress.png",
   rounds: "/assets/page-rounds.png",
   stockYardages: "/assets/page-stock-yardages.png",
@@ -59,6 +75,14 @@ const overlayByVariant: Record<PageArtworkVariant, string> = {
   equipment: "from-white/85 via-white/45 to-slate-100/30",
   achievements: "from-white/70 via-amber-50/30 to-emerald-50/20",
   import: "from-white/75 via-white/30 to-sky-50/20",
+  handicap: "from-white/72 via-amber-50/20 to-emerald-50/20",
+  courseRecords: "from-white/58 via-amber-50/18 to-emerald-950/12",
+  feedEmpty: "from-white/78 via-sky-50/22 to-emerald-50/20",
+  profileTrophy: "from-white/68 via-amber-50/24 to-emerald-50/20",
+  providerRapsodo: "from-white/74 via-white/25 to-red-50/24",
+  providerSquare: "from-white/74 via-slate-50/28 to-sky-50/18",
+  providerTrackman: "from-white/74 via-orange-50/20 to-emerald-50/18",
+  tourCover: "from-black/8 via-transparent to-black/30",
   progress: "from-white/70 via-emerald-50/25 to-sky-50/25",
   rounds: "from-white/60 via-white/20 to-sky-50/20",
   stockYardages: "from-white/70 via-white/35 to-emerald-50/25",
@@ -84,17 +108,19 @@ export function PageArtwork({
   sizes?: string;
 }) {
   const resolvedTreatment = resolveImageTreatment(variant, crop, cropKey);
+  const src = resolveArtworkSource(variant, cropKey);
 
   return (
     <div
+      data-media-container
       className={cn(
-        "pointer-events-none relative hidden h-full min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F5F6F4] md:block",
+        "pointer-events-none relative hidden aspect-[16/9] h-full min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F5F6F4] md:block",
         className,
       )}
       aria-hidden={alt === ""}
     >
       <Image
-        src={artworkByVariant[variant]}
+        src={src}
         alt={alt}
         fill
         loading={priority ? "eager" : "lazy"}
@@ -129,16 +155,18 @@ export function MobileVisualCard({
   cropKey?: string | number;
 }) {
   const resolvedTreatment = resolveImageTreatment(variant, crop, cropKey);
+  const src = resolveArtworkSource(variant, cropKey);
 
   return (
     <div
+      data-media-container
       className={cn(
         "relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 p-3 shadow-sm sm:hidden",
         className,
       )}
     >
       <Image
-        src={artworkByVariant[variant]}
+        src={src}
         alt=""
         fill
         sizes="100vw"
@@ -159,6 +187,15 @@ export function MobileVisualCard({
   );
 }
 
+function resolveArtworkSource(variant: PageArtworkVariant, cropKey?: string | number) {
+  if (variant !== "tourCover") {
+    return artworkByVariant[variant];
+  }
+
+  const index = (hashKey(cropKey ?? "tourCover") % 10) + 1;
+  return `/assets/tour-covers/tour-cover-${String(index).padStart(2, "0")}.webp`;
+}
+
 function resolveImageTreatment(
   variant: PageArtworkVariant,
   crop?: PageArtworkCrop,
@@ -176,14 +213,18 @@ function resolveImageTreatment(
 }
 
 function pickCrop(key: string | number) {
+  return cropOptions[hashKey(key) % cropOptions.length];
+}
+
+function hashKey(key: string | number) {
   const text = String(key);
   let hash = 0;
 
   for (let index = 0; index < text.length; index += 1) {
-    hash = (hash * 31 + text.charCodeAt(index)) % cropOptions.length;
+    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
   }
 
-  return cropOptions[hash];
+  return hash;
 }
 
 export function ShotTraceMotif({ className }: { className?: string }) {

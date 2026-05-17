@@ -44,7 +44,7 @@ export const navGroups: AppNavGroup[] = [
     items: [
       {
         href: "/today",
-        label: "Today",
+        label: "Latest practice",
         icon: CalendarDays,
         isActive: (pathname) => pathname.startsWith("/today"),
       },

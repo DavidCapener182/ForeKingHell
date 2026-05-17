@@ -135,7 +135,7 @@
   .premium-card {
     min-width: 0;
     border-color: var(--surface-border);
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
     background: var(--surface);
     box-shadow: var(--surface-shadow-soft);
   }
@@ -158,7 +158,7 @@
     min-width: 0;
     border-color: var(--surface-border);
     box-shadow: var(--surface-shadow-soft);
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
   }
 
   [data-slot="button"].bg-\[\#111827\] {
@@ -192,7 +192,7 @@
   .premium-hero {
     overflow: hidden;
     border: 1px solid #d9ded8;
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     background: #ffffff;
     box-shadow: var(--surface-shadow-soft);
   }
@@ -200,7 +200,7 @@
   .desktop-page-header {
     overflow: hidden;
     border: 1px solid #d9ded8;
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     padding: 1.5rem;
     background: #ffffff;
     box-shadow: var(--surface-shadow-soft);
@@ -212,7 +212,7 @@
 
   @media (min-width: 641px) {
     .desktop-data-panel {
-      border-radius: 0.875rem;
+      border-radius: 0.5rem;
       border-color: #d9ded8;
       background: #ffffff;
     }
@@ -253,19 +253,19 @@
 
   .soft-panel {
     border: 1px solid var(--surface-border);
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
     background: var(--surface-soft);
   }
 
   .apple-panel {
     border: 1px solid var(--surface-border);
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
     background: var(--surface-soft);
   }
 
   .apple-panel-strong {
     border: 1px solid var(--surface-border);
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
     background: var(--surface-strong);
     box-shadow: var(--surface-shadow-soft);
   }
@@ -285,13 +285,13 @@
 
     .premium-hero {
       border: 1px solid var(--surface-border);
-      border-radius: 1rem;
+      border-radius: 0.75rem;
       background: #ffffff;
     }
 
     .desktop-page-header {
       border: 1px solid var(--surface-border);
-      border-radius: 1rem;
+      border-radius: 0.75rem;
       padding: 1rem;
       background: #ffffff;
     }
@@ -302,7 +302,7 @@
   }
 
   .data-table-scroll {
-    border-radius: 0.875rem;
+    border-radius: 0.5rem;
     background: #ffffff;
     border: 1px solid var(--surface-border);
   }
@@ -312,6 +312,10 @@
   }
 
   .data-table-scroll th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #ffffff;
     color: #6b7280;
     font-size: 0.74rem;
     letter-spacing: 0;
@@ -319,6 +323,10 @@
 
   .data-table-scroll td {
     color: #111827;
+  }
+
+  .data-table-scroll tbody tr:nth-child(even) {
+    background: #fafafa;
   }
 
   .chart-frame {

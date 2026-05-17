@@ -3,6 +3,7 @@ import { ArrowLeft, Filter, MapPinned, Plus, RefreshCw, Route, Search, Settings,
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 
 import { seedKnownCoursesAction } from "@/app/courses/actions";
+import { CourseFollowFeaturePanel } from "@/components/features/feature-panels";
 import {
   ActiveFilterChips,
   DataPair,
@@ -45,6 +46,7 @@ import {
 import { courseRecordResults, courseRecords, courses, holes, sessions, teeSets, userProfiles } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +58,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
   const params = await searchParams;
   const query = first(params.q).trim().slice(0, 80);
   const activeTab = parseCourseTab(first(params.tab));
-  const data = await getCoursesData();
+  const [data, featureData] = await Promise.all([getCoursesData(), getFeatureIdeasData()]);
   const displayedCourses = query
     ? data.courses.filter((course) =>
         [course.name, course.country, course.provider].some((value) =>
@@ -123,6 +125,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             </Button>
           }
         />
+        <CourseFollowFeaturePanel data={featureData} courseId={displayedCourses[0]?.id ?? null} />
         {activeTab === "manage" ? (
           <NativeListSection
             title="Course management"
@@ -264,6 +267,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
           { label: "Rounds", value: integerFormatter.format(data.roundCount), detail: "Linked", tone: "slate" },
         ]}
       />
+
+      <CourseFollowFeaturePanel data={featureData} courseId={displayedCourses[0]?.id ?? null} />
 
       <div className="grid gap-3 sm:hidden">
         <MobileFilterSheet label="Search courses" activeCount={query ? 1 : 0}>

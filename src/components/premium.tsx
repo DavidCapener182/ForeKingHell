@@ -53,12 +53,13 @@ export function PageShell({
   return (
     <main
       className={cn(
-        "min-h-screen px-4 py-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
+        "min-h-screen px-4 py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
         className,
       )}
     >
       <div
         className={cn(
+          // Keep app content full-width; see AGENTS.md layout contract.
           "mx-auto flex min-w-0 w-full flex-col gap-4 sm:gap-5 [&>*]:min-w-0",
           shellWidths[size],
           contentClassName,
@@ -101,47 +102,42 @@ export function PageHeader({
   return (
     <>
       <header
-        className={cn("premium-hero grid gap-3 p-4 sm:hidden", className)}
+        className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <div className="min-w-0">
             {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-            <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance">
+            <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance">
               {title}
             </h1>
-            {description ? (
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {description && !primaryMetric && !actions ? (
+              <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
                 {description}
               </p>
             ) : null}
           </div>
           {visual ? (
-            <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl">
+            <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg">
               {visual}
             </div>
           ) : null}
         </div>
         {primaryMetric || actions ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
             {primaryMetric ? (
               <div className="min-w-0">
-                <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {primaryMetric.label}
                 </p>
-                <p className="mt-1 truncate text-2xl font-semibold tracking-normal">
+                <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
                   {primaryMetric.value}
                 </p>
-                {primaryMetric.detail ? (
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {primaryMetric.detail}
-                  </p>
-                ) : null}
               </div>
             ) : (
               <span aria-hidden />
             )}
             {actions ? (
-              <div className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11">
+              <div data-primary-action className="flex max-w-36 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
                 {actions}
               </div>
             ) : null}
@@ -214,7 +210,6 @@ export function MobileCompactPageHeader({
   description,
   metricLabel,
   metricValue,
-  metricDetail,
   action,
   visual,
   className,
@@ -230,46 +225,41 @@ export function MobileCompactPageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("premium-hero grid gap-3 p-4 sm:hidden", className)}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+    <header className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <div className="min-w-0">
           {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-          <h1 className="text-2xl font-semibold leading-tight tracking-normal text-balance">
+          <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance">
             {title}
           </h1>
-          {description ? (
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
+          {description && !metricLabel && !action ? (
+            <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
               {description}
             </p>
           ) : null}
         </div>
         {visual ? (
-          <div className="h-14 w-16 shrink-0 overflow-hidden rounded-xl">
+          <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg">
             {visual}
           </div>
         ) : null}
       </div>
       {metricLabel || action ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
           {metricLabel ? (
             <div className="min-w-0">
-              <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {metricLabel}
               </p>
-              <p className="mt-1 truncate text-2xl font-semibold tracking-normal">
+              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
                 {metricValue}
               </p>
-              {metricDetail ? (
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                  {metricDetail}
-                </p>
-              ) : null}
             </div>
           ) : (
             <span aria-hidden />
           )}
           {action ? (
-            <div className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-11">
+            <div data-primary-action className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
               {action}
             </div>
           ) : null}
@@ -322,10 +312,11 @@ export function StickyMobileAction({
     <div
       className={cn(
         "fixed inset-x-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 sm:hidden",
+        "pointer-events-none",
         className,
       )}
     >
-      <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div data-sticky-mobile-action className="pointer-events-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
         {children}
       </div>
     </div>
@@ -443,7 +434,7 @@ export function MobileHorizontalRail({
   description,
   action,
   className,
-  itemClassName = "min-w-[82vw]",
+  itemClassName = "min-w-[78vw] max-w-[22rem]",
 }: {
   children: ReactNode;
   title?: ReactNode;
@@ -459,7 +450,7 @@ export function MobileHorizontalRail({
   }
 
   return (
-    <section className={cn("grid min-w-0 gap-3 overflow-hidden sm:hidden", className)}>
+    <section className={cn("grid gap-3 sm:hidden", className)}>
       {title || action ? (
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
@@ -477,7 +468,7 @@ export function MobileHorizontalRail({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className="-mx-4 flex max-w-[calc(100%+2rem)] snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
         {items.map((item, index) => (
           <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
             {item}
@@ -595,7 +586,7 @@ export function MobileAccordionSection({
     <details
       open={defaultOpen}
       className={cn(
-        "group min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
+        "group rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
         className,
       )}
     >
@@ -816,7 +807,7 @@ export function DataPanel({
   id?: string;
 }) {
   return (
-    <Card id={id} className={cn("premium-card desktop-data-panel min-w-0", className)}>
+    <Card id={id} className={cn("premium-card desktop-data-panel", className)}>
       {children}
     </Card>
   );
@@ -1239,7 +1230,7 @@ export function EmptyState({
       title={title}
       description={description}
       action={action}
-      className="apple-panel min-h-64"
+      className="apple-panel min-h-44 sm:min-h-64"
     />
   );
 }

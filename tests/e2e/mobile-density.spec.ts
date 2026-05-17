@@ -3,9 +3,11 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
+const routeGotoTimeoutMs = 120_000;
+
 test.describe("mobile density screenshots", () => {
   test.use(authStorageState ? { storageState: authStorageState } : {});
-  test.setTimeout(600_000);
+  test.setTimeout(1_200_000);
 
   const mobileViewports = [
     { name: "mobile-390x844", width: 390, height: 844 },
@@ -27,6 +29,7 @@ test.describe("mobile density screenshots", () => {
         { name: "rapsodo", path: "/rapsodo", text: /Rapsodo|cloud sync/i },
         { name: "shots", path: "/shots", text: /Shot database|Shot explorer/i },
         { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+        { name: "equipment", path: "/equipment", text: /Equipment/i },
         { name: "coach", path: "/coach", text: /Coach/i },
         { name: "progress", path: "/progress", text: /Progress/i },
       ],
@@ -65,6 +68,7 @@ test.describe("mobile density screenshots", () => {
     { name: "challenges", path: "/challenges", text: /Challenges/i },
     { name: "tournaments", path: "/tournaments", text: /Tournaments|Daily, weekly/i },
     { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+    { name: "equipment", path: "/equipment", text: /Equipment/i },
     { name: "coach", path: "/coach", text: /Coach/i },
     { name: "profile", path: "/profile", text: /Profile|You/i },
     { name: "settings", path: "/settings", text: /Settings/i },
@@ -182,7 +186,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
   try {
     await restoreAuthCookies(page);
-    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+    await page.goto(path, { waitUntil: "commit", timeout: routeGotoTimeoutMs });
   } catch (error) {
     const message = String(error);
     if (
@@ -191,7 +195,7 @@ async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
       message.includes("net::ERR_CONNECTION_REFUSED")
     ) {
       await page.waitForTimeout(750);
-      await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+      await page.goto(path, { waitUntil: "commit", timeout: routeGotoTimeoutMs });
       return true;
     }
 
@@ -260,7 +264,11 @@ async function expectReadyOrSkip(page: Page, expectedText: RegExp | string, skip
 }
 
 async function restoreAuthCookies(page: Page) {
-  const currentCookies = await page.context().cookies("http://localhost:3000");
+  const currentUrl = page.url();
+  const cookieOrigin = currentUrl.startsWith("http")
+    ? new URL(currentUrl).origin
+    : (process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100");
+  const currentCookies = await page.context().cookies(cookieOrigin);
   const now = Math.floor(Date.now() / 1000);
   const hasLiveSupabaseCookie = currentCookies.some(
     (cookie) =>

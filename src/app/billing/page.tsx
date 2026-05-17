@@ -28,26 +28,36 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     <PageShell size="7xl">
       <MobileRouteHeader title="Platform" group="platform" activeKey="billing" />
 
-      <header className="premium-hero p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+      <header className="premium-hero p-3 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <StatusPill tone="sky">Pricing</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Choose the plan for your golf network</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">Choose the plan for your golf network</h1>
+            <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
               Social basics stay free. Upgrade when you need deeper analytics, AI coaching, private leagues, provider adapters or coach/club tools.
             </p>
           </div>
-          {data.latestSubscription ? (
-            <Badge variant="secondary" className="gap-1">
+          <div className="grid shrink-0 gap-2">
+            {data.latestSubscription ? (
+              <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
+                <CreditCard className="size-3" />
+                Current plan: {planLabel(data.plans, data.activePlanKey)}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="hidden gap-1 sm:inline-flex">
               <CreditCard className="size-3" />
-              Current plan: {planLabel(data.plans, data.activePlanKey)}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1">
-            <CreditCard className="size-3" />
-              Free plan
-            </Badge>
-          )}
+                Free plan
+              </Badge>
+            )}
+            <div data-primary-action>
+              <Button asChild size="sm" variant="outline" className="w-full rounded-lg bg-white">
+                <a href="#plans">
+                  <Sparkles className="size-4" />
+                  Compare plans
+                </a>
+              </Button>
+            </div>
+          </div>
         </div>
         {params?.checkout || params?.portal ? (
           <div className="mt-4 rounded-lg border bg-[#F5F6F4] px-4 py-3 text-sm text-muted-foreground">
@@ -57,7 +67,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       </header>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <main className="grid gap-4 md:grid-cols-2">
+        <main id="plans" className="grid scroll-mt-28 gap-4 md:grid-cols-2">
           {visiblePlans.map((plan) => (
             <PlanCard
               key={plan.key}
@@ -107,7 +117,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Manage access</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Billing changes update plan entitlements through the Stripe webhook. Social privacy stays controlled from your profile.
+              Plan changes update access automatically. Social privacy stays controlled from your profile.
             </p>
             <div className="mt-3 grid gap-2">
               <Button asChild variant="outline" className="w-full">
@@ -201,23 +211,23 @@ function Price({ label: priceLabel, value }: { label: string; value: string }) {
 
 function billingStatusMessage(checkout?: string, portal?: string, plan?: string) {
   if (portal === "not-configured") {
-    return "Stripe Billing Portal is not configured yet. Add STRIPE_SECRET_KEY and enable the customer portal in Stripe.";
+    return "Account management is not available in this environment yet.";
   }
 
   if (portal === "missing-customer") {
-    return "No Stripe customer is linked to this account yet. Start checkout first, then the webhook can attach the customer ID.";
+    return "Start checkout first, then plan management will be available here.";
   }
 
   if (portal === "error") {
-    return "Stripe Billing Portal could not be opened.";
+    return "Plan management could not be opened.";
   }
 
   if (checkout === "not-configured") {
-    return `Stripe price IDs are not configured for ${plan ?? "that plan"} yet. Add STRIPE_SECRET_KEY and the matching STRIPE_*_PRICE_ID values.`;
+    return `${plan ?? "That plan"} is not available for checkout in this environment yet.`;
   }
 
   if (checkout === "success") {
-    return "Checkout completed. Subscription state will update after the Stripe webhook records the entitlement.";
+    return "Checkout completed. Your plan access will update shortly.";
   }
 
   if (checkout === "cancelled") {

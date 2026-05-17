@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" role="img" aria-label="Shot trace">
+  <rect width="720" height="320" rx="32" fill="#f5f6f4"/>
+  <path d="M48 250 C172 136 334 72 642 60" fill="none" stroke="#0B7A3B" stroke-width="9" stroke-linecap="round" stroke-dasharray="18 16"/>
+  <path d="M62 256 C198 226 394 214 672 260" fill="none" stroke="#0B7A3B" stroke-width="26" stroke-linecap="round" opacity="0.12"/>
+  <circle cx="642" cy="60" r="15" fill="#0B7A3B"/>
+  <circle cx="488" cy="82" r="9" fill="#0B7A3B" opacity="0.45"/>
+  <circle cx="328" cy="132" r="7" fill="#0B7A3B" opacity="0.3"/>
+</svg>

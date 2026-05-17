@@ -12,18 +12,20 @@ import {
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
+import { CourseRecordFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell, StatusPill } from "@/components/premium";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCourseRecordsHubData, verificationTierLabel } from "@/lib/course-records";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export default async function CourseRecordsPage() {
-  const data = await getCourseRecordsHubData();
+  const [data, featureData] = await Promise.all([getCourseRecordsHubData(), getFeatureIdeasData()]);
   const featured = data.courses.find((course) => course.champion) ?? data.courses[0] ?? null;
 
   return (
@@ -71,7 +73,7 @@ export default async function CourseRecordsPage() {
             meta={<span>{featured.recordCount} boards · {featured.liveAttemptCount} live attempts</span>}
             media={
               <PageArtwork
-                variant="fairway"
+                variant="courseRecords"
                 alt=""
                 crop="random"
                 cropKey={featured.id}
@@ -100,6 +102,7 @@ export default async function CourseRecordsPage() {
             </p>
           ) : null}
         </NativeListSection>
+        <CourseRecordFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-3 sm:flex">
@@ -137,7 +140,7 @@ export default async function CourseRecordsPage() {
             {featured ? (
               <Link href={`/courses/${featured.id}/records`} prefetch={false} className="mt-3 block">
                 <PageArtwork
-                  variant="fairway"
+                  variant="courseRecords"
                   alt=""
                   crop="random"
                   cropKey={featured.id}
@@ -158,6 +161,8 @@ export default async function CourseRecordsPage() {
         </div>
       </header>
 
+      <CourseRecordFeaturePanel data={featureData} />
+
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data.courses.map((course) => (
           <Link
@@ -167,7 +172,7 @@ export default async function CourseRecordsPage() {
             className="premium-card p-4 transition hover:border-emerald-300"
           >
             <PageArtwork
-              variant="fairway"
+              variant="courseRecords"
               alt=""
               crop="random"
               cropKey={course.id}

@@ -33,7 +33,7 @@ export function MobileAppShell({ children, className }: MobileAppShellProps) {
   return (
     <section
       className={cn(
-        "-mx-4 -mt-5 grid min-h-screen content-start gap-4 overflow-x-clip bg-white px-4 pb-[calc(7.25rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
+        "-mx-4 -mt-5 grid min-h-dvh content-start gap-4 overflow-x-clip bg-white px-4 pb-[calc(8.25rem+env(safe-area-inset-bottom))] pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
         className,
       )}
     >
@@ -58,12 +58,12 @@ export function MobileTopBar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.75rem+env(safe-area-inset-top))] h-[calc(6.75rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]",
+        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.5rem+env(safe-area-inset-top))] h-[calc(6.1rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))]",
         className,
       )}
     >
-      <div className="h-12" aria-hidden="true" />
-      <div className="-mx-4 grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#E5E7EB] px-4">
+      <div className="h-11" aria-hidden="true" />
+      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#E5E7EB] px-4">
         <div className="flex min-w-0 items-center justify-start gap-1.5">
           {leading}
         </div>
@@ -109,7 +109,7 @@ export type MobileTab = {
 
 const mobileRouteGroups = {
   dashboard: [
-    { key: "today", label: "Today", href: "/today" },
+    { key: "today", label: "Latest", href: "/today" },
     { key: "dashboard", label: "Dashboard", href: "/dashboard" },
     { key: "progress", label: "Progress", href: "/progress" },
     { key: "strokes", label: "Strokes gained", href: "/strokes-gained" },
@@ -167,7 +167,7 @@ export function MobileRouteTabs({
       activeKey={activeKey}
       className={cn(
         sticky
-          ? "sticky top-[calc(6.75rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
+          ? "sticky top-[calc(6.1rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
           : "",
         className,
       )}
@@ -189,12 +189,12 @@ export function MobileRouteHeader({
   return (
     <section
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden",
+        "sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:hidden",
         className,
       )}
     >
-      <div className="-mx-4 h-12 px-4" aria-hidden="true" />
-      <header className="-mx-4 grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
+      <div className="-mx-4 h-11 px-4" aria-hidden="true" />
+      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
         <span aria-hidden="true" />
         <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
           {title}
@@ -271,7 +271,7 @@ export function MobileStatusAction({
           </p>
         ) : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div data-primary-action className="shrink-0">{action}</div> : null}
     </section>
   );
 }
@@ -449,7 +449,7 @@ export function ActivityCard({
             <ProofBadge tier="gold" />
           </div>
         ) : null}
-        {media ? <div className="overflow-hidden rounded-lg">{media}</div> : null}
+        {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg">{media}</div> : null}
         <div className="flex items-center gap-5 text-sm font-semibold text-[#6B7280]">
           <span className="inline-flex items-center gap-1.5">
             <ThumbsUp className="size-4" />
@@ -500,7 +500,7 @@ export function EventHeroCard({
 }) {
   return (
     <article className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
-      {media ? <div className="h-40 overflow-hidden bg-[#F5F6F4]">{media}</div> : null}
+      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden bg-[#F5F6F4]">{media}</div> : null}
       <div className="grid gap-3 p-3">
         {eyebrow ? (
           <p className="text-sm font-semibold text-[#0B7A3B]">{eyebrow}</p>
@@ -537,6 +537,7 @@ export function ChallengeCard({
   leader,
   href,
   cta = "Open",
+  media,
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -544,6 +545,7 @@ export function ChallengeCard({
   leader?: ReactNode;
   href: string;
   cta?: string;
+  media?: ReactNode;
 }) {
   return (
     <Link
@@ -551,6 +553,7 @@ export function ChallengeCard({
       prefetch={false}
       className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
     >
+      {media ? <div data-media-container className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-lg font-semibold tracking-normal text-[#050505]">
@@ -603,7 +606,7 @@ export function CourseCard({
       prefetch={false}
       className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
     >
-      {media ? <div className="overflow-hidden rounded-lg">{media}</div> : null}
+      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg">{media}</div> : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h2 className="truncate text-xl font-semibold tracking-normal text-[#050505]">

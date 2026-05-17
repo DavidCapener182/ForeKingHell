@@ -14,6 +14,7 @@ const HEADER_SIZE = {
   height: 360,
 };
 const MAX_DATA_URL_LENGTH = 650_000;
+const TOUR_COVER_COUNT = 10;
 
 export function ProfileMediaEditor({
   displayName,
@@ -77,8 +78,8 @@ export function ProfileMediaEditor({
       <input form={formId} type="hidden" name="headerImageUrl" value={headerImageUrl} readOnly />
 
       <div
-        className="relative h-36 bg-[linear-gradient(135deg,#111827,#047857_55%,#38bdf8)] bg-cover bg-center"
-        style={headerImageUrl ? { backgroundImage: profileHeaderBackground(headerImageUrl) } : undefined}
+        className="relative h-36 bg-cover bg-center"
+        style={{ backgroundImage: profileHeaderBackground(profileHeaderImageUrl(headerImageUrl, username)) }}
       >
         <div className="absolute right-4 top-4 flex items-center gap-2">
           <Button
@@ -109,11 +110,11 @@ export function ProfileMediaEditor({
         </div>
       </div>
 
-      <div className="px-5 pb-5">
-        <div className="-mt-10 flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-4">
+        <div className="flex min-w-0 items-start gap-3">
           <button
             type="button"
-            className="group relative shrink-0 rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="group relative -mt-14 shrink-0 rounded-full bg-white p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-label="Choose avatar photo"
             onClick={() => avatarInputRef.current?.click()}
           >
@@ -131,37 +132,35 @@ export function ProfileMediaEditor({
             </span>
           </button>
 
-          <Button asChild variant="outline" className="mb-1 bg-white">
-            <Link href={publicHref} prefetch={false}>Preview public page</Link>
-          </Button>
+          <div className="min-w-0 pt-1">
+            <h2 className="truncate text-2xl font-semibold tracking-normal">{displayName}</h2>
+            <p className="text-sm text-muted-foreground">@{username}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
+                <Camera className="size-4" />
+                {avatarUrl ? "Change avatar" : "Add avatar"}
+              </Button>
+              {avatarUrl ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAvatarUrl("");
+                    setStatus("Avatar photo removed. Save profile to keep it removed.");
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate text-2xl font-semibold tracking-normal text-foreground">{displayName}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">@{username}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
-              <Camera className="size-4" />
-              {avatarUrl ? "Change avatar" : "Add avatar"}
-            </Button>
-            {avatarUrl ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setAvatarUrl("");
-                  setStatus("Avatar photo removed. Save profile to keep it removed.");
-                }}
-              >
-                <Trash2 className="size-4" />
-                Remove
-              </Button>
-            ) : null}
-          </div>
-        </div>
+        <Button asChild variant="outline" className="mb-1 bg-white">
+          <Link href={publicHref} prefetch={false}>Preview public page</Link>
+        </Button>
       </div>
 
       <p className="sr-only" aria-live="polite">
@@ -182,7 +181,21 @@ function ProfileEditorAvatarImage({ src }: { src: string }) {
 }
 
 function profileHeaderBackground(imageUrl: string) {
-  return `linear-gradient(90deg, rgba(15, 23, 42, 0.56), rgba(6, 78, 59, 0.18)), url("${imageUrl.replace(/"/g, "%22")}")`;
+  return `linear-gradient(90deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0)), url("${imageUrl.replace(/"/g, "%22")}")`;
+}
+
+function profileHeaderImageUrl(headerImageUrl: string, username: string) {
+  return headerImageUrl || tourCoverForKey(username);
+}
+
+function tourCoverForKey(key: string) {
+  let hash = 0;
+
+  for (let index = 0; index < key.length; index += 1) {
+    hash = (hash * 31 + key.charCodeAt(index)) % TOUR_COVER_COUNT;
+  }
+
+  return `/assets/tour-covers/tour-cover-${String(hash + 1).padStart(2, "0")}.webp`;
 }
 
 async function resizeImage(file: File, width: number, height: number, quality: number) {

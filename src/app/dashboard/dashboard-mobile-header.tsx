@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const dashboardTabs = [
-  { key: "today", label: "Today", href: "/dashboard?section=today#today" },
+  { key: "today", label: "Latest", href: "/dashboard?section=today#today" },
   { key: "decisions", label: "Decisions", href: "/dashboard?section=decisions#decisions" },
   { key: "progress", label: "Progress", href: "/dashboard?section=progress#progress" },
   { key: "tools", label: "Tools", href: "/dashboard?section=tools#tools" },

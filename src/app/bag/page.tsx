@@ -12,8 +12,11 @@ import {
 import { and, asc, count, desc, eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
+import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
+import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
 import {
   Card,
   CardContent,
@@ -29,10 +32,12 @@ import {
   MobileAccordionSection,
   MobileDataCard,
   MobileDataList,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  StickyMobileAction,
 } from "@/components/premium";
 import {
   MobileAppShell,
@@ -77,8 +82,8 @@ import {
   isShortGameTouchClubType,
   isTrackedClubType,
 } from "@/lib/club-format";
-import { getCurrentHandicapProfile } from "@/lib/handicap-data";
 import { ensureCurrentSocialProfile } from "@/lib/social";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
 
@@ -91,14 +96,14 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const RECENT_SHOTS_PER_CLUB = 200;
 
 export default async function BagPage() {
-  const [bag, profile, challengeData, handicapProfile] = await Promise.all([
+  const [bag, profile, challengeData, featureData] = await Promise.all([
     getBag(),
     ensureCurrentSocialProfile(),
     getChallengesPageData(),
-    getCurrentHandicapProfile(),
+    getFeatureIdeasData(),
   ]);
   const gappingRows = buildGappingRows(bag, {
-    handicapBand: handicapProfile.band,
+    handicapBand: profile.handicapBand,
   });
   const benchmarkRows = buildBenchmarkRows(bag);
   const courseAdvice = buildCourseDecisionAdvice(bag);
@@ -139,8 +144,8 @@ export default async function BagPage() {
           tabs={[
             { key: "gapping", label: "Gapping", href: "/bag" },
             { key: "clubs", label: "Clubs", href: "#clubs" },
+            { key: "decisions", label: "Decisions", href: "#decisions" },
             { key: "longest", label: "Longest", href: "/bag/longest" },
-            { key: "equipment", label: "Equipment", href: "/equipment" },
           ]}
         />
         <MobileStatusAction
@@ -208,6 +213,7 @@ export default async function BagPage() {
             ))}
           </div>
         </NativeListSection>
+        <BagFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -220,7 +226,7 @@ export default async function BagPage() {
         <Button asChild variant="outline">
           <Link href="/import">
             <Upload className="size-4" />
-            Import data
+            Import CSV
           </Link>
         </Button>
       </div>
@@ -235,7 +241,6 @@ export default async function BagPage() {
             variant="stockYardages"
             alt=""
             className="h-full min-h-44"
-            priority
           />
         }
         actions={
@@ -273,27 +278,75 @@ export default async function BagPage() {
         ]}
       />
 
-      {bag.length === 0 ? (
-        <Card className="premium-card">
-          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-            <Target className="size-8 text-emerald-500" />
-            <div>
-              <p className="text-lg font-medium">No clubs imported yet</p>
-              <p className="text-sm text-muted-foreground">
-                Import launch-monitor shots to unlock gapping, stock yardages,
-                dispersion, and course-decision trust.
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import a session
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
+      <MobileSectionChips
+        items={[
+          { label: "Gapping", href: "#gapping" },
+          { label: "Levels", href: "#levels" },
+          { label: "Decisions", href: "#decisions" },
+          { label: "Clubs", href: "#clubs" },
+        ]}
+      />
+
+      <MobileSummaryHero
+        eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
+        title="Trust the number, then check the gap."
+        description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
+        metricLabel="Best club"
+        metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
+        visual={
+          <ClubArtwork
+            clubType={bestClub?.type ?? "driver"}
+            brand={bestClub?.brand}
+            model={bestClub?.model}
+            alt=""
+            className="h-20 w-20 rounded-xl"
+            sizes="80px"
+          />
+        }
+        action={
+          <Button
+            asChild
+            size="sm"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
+            <Link href="#clubs">Clubs</Link>
+          </Button>
+        }
+      />
+
+      <MobileMetricStrip
+        items={[
+          {
+            label: "Clubs",
+            value: bag.length.toString(),
+            detail: "Active",
+            tone: "green",
+          },
+          {
+            label: "Confidence",
+            value: `${averageConfidence}%`,
+            detail: "Average",
+            tone: "sky",
+          },
+          {
+            label: "Weakest gap",
+            value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
+            detail: weakestGap
+              ? workOnText(weakestGap)
+              : "Need carry samples",
+            tone: weakestGap?.targetTone ?? "amber",
+          },
+        ]}
+      />
+
+      <BagFeaturePanel data={featureData} />
+
+      <BagSocialComparison
+        bestClub={bestClub}
+        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+        challenges={challengeData.active}
+      />
+
       {gappingRows.length > 0 ? (
         <section id="gapping" className="scroll-mt-28">
           <CarryGappingTable rows={gappingRows} />
@@ -469,13 +522,24 @@ export default async function BagPage() {
         ))}
       </section>
 
-      <BagSocialComparison
-        bestClub={bestClub}
-        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-        challenges={challengeData.active}
-      />
-        </>
-      )}
+      {bag.length === 0 ? (
+        <Card className="premium-card">
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <Target className="size-8 text-emerald-500" />
+            <div>
+              <p className="text-lg font-medium">No clubs imported yet</p>
+              <p className="text-sm text-muted-foreground">
+                Import Rapsodo CSVs to build the bag map.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+      <StickyMobileAction>
+        <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href="#clubs">Find club</Link>
+        </Button>
+      </StickyMobileAction>
       </div>
     </PageShell>
   );

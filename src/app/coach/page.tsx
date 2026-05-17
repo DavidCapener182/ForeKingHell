@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
+import { CoachPracticeFeaturePanel } from "@/components/features/feature-panels";
 import {
   CompactReadoutGrid,
   DataPanel,
@@ -62,6 +63,7 @@ import { getActivePlanKeyForUser, planAllowsAiCoach } from "@/lib/billing";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -71,10 +73,11 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 
 export default async function CoachPage() {
   const userId = await requireCurrentUserId();
-  const [data, activePlanKey, challengeData] = await Promise.all([
+  const [data, activePlanKey, challengeData, featureData] = await Promise.all([
     getProgressData(userId),
     getActivePlanKeyForUser(userId),
     getChallengesPageData(),
+    getFeatureIdeasData(),
   ]);
   const coach = buildCoachSummary(data.clubs);
   const topClub = coach.clubCards[0] ?? null;
@@ -98,6 +101,13 @@ export default async function CoachPage() {
           label="Do this next"
           value={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
           detail={topClub?.drill ?? "Import enough clean shots for a prescription."}
+          action={
+            <Button asChild data-primary-action className="h-10 rounded-full bg-[#0B7A3B] px-4 text-white hover:bg-[#064E3B]">
+              <Link href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"} prefetch={false}>
+                {topClub ? "Open" : "Import"}
+              </Link>
+            </Button>
+          }
         />
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
           <p className="text-sm font-semibold text-[#0B7A3B]">Why</p>
@@ -126,6 +136,7 @@ export default async function CoachPage() {
             <PBCard title="Clean shots" value={coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")} detail="Tracked" />
           </div>
         </NativeListSection>
+        <CoachPracticeFeaturePanel data={featureData} />
         <NativeListSection
           id="more-drills"
           title="Daily XP drills"
@@ -254,6 +265,8 @@ export default async function CoachPage() {
           },
         ]}
       />
+
+      <CoachPracticeFeaturePanel data={featureData} />
 
       {data.clubs.length === 0 ? (
         <DataPanel>

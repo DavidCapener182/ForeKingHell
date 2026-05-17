@@ -119,12 +119,17 @@ const hiddenRoutePrefixes = [
   "/share",
   "/settings/invitations",
   "/feed",
+  "/today",
+  "/dashboard",
+  "/progress",
+  "/rounds",
+  "/strokes-gained",
 ];
 const seenStorageKey = "fkh-social-feed-seen-at";
 
 export function SocialFeedRail() {
   const pathname = usePathname();
-  if (isHiddenRoute(pathname)) {
+  if (!pathname || isHiddenRoute(pathname)) {
     return null;
   }
 
@@ -908,5 +913,6 @@ function readSeenAt() {
 }
 
 function isHiddenRoute(pathname: string) {
-  return hiddenRoutePrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
+  return hiddenRoutePrefixes.some((prefix) => normalizedPathname === prefix || normalizedPathname.startsWith(`${prefix}/`));
 }

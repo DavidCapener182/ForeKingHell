@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Award, Globe2, Lock, MessageCircle, Plus, Radio, Search, Settings, Trophy, Users } from "lucide-react";
 
 import { createGroupAction, joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
+import { GroupDigestFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
   ChallengeCard,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getGroupsPageData, type GroupListItem } from "@/lib/groups";
 import { getChallengesPageData } from "@/lib/challenges";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +37,10 @@ type GroupsPageProps = {
 
 export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   const params = await searchParams;
-  const [data, challengeData] = await Promise.all([
+  const [data, challengeData, featureData] = await Promise.all([
     getGroupsPageData(params?.invite),
     getChallengesPageData(),
+    getFeatureIdeasData(),
   ]);
   const activeTab = parseGroupsTab(params?.tab);
   const featuredChallenge = challengeData.active[0] ?? challengeData.challenges[0] ?? null;
@@ -101,6 +104,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </BottomSheet>
           }
         />
+        <GroupDigestFeaturePanel data={featureData} />
         {activeTab === "challenges" ? (
           <NativeListSection title="Challenges">
             {featuredChallenge ? (
@@ -250,6 +254,8 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             ) : null}
           </header>
+
+          <GroupDigestFeaturePanel data={featureData} />
 
           {params?.invite ? (
             <section className="premium-card p-4">

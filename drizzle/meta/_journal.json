@@ -155,6 +155,13 @@
       "when": 1778955386375,
       "tag": "0021_colossal_kulan_gath",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779045200000,
+      "tag": "0022_feature_foundations",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import { desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
+import { ProfileFeaturePanel } from "@/components/features/feature-panels";
 import {
   MobileAppShell,
   MobileIconButton,
@@ -33,7 +34,7 @@ import { Progress } from "@/components/ui/progress";
 import { getDb } from "@/db/client";
 import { courseRecordCategories, courseRecordResults, courseRecords, courses, tournamentStandings, tournaments } from "@/db/schema";
 import { getChallengesPageData } from "@/lib/challenges";
-import { getUserHandicapProfile } from "@/lib/handicap-data";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getProgressData } from "@/lib/progress-data";
 import { buildProgressSummary } from "@/lib/progress-summary";
 import {
@@ -53,15 +54,14 @@ type ProfilePageProps = {
 };
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
-  const [params, requestHeaders, profile, challenges, progressData] = await Promise.all([
+  const [params, requestHeaders, profile, challenges, progressData, featureData] = await Promise.all([
     searchParams,
     headers(),
     ensureCurrentSocialProfile(),
     getChallengesPageData(),
     getProgressData(),
+    getFeatureIdeasData(),
   ]);
-  const handicapProfile = await getUserHandicapProfile(profile.userId);
-  const generatedHandicapBand = handicapProfile.band;
   const honours = await getProfileHonoursData(profile.userId);
   const progressSummary = buildProgressSummary(progressData.clubs);
   const activeTab = parseYouTab(params?.tab);
@@ -71,7 +71,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     ...defaultProfileVisibilitySettings(),
     ...profile.visibilitySettingsJson,
   };
-  const completion = profileCompletion(profile, generatedHandicapBand);
+  const completion = profileCompletion(profile);
   const pbShowcase = profile.pbShowcaseJson.slice(0, 3);
   const achievementShowcase = profile.achievementShowcaseJson.slice(0, 4);
   const profileFormId = "profile-settings-form";
@@ -169,6 +169,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
           </NativeListSection>
         )}
+        <ProfileFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-3 sm:flex">
@@ -243,6 +244,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         </article>
       </section>
 
+      <ProfileFeaturePanel data={featureData} />
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
         <article className="premium-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -313,11 +316,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                 <FormField label="Display name" name="displayName" defaultValue={profile.displayName} required />
                 <FormField label="Home course or venue" name="homeCourse" defaultValue={profile.homeCourse ?? ""} />
                 <FormField label="Primary launch monitor" name="primaryLaunchMonitor" defaultValue={profile.primaryLaunchMonitor ?? ""} />
-                <ReadOnlyField
-                  label="Handicap band"
-                  value={generatedHandicapBand ?? "No eligible rounds yet"}
-                  detail={`Generated from Handicap page - ${handicapProfile.sourceLabel}`}
-                />
+                <FormField label="Handicap band" name="handicapBand" defaultValue={profile.handicapBand ?? ""} placeholder="10-14, beginner, scratch" />
               </div>
 
               <label className="grid gap-2 text-sm font-medium">
@@ -411,26 +410,6 @@ function FormField({
   );
 }
 
-function ReadOnlyField({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail?: string;
-}) {
-  return (
-    <div className="grid gap-2 text-sm">
-      <span className="font-medium">{label}</span>
-      <div className="min-h-10 rounded-xl border bg-[#F5F6F4] px-3 py-2">
-        <p className="font-medium">{value}</p>
-        {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
-      </div>
-    </div>
-  );
-}
-
 function CheckboxField({
   name,
   label,
@@ -489,7 +468,7 @@ function ShowcaseRow({ icon, label, value }: { icon: ReactNode; label: string; v
   );
 }
 
-function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocialProfile>>, handicapBand: string | null) {
+function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocialProfile>>) {
   const fields = [
     profile.username,
     profile.displayName,
@@ -498,7 +477,7 @@ function profileCompletion(profile: Awaited<ReturnType<typeof ensureCurrentSocia
     profile.bio,
     profile.homeCourse,
     profile.primaryLaunchMonitor,
-    handicapBand,
+    profile.handicapBand,
     profile.publicProfile || profile.friendProfile ? "visibility" : "",
   ];
   const completed = fields.filter(Boolean).length;
@@ -518,10 +497,10 @@ async function getProfileHonoursData(userId: string) {
       .from(courseRecordResults)
       .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
       .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
-	      .innerJoin(courses, eq(courseRecords.courseId, courses.id))
-	      .where(eq(courseRecordResults.userId, userId))
-	      .orderBy(desc(courseRecordResults.calculatedAt))
-	      .limit(80),
+      .innerJoin(courses, eq(courseRecords.courseId, courses.id))
+      .where(eq(courseRecordResults.userId, userId))
+      .orderBy(desc(courseRecordResults.calculatedAt))
+      .limit(6),
     getDb()
       .select({
         standing: tournamentStandings,
@@ -534,16 +513,9 @@ async function getProfileHonoursData(userId: string) {
       .limit(6),
   ]);
 
-  const uniqueRecords = uniqueHonourRecords(records).slice(0, 6);
-  const championCourseCount = new Set(
-    uniqueRecords
-      .filter((row) => row.result.rank === 1)
-      .map((row) => normaliseHonourCourseName(row.course.name)),
-  ).size;
-
   return {
-    championCount: championCourseCount,
-    records: uniqueRecords.map((row) => ({
+    championCount: records.filter((row) => row.result.rank === 1).length,
+    records: records.map((row) => ({
       id: row.result.id,
       recordId: row.record.id,
       courseName: row.course.name,
@@ -560,37 +532,6 @@ async function getProfileHonoursData(userId: string) {
       rank: row.standing.rank,
     })),
   };
-}
-
-function uniqueHonourRecords<T extends {
-  result: typeof courseRecordResults.$inferSelect;
-  record: typeof courseRecords.$inferSelect;
-  category: typeof courseRecordCategories.$inferSelect;
-  course: typeof courses.$inferSelect;
-}>(records: T[]) {
-  const seen = new Set<string>();
-  const unique: T[] = [];
-
-  for (const record of records) {
-    const key = [
-      normaliseHonourCourseName(record.course.name),
-      record.category.recordType,
-      record.result.rank === 1 ? "champion" : `rank-${record.result.rank ?? "open"}`,
-    ].join(":");
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    unique.push(record);
-  }
-
-  return unique;
-}
-
-function normaliseHonourCourseName(value: string) {
-  return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function pbLabel(value: Record<string, unknown>) {

@@ -17,6 +17,7 @@ import {
   updateRoundHoleAction,
   updateShotClubAction,
 } from "@/app/rounds/actions";
+import { RoundOpportunityFeaturePanel } from "@/components/features/feature-panels";
 import { OfflineRoundEditForm } from "@/components/offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -106,7 +108,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
   const { sessionId } = await params;
   const requestHeaders = await headers();
   const query = await searchParams;
-  const round = await getRoundDetail(sessionId);
+  const [round, featureData] = await Promise.all([getRoundDetail(sessionId), getFeatureIdeasData()]);
 
   if (!round) {
     notFound();
@@ -142,6 +144,15 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </Button>
           </div>
         </div>
+
+        {currentHole ? (
+          <MobileRoundFirstCard
+            hole={currentHole}
+            totalScore={round.totalScore}
+            totalPutts={round.totalPutts}
+            hasClubData={hasClubData}
+          />
+        ) : null}
 
         <PageHeader
           eyebrow={<StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>}
@@ -182,6 +193,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         ) : null}
 
         <RecordOpportunitiesCard round={round} />
+
+        <RoundOpportunityFeaturePanel data={featureData} />
 
         <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
         <Card id="share" className="premium-card scroll-mt-28">
@@ -748,6 +761,37 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
 
 type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;
 type RoundDetailHole = RoundDetail["holes"][number];
+
+function MobileRoundFirstCard({
+  hole,
+  totalScore,
+  totalPutts,
+  hasClubData,
+}: {
+  hole: RoundDetailHole;
+  totalScore: number | null;
+  totalPutts: number | null;
+  hasClubData: boolean;
+}) {
+  return (
+    <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#0B7A3B]">Current hole</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-normal">Hole {hole.holeNumber}</h2>
+          <p className="mt-1 text-sm text-[#6B7280]">{formatHoleSummary(hole)}</p>
+        </div>
+        <Badge variant="secondary">{hasClubData ? `${hole.shots.length} shots` : "Scorecard"}</Badge>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        <MiniMetric label="Score" value={formatNullableInteger(totalScore)} />
+        <MiniMetric label="Putts" value={formatNullableInteger(totalPutts)} />
+        <MiniMetric label="Fairway" value={hole.fairwayHit === null ? "--" : hole.fairwayHit ? "Hit" : "Miss"} />
+        <MiniMetric label="GIR" value={hole.gir === null ? "--" : hole.gir ? "Hit" : "Miss"} />
+      </div>
+    </section>
+  );
+}
 
 function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
   if (round.recordOpportunities.length === 0 && round.tournamentOpportunities.length === 0) {

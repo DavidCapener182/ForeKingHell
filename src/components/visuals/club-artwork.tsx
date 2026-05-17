@@ -39,8 +39,9 @@ export function ClubArtwork({
 
   return (
     <div
+      data-media-container
       className={cn(
-        "relative min-h-20 overflow-hidden rounded-2xl border border-white/70 bg-gradient-to-br from-white via-slate-50 to-emerald-50/50 shadow-sm",
+        "relative aspect-[16/9] min-h-14 overflow-hidden rounded-lg border border-slate-200 bg-white",
         className,
       )}
       aria-hidden={alt === ""}

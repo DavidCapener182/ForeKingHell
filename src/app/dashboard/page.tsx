@@ -23,6 +23,7 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ActionCentrePanel } from "@/components/features/feature-panels";
 import {
   DashboardMobileHeader,
   type DashboardTabKey,
@@ -30,10 +31,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   CompactReadoutGrid,
+  DataPair,
   DataPanel,
   MobileAccordionSection,
-  MobileDataCard,
-  MobileDataList,
   MobileHorizontalRail,
   PageHeader,
   PageShell,
@@ -44,6 +44,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { MobileStatusAction } from "@/components/mobile-sports";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   clubs,
@@ -60,7 +61,6 @@ import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges"
 import {
   buildCourseDecisionAdvice,
   getClubDecisionLabel,
-  getClubDecisionTone,
 } from "@/lib/course-decision-advice";
 import {
   clubSortValue,
@@ -73,7 +73,6 @@ import { getProgressData } from "@/lib/progress-data";
 import {
   calculateHandicapSummary,
   calculateRoundDifferential,
-  formatHandicapDelta,
   formatHandicapValue,
   type HandicapSummary,
 } from "@/lib/round-handicap";
@@ -82,6 +81,7 @@ import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
+import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -158,24 +158,39 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return <MissingDatabaseUrlSetup />;
   }
 
-  const [params, data, social, challengeData] = await Promise.all([
+  const [params, data, social, challengeData, featureData] = await Promise.all([
     searchParams,
     getDashboardData(),
     getFeedPageData(),
     getChallengesPageData(),
+    getFeatureIdeasData(),
   ]);
   const activeDashboardSection = parseDashboardSection(params?.section);
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
   const primaryActionLabel =
-    data.stats.shotCount > 0 ? "Open bag map" : "Import first session";
+    data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
+  const latestSession = data.recentSessions[0] ?? null;
+  const bestClub = getBestClub(data.bagPreview);
+  const firstSignal = data.whatChanged[0] ?? null;
+  const practiceHref = data.coachPreview
+    ? `/bag/${data.coachPreview.clubId}/analytics`
+    : primaryAction;
+  const latestRoundHref = data.latestRound
+    ? `/rounds/${data.latestRound.id}`
+    : "/rounds";
+  const mappedClubCount = data.bagPreview.filter(
+    (club) => club.stock.confidenceScore >= 60,
+  ).length;
 
   const metrics = [
     {
       pin: "shots" as const,
       label: "Shots saved",
       value: integerFormatter.format(data.stats.shotCount),
-      detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
+      detail: latestSession
+        ? `+${integerFormatter.format(latestSession.shotCount)} from latest`
+        : `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
       href: "/shots",
       icon: BarChart3,
       tone: "sky" as const,
@@ -184,7 +199,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       pin: "clubs" as const,
       label: "Active clubs",
       value: integerFormatter.format(data.stats.clubCount),
-      detail: "Mapped into stock-yardage views",
+      detail: `${integerFormatter.format(mappedClubCount)} mapped with usable trust`,
       href: "/bag",
       icon: Target,
       tone: "green" as const,
@@ -193,7 +208,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       pin: "sessions" as const,
       label: "Imported sessions",
       value: integerFormatter.format(data.stats.sessionCount),
-      detail: `${integerFormatter.format(data.stats.roundCount)} saved rounds`,
+      detail: latestSession
+        ? `Latest: ${formatDate(latestSession.date)}`
+        : `${integerFormatter.format(data.stats.roundCount)} saved rounds`,
       href: "/handicap",
       icon: CalendarDays,
       tone: "green" as const,
@@ -240,11 +257,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       pin: "handicap" as const,
       label: "Scoring ceiling",
       value: formatHandicapValue(data.stats.combinedHandicap.value),
-      detail: formatCombinedHandicapDetail(
-        data.stats.realHandicap,
-        data.stats.simHandicap,
-        data.stats.combinedHandicap,
-      ),
+      detail: formatHandicapTrend(data.stats.combinedHandicap),
       href: "/rounds",
       icon: LineChart,
       tone: "amber" as const,
@@ -253,8 +266,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const routeCards = [
     {
-      title: "Import",
-      description: "Connect a launch monitor, upload CSV files, or add a round.",
+      title: "Start practice",
+      description: "Open the current coach signal and drill.",
+      href: practiceHref,
+      metric: data.coachPreview ? data.coachPreview.clubName : primaryActionLabel,
+      icon: Crosshair,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Review latest practice",
+      description: "Inspect the latest imported practice signal.",
+      href: "/today",
+      metric: latestSession
+        ? `${integerFormatter.format(latestSession.shotCount)} shots`
+        : "Practice",
+      icon: CalendarDays,
+      accent: "text-sky-700 bg-sky-50",
+    },
+    {
+      title: "Import CSV",
+      description: "Upload Rapsodo range or simulated-course files.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
@@ -269,7 +300,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-blue-700 bg-blue-50",
     },
     {
-      title: "Bag map",
+      title: "Open bag map",
       description: "Review stock carry, confidence, and dispersion by club.",
       href: "/bag",
       metric: `${integerFormatter.format(data.stats.clubCount)} clubs`,
@@ -277,56 +308,50 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-emerald-700 bg-emerald-50",
     },
     {
-      title: "Rounds",
+      title: "Review round",
       description: "Open scorecards, course imports, and shot maps.",
-      href: "/rounds",
-      metric: `${integerFormatter.format(data.stats.roundCount)} rounds`,
+      href: latestRoundHref,
+      metric: data.latestRound
+        ? formatScoreVsPar(data.latestRound.totalScore, data.latestRound.totalPar)
+        : `${integerFormatter.format(data.stats.roundCount)} rounds`,
       icon: Flag,
       accent: "text-amber-700 bg-amber-50",
-    },
-    {
-      title: "Progress",
-      description: "See what changed across the bag and what to practise next.",
-      href: "/progress",
-      metric: "Coach readout",
-      icon: LineChart,
-      accent: "text-emerald-700 bg-emerald-50",
-    },
-    {
-      title: "Coach",
-      description:
-        "Open the next practice priority, diagnosis, and session plan.",
-      href: "/coach",
-      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
-      icon: Brain,
-      accent: "text-amber-800 bg-amber-50",
     },
   ];
   const mobileRouteCards = [
     {
-      title: "Today",
+      title: "Latest practice signal",
       description:
-        "Review today’s shots, session quality, and better-or-worse signals.",
+        "Review the latest imported practice day, session quality, and better-or-worse signals.",
       href: "/today",
       metric: "Practice",
       icon: CalendarDays,
       accent: "text-emerald-700 bg-emerald-50",
     },
     {
-      title: "Import",
-      description: "Connect a provider, upload CSV files, or add a manual round.",
+      title: "Import CSV",
+      description: "Upload Rapsodo range or simulated-course files.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
       accent: "text-emerald-600 bg-emerald-50",
     },
     {
-      title: "Shots",
+      title: "Shot database",
       description: "Inspect every normalized shot and preserved raw row.",
       href: "/shots",
       metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
       icon: Database,
       accent: "text-sky-600 bg-sky-50",
+    },
+    {
+      title: "Compare",
+      description:
+        "Compare a focused session against the previous-session baseline.",
+      href: "/compare",
+      metric: "Session delta",
+      icon: GitCompareArrows,
+      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Bag map",
@@ -337,38 +362,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-pink-600 bg-pink-50",
     },
     {
-      title: "Progress",
-      description: "See what changed across the bag and what to practise next.",
-      href: "/progress",
-      metric: "Coach readout",
-      icon: LineChart,
-      accent: "text-emerald-700 bg-emerald-50",
-    },
-    {
-      title: "Coach",
-      description:
-        "Open the next practice priority, diagnosis, and session plan.",
-      href: "/coach",
-      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
-      icon: Brain,
-      accent: "text-rose-700 bg-rose-50",
-    },
-    {
       title: "Rounds",
       description: "Open scorecards, course imports, and shot maps.",
       href: "/rounds",
       metric: `${integerFormatter.format(data.stats.roundCount)} rounds`,
       icon: Flag,
       accent: "text-amber-700 bg-amber-50",
-    },
-    {
-      title: "Compare",
-      description:
-        "Compare a focused session against the previous-session baseline.",
-      href: "/compare",
-      metric: "Session delta",
-      icon: GitCompareArrows,
-      accent: "text-indigo-700 bg-indigo-50",
     },
     {
       title: "Handicap",
@@ -402,6 +401,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       metric: "Events",
       icon: Trophy,
       accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Progress",
+      description: "See what changed across the bag and what to practise next.",
+      href: "/progress",
+      metric: "Coach readout",
+      icon: LineChart,
+      accent: "text-emerald-700 bg-emerald-50",
+    },
+    {
+      title: "Coach",
+      description:
+        "Open the next practice priority, diagnosis, and session plan.",
+      href: "/coach",
+      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
+      icon: Brain,
+      accent: "text-rose-700 bg-rose-50",
     },
     {
       title: "Longest shots",
@@ -461,10 +477,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-rose-600 bg-rose-50",
     },
   ];
-  const latestSession = data.recentSessions[0] ?? null;
-  const bestClub = getBestClub(data.bagPreview);
-  const firstSignal = data.whatChanged[0] ?? null;
-
   return (
     <PageShell>
       <DashboardMobileLayout
@@ -477,6 +489,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         primaryAction={primaryAction}
         primaryActionLabel={primaryActionLabel}
         activeDashboardSection={activeDashboardSection}
+        featureData={featureData}
       />
 
       <div className="hidden flex-col gap-6 sm:flex">
@@ -484,52 +497,61 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestSession={latestSession}
           bestClub={bestClub}
           coachPreview={data.coachPreview}
-          firstSignal={firstSignal}
           scoringCeiling={formatHandicapValue(data.stats.combinedHandicap.value)}
           scoringTrend={formatHandicapTrend(data.stats.combinedHandicap)}
           primaryAction={primaryAction}
           primaryActionLabel={primaryActionLabel}
+          latestRound={data.latestRound}
         />
 
-        <TodayStatusStrip
-          latestSession={latestSession}
-          stats={data.stats}
-          firstSignal={firstSignal}
-        />
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
+          <div className="flex min-w-0 flex-col gap-6">
+            <ActionCentrePanel data={featureData} layout="dashboard" />
 
-        {pinnedDashboardSections.has("coach") ? (
-          <PracticeRecommendationCard
-            coachPreview={data.coachPreview}
-            primaryAction={primaryAction}
-            primaryActionLabel={primaryActionLabel}
-          />
-        ) : null}
+            {pinnedDashboardSections.has("coach") ? (
+              <PracticeRecommendationCard
+                coachPreview={data.coachPreview}
+                primaryAction={primaryAction}
+                primaryActionLabel={primaryActionLabel}
+              />
+            ) : null}
 
-        {metrics.length > 0 ? <PerformanceSnapshot metrics={metrics} /> : null}
+            {pinnedDashboardSections.has("bag") ? (
+              <div id="bag" className="scroll-mt-28">
+                <BagConfidencePanel
+                  clubs={data.bagPreview}
+                  bagAlert={featureData.bagAlerts[0] ?? null}
+                />
+              </div>
+            ) : null}
 
-        <section
-          id="bag"
-          className="grid scroll-mt-28 items-start gap-6 lg:grid-cols-[1.12fr_0.88fr]"
-        >
-          {pinnedDashboardSections.has("bag") ? (
-            <BagSnapshotPanel clubs={data.bagPreview} />
-          ) : null}
+            <CourseDecisionPanel items={data.courseAdvice.slice(0, 3)} />
 
-          {pinnedDashboardSections.has("rounds") ? (
-            <LatestRoundPanel latestRound={data.latestRound} />
-          ) : null}
-        </section>
+            <WhatChangedPanel insights={data.whatChanged} />
+          </div>
 
-        <CourseDecisionPanel items={data.courseAdvice.slice(0, 3)} />
+          <aside className="flex min-w-0 flex-col gap-6">
+            <LatestPracticeSignalPanel
+              compact
+              latestSession={latestSession}
+              stats={data.stats}
+              firstSignal={firstSignal}
+              latestRound={data.latestRound}
+            />
 
-        <WhatChangedPanel insights={data.whatChanged} />
+            {pinnedDashboardSections.has("rounds") ? (
+              <LatestRoundPanel latestRound={data.latestRound} />
+            ) : null}
 
-        <QuickRoutes routes={routeCards} />
+            {metrics.length > 0 ? (
+              <PerformanceSnapshot metrics={metrics} paired />
+            ) : null}
 
-        <DashboardSocialPulse
-          social={social}
-          challenges={challengeData.active}
-        />
+            <DashboardSocialPulse social={social} />
+
+            <QuickActions routes={routeCards} />
+          </aside>
+        </div>
       </div>
     </PageShell>
   );
@@ -564,6 +586,7 @@ function DashboardMobileLayout({
   primaryAction,
   primaryActionLabel,
   activeDashboardSection,
+  featureData,
 }: {
   data: DashboardData;
   social: Awaited<ReturnType<typeof getFeedPageData>>;
@@ -574,10 +597,24 @@ function DashboardMobileLayout({
   primaryAction: string;
   primaryActionLabel: string;
   activeDashboardSection: DashboardTabKey;
+  featureData: FeatureIdeasData;
 }) {
   return (
     <div className="grid gap-4 sm:hidden">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
+
+      <MobileStatusAction
+        label="Latest signal"
+        value={data.coachPreview?.clubName ?? "Build baseline"}
+        detail={data.coachPreview?.issueLabel ?? "Import a session to unlock your next recommendation."}
+        action={
+          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Link href={data.coachPreview ? `/bag/${data.coachPreview.clubId}/analytics` : primaryAction} prefetch={false}>
+              {data.coachPreview ? "Open" : primaryActionLabel}
+            </Link>
+          </Button>
+        }
+      />
 
       <section id="today" className="scroll-mt-28">
         <TodayPlan
@@ -599,6 +636,10 @@ function DashboardMobileLayout({
           tone: metric.tone,
         }))}
       />
+
+      <DashboardMobileDataHealth data={data} />
+
+      <ActionCentrePanel data={featureData} />
 
       <DataPanel id="decisions" className="scroll-mt-28">
         <SectionHeader
@@ -702,8 +743,8 @@ function DashboardMobileLayout({
 
       <section id="tools" className="grid scroll-mt-28 gap-4">
         <MobileHorizontalRail
-          title="Top actions"
-          description="The main performance workflows."
+          title="Quick actions"
+          description="Fast actions into the main workflows."
           action={
             <Button
               asChild
@@ -717,7 +758,7 @@ function DashboardMobileLayout({
             </Button>
           }
         >
-          {routeCards.slice(0, 6).map((card) => {
+          {routeCards.slice(0, 8).map((card) => {
             const Icon = card.icon;
 
             return (
@@ -743,33 +784,6 @@ function DashboardMobileLayout({
             );
           })}
         </MobileHorizontalRail>
-        {routeCards.length > 6 ? (
-          <MobileAccordionSection
-            title="More tools"
-            description="Secondary routes stay available without crowding the dashboard."
-            count={routeCards.length - 6}
-          >
-            <MobileDataList>
-              {routeCards.slice(6).map((card) => {
-                const Icon = card.icon;
-
-                return (
-                  <MobileDataCard
-                    key={card.href}
-                    href={card.href}
-                    title={card.title}
-                    subtitle={card.description}
-                    action={<Icon className="size-4 text-[#0B7A3B]" />}
-                  >
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {card.metric}
-                    </p>
-                  </MobileDataCard>
-                );
-              })}
-            </MobileDataList>
-          </MobileAccordionSection>
-        ) : null}
       </section>
 
       <section
@@ -778,7 +792,7 @@ function DashboardMobileLayout({
       >
         {pinnedDashboardSections.has("bag") ? (
           <MobileHorizontalRail
-            title="Bag snapshot"
+            title="Bag confidence"
             description="Stock numbers and confidence by club."
             action={
               <Button
@@ -903,6 +917,45 @@ function DashboardMobileLayout({
   );
 }
 
+function DashboardMobileDataHealth({ data }: { data: DashboardData }) {
+  const latestSession = data.recentSessions[0] ?? null;
+  const thinSamples = data.bagPreview.filter((club) => club.stock.sampleSize < 8).length;
+  const missingClubMapping = Math.max(0, data.stats.shotCount - data.bagPreview.reduce((total, club) => total + club.shotCount, 0));
+  const nextImport =
+    data.stats.shotCount === 0
+      ? "Import first Rapsodo CSV"
+      : thinSamples > 0
+        ? "Add samples for thin clubs"
+        : missingClubMapping > 0
+          ? "Review club mapping"
+          : "Import latest session";
+
+  return (
+    <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#050505]">Data health</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
+            Last import, club mapping and next useful data check.
+          </p>
+        </div>
+        <StatusPill tone={thinSamples > 0 || missingClubMapping > 0 ? "amber" : "green"}>
+          {thinSamples > 0 || missingClubMapping > 0 ? "Check" : "Ready"}
+        </StatusPill>
+      </div>
+      <div className="grid gap-2">
+        <DataPair
+          label="Last import"
+          value={latestSession ? formatDate(latestSession.date) : "None"}
+        />
+        <DataPair label="Missing club mapping" value={missingClubMapping} />
+        <DataPair label="Weak sample clubs" value={thinSamples} />
+        <DataPair label="Next import" value={nextImport} />
+      </div>
+    </section>
+  );
+}
+
 function TodayPlan({
   latestSession,
   totalShots,
@@ -923,16 +976,27 @@ function TodayPlan({
   return (
     <DataPanel>
       <SectionHeader
-        title="Today"
-        description="Start here: current form, latest change, club costing you shots, and what to practise next."
-        action={<CalendarDays className="size-5 text-emerald-500" />}
+        title="Latest practice signal"
+        description="Start here: latest practice form, latest change, club costing you shots, and what to practise next."
+        action={
+          <div data-primary-action>
+            <Button asChild size="sm" className="min-h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Link
+                href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
+                prefetch={false}
+              >
+                {biggestProblem ? "Plan" : "Import"}
+              </Link>
+            </Button>
+          </div>
+        }
       />
       <CardContent>
         <div className="mb-3 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/85 p-3 shadow-sm sm:hidden">
           <ShotTraceMotif className="h-14 w-20 shrink-0 text-emerald-700" />
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Today&apos;s readout
+              Latest readout
             </p>
             <p className="truncate text-sm font-semibold">
               {biggestProblem
@@ -940,6 +1004,16 @@ function TodayPlan({
                 : primaryActionLabel}
             </p>
           </div>
+        </div>
+        <div className="mb-3 sm:hidden" data-primary-action>
+          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Link
+              href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
+              prefetch={false}
+            >
+              {biggestProblem ? "Open practice plan" : primaryActionLabel}
+            </Link>
+          </Button>
         </div>
         <CompactReadoutGrid
           columnsClassName="md:grid-cols-2 xl:grid-cols-4"
@@ -969,7 +1043,7 @@ function TodayPlan({
               tone: "green",
             },
             {
-              label: "Practise next",
+              label: "Practice priority",
               value: biggestProblem?.clubName ?? primaryActionLabel,
               detail:
                 biggestProblem?.drill ??
@@ -1015,7 +1089,7 @@ function DashboardMobileSocialPulse({
     <DataPanel>
       <SectionHeader
         title="Social pulse"
-        description="A compact view of network activity without turning the dashboard into another feed."
+        description="Recent activity from your golf network."
         action={
           <Button asChild variant="outline">
             <Link href="/feed" prefetch={false}>
@@ -1088,12 +1162,12 @@ function DashboardMobileSocialPulse({
 function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
   return (
     <Link
-      href={feedItemHref(item)}
+      href={item.proofUrl ?? "/feed"}
       prefetch={false}
       className="grid gap-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-white"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{item.itemType === "status_update" ? "Status update" : item.headline}</p>
+        <p className="font-medium">{item.headline}</p>
         <StatusPill
           tone={
             item.verificationLabel === "Manual" ||
@@ -1187,20 +1261,20 @@ function DashboardSummaryHero({
   latestSession,
   bestClub,
   coachPreview,
-  firstSignal,
   scoringCeiling,
   scoringTrend,
   primaryAction,
   primaryActionLabel,
+  latestRound,
 }: {
   latestSession: DashboardData["recentSessions"][number] | null;
   bestClub: DashboardData["bagPreview"][number] | null;
   coachPreview: DashboardData["coachPreview"];
-  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
   scoringCeiling: string;
   scoringTrend: string;
   primaryAction: string;
   primaryActionLabel: string;
+  latestRound: DashboardData["latestRound"];
 }) {
   const practiceHref = coachPreview
     ? `/bag/${coachPreview.clubId}/analytics`
@@ -1208,72 +1282,114 @@ function DashboardSummaryHero({
   const practiceTitle = coachPreview
     ? `${coachPreview.clubName} ${coachPreview.issueLabel.toLowerCase()}`
     : primaryActionLabel;
+  const nextUsefulMove = coachPreview
+    ? `the next useful move is ${coachPreview.clubName} ${coachPreview.issueLabel.toLowerCase()}`
+    : `the next useful move is ${primaryActionLabel.toLowerCase()}`;
+  const todayRead = bestClub
+    ? `current form is ${scoringCeiling}, ${formatClubType(bestClub.type)} is your most trusted club, and ${nextUsefulMove}`
+    : `current form is ${scoringCeiling}, bag confidence needs more shots, and ${nextUsefulMove}`;
 
   return (
-    <section className="overflow-hidden rounded-[24px] border border-[#CFE7D6] bg-white shadow-[0_12px_30px_rgba(8,122,61,0.06)]">
-      <div className="grid gap-6 px-7 py-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div className="min-w-0">
-          <StatusPill className="bg-[#E8F7EE] text-[#087A3D] ring-[#CFE7D6]">
-            Dashboard
-          </StatusPill>
-          <h1 className="mt-4 text-[32px] font-bold leading-9 tracking-normal text-[#111827]">
-            ForeKingHell
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-            The performance history layer for launch monitors, simulator rounds
-            and real course scorecards.
-          </p>
-          <div className="mt-5 grid gap-3 text-sm leading-6 text-[#667085] md:grid-cols-3">
-            <HeroFact
-              label="Current form"
-              value={`${scoringCeiling} scoring ceiling`}
-            />
-            <HeroFact
-              label="Latest session"
-              value={
-                latestSession
-                  ? `${formatDate(latestSession.date)} · ${latestSession.shotCount} shots`
-                  : "No imported session yet"
-              }
-            />
-            <HeroFact
-              label="Best insight"
-              value={
-                firstSignal
-                  ? `${firstSignal.label}: ${firstSignal.value}`
-                  : "Import more shots to reveal movement"
-              }
-            />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2 lg:justify-end">
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-lg border-[#DFE7DF] bg-white"
-          >
-            <Link href="/shots" prefetch={false}>
-              <Database className="size-4" />
-              Shot database
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
-          >
-            <Link href="/import" prefetch={false}>
-              <Upload className="size-4" />
-              Import data
-            </Link>
-          </Button>
-        </div>
+    <section className="relative overflow-hidden rounded-[24px] border border-[#CFE7D6] bg-white shadow-[0_12px_30px_rgba(8,122,61,0.06)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-80"
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,#F8FAF8_0%,#FFFFFF_48%,#ECF7F1_100%)]" />
+        <div className="absolute right-0 top-0 h-full w-[46%] border-l border-[#DCECE0] bg-[repeating-linear-gradient(90deg,rgba(15,143,77,0.10)_0,rgba(15,143,77,0.10)_1px,transparent_1px,transparent_54px)]" />
+        <div className="absolute right-10 top-8 h-40 w-40 rounded-full border border-[#BFE4CA]" />
+        <div className="absolute right-20 top-[4.5rem] h-20 w-20 rounded-full border border-[#D7ECDD]" />
+        <div className="absolute right-10 bottom-9 h-px w-72 -rotate-6 bg-[#9DCFB0]" />
+        <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="grid gap-4 border-t border-[#EDF1ED] bg-[#F8FAF8] px-7 py-4 lg:grid-cols-3">
+      <div className="relative grid gap-6 px-7 py-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+        <div className="flex min-w-0 flex-col justify-between gap-6">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill className="bg-[#E8F7EE] text-[#087A3D] ring-[#CFE7D6]">
+                Dashboard
+              </StatusPill>
+              {latestSession ? (
+                <StatusPill className="bg-[#EAF1FF] text-[#2563EB] ring-[#CFDAFF]">
+                  Latest import {formatDate(latestSession.date)}
+                </StatusPill>
+              ) : null}
+            </div>
+            <h1 className="mt-4 text-[34px] font-bold leading-10 tracking-normal text-[#111827]">
+              ForeKingHell
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
+              Your golf operating system: form, bag confidence, practice and
+              rounds.
+            </p>
+            <p className="mt-5 max-w-3xl text-base font-medium leading-7 text-[#111827]">
+              Today&apos;s read: {todayRead}.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-lg border-[#DFE7DF] bg-white"
+            >
+              <Link href="/today" prefetch={false}>
+                <CalendarDays className="size-4" />
+                Review latest practice
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="rounded-lg border-[#DFE7DF] bg-white"
+            >
+              <Link href="/shots" prefetch={false}>
+                <Database className="size-4" />
+                Shot database
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <Link
+          href={practiceHref}
+          prefetch={false}
+          className="group flex min-h-full flex-col justify-between rounded-[22px] border border-[#CFE7D6] bg-white/90 p-5 shadow-[0_18px_40px_rgba(8,122,61,0.10)] backdrop-blur transition-colors hover:border-[#0F8F4D]"
+        >
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <StatusPill tone={coachPreview ? normalizeDashboardTone(coachPreview.tone) : "green"}>
+                Next best action
+              </StatusPill>
+              <Target className="size-5 text-[#087A3D]" />
+            </div>
+            <h2 className="mt-4 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+              {practiceTitle}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-[#087A3D]">
+              {coachPreview
+                ? `${coachPreview.trustIndex}% trust`
+                : "Build the first trust signal"}
+            </p>
+            <p className="mt-4 text-sm leading-6 text-[#667085]">
+              {coachPreview
+                ? getDashboardPracticeTask(coachPreview)
+                : "Import a clean CSV, then build the first club-specific practice recommendation."}
+            </p>
+          </div>
+          <span className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#087A3D] px-4 text-sm font-semibold text-white transition-colors group-hover:bg-[#065F32]">
+            Start practice
+            <ArrowRight className="size-4" />
+          </span>
+        </Link>
+      </div>
+
+      <div className="relative grid gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-4">
         <HeroInsightCard
-          title="Scoring ceiling"
+          title="Current form"
           value={scoringCeiling}
-          detail={scoringTrend}
+          detail={`Scoring ceiling · ${scoringTrend}`}
           href="/rounds"
           tone="amber"
         />
@@ -1289,28 +1405,33 @@ function DashboardSummaryHero({
           tone="green"
         />
         <HeroInsightCard
-          title="Practise next"
+          title="Practice priority"
           value={practiceTitle}
           detail={
             coachPreview
-              ? `${coachPreview.trustIndex}% trust · Start practice`
+              ? `${coachPreview.trustIndex}% trust · Start from next practice`
               : "Start with a clean import or coach review"
           }
           href={practiceHref}
           tone="green"
-          primary
-          actionText="Start practice"
+        />
+        <HeroInsightCard
+          title="Latest round"
+          value={
+            latestRound
+              ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
+              : "--"
+          }
+          detail={
+            latestRound
+              ? latestRound.courseName ?? latestRound.fileName ?? "Review round"
+              : "No round imported yet"
+          }
+          href={latestRound ? `/rounds/${latestRound.id}` : "/rounds"}
+          tone="sky"
         />
       </div>
     </section>
-  );
-}
-
-function HeroFact({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <p>
-      <span className="font-semibold text-[#111827]">{label}:</span> {value}
-    </p>
   );
 }
 
@@ -1348,7 +1469,7 @@ function HeroInsightCard({
         </p>
         {actionText ? (
           <span className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#087A3D] px-3 text-xs font-semibold text-white transition-colors group-hover:bg-[#065F32]">
-            Start
+            {actionText}
             <ArrowRight className="size-3.5" />
           </span>
         ) : (
@@ -1363,45 +1484,166 @@ function HeroInsightCard({
   );
 }
 
-function TodayStatusStrip({
+function LatestPracticeSignalPanel({
   latestSession,
   stats,
   firstSignal,
+  latestRound,
+  compact = false,
+  className,
 }: {
   latestSession: DashboardData["recentSessions"][number] | null;
   stats: DashboardData["stats"];
   firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+  latestRound: DashboardData["latestRound"];
+  compact?: boolean;
+  className?: string;
 }) {
   return (
     <DashboardPanel
       id="today"
-      title="Today"
-      description="The fastest read on current data quality and what changed most recently."
-      action={<CalendarDays className="size-5 text-[#087A3D]" />}
+      className={className}
+      title="Latest practice signal"
+      description="Latest import, game depth and the strongest round or practice insight."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/today" prefetch={false}>
+            <CalendarDays className="size-4" />
+            Open latest practice
+          </Link>
+        </Button>
+      }
     >
-      <div className="grid gap-6 md:grid-cols-3">
-        <InlineStat
-          label="Latest session"
-          value={
-            latestSession
-              ? `${formatDate(latestSession.date)} · ${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
-              : "No session imported yet"
-          }
-        />
-        <InlineStat
-          label="Your game"
-          value={`${integerFormatter.format(stats.shotCount)} shots · ${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
-        />
-        <InlineStat
-          label="Best insight"
-          value={
-            firstSignal
-              ? `${firstSignal.value}. ${firstSignal.detail}`
-              : "Keep adding shots to surface trend changes."
-          }
-        />
+      {compact ? (
+        <div className="grid gap-2">
+          <CompactSignalRow
+            label="Latest session"
+            value={latestSession ? formatDate(latestSession.date) : "No import yet"}
+            detail={
+              latestSession
+                ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
+                : "Import a CSV to start the practice signal."
+            }
+          />
+          <CompactSignalRow
+            label="Your game"
+            value={`${integerFormatter.format(stats.shotCount)} shots`}
+            detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
+          />
+          <CompactSignalRow
+            label="Strongest insight"
+            value={
+              latestRound
+                ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
+                : firstSignal?.value ?? "Building"
+            }
+            detail={
+              latestRound
+                ? latestRound.courseName ?? latestRound.fileName ?? "Latest round"
+                : firstSignal?.detail ?? "Keep adding shots to surface trend changes."
+            }
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          <SignalTile
+            label="Latest session"
+            value={latestSession ? formatDate(latestSession.date) : "No import yet"}
+            detail={
+              latestSession
+                ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
+                : "Import a CSV to start the practice signal."
+            }
+            tone="sky"
+          />
+          <SignalTile
+            label="Your game"
+            value={`${integerFormatter.format(stats.shotCount)} shots`}
+            detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
+            tone="green"
+          />
+          <SignalTile
+            label="Best insight"
+            value={
+              latestRound
+                ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
+                : firstSignal?.value ?? "Building"
+            }
+            detail={
+              latestRound
+                ? latestRound.courseName ?? latestRound.fileName ?? "Latest round"
+                : firstSignal?.detail ?? "Keep adding shots to surface trend changes."
+            }
+            tone={latestRound ? "amber" : firstSignal?.tone ?? "slate"}
+          />
+        </div>
+      )}
+      <div className="mt-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3 text-sm leading-6 text-[#667085]">
+        <span className="font-semibold text-[#111827]">Data quality:</span>{" "}
+        {latestSession
+          ? "Latest session imported cleanly."
+          : "Import a session to unlock quality checks."}{" "}
+        <span className="font-semibold text-[#111827]">Strongest insight:</span>{" "}
+        {latestRound
+          ? `latest round ${formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)}.`
+          : firstSignal
+            ? `${firstSignal.label.toLowerCase()} · ${firstSignal.value}.`
+            : "No major movement yet."}
       </div>
     </DashboardPanel>
+  );
+}
+
+function CompactSignalRow({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: ReactNode;
+  detail: ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 rounded-lg border border-[#DFE7DF] bg-white px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
+          {label}
+        </p>
+        <p className="text-right text-sm font-semibold text-[#111827]">
+          {value}
+        </p>
+      </div>
+      <p className="text-sm leading-5 text-[#667085]">{detail}</p>
+    </div>
+  );
+}
+
+function SignalTile({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  detail: ReactNode;
+  tone: DashboardTone;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
+          {label}
+        </p>
+        <DashboardDot tone={tone} />
+      </div>
+      <p className="mt-3 truncate text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+        {value}
+      </p>
+      <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#667085]">
+        {detail}
+      </p>
+    </div>
   );
 }
 
@@ -1409,22 +1651,27 @@ function PracticeRecommendationCard({
   coachPreview,
   primaryAction,
   primaryActionLabel,
+  className,
 }: {
   coachPreview: DashboardData["coachPreview"];
   primaryAction: string;
   primaryActionLabel: string;
+  className?: string;
 }) {
   const href = coachPreview
     ? `/bag/${coachPreview.clubId}/analytics`
     : primaryAction;
   const taskCopy = coachPreview
-    ? getCompactPracticeTask(coachPreview.drill)
+    ? getDashboardPracticeTask(coachPreview)
     : "";
 
   return (
     <section
       id="practice"
-      className="scroll-mt-28 rounded-[22px] border border-[#CFE7D6] bg-white p-5 shadow-[0_12px_30px_rgba(8,122,61,0.08)] sm:p-6"
+      className={cn(
+        "scroll-mt-28 rounded-[22px] border border-[#CFE7D6] bg-white p-5 shadow-[0_12px_30px_rgba(8,122,61,0.08)] sm:p-6",
+        className,
+      )}
     >
       {coachPreview ? (
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
@@ -1451,6 +1698,7 @@ function PracticeRecommendationCard({
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">
               {coachPreview.reason}
             </p>
+            <TargetLaneVisual />
           </div>
 
           <div className="self-start rounded-2xl border border-[#EDF1ED] bg-[#F8FAF8] p-4">
@@ -1458,18 +1706,23 @@ function PracticeRecommendationCard({
               <Crosshair className="size-5" />
               <p className="text-sm font-semibold">Practice task</p>
             </div>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[#111827]">
+            <p className="mt-2 text-sm leading-6 text-[#111827]">
               {taskCopy}
             </p>
-            <Button
-              asChild
-              className="mt-3 h-9 w-full rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
-            >
-              <Link href={href} prefetch={false}>
-                Start practice
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <Button
+                asChild
+                className="h-9 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+              >
+                <Link href={href} prefetch={false}>
+                  Open drill
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+              <span className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm font-semibold text-[#667085]">
+                0 / 10 balls
+              </span>
+            </div>
           </div>
         </div>
       ) : (
@@ -1496,13 +1749,43 @@ function PracticeRecommendationCard({
   );
 }
 
-function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
+function TargetLaneVisual() {
+  return (
+    <div className="mt-5 rounded-2xl border border-[#DFE7DF] bg-[#F8FAF8] p-4">
+      <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
+        <span>Left boundary</span>
+        <span>Playable window</span>
+        <span>Right miss</span>
+      </div>
+      <div className="relative h-16 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
+        <div className="absolute inset-y-0 left-0 w-[22%] bg-[#FFF4DB]" />
+        <div className="absolute inset-y-0 left-[22%] w-[50%] bg-[#E8F7EE]" />
+        <div className="absolute inset-y-0 right-0 w-[28%] bg-[#EAF1FF]" />
+        <div className="absolute left-[22%] top-0 h-full border-l border-dashed border-[#B86B00]" />
+        <div className="absolute left-[72%] top-0 h-full border-l border-dashed border-[#2563EB]" />
+        <div className="absolute left-[26%] top-1/2 h-px w-[42%] -translate-y-1/2 bg-[#087A3D]" />
+        <div className="absolute left-[64%] top-1/2 size-2 -translate-y-1/2 rounded-full bg-[#087A3D] shadow-[0_0_0_5px_rgba(8,122,61,0.12)]" />
+      </div>
+    </div>
+  );
+}
+
+function PerformanceSnapshot({
+  metrics,
+  paired = false,
+  className,
+}: {
+  metrics: DashboardMetric[];
+  paired?: boolean;
+  className?: string;
+}) {
   return (
     <DashboardPanel
       title="Performance snapshot"
       description="Key totals from imported shots, active clubs, sessions, and scoring."
+      className={className}
     >
-      <div className="grid md:grid-cols-2 xl:grid-cols-4">
+      <div className={cn("grid", paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4")}>
         {metrics.map((metric, index) => {
           const Icon = metric.icon;
 
@@ -1512,10 +1795,17 @@ function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
               href={metric.href}
               prefetch={false}
               className={cn(
-                "group min-w-0 px-0 py-4 transition-colors hover:bg-[#F8FAF8] md:px-5",
-                index > 0 ? "border-t border-[#EDF1ED] md:border-t-0" : "",
-                index % 2 === 1 ? "md:border-l md:border-[#EDF1ED]" : "",
-                index > 1 ? "xl:border-l xl:border-[#EDF1ED]" : "",
+                "group min-w-0 px-0 py-3 transition-colors hover:bg-[#F8FAF8] md:px-4",
+                paired
+                  ? cn(
+                      index % 2 === 1 && "border-l border-[#EDF1ED]",
+                      index >= 2 && "border-t border-[#EDF1ED]",
+                    )
+                  : cn(
+                      index > 0 && "border-t border-[#EDF1ED] md:border-t-0",
+                      index % 2 === 1 && "md:border-l md:border-[#EDF1ED]",
+                      index > 1 && "xl:border-l xl:border-[#EDF1ED]",
+                    ),
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -1523,7 +1813,14 @@ function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
                   <p className="text-[15px] font-semibold leading-6 text-[#111827]">
                     {metric.label}
                   </p>
-                  <p className="mt-2 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+                  <p
+                    className={cn(
+                      "mt-2 font-bold tracking-normal text-[#111827]",
+                      paired
+                        ? "text-2xl leading-8"
+                        : "text-[28px] leading-[34px]",
+                    )}
+                  >
                     {metric.value}
                   </p>
                 </div>
@@ -1536,9 +1833,10 @@ function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
                   <Icon className="size-5" />
                 </span>
               </div>
-              <p className="mt-2 text-sm leading-6 text-[#667085]">
+              <p className={cn("mt-2 text-sm text-[#667085]", paired ? "leading-5" : "leading-6")}>
                 {metric.detail}
               </p>
+              <MetricSparkline tone={metric.tone} index={index} compact={paired} />
             </Link>
           );
         })}
@@ -1547,15 +1845,72 @@ function PerformanceSnapshot({ metrics }: { metrics: DashboardMetric[] }) {
   );
 }
 
-function BagSnapshotPanel({
+function MetricSparkline({
+  tone,
+  index,
+  compact = false,
+}: {
+  tone: DashboardTone;
+  index: number;
+  compact?: boolean;
+}) {
+  const heights = compact
+    ? [
+        [12, 20, 16, 24, 22],
+        [16, 14, 19, 22, 26],
+        [12, 16, 18, 24, 20],
+        [25, 22, 19, 16, 13],
+      ][index % 4]
+    : [
+        [28, 42, 36, 50, 46],
+        [34, 30, 40, 44, 52],
+        [26, 34, 38, 48, 44],
+        [50, 46, 42, 36, 30],
+      ][index % 4];
+
+  return (
+    <div
+      className={cn("mt-4 flex items-end gap-1.5", compact ? "h-7" : "h-14")}
+      aria-hidden="true"
+    >
+      {heights.map((height, itemIndex) => (
+        <span
+          key={`${height}-${itemIndex}`}
+          className={cn("w-full rounded-t", toneBarClass(tone))}
+          style={{ height }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BagConfidencePanel({
   clubs,
+  bagAlert,
 }: {
   clubs: DashboardData["bagPreview"];
+  bagAlert: FeatureIdeasData["bagAlerts"][number] | null;
 }) {
+  const trustedClubs = [...clubs]
+    .sort((left, right) => {
+      const trustDelta =
+        right.stock.confidenceScore - left.stock.confidenceScore;
+      return trustDelta || right.shotCount - left.shotCount;
+    })
+    .slice(0, 3);
+  const needsDataClub =
+    [...clubs]
+      .sort((left, right) => {
+        const trustDelta =
+          left.stock.confidenceScore - right.stock.confidenceScore;
+        return trustDelta || left.shotCount - right.shotCount;
+      })
+      .find((club) => club.stock.confidenceScore < 60) ?? null;
+
   return (
     <DashboardPanel
-      title="Bag snapshot"
-      description="Active clubs with stock carry, shot depth, and trust."
+      title="Bag confidence"
+      description="The most important bag signals without turning the dashboard into the full bag page."
       action={
         <Button asChild variant="outline" className="rounded-lg">
           <Link href="/bag" prefetch={false}>
@@ -1566,56 +1921,47 @@ function BagSnapshotPanel({
       }
     >
       {clubs.length > 0 ? (
-        <div className="-mx-6 -my-5">
-          {clubs.map((club) => (
-            <Link
-              key={club.id}
-              href={`/bag/${club.id}`}
-              prefetch={false}
-              className="grid gap-4 border-t border-[#EDF1ED] px-6 py-5 transition-colors first:border-t-0 hover:bg-[#F8FAF8] md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)]"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold tracking-normal text-[#111827]">
-                    {formatClubType(club.type)}
-                  </h3>
-                  <StatusPill
-                    tone={normalizeDashboardTone(
-                      getClubDecisionTone(club.decisionLabel),
-                    )}
-                  >
-                    {club.decisionLabel}
-                  </StatusPill>
-                </div>
-                <p className="mt-1 text-sm leading-6 text-[#667085]">
-                  {club.brandModel}
-                </p>
-              </div>
-              <div className="min-w-0">
-                <div className="grid grid-cols-2 gap-4">
-                  <InlineStat
-                    label="Carry"
-                    value={formatYards(club.stock.carryMedianYd)}
-                  />
-                  <InlineStat
-                    label="Shots"
-                    value={integerFormatter.format(club.shotCount)}
-                  />
-                </div>
-                <TrustBar value={club.stock.confidenceScore} />
-              </div>
-            </Link>
-          ))}
+        <div className="grid gap-5">
+          <div className="flex flex-wrap gap-2">
+            {trustedClubs.map((club) => (
+              <BagSignalPill
+                key={club.id}
+                href={`/bag/${club.id}`}
+                label={formatClubType(club.type)}
+                value={`${club.stock.confidenceScore}%`}
+              />
+            ))}
+            {needsDataClub ? (
+              <BagSignalPill
+                href={`/bag/${needsDataClub.id}`}
+                label={formatClubType(needsDataClub.type)}
+                value={
+                  needsDataClub.stock.carryMedianYd === null
+                    ? "Needs data"
+                    : `${needsDataClub.stock.confidenceScore}% trust`
+                }
+                tone="amber"
+              />
+            ) : null}
+            <BagSignalPill
+              href={bagAlert?.href ?? "/bag"}
+              label="Biggest gap"
+              value={bagAlert?.metric ?? "Clear"}
+              tone={bagAlert?.tone === "pink" || bagAlert?.tone === "amber" ? "amber" : "green"}
+            />
+          </div>
+
+          <ClubConfidenceLadder clubs={getDashboardLadderClubs(clubs)} />
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm leading-6 text-[#667085]">
-            Import launch-monitor shots and the bag map will build automatically.
+            Import a Rapsodo CSV and the bag map will build automatically.
           </p>
           <Button asChild className="rounded-lg bg-[#087A3D] text-white">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import data
+              Import CSV
             </Link>
           </Button>
         </div>
@@ -1624,15 +1970,117 @@ function BagSnapshotPanel({
   );
 }
 
+function BagSignalPill({
+  href,
+  label,
+  value,
+  tone = "green",
+}: {
+  href: string;
+  label: string;
+  value: string;
+  tone?: "green" | "amber";
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className={cn(
+        "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-white",
+        tone === "amber"
+          ? "border-[#F1C36D] bg-[#FFF8E7] text-[#7A4A00]"
+          : "border-[#CFE7D6] bg-[#F0FAF3] text-[#075F33]",
+      )}
+    >
+      <span className="font-semibold">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-[0.08em]">
+        {value}
+      </span>
+    </Link>
+  );
+}
+
+const DASHBOARD_LADDER_TYPES = ["driver", "6i", "8i", "pw"] as const;
+
+function getDashboardLadderClubs(clubs: DashboardData["bagPreview"]) {
+  const preferred = DASHBOARD_LADDER_TYPES.map((type) =>
+    clubs.find((club) => club.type === type),
+  ).filter((club): club is DashboardData["bagPreview"][number] => Boolean(club));
+
+  if (preferred.length >= 4) {
+    return preferred;
+  }
+
+  return [...clubs]
+    .filter((club) => club.type !== "sw")
+    .sort(
+      (left, right) =>
+        (right.stock.carryMedianYd ?? 0) - (left.stock.carryMedianYd ?? 0),
+    )
+    .slice(0, 4);
+}
+
+function ClubConfidenceLadder({
+  clubs,
+}: {
+  clubs: DashboardData["bagPreview"];
+}) {
+  const maxCarry = Math.max(
+    1,
+    ...clubs.map((club) => club.stock.carryMedianYd ?? 0),
+  );
+
+  return (
+    <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
+      <p className="text-sm font-semibold text-[#111827]">
+        Club-distance ladder
+      </p>
+      <div className="mt-3 grid gap-2.5">
+        {clubs.map((club) => {
+          const carry = club.stock.carryMedianYd ?? 0;
+          const width = Math.max(8, Math.round((carry / maxCarry) * 100));
+
+          return (
+            <Link
+              key={club.id}
+              href={`/bag/${club.id}`}
+              prefetch={false}
+              className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
+            >
+              <span className="font-semibold text-[#111827]">
+                {formatClubType(club.type)}
+              </span>
+              <span className="h-2 overflow-hidden rounded-full bg-[#EEF2F0]">
+                <span
+                  className="block h-full rounded-full bg-[#9AD7AE]"
+                  style={{ width: `${width}%` }}
+                />
+              </span>
+              <span className="text-right tabular-nums text-[#667085]">
+                {formatYards(club.stock.carryMedianYd)}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LatestRoundPanel({
   latestRound,
+  className,
 }: {
   latestRound: DashboardData["latestRound"];
+  className?: string;
 }) {
+  const holeHighlights = latestRound ? getRoundHoleHighlights(latestRound) : null;
+
   return (
     <DashboardPanel
       title="Latest round"
       description="Newest scorecard or simulated-course round."
+      className={className}
       action={<Flag className="size-5 text-[#2563EB]" />}
     >
       {latestRound ? (
@@ -1640,18 +2088,15 @@ function LatestRoundPanel({
           <p className="text-[15px] font-semibold leading-6 text-[#111827]">
             {formatDate(latestRound.date)} · {formatSessionType(latestRound.type)}
           </p>
-          <h3 className="mt-1 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+          <h3 className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
             {latestRound.courseName ?? latestRound.fileName ?? "Untitled round"}
           </h3>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <InlineStat
-              label="Score"
-              value={formatScoreVsPar(
-                latestRound.totalScore,
-                latestRound.totalPar,
-              )}
-            />
-            <InlineStat
+          <p className="mt-3 text-[32px] font-bold leading-9 tracking-normal text-[#111827]">
+            {formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)}
+          </p>
+          <HoleResultStrip latestRound={latestRound} />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <RoundSignalPill
               label="Putts"
               value={
                 typeof latestRound.totalPutts === "number"
@@ -1659,32 +2104,33 @@ function LatestRoundPanel({
                   : "--"
               }
             />
-            <InlineStat
-              label="Par"
-              value={
-                typeof latestRound.totalPar === "number"
-                  ? integerFormatter.format(latestRound.totalPar)
-                  : "--"
-              }
-            />
-            <InlineStat
+            <RoundSignalPill
               label="Differential"
               value={formatHandicapValue(latestRound.handicapDifferential)}
             />
           </div>
-          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          {holeHighlights ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <p className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm text-[#667085]">
+                <span className="font-semibold text-[#111827]">Best hole:</span>{" "}
+                {holeHighlights.best}
+              </p>
+              {holeHighlights.watch ? (
+                <p className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm text-[#667085]">
+                  <span className="font-semibold text-[#111827]">Watch:</span>{" "}
+                  {holeHighlights.watch}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="mt-5">
             <Button
               asChild
-              className="flex-1 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+              className="w-full rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
             >
               <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
                 <Flag className="size-4" />
                 Review round
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="flex-1 rounded-lg">
-              <Link href="/rounds" prefetch={false}>
-                All rounds
               </Link>
             </Button>
           </div>
@@ -1704,6 +2150,55 @@ function LatestRoundPanel({
         </div>
       )}
     </DashboardPanel>
+  );
+}
+
+function RoundSignalPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2 text-sm">
+      <span className="font-medium text-[#667085]">{label}</span>
+      <span className="font-semibold text-[#111827]">{value}</span>
+    </span>
+  );
+}
+
+function HoleResultStrip({
+  latestRound,
+}: {
+  latestRound: NonNullable<DashboardData["latestRound"]>;
+}) {
+  const holes = (latestRound.scorecardJson ?? []).slice(0, 9);
+
+  if (holes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5 grid grid-cols-9 gap-1" aria-label="Hole result strip">
+      {holes.map((hole, index) => {
+        const score = hole.score ?? null;
+        const delta = typeof score === "number" ? score - hole.par : null;
+
+        return (
+          <span
+            key={`${index}-${hole.par}-${score ?? "empty"}`}
+            className={cn(
+              "grid h-8 place-items-center rounded-md text-[11px] font-semibold",
+              holeResultClass(delta),
+            )}
+            title={`Hole ${index + 1}: ${formatHoleResult(delta)}`}
+          >
+            {formatHoleResult(delta)}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1733,22 +2228,29 @@ function CourseDecisionPanel({
             href={item.clubId ? `/bag/${item.clubId}` : "/bag"}
             prefetch={false}
             className={cn(
-              "group min-w-0 py-3 transition-colors hover:bg-[#F8FAF8] md:px-5",
+              "group min-w-0 px-3 py-2 transition-colors hover:bg-[#F8FAF8] md:px-4",
               index > 0
                 ? "border-t border-[#EDF1ED] md:border-l md:border-t-0"
                 : "",
             )}
           >
             <div className="flex items-center gap-2">
-              <DashboardDot tone={normalizeDashboardTone(item.tone)} />
-              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+              <span
+                className={cn(
+                  "grid size-8 place-items-center rounded-lg",
+                  toneSoftClass(normalizeDashboardTone(item.tone)),
+                )}
+              >
+                <DecisionIcon itemKey={item.key} />
+              </span>
+              <p className="text-sm font-semibold leading-5 text-[#111827]">
                 {item.label}
               </p>
             </div>
-            <p className="mt-3 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+            <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
               {item.value}
             </p>
-            <p className="mt-2 text-sm leading-6 text-[#667085]">
+            <p className="mt-1 text-sm leading-5 text-[#667085]">
               {item.detail}
             </p>
           </Link>
@@ -1758,14 +2260,34 @@ function CourseDecisionPanel({
   );
 }
 
+
+function DecisionIcon({
+  itemKey,
+}: {
+  itemKey: DashboardData["courseAdvice"][number]["key"];
+}) {
+  if (itemKey === "180-tee") {
+    return <Flag className="size-4" />;
+  }
+
+  if (itemKey === "150-approach") {
+    return <Crosshair className="size-4" />;
+  }
+
+  return <Target className="size-4" />;
+}
+
 function WhatChangedPanel({
   insights,
+  className,
 }: {
   insights: ReturnType<typeof buildWhatChangedInsights>;
+  className?: string;
 }) {
   return (
     <DashboardPanel
       id="progress"
+      className={className}
       title="What changed"
       description="Latest imported-shot and round signals."
       action={
@@ -1777,29 +2299,29 @@ function WhatChangedPanel({
         </Button>
       }
     >
-      <div className="grid md:grid-cols-3">
+      <div className="grid gap-4">
         {insights.map((insight, index) => (
           <div
             key={`${insight.label}-${insight.value}`}
-            className={cn(
-              "min-w-0 py-3 md:px-5",
-              index > 0
-                ? "border-t border-[#EDF1ED] md:border-l md:border-t-0"
-                : "",
-            )}
+            className="grid grid-cols-[auto_minmax(0,1fr)] gap-3"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center">
               <DashboardDot tone={normalizeDashboardTone(insight.tone)} />
+              {index < insights.length - 1 ? (
+                <span className="mt-2 h-full min-h-10 w-px bg-[#DFE7DF]" />
+              ) : null}
+            </div>
+            <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
               <p className="text-[15px] font-semibold leading-6 text-[#111827]">
                 {insight.label}
               </p>
+              <p className="mt-1 text-lg font-bold leading-7 tracking-normal text-[#111827]">
+                {insight.value}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-[#667085]">
+                {insight.detail}
+              </p>
             </div>
-            <p className="mt-3 text-xl font-bold leading-7 tracking-normal text-[#111827]">
-              {insight.value}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-[#667085]">
-              {insight.detail}
-            </p>
           </div>
         ))}
       </div>
@@ -1809,32 +2331,21 @@ function WhatChangedPanel({
 
 function DashboardSocialPulse({
   social,
-  challenges,
+  className,
 }: {
   social: Awaited<ReturnType<typeof getFeedPageData>>;
-  challenges: ChallengeListItem[];
+  className?: string;
 }) {
   const topItems = social.items.slice(0, 3);
   const pbCount = social.items.filter(
     (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
   ).length;
-  const recordCount = social.items.filter((item) =>
-    item.itemType.startsWith("course_record"),
-  ).length;
-  const tournamentCount = social.items.filter((item) =>
-    item.itemType.startsWith("tournament"),
-  ).length;
-  const closingSoon = challenges
-    .filter((challenge) => challenge.endsAt)
-    .sort(
-      (left, right) =>
-        (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0),
-    )[0] ?? null;
 
   return (
     <DashboardPanel
       title="Social pulse"
-      description="Network activity stays compact so performance remains the focus."
+      description="Recent activity from your golf network."
+      className={className}
       action={
         <Button asChild variant="outline" className="rounded-lg">
           <Link href="/feed" prefetch={false}>
@@ -1844,45 +2355,23 @@ function DashboardSocialPulse({
         </Button>
       }
     >
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <SocialStatLink
-              href="/friends"
-              label="Friends active"
-              value={social.friendCount.toString()}
-              detail="Accepted golfer friendships"
-              icon={Users}
-            />
-            <SocialStatLink
-              href="/feed?filter=pbs"
-              label="Network PBs"
-              value={pbCount.toString()}
-              detail="Visible PB and longest-drive cards"
-            />
-            <SocialStatLink
-              href="/course-records"
-              label="Course records"
-              value={recordCount.toString()}
-              detail="Champion and defended marks"
-            />
-            <SocialStatLink
-              href="/tournaments"
-              label="Tournaments"
-              value={tournamentCount.toString()}
-              detail="Entries and verified submissions"
-            />
-          </div>
-          {closingSoon ? (
-            <p className="mt-5 text-sm leading-6 text-[#667085]">
-              <span className="font-semibold text-[#111827]">
-                Challenge closing:
-              </span>{" "}
-              {closingSoon.title} ends {formatDate(closingSoon.endsAt!)}.
-            </p>
-          ) : null}
+      <div className="grid gap-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SocialStatLink
+            href="/friends"
+            label="Friends active"
+            value={social.friendCount.toString()}
+            detail="Accepted golfer friendships"
+            icon={Users}
+          />
+          <SocialStatLink
+            href="/feed?filter=pbs"
+            label="Network PBs"
+            value={pbCount.toString()}
+            detail="Visible PB and longest-drive cards"
+          />
         </div>
-        <div>
+        <div className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
           <p className="text-[15px] font-semibold leading-6 text-[#111827]">
             Latest activity
           </p>
@@ -1921,7 +2410,7 @@ function SocialStatLink({
     <Link
       href={href}
       prefetch={false}
-      className="group block border-t border-[#EDF1ED] pt-4 first:border-t-0 first:pt-0 sm:[&:nth-child(-n+2)]:border-t-0 sm:[&:nth-child(-n+2)]:pt-0"
+      className="group block rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-white"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[15px] font-semibold leading-6 text-[#111827]">
@@ -1929,22 +2418,22 @@ function SocialStatLink({
         </p>
         {Icon ? <Icon className="size-4 text-[#087A3D]" /> : null}
       </div>
-      <p className="mt-1 text-[28px] font-bold leading-[34px] tracking-normal text-[#111827]">
+      <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
         {value}
       </p>
-      <p className="mt-1 text-sm leading-6 text-[#667085]">{detail}</p>
+      <p className="mt-1 text-sm leading-5 text-[#667085]">{detail}</p>
     </Link>
   );
 }
 
-function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
+function QuickActions({ routes }: { routes: DashboardRoute[] }) {
   return (
     <DashboardPanel
       id="tools"
-      title="Quick routes"
-      description="Primary shortcuts only. The rest stay in navigation."
+      title="Quick actions"
+      description="Action-first shortcuts for import, practice, shots, bag and rounds."
     >
-      <div className="grid gap-2 md:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         {routes.map((route) => {
           const Icon = route.icon;
 
@@ -1954,24 +2443,22 @@ function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
               href={route.href}
               prefetch={false}
               title={route.description}
-              className="group flex min-h-20 flex-col justify-between rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] p-3 transition-colors hover:border-[#0F8F4D] hover:bg-white"
+              className="group flex min-h-12 items-center gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-white"
             >
-              <span className="flex items-center justify-between gap-2">
-                <span
-                  className={`grid size-8 place-items-center rounded-lg ${route.accent}`}
-                >
-                  <Icon className="size-4" />
-                </span>
-                <ArrowRight className="size-4 text-[#667085] transition-transform group-hover:translate-x-0.5 group-hover:text-[#087A3D]" />
+              <span
+                className={`grid size-8 shrink-0 place-items-center rounded-lg ${route.accent}`}
+              >
+                <Icon className="size-4" />
               </span>
-              <span>
+              <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold leading-5 text-[#111827]">
                   {route.title}
                 </span>
-                <span className="mt-1 block text-xs font-medium leading-5 text-[#667085]">
+                <span className="block truncate text-xs font-medium leading-5 text-[#667085]">
                   {route.metric}
                 </span>
               </span>
+              <ArrowRight className="size-4 shrink-0 text-[#667085] transition-transform group-hover:translate-x-0.5 group-hover:text-[#087A3D]" />
             </Link>
           );
         })}
@@ -1983,13 +2470,13 @@ function QuickRoutes({ routes }: { routes: DashboardRoute[] }) {
 function DashboardSocialMoment({ item }: { item: FeedItemView }) {
   return (
     <Link
-      href={feedItemHref(item)}
+      href={item.proofUrl ?? "/feed"}
       prefetch={false}
       className="block py-3 text-sm transition-colors hover:bg-[#F8FAF8]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold leading-6 text-[#111827]">
-          {item.itemType === "status_update" ? "Status update" : item.headline}
+          {item.headline}
         </p>
         <StatusPill
           tone={
@@ -2008,31 +2495,6 @@ function DashboardSocialMoment({ item }: { item: FeedItemView }) {
           : (item.context ?? "Social update")}
       </p>
     </Link>
-  );
-}
-
-function feedItemHref(item: FeedItemView) {
-  return item.proofUrl && !item.proofUrl.startsWith("data:image/") ? item.proofUrl : "/feed";
-}
-
-function InlineStat({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-sm font-semibold leading-6 text-[#111827]">{label}</p>
-      <p className="mt-1 text-sm leading-6 text-[#667085]">{value}</p>
-    </div>
-  );
-}
-
-function TrustBar({ value }: { value: number }) {
-  return (
-    <div className="mt-4">
-      <div className="mb-2 flex items-center justify-between text-xs font-medium text-[#667085]">
-        <span>Trust</span>
-        <span>{value}%</span>
-      </div>
-      <Progress value={value} />
-    </div>
   );
 }
 
@@ -2056,13 +2518,14 @@ function getBestClub(clubs: DashboardData["bagPreview"]) {
 
 function formatHandicapTrend(summary: HandicapSummary) {
   const trend = summary.trend.direction;
+  const delta = summary.trend.delta;
 
-  if (trend === "down") {
-    return `Trending down ${formatHandicapDelta(summary.trend.delta)}`;
+  if (trend === "down" && typeof delta === "number") {
+    return `Improved by ${formatHandicapValue(Math.abs(delta))}`;
   }
 
-  if (trend === "up") {
-    return `Trending up ${formatHandicapDelta(summary.trend.delta)}`;
+  if (trend === "up" && typeof delta === "number") {
+    return `Higher by ${formatHandicapValue(Math.abs(delta))}`;
   }
 
   if (trend === "flat") {
@@ -2085,26 +2548,92 @@ function formatScoreVsPar(score: number | null, par: number | null) {
   return `${integerFormatter.format(score)} (${versusPar >= 0 ? "+" : ""}${integerFormatter.format(versusPar)})`;
 }
 
-function formatCombinedHandicapDetail(
-  realHandicap: HandicapSummary,
-  simHandicap: HandicapSummary,
-  combinedHandicap: HandicapSummary,
+function getRoundHoleHighlights(
+  latestRound: NonNullable<DashboardData["latestRound"]>,
 ) {
-  const trend = combinedHandicap.trend.direction;
-  const trendLabel =
-    trend === "down"
-      ? `Trending down ${formatHandicapDelta(combinedHandicap.trend.delta)}`
-      : trend === "up"
-        ? `Trending up ${formatHandicapDelta(combinedHandicap.trend.delta)}`
-        : trend === "flat"
-          ? "Flat trend"
-          : `${combinedHandicap.sampleSize} round sample`;
+  const holes = (latestRound.scorecardJson ?? [])
+    .map((hole, index) => ({
+      holeNumber: index + 1,
+      delta:
+        typeof hole.score === "number" ? hole.score - hole.par : null,
+    }))
+    .filter(
+      (hole): hole is { holeNumber: number; delta: number } =>
+        hole.delta !== null,
+    );
 
-  return `Real ceiling ${formatHandicapValue(realHandicap.value)} | Sim ceiling ${formatHandicapValue(simHandicap.value)} | ${trendLabel}`;
+  if (holes.length === 0) {
+    return null;
+  }
+
+  const best = holes.reduce((left, right) =>
+    right.delta < left.delta ? right : left,
+  );
+  const worst = holes.reduce((left, right) =>
+    right.delta > left.delta ? right : left,
+  );
+
+  return {
+    best: `${best.delta <= -1 ? "Birdie" : formatHoleResult(best.delta)} · hole ${best.holeNumber}`,
+    watch:
+      worst.delta > 0
+        ? `+${worst.delta} · hole ${worst.holeNumber}`
+        : null,
+  };
+}
+
+function formatHoleResult(delta: number | null) {
+  if (delta === null) {
+    return "--";
+  }
+
+  if (delta <= -1) {
+    return "Bird";
+  }
+
+  if (delta === 0) {
+    return "Par";
+  }
+
+  if (delta === 1) {
+    return "Bog";
+  }
+
+  return `+${delta}`;
+}
+
+function holeResultClass(delta: number | null) {
+  if (delta === null) {
+    return "bg-[#F2F4F7] text-[#667085]";
+  }
+
+  if (delta <= -1) {
+    return "bg-[#E8F7EE] text-[#087A3D]";
+  }
+
+  if (delta === 0) {
+    return "bg-[#EAF1FF] text-[#2563EB]";
+  }
+
+  if (delta === 1) {
+    return "bg-[#FFF4DB] text-[#B86B00]";
+  }
+
+  return "bg-[#FEE4E2] text-[#B42318]";
 }
 
 function getCompactPracticeTask(drill: string) {
   return drill.split(/\s+The goal\b/i)[0]?.trim() || drill;
+}
+
+function getDashboardPracticeTask(
+  coachPreview: NonNullable<DashboardData["coachPreview"]>,
+) {
+  if (/direction/i.test(coachPreview.issueLabel)) {
+    return "Hit 10 balls with a hard left boundary. Count only shots inside the playable window.";
+  }
+
+  return getCompactPracticeTask(coachPreview.drill);
 }
 
 function normalizeDashboardTone(
@@ -2136,6 +2665,19 @@ function toneSoftClass(tone: DashboardTone) {
       return "bg-[#EAF1FF] text-[#2563EB]";
     case "slate":
       return "bg-[#F2F4F7] text-[#667085]";
+  }
+}
+
+function toneBarClass(tone: DashboardTone) {
+  switch (normalizeDashboardTone(tone)) {
+    case "green":
+      return "bg-[#9AD7AE]";
+    case "amber":
+      return "bg-[#F1C36D]";
+    case "sky":
+      return "bg-[#AFC4FF]";
+    case "slate":
+      return "bg-[#CBD5E1]";
   }
 }
 
@@ -2583,7 +3125,7 @@ function buildWhatChangedInsights({
     insights.push({
       label: "Latest round",
       value: `${latestRound.totalScore} (${versusPar >= 0 ? "+" : ""}${versusPar})`,
-      detail: `${latestRound.courseName ?? "Latest scorecard"} on ${formatDate(latestRound.date)}.`,
+      detail: "Review this round to keep recent form accurate.",
       tone: versusPar <= 10 ? "green" : "amber",
     });
   }
@@ -2596,7 +3138,7 @@ function buildWhatChangedInsights({
     insights.push({
       label: "Most trusted club",
       value: `${formatClubType(bestConfidenceClub.type)} / ${Math.round(bestConfidenceClub.stock.confidenceScore)}%`,
-      detail: `${bestConfidenceClub.stock.label} with ${integerFormatter.format(bestConfidenceClub.shotCount)} saved shots.`,
+      detail: `Reliable with ${integerFormatter.format(bestConfidenceClub.shotCount)} saved shots.`,
       tone: "green",
     });
   }
@@ -2616,7 +3158,7 @@ function buildWhatChangedInsights({
       detail:
         bagPreview.length > 0
           ? "Keep adding shots to unlock stronger trend comparisons."
-          : "Import launch-monitor shots to start building the personal baseline.",
+          : "Upload a Rapsodo CSV to start building the personal baseline.",
       tone: "slate",
     },
     {

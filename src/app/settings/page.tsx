@@ -11,6 +11,7 @@ import {
   removeMembershipAction,
   updateUserSettingsAction,
 } from "@/app/settings/actions";
+import { SocialFeaturePanel } from "@/components/features/feature-panels";
 import {
   DataPanel,
   PageHeader,
@@ -28,6 +29,7 @@ import { accountInvitations, accountMemberships, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { collaborationRoles } from "@/lib/collaboration";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import {
   dashboardPinOptions,
   preferredUnitOptions,
@@ -64,7 +66,7 @@ const dashboardPinLabels: Record<(typeof dashboardPinOptions)[number], string> =
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const requestHeaders = await headers();
-  const settingsData = await getSettingsData();
+  const [settingsData, featureData] = await Promise.all([getSettingsData(), getFeatureIdeasData()]);
   const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } = settingsData;
   const privacy = normalizePrivacy(profile.privacySettingsJson);
   const inviteUrl = params?.invite
@@ -80,6 +82,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         eyebrow={<StatusPill tone="sky">Account</StatusPill>}
         title="Settings"
         description="Manage profile preferences, privacy defaults, and data portability for your ForeKingHell account."
+        actions={
+          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <a href="#profile-settings">
+              <UserCog className="size-4" />
+              Profile
+            </a>
+          </Button>
+        }
       />
 
       {params?.saved ? (
@@ -149,7 +159,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </Alert>
       ) : null}
 
-      <SettingsMobileDisclosure title="Profile" description={`${profile.preferredUnits}, ${profile.tableDensity} tables`} defaultOpen>
+      <SocialFeaturePanel data={featureData} />
+
+      <SettingsMobileDisclosure id="profile-settings" title="Profile" description={`${profile.preferredUnits}, ${profile.tableDensity} tables`} defaultOpen>
       <DataPanel>
         <SectionHeader
           title="Profile and preferences"
@@ -321,18 +333,20 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 }
 
 function SettingsMobileDisclosure({
+  id,
   title,
   description,
   children,
   defaultOpen = false,
 }: {
+  id?: string;
   title: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
   return (
-    <details className="group sm:contents" open={defaultOpen}>
+    <details id={id} className="group scroll-mt-28 sm:contents" open={defaultOpen}>
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">
           <span className="block truncate font-semibold tracking-normal">{title}</span>

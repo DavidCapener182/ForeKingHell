@@ -41,7 +41,7 @@ const navGroups = [
     items: [
       {
         href: "/today",
-        label: "Today",
+        label: "Latest practice",
         icon: CalendarDays,
         isActive: (pathname: string) => pathname.startsWith("/today"),
       },

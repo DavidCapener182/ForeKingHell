@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
+import { CompetitionFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
   ChallengeCard,
@@ -24,7 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { buildCoachDrillChallenges, buildCoachSummary, type CoachDrillChallenge } from "@/lib/coach";
@@ -32,6 +33,7 @@ import { getCoachDrillAwardStatuses, type CoachDrillAwardStatus } from "@/lib/co
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import { socialVisibilityOptions } from "@/lib/social";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +44,11 @@ type ChallengesPageProps = {
 export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
-  const [data, billing, progressData] = await Promise.all([
+  const [data, billing, progressData, featureData] = await Promise.all([
     getChallengesPageData(),
     getBillingPageData(),
     getProgressData(userId),
+    getFeatureIdeasData(),
   ]);
   const coach = buildCoachSummary(progressData.clubs);
   const drillChallenges = buildCoachDrillChallenges(coach);
@@ -119,6 +122,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           }
         />
         <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
+        <CompetitionFeaturePanel data={featureData} />
         {activeTab === "templates" ? (
           <NativeListSection title="Templates">
             {data.templates.map((template) => (
@@ -137,7 +141,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                 description={featured.description ?? `${featured.templateName} · ${featured.participantCount} players`}
                 href={`/challenges/${featured.id}`}
                 actionLabel="Open"
-                media={<PageArtwork variant="range" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" priority />}
+                media={<ChallengeBadgeImage challenge={featured} className="h-full rounded-none" />}
                 meta={
                   <span>
                     {featured.endsAt ? `${formatDate(featured.endsAt)} · ` : ""}
@@ -156,6 +160,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                   href={`/challenges/${challenge.id}`}
                   cta="Open"
                   leader={challenge.leader ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}` : undefined}
+                  media={<ChallengeBadgeImage challenge={challenge} />}
                   meta={
                     <>
                       <span>{challenge.participantCount} players</span>
@@ -196,6 +201,8 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
         ]}
       />
+
+      <CompetitionFeaturePanel data={featureData} />
 
       {featured ? (
         <section className="premium-card overflow-hidden">
@@ -280,7 +287,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 
         <div className="grid gap-4">
           <DataPanel>
-            <SectionHeader title="Templates" description="Launch-monitor-friendly formats for private leagues and public boards." />
+            <SectionHeader title="Templates" description="Rapsodo-friendly formats for private leagues and public boards." />
             <CardContent className="grid gap-2">
               {data.templates.map((template) => (
                 <div key={template.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
@@ -389,6 +396,44 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       </div>
     </PageShell>
   );
+}
+
+function ChallengeBadgeImage({
+  challenge,
+  className,
+}: {
+  challenge: Pick<ChallengeListItem, "title" | "templateName">;
+  className?: string;
+}) {
+  const src = challengeBadgeSrc(challenge);
+
+  return (
+    <Image
+      src={src}
+      alt=""
+      fill
+      sizes="(min-width: 768px) 280px, 100vw"
+      className={`object-cover ${className ?? ""}`}
+    />
+  );
+}
+
+function challengeBadgeSrc(challenge: Pick<ChallengeListItem, "title" | "templateName">) {
+  const text = `${challenge.title} ${challenge.templateName}`.toLowerCase();
+
+  if (text.includes("long") || text.includes("drive")) {
+    return "/assets/challenge-longest-drive.webp";
+  }
+
+  if (text.includes("pin") || text.includes("closest")) {
+    return "/assets/challenge-closest-pin.webp";
+  }
+
+  if (text.includes("7") || text.includes("seven") || text.includes("iron")) {
+    return "/assets/challenge-seven-iron-consistency.webp";
+  }
+
+  return "/assets/challenge-wedge-window.webp";
 }
 
 

@@ -4,6 +4,7 @@ import { count, desc, eq, sql } from "drizzle-orm";
 import { Archive, ArrowLeft, Award, ChevronDown, CircleDot, Save, Wrench } from "lucide-react";
 
 import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
+import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
@@ -36,6 +37,7 @@ import { ballModels, clubEquipmentHistory, clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -53,12 +55,21 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 export default async function EquipmentPage({ searchParams }: EquipmentPageProps) {
   const params = await searchParams;
-  const data = await getEquipmentData();
+  const [data, featureData] = await Promise.all([getEquipmentData(), getFeatureIdeasData()]);
   const activeHistory = data.history.filter((row) => row.effectiveTo === null);
 
   return (
     <PageShell size="7xl">
       <MobileRouteHeader title="Analyse" group="analyse" activeKey="equipment" />
+
+      <div data-primary-action className="sm:hidden">
+        <Button asChild className="h-11 w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href="#equipment-forms" prefetch={false}>
+            <Save className="size-4" />
+            Add setup
+          </Link>
+        </Button>
+      </div>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">
@@ -119,6 +130,8 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         ]}
       />
 
+      <BagFeaturePanel data={featureData} />
+
       <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
         {data.activeClubs.slice(0, 4).map((club) => (
           <div key={club.id} className="premium-card grid min-w-[72vw] grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 p-3 sm:min-w-0">
@@ -154,7 +167,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       <EquipmentSocialBadges data={data} activeHistoryCount={activeHistory.length} />
 
       <EquipmentMobileDisclosure title="Add or edit equipment" description="Ball models and club specification forms.">
-      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <DataPanel>
           <SectionHeader
             title="Add ball model"

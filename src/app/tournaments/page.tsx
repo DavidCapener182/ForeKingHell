@@ -11,10 +11,12 @@ import {
   NativeListSection,
   TournamentCard as MobileTournamentCard,
 } from "@/components/mobile-sports";
+import { CompetitionFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell, StatusPill } from "@/components/premium";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { formatLabel, getTournamentsPageData } from "@/lib/tournaments";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,7 @@ type TournamentsPageProps = {
 
 export default async function TournamentsPage({ searchParams }: TournamentsPageProps) {
   const params = await searchParams;
-  const data = await getTournamentsPageData();
+  const [data, featureData] = await Promise.all([getTournamentsPageData(), getFeatureIdeasData()]);
   const activeTab = parseTournamentHubTab(params?.tab);
   const scheduledEvents = [data.scheduled.daily, data.scheduled.weekly, data.scheduled.monthly].filter(
     (event): event is TournamentListItem => Boolean(event),
@@ -54,7 +56,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         <MobileStatusAction
           label="Live event schedule"
           value={`${data.tournaments.length} events`}
-          detail={`${data.myEntries.length} entered · launch monitor + scorecard proof`}
+          detail={`${data.myEntries.length} entered · Rapsodo + scorecard proof`}
           action={
             data.featured ? (
               <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -66,11 +68,11 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         {data.featured ? (
           <EventHeroCard
             eyebrow={data.featured.scheduleEyebrow ?? "Live event"}
-            title={scheduledEventTitle(data.featured)}
+            title={data.featured.scheduleKind === "monthly" ? "Spring Major Week" : data.featured.title}
             description={`${data.featured.roundCount} rounds · ${data.featured.directRapsodoRequired ? "Gold proof required" : "Silver proof accepted"}`}
             href={`/tournaments/${data.featured.id}`}
             actionLabel={data.featured.viewerEntered ? "Open" : "Enter"}
-            media={<PageArtwork variant="scorecard" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" priority />}
+            media={<PageArtwork variant="tourCover" alt="" cropKey={data.featured.id} className="block h-full min-h-0 rounded-none" sizes="100vw" />}
             meta={
               <span>
                 {data.featured.leader ? `Leader: ${data.featured.leader.displayName} · ` : ""}
@@ -80,6 +82,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             joined={data.featured.viewerEntered ? <Badge variant="secondary">Entered</Badge> : null}
           />
         ) : null}
+        <CompetitionFeaturePanel data={featureData} />
         <NativeListSection title={activeTab === "mine" ? "My events" : activeTab === "majors" ? "Majors" : "Live boards"}>
           {(activeTab === "mine"
             ? data.myEntries
@@ -89,7 +92,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
           ).slice(0, 10).map((event) => (
             <MobileTournamentCard
               key={event.id}
-              title={scheduledEventTitle(event)}
+              title={event.scheduleKind === "monthly" ? "Spring Major Week" : event.title}
               description={`${event.courseName} · ${event.teeSetName}`}
               href={`/tournaments/${event.id}`}
               cta={event.viewerEntered ? "Open" : "Enter"}
@@ -128,13 +131,13 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             <StatusPill tone="amber">Tournament schedule</StatusPill>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">Daily, weekly and monthly events</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} launch-monitor-friendly tour venues, weekly opens run all week, and monthly majors use famous championship venues.
+              Tour-style competition without the setup form first. Daily events rotate through {data.dailyCourseCount} Rapsodo-friendly tour venues, weekly opens run all week, and monthly majors use famous championship venues.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{data.tournaments.length} live events</Badge>
             <Badge variant="outline">{data.myEntries.length} entered</Badge>
-            <Badge variant="outline">Launch monitor + scorecard proof</Badge>
+            <Badge variant="outline">Rapsodo + scorecard proof</Badge>
           </div>
         </div>
       </header>
@@ -144,6 +147,8 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
           <ScheduledTournamentCard key={event.id} event={event} />
         ))}
       </section>
+
+      <CompetitionFeaturePanel data={featureData} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <main className="grid gap-4">
@@ -202,26 +207,6 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
   );
 }
 
-function scheduledEventTitle(event: TournamentListItem) {
-  if (event.actualTourEvent) {
-    return event.title;
-  }
-
-  if (event.scheduleKind === "monthly") {
-    return "Monthly Major";
-  }
-
-  if (event.scheduleKind === "weekly") {
-    return "Weekly Open";
-  }
-
-  if (event.scheduleKind === "daily") {
-    return "Daily Tournament";
-  }
-
-  return event.title;
-}
-
 function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
   const tone =
     event.scheduleKind === "monthly"
@@ -232,10 +217,17 @@ function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
 
   return (
     <article className={`rounded-xl border p-4 shadow-sm ${tone}`}>
+      <PageArtwork
+        variant="tourCover"
+        alt=""
+        cropKey={event.id}
+        className="-mx-1 mb-3 block h-28 min-h-0 rounded-lg"
+        sizes="(min-width: 1024px) 33vw, 100vw"
+      />
       <div className="flex items-start justify-between gap-3">
         <div>
           <Badge variant="secondary">{event.scheduleEyebrow ?? "Live"}</Badge>
-          <h2 className="mt-3 text-xl font-semibold tracking-normal">{scheduledEventTitle(event)}</h2>
+          <h2 className="mt-3 text-xl font-semibold tracking-normal">{event.scheduleKind === "monthly" ? "Monthly Major" : event.scheduleKind === "weekly" ? "Weekly Open" : "Daily Tournament"}</h2>
           <p className="mt-1 text-sm font-medium">{event.courseName}</p>
           <p className="mt-1 text-sm text-muted-foreground">{event.teeSetName}</p>
         </div>
@@ -277,6 +269,13 @@ function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
 function TournamentCard({ tournament }: { tournament: TournamentListItem }) {
   return (
     <article className="premium-card p-4">
+      <PageArtwork
+        variant="tourCover"
+        alt=""
+        cropKey={tournament.id}
+        className="mb-3 block h-28 min-h-0 rounded-lg"
+        sizes="(min-width: 768px) 50vw, 100vw"
+      />
       <div className="flex items-start justify-between gap-3">
         <div>
           <Badge variant={tournament.directRapsodoRequired ? "secondary" : "outline"}>

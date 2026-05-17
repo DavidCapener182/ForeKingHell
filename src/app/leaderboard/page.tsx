@@ -13,6 +13,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { LeaderboardClimbPanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
   CompactLeaderboard,
@@ -44,6 +45,7 @@ import { getDb } from "@/db/client";
 import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +108,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const params = await searchParams;
   const activeTab = parseTab(params?.tab);
   const filters = parseLeaderboardFilters(params);
-  const data = await getLeaderboardData(activeTab, filters);
+  const [data, featureData] = await Promise.all([getLeaderboardData(activeTab, filters), getFeatureIdeasData()]);
 
   return (
     <PageShell>
@@ -217,6 +219,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             />
           </NativeListSection>
         )}
+        <LeaderboardClimbPanel data={featureData} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -287,6 +290,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           },
         ]}
       />
+
+      <LeaderboardClimbPanel data={featureData} />
 
       <section className="hidden gap-4 sm:grid md:grid-cols-3">
         <MetricCard

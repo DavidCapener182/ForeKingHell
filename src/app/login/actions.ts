@@ -30,10 +30,12 @@ export async function sendMagicLinkAction(
   }
 
   const supabase = await createSupabaseServerClient();
+  const redirectTo = new URL("/auth/callback", await siteOrigin());
+  redirectTo.searchParams.set("next", next);
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: redirectTo.toString(),
       shouldCreateUser: true,
     },
   });
@@ -61,7 +63,8 @@ export async function signInWithPasswordAction(
 
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
+  const nextRaw = String(formData.get("next") ?? "");
+  const next = safeNextPath(nextRaw) ?? "/dashboard";
 
   if (!email || !password) {
     return { status: "error", message: "Enter your email and password." };
@@ -102,10 +105,12 @@ export async function signInWithOAuthAction(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
+  const redirectTo = new URL("/auth/callback", await siteOrigin());
+  redirectTo.searchParams.set("next", next);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${await siteOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: redirectTo.toString(),
     },
   });
 

@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Search, Upload } from "luci
 import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { DateFilterPopover } from "@/components/app/date-filter-popover";
+import { SavedShotViewsPanel } from "@/components/features/feature-panels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +58,7 @@ import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -82,8 +84,8 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export default async function ShotsPage({ searchParams }: { searchParams: SearchParams }) {
   const filters = parseFilters(await searchParams);
-  const { stats, rowTypes, sessionSummaries, savedShots, totalFilteredShots, clubsForFilter, categories } =
-    await getShotDatabase(filters);
+  const [{ stats, rowTypes, sessionSummaries, savedShots, totalFilteredShots, clubsForFilter, categories }, featureData] =
+    await Promise.all([getShotDatabase(filters), getFeatureIdeasData()]);
   const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
   const activeFilterChips = buildActiveFilterChips(filters, clubsForFilter, sessionSummaries);
   const filterForm = (
@@ -116,7 +118,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             <Button asChild variant="outline">
               <Link href="/import">
                 <Upload className="size-4" />
-                <span className="hidden sm:inline">Import data</span>
+                <span className="hidden sm:inline">Import CSV</span>
                 <span className="sm:hidden">Import</span>
               </Link>
             </Button>
@@ -189,7 +191,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           <ActiveFilterChips items={activeFilterChips} className="sm:hidden" />
         </div>
 
-        <Card className="premium-card hidden sm:block lg:sticky lg:top-24 lg:z-20">
+        <SavedShotViewsPanel data={featureData} />
+
+        <Card className="premium-card hidden sm:block">
           <CardHeader>
             <CardTitle>Find shots</CardTitle>
             <CardDescription>{PAGE_SIZE} rows per page, scoped to the current player.</CardDescription>
@@ -390,11 +394,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       </MobileDataCard>
                     ))
                   ) : (
-                    <div className="apple-panel grid gap-3 p-6 text-center text-sm text-muted-foreground">
-                      <p>No shots match these filters.</p>
-                      <Button asChild variant="outline" className="mx-auto">
-                        <Link href="/shots">Clear filters</Link>
-                      </Button>
+                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                      No shots match these filters.
                     </div>
                   )}
                 </MobileDataList>
@@ -456,7 +457,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     </TableRow>
                   ))}
                   {savedShots.length === 0 ? (
-                    <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">No shots match these filters. Clear filters or import a launch-monitor session.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={11} className="h-24 text-center text-muted-foreground">No shots match these filters.</TableCell></TableRow>
                   ) : null}
                 </TableBody>
               </Table>

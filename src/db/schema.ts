@@ -1971,6 +1971,144 @@ export const tournamentPrizes = pgTable(
   ],
 );
 
+export const shotSavedViews = pgTable(
+  "fkh_shot_saved_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    description: text("description"),
+    filterJson: jsonb("filter_json").$type<Record<string, unknown>>().notNull().default({}),
+    sortKey: varchar("sort_key", { length: 60 }).notNull().default("recent"),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
+    pinned: boolean("pinned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_shot_saved_views_user_name_idx").on(table.userId, table.name),
+    index("fkh_shot_saved_views_user_pinned_idx").on(table.userId, table.pinned),
+  ],
+);
+
+export const practiceSessions = pgTable(
+  "fkh_practice_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: varchar("source_type", { length: 60 }).notNull().default("coach"),
+    sourceId: varchar("source_id", { length: 220 }),
+    clubId: uuid("club_id").references(() => clubs.id, { onDelete: "set null" }),
+    clubType: varchar("club_type", { length: 40 }),
+    title: varchar("title", { length: 180 }).notNull(),
+    focusArea: varchar("focus_area", { length: 80 }).notNull().default("practice"),
+    status: varchar("status", { length: 24 }).notNull().default("planned"),
+    plannedAt: timestamp("planned_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    targetShots: integer("target_shots").notNull().default(12),
+    recordedShots: integer("recorded_shots").notNull().default(0),
+    notes: text("notes"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_practice_sessions_user_status_idx").on(table.userId, table.status),
+    index("fkh_practice_sessions_user_planned_idx").on(table.userId, table.plannedAt),
+    index("fkh_practice_sessions_source_idx").on(table.sourceType, table.sourceId),
+  ],
+);
+
+export const courseRecordGoals = pgTable(
+  "fkh_course_record_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    recordId: uuid("record_id")
+      .notNull()
+      .references(() => courseRecords.id, { onDelete: "cascade" }),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "set null" }),
+    targetValue: doublePrecision("target_value"),
+    targetLabel: varchar("target_label", { length: 120 }),
+    notifyWhenBeaten: boolean("notify_when_beaten").notNull().default(true),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_record_goals_user_record_idx").on(table.userId, table.recordId),
+    index("fkh_course_record_goals_user_status_idx").on(table.userId, table.status),
+    index("fkh_course_record_goals_target_idx").on(table.targetUserId),
+  ],
+);
+
+export const courseFollows = pgTable(
+  "fkh_course_follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    notifyRecords: boolean("notify_records").notNull().default(true),
+    providerAliasesJson: jsonb("provider_aliases_json")
+      .$type<Array<{ provider: string; alias: string }>>()
+      .notNull()
+      .default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_follows_user_course_idx").on(table.userId, table.courseId),
+    index("fkh_course_follows_course_idx").on(table.courseId),
+  ],
+);
+
+export const userFeaturePreferences = pgTable("fkh_user_feature_preferences", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  autoShareRounds: boolean("auto_share_rounds").notNull().default(false),
+  autoSharePbs: boolean("auto_share_pbs").notNull().default(false),
+  autoShareAchievements: boolean("auto_share_achievements").notNull().default(false),
+  autoSharePractice: boolean("auto_share_practice").notNull().default(false),
+  publicSharePreview: boolean("public_share_preview").notNull().default(false),
+  featuredRecordIdsJson: jsonb("featured_record_ids_json").$type<string[]>().notNull().default([]),
+  highlightSettingsJson: jsonb("highlight_settings_json").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const weeklyRecaps = pgTable(
+  "fkh_weekly_recaps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    weekStart: timestamp("week_start", { withTimezone: true }).notNull(),
+    weekEnd: timestamp("week_end", { withTimezone: true }).notNull(),
+    headline: varchar("headline", { length: 220 }).notNull(),
+    summaryJson: jsonb("summary_json").$type<Record<string, unknown>>().notNull().default({}),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_weekly_recaps_user_week_idx").on(table.userId, table.weekStart),
+    index("fkh_weekly_recaps_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
 export type NewUser = typeof users.$inferInsert;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type NewAdminAuditLog = typeof adminAuditLog.$inferInsert;
@@ -2048,3 +2186,9 @@ export type NewTournamentStanding = typeof tournamentStandings.$inferInsert;
 export type NewTournamentComment = typeof tournamentComments.$inferInsert;
 export type NewTournamentInvite = typeof tournamentInvites.$inferInsert;
 export type NewTournamentPrize = typeof tournamentPrizes.$inferInsert;
+export type NewShotSavedView = typeof shotSavedViews.$inferInsert;
+export type NewPracticeSession = typeof practiceSessions.$inferInsert;
+export type NewCourseRecordGoal = typeof courseRecordGoals.$inferInsert;
+export type NewCourseFollow = typeof courseFollows.$inferInsert;
+export type NewUserFeaturePreference = typeof userFeaturePreferences.$inferInsert;
+export type NewWeeklyRecap = typeof weeklyRecaps.$inferInsert;

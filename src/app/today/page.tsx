@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -7,6 +7,12 @@ import {
   ChevronDown,
   Crosshair,
   Database,
+  Dumbbell,
+  Flag,
+  Gauge,
+  Route,
+  ShieldCheck,
+  Target,
   Trophy,
   Upload,
 } from "lucide-react";
@@ -17,10 +23,10 @@ import {
   DataPanel,
   DataTableFrame,
   MobileAccordionSection,
-  MobileFilterSheet,
   MobileDataCard,
   MobileDataList,
   MobileHorizontalRail,
+  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -47,6 +53,7 @@ import {
 } from "@/components/ui/table";
 import {
   TodayShotCharts,
+  type TodayChartClubStatus,
   type TodayChartShot,
 } from "@/app/today/today-shot-charts";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
@@ -81,6 +88,7 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
 type MetricUnit = "yd" | "mph" | "deg" | "ft" | "ratio";
 type HighlightDirection = "higher" | "lower";
 type HighlightKind = "record" | "tie" | "close";
+type ClubSort = "bag" | "best" | "worst";
 
 type ClubHighlight = {
   id: string;
@@ -114,8 +122,8 @@ export default async function TodayPage({
       <PageShell>
         <PageHeader
           eyebrow={<StatusPill tone="amber">Setup</StatusPill>}
-          title="Today"
-          description="Database connection required before today’s shot analysis can load."
+          title="Latest Practice Review"
+          description="Database connection required before the latest practice review can load."
         />
       </PageShell>
     );
@@ -132,16 +140,28 @@ export default async function TodayPage({
   ]);
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(data.shots);
+  const chartClubStatuses = toChartClubStatuses(data.clubComparisons);
+  const chartPatternInsight = shotPatternInsight(data);
+  const clubSort = parseClubSort(first(params.clubSort));
+  const sortedClubComparisons = sortClubComparisons(
+    data.clubComparisons,
+    clubSort,
+  );
   const activeFilterChips = buildTodayFilterChips(data);
 
   return (
-    <PageShell size="wide" contentClassName="pb-4 sm:pb-5">
+    <PageShell
+      size="full"
+      className="today-review-page"
+      contentClassName="pb-4 sm:pb-5"
+    >
+      <TodayHoverStyles comparisons={data.clubComparisons} />
       <MobileAppShell className="min-h-0 pb-0">
         <MobileTopBar
-          title="Today"
+          title="Latest"
           actions={
             <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-[#050505]">
-              <Link href="/import" prefetch={false} aria-label="Import data">
+              <Link href="/import" prefetch={false} aria-label="Import CSV">
                 <Upload className="size-5" />
               </Link>
             </Button>
@@ -149,8 +169,8 @@ export default async function TodayPage({
         />
         <MobileRouteTabs group="dashboard" activeKey="today" />
         <MobileStatusAction
-          label="Today’s practice"
-          value="Today"
+          label="Latest practice"
+          value="Latest Practice Review"
           detail={data.overall.summary}
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -160,156 +180,45 @@ export default async function TodayPage({
             </Button>
           }
         />
+        <HeroShotSpotlight shot={data.bestStraightShots[0]} shots={data.shots} />
         <MobileMetricStrip
           items={[
             {
-              label: "Date",
-              value: data.dateLabel,
-              detail: `${integerFormatter.format(data.allTodayShotCount)} shots imported that day`,
-              tone: "green",
-            },
-            {
-              label: "Selected",
-              value: integerFormatter.format(data.shots.length),
-              detail: `${integerFormatter.format(data.comparisonShots.length)} comparison shots`,
-              tone: "sky",
+              label: "Offline",
+              value: formatYards(data.overall.today.offlineAverageYd),
+              detail: offlineDeltaText(data.overall.offlineDeltaYd),
+              tone: deltaTone(data.overall.offlineDeltaYd, "lower"),
             },
             {
               label: "Straight",
               value: formatRate(data.overall.today.straightRate),
               detail: deltaText(data.overall.straightRateDelta, "pp", true),
-              tone: "amber",
+              tone: deltaTone(data.overall.straightRateDelta, "higher"),
+            },
+            {
+              label: "Playable",
+              value: formatRate(data.overall.today.playableRate),
+              detail: deltaText(data.overall.playableRateDelta, "pp", true),
+              tone: deltaTone(data.overall.playableRateDelta, "higher"),
+            },
+            {
+              label: "Carry",
+              value: formatYards(data.overall.today.carryAverageYd),
+              detail: deltaText(data.overall.carryDeltaYd, "yd", true),
+              tone: deltaTone(data.overall.carryDeltaYd, "higher"),
             },
           ]}
         />
-        <div id="mobile-scope" className="grid gap-3">
-          <MobileFilterSheet
-            label="Session scope"
-            activeCount={activeFilterChips.length}
-          >
-            <form className="grid gap-3">
-              <TodayScopeFields data={data} />
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="submit"
-                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
-                  Analyse
-                </Button>
-                <Button asChild variant="outline" className="rounded-lg">
-                  <Link href="/today" prefetch={false}>
-                    Reset
-                  </Link>
-                </Button>
-              </div>
-            </form>
-          </MobileFilterSheet>
-          <ActiveFilterChips items={activeFilterChips} />
-        </div>
-        <NativeListSection title="Actions" description="Open the filtered rows or add a new launch-monitor session.">
+        <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
+        <NativeListSection title="Latest practice work" description="Filtered shot rows, charts and club scope.">
           <MobilePlayRoute
             href={shotDatabaseHref}
-            title="Shot rows"
+            title="Latest review"
             value={`${integerFormatter.format(data.shots.length)} selected`}
             detail="Filtered shot rows, charts and club scope."
             icon={<Database className="size-5" />}
           />
-          <MobilePlayRoute
-            href="/import"
-            title="Import"
-            value="Launch monitor"
-            detail="Connect a provider, upload CSV files, or add a manual round."
-            icon={<Upload className="size-5" />}
-          />
         </NativeListSection>
-        {data.shots.length === 0 ? (
-          <EmptyToday />
-        ) : (
-          <>
-            <NativeListSection
-              id="mobile-charts"
-              title="Shot patterns"
-              description="Dispersion and trajectory for the selected scope."
-            >
-              <TodayShotCharts shots={chartShots} />
-            </NativeListSection>
-            <MobileHorizontalRail
-              title="Club changes"
-              description="Today against the latest previous shots."
-            >
-              {data.clubComparisons.map((comparison) => (
-                <MobileDataCard
-                  key={comparison.clubType}
-                  title={comparison.clubLabel}
-                  subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
-                  action={
-                    <Badge className={verdictBadgeClass(comparison.verdict)}>
-                      {verdictLabel(comparison.verdict)}
-                    </Badge>
-                  }
-                >
-                  <DataPair
-                    label="Carry"
-                    value={formatDeltaPair(
-                      comparison.today.carryAverageYd,
-                      comparison.carryDeltaYd,
-                      "yd",
-                      true,
-                    )}
-                  />
-                  <DataPair
-                    label="Offline"
-                    value={formatDeltaPair(
-                      comparison.today.offlineAverageYd,
-                      comparison.offlineDeltaYd,
-                      "yd",
-                      false,
-                    )}
-                  />
-                  <DataPair
-                    label="Straight"
-                    value={formatDeltaPair(
-                      comparison.today.straightRate,
-                      comparison.straightRateDelta,
-                      "pp",
-                      true,
-                    )}
-                  />
-                  <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
-                    {comparison.summary}
-                  </p>
-                </MobileDataCard>
-              ))}
-            </MobileHorizontalRail>
-            <MobileAccordionSection
-              title="Raw selected shots"
-              count={integerFormatter.format(data.shots.length)}
-              description="Open for source shot rows."
-            >
-              <MobileDataList>
-                {data.shots.map((shot) => (
-                  <MobileDataCard
-                    key={shot.id}
-                    title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
-                    subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                    action={
-                      <Badge variant="outline">
-                        {formatShotCategory(shot.shotCategory)}
-                      </Badge>
-                    }
-                  >
-                    <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
-                    <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                    <DataPair
-                      label="Side"
-                      value={formatSignedYards(shot.sideCarryYd)}
-                    />
-                  </MobileDataCard>
-                ))}
-              </MobileDataList>
-            </MobileAccordionSection>
-          </>
-        )}
       </MobileAppShell>
 
       <div className="hidden sm:contents">
@@ -333,30 +242,81 @@ export default async function TodayPage({
           >
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              Import data
+              Import CSV
             </Link>
           </Button>
         </div>
       </div>
 
       <TodayReviewHero data={data} />
+      </div>
+
+      <MobileSectionChips
+        items={[
+          { label: "Scope", href: "#scope" },
+          { label: "Focus", href: "#focus" },
+          { label: "Charts", href: "#charts" },
+          { label: "Clubs", href: "#clubs" },
+          { label: "Shots", href: "#shots" },
+        ]}
+      />
+
+      <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
+        <details className="group rounded-lg border border-[#E5E7EB] bg-white shadow-sm">
+          <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block text-sm font-semibold text-[#050505]">
+                Session scope
+              </span>
+              <span className="mt-0.5 block text-xs text-[#6B7280]">
+                Refine the current review without leaving the page.
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-2">
+              {activeFilterChips.length > 0 ? (
+                <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[11px]">
+                  {activeFilterChips.length}
+                </Badge>
+              ) : null}
+              <ChevronDown className="size-4 text-[#6B7280] transition-transform group-open:rotate-180" />
+            </span>
+          </summary>
+          <form className="grid gap-3 border-t border-[#E5E7EB] p-3">
+            <TodayScopeFields data={data} />
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="submit"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                Analyse
+              </Button>
+              <Button asChild variant="outline" className="rounded-lg">
+                <Link href="/today" prefetch={false}>
+                  Reset
+                </Link>
+              </Button>
+            </div>
+          </form>
+        </details>
+        <ActiveFilterChips items={activeFilterChips} />
+      </div>
 
       <section
         id="scope"
-        className="hidden scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-4 py-3 shadow-sm sm:block"
+        className="hidden scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-3 py-2 shadow-sm sm:block"
       >
-        <form className="grid gap-3 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
-          <div className="hidden pb-2 pr-1 text-sm font-semibold text-slate-900 md:block">
+        <form className="grid gap-2 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
+          <div className="hidden pb-2 pr-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground md:block">
             Filters
           </div>
           <TodayScopeFields data={data} />
           <Button
             type="submit"
-            className="h-10 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            className="h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
           >
             Apply
           </Button>
-          <Button asChild variant="outline" className="h-10 rounded-lg">
+          <Button asChild variant="ghost" className="h-9 rounded-lg text-muted-foreground hover:text-slate-950">
             <Link href="/today" prefetch={false}>
               Reset
             </Link>
@@ -364,78 +324,94 @@ export default async function TodayPage({
         </form>
       </section>
 
+      {data.shots.length > 0 ? (
+        <section id="focus" className="hidden scroll-mt-28 sm:block">
+          <TodayPracticePrescription data={data} />
+        </section>
+      ) : null}
+
       {data.shots.length === 0 ? (
         <EmptyToday />
       ) : (
         <>
-          <section
-            id="charts"
-            className="grid scroll-mt-28 items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]"
-          >
-            <div className="grid min-w-0 gap-4">
-              <TodayShotCharts shots={chartShots} />
-              <ClubMainStatsPanel stats={data.clubStats} />
-            </div>
-
-            <div id="clubs" className="grid min-w-0 gap-4 scroll-mt-28">
-              <DataPanel className="min-w-0">
-                <SectionHeader
-                  title="Club by club"
-                  description="Today against the latest previous shots for the same club."
-                  action={
-                    <StatusPill tone={verdictTone(data.overall.verdict)}>
-                      {data.overall.title}
-                    </StatusPill>
-                  }
+          <section id="charts" className="scroll-mt-28">
+            <div className="sm:hidden">
+              <MobileAccordionSection
+                title="Charts"
+                count={`${integerFormatter.format(chartShots.length)} shots`}
+                description="Dispersion and trajectory stay available without pushing the prescription down."
+              >
+                <TodayShotCharts
+                  shots={chartShots}
+                  clubStatuses={chartClubStatuses}
+                  patternInsight={chartPatternInsight}
                 />
-                <CardContent>
-                  <DataTableFrame>
-                    <Table className="min-w-[760px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="px-2">Club</TableHead>
-                          <TableHead className="px-2">Call</TableHead>
-                          <TableHead className="px-2 text-right">Shots</TableHead>
-                          <TableHead className="px-2 text-right">Carry</TableHead>
-                          <TableHead className="px-2 text-right">Offline</TableHead>
-                          <TableHead className="px-2 text-right">Straight</TableHead>
-                          <TableHead className="px-2 text-right">Playable</TableHead>
-                          <TableHead className="max-w-[10.5rem] whitespace-normal px-2">
-                            Signal
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.clubComparisons.map((comparison) => (
-                          <ClubComparisonRow
-                            key={comparison.clubType}
-                            comparison={comparison}
-                          />
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </DataTableFrame>
-                </CardContent>
-              </DataPanel>
-
-              <StraightestShotsPanel
-                shots={data.bestStraightShots}
-                comparisonCount={data.clubComparisons.length}
+              </MobileAccordionSection>
+            </div>
+            <div className="hidden sm:block">
+              <TodayShotCharts
+                shots={chartShots}
+                clubStatuses={chartClubStatuses}
+                patternInsight={chartPatternInsight}
               />
             </div>
           </section>
 
+          <section id="clubs" className="scroll-mt-28">
+            <ClubPerformancePanel
+              data={data}
+              comparisons={sortedClubComparisons}
+              sort={clubSort}
+            />
+          </section>
+
+          <section id="pbs" className="scroll-mt-28">
+            <TodayHighlightsPanel
+              stats={data.clubStats}
+              shots={data.bestStraightShots}
+            />
+          </section>
+
           <TodaySocialLine data={data} challenges={challengeData.active} />
+
+          <MobileAccordionSection
+            title="Latest practice shot list"
+            count={integerFormatter.format(data.shots.length)}
+            description="Open for raw selected shots."
+            className="scroll-mt-28"
+          >
+            <MobileDataList>
+              {data.shots.map((shot) => (
+                <MobileDataCard
+                  key={shot.id}
+                  title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
+                  subtitle={shot.fileName ?? shot.courseName ?? "Session"}
+                  action={
+                    <Badge variant="outline">
+                      {formatShotCategory(shot.shotCategory)}
+                    </Badge>
+                  }
+                >
+                  <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
+                  <DataPair label="Total" value={formatYards(shot.totalYd)} />
+                  <DataPair
+                    label="Side"
+                    value={formatSignedYards(shot.sideCarryYd)}
+                  />
+                </MobileDataCard>
+              ))}
+            </MobileDataList>
+          </MobileAccordionSection>
 
           <DataPanel id="shots" className="hidden scroll-mt-28 overflow-hidden sm:block">
             <details className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-6 py-5 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
+              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
                 <div>
-                  <h2 className="text-xl font-semibold tracking-normal sm:text-2xl">
+                  <h2 className="text-lg font-semibold tracking-normal">
                     Raw shot list
                   </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {integerFormatter.format(data.shots.length)} selected shots. Expand for the source rows.
+                    {integerFormatter.format(data.shots.length)} selected shots · inspect source rows and shot-level details.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -555,26 +531,98 @@ export default async function TodayPage({
           </DataPanel>
         </>
       )}
-      </div>
     </PageShell>
   );
 }
 
+function TodayPrescriptionCard({
+  data,
+  shotDatabaseHref,
+}: {
+  data: TodayPracticeData;
+  shotDatabaseHref: string;
+}) {
+  const focus = practiceFocus(data);
+
+  return (
+    <section id="focus" className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+      <div>
+        <p className="text-sm font-semibold text-[#0B7A3B]">Latest practice prescription</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
+          {data.shots.length > 0 ? `Tighten ${focus.clubText}` : "Import a practice session"}
+        </h2>
+        <p className="mt-2 text-sm leading-5 text-[#6B7280]">
+          {data.shots.length > 0 ? focus.problem : "A fresh import unlocks filtered shots, club deltas, PBs and a practice prescription."}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2" data-primary-action>
+        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href={data.shots.length > 0 ? shotDatabaseHref : "/import"} prefetch={false}>
+            {data.shots.length > 0 ? "Open shots" : "Import"}
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href={data.shots.length > 0 ? "/coach" : "/rapsodo"} prefetch={false}>
+            {data.shots.length > 0 ? "Start drill" : "Connect"}
+          </Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function TodayHoverStyles({
+  comparisons,
+}: {
+  comparisons: ClubDayComparison[];
+}) {
+  const selectors = comparisons
+    .map((comparison) => {
+      const club = cssAttributeValue(comparison.clubType);
+
+      return `
+        .today-review-page:has([data-club-hover="${club}"]:hover) [data-dispersion-club="${club}"] {
+          opacity: 1;
+          filter: drop-shadow(0 0 5px rgba(15, 23, 42, 0.28));
+        }
+      `;
+    })
+    .join("\n");
+
+  return (
+    <style>{`
+      .today-review-page [data-dispersion-club] {
+        transition: opacity 140ms ease, filter 140ms ease;
+      }
+      .today-review-page:has([data-club-hover]:hover) [data-dispersion-club] {
+        opacity: 0.18;
+      }
+      .today-review-page [data-club-hover]:hover {
+        background: rgba(248, 250, 252, 0.92);
+      }
+      .today-review-page [data-club-hover]:hover td:first-child {
+        color: #334155;
+      }
+      ${selectors}
+    `}</style>
+  );
+}
+
 function TodayReviewHero({ data }: { data: TodayPracticeData }) {
-  const selectedClub = selectedClubLabel(data);
   const selectedClubs = selectedClubCount(data);
   const bestShot = data.bestStraightShots[0];
   const scope = sessionScopeLabel(data);
+  const focus = practiceFocus(data);
 
   return (
-    <section className="rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-6 shadow-sm">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <section className="overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="min-w-0">
           <StatusPill tone={verdictTone(data.overall.verdict)}>
-            Today’s practice
+            Latest practice
           </StatusPill>
           <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
-            Practice review
+            Latest Practice Review
           </h1>
           <p className="mt-2 text-lg font-medium text-slate-800">
             {data.dateLabel}
@@ -584,6 +632,20 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
             {integerFormatter.format(selectedClubs)}{" "}
             {selectedClubs === 1 ? "club" : "clubs"} · {scope}
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <HeroScopePill
+              label={selectedClubLabel(data)}
+              value="Scope"
+            />
+            <HeroScopePill
+              label={`${integerFormatter.format(data.comparisonShots.length)} comparison`}
+              value="Baseline"
+            />
+            <HeroScopePill
+              label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
+              value="Shot of the day"
+            />
+          </div>
 
           <div className="mt-6 max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -592,57 +654,50 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
             <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-slate-950">
               {data.overall.title}
             </h2>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-700">
-              {reviewNarrative(data)}
+              <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-slate-700">
+                {reviewNarrative(data)}
+              </p>
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-900">
+              <Target className="size-4" />
+              Focus next: {focus.clubText} start-line control.
             </p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-emerald-100 bg-white/85 p-4 shadow-sm">
-          <p className="text-sm font-semibold text-slate-950">
-            Selected scope
-          </p>
-          <dl className="mt-4 grid gap-3 text-sm">
-            <ReviewScopeRow label="Club" value={selectedClub} />
-            <ReviewScopeRow
-              label="Selected shots"
-              value={integerFormatter.format(data.shots.length)}
-            />
-            <ReviewScopeRow
-              label="Comparison shots"
-              value={integerFormatter.format(data.comparisonShots.length)}
-            />
-            <ReviewScopeRow
-              label="Shot of the day"
-              value={bestShot ? bestShotTitle(bestShot) : "--"}
-            />
-          </dl>
-        </div>
+        <HeroShotSpotlight shot={bestShot} shots={data.shots} />
       </div>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
         <ReviewKpi
+          icon={<Crosshair className="size-4" />}
           label="Offline"
           value={formatYards(data.overall.today.offlineAverageYd)}
           detail={offlineDeltaText(data.overall.offlineDeltaYd)}
-          tone={deltaTone(data.overall.offlineDeltaYd, "lower")}
+          status={offlineStatus(data.overall.offlineDeltaYd)}
+          tone={offlineKpiTone(data.overall.offlineDeltaYd)}
         />
         <ReviewKpi
+          icon={<Gauge className="size-4" />}
           label="Straight rate"
           value={formatRate(data.overall.today.straightRate)}
           detail={deltaText(data.overall.straightRateDelta, "pp", true)}
+          status={rateStatus(data.overall.straightRateDelta)}
           tone={deltaTone(data.overall.straightRateDelta, "higher")}
         />
         <ReviewKpi
+          icon={<ShieldCheck className="size-4" />}
           label="Playable"
           value={formatRate(data.overall.today.playableRate)}
           detail={deltaText(data.overall.playableRateDelta, "pp", true)}
-          tone={deltaTone(data.overall.playableRateDelta, "higher")}
+          status={rateStatus(data.overall.playableRateDelta, "Solid")}
+          tone={playableKpiTone(data.overall.playableRateDelta)}
         />
         <ReviewKpi
+          icon={<Route className="size-4" />}
           label="Carry"
           value={formatYards(data.overall.today.carryAverageYd)}
           detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
+          status={carryStatus(data.overall.carryDeltaYd)}
           tone={deltaTone(data.overall.carryDeltaYd, "higher")}
         />
       </div>
@@ -650,7 +705,7 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
   );
 }
 
-function ReviewScopeRow({
+function HeroScopePill({
   label,
   value,
 }: {
@@ -658,36 +713,485 @@ function ReviewScopeRow({
   value: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="max-w-40 truncate text-right font-semibold text-slate-950">
-        {value}
-      </dd>
+    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs shadow-sm">
+      <span className="font-semibold text-slate-950">{label}</span>
+      <span className="text-muted-foreground">{value}</span>
+    </span>
+  );
+}
+
+function HeroShotSpotlight({
+  shot,
+  shots,
+}: {
+  shot: TodayPracticeShot | undefined;
+  shots: TodayPracticeShot[];
+}) {
+  return (
+    <div className="relative min-h-[280px] overflow-hidden rounded-xl border border-emerald-100 bg-[#083524] p-4 text-white shadow-sm">
+      <HeroFairwayVisual shots={shots} />
+      <div className="relative z-10 flex h-full flex-col justify-end">
+        <div className="rounded-lg border border-white/15 bg-white/90 p-3 text-slate-950 shadow-sm backdrop-blur">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Shot of the day</p>
+            <Crosshair className="size-4 text-sky-600" />
+          </div>
+          {shot ? (
+            <>
+              <h3 className="mt-2 text-2xl font-semibold tracking-normal">
+                {bestShotTitle(shot)}
+              </h3>
+              <p className="mt-1 text-sm font-medium text-slate-700">
+                {formatYards(shot.totalYd)} total · {formatYards(shot.carryYd)} carry
+              </p>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <DataPair label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+                <DataPair label="Ball" value={formatMph(shot.ballSpeedMph)} />
+              </dl>
+              <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                One of this review’s straightest shots by offline and start line.
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Directional shot data will spotlight the best strike here.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
+function HeroFairwayVisual({ shots }: { shots: TodayPracticeShot[] }) {
+  const points = shots.filter((shot) => isNumber(shot.sideCarryYd));
+  const maxSide = Math.max(
+    20,
+    ...points.map((shot) => Math.abs(shot.sideCarryYd ?? 0)),
+  );
+  const green = { x: 322, y: 164 };
+  const approach = { x: 322, y: 342 };
+  const targetCarryYd = 110;
+
+  return (
+    <svg
+      viewBox="70 68 504 392"
+      className="absolute inset-0 h-full w-full"
+      role="img"
+      aria-label="Approach dispersion over a green"
+    >
+      <defs>
+        <filter id="today-approach-image-soften">
+          <feGaussianBlur stdDeviation="0.7" />
+          <feColorMatrix type="saturate" values="0.68" />
+        </filter>
+        <filter id="today-approach-glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <image
+        href="/assets/hole-350-aerial.jpg"
+        x="0"
+        y="0"
+        width="644"
+        height="1024"
+        filter="url(#today-approach-image-soften)"
+        opacity="0.94"
+        preserveAspectRatio="xMidYMid slice"
+      />
+      <rect x="0" y="0" width="644" height="1024" fill="#04160f" opacity="0.34" />
+      <path
+        d={`M ${approach.x} ${approach.y} Q ${green.x - 18} 304 ${green.x} ${green.y}`}
+        fill="none"
+        stroke="#ffffff"
+        strokeDasharray="10 9"
+        strokeLinecap="round"
+        strokeOpacity="0.8"
+        strokeWidth="3"
+      />
+      <path
+        d={`M ${approach.x} ${approach.y} Q ${green.x + 28} 300 ${green.x + 44} ${green.y + 8}`}
+        fill="none"
+        stroke="#bae6fd"
+        strokeLinecap="round"
+        strokeOpacity="0.68"
+        strokeWidth="2.5"
+      />
+      <g opacity="0.88">
+        <ellipse cx={green.x} cy={green.y + 6} rx="76" ry="47" fill="#bbf7d0" opacity="0.16" />
+        <ellipse cx={green.x} cy={green.y + 6} rx="58" ry="35" fill="none" stroke="#ffffff" strokeWidth="2" strokeOpacity="0.78" />
+        <ellipse cx={green.x} cy={green.y + 6} rx="31" ry="19" fill="none" stroke="#ffffff" strokeWidth="1.7" strokeOpacity="0.72" />
+        <Flag x={green.x - 7} y={green.y - 37} width={20} height={20} className="fill-white text-white" />
+      </g>
+      <g>
+        <circle cx={approach.x} cy={approach.y} r="6" fill="#ffffff" stroke="#0f172a" strokeOpacity="0.24" strokeWidth="2" />
+        <text x={approach.x + 14} y={approach.y + 4} fill="#ffffff" fontSize="14" fontWeight="700">
+          110 yd
+        </text>
+      </g>
+      <g filter="url(#today-approach-glow)">
+        {points.slice(0, 58).map((shot, index) => {
+          const side = shot.sideCarryYd ?? 0;
+          const carry = shot.carryYd ?? shot.totalYd ?? targetCarryYd;
+          const carryError = clamp(carry - targetCarryYd, -24, 24);
+          const x = green.x + clamp(side / maxSide, -1, 1) * 78;
+          const y = green.y + 6 - carryError * 0.85;
+
+          return (
+            <circle
+              key={`${shot.id}-${index}`}
+              cx={x}
+              cy={y}
+              r={4.2}
+              fill="#ffffff"
+              fillOpacity={0.88}
+              stroke="#0f172a"
+              strokeOpacity={0.32}
+              strokeWidth="1.2"
+            />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
 function ReviewKpi({
+  icon,
   label,
   value,
   detail,
+  status,
+  tone,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+  status: string;
+  tone: "green" | "sky" | "pink" | "amber" | "slate";
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <span className={`grid size-7 place-items-center rounded-full ${reviewIconClass(tone)}`}>
+            {icon}
+          </span>
+          {label}
+        </div>
+        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${reviewStatusClass(tone)}`}>
+          {status}
+        </span>
+      </div>
+      <p className="mt-2 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+        {value}
+      </p>
+      <p className={reviewDeltaClass(tone)}>{detail}</p>
+    </div>
+  );
+}
+
+function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
+  const focus = practiceFocus(data);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Latest practice prescription"
+        description="A simple drill target from the session pattern."
+        action={
+          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Link href="/coach" prefetch={false}>
+              <Dumbbell className="size-4" />
+              Start drill
+            </Link>
+          </Button>
+        }
+      />
+      <CardContent>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_repeat(3,minmax(0,1fr))]">
+          <PrescriptionBlock
+            label="Problem"
+            value={focus.problem}
+            tone="pink"
+          />
+          <PrescriptionBlock
+            label="Cause to check"
+            value="Start line / face control"
+            tone="amber"
+          />
+          <PrescriptionBlock
+            label="Drill"
+            value={`20-ball gate drill with ${focus.clubText}`}
+            tone="sky"
+          />
+          <PrescriptionBlock
+            label="Target"
+            value={`12 of 20 inside ±10 yd. Beat this review’s ${formatYards(data.overall.today.offlineAverageYd)} offline average.`}
+            tone="green"
+          />
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PrescriptionBlock({
+  label,
+  value,
   tone,
 }: {
   label: string;
   value: string;
-  detail: string;
-  tone: "green" | "sky" | "pink" | "amber" | "slate";
+  tone: "green" | "sky" | "pink" | "amber";
 }) {
   return (
-    <div className="min-h-[118px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-        <span className={`size-2.5 rounded-full ring-4 ${reviewDotClass(tone)}`} />
-      </div>
-      <p className="mt-3 text-3xl font-semibold leading-tight tracking-normal text-slate-950">
+    <div className={`rounded-lg border px-3 py-3 ${prescriptionToneClass(tone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.08em]">
+        {label}
+      </p>
+      <p className="mt-2 text-sm font-medium leading-5 text-slate-900">
         {value}
       </p>
-      <p className={reviewDeltaClass(tone)}>{detail}</p>
+    </div>
+  );
+}
+
+function ClubPerformancePanel({
+  data,
+  comparisons,
+  sort,
+}: {
+  data: TodayPracticeData;
+  comparisons: ClubDayComparison[];
+  sort: ClubSort;
+}) {
+  return (
+    <DataPanel className="min-w-0">
+      <SectionHeader
+        title="Club performance"
+        description={clubPerformanceNarrative(data)}
+        action={
+          <StatusPill tone={verdictTone(data.overall.verdict)}>
+            {data.overall.title}
+          </StatusPill>
+        }
+      />
+      <CardContent className="space-y-4">
+        <ClubPerformanceSummaryCards data={data} />
+        <div className="flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium leading-5 text-emerald-950">
+            Latest read: {clubPerformanceRead(data)}
+          </p>
+          <ClubSortControls data={data} activeSort={sort} />
+        </div>
+        <DataTableFrame
+          className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
+          mobile={
+            <MobileHorizontalRail
+              title="Club performance"
+              description="This review against the latest previous shots."
+            >
+              {comparisons.map((comparison) => (
+                <MobileDataCard
+                  key={comparison.clubType}
+                  title={comparison.clubLabel}
+                  subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
+                  action={
+                    <Badge className={verdictBadgeClass(comparison.verdict)}>
+                      {verdictLabel(comparison.verdict)}
+                    </Badge>
+                  }
+                >
+                  <DataPair
+                    label="Carry"
+                    value={formatDeltaPair(
+                      comparison.today.carryAverageYd,
+                      comparison.carryDeltaYd,
+                      "yd",
+                      true,
+                    )}
+                  />
+                  <DataPair
+                    label="Offline"
+                    value={formatDeltaPair(
+                      comparison.today.offlineAverageYd,
+                      comparison.offlineDeltaYd,
+                      "yd",
+                      false,
+                    )}
+                  />
+                  <DataPair
+                    label="Straight"
+                    value={formatDeltaPair(
+                      comparison.today.straightRate,
+                      comparison.straightRateDelta,
+                      "pp",
+                      true,
+                    )}
+                  />
+                  <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
+                    {comparison.summary}
+                  </p>
+                </MobileDataCard>
+              ))}
+            </MobileHorizontalRail>
+          }
+        >
+          <Table className="w-full" containerClassName="overflow-x-visible">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 z-10 bg-white px-2">Club</TableHead>
+                <TableHead className="px-2">Call</TableHead>
+                <TableHead className="px-2 text-right">Shots</TableHead>
+                <TableHead className="px-2 text-right">Carry</TableHead>
+                <TableHead className="px-2 text-right">Offline</TableHead>
+                <TableHead className="px-2 text-right">Straight</TableHead>
+                <TableHead className="px-2 text-right">Playable</TableHead>
+                <TableHead className="max-w-[11rem] whitespace-normal px-2">
+                  Signal
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {comparisons.map((comparison) => (
+                <ClubComparisonRow
+                  key={comparison.clubType}
+                  comparison={comparison}
+                  bestClubType={bestClubComparison(data.clubComparisons)?.clubType ?? null}
+                  focusClubType={needsWorkComparison(data.clubComparisons)?.clubType ?? null}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function ClubSortControls({
+  data,
+  activeSort,
+}: {
+  data: TodayPracticeData;
+  activeSort: ClubSort;
+}) {
+  return (
+    <div className="flex shrink-0 flex-wrap gap-1.5">
+      <SortLink
+        href={todaySortHref(data, "worst")}
+        active={activeSort === "worst"}
+      >
+        Sort by worst
+      </SortLink>
+      <SortLink
+        href={todaySortHref(data, "best")}
+        active={activeSort === "best"}
+      >
+        Sort by best
+      </SortLink>
+      <SortLink
+        href={todaySortHref(data, "bag")}
+        active={activeSort === "bag"}
+      >
+        Bag order
+      </SortLink>
+    </div>
+  );
+}
+
+function SortLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className={
+        active
+          ? "inline-flex min-h-8 items-center rounded-lg border border-emerald-800 bg-emerald-800 px-2.5 text-xs font-semibold text-white shadow-sm"
+          : "inline-flex min-h-8 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+      }
+      aria-current={active ? "true" : undefined}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <ClubSummaryCard
+        label="Best this review"
+        comparison={best}
+        icon={<Award className="size-4" />}
+        tone="green"
+      />
+      <ClubSummaryCard
+        label="Needs work"
+        comparison={work}
+        icon={<Target className="size-4" />}
+        tone="pink"
+      />
+      <ClubSummaryCard
+        label="Most reliable"
+        comparison={reliable}
+        icon={<ShieldCheck className="size-4" />}
+        tone="sky"
+      />
+    </div>
+  );
+}
+
+function ClubSummaryCard({
+  label,
+  comparison,
+  icon,
+  tone,
+}: {
+  label: string;
+  comparison: ClubDayComparison | null;
+  icon: ReactNode;
+  tone: "green" | "pink" | "sky";
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <span className={`grid size-8 place-items-center rounded-full ${summaryIconClass(tone)}`}>
+          {icon}
+        </span>
+      </div>
+      <p className="mt-3 text-2xl font-semibold tracking-normal text-slate-950">
+        {comparison?.clubLabel ?? "--"}
+      </p>
+      <p className="mt-1 text-sm text-slate-700">
+        {comparison
+          ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} playable`
+          : "No club data"}
+      </p>
+      {comparison ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          {formatYards(comparison.today.offlineAverageYd)} offline
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -729,7 +1233,7 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           type="date"
           name="date"
           defaultValue={data.dateKey}
-          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
         />
       </label>
       <label className="grid gap-1 text-sm font-medium">
@@ -737,9 +1241,9 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
         <select
           name="session"
           defaultValue={data.filters.sessionId}
-          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
         >
-          <option value="">All sessions today</option>
+          <option value="">All sessions for this practice date</option>
           {data.sessions.map((session) => (
             <option key={session.id} value={session.id}>
               {session.label} ({session.shotCount})
@@ -752,7 +1256,7 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
         <select
           name="club"
           defaultValue={data.filters.club}
-          className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
         >
           <option value="">All clubs</option>
           {data.clubs.map((club) => (
@@ -774,8 +1278,8 @@ function EmptyToday() {
         <div>
           <p className="text-xl font-semibold">No shots for this selection</p>
           <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-            Import a launch-monitor session for the day, or clear the session and club
-            filters.
+            Import a Rapsodo CSV for the practice date, or clear the session
+            and club filters.
           </p>
         </div>
         <Button
@@ -784,7 +1288,7 @@ function EmptyToday() {
         >
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
-            Import data
+            Import CSV
           </Link>
         </Button>
       </CardContent>
@@ -803,7 +1307,7 @@ function TodaySocialLine({
     return null;
   }
 
-  const bestClubRow = data.clubComparisons[0] ?? null;
+  const bestClubRow = bestClubComparison(data.clubComparisons);
   const bestClub = bestClubRow?.clubLabel ?? data.clubs[0]?.label ?? "This session";
   const bestClubType = bestClubRow?.clubType ?? data.clubs[0]?.type ?? "";
   const challenge = findRelevantChallenge(challenges, bestClubType);
@@ -813,10 +1317,10 @@ function TodaySocialLine({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Compare this session</p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm font-medium text-slate-800">
             {challenge
-              ? `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Use the closest matching challenge, records, or event boards after the review.`
-              : `${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots. Use matching imports for relevant records, tournaments, or friend boards.`}
+              ? `Recommended: ${bestClub} straightness stood out. Compare it against ${challenge.title}.`
+              : `Recommended: ${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots ready for records, events and tour-style challenges.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -844,34 +1348,98 @@ function TodaySocialLine({
   );
 }
 
-function ClubMainStatsPanel({ stats }: { stats: ClubMainStats[] }) {
+function TodayHighlightsPanel({
+  stats,
+  shots,
+}: {
+  stats: ClubMainStats[];
+  shots: TodayPracticeShot[];
+}) {
   const highlights = buildClubHighlights(stats);
   const records = highlights.filter((highlight) => highlight.kind !== "close");
   const closeCalls = highlights
     .filter((highlight) => highlight.kind === "close")
     .slice(0, 6);
+  const bestNearMiss = closeCalls[0] ?? null;
+  const visibleShots = shots.slice(0, 4);
 
   return (
     <DataPanel>
       <SectionHeader
-        title="PB highlights"
-        description="Records and near misses from the selected today shots."
+        title="Latest practice highlights"
+        description={`${records.length} PB moments · ${closeCalls.length} close to PB`}
         action={<Trophy className="size-5 text-amber-600" />}
       />
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         {stats.length === 0 || highlights.length === 0 ? (
           <div className="apple-panel p-4 text-sm text-muted-foreground">
             No PBs or close calls for this selection.
           </div>
         ) : (
-          <>
+          <div className="space-y-5">
             {records.length > 0 ? (
-              <HighlightGroup title="PBs today" highlights={records} />
-            ) : null}
+              <HighlightGroup title="PB moments" highlights={records.slice(0, 6)} />
+            ) : (
+              <div className="apple-panel p-4 text-sm text-muted-foreground">
+                No PBs in this selection yet.
+              </div>
+            )}
+
+            <section className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
+                    Best shots from this review
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Top straight shots by offline and start line.
+                  </p>
+                </div>
+                <Crosshair className="size-4 text-sky-600" />
+              </div>
+              {visibleShots.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {visibleShots.map((shot, index) => (
+                    <StraightShotCard
+                      key={shot.id}
+                      shot={shot}
+                      featured={index === 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">
+                  No directional shot data for this selection.
+                </div>
+              )}
+            </section>
+
             {closeCalls.length > 0 ? (
-              <HighlightGroup title="Close to PB" highlights={closeCalls} />
+              <details className="group rounded-lg border border-amber-100 bg-amber-50/35">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                  <span>
+                    <span className="block text-sm font-semibold text-amber-950">
+                      Close to PB
+                    </span>
+                    <span className="block text-xs text-amber-800">
+                      {bestNearMiss
+                        ? `${closeCalls.length} near misses. Best: ${bestNearMiss.clubLabel} ${bestNearMiss.metricLabel.toLowerCase()}, ${bestNearMiss.detail}`
+                        : `${closeCalls.length} near misses`}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
+                    View all
+                    <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                  </span>
+                </summary>
+                <div className="grid gap-2 border-t border-amber-100 p-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {closeCalls.map((highlight) => (
+                    <HighlightCard key={highlight.id} highlight={highlight} />
+                  ))}
+                </div>
+              </details>
             ) : null}
-          </>
+          </div>
         )}
       </CardContent>
     </DataPanel>
@@ -951,7 +1519,7 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
   }
 
   return (
-    <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
+    <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <Badge
           variant="outline"
@@ -966,10 +1534,10 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
       <p className="mt-3 text-sm font-medium text-muted-foreground">
         {highlight.metricLabel}
       </p>
-      <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+      <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
         {highlight.value}
       </p>
-      <p className="mt-1 text-sm leading-5 text-slate-700">
+      <p className="mt-1 text-xs leading-5 text-slate-700">
         {highlight.detail}
       </p>
       {highlight.target ? (
@@ -1148,12 +1716,26 @@ function improvementOverPrevious(
   return improvement > 0 ? Math.round(improvement * 100) / 100 : null;
 }
 
-function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
+function ClubComparisonRow({
+  comparison,
+  bestClubType,
+  focusClubType,
+}: {
+  comparison: ClubDayComparison;
+  bestClubType: string | null;
+  focusClubType: string | null;
+}) {
   const signalLines = buildSignalLines(comparison);
+  const rowTone = clubRowTone(comparison, bestClubType, focusClubType);
 
   return (
-    <TableRow>
-      <TableCell className="px-2 font-medium">{comparison.clubLabel}</TableCell>
+    <TableRow
+      className={rowTone.rowClass}
+      data-club-hover={comparison.clubType}
+    >
+      <TableCell className={`sticky left-0 z-10 px-2 font-medium ${rowTone.stickyClass}`}>
+        {comparison.clubLabel}
+      </TableCell>
       <TableCell className="px-2">
         <Badge className={verdictBadgeClass(comparison.verdict)}>
           {verdictLabel(comparison.verdict)}
@@ -1177,19 +1759,17 @@ function ClubComparisonRow({ comparison }: { comparison: ClubDayComparison }) {
         unit="yd"
         direction="lower"
       />
-      <MetricDeltaCell
+      <RateDeltaCell
         value={comparison.today.straightRate}
         delta={comparison.straightRateDelta}
-        unit="pp"
         direction="higher"
-        isRate
+        metric="straight"
       />
-      <MetricDeltaCell
+      <RateDeltaCell
         value={comparison.today.playableRate}
         delta={comparison.playableRateDelta}
-        unit="pp"
         direction="higher"
-        isRate
+        metric="playable"
       />
       <TableCell
         className="max-w-[10.5rem] whitespace-normal px-2 align-top text-sm leading-snug text-muted-foreground"
@@ -1248,18 +1828,16 @@ function MetricDeltaCell({
   delta,
   unit,
   direction,
-  isRate = false,
 }: {
   value: number | null;
   delta: number | null;
-  unit: "yd" | "pp";
+  unit: "yd";
   direction: "higher" | "lower";
-  isRate?: boolean;
 }) {
   return (
     <TableCell className="px-2 text-right whitespace-normal">
       <div className="font-medium">
-        {isRate ? formatRate(value) : formatYards(value)}
+        {formatYards(value)}
       </div>
       <div className={deltaClass(delta, direction)}>
         {deltaText(delta, unit, true)}
@@ -1268,58 +1846,32 @@ function MetricDeltaCell({
   );
 }
 
-function StraightestShotsPanel({
-  shots,
-  comparisonCount,
+function RateDeltaCell({
+  value,
+  delta,
+  direction,
+  metric,
 }: {
-  shots: TodayPracticeShot[];
-  comparisonCount: number;
+  value: number | null;
+  delta: number | null;
+  direction: "higher";
+  metric: "straight" | "playable";
 }) {
-  const visibleShots = shots.slice(0, 5);
-  const hiddenShots = shots.slice(5);
-  const panelHeight = Math.max(380, 132 + comparisonCount * 48);
-  const panelStyle = {
-    "--shot-panel-height": `${panelHeight}px`,
-  } as CSSProperties;
+  const tone = rateValueTone(value, metric);
 
   return (
-    <div className="min-w-0" style={panelStyle}>
-      <DataPanel className="xl:h-[var(--shot-panel-height)] xl:overflow-hidden">
-        <SectionHeader
-          title="Shot of the day"
-          description="Top 5 straightest shots by offline and start line."
-          action={<Crosshair className="size-4 text-sky-600" />}
+    <TableCell className="px-2 text-right whitespace-normal">
+      <div className="font-medium">{formatRate(value)}</div>
+      <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
+        <span
+          className={`block h-full rounded-full ${rateBarClass(tone)}`}
+          style={{ width: `${clamp(value ?? 0, 0, 100)}%` }}
         />
-        <CardContent className="mx-auto w-full max-w-md space-y-1.5 xl:mx-0 xl:max-w-none xl:max-h-[calc(var(--shot-panel-height)-5.5rem)] xl:overflow-y-auto xl:pr-2 xl:[scrollbar-gutter:stable]">
-          {visibleShots.length > 0 ? (
-            visibleShots.map((shot, index) => (
-              <StraightShotCard
-                key={shot.id}
-                shot={shot}
-                featured={index === 0}
-              />
-            ))
-          ) : (
-            <div className="apple-panel p-4 text-sm text-muted-foreground">
-              No directional shot data for this selection.
-            </div>
-          )}
-          {hiddenShots.length > 0 ? (
-            <details className="group">
-              <summary className="mt-2 flex min-h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-                View all straightest shots
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="mt-2 space-y-2">
-                {hiddenShots.map((shot) => (
-                  <StraightShotCard key={shot.id} shot={shot} />
-                ))}
-              </div>
-            </details>
-          ) : null}
-        </CardContent>
-      </DataPanel>
-    </div>
+      </div>
+      <div className={deltaClass(delta, direction)}>
+        {deltaText(delta, "pp", true)}
+      </div>
+    </TableCell>
   );
 }
 
@@ -1334,7 +1886,7 @@ function StraightShotCard({
     <article
       className={
         featured
-          ? "rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2"
+          ? "rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 shadow-sm"
           : "rounded-lg border border-slate-200/80 bg-white px-3 py-2"
       }
     >
@@ -1438,6 +1990,47 @@ function todayFilterHref(data: TodayPracticeData, omitKey: "session" | "club") {
   return `/today?${params.toString()}`;
 }
 
+function todaySortHref(data: TodayPracticeData, sort: ClubSort) {
+  const params = new URLSearchParams({ date: data.dateKey });
+
+  if (data.filters.sessionId) {
+    params.set("session", data.filters.sessionId);
+  }
+
+  if (data.filters.club) {
+    params.set("club", data.filters.club);
+  }
+
+  if (sort !== "bag") {
+    params.set("clubSort", sort);
+  }
+
+  return `/today?${params.toString()}`;
+}
+
+function parseClubSort(value: string): ClubSort {
+  if (value === "best" || value === "worst") {
+    return value;
+  }
+
+  return "bag";
+}
+
+function sortClubComparisons(
+  comparisons: ClubDayComparison[],
+  sort: ClubSort,
+) {
+  if (sort === "best") {
+    return [...comparisons].sort(compareBestClub);
+  }
+
+  if (sort === "worst") {
+    return [...comparisons].sort(compareNeedsWork);
+  }
+
+  return comparisons;
+}
+
 function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
   return shots.map((shot) => ({
     id: shot.id,
@@ -1453,6 +2046,34 @@ function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
   }));
 }
 
+function toChartClubStatuses(
+  comparisons: ClubDayComparison[],
+): TodayChartClubStatus[] {
+  return comparisons.map((comparison) => ({
+    clubType: comparison.clubType,
+    verdict: comparison.verdict,
+    summary: comparison.summary,
+  }));
+}
+
+function shotPatternInsight(data: TodayPracticeData) {
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+
+  if (!best && !work && !reliable) {
+    return "Shot patterns will appear once this review has chartable club data.";
+  }
+
+  const parts = [
+    work ? `${work.clubLabel} widened in this review` : null,
+    best ? `${best.clubLabel} was the strongest performer` : null,
+    reliable ? `${reliable.clubLabel} stayed most playable` : null,
+  ].filter(Boolean) as string[];
+
+  return `${sentenceJoin(parts)}.`;
+}
+
 function reviewNarrative(data: TodayPracticeData) {
   const { verdict, offlineDeltaYd, straightRateDelta, carryDeltaYd } =
     data.overall;
@@ -1465,14 +2086,18 @@ function reviewNarrative(data: TodayPracticeData) {
     return data.overall.summary;
   }
 
+  const best = bestClubComparison(data.clubComparisons);
+  const focus = practiceFocus(data);
   const intro =
-    verdict === "better"
-      ? "Your dispersion improved today."
-      : verdict === "worse"
-        ? "Today finished behind your previous baseline."
-        : verdict === "mixed"
-          ? "Today was a mixed session."
-          : "Today is building a new baseline.";
+    best && data.clubComparisons.length > 0
+      ? `${best.clubLabel} held up best, but ${focus.clubText} pulled the session down.`
+      : verdict === "better"
+        ? "Your dispersion improved in this review."
+        : verdict === "worse"
+          ? "This review finished behind your previous baseline."
+          : verdict === "mixed"
+            ? "This was a mixed session."
+            : "This review is building a new baseline.";
   const parts: string[] = [];
 
   if (isNumber(offlineDeltaYd)) {
@@ -1525,15 +2150,208 @@ function sessionScopeLabel(data: TodayPracticeData) {
     (item) => item.id === data.filters.sessionId,
   );
   if (session) return session.label;
-  return "All sessions today";
+  return "All sessions for this practice date";
 }
 
-function reviewDotClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
-  if (tone === "green") return "bg-emerald-500 ring-emerald-100";
-  if (tone === "pink") return "bg-pink-500 ring-pink-100";
-  if (tone === "amber") return "bg-amber-500 ring-amber-100";
-  if (tone === "sky") return "bg-sky-500 ring-sky-100";
-  return "bg-slate-400 ring-slate-200";
+function practiceFocus(data: TodayPracticeData) {
+  const work = needsWorkComparison(data.clubComparisons);
+  const worseClubs = data.clubComparisons
+    .filter((comparison) => comparison.verdict === "worse")
+    .sort(compareNeedsWork)
+    .slice(0, 3);
+  const fallback = work ? [work] : data.clubComparisons.slice(0, 3);
+  const focusClubs = worseClubs.length > 0 ? worseClubs : fallback;
+  const clubText =
+    focusClubs.length > 0
+      ? joinLabels(focusClubs.map((comparison) => comparison.clubLabel))
+      : "your next set";
+  const problem = work
+    ? `${clubText} pulled the session down. ${work.clubLabel} was the priority: ${formatRate(work.today.straightRate)} straight and ${formatYards(work.today.offlineAverageYd)} offline.`
+    : data.overall.summary;
+
+  return {
+    clubText,
+    problem,
+  };
+}
+
+function bestClubComparison(comparisons: ClubDayComparison[]) {
+  return [...comparisons].sort(compareBestClub)[0] ?? null;
+}
+
+function needsWorkComparison(comparisons: ClubDayComparison[]) {
+  return [...comparisons].sort(compareNeedsWork)[0] ?? null;
+}
+
+function reliableClubComparison(comparisons: ClubDayComparison[]) {
+  return [...comparisons].sort(compareReliableClub)[0] ?? null;
+}
+
+function compareBestClub(left: ClubDayComparison, right: ClubDayComparison) {
+  return (
+    right.score - left.score ||
+    valueOrZero(right.today.straightRate) - valueOrZero(left.today.straightRate) ||
+    valueOrZero(right.today.playableRate) - valueOrZero(left.today.playableRate) ||
+    valueOrZero(left.today.offlineAverageYd) - valueOrZero(right.today.offlineAverageYd)
+  );
+}
+
+function compareNeedsWork(left: ClubDayComparison, right: ClubDayComparison) {
+  return (
+    left.score - right.score ||
+    valueOrZero(left.today.straightRate) - valueOrZero(right.today.straightRate) ||
+    valueOrZero(right.today.offlineAverageYd) - valueOrZero(left.today.offlineAverageYd)
+  );
+}
+
+function compareReliableClub(left: ClubDayComparison, right: ClubDayComparison) {
+  return (
+    valueOrZero(right.today.playableRate) - valueOrZero(left.today.playableRate) ||
+    valueOrZero(right.today.straightRate) - valueOrZero(left.today.straightRate) ||
+    valueOrZero(left.today.offlineAverageYd) - valueOrZero(right.today.offlineAverageYd)
+  );
+}
+
+function clubPerformanceNarrative(data: TodayPracticeData) {
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+
+  if (!best || !work || !reliable) {
+    return "This review against the latest previous shots for the same club.";
+  }
+
+  return `${best.clubLabel} improved, ${reliable.clubLabel} stayed reliable, and ${work.clubLabel} needs the most attention.`;
+}
+
+function clubPerformanceRead(data: TodayPracticeData) {
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+
+  if (!best || !work || !reliable) {
+    return data.overall.summary;
+  }
+
+  return `${best.clubLabel} helped the session, ${reliable.clubLabel} held playable rate, and ${work.clubLabel} caused most of the damage.`;
+}
+
+function joinLabels(labels: string[]) {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+function valueOrZero(value: number | null) {
+  return isNumber(value) ? value : 0;
+}
+
+function offlineStatus(value: number | null) {
+  if (value === null) return "Baseline";
+  if (value < -1) return "Straighter";
+  if (value > 1) return "Watch";
+  return "Stable";
+}
+
+function rateStatus(value: number | null, stableLabel = "Stable") {
+  if (value === null) return "Baseline";
+  if (value > 1) return "Up";
+  if (value < -1) return "Down";
+  return stableLabel;
+}
+
+function carryStatus(value: number | null) {
+  if (value === null) return "Baseline";
+  if (value > 1) return "Longer";
+  if (value < -1) return "Shorter";
+  return "Stable";
+}
+
+function reviewIconClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
+  if (tone === "green") return "bg-emerald-50 text-emerald-700";
+  if (tone === "pink") return "bg-pink-50 text-pink-700";
+  if (tone === "amber") return "bg-amber-50 text-amber-800";
+  if (tone === "sky") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
+}
+
+function reviewStatusClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
+  if (tone === "green") return "bg-emerald-50 text-emerald-700";
+  if (tone === "pink") return "bg-pink-50 text-pink-700";
+  if (tone === "amber") return "bg-amber-50 text-amber-800";
+  if (tone === "sky") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-600";
+}
+
+function prescriptionToneClass(tone: "green" | "sky" | "pink" | "amber") {
+  if (tone === "green") return "border-emerald-100 bg-emerald-50/55 text-emerald-800";
+  if (tone === "pink") return "border-pink-100 bg-pink-50/45 text-pink-800";
+  if (tone === "amber") return "border-amber-100 bg-amber-50/45 text-amber-900";
+  return "border-sky-100 bg-sky-50/45 text-sky-800";
+}
+
+function summaryIconClass(tone: "green" | "pink" | "sky") {
+  if (tone === "green") return "bg-emerald-50 text-emerald-700";
+  if (tone === "pink") return "bg-pink-50 text-pink-700";
+  return "bg-sky-50 text-sky-700";
+}
+
+function rateBarClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
+  if (tone === "green") return "bg-emerald-500";
+  if (tone === "pink") return "bg-pink-500";
+  if (tone === "amber") return "bg-amber-500";
+  if (tone === "sky") return "bg-sky-500";
+  return "bg-slate-400";
+}
+
+function clubRowTone(
+  comparison: ClubDayComparison,
+  bestClubType: string | null,
+  focusClubType: string | null,
+) {
+  if (comparison.clubType === focusClubType) {
+    return {
+      rowClass: "bg-amber-50/45 hover:bg-amber-50",
+      stickyClass: "bg-amber-50",
+    };
+  }
+
+  if (comparison.clubType === bestClubType) {
+    return {
+      rowClass: "bg-emerald-50/35 hover:bg-emerald-50",
+      stickyClass: "bg-emerald-50",
+    };
+  }
+
+  if (comparison.verdict === "worse") {
+    return {
+      rowClass: "hover:bg-pink-50/45",
+      stickyClass: "bg-white",
+    };
+  }
+
+  return {
+    rowClass: "hover:bg-slate-50/80",
+    stickyClass: "bg-white",
+  };
+}
+
+function rateValueTone(
+  value: number | null,
+  metric: "straight" | "playable",
+): "green" | "sky" | "pink" | "amber" | "slate" {
+  if (value === null) return "slate";
+
+  if (metric === "playable") {
+    if (value >= 85) return "green";
+    if (value >= 70) return "amber";
+    return "pink";
+  }
+
+  if (value >= 35) return "green";
+  if (value >= 20) return "amber";
+  return "pink";
 }
 
 function reviewDeltaClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
@@ -1557,9 +2375,23 @@ function verdictTone(verdict: TodayPracticeData["overall"]["verdict"]) {
 
 function deltaTone(value: number | null, direction: "higher" | "lower") {
   if (value === null) return "slate";
-  if (value === 0) return "amber";
+  if (Math.abs(value) <= 1) return "amber";
   const isGood = direction === "higher" ? value > 0 : value < 0;
   return isGood ? "green" : "pink";
+}
+
+function offlineKpiTone(value: number | null) {
+  if (value === null) return "slate";
+  if (value < -1) return "green";
+  if (value > 3) return "pink";
+  return "amber";
+}
+
+function playableKpiTone(value: number | null) {
+  if (value === null) return "slate";
+  if (value > 1) return "green";
+  if (value < -5) return "pink";
+  return "amber";
 }
 
 function verdictBadgeClass(verdict: ClubDayComparison["verdict"]) {
@@ -1586,7 +2418,9 @@ function deltaClass(value: number | null, direction: "higher" | "lower") {
       ? "text-emerald-700"
       : tone === "pink"
         ? "text-pink-700"
-        : "text-muted-foreground";
+        : tone === "amber"
+          ? "text-amber-800"
+          : "text-muted-foreground";
   return `text-xs ${color}`;
 }
 
@@ -1705,6 +2539,14 @@ function titleCase(value: string) {
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase())
     .join(" ");
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function cssAttributeValue(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function isNumber(value: number | null | undefined): value is number {
