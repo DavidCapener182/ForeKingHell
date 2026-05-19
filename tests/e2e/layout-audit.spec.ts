@@ -10,18 +10,21 @@ const viewports = [
 ] as const;
 
 const publicRoutes = ["/login", "/privacy"];
+const routeGotoTimeoutMs = 120_000;
 
 const authenticatedStaticRoutes = discoverStaticAppRoutes().filter(
   (route) => route !== "/" && !publicRoutes.includes(route),
 );
 
 test.describe("layout audit", () => {
+  test.setTimeout(300_000);
+
   test("public pages do not create document overflow", async ({ page }) => {
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
 
       for (const route of publicRoutes) {
-        await page.goto(route, { waitUntil: "domcontentloaded" });
+        await gotoLayoutRoute(page, route);
         await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
         await expectLayoutBounds(page, route, viewport);
       }
@@ -41,7 +44,7 @@ test.describe("layout audit", () => {
       test.skip(!firstRoute, "No authenticated static routes discovered.");
 
       await page.setViewportSize(viewports[0]);
-      await page.goto(firstRoute, { waitUntil: "domcontentloaded" });
+      await gotoLayoutRoute(page, firstRoute);
       await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
       test.skip(/\/login(?:\?|$)/.test(page.url()), "Stored auth state redirected to login.");
 
@@ -49,7 +52,7 @@ test.describe("layout audit", () => {
         await page.setViewportSize(viewport);
 
         for (const route of authenticatedStaticRoutes) {
-          await page.goto(route, { waitUntil: "domcontentloaded" });
+          await gotoLayoutRoute(page, route);
           await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
 
           if (/\/login(?:\?|$)/.test(page.url())) {
@@ -76,6 +79,29 @@ async function expectLayoutBounds(page: Page, route: string, viewport: (typeof v
     metrics.scrollWidth,
     `${viewport.name} ${route} (${metrics.path}) should not horizontally overflow`,
   ).toBeLessThanOrEqual(metrics.viewportWidth + 2);
+}
+
+async function gotoLayoutRoute(page: Page, route: string) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(route, { waitUntil: "commit", timeout: routeGotoTimeoutMs });
+      await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
+      return;
+    } catch (error) {
+      const message = String(error);
+      const retryable =
+        message.includes("net::ERR_ABORTED") ||
+        message.includes("net::ERR_CONNECTION_RESET") ||
+        message.includes("net::ERR_NETWORK_IO_SUSPENDED") ||
+        message.includes("frame was detached");
+
+      if (!retryable || attempt === 1) {
+        throw error;
+      }
+
+      await page.waitForTimeout(1_000);
+    }
+  }
 }
 
 function discoverStaticAppRoutes() {

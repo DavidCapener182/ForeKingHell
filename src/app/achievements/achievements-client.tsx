@@ -786,7 +786,7 @@ function AchievementUnlockCalendar({
             </div>
 
             <div
-              className="pb-2 text-center text-[11px] font-medium uppercase tracking-normal text-muted-foreground"
+              className="pb-2 text-center text-[11px] font-medium uppercase tracking-normal text-slate-700"
               style={calendarGridStyle}
             >
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
@@ -957,6 +957,15 @@ function NextUnlockCard({
           <Metric label="Unlocked" value={`${unlockedCount}/${totalCount}`} />
           <Metric label="Reward" value={achievement ? `${achievement.xp} XP` : "--"} />
         </div>
+        <Button
+          asChild
+          className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          data-primary-action
+        >
+          <Link href={achievement ? "/today" : "/import"} prefetch={false}>
+            {achievement ? "Open today's practice" : "Import data"}
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );

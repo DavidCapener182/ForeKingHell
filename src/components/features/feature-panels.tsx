@@ -253,6 +253,7 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
             <Input name="name" placeholder="My tournament attempts" required />
             <Input name="description" placeholder="What this view is for" />
             <select
+              aria-label="Saved view club filter"
               name="club"
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
             >
@@ -264,6 +265,7 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
               ))}
             </select>
             <select
+              aria-label="Saved view category filter"
               name="category"
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
             >
@@ -275,8 +277,8 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
               ))}
             </select>
             <div className="grid grid-cols-2 gap-2">
-              <Input name="from" type="date" />
-              <Input name="to" type="date" />
+              <Input name="from" type="date" aria-label="Saved view start date" />
+              <Input name="to" type="date" aria-label="Saved view end date" />
             </div>
             <Input name="q" placeholder="Search term or note" />
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -336,6 +338,7 @@ export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) 
               min={0}
               max={200}
               name="recordedShots"
+              aria-label="Recorded shots"
               defaultValue={top.targetShots}
             />
             <Button

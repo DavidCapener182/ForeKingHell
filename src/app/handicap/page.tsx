@@ -445,6 +445,7 @@ export default async function HandicapPage() {
                   <TableHead className="text-right">Slope</TableHead>
                   <TableHead className="text-right">Diff</TableHead>
                   <TableHead className="text-right">Holes</TableHead>
+                  <TableHead className="text-right">Shots</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,11 +475,14 @@ export default async function HandicapPage() {
                       {formatHandicapValue(round.handicapDifferential)}
                     </TableCell>
                     <TableCell className="text-right">{formatHolesPlayed(round)}</TableCell>
+                    <TableCell className="text-right">
+                      {integerFormatter.format(round.shotCount)}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {rounds.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       No scorecards yet. Import a simulated course or add a real round.
                     </TableCell>
                   </TableRow>

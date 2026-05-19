@@ -105,7 +105,11 @@ export function RoundsWorkspace({
           </CardHeader>
           <CardContent className="min-w-0 space-y-3 overflow-hidden px-3 sm:px-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div
+                className="flex gap-2 overflow-x-auto pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                tabIndex={0}
+                aria-label="Round filters"
+              >
                 {filters.map((filter) => (
                   <Button
                     key={filter.value}
@@ -197,7 +201,12 @@ export function RoundsWorkspace({
                         {formatInteger(round.totalPutts)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DataBadge round={round} />
+                        <div className="inline-flex flex-col items-end gap-1">
+                          <DataBadge round={round} />
+                          <span className="text-xs text-muted-foreground">
+                            {integerFormatter.format(round.shotCount)} shots
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button asChild variant="ghost" size="sm">
@@ -289,7 +298,11 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   Hole result
                 </p>
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                <div
+                  className="flex gap-1.5 overflow-x-auto pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  tabIndex={0}
+                  aria-label="Selected round hole results"
+                >
                   {round.holeResults.map((result, index) => (
                     <span
                       key={`${round.id}-${index}-${result}`}
@@ -379,7 +392,7 @@ function RoundMobileCard({
 function RoundMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-slate-700">{label}</span>
       <span className="font-semibold">{value}</span>
     </div>
   );

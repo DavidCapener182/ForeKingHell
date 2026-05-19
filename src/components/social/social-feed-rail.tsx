@@ -399,7 +399,7 @@ function SocialFeedRailContent() {
         <span className="sm:hidden">Feed</span>
         <span className="hidden sm:inline">Social feed</span>
         {newCount > 0 ? (
-          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="rounded-full bg-[#0B7A3B] px-2 py-0.5 text-xs font-semibold text-white">
             {newCount > 99 ? "99+" : numberFormatter.format(newCount)}
           </span>
         ) : null}

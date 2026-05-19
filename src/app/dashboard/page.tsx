@@ -1723,7 +1723,7 @@ function PracticeRecommendationCard({
           </div>
 
           <div className="self-start rounded-2xl border border-[#EDF1ED] bg-[#F8FAF8] p-4">
-            <div className="flex items-center gap-2 text-[#B86B00]">
+            <div className="flex items-center gap-2 text-[#8A4B00]">
               <Crosshair className="size-5" />
               <p className="text-sm font-semibold">Practice task</p>
             </div>
@@ -1783,7 +1783,7 @@ function TargetLaneVisual({
     missSide === "right"
       ? "border-[#2563EB] bg-[#2563EB]"
       : missSide === "left"
-        ? "border-[#B86B00] bg-[#B86B00]"
+        ? "border-[#8A4B00] bg-[#8A4B00]"
         : "border-[#087A3D] bg-[#087A3D]";
 
   return (
@@ -1797,7 +1797,7 @@ function TargetLaneVisual({
         <div className="absolute inset-y-0 left-0 w-[22%] bg-[#FFF4DB]" />
         <div className="absolute inset-y-0 left-[22%] w-[50%] bg-[#E8F7EE]" />
         <div className="absolute inset-y-0 right-0 w-[28%] bg-[#EAF1FF]" />
-        <div className="absolute left-[22%] top-0 h-full border-l border-dashed border-[#B86B00]" />
+        <div className="absolute left-[22%] top-0 h-full border-l border-dashed border-[#8A4B00]" />
         <div className="absolute left-[72%] top-0 h-full border-l border-dashed border-[#2563EB]" />
         <div className="absolute left-1/2 top-0 h-full border-l-2 border-[#087A3D]" />
         <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#087A3D] shadow-sm">
@@ -2582,7 +2582,7 @@ function holeResultClass(delta: number | null) {
   }
 
   if (delta === 1) {
-    return "bg-[#FFF4DB] text-[#B86B00]";
+    return "bg-[#FFF4DB] text-[#8A4B00]";
   }
 
   return "bg-[#FEE4E2] text-[#B42318]";
@@ -2609,7 +2609,7 @@ function toneDotClass(tone: DashboardTone) {
     case "green":
       return "bg-[#0F8F4D] ring-[#E8F7EE]";
     case "amber":
-      return "bg-[#B86B00] ring-[#FFF4DB]";
+      return "bg-[#8A4B00] ring-[#FFF4DB]";
     case "sky":
       return "bg-[#2563EB] ring-[#EAF1FF]";
     case "slate":
@@ -2622,7 +2622,7 @@ function toneSoftClass(tone: DashboardTone) {
     case "green":
       return "bg-[#E8F7EE] text-[#087A3D]";
     case "amber":
-      return "bg-[#FFF4DB] text-[#B86B00]";
+      return "bg-[#FFF4DB] text-[#8A4B00]";
     case "sky":
       return "bg-[#EAF1FF] text-[#2563EB]";
     case "slate":

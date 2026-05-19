@@ -49,6 +49,10 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+.text-muted-foreground {
+  color: #5f6672;
+}
+
 :root {
   --fkh-page-padding-mobile: 1rem;
   --fkh-section-gap-mobile: 1rem;
@@ -68,7 +72,7 @@
   --secondary: #ecfdf5;
   --secondary-foreground: #064e3b;
   --muted: #f5f6f4;
-  --muted-foreground: #6b7280;
+  --muted-foreground: #5f6672;
   --accent: #dcfce7;
   --accent-foreground: #166534;
   --destructive: #dc2626;

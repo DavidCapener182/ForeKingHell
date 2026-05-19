@@ -768,9 +768,7 @@ function TargetDistanceSelector({ rows, targetYd }: { rows: GappingRow[]; target
       />
       <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div className="rounded-lg border bg-[#F5F6F4] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Target
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">Target</p>
           <p className="mt-1 text-4xl font-semibold tracking-normal">{targetYd} yd</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[120, 150, 175, 200].map((distance) => (
@@ -1330,7 +1328,7 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold">{formatClubType(row.clubType)}</span>
-              <span className="text-muted-foreground">
+              <span className="text-slate-700">
                 {formatMetric(row.carryYd)} yd carry · {formatMetric(row.playNumberYd)} yd play
               </span>
             </div>

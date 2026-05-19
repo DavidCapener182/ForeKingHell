@@ -512,7 +512,7 @@ function CoachSocialPrompt({
         action={<Trophy className="size-5 text-amber-600" />}
       />
       <CardContent className="grid gap-3">
-        <p className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-muted-foreground">
+        <p className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-slate-700">
           {topClub
             ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
             : "Build a clean club baseline before comparing with friends or entering verified boards."}

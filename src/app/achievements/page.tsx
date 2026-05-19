@@ -72,12 +72,42 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
         </div>
       </div>
 
-      <PageHeader
-        eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
-        title="Progress worth tracking"
-        description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
-        visual={<AchievementArtwork className="h-full min-h-44" />}
-      />
+      <section className="premium-card p-3 sm:hidden">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              Achievements
+            </p>
+            <h1 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h1>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
+              {data.totalXp.toLocaleString("en-GB")} XP
+            </p>
+          </div>
+          <StatusPill tone="green">Progress</StatusPill>
+        </div>
+        <Button
+          asChild
+          size="sm"
+          className="mt-3 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          data-primary-action
+        >
+          <Link href="/today" prefetch={false}>
+            Open today&apos;s practice
+          </Link>
+        </Button>
+      </section>
+
+      <div className="hidden sm:block">
+        <PageHeader
+          eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
+          title="Progress worth tracking"
+          description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
+          visual={<AchievementArtwork className="h-full min-h-44" />}
+        />
+      </div>
+
+      <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
 
       <DataFirstFlowPanel
         title="Achievement categories"
@@ -121,8 +151,6 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           },
         ]}
       />
-
-      <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
 
       <AchievementSocialPanel
         data={data}

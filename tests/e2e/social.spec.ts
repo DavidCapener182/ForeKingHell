@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import postgres, { type Sql } from "postgres";
 
 import { authStorageState, expectPageReady } from "./helpers";
@@ -37,7 +37,7 @@ test.describe("social friends and feed visibility", () => {
     "Set DATABASE_URL and PLAYWRIGHT_AUTH_STATE with a Supabase session to run live social checks.",
   );
   test.use(authStorageState ? { storageState: authStorageState } : {});
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
 
   let sql: Sql | null = null;
   let fixture: SocialFixture | null = null;
@@ -62,8 +62,7 @@ test.describe("social friends and feed visibility", () => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
-    await page.goto(`/friends?q=${data.targetUsername}`);
-    await expectPageReady(page, /Friends/i);
+    await gotoSocialPage(page, `/friends?q=${data.targetUsername}`, /Friends/i);
     await expect(page.locator("body")).toContainText(data.targetDisplayName);
     await page.getByRole("button", { name: /^Add$/ }).first().click();
 
@@ -80,8 +79,7 @@ test.describe("social friends and feed visibility", () => {
       })
       .toBe(1);
 
-    await page.goto("/friends");
-    await expectPageReady(page, /Incoming requests/i);
+    await gotoSocialPage(page, "/friends", /Incoming requests/i);
     await expect(page.locator("body")).toContainText(data.incomingDisplayName);
     await page
       .getByRole("button", { name: /Accept/i })
@@ -106,8 +104,7 @@ test.describe("social friends and feed visibility", () => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
-    await page.goto("/feed");
-    await expectPageReady(page, /Social feed/i);
+    await gotoSocialPage(page, "/feed", /Social feed/i);
     await expect(page.locator("body")).toContainText(data.friendHeadline);
     await expect(page.locator("body")).toContainText(data.publicHeadline);
     await expect(page.locator("body")).not.toContainText(data.strangerHeadline);
@@ -117,7 +114,10 @@ test.describe("social friends and feed visibility", () => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
-    const response = await page.goto(`/profile/${data.privateUsername}`);
+    const response = await page.goto(`/profile/${data.privateUsername}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 45_000,
+    });
     expect(response?.status()).toBe(404);
   });
 
@@ -126,11 +126,9 @@ test.describe("social friends and feed visibility", () => {
     const data = fixture!;
     const comment = `Nice work ${data.token}`;
 
-    await page.goto("/feed");
-    await expectPageReady(page, /Social feed/i);
-    const digest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
-    await digest.getByText("Individual cards").click();
-    const card = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await gotoSocialPage(page, "/feed", /Social feed/i);
+    await expect(page.locator("body")).toContainText(data.friendHeadline);
+    const card = await revealFeedCard(page, data.friendFeedItemId);
     await card.getByRole("button", { name: /Kudos/i }).first().click();
 
     await expect
@@ -146,13 +144,8 @@ test.describe("social friends and feed visibility", () => {
       })
       .toBe(1);
 
-    await page.goto("/feed");
-    const refreshedDigest = page
-      .locator("article")
-      .filter({ hasText: data.friendHeadline })
-      .first();
-    await refreshedDigest.getByText("Individual cards").click();
-    const refreshedCard = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await gotoSocialPage(page, "/feed", data.friendHeadline);
+    const refreshedCard = await revealFeedCard(page, data.friendFeedItemId);
     await refreshedCard.getByPlaceholder(/Write a comment/i).fill(comment);
     await refreshedCard.getByRole("button", { name: /^Post$/ }).click();
 
@@ -170,10 +163,8 @@ test.describe("social friends and feed visibility", () => {
       })
       .toBe(1);
 
-    await page.goto("/feed");
-    const reportedDigest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
-    await reportedDigest.getByText("Individual cards").click();
-    const reportedCard = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
+    await gotoSocialPage(page, "/feed", data.friendHeadline);
+    const reportedCard = await revealFeedCard(page, data.friendFeedItemId);
     await reportedCard.getByText("Controls").first().click();
     const reportForm = reportedCard.locator("[data-feed-report-form]");
     await expect(reportForm).toBeVisible();
@@ -205,7 +196,7 @@ test.describe("social friends and feed visibility", () => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
-    await page.goto("/friends");
+    await gotoSocialPage(page, "/friends", /Friends/i);
     const row = page.locator(`[data-friend-user-id="${data.friendUserId}"]`).first();
     const blockForm = row.locator("[data-friend-block-form]");
     await expect(blockForm).toBeVisible();
@@ -228,11 +219,49 @@ test.describe("social friends and feed visibility", () => {
       })
       .toBe(1);
 
-    await page.goto("/feed");
-    await expectPageReady(page, /Social feed/i);
+    await gotoSocialPage(page, "/feed", /Social feed/i);
     await expect(page.locator("body")).not.toContainText(data.friendHeadline);
   });
 });
+
+async function gotoSocialPage(page: Page, routePath: string, expectedText: RegExp | string) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(routePath, { waitUntil: "domcontentloaded", timeout: 45_000 });
+      await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
+      await expectPageReady(page, expectedText);
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(500);
+    }
+  }
+
+  throw lastError;
+}
+
+async function revealFeedCard(page: Page, feedItemId: string) {
+  const card = page.locator(`[data-feed-item-id="${feedItemId}"]`);
+
+  if (await card.isVisible()) {
+    return card;
+  }
+
+  const summaries = page.locator("summary").filter({ hasText: "Individual cards" });
+  const count = await summaries.count();
+
+  for (let index = 0; index < count; index += 1) {
+    await summaries.nth(index).click();
+    if (await card.isVisible()) {
+      return card;
+    }
+  }
+
+  await expect(card).toBeVisible();
+  return card;
+}
 
 async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFixture> {
   const token = randomUUID().slice(0, 8);

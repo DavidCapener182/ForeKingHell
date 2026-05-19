@@ -148,7 +148,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       <TodayHoverStyles comparisons={data.clubComparisons} />
       <MobileAppShell className="min-h-0 pb-0">
         <MobileTopBar
-          title="Latest"
+          title="Today"
           actions={
             <Button
               asChild

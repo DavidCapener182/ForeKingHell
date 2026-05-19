@@ -572,7 +572,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8">
+    <main className="min-h-0 px-4 py-5 pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
 
@@ -958,6 +958,26 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               </div>
             </CardContent>
           </Card>
+        </section>
+
+        <section className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm sm:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold">Provider import health</span>
+            <Badge
+              className={cn(
+                status.connected
+                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-100",
+              )}
+            >
+              {status.connected ? "Connected" : "Signed out"}
+            </Badge>
+          </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {status.connected
+              ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
+              : "Sign in or use manual CSV import when R-Cloud is unavailable."}
+          </p>
         </section>
 
         {preview ? (

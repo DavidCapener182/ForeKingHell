@@ -496,9 +496,9 @@ export async function getCourseRecordsHubData() {
     coursePreference(course, sessionCounts),
   );
 
-  for (const course of courseRows.slice(0, 12)) {
-    await ensureCourseRecordBoards(course.id, viewerUserId);
-  }
+  await Promise.all(
+    courseRows.slice(0, 12).map((course) => ensureCourseRecordBoards(course.id, viewerUserId)),
+  );
 
   const visibleCourseIds = courseRows.map((course) => course.id);
   const [recordRows, resultRows, teeRows] =

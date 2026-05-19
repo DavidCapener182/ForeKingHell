@@ -133,6 +133,14 @@ function RoundsHero({
                 <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance">
                   Saved rounds
                 </h1>
+                {latestRound ? (
+                  <Button asChild size="sm" className="mt-3 w-fit" data-primary-action>
+                    <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
+                      <Flag className="size-4" />
+                      Open latest round
+                    </Link>
+                  </Button>
+                ) : null}
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                   {roundsDatabaseCopy(roundsSaved, realRounds, simulatorRounds)}
                 </p>
@@ -224,7 +232,7 @@ function LatestRoundSpotlight({
         alt=""
         crop="random"
         cropKey={latestRound.id}
-        className="h-24 min-h-0 rounded-lg"
+        className="hidden h-24 min-h-0 rounded-lg sm:block"
         sizes="(min-width: 1280px) 360px, 100vw"
       />
       <div className="mt-3 space-y-3">
@@ -238,6 +246,12 @@ function LatestRoundSpotlight({
           <p className="mt-1 text-sm leading-5 text-muted-foreground">
             {formatDate(latestRound.date)} · {formatSessionType(latestRound.type)}
           </p>
+          <Button asChild variant="outline" className="mt-3 w-full sm:hidden" data-primary-action>
+            <Link href={`/rounds/${latestRound.id}`}>
+              <Flag className="size-4" />
+              Review round
+            </Link>
+          </Button>
         </div>
         <div className="apple-panel-strong p-3">
           <p className="text-2xl font-semibold tracking-normal">
@@ -248,7 +262,12 @@ function LatestRoundSpotlight({
             {formatInteger(latestRound.totalPar)}
           </p>
         </div>
-        <Button asChild variant="outline" className="w-full">
+        <Button
+          asChild
+          variant="outline"
+          className="hidden w-full sm:inline-flex"
+          data-primary-action
+        >
           <Link href={`/rounds/${latestRound.id}`}>
             <Flag className="size-4" />
             Review round
