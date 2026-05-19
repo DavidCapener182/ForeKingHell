@@ -47,22 +47,60 @@ export async function getProviderIntegrationsPageData() {
   ]);
 
   return {
-    providers: launchMonitorProviders.map((provider) => ({
-      providerKind: provider.providerKind,
-      label: provider.label,
-      status: provider.status,
-      accountCount: accounts.filter((account) => account.providerKind === provider.providerKind)
-        .length,
-      sessionCount: sessions.filter((session) => session.providerKind === provider.providerKind)
-        .length,
-      jobCount: jobs.filter((job) => job.providerKind === provider.providerKind).length,
-      mappingCount: mappings.filter((mapping) => mapping.providerKind === provider.providerKind)
-        .length,
-    })),
+    providers: launchMonitorProviders.map((provider) => {
+      const providerAccountsForKind = accounts.filter(
+        (account) => account.providerKind === provider.providerKind,
+      );
+      const providerSessionsForKind = sessions.filter(
+        (session) => session.providerKind === provider.providerKind,
+      );
+      const providerJobsForKind = jobs.filter((job) => job.providerKind === provider.providerKind);
+      const providerFilesForKind = files.filter(
+        (file) => file.providerKind === provider.providerKind,
+      );
+      const failedJobs = providerJobsForKind.filter(
+        (job) => job.status === "failed" || Boolean(job.errorMessage),
+      );
+
+      return {
+        providerKind: provider.providerKind,
+        label: provider.label,
+        status: provider.status,
+        accountCount: providerAccountsForKind.length,
+        sessionCount: providerSessionsForKind.length,
+        jobCount: providerJobsForKind.length,
+        mappingCount: mappings.filter((mapping) => mapping.providerKind === provider.providerKind)
+          .length,
+        lastSyncAt: latestDate([
+          ...providerAccountsForKind.map((account) => account.updatedAt),
+          ...providerSessionsForKind.flatMap((session) => [
+            session.importedAt,
+            session.lastSeenAt,
+            session.updatedAt,
+          ]),
+          ...providerJobsForKind.map((job) => job.updatedAt),
+          ...providerFilesForKind.map((file) => file.updatedAt),
+        ]),
+        failureCount: failedJobs.length,
+        latestFailureMessage: failedJobs[0]?.errorMessage ?? null,
+      };
+    }),
     accounts,
     sessions,
     jobs,
     files,
     mappings,
   };
+}
+
+function latestDate(values: Array<Date | null>) {
+  const timestamps = values
+    .filter((value): value is Date => value instanceof Date)
+    .map((value) => value.getTime());
+
+  if (timestamps.length === 0) {
+    return null;
+  }
+
+  return new Date(Math.max(...timestamps));
 }

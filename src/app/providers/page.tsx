@@ -76,7 +76,7 @@ export default async function ProvidersPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge variant={provider.status === "live" ? "secondary" : "outline"}>
-                  {provider.status}
+                  {providerStatusLabel(provider.status)}
                 </Badge>
                 <h2 className="mt-3 text-xl font-semibold tracking-normal">{provider.label}</h2>
               </div>
@@ -90,6 +90,26 @@ export default async function ProvidersPage() {
               <Mini label="Accounts" value={provider.accountCount} />
               <Mini label="Sessions" value={provider.sessionCount} />
               <Mini label="Jobs" value={provider.jobCount} />
+            </div>
+            <div
+              className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 text-sm"
+              data-provider-import-health
+            >
+              <p className="font-semibold text-[#050505]">Provider import health</p>
+              <ProviderHealthRow
+                label="Last sync"
+                value={formatProviderDate(provider.lastSyncAt)}
+                tone={provider.lastSyncAt ? "green" : "amber"}
+              />
+              <ProviderHealthRow
+                label="Import failures"
+                value={
+                  provider.failureCount > 0
+                    ? `${provider.failureCount} ${provider.latestFailureMessage ?? "needs review"}`
+                    : "0 blocking failures"
+                }
+                tone={provider.failureCount > 0 ? "amber" : "green"}
+              />
             </div>
             <div className="mt-4 grid gap-2 text-sm">
               <ProviderStep done={provider.status === "live"} label="Connect" />
@@ -226,6 +246,47 @@ function ProviderStep({ done, label }: { done: boolean; label: string }) {
       </span>
     </div>
   );
+}
+
+function ProviderHealthRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "green" | "amber";
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-md bg-white px-2 py-1.5">
+      <span className="text-muted-foreground">{label}</span>
+      <span
+        className={
+          tone === "green"
+            ? "text-right font-medium text-emerald-700"
+            : "text-right font-medium text-amber-700"
+        }
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function providerStatusLabel(status: string) {
+  if (status === "live") {
+    return "live/current";
+  }
+
+  if (status === "research") {
+    return "coming soon";
+  }
+
+  return status;
+}
+
+function formatProviderDate(value: Date | null) {
+  return value ? dateFormatter.format(value) : "Not synced yet";
 }
 
 function providerArtwork(kind: string): PageArtworkVariant {

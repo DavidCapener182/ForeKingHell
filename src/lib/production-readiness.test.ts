@@ -117,6 +117,33 @@ describe("production readiness gate", () => {
     expect(shotsSource).toContain("ShotTraceMotif");
   });
 
+  it("keeps provider tiles showing live status, last sync, and import failures", () => {
+    const providerPageSource = readFileSync(join(root, "src/app/providers/page.tsx"), "utf8");
+    const providerDataSource = readFileSync(join(root, "src/lib/provider-integrations.ts"), "utf8");
+
+    for (const expected of [
+      "Provider import health",
+      "Last sync",
+      "Import failures",
+      "live/current",
+      "coming soon",
+      "data-provider-import-health",
+    ]) {
+      expect(providerPageSource).toContain(expected);
+    }
+
+    for (const expected of [
+      "lastSyncAt",
+      "failureCount",
+      "latestFailureMessage",
+      "latestDate",
+      'job.status === "failed"',
+      "Boolean(job.errorMessage)",
+    ]) {
+      expect(providerDataSource).toContain(expected);
+    }
+  });
+
   it("keeps authenticated E2E state capture documented and ignored", () => {
     const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
       scripts: Record<string, string>;
