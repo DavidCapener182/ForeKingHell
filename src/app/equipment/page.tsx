@@ -130,8 +130,6 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         ]}
       />
 
-      <BagFeaturePanel data={featureData} />
-
       <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
         {data.activeClubs.slice(0, 4).map((club) => (
           <div key={club.id} className="premium-card grid min-w-[72vw] grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 p-3 sm:min-w-0">
@@ -165,6 +163,8 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       </section>
 
       <EquipmentSocialBadges data={data} activeHistoryCount={activeHistory.length} />
+
+      <BagFeaturePanel data={featureData} />
 
       <EquipmentMobileDisclosure title="Add or edit equipment" description="Ball models and club specification forms.">
       <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">

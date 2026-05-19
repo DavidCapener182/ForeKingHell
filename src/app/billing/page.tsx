@@ -184,7 +184,7 @@ function PlanCard({
           <option value="yearly">Yearly</option>
         </select>
         <Button type="submit" disabled={active || (plan.key !== "free" && !stripeConfigured)}>
-          {active ? "Active" : plan.internal ? "Granted internally" : plan.key === "free" ? "Use free" : "Checkout"}
+          {active ? "Active" : plan.internal ? "Included" : plan.key === "free" ? "Use free" : "Checkout"}
         </Button>
       </form>
     </article>

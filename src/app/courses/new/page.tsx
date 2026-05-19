@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
-import { ArrowLeft, Flag, MapPinned, Save } from "lucide-react";
+import { ArrowLeft, Flag, MapPinned, Save, Search } from "lucide-react";
 
 import { createCourseAction } from "@/app/courses/actions";
+import { GoogleCourseImporter } from "@/app/courses/google-course-importer";
 import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
 import {
   DataPanel,
@@ -57,7 +58,7 @@ export default function NewCoursePage() {
           {
             label: "Storage",
             value: "FKH tables",
-            detail: "Uses the existing shared Supabase database prefix.",
+            detail: "Stores course and tee data in the ForeKingHell tables.",
           },
         ]}
       />
@@ -70,7 +71,18 @@ export default function NewCoursePage() {
         ]}
       />
 
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-4 xl:grid-cols-3">
+        <DataPanel>
+          <SectionHeader
+            title="Google import"
+            description="Find the real Google Place, store its canonical ID, address, coordinates, website and media signals."
+            action={<Search className="size-5 text-emerald-600" />}
+          />
+          <CardContent>
+            <GoogleCourseImporter />
+          </CardContent>
+        </DataPanel>
+
         <DataPanel className="hidden sm:block">
           <SectionHeader
             title="Course details"
@@ -123,6 +135,10 @@ export default function NewCoursePage() {
 
       <MobileAccordionSection title="OpenStreetMap import" description="Search and pull tagged golf-hole geometry.">
         <OsmCourseImporter />
+      </MobileAccordionSection>
+
+      <MobileAccordionSection title="Google import" description="Search Google Places and create a canonical course shell.">
+        <GoogleCourseImporter />
       </MobileAccordionSection>
 
       <MobileAccordionSection title="Overlay notes" description="How course maps power round overlays.">

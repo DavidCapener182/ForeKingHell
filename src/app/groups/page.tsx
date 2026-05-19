@@ -104,7 +104,6 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </BottomSheet>
           }
         />
-        <GroupDigestFeaturePanel data={featureData} />
         {activeTab === "challenges" ? (
           <NativeListSection title="Challenges">
             {featuredChallenge ? (
@@ -165,6 +164,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             ))}
           </NativeListSection>
         )}
+        <GroupDigestFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <section className="hidden gap-4 sm:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
@@ -255,8 +255,6 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             ) : null}
           </header>
 
-          <GroupDigestFeaturePanel data={featureData} />
-
           {params?.invite ? (
             <section className="premium-card p-4">
               {data.invitePreview ? (
@@ -305,6 +303,8 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </div>
             <GroupGrid groups={data.discoverable} empty="No public groups yet. Create the first golf league." />
           </section>
+
+          <GroupDigestFeaturePanel data={featureData} />
         </main>
       </section>
     </PageShell>

@@ -33,7 +33,7 @@ export function MobileAppShell({ children, className }: MobileAppShellProps) {
   return (
     <section
       className={cn(
-        "-mx-4 -mt-5 grid min-h-dvh content-start gap-4 overflow-x-clip bg-white px-4 pb-[calc(8.25rem+env(safe-area-inset-bottom))] pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
+        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip bg-white px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
         className,
       )}
     >
@@ -58,11 +58,11 @@ export function MobileTopBar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.5rem+env(safe-area-inset-top))] h-[calc(6.1rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))]",
+        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.5rem+env(safe-area-inset-top))] h-[calc(5.65rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))]",
         className,
       )}
     >
-      <div className="h-11" aria-hidden="true" />
+      <div className="h-9" aria-hidden="true" />
       <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#E5E7EB] px-4">
         <div className="flex min-w-0 items-center justify-start gap-1.5">
           {leading}
@@ -167,7 +167,7 @@ export function MobileRouteTabs({
       activeKey={activeKey}
       className={cn(
         sticky
-          ? "sticky top-[calc(6.1rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
+          ? "sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
           : "",
         className,
       )}
@@ -189,11 +189,11 @@ export function MobileRouteHeader({
   return (
     <section
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:hidden",
+        "sticky top-0 z-40 -mx-4 -mt-4 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:hidden",
         className,
       )}
     >
-      <div className="-mx-4 h-11 px-4" aria-hidden="true" />
+      <div className="-mx-4 h-9 px-4" aria-hidden="true" />
       <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
         <span aria-hidden="true" />
         <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
@@ -449,7 +449,7 @@ export function ActivityCard({
             <ProofBadge tier="gold" />
           </div>
         ) : null}
-        {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg">{media}</div> : null}
+        {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
         <div className="flex items-center gap-5 text-sm font-semibold text-[#6B7280]">
           <span className="inline-flex items-center gap-1.5">
             <ThumbsUp className="size-4" />
@@ -606,7 +606,7 @@ export function CourseCard({
       prefetch={false}
       className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
     >
-      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg">{media}</div> : null}
+      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h2 className="truncate text-xl font-semibold tracking-normal text-[#050505]">

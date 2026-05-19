@@ -99,20 +99,51 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </div>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+      {params?.request || params?.friend || params?.user ? (
+        <Alert>
+          <Check className="size-4" />
+          <AlertTitle>Social graph updated</AlertTitle>
+          <AlertDescription>Your friend list and visibility scopes have been refreshed.</AlertDescription>
+        </Alert>
+      ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <DataPanel>
+          <SectionHeader title="Incoming requests" description="Approve only people you want in friend-scoped feed and leaderboard views." />
+          <CardContent>
+            <RequestList rows={data.incomingRequests} direction="incoming" />
+          </CardContent>
+        </DataPanel>
+
+        <DataPanel>
+          <SectionHeader title="Friends" description="Friends do not get account access unless you separately invite them from settings." />
+          <CardContent>
+            <ProfileList empty="No friends yet." profiles={data.friends} mode="friends" />
+          </CardContent>
+        </DataPanel>
+
+        <DataPanel>
+          <SectionHeader title="Outgoing requests" description="Cancel requests that have not been accepted yet." />
+          <CardContent>
+            <RequestList rows={data.outgoingRequests} direction="outgoing" />
+          </CardContent>
+        </DataPanel>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
         <DataPanel>
           <SectionHeader
             title="Invite"
-            description="Use a profile link or QR code when sharing inside Rapsodo groups."
+            description="Profile link and compact QR invite."
             action={<QrCode className="size-5 text-emerald-600" />}
           />
           <CardContent className="grid gap-3">
-            <div className="rounded-xl border bg-white p-4">
+            <div className="rounded-lg border bg-white p-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/friends/qr/${data.profile.username}`}
                 alt={`QR invite for @${data.profile.username}`}
-                className="mx-auto aspect-square w-full max-w-40"
+                className="mx-auto aspect-square w-full max-w-28 sm:max-w-36"
               />
             </div>
             <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs">
@@ -140,14 +171,6 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </DataPanel>
       </section>
 
-      {params?.request || params?.friend || params?.user ? (
-        <Alert>
-          <Check className="size-4" />
-          <AlertTitle>Social graph updated</AlertTitle>
-          <AlertDescription>Your friend list and visibility scopes have been refreshed.</AlertDescription>
-        </Alert>
-      ) : null}
-
       <DataPanel>
         <SectionHeader
           title="Find friends"
@@ -156,7 +179,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         />
         <CardContent className="grid gap-4">
           <form className="grid gap-2 sm:grid-cols-[1fr_auto]" action="/friends">
-            <Input name="q" defaultValue={query} placeholder="Search by username" className="h-10 rounded-xl bg-white" />
+            <Input name="q" defaultValue={query} placeholder="Search by username" className="h-10 rounded-lg bg-white" />
             <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Search className="size-4" />
               Search
@@ -171,29 +194,6 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           ) : null}
         </CardContent>
       </DataPanel>
-
-      <section className="grid gap-4 lg:grid-cols-3">
-        <DataPanel>
-          <SectionHeader title="Incoming requests" description="Approve only people you want in friend-scoped feed and leaderboard views." />
-          <CardContent>
-            <RequestList rows={data.incomingRequests} direction="incoming" />
-          </CardContent>
-        </DataPanel>
-
-        <DataPanel>
-          <SectionHeader title="Friends" description="Friends do not get account access unless you separately invite them from settings." />
-          <CardContent>
-            <ProfileList empty="No friends yet." profiles={data.friends} mode="friends" />
-          </CardContent>
-        </DataPanel>
-
-        <DataPanel>
-          <SectionHeader title="Outgoing requests" description="Cancel requests that have not been accepted yet." />
-          <CardContent>
-            <RequestList rows={data.outgoingRequests} direction="outgoing" />
-          </CardContent>
-        </DataPanel>
-      </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <DataPanel>
@@ -255,7 +255,7 @@ function ProfileList({
       {profiles.map((profile) => (
         <div
           key={profile.userId}
-          className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-3 shadow-sm"
+          className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3"
           data-friend-user-id={profile.userId}
         >
           <div className="flex min-w-0 items-center gap-3">

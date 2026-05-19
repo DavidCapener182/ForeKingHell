@@ -24,7 +24,9 @@ import { PageArtwork } from "@/components/visuals/page-artwork";
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { CourseHoleMapEditor } from "./course-hole-map-editor";
+import { GoogleCourseContextPanel } from "./google-course-context-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,7 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const coordinateFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 6,
 });
+const AUTOMATIC_COURSE_PROVIDERS = new Set(["espn-pga", "google-places", "osm", "schedule", "seed", "tour-seed"]);
 
 export default async function CourseHoleEditorPage({ params }: PageProps) {
   const { courseId } = await params;
@@ -52,8 +55,17 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const holesForPrimaryTeeSet = primaryTeeSet
     ? data.holes.filter((hole) => hole.teeSetId === primaryTeeSet.id)
     : [];
+  const hasMappedGeometry = holesForPrimaryTeeSet.length > 0;
+  const usesAutomaticCourseData = usesAutomaticImportData(data.course);
+  const allowManualHoleEditing = data.isEditable && (hasMappedGeometry || !usesAutomaticCourseData);
+  const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
   const holeSlots = createHoleSlots(primaryTeeSet?.par ?? 72, holesForPrimaryTeeSet.length);
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
+  const mapStatus = mappedHoleCount === 0
+    ? "Import checked"
+    : mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36
+      ? "Ready"
+      : "Partial";
 
   return (
     <PageShell size="wide">
@@ -73,12 +85,12 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone={data.isEditable ? "green" : "sky"}>{data.isEditable ? "Course editor" : "Shared course"}</StatusPill>}
+        eyebrow={<StatusPill tone={data.isEditable ? "green" : "sky"}>{data.isEditable ? "Course editor" : "Course reference"}</StatusPill>}
         title={data.course.name}
         description={
           data.isEditable
             ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
-            : "Use this shared course for scoring and overlays. Only the course creator can edit tee sets and hole geometry."
+            : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
         }
         visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={courseId} className="h-full min-h-44" priority />}
         metrics={[
@@ -99,7 +111,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           },
           {
             label: "Map status",
-            value: mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36 ? "Ready" : "Partial",
+            value: mapStatus,
             detail: "Round overlays use these coordinates.",
           },
         ]}
@@ -112,23 +124,39 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           { label: "Mapped", value: integerFormatter.format(mappedHoleCount), detail: "Saved holes", tone: "amber" },
           {
             label: "Status",
-            value: mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36 ? "Ready" : "Partial",
+            value: mapStatus,
             detail: "Overlay geometry",
             tone: mappedHoleCount >= 18 ? "green" : "slate",
           },
         ]}
       />
 
+      {data.course.latitude !== null && data.course.longitude !== null ? (
+        <GoogleCourseContextPanel
+          address={data.course.address}
+          googleRating={data.course.googleRating}
+          latitude={data.course.latitude}
+          longitude={data.course.longitude}
+          name={data.course.name}
+          reviewCount={data.course.googleUserRatingsTotal}
+          websiteUrl={data.course.websiteUrl}
+        />
+      ) : null}
+
       {!primaryTeeSet ? (
         <DataPanel>
           <SectionHeader title="No tee set" description="This course needs a tee set before holes can be mapped." />
           <CardContent>
-            <Button asChild>
-              <Link href="/courses/new" prefetch={false}>Create a new course instead</Link>
-            </Button>
+            {usesAutomaticCourseData ? (
+              <AutoImportStatusContent autoImport={data.autoImport} />
+            ) : (
+              <Button asChild>
+                <Link href="/courses/new" prefetch={false}>Create a new course instead</Link>
+              </Button>
+            )}
           </CardContent>
         </DataPanel>
-      ) : data.isEditable ? (
+      ) : allowManualHoleEditing ? (
         <DataPanel>
           <SectionHeader
             title="Visual hole editor"
@@ -156,22 +184,33 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             />
           </CardContent>
         </DataPanel>
+      ) : usesAutomaticCourseData && !hasMappedGeometry ? (
+        <DataPanel>
+          <SectionHeader
+            title="Automatic course import"
+            description="Course details are pulled from Google Places and mapped hole data is pulled from available course geometry sources."
+            action={<MapPinned className="size-5 text-sky-600" />}
+          />
+          <CardContent>
+            <AutoImportStatusContent autoImport={data.autoImport} />
+          </CardContent>
+        </DataPanel>
       ) : (
         <DataPanel>
           <SectionHeader
-            title="Shared course geometry"
-            description="This map is read-only for your account. Create a private copy if you need to adjust tee or green points."
+            title="Read-only course geometry"
+            description="This map is read-only for your account. Import or create a course if you need custom tee or green points."
             action={<MapPinned className="size-5 text-sky-600" />}
           />
           <CardContent>
             <p className="text-sm leading-6 text-muted-foreground">
-              Shared courses can be selected for rounds and used in overlays. Editing is limited to private courses you created.
+              Reference courses can be selected for rounds and used in overlays. Editing stays limited to courses you own.
             </p>
           </CardContent>
         </DataPanel>
       )}
 
-      {primaryTeeSet ? (
+      {primaryTeeSet && showTeeSetTools ? (
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="grid gap-4">
             <DataPanel>
@@ -253,7 +292,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
         </section>
       ) : null}
 
-      {primaryTeeSet && data.isEditable ? (
+      {primaryTeeSet && allowManualHoleEditing ? (
         <>
         <MobileCurrentItemCard
           title="Hole editor"
@@ -327,6 +366,38 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 async function getCourseEditorData(courseId: string) {
   const db = getDb();
   const userId = await requireCurrentUserId();
+  let { course, teeSets: teeSetRows, holes: holeRows } = await loadCourseEditorRows(db, courseId, userId);
+  let autoImport: CourseAutoImportResult = {
+    changed: false,
+    status: holeRows.length > 0 ? "ready" : "no_geometry_found",
+  };
+
+  if (!course) {
+    return null;
+  }
+
+  if (holeRows.length === 0) {
+    autoImport = await ensureCourseAutoImport(course, holeRows.length);
+
+    if (autoImport.changed) {
+      ({ course, teeSets: teeSetRows, holes: holeRows } = await loadCourseEditorRows(db, courseId, userId));
+    }
+  }
+
+  if (!course) {
+    return null;
+  }
+
+  return {
+    course,
+    teeSets: teeSetRows,
+    holes: holeRows,
+    isEditable: course.createdByUserId === userId,
+    autoImport,
+  };
+}
+
+async function loadCourseEditorRows(db: ReturnType<typeof getDb>, courseId: string, userId: string) {
   const [courseRows, teeSetRows, holeRows] = await Promise.all([
     db
       .select()
@@ -340,18 +411,30 @@ async function getCourseEditorData(courseId: string) {
       .where(eq(holes.courseId, courseId))
       .orderBy(asc(holes.holeNumber)),
   ]);
-  const course = courseRows[0];
-
-  if (!course) {
-    return null;
-  }
 
   return {
-    course,
+    course: courseRows[0] ?? null,
     teeSets: teeSetRows,
     holes: holeRows,
-    isEditable: course.createdByUserId === userId,
   };
+}
+
+function AutoImportStatusContent({ autoImport }: { autoImport: CourseAutoImportResult }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+      {autoImport.status === "imported"
+        ? "Hole geometry was imported automatically. Refresh if the updated map is not visible yet."
+        : autoImport.status === "no_coordinates"
+          ? "Google Places has not returned usable course coordinates yet."
+          : autoImport.status === "recently_attempted"
+            ? "Automatic import has already checked this course recently. No mapped hole data is available yet."
+            : "Automatic import checked Google Places and available map geometry, but no tagged holes were found yet."}
+    </div>
+  );
+}
+
+function usesAutomaticImportData(course: typeof courses.$inferSelect) {
+  return Boolean(course.googlePlaceId) || AUTOMATIC_COURSE_PROVIDERS.has(course.provider);
 }
 
 function HoleForm({

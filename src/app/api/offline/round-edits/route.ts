@@ -1,8 +1,6 @@
 import { NextRequest } from "next/server";
 
 import {
-  moveRoundShotHoleAction,
-  moveRoundShotToHoleAction,
   resplitRoundAction,
   updateClubAction,
   updateRoundContextAction,
@@ -40,12 +38,6 @@ export async function POST(request: NextRequest) {
       break;
     case "round-hole":
       await updateRoundHoleAction(formData);
-      break;
-    case "move-shot-hole":
-      await moveRoundShotHoleAction(formData);
-      break;
-    case "move-shot-to-hole":
-      await moveRoundShotToHoleAction(formData);
       break;
     case "shot-club":
       await updateShotClubAction(formData);

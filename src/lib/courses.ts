@@ -36,23 +36,45 @@ const BOOTLE_YELLOW_YARDAGES = [
 const MOUNTAIN_PARK_YELLOW_YARDAGES = [167, 257, 271, 165, 313, 447, 380, 358, 236];
 
 export async function ensureKnownCourseForSession(courseName: string | null | undefined): Promise<CourseSessionLink> {
-  if (!courseName) {
+  const canonicalName = canonicalKnownCourseNameForSession(courseName);
+
+  if (!canonicalName) {
     return { courseId: null, teeSetId: null };
   }
 
-  if (/sawgrass|stadium/i.test(courseName)) {
+  if (canonicalName === TPC_SAWGRASS_STADIUM_COURSE.name) {
     return ensureTpcSawgrassStadiumCourse();
   }
 
-  if (/bootle/i.test(courseName)) {
+  if (canonicalName === BOOTLE_GOLF_COURSE.name) {
     return ensureBootleGolfCourse();
   }
 
-  if (/mountain park/i.test(courseName)) {
+  if (canonicalName === MOUNTAIN_PARK_COURSE.name) {
     return ensureMountainParkCourse();
   }
 
   return { courseId: null, teeSetId: null };
+}
+
+export function canonicalKnownCourseNameForSession(courseName: string | null | undefined) {
+  if (!courseName) {
+    return null;
+  }
+
+  if (/sawgrass/i.test(courseName) || /players.*stadium|stadium.*players/i.test(courseName)) {
+    return TPC_SAWGRASS_STADIUM_COURSE.name;
+  }
+
+  if (/bootle/i.test(courseName)) {
+    return BOOTLE_GOLF_COURSE.name;
+  }
+
+  if (/mountain park/i.test(courseName)) {
+    return MOUNTAIN_PARK_COURSE.name;
+  }
+
+  return null;
 }
 
 export async function ensureCourseForSession({

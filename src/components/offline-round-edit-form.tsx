@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { WifiOff } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, WifiOff } from "lucide-react";
 
 import { queueOfflineAction } from "@/lib/offline-queue";
 import type { OfflineRoundEditKind } from "@/lib/offline-round-edit-payload";
@@ -22,12 +22,28 @@ export function OfflineRoundEditForm({
   id,
 }: OfflineRoundEditFormProps) {
   const [queued, setQueued] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   return (
     <form
       id={id}
-      action={action}
+      action={async (formData) => {
+        setQueued(false);
+        setSaveStatus("saving");
+
+        try {
+          await action(formData);
+          setSaveStatus("saved");
+        } catch {
+          setSaveStatus("error");
+        }
+      }}
       className={className}
+      onChange={() => {
+        if (saveStatus === "saved" || saveStatus === "error") {
+          setSaveStatus("idle");
+        }
+      }}
       onSubmit={(event) => {
         if (navigator.onLine) {
           return;
@@ -43,10 +59,31 @@ export function OfflineRoundEditForm({
           id: `round-edit-${editKind}-${Date.now()}-${crypto.randomUUID()}`,
           kind: "round-edit",
           payload: { editKind, fields },
-        }).then(() => setQueued(true));
+        }).then(() => {
+          setSaveStatus("idle");
+          setQueued(true);
+        });
       }}
     >
       {children}
+      {saveStatus === "saving" ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-[#0B7A3B]" aria-live="polite">
+          <Loader2 className="size-3.5 animate-spin" />
+          Saving...
+        </p>
+      ) : null}
+      {saveStatus === "saved" ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0B7A3B]" aria-live="polite">
+          <CheckCircle2 className="size-3.5" />
+          Saved just now.
+        </p>
+      ) : null}
+      {saveStatus === "error" ? (
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700" aria-live="polite">
+          <AlertCircle className="size-3.5" />
+          Save failed. Try again.
+        </p>
+      ) : null}
       {queued ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700" aria-live="polite">
           <WifiOff className="size-3.5" />

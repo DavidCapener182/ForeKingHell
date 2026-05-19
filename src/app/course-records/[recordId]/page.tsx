@@ -18,6 +18,7 @@ import { ScorecardProofUploader } from "@/components/scorecard-proof-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCourseRecordDetailData, verificationTierLabel } from "@/lib/course-records";
+import { RecordSubmitButton } from "./record-submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -94,10 +95,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
                     screenshotFieldName="screenshotPath"
                     extractedTotalFieldName="extractedScorecardTotal"
                   />
-                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                    <Send className="size-4" />
-                    Submit evidence
-                  </Button>
+                  <RecordSubmitButton className="rounded-full bg-[#0B7A3B] text-white" />
                 </form>
               ) : (
                 <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
@@ -107,7 +105,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
             </BottomSheet>
           }
         />
-        {query?.attempt ? <Badge variant="secondary" className="w-fit">Attempt submitted</Badge> : null}
+        {query?.attempt ? <AttemptSubmittedNotice /> : null}
         <section className="grid grid-cols-2 gap-3">
           <article className="rounded-lg border border-[#E5E7EB] bg-white p-3">
             <p className="text-sm font-semibold text-[#6B7280]">Champion</p>
@@ -205,9 +203,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
             </a>
           </Button>
         </div>
-        {query?.attempt ? (
-          <Badge variant="secondary" className="mt-4">Attempt submitted</Badge>
-        ) : null}
+        {query?.attempt ? <AttemptSubmittedNotice className="mt-4" /> : null}
       </header>
 
       <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -292,10 +288,7 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
                 screenshotFieldName="screenshotPath"
                 extractedTotalFieldName="extractedScorecardTotal"
               />
-              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <Send className="size-4" />
-                Submit evidence
-              </Button>
+              <RecordSubmitButton className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]" />
             </form>
           ) : (
             <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
@@ -349,6 +342,20 @@ export default async function CourseRecordDetailPage({ params, searchParams }: C
       </section>
       </div>
     </PageShell>
+  );
+}
+
+function AttemptSubmittedNotice({ className = "" }: { className?: string }) {
+  return (
+    <div
+      role="status"
+      className={`rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-[#0B7A3B] ${className}`}
+    >
+      <p className="font-semibold">Attempt submitted</p>
+      <p className="mt-1 text-xs text-emerald-800">
+        Your score was received and the board status has refreshed.
+      </p>
+    </div>
   );
 }
 

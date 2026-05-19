@@ -6,6 +6,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import {
   evaluateVerification,
   isBoardEligibleStatus,
+  longestDriveYardsFromShots,
   rankRecordAttempts,
   summarizeRound,
 } from "@/lib/course-records";
@@ -128,6 +129,35 @@ describe("course record round summaries", () => {
   });
 });
 
+describe("course record shot metrics", () => {
+  it("derives longest drive from mapped driver tee shots", () => {
+    expect(
+      longestDriveYardsFromShots([
+        courseShot({ clubType: "driver", totalYd: 286.42, courseHoleNumber: 1, courseHoleShotNumber: 1 }),
+        courseShot({ clubType: "driver", totalYd: 301.64, courseHoleNumber: 5, courseHoleShotNumber: 1 }),
+        courseShot({ clubType: "driver", totalYd: 318, courseHoleNumber: 5, courseHoleShotNumber: 2 }),
+        courseShot({ clubType: "3w", totalYd: 322, courseHoleNumber: 7, courseHoleShotNumber: 1 }),
+        courseShot({ clubType: "driver", totalYd: 330, courseHoleNumber: null, courseHoleShotNumber: null }),
+      ]),
+    ).toBe(301.6);
+  });
+
+  it("falls back to carry and ignores bad-quality drive shots", () => {
+    expect(
+      longestDriveYardsFromShots([
+        courseShot({ clubType: "driver", carryYd: 270.25, totalYd: null, courseHoleNumber: 1, courseHoleShotNumber: 1 }),
+        courseShot({
+          clubType: "driver",
+          totalYd: 345,
+          courseHoleNumber: 2,
+          courseHoleShotNumber: 1,
+          qualityTag: "bad_data",
+        }),
+      ]),
+    ).toBe(270.3);
+  });
+});
+
 function attempt(
   id: string,
   userId: string,
@@ -143,5 +173,24 @@ function attempt(
     verificationStatus,
     verificationTier,
     submittedAt,
+  };
+}
+
+function courseShot(input: {
+  clubType: string;
+  carryYd?: number | null;
+  totalYd?: number | null;
+  courseHoleNumber?: number | null;
+  courseHoleShotNumber?: number | null;
+  qualityTag?: string | null;
+}) {
+  return {
+    clubType: input.clubType,
+    carryYd: input.carryYd ?? null,
+    totalYd: input.totalYd ?? null,
+    shotCategory: null,
+    courseHoleNumber: input.courseHoleNumber ?? null,
+    courseHoleShotNumber: input.courseHoleShotNumber ?? null,
+    qualityTag: input.qualityTag ?? null,
   };
 }

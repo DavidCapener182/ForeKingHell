@@ -35,7 +35,7 @@ export function SectionCard({
   return (
     <Card id={id} className={cn("premium-card desktop-data-panel", className)}>
       {title || description || action ? (
-        <CardHeader>
+        <CardHeader className="gap-1 border-b border-[#E5E7EB] px-4 py-3">
           <div className="min-w-0">
             {title ? <CardTitle>{title}</CardTitle> : null}
             {description ? <CardDescription>{description}</CardDescription> : null}

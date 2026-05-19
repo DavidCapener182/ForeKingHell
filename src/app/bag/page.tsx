@@ -341,12 +341,6 @@ export default async function BagPage() {
 
       <BagFeaturePanel data={featureData} />
 
-      <BagSocialComparison
-        bestClub={bestClub}
-        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-        challenges={challengeData.active}
-      />
-
       {gappingRows.length > 0 ? (
         <section id="gapping" className="scroll-mt-28">
           <CarryGappingTable rows={gappingRows} />
@@ -535,6 +529,12 @@ export default async function BagPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      <BagSocialComparison
+        bestClub={bestClub}
+        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+        challenges={challengeData.active}
+      />
       <StickyMobileAction>
         <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="#clubs">Find club</Link>

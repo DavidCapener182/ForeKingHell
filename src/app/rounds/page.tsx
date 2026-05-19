@@ -6,7 +6,6 @@ import {
   Database,
   Flag,
   Plus,
-  Share2,
   Trophy,
   Upload,
 } from "lucide-react";
@@ -123,7 +122,7 @@ function RoundsHero({
   return (
     <section className="premium-hero overflow-hidden p-4 sm:p-5">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-        <div className="min-w-0 space-y-4">
+        <div className="order-2 min-w-0 space-y-4 xl:order-none">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
               <StatusPill tone="sky">Round tracker</StatusPill>
@@ -185,7 +184,9 @@ function RoundsHero({
           </div>
         </div>
 
-        <LatestRoundSpotlight latestRound={latestRound} />
+        <div className="order-1 xl:order-none">
+          <LatestRoundSpotlight latestRound={latestRound} />
+        </div>
       </div>
     </section>
   );
@@ -220,7 +221,7 @@ function LatestRoundSpotlight({
         alt=""
         crop="random"
         cropKey={latestRound.id}
-        className="block h-24 min-h-0 rounded-lg"
+        className="h-24 min-h-0 rounded-lg"
         sizes="(min-width: 1280px) 360px, 100vw"
       />
       <div className="mt-3 space-y-3">
@@ -283,7 +284,7 @@ function RoundTasks({
         <div>
           <h2 className="text-lg font-semibold tracking-normal">Round tasks</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Review, share and clean up the latest saved scorecard.
+            Review and clean up the latest saved scorecard.
           </p>
         </div>
         <StatusPill tone={latestRound ? "green" : "slate"}>
@@ -292,7 +293,7 @@ function RoundTasks({
       </div>
 
       {latestRound ? (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <form
             action={createLatestRoundRecapAction}
             className="grid min-h-28 grid-rows-[1fr_auto] gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm"
@@ -306,15 +307,6 @@ function RoundTasks({
               Create recap
             </Button>
           </form>
-
-          <RoundTaskLink
-            detail="Private link and feed controls."
-            href={`/rounds/${latestRound.id}#share`}
-            icon={Share2}
-            title="Share card"
-          >
-            Share summary
-          </RoundTaskLink>
 
           <RoundTaskLink
             detail="Check whether this round created a record."

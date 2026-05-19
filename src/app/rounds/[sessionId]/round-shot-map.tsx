@@ -37,11 +37,9 @@ type ProjectedShot = {
 };
 
 type RoundShotMapProps = {
-  sessionId: string;
   holes: RoundMapHole[];
   shots: RoundMapShot[];
   courseName: string;
-  moveShotToHoleAction?: (formData: FormData) => void | Promise<void>;
   shotMode?: "actual" | "estimated";
 };
 
@@ -54,11 +52,9 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 export function RoundShotMap({
-  sessionId,
   holes,
   shots,
   courseName,
-  moveShotToHoleAction,
   shotMode = "actual",
 }: RoundShotMapProps) {
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
@@ -96,7 +92,6 @@ export function RoundShotMap({
   const visibleProjectedShots = showAllHoleShots ? allProjectedShots : projectedSelectedShots;
   const selectedShot =
     selectedShots.find((shot) => shot.id === selectedShotId) ?? selectedShots[0] ?? null;
-  const holeNumbers = holes.map((hole) => hole.holeNumber);
   const isEstimated = shotMode === "estimated";
   const setMapContainerRef = useCallback((node: HTMLDivElement | null) => {
     setMapContainerNode(node);
@@ -438,15 +433,6 @@ export function RoundShotMap({
                 </div>
                 <span className="text-sm font-semibold">{formatSide(shot.sideCarryYd)}</span>
               </button>
-              {moveShotToHoleAction ? (
-                <MoveShotToHoleInlineForm
-                  sessionId={sessionId}
-                  shotId={shot.id}
-                  currentHoleNumber={shot.holeNumber}
-                  holeNumbers={holeNumbers}
-                  moveShotToHoleAction={moveShotToHoleAction}
-                />
-              ) : null}
             </div>
           ))}
           {selectedShots.length === 0 ? (
@@ -771,49 +757,6 @@ function MapMetric({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold tracking-normal">{value}</p>
     </div>
-  );
-}
-
-function MoveShotToHoleInlineForm({
-  sessionId,
-  shotId,
-  currentHoleNumber,
-  holeNumbers,
-  moveShotToHoleAction,
-}: {
-  sessionId: string;
-  shotId: string;
-  currentHoleNumber: number | null;
-  holeNumbers: number[];
-  moveShotToHoleAction: (formData: FormData) => void | Promise<void>;
-}) {
-  return (
-    <form
-      action={moveShotToHoleAction}
-      className="mt-3 flex items-center gap-2"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <input type="hidden" name="sessionId" value={sessionId} />
-      <input type="hidden" name="shotId" value={shotId} />
-      <select
-        name="targetHoleNumber"
-        defaultValue={currentHoleNumber ?? ""}
-        className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        aria-label="Move shot to hole"
-      >
-        <option value="" disabled>
-          Move to hole
-        </option>
-        {holeNumbers.map((holeNumber) => (
-          <option key={holeNumber} value={holeNumber}>
-            Hole {holeNumber}
-          </option>
-        ))}
-      </select>
-      <Button type="submit" size="sm" variant="outline">
-        Move
-      </Button>
-    </form>
   );
 }
 

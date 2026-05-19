@@ -99,6 +99,26 @@ async function auditViewport(page: Page, isMobile: boolean) {
         issues.push(`blank vertical zone ${Math.round(largestGap.size)}px near y=${Math.round(largestGap.top)}`);
       }
 
+      for (const gap of sectionGaps()) {
+        if (gap.size > 40) {
+          issues.push(`section gap ${Math.round(gap.size)}px near y=${Math.round(gap.top)}`);
+        }
+      }
+
+      for (const card of sparseTallCards()) {
+        issues.push(`sparse tall card ${Math.round(card.width)}x${Math.round(card.height)} near y=${Math.round(card.top)}`);
+      }
+
+      for (const media of visibleElements("[data-media-container]").filter((item) => item.rect.top < viewportHeight)) {
+        if (media.rect.height > 240 && !media.node.closest("[data-allow-large-mobile-media]")) {
+          issues.push(`large mobile media ${Math.round(media.rect.width)}x${Math.round(media.rect.height)} near y=${Math.round(media.rect.top)}`);
+        }
+      }
+
+      for (const repeated of repeatedStackedCtas()) {
+        issues.push(`repeated stacked CTA ${repeated.label} -> ${repeated.href}`);
+      }
+
       const visibleTables = visibleElements("table").filter((item) => item.rect.top < viewportHeight);
       if (visibleTables.length > 0) {
         issues.push("full table visible above mobile fold");
@@ -156,6 +176,92 @@ async function auditViewport(page: Page, isMobile: boolean) {
       }
 
       return largest;
+    }
+
+    function sectionGaps() {
+      const wrappers = Array.from(document.querySelectorAll("main > div, main"));
+      const gaps: Array<{ top: number; size: number }> = [];
+
+      for (const wrapper of wrappers) {
+        const items = Array.from(wrapper.children)
+          .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+          .filter(({ node, rect }) => {
+            const style = window.getComputedStyle(node);
+            return (
+              rect.width > 8 &&
+              rect.height > 8 &&
+              rect.top < viewportHeight + 180 &&
+              rect.bottom > 0 &&
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              style.position !== "fixed" &&
+              !node.closest("[data-allow-large-section-gap]")
+            );
+          })
+          .sort((left, right) => left.rect.top - right.rect.top);
+
+        for (let index = 1; index < items.length; index += 1) {
+          const previous = items[index - 1];
+          const current = items[index];
+          const gap = current.rect.top - previous.rect.bottom;
+          if (gap > 0) {
+            gaps.push({ top: previous.rect.bottom, size: gap });
+          }
+        }
+      }
+
+      return gaps;
+    }
+
+    function sparseTallCards() {
+      return visibleElements("main [data-slot='card'], main .premium-card")
+        .filter((item) => item.rect.top < viewportHeight)
+        .filter((item) => !item.node.closest("[data-allow-tall-mobile-card]"))
+        .filter((item) => item.rect.height > 260)
+        .filter((item) => {
+          const text = item.node.textContent?.replace(/\s+/g, " ").trim() ?? "";
+          const richContentCount = item.node.querySelectorAll("img,svg,canvas,picture,video,table,input,select,textarea,button,a").length;
+          return text.length < 90 && richContentCount < 3;
+        })
+        .map((item) => ({
+          top: item.rect.top,
+          width: item.rect.width,
+          height: item.rect.height,
+        }));
+    }
+
+    function repeatedStackedCtas() {
+      const actions = visibleElements("main a[href], main button")
+        .filter((item) => !item.node.closest("nav"))
+        .filter((item) => item.rect.top < viewportHeight)
+        .filter((item) => item.rect.height >= 32 && item.rect.width >= 48)
+        .map((item) => {
+          const link = item.node.closest("a[href]") as HTMLAnchorElement | null;
+          const label = item.node.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+          return {
+            href: link?.getAttribute("href") ?? "",
+            label,
+            top: item.rect.top,
+            bottom: item.rect.bottom,
+          };
+        })
+        .filter((item) => item.href || item.label);
+
+      const repeated: Array<{ href: string; label: string }> = [];
+      for (let index = 1; index < actions.length; index += 1) {
+        const previous = actions[index - 1];
+        const current = actions[index];
+        if (
+          current.top - previous.bottom < 96 &&
+          current.href === previous.href &&
+          current.label === previous.label &&
+          !current.label.match(/^(menu|filter|close|open navigation)$/)
+        ) {
+          repeated.push({ href: current.href, label: current.label });
+        }
+      }
+
+      return repeated;
     }
 
     function meaningful(node: Element) {

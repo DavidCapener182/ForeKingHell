@@ -166,8 +166,6 @@ export default async function ProgressPage() {
         ]}
       />
 
-      <WeeklyRecapPanel data={featureData} summary={summary} />
-
       {data.clubs.length === 0 ? (
         <>
           <DataPanel>
@@ -237,6 +235,7 @@ export default async function ProgressPage() {
       ) : (
         <>
           <MobileProgressFirstCard summary={summary} />
+          <WeeklyRecapPanel data={featureData} summary={summary} />
           <ComparisonBar summary={summary} />
           <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
 

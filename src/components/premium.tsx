@@ -53,14 +53,14 @@ export function PageShell({
   return (
     <main
       className={cn(
-        "min-h-screen px-4 py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
+        "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
         className,
       )}
     >
       <div
         className={cn(
           // Keep app content full-width; see AGENTS.md layout contract.
-          "mx-auto flex min-w-0 w-full flex-col gap-4 sm:gap-5 [&>*]:min-w-0",
+          "mx-auto flex min-w-0 w-full flex-col gap-4 sm:gap-5 lg:gap-6 [&>*]:min-w-0",
           shellWidths[size],
           contentClassName,
           "!max-w-none",
@@ -117,7 +117,7 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg">
+            <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg" data-compact-media>
               {visual}
             </div>
           ) : null}
@@ -137,7 +137,7 @@ export function PageHeader({
               <span aria-hidden />
             )}
             {actions ? (
-              <div data-primary-action className="flex max-w-36 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
+              <div data-primary-action className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
                 {actions}
               </div>
             ) : null}
@@ -177,7 +177,7 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="hidden h-28 overflow-hidden rounded-lg lg:block">{visual}</div>
+            <div className="hidden h-28 overflow-hidden rounded-lg lg:block" data-compact-media>{visual}</div>
           ) : null}
         </div>
         {metrics?.length ? (
@@ -239,7 +239,7 @@ export function MobileCompactPageHeader({
           ) : null}
         </div>
         {visual ? (
-          <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg">
+          <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg" data-compact-media>
             {visual}
           </div>
         ) : null}
@@ -311,12 +311,12 @@ export function StickyMobileAction({
   return (
     <div
       className={cn(
-        "fixed inset-x-4 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-40 sm:hidden",
+        "fixed inset-x-4 bottom-[calc(5.95rem+env(safe-area-inset-bottom))] z-40 sm:hidden",
         "pointer-events-none",
         className,
       )}
     >
-      <div data-sticky-mobile-action className="pointer-events-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+      <div data-sticky-mobile-action className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
         {children}
       </div>
     </div>
@@ -373,7 +373,7 @@ export function MobileFilterSheet({
           <Button
             type="button"
             variant="outline"
-            className="min-h-11 w-full justify-center rounded-xl bg-background shadow-sm"
+            className="min-h-11 w-full justify-center rounded-lg bg-background shadow-sm"
           >
             <SlidersHorizontal className="size-4" aria-hidden />
             {label}
@@ -450,7 +450,7 @@ export function MobileHorizontalRail({
   }
 
   return (
-    <section className={cn("grid gap-3 sm:hidden", className)}>
+    <section className={cn("grid min-w-0 max-w-full gap-3 overflow-hidden sm:hidden", className)}>
       {title || action ? (
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
@@ -468,12 +468,14 @@ export function MobileHorizontalRail({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
-        {items.map((item, index) => (
-          <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
-            {item}
-          </div>
-        ))}
+      <div className="-mx-4 max-w-[100vw] overflow-hidden">
+        <div className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+          {items.map((item, index) => (
+            <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
+              {item}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -509,7 +511,7 @@ export function MobileBentoSummary({
           <div
             className={cn(
               "apple-panel-strong grid min-h-20 content-between gap-2 p-3",
-              index === 0 ? "col-span-2 min-h-24" : "",
+              index === 0 ? "col-span-2 min-h-[5.5rem]" : "",
             )}
           >
             <div className="min-w-0">
@@ -586,7 +588,7 @@ export function MobileAccordionSection({
     <details
       open={defaultOpen}
       className={cn(
-        "group rounded-xl border border-slate-200 bg-white shadow-sm sm:hidden",
+        "group rounded-lg border border-slate-200 bg-white shadow-sm sm:hidden",
         className,
       )}
     >
@@ -682,7 +684,7 @@ export function TopThreeDisclosure({
       <div className={cn("sm:hidden", className)}>
         {visibleItems.map(render)}
         <details className="contents">
-          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
             {moreLabel}
           </summary>
           <div className="contents">
@@ -899,7 +901,7 @@ export function CompactReadoutGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
         className,
       )}
     >
@@ -992,7 +994,7 @@ export function CompactLinkGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm",
+        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
         className,
       )}
     >
@@ -1174,7 +1176,7 @@ export function MobileDataCard({
   );
 
   const cardClassName = cn(
-    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
+        "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
     className,
   );
 
@@ -1230,7 +1232,7 @@ export function EmptyState({
       title={title}
       description={description}
       action={action}
-      className="apple-panel min-h-44 sm:min-h-64"
+      className="apple-panel min-h-32 sm:min-h-44"
     />
   );
 }

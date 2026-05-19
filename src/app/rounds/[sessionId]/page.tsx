@@ -1,23 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronDown, Database, Link2, MapPinned, Save, Share2, Upload } from "lucide-react";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { ArrowLeft, ChevronDown, Database, MapPinned, Save, Upload } from "lucide-react";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import {
-  createRoundShareLinkAction,
-  moveRoundShotHoleAction,
-  moveRoundShotToHoleAction,
-  resplitRoundAction,
-  revokeRoundShareLinkAction,
   updateClubAction,
   updateRoundContextAction,
   updateRoundCourseLinkAction,
   updateRoundHoleAction,
   updateShotClubAction,
 } from "@/app/rounds/actions";
-import { RoundOpportunityFeaturePanel } from "@/components/features/feature-panels";
 import { OfflineRoundEditForm } from "@/components/offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,19 +43,20 @@ import {
 } from "@/components/ui/table";
 import {
   clubs,
+  courseRecordAttempts,
   courseRecordCategories,
   courseRecords,
   courses,
   holes as courseHoles,
   sessions,
-  shareLinks,
   shots,
   teeSets,
   tournaments,
+  tournamentSubmissions,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -74,9 +68,10 @@ type PageProps = {
   params: Promise<{
     sessionId: string;
   }>;
-  searchParams?: Promise<{
-    share?: string;
-  }>;
+};
+type CenterlineGeojson = {
+  type?: unknown;
+  coordinates?: unknown;
 };
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -104,11 +99,9 @@ const CLUB_TYPE_OPTIONS = [
   "lw",
 ];
 
-export default async function RoundDetailPage({ params, searchParams }: PageProps) {
+export default async function RoundDetailPage({ params }: PageProps) {
   const { sessionId } = await params;
-  const requestHeaders = await headers();
-  const query = await searchParams;
-  const [round, featureData] = await Promise.all([getRoundDetail(sessionId), getFeatureIdeasData()]);
+  const round = await getRoundDetail(sessionId);
 
   if (!round) {
     notFound();
@@ -117,7 +110,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
   const isRealRound = round.session.type === "real_round";
   const hasClubData = round.shots.length > 0;
   const hasMap = round.mapHoles.length > 0;
-  const newShareUrl = query?.share ? `${getRequestOrigin(requestHeaders)}/share/${encodeURIComponent(query.share)}` : null;
   const currentHole = round.holes.find((hole) => hole.score === null) ?? round.holes[0] ?? null;
 
   return (
@@ -171,10 +163,58 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={sessionId} className="h-full min-h-44" priority />}
         />
 
+        {hasMap ? (
+          <MobileCollapsible title={hasClubData ? "Actual hole map" : "Estimated hole map"} description="Shot map detail.">
+          <Card id="map" className="premium-card scroll-mt-28">
+            <CardHeader>
+              <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
+              <CardDescription>
+                {hasClubData
+                  ? "Select a hole to see the saved shot data projected over the mapped course."
+                  : "Select a hole to see estimated non-putt strokes placed along the mapped course geometry."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RoundShotMap
+                holes={round.mapHoles}
+                shots={round.mapShots}
+                courseName={round.session.courseName ?? "Course map"}
+                shotMode={hasClubData ? "actual" : "estimated"}
+              />
+            </CardContent>
+          </Card>
+          </MobileCollapsible>
+        ) : round.mapAutoImport ? (
+          <MobileCollapsible title="Course map" description="Automatic course geometry status.">
+          <Card id="map" className="premium-card scroll-mt-28">
+            <CardHeader>
+              <CardTitle>Course map</CardTitle>
+              <CardDescription>
+                {roundMapImportCopy(round.mapAutoImport)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6 text-muted-foreground">
+                The review map appears here as soon as the course has tee-to-green geometry.
+              </p>
+              <Button asChild variant="outline" className="sm:w-fit">
+                <Link
+                  href={round.session.courseId ? `/courses/${round.session.courseId}/holes` : "/courses"}
+                  prefetch={false}
+                >
+                  <MapPinned className="size-4" />
+                  Open course
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          </MobileCollapsible>
+        ) : null}
+
         <MobileSectionChips
           items={[
-            { label: "Hole", href: "#current-hole" },
             { label: "Map", href: "#map" },
+            { label: "Hole", href: "#current-hole" },
             { label: "Scorecard", href: "#scorecard" },
             { label: "Shots", href: "#shots" },
           ]}
@@ -192,12 +232,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           </>
         ) : null}
 
-        <RecordOpportunitiesCard round={round} />
-
-        <RoundOpportunityFeaturePanel data={featureData} />
-
         <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
-        <Card id="share" className="premium-card scroll-mt-28">
+        <Card id="context" className="premium-card scroll-mt-28">
           <CardHeader>
             <CardTitle>Round context</CardTitle>
             <CardDescription>
@@ -234,71 +270,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 Save context
               </Button>
             </OfflineRoundEditForm>
-          </CardContent>
-        </Card>
-        </MobileCollapsible>
-
-        <MobileCollapsible title="Sharing" description="Create or revoke read-only round links.">
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Private share link</CardTitle>
-            <CardDescription>
-              Create revocable read-only links for a round before broader friend feeds and leaderboards are enabled.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            {newShareUrl ? (
-              <div className="rounded-2xl border bg-emerald-50 p-3 text-sm text-emerald-900">
-                <p className="font-medium">Share link created</p>
-                <code className="mt-1 block break-all rounded bg-white/70 px-2 py-1 text-xs">{newShareUrl}</code>
-              </div>
-            ) : null}
-            <form action={createRoundShareLinkAction} className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-              <input type="hidden" name="sessionId" value={round.session.id} />
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Expiry</span>
-                <select
-                  name="expiryDays"
-                  defaultValue="30"
-                  className="h-10 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="7">7 days</option>
-                  <option value="30">30 days</option>
-                  <option value="90">90 days</option>
-                  <option value="0">No expiry</option>
-                </select>
-              </label>
-              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <Share2 className="size-4" />
-                Create share link
-              </Button>
-            </form>
-            {round.shareLinks.length > 0 ? (
-              <div className="grid gap-2">
-                {round.shareLinks.map((link) => (
-                  <div key={link.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2 text-sm">
-                    <div>
-                      <p className="font-medium">{link.title ?? "Round share"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Created {formatDate(link.createdAt)}{link.expiresAt ? `, expires ${formatDate(link.expiresAt)}` : ", no expiry"}
-                      </p>
-                    </div>
-                    <form action={revokeRoundShareLinkAction}>
-                      <input type="hidden" name="sessionId" value={round.session.id} />
-                      <input type="hidden" name="shareLinkId" value={link.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Revoke
-                      </Button>
-                    </form>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">
-                <Link2 className="size-4" />
-                No active private links for this round.
-              </p>
-            )}
           </CardContent>
         </Card>
         </MobileCollapsible>
@@ -350,74 +321,9 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         </Card>
         </MobileCollapsible>
 
-        {hasMap ? (
-          <MobileCollapsible title={hasClubData ? "Actual hole map" : "Estimated hole map"} description="Shot map detail.">
-          <Card id="map" className="premium-card scroll-mt-28">
-            <CardHeader>
-              <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
-              <CardDescription>
-                {hasClubData
-                  ? "Select a hole to see the saved simulator shots projected over the real course."
-                  : "Select a hole to see estimated non-putt shots placed along the mapped Mountain Park hole geometry."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RoundShotMap
-                sessionId={round.session.id}
-                holes={round.mapHoles}
-                shots={round.mapShots}
-                courseName={round.session.courseName ?? "Course map"}
-                moveShotToHoleAction={hasClubData ? moveRoundShotToHoleAction : undefined}
-                shotMode={hasClubData ? "actual" : "estimated"}
-              />
-            </CardContent>
-          </Card>
-          </MobileCollapsible>
-        ) : null}
+        <RecordOpportunitiesCard round={round} />
 
-        {hasClubData ? (
-          <MobileCollapsible title="Shot-to-hole split" description="Adjust CSV shot counts by hole.">
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle>Shot-to-hole split</CardTitle>
-              <CardDescription>
-                Change the CSV shot count for each hole, then re-split the round in original shot order.
-                Use this when the simulator CSV boundary is off by a shot.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OfflineRoundEditForm action={resplitRoundAction} editKind="resplit-round" className="space-y-4">
-                <input type="hidden" name="sessionId" value={round.session.id} />
-                <div className="grid gap-2 sm:grid-cols-6 lg:grid-cols-9">
-                  {round.holes.map((hole) => (
-                    <label key={hole.holeNumber} className="apple-panel-strong p-2">
-                      <span className="text-xs text-muted-foreground">Hole {hole.holeNumber}</span>
-                      <Input
-                        name={`holeCount-${hole.holeNumber}`}
-                        type="number"
-                        min={0}
-                        max={12}
-                        defaultValue={hole.shots.length}
-                        className="mt-1 h-9 border-0 bg-white px-2 text-base font-semibold shadow-none"
-                      />
-                    </label>
-                  ))}
-                </div>
-                <div className="apple-panel flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center">
-                  <p className="text-sm text-muted-foreground">
-                    Current split assigns {integerFormatter.format(round.shots.length - round.unmappedShots.length)}
-                    /{integerFormatter.format(round.shots.length)} CSV shots.
-                  </p>
-                  <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                    <Save className="size-4" />
-                    Re-split round
-                  </Button>
-                </div>
-              </OfflineRoundEditForm>
-            </CardContent>
-          </Card>
-          </MobileCollapsible>
-        ) : (
+        {!hasClubData ? (
           <MobileCollapsible title="Real round data" description="Scorecard-only stats and estimates.">
           <Card className="premium-card">
             <CardHeader>
@@ -436,20 +342,18 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             </CardContent>
           </Card>
           </MobileCollapsible>
-        )}
+        ) : null}
 
-        <section id="scorecard" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <MobileCollapsible title="Full scorecard" description="All hole editors, collapsed on mobile." count={`${round.holes.length} holes`}>
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle>Hole-by-hole scorecard</CardTitle>
-              <CardDescription>
-                {isRealRound
-                  ? "Edit score, putts, short-game stats, fairway hit and GIR for this real round."
-                  : "Edit score, putts, missing strokes, fairway hit and GIR after the import. Missing strokes cover penalties or shots the simulator CSV did not include."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <section id="scorecard" className="grid scroll-mt-28 gap-3">
+          <ReviewAccordion
+            title="Hole-by-hole scorecard"
+            description={
+              isRealRound
+                ? "Edit score, putts, short-game stats, fairway hit and GIR for this real round."
+                : "Edit score, putts, missing strokes, fairway hit and GIR after the import."
+            }
+            count={`${round.holes.length} holes`}
+          >
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {round.holes.map((hole) => (
                   <OfflineRoundEditForm
@@ -512,20 +416,15 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   </OfflineRoundEditForm>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-          </MobileCollapsible>
+          </ReviewAccordion>
 
           {hasClubData ? (
-            <MobileCollapsible title="Club corrections" description="Round-level club name fixes.">
-            <Card className="premium-card">
-              <CardHeader>
-                <CardTitle>Clubs in this round</CardTitle>
-                <CardDescription>
-                  Fix a club name, brand, or model once and all shots linked to that club update.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <ReviewAccordion
+              title="Clubs in this round"
+              description="Fix a club name, brand, or model once and all shots linked to that club update."
+              count={`${round.roundClubs.length} clubs`}
+            >
+              <div className="space-y-3">
                 {round.roundClubs.map((club) => (
                   <OfflineRoundEditForm key={club.id} action={updateClubAction} editKind="club" className="apple-panel-strong p-3">
                     <input type="hidden" name="sessionId" value={round.session.id} />
@@ -554,9 +453,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 {round.roundClubs.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No clubs are linked to this round.</p>
                 ) : null}
-              </CardContent>
-            </Card>
-            </MobileCollapsible>
+              </div>
+            </ReviewAccordion>
           ) : (
             <MobileCollapsible title="Handicap input" description="Rating, slope and differential.">
             <Card className="premium-card">
@@ -578,16 +476,12 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
         </section>
 
         {hasClubData ? (
-        <MobileCollapsible title="Shot corrections" description="Per-shot hole and club fixes." count={`${round.shots.length} shots`}>
-        <Card id="shots" className="premium-card scroll-mt-28">
-          <CardHeader>
-            <CardTitle>Shot club corrections</CardTitle>
-            <CardDescription>
-              Use this when the CSV club is wrong for a single shot. The selected club controls where the
-              shot appears in the bag map.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+          <ReviewAccordion
+            id="shots"
+            title="Shot club corrections"
+            description="Use this when the CSV club is wrong for a single shot. Hole assignment is derived from the round split and is not editable from the review page."
+            count={`${round.shots.length} shots`}
+          >
             <DataTableFrame
               mobile={
                 <MobileDataList>
@@ -602,26 +496,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                         <DataPair label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
                         <DataPair label="Total" value={`${formatMetric(shot.totalYd)} yd`} />
                         <DataPair label="Side" value={`${formatMetric(shot.sideCarryYd)} yd`} />
-                        <div className="flex gap-2">
-                          <MoveShotButton
-                            sessionId={round.session.id}
-                            shotId={shot.id}
-                            direction="previous"
-                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber <= 1}
-                          />
-                          <MoveShotButton
-                            sessionId={round.session.id}
-                            shotId={shot.id}
-                            direction="next"
-                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber >= round.holes.length}
-                          />
-                        </div>
-                        <MoveShotToHoleForm
-                          sessionId={round.session.id}
-                          shotId={shot.id}
-                          currentHoleNumber={shot.courseHoleNumber}
-                          holeNumbers={round.holes.map((hole) => hole.holeNumber)}
-                        />
                         <OfflineRoundEditForm action={updateShotClubAction} editKind="shot-club" className="grid gap-2">
                           <input type="hidden" name="sessionId" value={round.session.id} />
                           <input type="hidden" name="shotId" value={shot.id} />
@@ -659,8 +533,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                     <TableHead className="text-right">Carry</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Side</TableHead>
-                    <TableHead>Move</TableHead>
-                    <TableHead>Move to</TableHead>
                     <TableHead>Change club</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -673,30 +545,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                       <TableCell className="text-right">{formatMetric(shot.carryYd)} yd</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.totalYd)} yd</TableCell>
                       <TableCell className="text-right">{formatMetric(shot.sideCarryYd)} yd</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <MoveShotButton
-                            sessionId={round.session.id}
-                            shotId={shot.id}
-                            direction="previous"
-                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber <= 1}
-                          />
-                          <MoveShotButton
-                            sessionId={round.session.id}
-                            shotId={shot.id}
-                            direction="next"
-                            disabled={!shot.courseHoleNumber || shot.courseHoleNumber >= round.holes.length}
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <MoveShotToHoleForm
-                          sessionId={round.session.id}
-                          shotId={shot.id}
-                          currentHoleNumber={shot.courseHoleNumber}
-                          holeNumbers={round.holes.map((hole) => hole.holeNumber)}
-                        />
-                      </TableCell>
                       <TableCell>
                         <OfflineRoundEditForm action={updateShotClubAction} editKind="shot-club" className="flex gap-2">
                           <input type="hidden" name="sessionId" value={round.session.id} />
@@ -721,7 +569,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   ))}
                   {round.shots.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                         No shots are linked to this round.
                       </TableCell>
                     </TableRow>
@@ -729,9 +577,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                 </TableBody>
               </Table>
             </DataTableFrame>
-          </CardContent>
-        </Card>
-        </MobileCollapsible>
+          </ReviewAccordion>
         ) : null}
 
         {round.unmappedShots.length > 0 ? (
@@ -809,8 +655,24 @@ function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
           <div key={item.record.id} className="rounded-lg border bg-[#F5F6F4] p-3 text-sm">
             <p className="font-semibold">{item.category.name}</p>
             <p className="mt-1 text-muted-foreground">{item.record.period === "month" ? "Monthly board" : "Course record"}</p>
+            {item.attempt ? (
+              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-[#0B7A3B]" role="status">
+                Submitted - {item.attempt.verificationStatus.replace(/_/g, " ")}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Not submitted yet.</p>
+            )}
             <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-              <Link href={`/course-records/${item.record.id}`} prefetch={false}>Submit to board</Link>
+              <Link
+                href={
+                  item.attempt
+                    ? `/course-records/${item.record.id}?attempt=${encodeURIComponent(item.attempt.id)}`
+                    : `/course-records/${item.record.id}?sessionId=${encodeURIComponent(round.session.id)}#submit-record`
+                }
+                prefetch={false}
+              >
+                {item.attempt ? "View board" : "Review and submit"}
+              </Link>
             </Button>
           </div>
         ))}
@@ -818,8 +680,17 @@ function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
           <div key={event.id} className="rounded-lg border bg-[#F5F6F4] p-3 text-sm">
             <p className="font-semibold">{event.title}</p>
             <p className="mt-1 text-muted-foreground">Round submission available</p>
+            {event.submission ? (
+              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-[#0B7A3B]" role="status">
+                Submitted - {event.submission.verificationStatus.replace(/_/g, " ")}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Not submitted yet.</p>
+            )}
             <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-              <Link href={`/tournaments/${event.id}/submit`} prefetch={false}>Submit to event</Link>
+              <Link href={event.submission ? `/tournaments/${event.id}` : `/tournaments/${event.id}/submit`} prefetch={false}>
+                {event.submission ? "View event" : "Review and submit"}
+              </Link>
             </Button>
           </div>
         ))}
@@ -833,27 +704,56 @@ function MobileCollapsible({
   description,
   count,
   children,
-  defaultOpen = false,
 }: {
   title: ReactNode;
   description?: ReactNode;
   count?: ReactNode;
   children: ReactNode;
-  defaultOpen?: boolean;
 }) {
   return (
-    <details className="group sm:contents" open={defaultOpen}>
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+    <section className="contents">
+      <div className="flex min-h-12 list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden">
         <span className="min-w-0">
           <span className="block truncate font-semibold tracking-normal">{title}</span>
           {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
         </span>
         <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
           {count ? <span>{count}</span> : null}
-          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
+        </span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ReviewAccordion({
+  id,
+  title,
+  description,
+  count,
+  children,
+}: {
+  id?: string;
+  title: ReactNode;
+  description?: ReactNode;
+  count?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <details id={id} className="group premium-card scroll-mt-28">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block font-semibold tracking-normal">{title}</span>
+          {description ? (
+            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{description}</span>
+          ) : null}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
+          {count ? <span>{count}</span> : null}
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
         </span>
       </summary>
-      <div className="hidden group-open:block sm:contents">{children}</div>
+      <div className="border-t border-slate-200 px-4 pb-4 pt-4">{children}</div>
     </details>
   );
 }
@@ -967,7 +867,18 @@ async function getRoundDetail(sessionId: string) {
     return null;
   }
 
-  const [shotRows, clubRows, courseHoleRows, teeSetOptionRows, shareLinkRows, recordOpportunityRows, tournamentOpportunityRows] = await Promise.all([
+  const roundMapGeometry = await resolveRoundMapGeometry(db, session);
+
+  const [
+    shotRows,
+    clubRows,
+    courseHoleRows,
+    teeSetOptionRows,
+    recordOpportunityRows,
+    tournamentOpportunityRows,
+    recordAttemptRows,
+    tournamentSubmissionRows,
+  ] = await Promise.all([
     db
       .select({
         id: shots.id,
@@ -999,7 +910,7 @@ async function getRoundDetail(sessionId: string) {
       .from(clubs)
       .where(eq(clubs.userId, userId))
       .orderBy(asc(clubs.type), asc(clubs.brand), asc(clubs.model)),
-    session.teeSetId
+    roundMapGeometry.teeSetId
       ? db
           .select({
             holeNumber: courseHoles.holeNumber,
@@ -1009,7 +920,7 @@ async function getRoundDetail(sessionId: string) {
             centerlineGeojson: courseHoles.centerlineGeojson,
           })
           .from(courseHoles)
-          .where(eq(courseHoles.teeSetId, session.teeSetId))
+          .where(eq(courseHoles.teeSetId, roundMapGeometry.teeSetId))
           .orderBy(asc(courseHoles.holeNumber))
       : Promise.resolve([]),
     db
@@ -1024,23 +935,6 @@ async function getRoundDetail(sessionId: string) {
       .from(teeSets)
       .innerJoin(courses, eq(teeSets.courseId, courses.id))
       .orderBy(asc(courses.name), asc(teeSets.name)),
-    db
-      .select({
-        id: shareLinks.id,
-        title: shareLinks.title,
-        expiresAt: shareLinks.expiresAt,
-        createdAt: shareLinks.createdAt,
-      })
-      .from(shareLinks)
-      .where(
-        and(
-          eq(shareLinks.userId, userId),
-          eq(shareLinks.resourceType, "round"),
-          eq(shareLinks.resourceId, sessionId),
-          isNull(shareLinks.revokedAt),
-        ),
-      )
-      .orderBy(asc(shareLinks.createdAt)),
     session.courseId
       ? db
           .select({
@@ -1060,6 +954,32 @@ async function getRoundDetail(sessionId: string) {
           .where(and(eq(tournaments.courseId, session.courseId), eq(tournaments.status, "open")))
           .orderBy(asc(tournaments.endsAt))
           .limit(8)
+      : Promise.resolve([]),
+    session.courseId
+      ? db
+          .select({
+            id: courseRecordAttempts.id,
+            recordId: courseRecordAttempts.recordId,
+            verificationStatus: courseRecordAttempts.verificationStatus,
+            verificationTier: courseRecordAttempts.verificationTier,
+            submittedAt: courseRecordAttempts.submittedAt,
+          })
+          .from(courseRecordAttempts)
+          .where(and(eq(courseRecordAttempts.userId, userId), eq(courseRecordAttempts.sessionId, sessionId)))
+          .orderBy(desc(courseRecordAttempts.submittedAt))
+      : Promise.resolve([]),
+    session.courseId
+      ? db
+          .select({
+            id: tournamentSubmissions.id,
+            tournamentId: tournamentSubmissions.tournamentId,
+            verificationStatus: tournamentSubmissions.verificationStatus,
+            verificationTier: tournamentSubmissions.verificationTier,
+            submittedAt: tournamentSubmissions.submittedAt,
+          })
+          .from(tournamentSubmissions)
+          .where(and(eq(tournamentSubmissions.userId, userId), eq(tournamentSubmissions.sessionId, sessionId)))
+          .orderBy(desc(tournamentSubmissions.submittedAt))
       : Promise.resolve([]),
   ]);
 
@@ -1114,6 +1034,20 @@ async function getRoundDetail(sessionId: string) {
     session.type === "real_round" && shotRows.length === 0
       ? buildEstimatedMapShots(mapHoles, holes)
       : actualMapShots;
+  const recordAttemptByRecordId = new Map<string, (typeof recordAttemptRows)[number]>();
+  const tournamentSubmissionByTournamentId = new Map<string, (typeof tournamentSubmissionRows)[number]>();
+
+  for (const attempt of recordAttemptRows) {
+    if (!recordAttemptByRecordId.has(attempt.recordId)) {
+      recordAttemptByRecordId.set(attempt.recordId, attempt);
+    }
+  }
+
+  for (const submission of tournamentSubmissionRows) {
+    if (!tournamentSubmissionByTournamentId.has(submission.tournamentId)) {
+      tournamentSubmissionByTournamentId.set(submission.tournamentId, submission);
+    }
+  }
 
   return {
     session,
@@ -1133,19 +1067,162 @@ async function getRoundDetail(sessionId: string) {
     handicapDifferential,
     mapHoles,
     mapShots,
+    mapAutoImport: roundMapGeometry.autoImport,
     courseOptions: teeSetOptionRows,
-    shareLinks: shareLinkRows,
-    recordOpportunities: recordOpportunityRows,
-    tournamentOpportunities: tournamentOpportunityRows,
+    recordOpportunities: dedupeRecordOpportunities(
+      recordOpportunityRows.map((item) => ({
+        ...item,
+        attempt: recordAttemptByRecordId.get(item.record.id) ?? null,
+      })),
+    ),
+    tournamentOpportunities: tournamentOpportunityRows.map((event) => ({
+      ...event,
+      submission: tournamentSubmissionByTournamentId.get(event.id) ?? null,
+    })),
     fairwaysHit: holes.filter((hole) => hole.fairwayHit === true).length,
     gir: holes.filter((hole) => hole.gir === true).length,
   };
 }
 
-function getRequestOrigin(requestHeaders: Headers) {
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  return `${protocol}://${host}`;
+function dedupeRecordOpportunities<T extends {
+  record: {
+    id: string;
+    recordType: string;
+    scope: string;
+    period: string;
+  };
+  category: {
+    sortOrder: number;
+  };
+  attempt: unknown;
+}>(items: T[]) {
+  const byRecordType = new Map<string, T>();
+
+  for (const item of items) {
+    const current = byRecordType.get(item.record.recordType);
+
+    if (!current || recordOpportunityPreference(item) > recordOpportunityPreference(current)) {
+      byRecordType.set(item.record.recordType, item);
+    }
+  }
+
+  return [...byRecordType.values()].sort(
+    (left, right) =>
+      left.category.sortOrder - right.category.sortOrder ||
+      recordOpportunityPreference(right) - recordOpportunityPreference(left),
+  );
+}
+
+function recordOpportunityPreference(item: {
+  record: {
+    scope: string;
+    period: string;
+  };
+  attempt: unknown;
+}) {
+  const scopeScore = item.record.scope === "public" ? 30 : item.record.scope === "friends" ? 20 : 10;
+  const periodScore = item.record.period === "all_time" ? 3 : item.record.period === "month" ? 2 : 1;
+  const attemptScore = item.attempt ? 1 : 0;
+
+  return scopeScore + periodScore + attemptScore;
+}
+
+async function resolveRoundMapGeometry(
+  db: ReturnType<typeof getDb>,
+  session: { courseId: string | null; teeSetId: string | null },
+) {
+  if (!session.courseId) {
+    return {
+      autoImport: null,
+      teeSetId: session.teeSetId,
+    };
+  }
+
+  const existingTeeSetId = await preferredGeometryTeeSetId(db, session.courseId, session.teeSetId);
+
+  if (existingTeeSetId) {
+    return {
+      autoImport: { changed: false, status: "ready" } satisfies CourseAutoImportResult,
+      teeSetId: existingTeeSetId,
+    };
+  }
+
+  const [course] = await db.select().from(courses).where(eq(courses.id, session.courseId)).limit(1);
+
+  if (!course) {
+    return {
+      autoImport: null,
+      teeSetId: session.teeSetId,
+    };
+  }
+
+  const courseHoleProbe = await db
+    .select({ id: courseHoles.id })
+    .from(courseHoles)
+    .where(eq(courseHoles.courseId, session.courseId))
+    .limit(1);
+  const autoImport = await ensureCourseAutoImport(course, courseHoleProbe.length);
+  const importedTeeSetId = await preferredGeometryTeeSetId(db, session.courseId, session.teeSetId);
+
+  return {
+    autoImport,
+    teeSetId: importedTeeSetId ?? session.teeSetId,
+  };
+}
+
+async function preferredGeometryTeeSetId(
+  db: ReturnType<typeof getDb>,
+  courseId: string,
+  preferredTeeSetId: string | null,
+) {
+  const holeRows = await db
+    .select({
+      holeNumber: courseHoles.holeNumber,
+      teeSetId: courseHoles.teeSetId,
+    })
+    .from(courseHoles)
+    .where(eq(courseHoles.courseId, courseId))
+    .orderBy(asc(courseHoles.holeNumber));
+
+  if (holeRows.length === 0) {
+    return null;
+  }
+
+  const countByTeeSetId = new Map<string, number>();
+
+  for (const hole of holeRows) {
+    countByTeeSetId.set(hole.teeSetId, (countByTeeSetId.get(hole.teeSetId) ?? 0) + 1);
+  }
+
+  if (preferredTeeSetId && countByTeeSetId.has(preferredTeeSetId)) {
+    return preferredTeeSetId;
+  }
+
+  return (
+    Array.from(countByTeeSetId.entries()).sort(
+      ([leftId, leftCount], [rightId, rightCount]) => rightCount - leftCount || leftId.localeCompare(rightId),
+    )[0]?.[0] ?? null
+  );
+}
+
+function roundMapImportCopy(autoImport: CourseAutoImportResult) {
+  if (autoImport.status === "imported") {
+    return "Course geometry was imported automatically. Refresh the round if the map is not visible yet.";
+  }
+
+  if (autoImport.status === "no_coordinates") {
+    return "The course is linked, but Google has not returned usable coordinates for automatic geometry import.";
+  }
+
+  if (autoImport.status === "recently_attempted") {
+    return "Automatic geometry import has already checked this course recently.";
+  }
+
+  if (autoImport.status === "ready") {
+    return "The course has saved geometry, but this round is not linked to a mapped tee set yet.";
+  }
+
+  return "No automatic tee-to-green geometry was found for this course yet.";
 }
 
 function buildMapHoles(
@@ -1154,7 +1231,7 @@ function buildMapHoles(
     par: number;
     yards: number;
     strokeIndex: number | null;
-    centerlineGeojson: { type: "LineString"; coordinates: Array<[number, number]> };
+    centerlineGeojson: unknown;
   }>,
   holes: Array<{
     holeNumber: number;
@@ -1169,6 +1246,7 @@ function buildMapHoles(
   return holes
     .map((hole) => {
       const courseHole = courseHoleByNumber.get(hole.holeNumber);
+      const geometry = centerlineGeometry(courseHole?.centerlineGeojson);
 
       return {
         holeNumber: hole.holeNumber,
@@ -1176,11 +1254,50 @@ function buildMapHoles(
         yards: hole.yards > 0 ? hole.yards : courseHole?.yards ?? 0,
         score: hole.score ?? null,
         putts: hole.putts ?? null,
-        geometry:
-          courseHole?.centerlineGeojson.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]) ?? [],
+        geometry,
       };
     })
     .filter((hole) => hole.geometry.length > 0);
+}
+
+function centerlineGeometry(value: unknown) {
+  const geojson = parseCenterlineGeojson(value);
+
+  if (
+    !geojson ||
+    typeof geojson !== "object" ||
+    Array.isArray(geojson) ||
+    geojson.type !== "LineString" ||
+    !Array.isArray(geojson.coordinates)
+  ) {
+    return [];
+  }
+
+  const coordinates = geojson.coordinates as unknown[];
+
+  return coordinates
+    .filter((coordinate): coordinate is [number, number] => (
+      Array.isArray(coordinate) &&
+      coordinate.length >= 2 &&
+      typeof coordinate[0] === "number" &&
+      typeof coordinate[1] === "number"
+    ))
+    .map(([lng, lat]) => [lat, lng] as [number, number]);
+}
+
+function parseCenterlineGeojson(value: unknown): CenterlineGeojson | null {
+  if (typeof value !== "string") {
+    return value as CenterlineGeojson;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === "string"
+      ? parseCenterlineGeojson(parsed)
+      : parsed as CenterlineGeojson;
+  } catch {
+    return null;
+  }
 }
 
 function buildEstimatedMapShots(
@@ -1256,65 +1373,6 @@ function RoundNumberInput({
       <span className="text-xs text-muted-foreground">{label}</span>
       <Input name={name} type="number" min={0} defaultValue={value ?? ""} className="h-9" />
     </label>
-  );
-}
-
-function MoveShotButton({
-  sessionId,
-  shotId,
-  direction,
-  disabled,
-}: {
-  sessionId: string;
-  shotId: string;
-  direction: "previous" | "next";
-  disabled: boolean;
-}) {
-  return (
-    <OfflineRoundEditForm action={moveRoundShotHoleAction} editKind="move-shot-hole">
-      <input type="hidden" name="sessionId" value={sessionId} />
-      <input type="hidden" name="shotId" value={shotId} />
-      <input type="hidden" name="direction" value={direction} />
-      <Button type="submit" variant="outline" size="sm" disabled={disabled}>
-        {direction === "previous" ? "Prev" : "Next"}
-      </Button>
-    </OfflineRoundEditForm>
-  );
-}
-
-function MoveShotToHoleForm({
-  sessionId,
-  shotId,
-  currentHoleNumber,
-  holeNumbers,
-}: {
-  sessionId: string;
-  shotId: string;
-  currentHoleNumber: number | null;
-  holeNumbers: number[];
-}) {
-  return (
-    <OfflineRoundEditForm action={moveRoundShotToHoleAction} editKind="move-shot-to-hole" className="flex gap-2">
-      <input type="hidden" name="sessionId" value={sessionId} />
-      <input type="hidden" name="shotId" value={shotId} />
-      <select
-        name="targetHoleNumber"
-        defaultValue={currentHoleNumber ?? ""}
-        className="h-9 min-w-24 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        <option value="" disabled>
-          Hole
-        </option>
-        {holeNumbers.map((holeNumber) => (
-          <option key={holeNumber} value={holeNumber}>
-            Hole {holeNumber}
-          </option>
-        ))}
-      </select>
-      <Button type="submit" size="sm" variant="outline">
-        Move
-      </Button>
-    </OfflineRoundEditForm>
   );
 }
 

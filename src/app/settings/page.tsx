@@ -159,7 +159,38 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </Alert>
       ) : null}
 
-      <SocialFeaturePanel data={featureData} />
+      <section className="hidden gap-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start">
+        <aside className="premium-card sticky top-28 p-3">
+          <p className="px-2 text-sm font-semibold">Settings</p>
+          <nav className="mt-2 grid gap-1 text-sm">
+            <a href="#profile-settings" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Profile</a>
+            <a href="#sharing-settings" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Sharing</a>
+            <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Data export</a>
+            <a href="#danger-zone" className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50">Danger zone</a>
+          </nav>
+        </aside>
+
+        <section className="premium-card p-4">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <ShieldCheck className="size-4 text-emerald-600" />
+            Privacy preview
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <SettingsPreviewRow label="Public profile" value={privacy.publicProfile ? "Allowed" : "Hidden"} />
+            <SettingsPreviewRow label="Leaderboard" value={privacy.allowLeaderboard ? "Enabled" : "Off"} />
+            <SettingsPreviewRow label="Coach access" value={privacy.allowCoachAccess ? "Allowed" : "Invite only"} />
+          </div>
+        </section>
+
+        <aside className="premium-card sticky top-28 min-w-0 p-4">
+          <p className="text-sm font-semibold">Account panel</p>
+          <div className="mt-3 grid gap-2 text-sm">
+            <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
+            <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
+            <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
+          </div>
+        </aside>
+      </section>
 
       <SettingsMobileDisclosure id="profile-settings" title="Profile" description={`${profile.preferredUnits}, ${profile.tableDensity} tables`} defaultOpen>
       <DataPanel>
@@ -213,7 +244,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </DataPanel>
       </SettingsMobileDisclosure>
 
-      <SettingsMobileDisclosure title="Sharing" description="Invites, coaches and shared accounts.">
+      <SettingsMobileDisclosure id="sharing-settings" title="Sharing" description="Invites, coaches and shared accounts.">
       <DataPanel>
         <SectionHeader
           title="Sharing and collaboration"
@@ -286,8 +317,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </DataPanel>
       </SettingsMobileDisclosure>
 
+      <SocialFeaturePanel data={featureData} />
+
       <section className="grid gap-4 lg:grid-cols-2">
-        <SettingsMobileDisclosure title="Data export" description="Download a JSON copy.">
+        <SettingsMobileDisclosure id="data-export" title="Data export" description="Download a JSON copy.">
         <DataPanel>
           <SectionHeader
             title="Data export"
@@ -305,7 +338,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </DataPanel>
         </SettingsMobileDisclosure>
 
-        <SettingsMobileDisclosure title="Danger zone" description="Delete app data.">
+        <SettingsMobileDisclosure id="danger-zone" title="Danger zone" description="Delete app data.">
         <DataPanel>
           <SectionHeader
             title="Delete app data"
@@ -329,6 +362,15 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </SettingsMobileDisclosure>
       </section>
     </PageShell>
+  );
+}
+
+function SettingsPreviewRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-lg border bg-[#F5F6F4] px-3 py-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 min-w-0 truncate text-sm font-semibold">{value}</p>
+    </div>
   );
 }
 

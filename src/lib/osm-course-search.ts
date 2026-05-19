@@ -19,6 +19,8 @@ export type OsmHoleGeometry = {
   greenLng: number;
 };
 
+const OSM_USER_AGENT = "ForeKingHell golf analytics course importer";
+
 type NominatimResult = {
   osm_type?: string;
   osm_id?: number;
@@ -46,6 +48,50 @@ export function buildNominatimCourseSearchUrl(query: string) {
   url.searchParams.set("extratags", "1");
   url.searchParams.set("q", `${query} golf course`);
   return url;
+}
+
+export async function searchOsmCourses(query: string) {
+  const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  const response = await fetch(buildNominatimCourseSearchUrl(trimmedQuery), {
+    headers: {
+      accept: "application/json",
+      "user-agent": OSM_USER_AGENT,
+    },
+    signal: AbortSignal.timeout(12_000),
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return parseNominatimCourseResults(await response.json());
+}
+
+export async function getOsmHoleGeometry(lat: number, lon: number) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return [];
+  }
+
+  const response = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "user-agent": OSM_USER_AGENT,
+    },
+    body: new URLSearchParams({ data: buildOverpassGolfHoleQuery(lat, lon) }),
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return parseOverpassGolfHoles(await response.json());
 }
 
 export function parseNominatimCourseResults(payload: unknown): OsmCourseResult[] {

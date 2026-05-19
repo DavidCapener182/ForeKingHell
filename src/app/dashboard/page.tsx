@@ -186,32 +186,41 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const metrics = [
     {
       pin: "shots" as const,
-      label: "Shots saved",
+      label: "Shot library",
       value: integerFormatter.format(data.stats.shotCount),
       detail: latestSession
-        ? `+${integerFormatter.format(latestSession.shotCount)} from latest`
+        ? `+${integerFormatter.format(latestSession.shotCount)} from latest import`
         : `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
+      insight: "Feeds club distances, practice priorities, and shot history.",
+      actionLabel: "Open shots",
       href: "/shots",
       icon: BarChart3,
       tone: "sky" as const,
     },
     {
       pin: "clubs" as const,
-      label: "Active clubs",
+      label: "Bag map",
       value: integerFormatter.format(data.stats.clubCount),
-      detail: `${integerFormatter.format(mappedClubCount)} mapped with usable trust`,
+      detail: `${integerFormatter.format(mappedClubCount)} trusted for decisions`,
+      insight:
+        data.stats.clubCount > mappedClubCount
+          ? `${integerFormatter.format(data.stats.clubCount - mappedClubCount)} clubs still need more stock shots.`
+          : "Every active club has usable trust.",
+      actionLabel: "Open bag",
       href: "/bag",
       icon: Target,
       tone: "green" as const,
     },
     {
       pin: "sessions" as const,
-      label: "Imported sessions",
+      label: "Practice history",
       value: integerFormatter.format(data.stats.sessionCount),
       detail: latestSession
-        ? `Latest: ${formatDate(latestSession.date)}`
+        ? `Latest import: ${formatDate(latestSession.date)}`
         : `${integerFormatter.format(data.stats.roundCount)} saved rounds`,
-      href: "/handicap",
+      insight: `${integerFormatter.format(data.stats.roundCount)} saved rounds give scoring context.`,
+      actionLabel: "Open latest",
+      href: "/today",
       icon: CalendarDays,
       tone: "green" as const,
     },
@@ -220,6 +229,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       label: "Scoring ceiling",
       value: formatHandicapValue(data.stats.combinedHandicap.value),
       detail: formatHandicapTrend(data.stats.combinedHandicap),
+      insight: "Lower is better. Built from saved real and simulator rounds.",
+      actionLabel: "Review rounds",
       href: "/rounds",
       icon: LineChart,
       tone: "amber" as const,
@@ -228,7 +239,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const mobileMetrics = [
     {
       pin: "shots" as const,
-      label: "Shots saved",
+      label: "Shot library",
       value: integerFormatter.format(data.stats.shotCount),
       detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
       href: "/shots",
@@ -237,7 +248,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       pin: "clubs" as const,
-      label: "Active clubs",
+      label: "Bag map",
       value: integerFormatter.format(data.stats.clubCount),
       detail: "Mapped into stock-yardage views",
       href: "/bag",
@@ -246,10 +257,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       pin: "sessions" as const,
-      label: "Imported sessions",
+      label: "Practice history",
       value: integerFormatter.format(data.stats.sessionCount),
       detail: `${integerFormatter.format(data.stats.roundCount)} saved rounds, including real scorecards`,
-      href: "/handicap",
+      href: "/today",
       icon: CalendarDays,
       tone: "green" as const,
     },
@@ -571,6 +582,8 @@ type DashboardMetric = {
   label: string;
   value: ReactNode;
   detail: ReactNode;
+  insight?: ReactNode;
+  actionLabel?: string;
   href: string;
   icon: LucideIcon;
   tone: DashboardTone;
@@ -600,7 +613,7 @@ function DashboardMobileLayout({
   featureData: FeatureIdeasData;
 }) {
   return (
-    <div className="grid gap-4 sm:hidden">
+    <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
 
       <MobileStatusAction
@@ -743,22 +756,23 @@ function DashboardMobileLayout({
 
       <section id="tools" className="grid scroll-mt-28 gap-4">
         <MobileHorizontalRail
-          title="Quick actions"
-          description="Fast actions into the main workflows."
+          title="Key tools"
+          description="The fastest paths into today's golf work."
           action={
             <Button
               asChild
               variant="outline"
               size="sm"
-              className="min-h-10 rounded-xl"
+              className="min-h-10 rounded-lg"
             >
               <Link href="/dashboard#tools" prefetch={false}>
-                All
+                Tools
               </Link>
             </Button>
           }
+          itemClassName="min-w-[68vw] max-w-[18rem]"
         >
-          {routeCards.slice(0, 8).map((card) => {
+          {routeCards.slice(0, 6).map((card) => {
             const Icon = card.icon;
 
             return (
@@ -784,6 +798,35 @@ function DashboardMobileLayout({
             );
           })}
         </MobileHorizontalRail>
+        <MobileAccordionSection
+          title="All tools"
+          description="Every page remains available without turning the dashboard into a directory."
+          count={`${routeCards.length} pages`}
+        >
+          <div className="grid gap-2">
+            {routeCards.map((card) => {
+              const Icon = card.icon;
+
+              return (
+                <Link
+                  key={card.href}
+                  href={card.href}
+                  prefetch={false}
+                  className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2"
+                >
+                  <span className={`grid size-8 place-items-center rounded-md ${card.accent}`}>
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{card.title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{card.description}</span>
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">{card.metric}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </MobileAccordionSection>
       </section>
 
       <section
@@ -799,7 +842,7 @@ function DashboardMobileLayout({
                 asChild
                 variant="outline"
                 size="sm"
-                className="min-h-10 rounded-xl"
+                className="min-h-10 rounded-lg"
               >
                 <Link href="/bag" prefetch={false}>
                   View all
@@ -1698,7 +1741,7 @@ function PracticeRecommendationCard({
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">
               {coachPreview.reason}
             </p>
-            <TargetLaneVisual />
+            <TargetLaneVisual coachPreview={coachPreview} />
           </div>
 
           <div className="self-start rounded-2xl border border-[#EDF1ED] bg-[#F8FAF8] p-4">
@@ -1749,25 +1792,74 @@ function PracticeRecommendationCard({
   );
 }
 
-function TargetLaneVisual() {
+type PracticeMissSide = "left" | "right" | "neutral";
+
+function TargetLaneVisual({
+  coachPreview,
+}: {
+  coachPreview: NonNullable<DashboardData["coachPreview"]>;
+}) {
+  const missSide = getPracticeMissSide(coachPreview);
+  const markerPosition =
+    missSide === "left"
+      ? "left-[34%]"
+      : missSide === "right"
+        ? "left-[66%]"
+        : "left-1/2";
+  const markerLabel =
+    missSide === "left"
+      ? "Left miss trend"
+      : missSide === "right"
+        ? "Right miss trend"
+        : "Current pattern";
+  const markerTone =
+    missSide === "right"
+      ? "border-[#2563EB] bg-[#2563EB]"
+      : missSide === "left"
+        ? "border-[#B86B00] bg-[#B86B00]"
+        : "border-[#087A3D] bg-[#087A3D]";
+
   return (
     <div className="mt-5 rounded-2xl border border-[#DFE7DF] bg-[#F8FAF8] p-4">
-      <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
-        <span>Left boundary</span>
-        <span>Playable window</span>
-        <span>Right miss</span>
+      <div className="mb-3 grid grid-cols-[22%_50%_28%] text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
+        <span>Left miss</span>
+        <span className="text-center">Playable window</span>
+        <span className="text-right">Right miss</span>
       </div>
-      <div className="relative h-16 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
+      <div className="relative h-24 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
         <div className="absolute inset-y-0 left-0 w-[22%] bg-[#FFF4DB]" />
         <div className="absolute inset-y-0 left-[22%] w-[50%] bg-[#E8F7EE]" />
         <div className="absolute inset-y-0 right-0 w-[28%] bg-[#EAF1FF]" />
         <div className="absolute left-[22%] top-0 h-full border-l border-dashed border-[#B86B00]" />
         <div className="absolute left-[72%] top-0 h-full border-l border-dashed border-[#2563EB]" />
-        <div className="absolute left-[26%] top-1/2 h-px w-[42%] -translate-y-1/2 bg-[#087A3D]" />
-        <div className="absolute left-[64%] top-1/2 size-2 -translate-y-1/2 rounded-full bg-[#087A3D] shadow-[0_0_0_5px_rgba(8,122,61,0.12)]" />
+        <div className="absolute left-1/2 top-0 h-full border-l-2 border-[#087A3D]" />
+        <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#087A3D] shadow-sm">
+          Target
+        </span>
+        <div className={cn("absolute bottom-4 flex -translate-x-1/2 flex-col items-center", markerPosition)}>
+          <span className="whitespace-nowrap rounded-full border border-[#DFE7DF] bg-white px-2 py-1 text-[11px] font-semibold text-[#111827] shadow-sm">
+            {markerLabel}
+          </span>
+          <span className={cn("h-3 w-px", markerTone)} />
+          <span className={cn("size-3 rounded-full border-2 border-white shadow-[0_0_0_5px_rgba(17,24,39,0.10)]", markerTone)} />
+        </div>
       </div>
     </div>
   );
+}
+
+function getPracticeMissSide(coachPreview: NonNullable<DashboardData["coachPreview"]>): PracticeMissSide {
+  const reason = coachPreview.reason.toLowerCase();
+
+  if (/\bleft miss\b|\bleft miss tendency\b|\bleft tendency\b/.test(reason)) {
+    return "left";
+  }
+
+  if (/\bright miss\b|\bright miss tendency\b|\bright tendency\b/.test(reason)) {
+    return "right";
+  }
+
+  return "neutral";
 }
 
 function PerformanceSnapshot({
@@ -1782,11 +1874,11 @@ function PerformanceSnapshot({
   return (
     <DashboardPanel
       title="Performance snapshot"
-      description="Key totals from imported shots, active clubs, sessions, and scoring."
+      description="What the headline numbers mean and where to act on them."
       className={className}
     >
-      <div className={cn("grid", paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4")}>
-        {metrics.map((metric, index) => {
+      <div className={cn("grid gap-3", paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4")}>
+        {metrics.map((metric) => {
           const Icon = metric.icon;
 
           return (
@@ -1795,22 +1887,13 @@ function PerformanceSnapshot({
               href={metric.href}
               prefetch={false}
               className={cn(
-                "group min-w-0 px-0 py-3 transition-colors hover:bg-[#F8FAF8] md:px-4",
-                paired
-                  ? cn(
-                      index % 2 === 1 && "border-l border-[#EDF1ED]",
-                      index >= 2 && "border-t border-[#EDF1ED]",
-                    )
-                  : cn(
-                      index > 0 && "border-t border-[#EDF1ED] md:border-t-0",
-                      index % 2 === 1 && "md:border-l md:border-[#EDF1ED]",
-                      index > 1 && "xl:border-l xl:border-[#EDF1ED]",
-                    ),
+                "group min-w-0 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
+                paired ? "min-h-[148px]" : "min-h-[178px]",
               )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold leading-6 text-[#111827]">
+                  <p className="text-sm font-semibold leading-5 text-[#111827]">
                     {metric.label}
                   </p>
                   <p
@@ -1836,51 +1919,18 @@ function PerformanceSnapshot({
               <p className={cn("mt-2 text-sm text-[#667085]", paired ? "leading-5" : "leading-6")}>
                 {metric.detail}
               </p>
-              <MetricSparkline tone={metric.tone} index={index} compact={paired} />
+              <div className="mt-4 line-clamp-2 rounded-lg border border-[#EDF1ED] bg-[#F8FAF8] px-3 py-2 text-sm leading-5 text-[#111827]">
+                {metric.insight ?? metric.detail}
+              </div>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
+                {metric.actionLabel ?? "Open"}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </Link>
           );
         })}
       </div>
     </DashboardPanel>
-  );
-}
-
-function MetricSparkline({
-  tone,
-  index,
-  compact = false,
-}: {
-  tone: DashboardTone;
-  index: number;
-  compact?: boolean;
-}) {
-  const heights = compact
-    ? [
-        [12, 20, 16, 24, 22],
-        [16, 14, 19, 22, 26],
-        [12, 16, 18, 24, 20],
-        [25, 22, 19, 16, 13],
-      ][index % 4]
-    : [
-        [28, 42, 36, 50, 46],
-        [34, 30, 40, 44, 52],
-        [26, 34, 38, 48, 44],
-        [50, 46, 42, 36, 30],
-      ][index % 4];
-
-  return (
-    <div
-      className={cn("mt-4 flex items-end gap-1.5", compact ? "h-7" : "h-14")}
-      aria-hidden="true"
-    >
-      {heights.map((height, itemIndex) => (
-        <span
-          key={`${height}-${itemIndex}`}
-          className={cn("w-full rounded-t", toneBarClass(tone))}
-          style={{ height }}
-        />
-      ))}
-    </div>
   );
 }
 
@@ -2665,19 +2715,6 @@ function toneSoftClass(tone: DashboardTone) {
       return "bg-[#EAF1FF] text-[#2563EB]";
     case "slate":
       return "bg-[#F2F4F7] text-[#667085]";
-  }
-}
-
-function toneBarClass(tone: DashboardTone) {
-  switch (normalizeDashboardTone(tone)) {
-    case "green":
-      return "bg-[#9AD7AE]";
-    case "amber":
-      return "bg-[#F1C36D]";
-    case "sky":
-      return "bg-[#AFC4FF]";
-    case "slate":
-      return "bg-[#CBD5E1]";
   }
 }
 

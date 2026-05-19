@@ -180,7 +180,7 @@ export default async function TodayPage({
             </Button>
           }
         />
-        <HeroShotSpotlight shot={data.bestStraightShots[0]} shots={data.shots} />
+        <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
         <MobileMetricStrip
           items={[
             {
@@ -209,7 +209,13 @@ export default async function TodayPage({
             },
           ]}
         />
-        <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
+        <MobileAccordionSection
+          title="Shot of the day"
+          count={data.bestStraightShots[0] ? "1 shot" : "Waiting"}
+          description="A compact visual check, kept below the prescription."
+        >
+          <HeroShotSpotlight shot={data.bestStraightShots[0]} />
+        </MobileAccordionSection>
         <NativeListSection title="Latest practice work" description="Filtered shot rows, charts and club scope.">
           <MobilePlayRoute
             href={shotDatabaseHref}
@@ -664,7 +670,7 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
           </div>
         </div>
 
-        <HeroShotSpotlight shot={bestShot} shots={data.shots} />
+        <HeroShotSpotlight shot={bestShot} />
       </div>
 
       <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
@@ -722,38 +728,36 @@ function HeroScopePill({
 
 function HeroShotSpotlight({
   shot,
-  shots,
 }: {
   shot: TodayPracticeShot | undefined;
-  shots: TodayPracticeShot[];
 }) {
   return (
-    <div className="relative min-h-[280px] overflow-hidden rounded-xl border border-emerald-100 bg-[#083524] p-4 text-white shadow-sm">
-      <HeroFairwayVisual shots={shots} />
+    <div className="relative min-h-[180px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-3 text-white shadow-sm sm:min-h-[280px] sm:p-4">
+      <HeroFairwayVisual shot={shot} />
       <div className="relative z-10 flex h-full flex-col justify-end">
-        <div className="rounded-lg border border-white/15 bg-white/90 p-3 text-slate-950 shadow-sm backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Shot of the day</p>
-            <Crosshair className="size-4 text-sky-600" />
-          </div>
+        <div className="w-full rounded-lg border border-white/15 bg-white/90 px-3 py-2 text-slate-950 shadow-sm backdrop-blur">
           {shot ? (
-            <>
-              <h3 className="mt-2 text-2xl font-semibold tracking-normal">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="truncate text-[11px] font-semibold uppercase tracking-normal text-slate-700">
+                  Shot of the day
+                </p>
+                <Crosshair className="size-3.5 shrink-0 text-sky-600" />
+              </div>
+              <h3 className="min-w-0 truncate text-lg font-semibold leading-tight tracking-normal">
                 {bestShotTitle(shot)}
               </h3>
-              <p className="mt-1 text-sm font-medium text-slate-700">
-                {formatYards(shot.totalYd)} total · {formatYards(shot.carryYd)} carry
+              <p className="text-xs font-medium leading-4 text-slate-700">
+                {formatYards(shot.totalYd)} total
               </p>
-              <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <DataPair label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-                <DataPair label="Ball" value={formatMph(shot.ballSpeedMph)} />
-              </dl>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                One of this review’s straightest shots by offline and start line.
+              <ShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+              <p className="text-xs font-medium leading-4 text-slate-700">
+                {formatYards(shot.carryYd)} carry
               </p>
-            </>
+              <ShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
+            </div>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Directional shot data will spotlight the best strike here.
             </p>
           )}
@@ -763,22 +767,39 @@ function HeroShotSpotlight({
   );
 }
 
-function HeroFairwayVisual({ shots }: { shots: TodayPracticeShot[] }) {
-  const points = shots.filter((shot) => isNumber(shot.sideCarryYd));
-  const maxSide = Math.max(
-    20,
-    ...points.map((shot) => Math.abs(shot.sideCarryYd ?? 0)),
+function ShotMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <dl className="inline-flex min-w-0 items-baseline gap-2 text-xs">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="truncate font-semibold tabular-nums text-slate-950">{value}</dd>
+    </dl>
   );
+}
+
+function HeroFairwayVisual({ shot }: { shot: TodayPracticeShot | undefined }) {
+  if (shot && isDriverClubType(shot.clubType)) {
+    return <HeroTeeFairwayVisual shot={shot} />;
+  }
+
+  return <HeroApproachVisual shot={shot} />;
+}
+
+function HeroApproachVisual({ shot }: { shot: TodayPracticeShot | undefined }) {
   const green = { x: 322, y: 164 };
   const approach = { x: 322, y: 342 };
-  const targetCarryYd = 110;
+  const landing = approachLandingPoint(shot, green);
+  const targetDistanceYd = shotCarryDistanceYd(shot) ?? 110;
 
   return (
     <svg
       viewBox="70 68 504 392"
       className="absolute inset-0 h-full w-full"
       role="img"
-      aria-label="Approach dispersion over a green"
+      aria-label={
+        shot
+          ? `${formatClubType(shot.clubType)} shot of the day aimed at the green`
+          : "Approach target visual"
+      }
     >
       <defs>
         <filter id="today-approach-image-soften">
@@ -813,14 +834,16 @@ function HeroFairwayVisual({ shots }: { shots: TodayPracticeShot[] }) {
         strokeOpacity="0.8"
         strokeWidth="3"
       />
-      <path
-        d={`M ${approach.x} ${approach.y} Q ${green.x + 28} 300 ${green.x + 44} ${green.y + 8}`}
-        fill="none"
-        stroke="#bae6fd"
-        strokeLinecap="round"
-        strokeOpacity="0.68"
-        strokeWidth="2.5"
-      />
+      {shot ? (
+        <path
+          d={`M ${approach.x} ${approach.y} Q ${(approach.x + landing.x) / 2 + 24} 280 ${landing.x} ${landing.y}`}
+          fill="none"
+          stroke="#bae6fd"
+          strokeLinecap="round"
+          strokeOpacity="0.78"
+          strokeWidth="3"
+        />
+      ) : null}
       <g opacity="0.88">
         <ellipse cx={green.x} cy={green.y + 6} rx="76" ry="47" fill="#bbf7d0" opacity="0.16" />
         <ellipse cx={green.x} cy={green.y + 6} rx="58" ry="35" fill="none" stroke="#ffffff" strokeWidth="2" strokeOpacity="0.78" />
@@ -830,34 +853,207 @@ function HeroFairwayVisual({ shots }: { shots: TodayPracticeShot[] }) {
       <g>
         <circle cx={approach.x} cy={approach.y} r="6" fill="#ffffff" stroke="#0f172a" strokeOpacity="0.24" strokeWidth="2" />
         <text x={approach.x + 14} y={approach.y + 4} fill="#ffffff" fontSize="14" fontWeight="700">
-          110 yd
+          {formatYards(targetDistanceYd)}
         </text>
       </g>
-      <g filter="url(#today-approach-glow)">
-        {points.slice(0, 58).map((shot, index) => {
-          const side = shot.sideCarryYd ?? 0;
-          const carry = shot.carryYd ?? shot.totalYd ?? targetCarryYd;
-          const carryError = clamp(carry - targetCarryYd, -24, 24);
-          const x = green.x + clamp(side / maxSide, -1, 1) * 78;
-          const y = green.y + 6 - carryError * 0.85;
+      {shot ? (
+        <g filter="url(#today-approach-glow)">
+          <title>{`${bestShotTitle(shot)} landing: ${formatOfflineYards(shot.sideCarryYd)} offline`}</title>
+          <circle
+            cx={landing.x}
+            cy={landing.y}
+            r="9"
+            fill="#fef08a"
+            fillOpacity="0.95"
+            stroke="#0f172a"
+            strokeOpacity="0.38"
+            strokeWidth="1.5"
+          />
+          <circle cx={landing.x} cy={landing.y} r="3.2" fill="#ffffff" />
+        </g>
+      ) : null}
+    </svg>
+  );
+}
 
-          return (
-            <circle
-              key={`${shot.id}-${index}`}
-              cx={x}
-              cy={y}
-              r={4.2}
-              fill="#ffffff"
-              fillOpacity={0.88}
-              stroke="#0f172a"
-              strokeOpacity={0.32}
-              strokeWidth="1.2"
-            />
-          );
-        })}
+function HeroTeeFairwayVisual({ shot }: { shot: TodayPracticeShot }) {
+  const tee = { x: 322, y: 422 };
+  const green = { x: 322, y: 154 };
+  const distanceYd = shotDistanceYd(shot) ?? 220;
+  const carryYd = shot.carryYd ?? distanceYd;
+  const landing = fairwayLandingPoint(shot, distanceYd, tee, green);
+  const carryLanding = fairwayLandingPoint(shot, carryYd, tee, green);
+  const showsRoll =
+    isNumber(shot.totalYd) &&
+    isNumber(shot.carryYd) &&
+    (shot.totalYd ?? 0) - (shot.carryYd ?? 0) >= 3;
+
+  return (
+    <svg
+      viewBox="70 92 504 392"
+      className="absolute inset-0 h-full w-full"
+      role="img"
+      aria-label="Driver shot of the day from tee to fairway"
+    >
+      <defs>
+        <filter id="today-tee-image-soften">
+          <feGaussianBlur stdDeviation="0.6" />
+          <feColorMatrix type="saturate" values="0.72" />
+        </filter>
+        <filter id="today-tee-glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+      <image
+        href="/assets/hole-350-aerial.jpg"
+        x="0"
+        y="0"
+        width="644"
+        height="1024"
+        filter="url(#today-tee-image-soften)"
+        opacity="0.95"
+        preserveAspectRatio="xMidYMid slice"
+      />
+      <rect x="0" y="0" width="644" height="1024" fill="#04160f" opacity="0.36" />
+      <path
+        d={`M ${tee.x - 52} ${tee.y + 10} C ${tee.x - 68} 334 ${green.x - 116} 254 ${green.x - 96} ${green.y + 46} C ${green.x - 32} ${green.y + 12} ${green.x + 32} ${green.y + 12} ${green.x + 96} ${green.y + 46} C ${green.x + 116} 254 ${tee.x + 68} 334 ${tee.x + 52} ${tee.y + 10} Z`}
+        fill="#bbf7d0"
+        opacity="0.13"
+      />
+      <ellipse
+        cx={landing.x}
+        cy={landing.y}
+        rx="82"
+        ry="32"
+        fill="#bbf7d0"
+        opacity="0.14"
+      />
+      <ellipse
+        cx={landing.x}
+        cy={landing.y}
+        rx="60"
+        ry="22"
+        fill="none"
+        stroke="#ffffff"
+        strokeOpacity="0.62"
+        strokeWidth="1.8"
+      />
+      <path
+        d={`M ${tee.x} ${tee.y} C ${(tee.x + landing.x) / 2 - 8} 342 ${(tee.x + landing.x) / 2 - 4} 288 ${landing.x} ${landing.y}`}
+        fill="none"
+        stroke="#ffffff"
+        strokeDasharray="10 9"
+        strokeLinecap="round"
+        strokeOpacity="0.76"
+        strokeWidth="3"
+      />
+      <path
+        d={`M ${tee.x} ${tee.y} C ${(tee.x + landing.x) / 2 - 28} 330 ${(tee.x + landing.x) / 2 + 22} 252 ${landing.x} ${landing.y}`}
+        fill="none"
+        stroke="#bae6fd"
+        strokeLinecap="round"
+        strokeOpacity="0.82"
+        strokeWidth="3.2"
+      />
+      {showsRoll ? (
+        <path
+          d={`M ${carryLanding.x} ${carryLanding.y} L ${landing.x} ${landing.y}`}
+          fill="none"
+          stroke="#ffffff"
+          strokeDasharray="3 5"
+          strokeLinecap="round"
+          strokeOpacity="0.58"
+          strokeWidth="2"
+        />
+      ) : null}
+      <g>
+        <circle cx={tee.x} cy={tee.y} r="7" fill="#ffffff" stroke="#0f172a" strokeOpacity="0.28" strokeWidth="2" />
+        <text x={tee.x + 14} y={tee.y + 4} fill="#ffffff" fontSize="14" fontWeight="700">
+          Tee
+        </text>
+      </g>
+      <g opacity="0.78">
+        <Flag x={green.x - 7} y={green.y - 38} width={19} height={19} className="fill-white text-white" />
+        <text x={green.x + 16} y={green.y - 20} fill="#ffffff" fontSize="13" fontWeight="700">
+          350 yd
+        </text>
+      </g>
+      <g filter="url(#today-tee-glow)">
+        <title>{`${bestShotTitle(shot)} finish: ${formatYards(distanceYd)} ${shot.totalYd ? "total" : "carry"}`}</title>
+        {showsRoll ? (
+          <circle
+            cx={carryLanding.x}
+            cy={carryLanding.y}
+            r="4.5"
+            fill="#ffffff"
+            fillOpacity="0.9"
+            stroke="#0f172a"
+            strokeOpacity="0.32"
+            strokeWidth="1"
+          />
+        ) : null}
+        <circle
+          cx={landing.x}
+          cy={landing.y}
+          r="9"
+          fill="#fef08a"
+          fillOpacity="0.95"
+          stroke="#0f172a"
+          strokeOpacity="0.38"
+          strokeWidth="1.5"
+        />
+        <circle cx={landing.x} cy={landing.y} r="3.2" fill="#ffffff" />
+        <text x={landing.x + 13} y={landing.y - 9} fill="#ffffff" fontSize="14" fontWeight="800">
+          {formatYards(distanceYd)}
+        </text>
       </g>
     </svg>
   );
+}
+
+function shotDistanceYd(shot: TodayPracticeShot | undefined) {
+  return shot?.totalYd ?? shot?.carryYd ?? null;
+}
+
+function shotCarryDistanceYd(shot: TodayPracticeShot | undefined) {
+  return shot?.carryYd ?? shot?.totalYd ?? null;
+}
+
+function isDriverClubType(clubType: string | null | undefined) {
+  return clubType?.trim().toLowerCase() === "driver";
+}
+
+function approachLandingPoint(
+  shot: TodayPracticeShot | undefined,
+  green: { x: number; y: number },
+) {
+  const side = shot?.sideCarryYd ?? 0;
+  const maxSide = Math.max(18, Math.abs(side) * 1.35);
+
+  return {
+    x: green.x + clamp(side / maxSide, -1, 1) * 58,
+    y: green.y + 6,
+  };
+}
+
+function fairwayLandingPoint(
+  shot: TodayPracticeShot,
+  distanceYd: number,
+  tee: { x: number; y: number },
+  green: { x: number; y: number },
+) {
+  const holeLengthYd = 350;
+  const side = shot.sideCarryYd ?? 0;
+  const progress = clamp(distanceYd / holeLengthYd, 0, 1);
+
+  return {
+    x: 322 + clamp(side / 45, -1, 1) * 82,
+    y: tee.y + (green.y - tee.y) * progress,
+  };
 }
 
 function ReviewKpi({
@@ -1361,7 +1557,7 @@ function TodayHighlightsPanel({
     .filter((highlight) => highlight.kind === "close")
     .slice(0, 6);
   const bestNearMiss = closeCalls[0] ?? null;
-  const visibleShots = shots.slice(0, 4);
+  const bestShot = shots[0] ?? null;
 
   return (
     <DataPanel>
@@ -1389,23 +1585,17 @@ function TodayHighlightsPanel({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
-                    Best shots from this review
+                    Shot of the day
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Top straight shots by offline and start line.
+                    Best single shot by offline and start line.
                   </p>
                 </div>
                 <Crosshair className="size-4 text-sky-600" />
               </div>
-              {visibleShots.length > 0 ? (
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {visibleShots.map((shot, index) => (
-                    <StraightShotCard
-                      key={shot.id}
-                      shot={shot}
-                      featured={index === 0}
-                    />
-                  ))}
+              {bestShot ? (
+                <div className="max-w-xl">
+                  <StraightShotCard shot={bestShot} featured />
                 </div>
               ) : (
                 <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">

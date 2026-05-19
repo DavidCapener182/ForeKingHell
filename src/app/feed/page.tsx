@@ -94,7 +94,6 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </Button>
           }
         />
-        <SocialFeaturePanel data={featureData} />
         {filteredItems[0] ? (
           <NativeListSection title="Latest activity">
             {filteredItems.slice(0, 8).map((item) => (
@@ -139,6 +138,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             media={<PageArtwork variant="feedEmpty" alt="" className="h-full min-h-0" sizes="100vw" />}
           />
         )}
+        <SocialFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
@@ -278,8 +278,6 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </div>
           </section>
 
-          <SocialFeaturePanel data={featureData} />
-
           {data.friendCount === 0 ? (
             <section className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold">Build your golf network</p>
@@ -314,6 +312,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           </section>
 
           <FeedCardList items={filteredItems} />
+
+          <SocialFeaturePanel data={featureData} />
         </main>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">

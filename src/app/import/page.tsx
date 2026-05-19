@@ -77,7 +77,7 @@ export default async function ImportPage() {
         <MobileTopBar title="Import" />
         <MobileTabBar
           activeKey="rapsodo"
-          className="sticky top-[calc(6.1rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
+          className="sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
           tabs={[
             { key: "rapsodo", label: "Rapsodo", href: "#rapsodo-connect" },
             { key: "csv", label: "CSV", href: "#csv-import" },
@@ -100,27 +100,6 @@ export default async function ImportPage() {
           }
         />
         <MobileRapsodoConnect initialStatus={connectionStatus} />
-        <EventHeroCard
-          eyebrow="After import"
-          title="Eligible submissions appear here"
-          description="Course records, tournaments, challenges and friend boards are suggested after Rapsodo data is saved."
-          href="#rapsodo-connect"
-          actionLabel="Connect Rapsodo"
-          media={<PageArtwork variant="import" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
-        />
-        <NativeListSection title="This round qualifies for">
-          {eligibleSubmissionCards.map((item) => (
-            <div key={item.title} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{item.title}</p>
-                <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
-              </div>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href={item.href} prefetch={false}>Submit</Link>
-              </Button>
-            </div>
-          ))}
-        </NativeListSection>
         <ImportQualityFeaturePanel data={featureData} />
         <NativeListSection id="import-sources" title="Other sources">
           <div className="grid gap-2">
@@ -172,6 +151,27 @@ export default async function ImportPage() {
             </Button>
           </div>
         </NativeListSection>
+        <NativeListSection title="Eligible submissions" description="Secondary suggestions after import quality checks pass.">
+          {eligibleSubmissionCards.map((item) => (
+            <div key={item.title} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{item.title}</p>
+                <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
+              </div>
+              <Button asChild variant="outline" className="rounded-full">
+                <Link href={item.href} prefetch={false}>Submit</Link>
+              </Button>
+            </div>
+          ))}
+        </NativeListSection>
+        <EventHeroCard
+          eyebrow="Empty upload state"
+          title="Rapsodo CSVs unlock the app"
+          description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
+          href="#rapsodo-connect"
+          actionLabel="Connect Rapsodo"
+          media={<PageArtwork variant="import" alt="" className="block h-full min-h-0 rounded-none" sizes="100vw" />}
+        />
       </MobileAppShell>
       <div className="hidden sm:contents">
       <PageHeader

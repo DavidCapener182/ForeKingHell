@@ -14,11 +14,13 @@ import {
 } from "@/components/mobile-sports";
 import { CourseRecordFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell, StatusPill } from "@/components/premium";
-import { PageArtwork } from "@/components/visuals/page-artwork";
+import { CourseLogoArtwork } from "@/components/visuals/course-logo-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getCourseRecordsHubData, verificationTierLabel } from "@/lib/course-records";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { isGoogleImageSearchConfigured } from "@/lib/google-image-search";
+import { isGooglePlacesConfigured } from "@/lib/google-places";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export default async function CourseRecordsPage() {
   const [data, featureData] = await Promise.all([getCourseRecordsHubData(), getFeatureIdeasData()]);
+  const logoLookupEnabled = isGoogleImageSearchConfigured() || isGooglePlacesConfigured();
   const featured = data.courses.find((course) => course.champion) ?? data.courses[0] ?? null;
 
   return (
@@ -72,11 +75,11 @@ export default async function CourseRecordsPage() {
             actionLabel="Challenge"
             meta={<span>{featured.recordCount} boards · {featured.liveAttemptCount} live attempts</span>}
             media={
-              <PageArtwork
-                variant="courseRecords"
+              <CourseLogoArtwork
+                courseName={featured.name}
+                country={featured.country}
                 alt=""
-                crop="random"
-                cropKey={featured.id}
+                logoLookupEnabled={logoLookupEnabled}
                 className="block h-full min-h-0 rounded-none"
                 sizes="100vw"
                 priority
@@ -139,11 +142,11 @@ export default async function CourseRecordsPage() {
             <p className="text-sm font-semibold">Today’s board</p>
             {featured ? (
               <Link href={`/courses/${featured.id}/records`} prefetch={false} className="mt-3 block">
-                <PageArtwork
-                  variant="courseRecords"
+                <CourseLogoArtwork
+                  courseName={featured.name}
+                  country={featured.country}
                   alt=""
-                  crop="random"
-                  cropKey={featured.id}
+                  logoLookupEnabled={logoLookupEnabled}
                   className="mb-3 block h-24 min-h-0 rounded-lg"
                   sizes="(min-width: 1024px) 320px, 100vw"
                 />
@@ -171,11 +174,11 @@ export default async function CourseRecordsPage() {
             prefetch={false}
             className="premium-card p-4 transition hover:border-emerald-300"
           >
-            <PageArtwork
-              variant="courseRecords"
+            <CourseLogoArtwork
+              courseName={course.name}
+              country={course.country}
               alt=""
-              crop="random"
-              cropKey={course.id}
+              logoLookupEnabled={logoLookupEnabled}
               className="mb-3 block h-24 min-h-0 rounded-lg"
               sizes="(min-width: 1024px) 33vw, 90vw"
             />

@@ -70,9 +70,9 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           visual={<AchievementArtwork className="h-full min-h-44" />}
         />
 
-        <AchievementSocialPanel data={data} latestFeedItemId={latestAchievementFeedItem?.id ?? null} />
-
         <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
+
+        <AchievementSocialPanel data={data} latestFeedItemId={latestAchievementFeedItem?.id ?? null} />
     </PageShell>
   );
 }

@@ -244,8 +244,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         </article>
       </section>
 
-      <ProfileFeaturePanel data={featureData} />
-
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
         <article className="premium-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -301,6 +299,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </div>
         </article>
       </section>
+
+      <ProfileFeaturePanel data={featureData} />
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
         <DataPanel>

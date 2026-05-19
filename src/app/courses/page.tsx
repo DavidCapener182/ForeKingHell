@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/table";
 import { courseRecordResults, courseRecords, courses, holes, sessions, teeSets, userProfiles } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
@@ -125,7 +126,6 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             </Button>
           }
         />
-        <CourseFollowFeaturePanel data={featureData} courseId={displayedCourses[0]?.id ?? null} />
         {activeTab === "manage" ? (
           <NativeListSection
             title="Course management"
@@ -201,9 +201,10 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                     </>
                   }
                 />
-              ))}
+            ))}
           </NativeListSection>
         )}
+        <CourseFollowFeaturePanel data={featureData} courseId={displayedCourses[0]?.id ?? null} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -345,7 +346,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 
       <MobileHorizontalRail
         title="Courses"
-        description="Open a course to view champion boards first. Management stays behind Manage."
+        description="Open a course to view tee sets and saved hole geometry."
         action={
           <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
             <Link href="/courses/new" prefetch={false}>New</Link>
@@ -355,7 +356,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         {displayedCourses.slice(0, 6).map((course) => (
           <Link
             key={course.id}
-            href={`/courses/${course.id}/records`}
+            href={`/courses/${course.id}/holes`}
             prefetch={false}
             className="apple-panel-strong block p-4"
           >
@@ -381,7 +382,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
       <DataPanel>
         <SectionHeader
           title="Course library"
-          description="Open Records for the player hub, or Manage for tee sets and per-hole geometry."
+          description="Click a course name to view its tee sets and saved holes. Records opens the player hub."
           action={<Badge variant="outline">{integerFormatter.format(displayedCourses.length)} courses</Badge>}
         />
         <CardContent>
@@ -464,7 +465,13 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                   <TableRow key={course.id}>
                     <TableCell>
                       <div>
-                        <p className="font-semibold">{course.name}</p>
+                        <Link
+                          href={`/courses/${course.id}/holes`}
+                          prefetch={false}
+                          className="font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                        >
+                          {course.name}
+                        </Link>
                         <p className="text-sm text-muted-foreground">{course.country ?? "Country not set"}</p>
                       </div>
                     </TableCell>
@@ -579,21 +586,53 @@ async function getCoursesData() {
     }
   }
 
-  return {
-    teeSetCount: teeSetRows.length,
-    ratedTeeSetCount: teeSetRows.filter((teeSet) => teeSet.courseRating !== null && teeSet.slopeRating !== null).length,
-    roundCount: roundRows.length,
-    recordCount: recordRows.length,
-    championCount: championRows.filter((row) => row.result.verificationStatus === "verified").length,
-    courses: courseRows.map((course) => ({
+  const allCourses = courseRows.map((course) => {
+    const championRow = championByCourse.get(course.id);
+
+    return {
       ...course,
       teeSetCount: teeSetsByCourse.get(course.id) ?? 0,
       holeCount: holesByCourse.get(course.id) ?? 0,
       roundCount: roundsByCourse.get(course.id) ?? 0,
       recordCount: recordsByCourse.get(course.id) ?? 0,
-      champion: championByCourse.get(course.id)?.profile ?? null,
-    })),
+      champion: championRow?.profile ?? null,
+      championVerificationStatus: championRow?.result.verificationStatus ?? null,
+    };
+  });
+  const dedupedCourses = dedupeCoursesByName(allCourses, courseLibraryPreference);
+  const dedupedCourseIds = new Set(dedupedCourses.map((course) => course.id));
+
+  return {
+    teeSetCount: sum(dedupedCourses.map((course) => course.teeSetCount)),
+    ratedTeeSetCount: teeSetRows.filter(
+      (teeSet) =>
+        dedupedCourseIds.has(teeSet.courseId) &&
+        teeSet.courseRating !== null &&
+        teeSet.slopeRating !== null,
+    ).length,
+    roundCount: sum(dedupedCourses.map((course) => course.roundCount)),
+    recordCount: sum(dedupedCourses.map((course) => course.recordCount)),
+    championCount: dedupedCourses.filter((course) => course.championVerificationStatus === "verified").length,
+    courses: dedupedCourses,
   };
+}
+
+function courseLibraryPreference(course: {
+  roundCount: number;
+  holeCount: number;
+  champion: unknown;
+  teeSetCount: number;
+  recordCount: number;
+  createdByUserId: string | null;
+}) {
+  return (
+    course.roundCount * 1000 +
+    course.holeCount * 100 +
+    (course.champion ? 50 : 0) +
+    course.teeSetCount * 5 +
+    course.recordCount +
+    (course.createdByUserId ? 1 : 0)
+  );
 }
 
 function countBy(values: string[]) {
@@ -604,6 +643,10 @@ function countBy(values: string[]) {
   }
 
   return counts;
+}
+
+function sum(values: number[]) {
+  return values.reduce((total, value) => total + value, 0);
 }
 
 function first(value: string | string[] | undefined) {

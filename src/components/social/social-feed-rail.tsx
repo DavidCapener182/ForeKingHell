@@ -377,7 +377,7 @@ function SocialFeedRailContent() {
       <Button
         type="button"
         variant="outline"
-        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 h-11 gap-2 rounded-full border-slate-200 bg-white px-3 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 sm:bottom-5 sm:right-5 sm:px-4"
+        className="fixed bottom-5 right-5 z-40 hidden h-11 gap-2 rounded-full border-slate-200 bg-white px-4 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 sm:inline-flex"
         onClick={openRail}
         aria-expanded={expanded}
         aria-controls="social-feed-preview"

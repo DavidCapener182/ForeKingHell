@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -12,8 +12,10 @@ import {
   ensureMountainParkCourse,
   ensureTpcSawgrassStadiumCourse,
 } from "@/lib/courses";
+import { normalisedCourseName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
-import type { OsmHoleGeometry } from "@/lib/osm-course-search";
+import { getGoogleCourseDetails, type GoogleCourseDetails } from "@/lib/google-course-enrichment";
+import { getOsmHoleGeometry, type OsmHoleGeometry } from "@/lib/osm-course-search";
 
 export async function seedKnownCoursesAction() {
   await requireCurrentUserId();
@@ -67,6 +69,243 @@ export async function createCourseAction(formData: FormData) {
   redirect(`/courses/${course.id}/holes`);
 }
 
+export async function createGoogleCourseAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const placeId = requiredString(formData, "placeId");
+  const details = await getGoogleCourseDetails(placeId);
+  const now = new Date();
+
+  if (!details) {
+    throw new Error("Google could not return details for that course.");
+  }
+
+  const importedHoles =
+    details.latitude === null || details.longitude === null ? [] : await getOsmHoleGeometry(details.latitude, details.longitude);
+  const teeSetName = "Google Places";
+  const teeSetPar = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
+  const teeSetYards = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
+  const existingCourse = await findGoogleImportTargetCourse(details, importedHoles.length > 0);
+  const courseValues = {
+    address: details.address,
+    country: details.country,
+    googleAttributionsJson: details.attributions,
+    googleEnrichedAt: now,
+    googleMapsUrl: details.googleMapsUrl,
+    googleMetadataJson: {
+      source: "google-places",
+      phoneNumber: details.phoneNumber,
+      autoMappedHoleCount: importedHoles.length,
+      geometrySource: importedHoles.length > 0 ? "osm-overpass" : null,
+    },
+    googleOpeningHoursJson: details.openingHours,
+    googlePlaceId: details.placeId,
+    googleRating: details.rating,
+    googleTypesJson: details.types,
+    googleUserRatingsTotal: details.userRatingsTotal,
+    latitude: details.latitude,
+    longitude: details.longitude,
+    name: details.name,
+    websiteUrl: details.website,
+    updatedAt: now,
+  };
+
+  const [course] = existingCourse
+    ? await db
+        .update(courses)
+        .set(courseValues)
+        .where(eq(courses.id, existingCourse.id))
+        .returning({ id: courses.id })
+    : await db
+        .insert(courses)
+        .values({
+          ...courseValues,
+          externalId: details.placeId,
+          provider: "google-places",
+          visibility: "private",
+          createdByUserId: userId,
+        })
+        .onConflictDoUpdate({
+          target: [courses.provider, courses.externalId],
+          set: courseValues,
+        })
+        .returning({ id: courses.id });
+
+  const [teeSet] = await db
+    .insert(teeSets)
+    .values({
+      courseId: course.id,
+      name: teeSetName,
+      par: teeSetPar,
+      yards: teeSetYards,
+      meters: teeSetYards === null ? null : Math.round(teeSetYards * 0.9144),
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [teeSets.courseId, teeSets.name],
+      set: {
+        par: teeSetPar,
+        yards: teeSetYards,
+        meters: teeSetYards === null ? null : Math.round(teeSetYards * 0.9144),
+        updatedAt: now,
+      },
+    })
+    .returning({ id: teeSets.id });
+
+  await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
+  if (importedHoles.length > 0) {
+    await deleteLegacyGoogleOsmTeeSet(course.id);
+  }
+
+  revalidateCourses(course.id);
+  redirect(`/courses/${course.id}/holes`);
+}
+
+async function findGoogleImportTargetCourse(details: GoogleCourseDetails, canReplaceDuplicateGeometry: boolean) {
+  const db = getDb();
+  const rows = await db
+    .select({
+      country: courses.country,
+      googlePlaceId: courses.googlePlaceId,
+      id: courses.id,
+      name: courses.name,
+    })
+    .from(courses);
+  const exactGoogleMatch = rows.find((course) => course.googlePlaceId === details.placeId);
+  const detailsName = normalisedCourseName(details.name);
+  const detailsCountry = normalisedCountry(details.country);
+  const seededMatch =
+    rows.find(
+      (course) =>
+        !course.googlePlaceId &&
+        normalisedCourseName(course.name) === detailsName &&
+        normalisedCountry(course.country) === detailsCountry,
+    ) ?? null;
+
+  if (seededMatch && exactGoogleMatch && seededMatch.id !== exactGoogleMatch.id) {
+    const removedDuplicate =
+      canReplaceDuplicateGeometry && (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id));
+
+    return removedDuplicate ? seededMatch : exactGoogleMatch;
+  }
+
+  return seededMatch ?? exactGoogleMatch ?? null;
+}
+
+async function upsertImportedHoleGeometry(
+  courseId: string,
+  teeSetId: string,
+  importedHoles: OsmHoleGeometry[],
+  now: Date,
+) {
+  if (importedHoles.length === 0) {
+    return;
+  }
+
+  const db = getDb();
+
+  for (const hole of importedHoles) {
+    await db
+      .insert(holes)
+      .values({
+        courseId,
+        teeSetId,
+        holeNumber: hole.holeNumber,
+        par: hole.par,
+        strokeIndex: null,
+        yards: hole.yards,
+        teeLat: hole.teeLat,
+        teeLng: hole.teeLng,
+        greenLat: hole.greenLat,
+        greenLng: hole.greenLng,
+        centerlineGeojson: {
+          type: "LineString" as const,
+          coordinates: [
+            [hole.teeLng, hole.teeLat],
+            [hole.greenLng, hole.greenLat],
+          ] as Array<[number, number]>,
+        },
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [holes.teeSetId, holes.holeNumber],
+        set: {
+          par: hole.par,
+          strokeIndex: null,
+          yards: hole.yards,
+          teeLat: hole.teeLat,
+          teeLng: hole.teeLng,
+          greenLat: hole.greenLat,
+          greenLng: hole.greenLng,
+          centerlineGeojson: {
+            type: "LineString" as const,
+            coordinates: [
+              [hole.teeLng, hole.teeLat],
+              [hole.greenLng, hole.greenLat],
+            ] as Array<[number, number]>,
+          },
+          updatedAt: now,
+        },
+      });
+  }
+}
+
+async function deleteLegacyGoogleOsmTeeSet(courseId: string) {
+  const db = getDb();
+
+  await db
+    .delete(teeSets)
+    .where(and(eq(teeSets.courseId, courseId), eq(teeSets.name, "Google Places + OSM")));
+}
+
+async function deleteUnreferencedGoogleDuplicateCourse(courseId: string) {
+  const db = getDb();
+  const [usage] = await db
+    .select({
+      courseFollows: sql<number>`(select count(*)::int from fkh_course_follows where course_id = ${courseId})`,
+      recordAttempts: sql<number>`(select count(*)::int from fkh_course_record_attempts where course_id = ${courseId})`,
+      records: sql<number>`(select count(*)::int from fkh_course_records where course_id = ${courseId})`,
+      rounds: sql<number>`(select count(*)::int from fkh_sessions where course_id = ${courseId})`,
+      tournaments: sql<number>`(select count(*)::int from fkh_tournaments where course_id = ${courseId})`,
+    })
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .limit(1);
+
+  if (
+    !usage ||
+    usage.courseFollows > 0 ||
+    usage.recordAttempts > 0 ||
+    usage.records > 0 ||
+    usage.rounds > 0 ||
+    usage.tournaments > 0
+  ) {
+    return false;
+  }
+
+  await db.delete(courses).where(eq(courses.id, courseId));
+
+  return true;
+}
+
+function normalisedCountry(country: string | null) {
+  const value = country?.trim().toLowerCase();
+
+  if (!value) {
+    return "";
+  }
+
+  if (value === "united states" || value === "us") {
+    return "usa";
+  }
+
+  if (value === "united kingdom" || value === "great britain" || value === "gb") {
+    return "uk";
+  }
+
+  return value;
+}
+
 export async function createOsmCourseAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
@@ -105,30 +344,7 @@ export async function createOsmCourseAction(formData: FormData) {
     })
     .returning({ id: teeSets.id });
 
-  if (importedHoles.length > 0) {
-    await db.insert(holes).values(
-      importedHoles.map((hole) => ({
-        courseId: course.id,
-        teeSetId: teeSet.id,
-        holeNumber: hole.holeNumber,
-        par: hole.par,
-        strokeIndex: null,
-        yards: hole.yards,
-        teeLat: hole.teeLat,
-        teeLng: hole.teeLng,
-        greenLat: hole.greenLat,
-        greenLng: hole.greenLng,
-        centerlineGeojson: {
-          type: "LineString" as const,
-          coordinates: [
-            [hole.teeLng, hole.teeLat],
-            [hole.greenLng, hole.greenLat],
-          ] as Array<[number, number]>,
-        },
-        updatedAt: now,
-      })),
-    );
-  }
+  await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
 
   revalidateCourses(course.id);
   redirect(`/courses/${course.id}/holes`);

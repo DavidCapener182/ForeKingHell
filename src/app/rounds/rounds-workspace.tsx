@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { ChevronRight, Flag, Search, Share2 } from "lucide-react";
+import { ChevronRight, Flag, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,7 @@ export function RoundsWorkspace({
               <div>
                 <CardTitle>Round history</CardTitle>
                 <CardDescription>
-                  Search, filter and select a round before reviewing or sharing it.
+                  Search, filter and select a round before reviewing it.
                 </CardDescription>
               </div>
               <StatusPill tone="slate">
@@ -246,7 +246,7 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
       <CardHeader>
         <CardTitle>Selected round</CardTitle>
         <CardDescription>
-          Review the scorecard, sharing options and data status for the chosen round.
+          Review the scorecard and data status for the chosen round.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -322,12 +322,6 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               </Button>
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <Button asChild variant="outline">
-                  <Link href={`/rounds/${round.id}#share`} prefetch={false}>
-                    <Share2 className="size-4" />
-                    Share summary
-                  </Link>
-                </Button>
-                <Button asChild variant="outline">
                   <Link href="/feed?filter=rounds" prefetch={false}>
                     <Flag className="size-4" />
                     Round feed
@@ -338,7 +332,7 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
           </div>
         ) : (
           <p className="text-sm leading-6 text-muted-foreground">
-            Add or import a round to review sharing, scorecard and shot data.
+            Add or import a round to review scorecard and shot data.
           </p>
         )}
       </CardContent>

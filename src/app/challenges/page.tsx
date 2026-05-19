@@ -121,8 +121,6 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             </BottomSheet>
           }
         />
-        <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
-        <CompetitionFeaturePanel data={featureData} />
         {activeTab === "templates" ? (
           <NativeListSection title="Templates">
             {data.templates.map((template) => (
@@ -172,6 +170,8 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             </NativeListSection>
           </>
         )}
+        <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
+        <CompetitionFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-3 sm:flex">

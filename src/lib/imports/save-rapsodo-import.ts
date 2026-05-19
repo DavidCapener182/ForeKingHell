@@ -19,7 +19,7 @@ import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import { evaluateCoachDrillAchievementsForUser } from "@/lib/coach-drill-awards";
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
-import { ensureCourseForSession, type CourseSessionLink } from "@/lib/courses";
+import { canonicalKnownCourseNameForSession, ensureCourseForSession, type CourseSessionLink } from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordImportFeedItems } from "@/lib/social";
 import {
@@ -155,17 +155,19 @@ export async function saveRapsodoImport(
 
     const importedShots = applyRapsodoShotOverridesForImport(parsed.shots, validatedInput.shotOverrides);
     const coursePlan = buildCoursePlan(validatedInput, importedShots);
+    const courseName = canonicalKnownCourseNameForSession(validatedInput.courseName) ?? validatedInput.courseName;
     const courseLink =
       validatedInput.sessionType === "simulated_course"
         ? await ensureCourseForSession({
             userId,
-            courseName: validatedInput.courseName,
+            courseName,
             scorecardHoles: coursePlan?.holes,
           })
         : { courseId: null, teeSetId: null };
 
     const result = await persistImport({
       ...validatedInput,
+      courseName,
       userId,
       sessionDate: parsed.exportedAtIso ?? validatedInput.sessionDate,
       shots: importedShots,

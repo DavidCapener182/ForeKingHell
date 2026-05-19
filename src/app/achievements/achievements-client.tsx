@@ -408,22 +408,22 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
       </Card>
 
       <section className={cn("grid gap-4 lg:grid-cols-[0.85fr_1.15fr]", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
-        <Card className="premium-card border-zinc-900 bg-[#111827] text-white">
+        <Card className="premium-card border-zinc-900 bg-[#111827] text-white" size="sm">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <CardDescription className="text-zinc-300">Player level</CardDescription>
-                <CardTitle className="mt-2 text-5xl font-semibold tracking-normal">
+                <CardTitle className="mt-1 text-3xl font-semibold tracking-normal sm:mt-2 sm:text-5xl">
                   Level {data.level.level}
                 </CardTitle>
               </div>
-              <div className="grid size-12 place-items-center rounded-lg bg-white/10">
-                <Zap className="size-6 text-emerald-300" />
+              <div className="grid size-10 place-items-center rounded-lg bg-white/10 sm:size-12">
+                <Zap className="size-5 text-emerald-300 sm:size-6" />
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-3">
+          <CardContent className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Metric label="Total XP" value={data.totalXp.toLocaleString("en-GB")} dark />
               <Metric label="Unlocked" value={`${data.unlockedCount}/${data.totalCount}`} dark />
               <Metric label="Next level" value={`${data.level.progressXp}/${data.level.neededXp}`} dark />
@@ -1162,11 +1162,11 @@ function formatUnlockDate(value: string | null) {
 
 function Metric({ label, value, dark = false }: { label: string; value: string; dark?: boolean }) {
   return (
-    <div className={cn("rounded-lg border p-3", dark ? "border-white/10 bg-white/5" : "bg-white/80")}>
-      <p className={cn("text-xs font-medium", dark ? "text-zinc-300" : "text-muted-foreground")}>{label}</p>
-      <p className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-normal">
+    <div className={cn("min-w-0 rounded-lg border p-2 sm:p-3", dark ? "border-white/10 bg-white/5" : "bg-white/80")}>
+      <p className={cn("truncate text-xs font-medium", dark ? "text-zinc-300" : "text-muted-foreground")}>{label}</p>
+      <p className="mt-1 flex min-w-0 items-center gap-2 text-xl font-semibold tracking-normal sm:text-2xl">
         {label === "Catalog" ? <Trophy className="size-5 text-amber-500" /> : null}
-        {value}
+        <span className="min-w-0 truncate">{value}</span>
       </p>
     </div>
   );

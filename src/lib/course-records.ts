@@ -14,12 +14,14 @@ import {
   moderationEvents,
   rapsodoSyncSessions,
   sessions,
+  shots,
   teeSets,
   userAchievements,
   userProfiles,
   xpLedger,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
 import { verifyScorecardProofToken } from "@/lib/scorecard-proof-token";
@@ -104,6 +106,19 @@ type SessionRow = typeof sessions.$inferSelect;
 type TeeSetRow = typeof teeSets.$inferSelect;
 type RapsodoSyncRow = typeof rapsodoSyncSessions.$inferSelect;
 type ScorecardHole = NonNullable<SessionRow["scorecardJson"]>[number];
+type CourseRecordShotRow = Pick<
+  typeof shots.$inferSelect,
+  | "id"
+  | "sessionId"
+  | "clubType"
+  | "shotNumber"
+  | "carryYd"
+  | "totalYd"
+  | "shotCategory"
+  | "courseHoleNumber"
+  | "courseHoleShotNumber"
+  | "qualityTag"
+>;
 
 type RoundRecordSummary = {
   totalScore: number | null;
@@ -119,9 +134,13 @@ type RoundRecordSummary = {
   originalHoleCount: number;
   isNineHoleEquivalent: boolean;
 };
+type RoundRecordMetrics = RoundRecordSummary & {
+  longestDriveYd: number | null;
+};
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const integerFormatter = new Intl.NumberFormat("en-GB");
+const excludedShotQualityTags = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
 
 const defaultCategories: Array<{
   slug: string;
@@ -435,7 +454,7 @@ export async function getCourseRecordsHubData() {
       .filter((row): row is { courseId: string; count: number } => Boolean(row.courseId))
       .map((row) => [row.courseId, Number(row.count)]),
   );
-  const courseRows = dedupeCoursesByName(allCourseRows, sessionCounts);
+  const courseRows = dedupeCoursesByName(allCourseRows, (course) => coursePreference(course, sessionCounts));
 
   for (const course of courseRows.slice(0, 12)) {
     await ensureCourseRecordBoards(course.id, viewerUserId);
@@ -459,7 +478,8 @@ export async function getCourseRecordsHubData() {
           db.select().from(teeSets).where(inArray(teeSets.courseId, visibleCourseIds)),
         ])
       : [[], [], []];
-  const recordsByCourse = countBy(recordRows.map((record) => record.courseId));
+  const uniqueRecordRows = dedupeCourseRecords(recordRows);
+  const recordsByCourse = countBy(uniqueRecordRows.map((record) => record.courseId));
   const teeByCourse = countBy(teeRows.map((teeSet) => teeSet.courseId));
   const leaderByCourse = new Map<string, (typeof resultRows)[number]>();
 
@@ -477,7 +497,7 @@ export async function getCourseRecordsHubData() {
         ...course,
         recordCount: recordsByCourse.get(course.id) ?? 0,
         teeSetCount: teeByCourse.get(course.id) ?? 0,
-        liveAttemptCount: recordRows.filter((record) => record.courseId === course.id).length,
+        liveAttemptCount: uniqueRecordRows.filter((record) => record.courseId === course.id).length,
         champion: leader?.profile
           ? {
               displayName: leader.profile.displayName,
@@ -488,7 +508,7 @@ export async function getCourseRecordsHubData() {
           : null,
       };
     }),
-    totalRecords: recordRows.length,
+    totalRecords: uniqueRecordRows.length,
     verifiedChampions: resultRows.filter((row) => row.result.verificationStatus === "verified").length,
   };
 }
@@ -522,12 +542,18 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
       .limit(40),
     getFriendIds(viewerUserId),
   ]);
+  const shotRowsBySession = await getCourseRecordShotRowsBySession(
+    viewerUserId,
+    previousRoundRows.map((row) => row.session.id),
+  );
+  const uniqueRecordRows = dedupeCourseRecords(recordRows);
   await syncVerifiedRoundRecordAttempts({
     userId: viewerUserId,
     courseId,
-    records: recordRows,
+    records: uniqueRecordRows,
     categories: categoryRows,
     rounds: previousRoundRows,
+    shotRowsBySession,
   });
   const [resultRows, viewerAttemptRows] = await Promise.all([
     db
@@ -549,7 +575,7 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
       .limit(40),
   ]);
   const categoryById = new Map(categoryRows.map((category) => [category.id, category]));
-  const filteredRecords = recordRows.filter((record) => {
+  const filteredRecords = uniqueRecordRows.filter((record) => {
     if (activeTab === "month") {
       return record.period === "month";
     }
@@ -587,7 +613,15 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
   const championCard = recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ?? recordCards.find((card) => card.champion) ?? null;
   const bestViewerAttempt = viewerAttemptRows[0] ?? null;
   const previousRounds = previousRoundRows
-    .map((row) => buildPreviousRoundSubmissionCard(row.session, row.teeSet, row.sync, recordCards))
+    .map((row) =>
+      buildPreviousRoundSubmissionCard(
+        row.session,
+        row.teeSet,
+        row.sync,
+        recordCards,
+        shotRowsBySession.get(row.session.id) ?? [],
+      ),
+    )
     .filter((round): round is NonNullable<typeof round> => Boolean(round));
 
   return {
@@ -595,10 +629,10 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     course,
     teeSets: teeRows.map(normaliseTeeSetNameForCourseRecords),
     tabs: {
-      allTimeCount: recordRows.filter((record) => record.period === "all_time" && record.scope === "public").length,
-      monthCount: recordRows.filter((record) => record.period === "month").length,
-      friendsCount: recordRows.filter((record) => record.scope === "friends").length,
-      holesCount: recordRows.filter((record) => ["best_hole_score", "closest_to_pin", "longest_drive"].includes(record.recordType)).length,
+      allTimeCount: uniqueRecordRows.filter((record) => record.period === "all_time" && record.scope === "public").length,
+      monthCount: uniqueRecordRows.filter((record) => record.period === "month").length,
+      friendsCount: uniqueRecordRows.filter((record) => record.scope === "friends").length,
+      holesCount: uniqueRecordRows.filter((record) => ["best_hole_score", "closest_to_pin", "longest_drive"].includes(record.recordType)).length,
     },
     recordCards,
     championCard,
@@ -606,6 +640,40 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     previousRounds,
     friendCount: friendIds.length,
   };
+}
+
+async function getCourseRecordShotRowsBySession(userId: string, sessionIds: string[]) {
+  const uniqueSessionIds = [...new Set(sessionIds)];
+  const rowsBySession = new Map<string, CourseRecordShotRow[]>();
+
+  if (uniqueSessionIds.length === 0) {
+    return rowsBySession;
+  }
+
+  const shotRows = await getDb()
+    .select({
+      id: shots.id,
+      sessionId: shots.sessionId,
+      clubType: shots.clubType,
+      shotNumber: shots.shotNumber,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      shotCategory: shots.shotCategory,
+      courseHoleNumber: shots.courseHoleNumber,
+      courseHoleShotNumber: shots.courseHoleShotNumber,
+      qualityTag: shots.qualityTag,
+    })
+    .from(shots)
+    .where(and(eq(shots.userId, userId), inArray(shots.sessionId, uniqueSessionIds)))
+    .orderBy(asc(shots.sessionId), asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber));
+
+  for (const shot of shotRows) {
+    const rows = rowsBySession.get(shot.sessionId) ?? [];
+    rows.push(shot);
+    rowsBySession.set(shot.sessionId, rows);
+  }
+
+  return rowsBySession;
 }
 
 export async function getCourseRecordDetailData(recordId: string) {
@@ -641,12 +709,17 @@ export async function getCourseRecordDetailData(recordId: string) {
     .where(and(eq(sessions.userId, viewerUserId), eq(sessions.courseId, row.record.courseId)))
     .orderBy(desc(sessions.date))
     .limit(20);
+  const shotRowsBySession = await getCourseRecordShotRowsBySession(
+    viewerUserId,
+    recentSessions.map((recentSession) => recentSession.session.id),
+  );
   await syncVerifiedRoundRecordAttempts({
     userId: viewerUserId,
     courseId: row.record.courseId,
     records: [row.record],
     categories: [row.category],
     rounds: recentSessions,
+    shotRowsBySession,
   });
   const [resultRows, attemptRows] = await Promise.all([
     db
@@ -671,7 +744,7 @@ export async function getCourseRecordDetailData(recordId: string) {
   ]);
   const recentRounds = recentSessions
     .map(({ session, teeSet, sync }) => {
-      const summary = summarizeRound(session, teeSet);
+      const summary = summarizeRoundWithShots(session, teeSet, shotRowsBySession.get(session.id) ?? []);
       const metricValue = metricValueForRecordType(row.record.recordType, summary);
 
       if (metricValue === null) {
@@ -1027,7 +1100,7 @@ export async function getEligibleBoardsForSession(sessionId: string) {
   }
 
   await ensureCourseRecordBoards(session.courseId, userId);
-  const records = await db
+  const records = dedupeCourseRecordBoardRows(await db
     .select({
       record: courseRecords,
       category: courseRecordCategories,
@@ -1043,7 +1116,7 @@ export async function getEligibleBoardsForSession(sessionId: string) {
       ),
     )
     .orderBy(asc(courseRecordCategories.sortOrder))
-    .limit(12);
+    .limit(60));
 
   return {
     courseRecords: records.filter((row) => row.record.period === "all_time").slice(0, 4),
@@ -1309,8 +1382,9 @@ function buildPreviousRoundSubmissionCard(
     record: typeof courseRecords.$inferSelect;
     category: typeof courseRecordCategories.$inferSelect;
   }>,
+  shotRows: CourseRecordShotRow[] = [],
 ) {
-  const summary = summarizeRound(session, teeSet);
+  const summary = summarizeRoundWithShots(session, teeSet, shotRows);
 
   if (summary.totalScore === null) {
     return null;
@@ -1364,12 +1438,14 @@ async function syncVerifiedRoundRecordAttempts({
   records,
   categories,
   rounds,
+  shotRowsBySession,
 }: {
   userId: string;
   courseId: string;
   records: Array<typeof courseRecords.$inferSelect>;
   categories: Array<typeof courseRecordCategories.$inferSelect>;
   rounds: Array<{ session: SessionRow; teeSet: TeeSetRow | null; sync: RapsodoSyncRow | null }>;
+  shotRowsBySession?: Map<string, CourseRecordShotRow[]>;
 }) {
   const verifiedRounds = rounds.filter(({ session, sync }) =>
     session.courseId === courseId && isVerifiedRoundData(session, sync),
@@ -1381,6 +1457,8 @@ async function syncVerifiedRoundRecordAttempts({
 
   const db = getDb();
   const sessionIds = verifiedRounds.map(({ session }) => session.id);
+  const courseShotRowsBySession =
+    shotRowsBySession ?? (await getCourseRecordShotRowsBySession(userId, sessionIds));
   const existingAttempts = await db
     .select({
       recordId: courseRecordAttempts.recordId,
@@ -1429,7 +1507,7 @@ async function syncVerifiedRoundRecordAttempts({
         continue;
       }
 
-      const summary = summarizeRound(session, teeSet);
+      const summary = summarizeRoundWithShots(session, teeSet, courseShotRowsBySession.get(session.id) ?? []);
       const metricValue = metricValueForRecordType(record.recordType, summary);
 
       if (typeof metricValue !== "number" || !Number.isFinite(metricValue)) {
@@ -1529,8 +1607,9 @@ async function getRoundRecordSubmissionContext({
     throw new Error("Selected round was not found.");
   }
 
+  const shotRowsBySession = await getCourseRecordShotRowsBySession(userId, [row.session.id]);
   const teeSet = row.teeSet ? normaliseTeeSetNameForCourseRecords(row.teeSet) : null;
-  const summary = summarizeRound(row.session, teeSet);
+  const summary = summarizeRoundWithShots(row.session, teeSet, shotRowsBySession.get(row.session.id) ?? []);
   const metricValue = metricValueForRecordType(record.recordType, summary);
 
   if (metricValue === null) {
@@ -1588,7 +1667,37 @@ export function summarizeRound(session: SessionRow, teeSet: TeeSetRow | null): R
   };
 }
 
-function metricValueForRecordType(recordType: string, summary: RoundRecordSummary) {
+export function summarizeRoundWithShots(
+  session: SessionRow,
+  teeSet: TeeSetRow | null,
+  shotRows: CourseRecordShotRow[],
+): RoundRecordMetrics {
+  return {
+    ...summarizeRound(session, teeSet),
+    longestDriveYd: longestDriveYardsFromShots(shotRows),
+  };
+}
+
+export function longestDriveYardsFromShots(
+  shotRows: Array<{
+    clubType: string;
+    carryYd: number | null;
+    totalYd: number | null;
+    shotCategory?: string | null;
+    courseHoleNumber?: number | null;
+    courseHoleShotNumber?: number | null;
+    qualityTag?: string | null;
+  }>,
+) {
+  const distances = shotRows
+    .filter(isEligibleCourseDriveShot)
+    .map((shot) => shot.totalYd ?? shot.carryYd)
+    .filter(isFiniteNumber);
+
+  return distances.length > 0 ? roundOne(Math.max(...distances)) : null;
+}
+
+function metricValueForRecordType(recordType: string, summary: RoundRecordMetrics | RoundRecordSummary) {
   switch (recordType) {
     case "best_gross_score":
       return summary.totalScore;
@@ -1606,11 +1715,43 @@ function metricValueForRecordType(recordType: string, summary: RoundRecordSummar
       return summary.birdies;
     case "fewest_putts":
       return summary.putts;
+    case "longest_drive":
+      return "longestDriveYd" in summary ? summary.longestDriveYd : null;
     case "best_hole_score":
       return summary.bestHoleScore;
     default:
       return null;
   }
+}
+
+function isEligibleCourseDriveShot(shot: {
+  clubType: string;
+  carryYd: number | null;
+  totalYd: number | null;
+  shotCategory?: string | null;
+  courseHoleNumber?: number | null;
+  courseHoleShotNumber?: number | null;
+  qualityTag?: string | null;
+}) {
+  if (normalizeClubKey(shot.clubType) !== "driver") {
+    return false;
+  }
+
+  if (shot.qualityTag && excludedShotQualityTags.has(shot.qualityTag.toLowerCase())) {
+    return false;
+  }
+
+  const distance = shot.totalYd ?? shot.carryYd;
+
+  if (!isFiniteNumber(distance) || distance <= 0) {
+    return false;
+  }
+
+  const isMappedCourseShot = typeof shot.courseHoleNumber === "number";
+  const isTeeShot =
+    shot.courseHoleShotNumber === 1 || (shot.shotCategory?.toLowerCase() === "tee");
+
+  return isMappedCourseShot && isTeeShot;
 }
 
 function proofLabelForRound(session: SessionRow, sync: RapsodoSyncRow | null) {
@@ -1722,30 +1863,8 @@ function displayCourseRecordTeeSetName(name: string) {
   return name.replace(/\(9 holes\)/gi, "(18 holes)");
 }
 
-function dedupeCoursesByName<T extends { id: string; name: string; createdByUserId: string | null }>(
-  courseRows: T[],
-  sessionCounts: Map<string, number>,
-) {
-  const byName = new Map<string, T>();
-
-  for (const course of courseRows) {
-    const key = normalisedCourseName(course.name);
-    const current = byName.get(key);
-
-    if (!current || coursePreference(course, sessionCounts) > coursePreference(current, sessionCounts)) {
-      byName.set(key, course);
-    }
-  }
-
-  return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name));
-}
-
 function coursePreference(course: { id: string; createdByUserId: string | null }, sessionCounts: Map<string, number>) {
   return (sessionCounts.get(course.id) ?? 0) * 10 + (course.createdByUserId ? 1 : 0);
-}
-
-function normalisedCourseName(name: string) {
-  return name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function sumScoreRange(holes: ScorecardHole[], start: number, end: number) {
@@ -1764,6 +1883,18 @@ function normaliseNineHoleTotal(value: number | null, isNineHoleEquivalent: bool
 function sumNullable(values: Array<number | null | undefined>) {
   const present = values.filter((value): value is number => typeof value === "number");
   return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+}
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function normalizeClubKey(value: string) {
+  return value.toLowerCase().replace(/[\s_-]+/g, "");
 }
 
 function minNullable(values: Array<number | null | undefined>) {
@@ -1826,6 +1957,58 @@ function recordKey(record: {
   groupId?: string | null;
 }) {
   return [record.categoryId, record.courseId, record.teeSetId ?? "none", record.scope, record.period, record.groupId ?? "none"].join(":");
+}
+
+function dedupeCourseRecords<T extends {
+  categoryId: string;
+  courseId: string;
+  teeSetId: string | null;
+  scope: string;
+  period: string;
+  groupId?: string | null;
+  bestResultId?: string | null;
+}>(records: T[]) {
+  const byKey = new Map<string, T>();
+
+  for (const record of records) {
+    const key = recordKey(record);
+    const current = byKey.get(key);
+
+    if (!current || courseRecordPreference(record) > courseRecordPreference(current)) {
+      byKey.set(key, record);
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+function dedupeCourseRecordBoardRows<T extends {
+  record: {
+    categoryId: string;
+    courseId: string;
+    teeSetId: string | null;
+    scope: string;
+    period: string;
+    groupId?: string | null;
+    bestResultId?: string | null;
+  };
+}>(rows: T[]) {
+  const byKey = new Map<string, T>();
+
+  for (const row of rows) {
+    const key = recordKey(row.record);
+    const current = byKey.get(key);
+
+    if (!current || courseRecordPreference(row.record) > courseRecordPreference(current.record)) {
+      byKey.set(key, row);
+    }
+  }
+
+  return [...byKey.values()];
+}
+
+function courseRecordPreference(record: { bestResultId?: string | null }) {
+  return record.bestResultId ? 1 : 0;
 }
 
 function countBy(values: string[]) {

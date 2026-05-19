@@ -162,6 +162,13 @@
       "when": 1779045200000,
       "tag": "0022_feature_foundations",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779140400000,
+      "tag": "0023_google_course_enrichment",
+      "breakpoints": true
     }
   ]
 }

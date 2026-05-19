@@ -55,16 +55,16 @@ export function DashboardMobileHeader({ initialActiveKey = "today" }: { initialA
   }, []);
 
   return (
-    <section className="sticky top-0 z-40 -mx-4 -mt-5 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
-      <div className="-mx-4 h-12 px-4" aria-hidden="true" />
-      <header className="-mx-4 grid h-12 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
+    <section className="sticky top-0 z-40 -mx-4 -mt-5 grid max-w-[100vw] gap-0 overflow-x-clip bg-white px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] sm:hidden">
+      <div className="-mx-4 h-12 max-w-[100vw] px-4" aria-hidden="true" />
+      <header className="-mx-4 grid h-12 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
         <span aria-hidden="true" />
         <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
           Dashboard
         </h1>
         <span aria-hidden="true" />
       </header>
-      <nav aria-label="Dashboard sections" className="-mx-4 flex min-w-0 gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4">
+      <nav aria-label="Dashboard sections" className="-mx-4 flex max-w-[100vw] gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4">
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;
 

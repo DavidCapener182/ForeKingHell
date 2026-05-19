@@ -161,7 +161,7 @@ export function MobileVisualCard({
     <div
       data-media-container
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-white/70 bg-white/80 p-3 shadow-sm sm:hidden",
+        "relative min-h-20 overflow-hidden rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm sm:hidden",
         className,
       )}
     >

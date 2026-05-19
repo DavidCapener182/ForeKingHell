@@ -23,7 +23,7 @@ export function MobileSummaryHero({
   className?: string;
 }) {
   return (
-    <section className={cn("premium-card grid gap-4 p-4 sm:hidden", className)}>
+    <section className={cn("premium-card grid gap-3 p-3 sm:hidden", className)}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
         <div className="min-w-0">
           {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
@@ -32,7 +32,7 @@ export function MobileSummaryHero({
         </div>
         {visual ? <div className="w-20 shrink-0">{visual}</div> : null}
       </div>
-      <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{metricLabel}</p>
           <p className="mt-1 text-2xl font-semibold tracking-normal">{metricValue}</p>
@@ -51,7 +51,7 @@ export function MobileSummaryAction({
   className?: string;
 }) {
   return (
-    <Button asChild className={cn("rounded-xl bg-[#111827] text-white", className)}>
+    <Button asChild className={cn("rounded-lg bg-[#111827] text-white", className)}>
       {children}
     </Button>
   );
