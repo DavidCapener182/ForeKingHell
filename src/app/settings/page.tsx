@@ -21,7 +21,7 @@ import {
   removeMembershipAction,
   updateUserSettingsAction,
 } from "@/app/settings/actions";
-import { SocialFeaturePanel } from "@/components/features/feature-panels";
+import { DataHealthFeaturePanel, SocialFeaturePanel } from "@/components/features/feature-panels";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
@@ -232,6 +232,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
         </aside>
       </section>
+
+      <DataHealthFeaturePanel data={featureData} />
 
       <SettingsMobileDisclosure
         id="profile-settings"

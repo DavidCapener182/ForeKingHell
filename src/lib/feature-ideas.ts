@@ -309,13 +309,27 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
   const preferences = preferenceRows[0] ?? defaultFeaturePreferences(userId);
   const latestShotsByClub = groupShotsByClub(shotRows);
   const latestStockByClub = latestStockRows(stockRows);
-  const importQuality = buildImportQuality(importFileRows, importJobRows, shotRows, clubRows);
+  const importQuality = buildImportQuality(
+    importFileRows,
+    importJobRows,
+    shotRows,
+    clubRows,
+    sessionRows,
+  );
   const providerHealth = buildProviderHealth(
     providerAccountRows,
     providerSessionRows,
     importJobRows,
     importFileRows,
   );
+  const dataHealth = buildDataHealth({
+    sessions: sessionRows,
+    shots: shotRows,
+    clubs: clubRows,
+    stockByClub: latestStockByClub,
+    shotsByClub: latestShotsByClub,
+    providerHealth,
+  });
   const bagAlerts = buildBagAlerts(clubRows, latestStockByClub, latestShotsByClub);
   const targetDistanceOptions = buildTargetDistanceOptions(clubRows, latestStockByClub);
   const savedViews = [
@@ -376,6 +390,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     preferences,
     profile: profileRows[0] ?? null,
     importQuality,
+    dataHealth,
     providerHealth,
     bagAlerts,
     targetDistanceOptions,
@@ -940,6 +955,7 @@ function buildImportQuality(
   jobs: Array<typeof importJobs.$inferSelect>,
   shotRows: ShotRow[],
   clubRows: ClubRow[],
+  sessionRows: SessionRow[],
 ): FeatureInsight & {
   score: number;
   checks: FeatureInsight[];
@@ -956,13 +972,20 @@ function buildImportQuality(
   const missingLaunch = shotRows.filter(
     (shot) => shot.launchAngleDeg === null || shot.ballSpeedMph === null,
   ).length;
+  const rowsSaved = shotRows.length;
+  const courseDetected = sessionRows.some((session) =>
+    Boolean(session.courseId ?? session.courseName),
+  );
+  const scorecardMatched = sessionRows.some((session) => (session.scorecardJson?.length ?? 0) > 0);
   const score = clamp(
     45 +
       Math.min(25, mappedClubCount * 4) +
       (latestFile ? 15 : 0) -
       Math.min(20, duplicateCount * 4) -
       Math.min(20, Math.round((missingCarry / Math.max(1, shotRows.length)) * 35)) -
-      Math.min(15, Math.round((missingLaunch / Math.max(1, shotRows.length)) * 20)),
+      Math.min(15, Math.round((missingLaunch / Math.max(1, shotRows.length)) * 20)) +
+      (courseDetected ? 5 : 0) +
+      (scorecardMatched ? 5 : 0),
     0,
     100,
   );
@@ -973,7 +996,7 @@ function buildImportQuality(
     detail:
       latestJob?.status === "failed"
         ? `Latest ${latestJob.providerKind} import needs attention.`
-        : `${integerFormatter.format(mappedClubCount)} mapped clubs, ${integerFormatter.format(duplicateCount)} duplicates, ${integerFormatter.format(missingCarry)} shots missing distance.`,
+        : `${integerFormatter.format(mappedClubCount)} clubs mapped, ${integerFormatter.format(rowsSaved)} rows saved, ${integerFormatter.format(duplicateCount)} duplicates, ${courseDetected ? "course detected" : "course not detected"}.`,
     href: "/import",
     tone: score >= 80 ? "green" : score >= 60 ? "amber" : "pink",
     score,
@@ -986,6 +1009,15 @@ function buildImportQuality(
           : "Map clubs after your next import.",
         href: "/bag",
         tone: mappedClubCount ? "green" : "amber",
+      },
+      {
+        title: "Rows saved",
+        metric: integerFormatter.format(rowsSaved),
+        detail: rowsSaved
+          ? "Normalized shot rows are available for stock yardages and progress."
+          : "No usable shot rows have been saved yet.",
+        href: "/shots",
+        tone: rowsSaved ? "green" : "amber",
       },
       {
         title: "Duplicates found",
@@ -1004,6 +1036,33 @@ function buildImportQuality(
         tone: missingCarry + missingLaunch > 20 ? "amber" : "green",
       },
       {
+        title: "Distance unit confidence",
+        metric: rowsSaved ? "Yards" : "Waiting",
+        detail: rowsSaved
+          ? "Saved shot distances are normalized to yards for every product surface."
+          : "Confirm yards/metres fallback before the first import.",
+        href: "/import",
+        tone: rowsSaved ? "green" : "amber",
+      },
+      {
+        title: "Course detected",
+        metric: courseDetected ? "Yes" : "No",
+        detail: courseDetected
+          ? "At least one import carries course context."
+          : "Course matching is still waiting for a round or simulated-course import.",
+        href: "/courses",
+        tone: courseDetected ? "green" : "slate",
+      },
+      {
+        title: "Scorecard matched",
+        metric: scorecardMatched ? "Yes" : "No",
+        detail: scorecardMatched
+          ? "Scorecard rows can support round review and proof."
+          : "Upload scorecard proof or import a simulated-course file.",
+        href: "/rounds",
+        tone: scorecardMatched ? "green" : "slate",
+      },
+      {
         title: "Eligible events",
         metric: latestFile ? "Ready" : "Waiting",
         detail: latestFile
@@ -1011,6 +1070,132 @@ function buildImportQuality(
           : "Import a file to unlock submissions.",
         href: "/course-records",
         tone: latestFile ? "green" : "slate",
+      },
+    ],
+  };
+}
+
+function buildDataHealth({
+  sessions: sessionRows,
+  shots: shotRows,
+  clubs: clubRows,
+  stockByClub,
+  shotsByClub,
+  providerHealth,
+}: {
+  sessions: SessionRow[];
+  shots: ShotRow[];
+  clubs: ClubRow[];
+  stockByClub: Map<string, StockRow>;
+  shotsByClub: Map<string, ShotRow[]>;
+  providerHealth: FeatureInsight[];
+}): FeatureInsight & {
+  score: number;
+  status: string;
+  checks: FeatureInsight[];
+} {
+  const latestSession = sessionRows[0] ?? null;
+  const mappedShotCount = shotRows.filter((shot) => shot.clubId).length;
+  const unmappedShotCount = shotRows.length - mappedShotCount;
+  const weakSampleClubs = clubRows.filter((club) => (shotsByClub.get(club.id)?.length ?? 0) < 8);
+  const lowConfidenceClubs = clubRows.filter((club) => {
+    const stock = stockByClub.get(club.id);
+    return typeof stock?.confidenceScore === "number" ? stock.confidenceScore < 60 : true;
+  });
+  const roundRows = sessionRows.filter(
+    (session) =>
+      session.type.toLowerCase().includes("round") || (session.scorecardJson?.length ?? 0) > 0,
+  );
+  const roundsNeedingVerification = roundRows.filter(
+    (session) => !session.teeSetId || (session.scorecardJson?.length ?? 0) === 0,
+  );
+  const rapsodoHealth =
+    providerHealth.find((item) => item.title.toLowerCase().includes("rapsodo")) ??
+    providerHealth[0];
+  const lastImportAgeDays = latestSession
+    ? Math.floor((Date.now() - latestSession.date.getTime()) / (24 * 60 * 60 * 1000))
+    : null;
+  const staleImport = lastImportAgeDays === null || lastImportAgeDays > 14;
+  const score = clamp(
+    100 -
+      Math.min(25, weakSampleClubs.length * 5) -
+      Math.min(30, Math.round((unmappedShotCount / Math.max(1, shotRows.length)) * 30)) -
+      Math.min(20, lowConfidenceClubs.length * 4) -
+      Math.min(18, roundsNeedingVerification.length * 6) -
+      (staleImport ? 10 : 0),
+    0,
+    100,
+  );
+  const status = score >= 85 ? "Healthy" : score >= 65 ? "Needs attention" : "Baseline needed";
+  const tone = score >= 85 ? "green" : score >= 65 ? "amber" : "pink";
+
+  return {
+    title: "Data health score",
+    metric: `${score}/100`,
+    detail:
+      `${integerFormatter.format(weakSampleClubs.length)} clubs need more shots, ` +
+      `${integerFormatter.format(roundsNeedingVerification.length)} rounds need rating/slope or scorecard proof, ` +
+      `${rapsodoHealth?.title ?? "Provider"} ${rapsodoHealth?.metric?.toLowerCase() ?? "unknown"}.`,
+    href: "/settings",
+    tone,
+    score,
+    status,
+    checks: [
+      {
+        title: "Last import",
+        metric: latestSession ? relativeDate(latestSession.date) : "None",
+        detail: latestSession
+          ? `${titleCase((sessionRows[0]?.type ?? "session").replace(/_/g, " "))} data is available.`
+          : "Import Rapsodo data to start the product loop.",
+        href: "/import",
+        tone: staleImport ? "amber" : "green",
+      },
+      {
+        title: "Club sample sizes",
+        metric: `${weakSampleClubs.length} weak`,
+        detail:
+          weakSampleClubs.length > 0
+            ? "Add recent shots for clubs under the stock-yardage sample threshold."
+            : "Every active club has enough shots for first-pass trust.",
+        href: "/bag",
+        tone: weakSampleClubs.length > 0 ? "amber" : "green",
+      },
+      {
+        title: "Missing club mappings",
+        metric: integerFormatter.format(unmappedShotCount),
+        detail:
+          unmappedShotCount > 0
+            ? "Map imported rows before using stock yardages for decisions."
+            : "Saved shots are linked to bag clubs.",
+        href: "/import",
+        tone: unmappedShotCount > 0 ? "amber" : "green",
+      },
+      {
+        title: "Course rating/slope",
+        metric: `${roundsNeedingVerification.length} rounds`,
+        detail:
+          roundsNeedingVerification.length > 0
+            ? "Add tee/rating data or scorecard proof for handicap confidence."
+            : "Saved rounds have the main verification hooks.",
+        href: "/courses",
+        tone: roundsNeedingVerification.length > 0 ? "amber" : "green",
+      },
+      {
+        title: "Low-confidence stock",
+        metric: integerFormatter.format(lowConfidenceClubs.length),
+        detail:
+          lowConfidenceClubs.length > 0
+            ? "Retest clubs with low confidence before trusting carry numbers."
+            : "Stock-yardage confidence is usable.",
+        href: "/coach",
+        tone: lowConfidenceClubs.length > 0 ? "amber" : "green",
+      },
+      {
+        title: "Provider sync",
+        metric: rapsodoHealth?.metric ?? "Unknown",
+        detail: rapsodoHealth?.detail ?? "Connect Rapsodo or upload CSV exports.",
+        href: rapsodoHealth?.href ?? "/providers",
+        tone: (rapsodoHealth?.tone ?? "slate") as FeatureInsight["tone"],
       },
     ],
   };

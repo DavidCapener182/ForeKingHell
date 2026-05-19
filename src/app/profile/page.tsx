@@ -17,7 +17,7 @@ import { desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
-import { ProfileFeaturePanel } from "@/components/features/feature-panels";
+import { DataHealthFeaturePanel, ProfileFeaturePanel } from "@/components/features/feature-panels";
 import {
   MobileAppShell,
   MobileIconButton,
@@ -148,6 +148,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           ]}
         />
         <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
+        <DataHealthFeaturePanel data={featureData} />
         {activeTab === "records" ? (
           <NativeListSection title="Records">
             <div className="grid grid-cols-2 gap-2">
@@ -387,6 +388,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         </section>
 
         <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
+        <DataHealthFeaturePanel data={featureData} />
 
         <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
           <article className="premium-card p-4">

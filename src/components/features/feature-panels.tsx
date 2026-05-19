@@ -111,6 +111,27 @@ export function ImportQualityFeaturePanel({ data }: { data: FeatureIdeasData }) 
   );
 }
 
+export function DataHealthFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Data health score"
+        description="Shows whether the current golf data is trustworthy enough for stock yardages, progress signals, coaching and competition proof."
+        action={
+          <StatusPill tone={data.dataHealth.tone as Tone}>
+            {data.dataHealth.status} · {data.dataHealth.metric}
+          </StatusPill>
+        }
+      />
+      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+        {data.dataHealth.checks.map((item) => (
+          <InsightCard key={item.title} item={item} compact />
+        ))}
+      </div>
+    </DataPanel>
+  );
+}
+
 export function ProviderHealthFeaturePanel({ data }: { data: FeatureIdeasData }) {
   return (
     <DataPanel>

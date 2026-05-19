@@ -261,28 +261,46 @@ function FirstRunRapsodoOnboarding({
   connected: boolean;
   fileCount: number;
 }) {
+  if (fileCount > 0) {
+    return null;
+  }
+
   const steps = [
     {
-      title: "Upload or sync Rapsodo",
+      title: "Welcome",
+      detail: "Turn Rapsodo data into stock yardages, progress and practice priorities.",
+      ready: true,
+    },
+    {
+      title: "Import Rapsodo",
       detail: connected
-        ? "R-Cloud is connected; CSV stays available as fallback."
-        : "Use R-Cloud or a CSV export from the range.",
-      ready: connected || fileCount > 0,
+        ? "R-Cloud is connected; upload CSV if you want a fallback import."
+        : "Upload a CSV or connect/sync Rapsodo.",
+      ready: connected,
     },
     {
-      title: "Map clubs",
-      detail: "Confirm names before stock yardages, challenges, and records are calculated.",
-      ready: fileCount > 0,
+      title: "Check club mapping",
+      detail: "Confirm club names before any stock yardage or challenge data is trusted.",
+      ready: false,
     },
     {
-      title: "Review one insight",
-      detail:
-        "Import quality, stock yardages and the first coach signal appear before social prompts.",
-      ready: fileCount > 0,
+      title: "Read first insight",
+      detail: "The first card tells you what changed or what data is still missing.",
+      ready: false,
     },
     {
-      title: "Save or share proof",
-      detail: "Eligible boards stay secondary until the import is clean enough to trust.",
+      title: "Review bag gaps",
+      detail: "Stock yardages and the gapping ladder show the first decision numbers.",
+      ready: false,
+    },
+    {
+      title: "Use coach next action",
+      detail: "The coach surface gives one practice priority, why it matters and the drill.",
+      ready: false,
+    },
+    {
+      title: "Share or compete",
+      detail: "PB, challenge and leaderboard prompts stay optional after data checks pass.",
       ready: false,
     },
   ];
@@ -299,7 +317,7 @@ function FirstRunRapsodoOnboarding({
         }
       />
       <CardContent>
-        <div className="grid gap-2 sm:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
           {steps.map((step, index) => (
             <div key={step.title} className="rounded-lg border border-slate-200 bg-white p-3">
               <div className="flex items-center justify-between gap-3">
@@ -316,6 +334,15 @@ function FirstRunRapsodoOnboarding({
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{step.detail}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+          <p className="text-sm font-semibold">What happens to my data?</p>
+          <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
+            <p>Private by default.</p>
+            <p>You control profile, feed and leaderboard visibility.</p>
+            <p>Friends do not get account access.</p>
+            <p>Coach, viewer and editor access is managed separately.</p>
+          </div>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">

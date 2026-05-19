@@ -23,7 +23,7 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ActionCentrePanel } from "@/components/features/feature-panels";
+import { ActionCentrePanel, DataHealthFeaturePanel } from "@/components/features/feature-panels";
 import {
   DashboardMobileHeader,
   type DashboardTabKey,
@@ -497,7 +497,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        <DashboardDataHealthPanel data={data} />
+        <DataHealthFeaturePanel data={featureData} />
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
           <div className="flex min-w-0 flex-col gap-6">
@@ -643,7 +643,7 @@ function DashboardMobileLayout({
         }))}
       />
 
-      <DashboardMobileDataHealth data={data} />
+      <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
 
       <ActionCentrePanel data={featureData} />
 
@@ -909,9 +909,7 @@ function DashboardMobileLayout({
   );
 }
 
-function DashboardMobileDataHealth({ data }: { data: DashboardData }) {
-  const health = buildDashboardDataHealth(data);
-
+function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasData["dataHealth"] }) {
   return (
     <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
       <div className="flex items-start justify-between gap-3">
@@ -921,61 +919,16 @@ function DashboardMobileDataHealth({ data }: { data: DashboardData }) {
             Last import, club mapping and next useful data check.
           </p>
         </div>
-        <StatusPill tone={health.tone}>{health.status}</StatusPill>
+        <StatusPill tone={dataHealth.tone}>{dataHealth.status}</StatusPill>
       </div>
       <div className="grid gap-2">
-        <DataPair label="Last import" value={health.lastImport} />
-        <DataPair label="Missing club mapping" value={health.missingClubMapping} />
-        <DataPair label="Weak sample clubs" value={health.thinSamples} />
-        <DataPair label="Next import" value={health.nextImport} />
+        <DataPair label="Score" value={dataHealth.metric} />
+        {dataHealth.checks.slice(0, 4).map((check) => (
+          <DataPair key={check.title} label={check.title} value={check.metric ?? check.detail} />
+        ))}
       </div>
     </section>
   );
-}
-
-function DashboardDataHealthPanel({ data }: { data: DashboardData }) {
-  const health = buildDashboardDataHealth(data);
-
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Data health"
-        description="This keeps the dashboard data-first: import freshness, club mapping, weak samples and the next useful fix before any social prompt."
-        action={<StatusPill tone={health.tone}>{health.status}</StatusPill>}
-      />
-      <CardContent className="grid gap-3 md:grid-cols-4">
-        <DataPair label="Last import" value={health.lastImport} />
-        <DataPair label="Missing club mapping" value={health.missingClubMapping} />
-        <DataPair label="Weak sample clubs" value={health.thinSamples} />
-        <DataPair label="Next useful action" value={health.nextImport} />
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function buildDashboardDataHealth(data: DashboardData) {
-  const latestSession = data.recentSessions[0] ?? null;
-  const thinSamples = data.bagPreview.filter((club) => club.stock.sampleSize < 8).length;
-  const mappedShots = data.bagPreview.reduce((total, club) => total + club.shotCount, 0);
-  const missingClubMapping = Math.max(0, data.stats.shotCount - mappedShots);
-  const needsWork = thinSamples > 0 || missingClubMapping > 0 || data.stats.shotCount === 0;
-  const nextImport =
-    data.stats.shotCount === 0
-      ? "Import first Rapsodo CSV"
-      : thinSamples > 0
-        ? "Add samples for thin clubs"
-        : missingClubMapping > 0
-          ? "Review club mapping"
-          : "Import latest session";
-
-  return {
-    lastImport: latestSession ? formatDate(latestSession.date) : "None",
-    missingClubMapping,
-    thinSamples,
-    nextImport,
-    status: needsWork ? "Check" : "Ready",
-    tone: needsWork ? ("amber" as const) : ("green" as const),
-  };
 }
 
 function TodayPlan({

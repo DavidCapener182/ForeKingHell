@@ -41,6 +41,7 @@ Point Stripe webhooks at `/api/stripe/webhook`. The handler verifies `Stripe-Sig
 npm run dev
 npm run format
 npm run format:check
+npm run production:check
 npm run test
 npm run lint
 npm run build
@@ -52,7 +53,17 @@ npm run db:migrate
 
 Authenticated Playwright coverage is opt-in because Supabase sessions are cookie backed. Capture a logged-in storage state and run with `PLAYWRIGHT_AUTH_STATE=/absolute/path/to/state.json npm run test:e2e` to exercise import, mobile density, user isolation, social graph/feed, challenge, billing and coach checks. Without that env var, the public auth and login accessibility checks still run.
 
+`npm run production:check` is the public-tester gate. It runs format check, lint, TypeScript, unit tests, build, E2E, Lighthouse and `git diff --check`. If `PLAYWRIGHT_AUTH_STATE` is missing it prints `Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.` and fails the gate because authenticated flows were not fully verified.
+
 `npm run test:lighthouse` audits `/login` by default against `next start`. Set `LIGHTHOUSE_ROUTES=/login,/dashboard` and `LIGHTHOUSE_COOKIE` or `LIGHTHOUSE_EXTRA_HEADERS_JSON` when auditing authenticated routes.
+
+## Launch Documentation
+
+- [Production readiness gate](docs/PRODUCTION_READINESS.md)
+- [Tester onboarding](docs/TESTER_ONBOARDING.md)
+- [Facebook/Rapsodo beta launch](docs/FACEBOOK_BETA_LAUNCH.md)
+- [Known limitations](docs/KNOWN_LIMITATIONS.md)
+- [Privacy and data visibility](docs/PRIVACY_AND_DATA_VISIBILITY.md)
 
 ## Current Product Scope
 

@@ -99,7 +99,7 @@ async function auditViewport(page: Page, isMobile: boolean) {
 
       if (mobile) {
         const firstActionTop = firstActionPosition();
-        const firstActionLimit = Math.min(viewportHeight - 48, 420);
+        const firstActionLimit = Math.min(viewportHeight - 48, 360);
         if (firstActionTop !== null && firstActionTop > firstActionLimit) {
           issues.push(`first primary action starts at ${Math.round(firstActionTop)}px`);
         }
@@ -115,7 +115,7 @@ async function auditViewport(page: Page, isMobile: boolean) {
         }
 
         const largestGap = largestVerticalGap();
-        if (largestGap.size > 180) {
+        if (largestGap.size > 160 && !document.body.closest("[data-allow-mobile-blank-zone]")) {
           issues.push(
             `blank vertical zone ${Math.round(largestGap.size)}px near y=${Math.round(largestGap.top)}`,
           );
@@ -136,7 +136,7 @@ async function auditViewport(page: Page, isMobile: boolean) {
         for (const media of visibleElements("[data-media-container]").filter(
           (item) => item.rect.top < viewportHeight,
         )) {
-          if (isEmptyMedia(media.node) && media.rect.height > 120) {
+          if (isEmptyMedia(media.node) && media.rect.height > 96) {
             issues.push(
               `empty mobile media ${Math.round(media.rect.width)}x${Math.round(media.rect.height)} near y=${Math.round(media.rect.top)}`,
             );
