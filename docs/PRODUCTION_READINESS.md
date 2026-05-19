@@ -77,6 +77,7 @@ Rules: use `next/image` for raster assets, keep fixed aspect ratios, provide use
 ## Product Acceptance
 
 - Dashboard leads with today's signal, one next action, compact metrics, Data Health and latest meaningful change.
+- Dashboard shows the first-run Rapsodo path only when there is no usable shot data.
 - Import/Rapsodo leads with Source -> Upload/Sync -> Review -> Match -> Submit/Share.
 - Import Quality Score covers mapped clubs, rows saved, duplicates, missing metrics, distance unit confidence, course detection, scorecard match and eligible events.
 - Data Health Score covers last import, club sample sizes, missing club mapping, course/rating gaps, low-confidence stock yardages, rounds needing verification and provider sync.

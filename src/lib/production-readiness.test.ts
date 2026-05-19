@@ -56,4 +56,13 @@ describe("production readiness gate", () => {
     expect(source).toContain("Private by default");
     expect(source).toContain("Friends do not get account access");
   });
+
+  it("keeps the dashboard first-run Rapsodo path gated to no-data users", () => {
+    const source = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
+
+    expect(source).toContain("DashboardFirstRunOnboarding");
+    expect(source).toContain("data.stats.shotCount === 0");
+    expect(source).toContain("First-run Rapsodo path");
+    expect(source).toContain("Turn Rapsodo data into stock yardages");
+  });
 });

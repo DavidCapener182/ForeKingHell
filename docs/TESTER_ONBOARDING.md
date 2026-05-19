@@ -5,13 +5,14 @@ Use this path for first public testers from Rapsodo and Facebook groups.
 ## First Session
 
 1. Create an account or sign in.
-2. Open `/import`.
-3. Upload a Rapsodo CSV or connect/sync Rapsodo if cloud sync is configured.
-4. Confirm club mapping.
-5. Review Import Quality.
-6. Open `/bag` to see stock yardages and gapping.
-7. Open `/coach` or `/today` for the next practice action.
-8. Optionally post a PB, join a challenge, enter a tournament or compare with friends.
+2. Follow the dashboard first-run Rapsodo path if no shot data is present.
+3. Open `/import`.
+4. Upload a Rapsodo CSV or connect/sync Rapsodo if cloud sync is configured.
+5. Confirm club mapping.
+6. Review Import Quality and Data Health.
+7. Open `/bag` to see stock yardages and gapping.
+8. Open `/coach` or `/today` for the next practice action.
+9. Optionally post a PB, join a challenge, enter a tournament or compare with friends.
 
 ## What To Tell Testers
 

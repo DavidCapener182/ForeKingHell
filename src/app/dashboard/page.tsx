@@ -6,6 +6,7 @@ import {
   BarChart3,
   Brain,
   CalendarDays,
+  CheckCircle2,
   Crosshair,
   Database,
   Flag,
@@ -497,6 +498,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
+        {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
+
         <DataHealthFeaturePanel data={featureData} />
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
@@ -621,6 +624,8 @@ function DashboardMobileLayout({
           </Button>
         }
       />
+
+      {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
 
       <section id="today" className="scroll-mt-28">
         <TodayPlan
@@ -906,6 +911,104 @@ function DashboardMobileLayout({
 
       <DashboardMobileSocialPulse social={social} challenges={challenges} />
     </div>
+  );
+}
+
+function DashboardFirstRunOnboarding() {
+  const steps = [
+    {
+      title: "Welcome",
+      detail: "Turn Rapsodo data into stock yardages, progress and practice priorities.",
+      href: "/import",
+      ready: true,
+    },
+    {
+      title: "Import Rapsodo",
+      detail: "Upload a CSV or connect/sync Rapsodo before any social prompt matters.",
+      href: "/import",
+      ready: false,
+    },
+    {
+      title: "Map clubs",
+      detail: "Confirm club names so every shot lands in the right bag slot.",
+      href: "/import#csv-import",
+      ready: false,
+    },
+    {
+      title: "Read first insight",
+      detail: "Import Quality and Data Health explain whether the data can be trusted.",
+      href: "/import",
+      ready: false,
+    },
+    {
+      title: "Check bag gaps",
+      detail: "Open stock yardages and see the first gapping summary.",
+      href: "/bag",
+      ready: false,
+    },
+    {
+      title: "Use coach next action",
+      detail: "Follow the first practice priority before comparing with anyone else.",
+      href: "/coach",
+      ready: false,
+    },
+    {
+      title: "Optional share/compete",
+      detail: "Share a PB or join a challenge only after your data checks pass.",
+      href: "/challenges",
+      ready: false,
+    },
+  ];
+
+  return (
+    <DataPanel id="first-run-onboarding" className="scroll-mt-28">
+      <SectionHeader
+        title="First-run Rapsodo path"
+        description="Start here if there is no usable shot data yet. Data comes first; sharing and competition stay optional."
+        action={
+          <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import Rapsodo
+            </Link>
+          </Button>
+        }
+      />
+      <CardContent>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
+          {steps.map((step, index) => (
+            <Link
+              key={step.title}
+              href={step.href}
+              prefetch={false}
+              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/35"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="grid size-7 place-items-center rounded-full bg-[#F5F6F4] text-xs font-semibold">
+                  {index + 1}
+                </span>
+                {step.ready ? (
+                  <CheckCircle2 className="size-4 text-emerald-700" />
+                ) : (
+                  <span className="text-xs font-medium text-muted-foreground">Next</span>
+                )}
+              </div>
+              <p className="mt-3 font-semibold leading-5">{step.title}</p>
+              <p className="mt-1 leading-5 text-muted-foreground">{step.detail}</p>
+            </Link>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+          <p className="text-sm font-semibold">What happens to my data?</p>
+          <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
+            <p>Private by default.</p>
+            <p>You control profile, feed and leaderboard visibility.</p>
+            <p>Friends do not get account access.</p>
+            <p>Coach, viewer and editor access is separate.</p>
+          </div>
+        </div>
+      </CardContent>
+    </DataPanel>
   );
 }
 
