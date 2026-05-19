@@ -234,6 +234,7 @@ function LatestRoundSpotlight({
         cropKey={latestRound.id}
         className="hidden h-24 min-h-0 rounded-lg sm:block"
         sizes="(min-width: 1280px) 360px, 100vw"
+        priority
       />
       <div className="mt-3 space-y-3">
         <div>

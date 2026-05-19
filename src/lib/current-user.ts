@@ -2,6 +2,7 @@ import "server-only";
 
 import { eq, sql } from "drizzle-orm";
 import type { User } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { userProfiles, users } from "@/db/schema";
@@ -27,6 +28,11 @@ const defaultPreferences: CurrentUserPreferences = {
 };
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const playwrightUser = await getPlaywrightCookieUser();
+  if (playwrightUser) {
+    return playwrightUser;
+  }
+
   if (!isSupabaseAuthConfigured()) {
     return null;
   }
@@ -168,6 +174,98 @@ function normalizeAuthUser(user: User): CurrentUser {
     email: user.email ?? null,
     name,
   };
+}
+
+async function getPlaywrightCookieUser(): Promise<CurrentUser | null> {
+  if (process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1" || process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  const cookieStore = await cookies();
+  const token = accessTokenFromSupabaseCookie(supabaseAuthCookieValue(cookieStore.getAll()));
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) {
+      return null;
+    }
+
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      sub?: string;
+      email?: string;
+      user_metadata?: Record<string, unknown>;
+    };
+
+    if (!claims.sub) {
+      return null;
+    }
+
+    return {
+      id: claims.sub,
+      email: typeof claims.email === "string" ? claims.email : null,
+      name:
+        stringMetadata(claims.user_metadata?.name) ??
+        stringMetadata(claims.user_metadata?.full_name) ??
+        stringMetadata(claims.user_metadata?.display_name),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function supabaseAuthCookieValue(cookies: { name: string; value: string }[]) {
+  const authCookie = cookies.find((cookie) => /^sb-.+-auth-token$/.test(cookie.name));
+  if (authCookie) {
+    return authCookie.value;
+  }
+
+  const chunkedAuthCookie = cookies
+    .map((cookie) => {
+      const match = cookie.name.match(/^(sb-.+-auth-token)\.(\d+)$/);
+      return match ? { baseName: match[1], index: Number(match[2]), value: cookie.value } : null;
+    })
+    .filter((cookie): cookie is { baseName: string; index: number; value: string } =>
+      Boolean(cookie),
+    )
+    .sort((a, b) => a.index - b.index);
+
+  if (chunkedAuthCookie.length === 0 || chunkedAuthCookie[0].index !== 0) {
+    return null;
+  }
+
+  const baseName = chunkedAuthCookie[0].baseName;
+  const chunks = [];
+  for (const cookie of chunkedAuthCookie) {
+    if (cookie.baseName !== baseName || cookie.index !== chunks.length) {
+      break;
+    }
+    chunks.push(cookie.value);
+  }
+
+  return chunks.length > 0 ? chunks.join("") : null;
+}
+
+function accessTokenFromSupabaseCookie(value: string | undefined | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    let decoded = decodeURIComponent(value);
+    if (decoded.startsWith("base64-")) {
+      decoded = Buffer.from(decoded.slice("base64-".length), "base64url").toString("utf8");
+    }
+
+    const parsed = JSON.parse(decoded) as { access_token?: string } | [string];
+    const token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
+    return typeof token === "string" && token ? token : null;
+  } catch {
+    return null;
+  }
 }
 
 function stringMetadata(value: unknown) {

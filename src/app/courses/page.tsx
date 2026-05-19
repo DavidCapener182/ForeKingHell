@@ -209,7 +209,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
               : displayedCourses
             )
               .slice(0, activeTab === "records" ? 12 : 8)
-              .map((course) => (
+              .map((course, index) => (
                 <CourseCard
                   key={course.id}
                   href={`/courses/${course.id}/records`}
@@ -222,7 +222,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                       crop={courseArtworkCrop(course)}
                       cropKey={course.id}
                       className="block h-36 min-h-0 rounded-lg"
-                      sizes="100vw"
+                      sizes="calc(100vw - 2rem)"
+                      priority={index === 0}
                     />
                   }
                   champion={
@@ -439,7 +440,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             </Button>
           }
         >
-          {displayedCourses.slice(0, 6).map((course) => (
+          {displayedCourses.slice(0, 6).map((course, index) => (
             <Link
               key={course.id}
               href={`/courses/${course.id}/holes`}
@@ -453,6 +454,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                 cropKey={course.id}
                 className="mb-3 block h-24 min-h-0 rounded-xl"
                 sizes="90vw"
+                priority={index === 0}
               />
               <p className="truncate font-semibold tracking-normal">{course.name}</p>
               <p className="mt-1 truncate text-sm text-muted-foreground">
@@ -503,7 +505,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                           crop={courseArtworkCrop(course)}
                           cropKey={course.id}
                           className="block h-20 min-h-0 rounded-xl"
-                          sizes="100vw"
+                          sizes="calc(100vw - 2rem)"
                         />
                         <DataPair
                           label="Thumbnail"

@@ -118,7 +118,7 @@ export default async function CourseRecordsPage() {
                 alt=""
                 logoLookupEnabled={logoLookupEnabled}
                 className="block h-full min-h-0 rounded-none"
-                sizes="100vw"
+                sizes="calc(100vw - 2rem)"
                 priority
               />
             }
@@ -240,6 +240,7 @@ export default async function CourseRecordsPage() {
                     logoLookupEnabled={logoLookupEnabled}
                     className="mb-3 block h-24 min-h-0 rounded-lg"
                     sizes="(min-width: 1024px) 320px, 100vw"
+                    priority
                   />
                   <p className="font-semibold tracking-normal">{featured.name}</p>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -306,7 +307,7 @@ export default async function CourseRecordsPage() {
         <CourseRecordFeaturePanel data={featureData} />
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data.courses.map((course) => (
+          {data.courses.map((course, index) => (
             <Link
               key={course.id}
               href={`/courses/${course.id}/records`}
@@ -320,6 +321,7 @@ export default async function CourseRecordsPage() {
                 logoLookupEnabled={logoLookupEnabled}
                 className="mb-3 block h-24 min-h-0 rounded-lg"
                 sizes="(min-width: 1024px) 33vw, 90vw"
+                priority={index === 0}
               />
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

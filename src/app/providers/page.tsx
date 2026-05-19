@@ -65,13 +65,14 @@ export default async function ProvidersPage() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
-        {data.providers.map((provider) => (
+        {data.providers.map((provider, index) => (
           <article key={provider.providerKind} className="premium-card p-4">
             <PageArtwork
               variant={providerArtwork(provider.providerKind)}
               alt=""
               className="mb-3 block h-28 min-h-0 rounded-lg"
               sizes="(min-width: 768px) 33vw, 100vw"
+              priority={index === 0}
             />
             <div className="flex items-start justify-between gap-3">
               <div>

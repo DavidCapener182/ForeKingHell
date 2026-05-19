@@ -614,6 +614,7 @@ function CoachPracticePlan({
             alt=""
             className="h-full min-h-32 rounded-xl"
             sizes="224px"
+            priority
           />
         </div>
       </div>

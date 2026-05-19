@@ -157,7 +157,8 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                 alt=""
                 cropKey={data.featured.id}
                 className="block h-full min-h-0 rounded-none"
-                sizes="100vw"
+                sizes="(min-width: 640px) 640px, calc(100vw - 2rem)"
+                priority
               />
             }
             meta={
@@ -261,8 +262,8 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         </header>
 
         <section className="grid gap-3 lg:grid-cols-3">
-          {scheduledEvents.map((event) => (
-            <ScheduledTournamentCard key={event.id} event={event} />
+          {scheduledEvents.map((event, index) => (
+            <ScheduledTournamentCard key={event.id} event={event} priority={index === 0} />
           ))}
         </section>
 
@@ -343,7 +344,13 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
   );
 }
 
-function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
+function ScheduledTournamentCard({
+  event,
+  priority = false,
+}: {
+  event: TournamentListItem;
+  priority?: boolean;
+}) {
   const tone =
     event.scheduleKind === "monthly"
       ? "border-amber-200 bg-amber-50/70"
@@ -359,6 +366,7 @@ function ScheduledTournamentCard({ event }: { event: TournamentListItem }) {
         cropKey={event.id}
         className="-mx-1 mb-3 block h-28 min-h-0 rounded-lg"
         sizes="(min-width: 1024px) 33vw, 100vw"
+        priority={priority}
       />
       <div className="flex items-start justify-between gap-3">
         <div>

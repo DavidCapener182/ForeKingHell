@@ -18,7 +18,7 @@ import {
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +41,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import { socialVisibilityOptions } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -220,7 +221,13 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                 }
                 href={`/challenges/${featured.id}`}
                 actionLabel="Open"
-                media={<ChallengeBadgeImage challenge={featured} className="h-full rounded-none" />}
+                media={
+                  <ChallengeBadgeImage
+                    challenge={featured}
+                    className="h-full rounded-none"
+                    priority
+                  />
+                }
                 meta={
                   <span>
                     {featured.endsAt ? `${formatDate(featured.endsAt)} · ` : ""}
@@ -235,7 +242,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             <NativeListSection title={activeTab === "joined" ? "Joined" : "Recommended"}>
               {(activeTab === "joined" ? data.mine : data.challenges)
                 .slice(0, 10)
-                .map((challenge) => (
+                .map((challenge, index) => (
                   <ChallengeCard
                     key={challenge.id}
                     title={challenge.title}
@@ -247,7 +254,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                         ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}`
                         : undefined
                     }
-                    media={<ChallengeBadgeImage challenge={challenge} />}
+                    media={<ChallengeBadgeImage challenge={challenge} priority={index === 0} />}
                     meta={
                       <>
                         <span>{challenge.participantCount} players</span>
@@ -469,11 +476,15 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                   </div>
                 ) : (
                   <Sheet>
-                    <SheetTrigger asChild>
-                      <Button className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                        <Plus className="size-4" />
-                        Create challenge
-                      </Button>
+                    <SheetTrigger
+                      type="button"
+                      className={cn(
+                        buttonVariants(),
+                        "w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
+                      )}
+                    >
+                      <Plus className="size-4" />
+                      Create challenge
                     </SheetTrigger>
                     <SheetContent className="overflow-y-auto sm:max-w-lg">
                       <SheetHeader>
@@ -564,9 +575,11 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 function ChallengeBadgeImage({
   challenge,
   className,
+  priority = false,
 }: {
   challenge: Pick<ChallengeListItem, "title" | "templateName">;
   className?: string;
+  priority?: boolean;
 }) {
   const src = challengeBadgeSrc(challenge);
 
@@ -575,7 +588,8 @@ function ChallengeBadgeImage({
       src={src}
       alt=""
       fill
-      sizes="(min-width: 768px) 280px, 100vw"
+      loading={priority ? "eager" : "lazy"}
+      sizes="(min-width: 768px) 280px, calc(100vw - 2rem)"
       className={`object-cover ${className ?? ""}`}
     />
   );

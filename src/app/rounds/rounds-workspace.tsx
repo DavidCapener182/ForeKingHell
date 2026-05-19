@@ -139,12 +139,13 @@ export function RoundsWorkspace({
               mobile={
                 <MobileDataList>
                   {filteredRounds.length > 0 ? (
-                    filteredRounds.map((round) => (
+                    filteredRounds.map((round, index) => (
                       <RoundMobileCard
                         key={round.id}
                         round={round}
                         selected={round.id === selectedRound?.id}
                         onSelect={() => setSelectedRoundId(round.id)}
+                        priority={index === 0}
                       />
                     ))
                   ) : (
@@ -261,6 +262,7 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               cropKey={round.id}
               className="block h-32 min-h-0 rounded-xl"
               sizes="(min-width: 1280px) 360px, 100vw"
+              priority
             />
 
             <div className="apple-panel-strong p-4">
@@ -344,10 +346,12 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
 
 function RoundMobileCard({
   onSelect,
+  priority = false,
   round,
   selected,
 }: {
   onSelect: () => void;
+  priority?: boolean;
   round: RoundsWorkspaceRound;
   selected: boolean;
 }) {
@@ -377,7 +381,8 @@ function RoundMobileCard({
           crop="random"
           cropKey={round.id}
           className="block h-20 min-h-0 w-full rounded-xl"
-          sizes="100vw"
+          sizes="calc(100vw - 2rem)"
+          priority={priority}
         />
         {round.roundStatus === "in_progress" ? <DataPair label="Status" value="Resume" /> : null}
         <DataPair label="Score" value={formatInteger(round.totalScore)} />

@@ -164,6 +164,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
               alt=""
               className="h-24 rounded-xl"
               sizes="104px"
+              priority
             />
             <div className="min-w-0 text-right">
               <p className="text-sm font-semibold">{formatClubType(club.type)}</p>

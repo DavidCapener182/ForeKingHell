@@ -17,10 +17,31 @@ describe("production readiness gate", () => {
       '"test:e2e"',
       '"test:lighthouse"',
       '"diff", "--check"',
+      "PLAYWRIGHT_E2E_AUTH_BYPASS",
       "Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.",
     ]) {
       expect(script).toContain(expected);
     }
+  });
+
+  it("keeps the local authenticated E2E shortcut explicit and production-disabled", () => {
+    const currentUserSource = readFileSync(join(root, "src/lib/current-user.ts"), "utf8");
+    const productionGateSource = readFileSync(
+      join(root, "scripts/production-readiness-check.mjs"),
+      "utf8",
+    );
+    const productionDocs = readFileSync(join(root, "docs/PRODUCTION_READINESS.md"), "utf8");
+    const limitationsDocs = readFileSync(join(root, "docs/KNOWN_LIMITATIONS.md"), "utf8");
+
+    expect(productionGateSource).toContain('PLAYWRIGHT_E2E_AUTH_BYPASS: "1"');
+    expect(currentUserSource).toContain("process.env.PLAYWRIGHT_E2E_AUTH_BYPASS");
+    expect(currentUserSource).toContain('process.env.NODE_ENV === "production"');
+    expect(currentUserSource).toContain("await cookies()");
+    expect(currentUserSource).toContain("supabaseAuthCookieValue");
+    expect(currentUserSource).toContain("/^sb-.+-auth-token$/");
+    expect(currentUserSource).toContain('"base64url"');
+    expect(productionDocs).toContain("local Playwright auth guard");
+    expect(limitationsDocs).toContain("local Playwright auth guard");
   });
 
   it("keeps OpenAI-backed routes rate-limited and size-limited", () => {

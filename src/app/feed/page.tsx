@@ -190,7 +190,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                       crop={artworkVariant === "feedPb" ? undefined : "random"}
                       cropKey={item.id}
                       className="block h-40 min-h-0"
-                      sizes="100vw"
+                      sizes="calc(100vw - 2rem)"
                     />
                   }
                 />
@@ -205,7 +205,12 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             href="/import"
             actionLabel="Import"
             media={
-              <PageArtwork variant="feedEmpty" alt="" className="h-full min-h-0" sizes="100vw" />
+              <PageArtwork
+                variant="feedEmpty"
+                alt=""
+                className="h-full min-h-0"
+                sizes="calc(100vw - 2rem)"
+              />
             }
           />
         )}

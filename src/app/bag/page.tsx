@@ -196,7 +196,7 @@ export default async function BagPage() {
         <TargetDistanceSelector rows={gappingRows} targetYd={150} />
         <NativeListSection title="Club rail">
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-            {bag.map((club) => (
+            {bag.map((club, index) => (
               <Link
                 key={club.id}
                 href={`/bag/${club.id}`}
@@ -210,6 +210,7 @@ export default async function BagPage() {
                   alt=""
                   className="h-14 rounded-lg"
                   sizes="144px"
+                  priority={index === 0}
                 />
                 <span className="font-semibold">{formatClubType(club.type)}</span>
                 <span className="text-sm text-[#6B7280]">
@@ -242,7 +243,9 @@ export default async function BagPage() {
           eyebrow={<StatusPill>Bag map</StatusPill>}
           title="Stock yardages"
           description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
-          visual={<PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" />}
+          visual={
+            <PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" priority />
+          }
           actions={
             <>
               <Button asChild variant="outline">
@@ -301,6 +304,7 @@ export default async function BagPage() {
               alt=""
               className="h-20 w-20 rounded-xl"
               sizes="80px"
+              priority
             />
           }
           action={

@@ -40,6 +40,8 @@ Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.
 
 The gate fails in that state so nobody can claim a fully verified public launch from skipped authenticated flows.
 
+When an auth state is present and the gate starts its local Playwright server, it enables a local Playwright auth guard that reads the captured Supabase auth cookie and avoids repeatedly calling Supabase Auth during the rapid route sweep. The guard is disabled in production and the normal runtime path still uses Supabase server auth validation.
+
 ## Launch Checklist
 
 - Supabase Auth providers configured for the target domain.

@@ -43,7 +43,7 @@ export function CourseLogoArtwork({
         src={imageSrc}
         alt={alt}
         fill
-        priority={priority}
+        loading={priority ? "eager" : "lazy"}
         sizes={sizes}
         unoptimized={Boolean(shouldTryLogo)}
         onError={shouldTryLogo ? () => setLogoFailed(true) : undefined}

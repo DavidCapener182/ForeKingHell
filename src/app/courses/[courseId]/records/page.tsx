@@ -96,7 +96,8 @@ export default async function CourseRecordsForCoursePage({
           crop="random"
           cropKey={data.course.id}
           className="block h-40 min-h-0 rounded-lg"
-          sizes="100vw"
+          sizes="calc(100vw - 2rem)"
+          priority
         />
         <MobileTabBar
           activeKey={activeTab}
@@ -217,6 +218,7 @@ export default async function CourseRecordsForCoursePage({
                 cropKey={data.course.id}
                 className="mb-3 block h-24 min-h-0 rounded-lg"
                 sizes="(min-width: 1024px) 320px, 100vw"
+                priority
               />
               {champion?.profile ? (
                 <div>

@@ -15,6 +15,7 @@ const checks = [
 const authStatePath = process.env.PLAYWRIGHT_AUTH_STATE;
 const hasAuthState = Boolean(authStatePath && existsSync(authStatePath));
 const existingDevServerUrl = "http://localhost:3000";
+const authenticatedE2eEnv = { PLAYWRIGHT_E2E_AUTH_BYPASS: "1" };
 const failedChecks = [];
 
 if (!hasAuthState) {
@@ -47,6 +48,21 @@ if (failedChecks.length > 0) {
 }
 
 async function envForCheck(command, args) {
+  if (command === "npm" && args.join(" ") === "run test:e2e" && hasAuthState) {
+    const reuseExistingDevServer =
+      !process.env.PLAYWRIGHT_BASE_URL && (await urlIsReady(`${existingDevServerUrl}/login`));
+
+    if (reuseExistingDevServer) {
+      console.warn(`Using existing Playwright base URL at ${existingDevServerUrl}.`);
+    }
+
+    return {
+      ...process.env,
+      ...authenticatedE2eEnv,
+      ...(reuseExistingDevServer ? { PLAYWRIGHT_BASE_URL: existingDevServerUrl } : {}),
+    };
+  }
+
   if (
     command === "npm" &&
     args.join(" ") === "run test:e2e" &&

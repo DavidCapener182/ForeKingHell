@@ -949,7 +949,7 @@ function CurrentHoleCard({
           crop="random"
           cropKey={`${sessionId}-${hole.holeNumber}`}
           className="mb-3 block h-24 min-h-0 rounded-xl"
-          sizes="100vw"
+          sizes="calc(100vw - 2rem)"
         />
         <OfflineRoundEditForm
           action={updateRoundHoleAction}

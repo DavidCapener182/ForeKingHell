@@ -51,7 +51,7 @@ export function ClubArtwork({
           src={realClubSrc}
           alt={alt}
           fill
-          priority={priority}
+          loading={priority ? "eager" : "lazy"}
           sizes={sizes}
           unoptimized
           className={cn("object-contain px-3 py-2 drop-shadow-sm", imageClassName)}
@@ -61,7 +61,7 @@ export function ClubArtwork({
           src={fallbackSrc}
           alt={alt}
           fill
-          priority={priority}
+          loading={priority ? "eager" : "lazy"}
           sizes={sizes}
           className={cn("object-contain px-3 py-2 drop-shadow-sm", imageClassName)}
         />

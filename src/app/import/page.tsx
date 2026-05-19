@@ -210,7 +210,7 @@ export default async function ImportPage() {
                 variant="import"
                 alt=""
                 className="block h-full min-h-0 rounded-none"
-                sizes="100vw"
+                sizes="calc(100vw - 2rem)"
               />
             }
           />

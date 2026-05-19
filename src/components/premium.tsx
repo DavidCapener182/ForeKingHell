@@ -5,7 +5,7 @@ import { ArrowRight, ChevronDown, SlidersHorizontal, type LucideIcon } from "luc
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -363,20 +363,20 @@ export function MobileFilterSheet({
   return (
     <div className={cn("sm:hidden", className)}>
       <Drawer>
-        <DrawerTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full justify-center rounded-lg bg-background shadow-sm"
-          >
-            <SlidersHorizontal className="size-4" aria-hidden />
-            {label}
-            {activeCount > 0 ? (
-              <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">
-                {activeCount}
-              </Badge>
-            ) : null}
-          </Button>
+        <DrawerTrigger
+          type="button"
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "min-h-11 w-full justify-center rounded-lg bg-background shadow-sm",
+          )}
+        >
+          <SlidersHorizontal className="size-4" aria-hidden />
+          {label}
+          {activeCount > 0 ? (
+            <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">
+              {activeCount}
+            </Badge>
+          ) : null}
         </DrawerTrigger>
         <DrawerContent className="max-h-[86vh]">
           <DrawerHeader className="text-left">

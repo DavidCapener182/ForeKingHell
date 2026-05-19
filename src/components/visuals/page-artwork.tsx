@@ -165,7 +165,7 @@ export function MobileVisualCard({
         src={src}
         alt=""
         fill
-        sizes="100vw"
+        sizes="calc(100vw - 2rem)"
         className={cn(
           "object-cover",
           resolvedTreatment,

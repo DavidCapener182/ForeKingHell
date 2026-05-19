@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -320,7 +321,12 @@ export function BottomSheet({
         </DrawerTrigger>
         <DrawerContent className="max-h-[86vh]">
           <DrawerHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-left">
-            <DrawerTitle className="text-xl tracking-normal">{title}</DrawerTitle>
+            <div>
+              <DrawerTitle className="text-xl tracking-normal">{title}</DrawerTitle>
+              <DrawerDescription className="sr-only">
+                Complete the selected mobile action without leaving this page.
+              </DrawerDescription>
+            </div>
             <MoreHorizontal className="size-5 text-[#6B7280]" aria-hidden />
           </DrawerHeader>
           <ScrollArea className="overflow-y-auto px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
