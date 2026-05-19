@@ -88,6 +88,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
     : data.courses;
   const mappedCourses = data.courses.filter((course) => course.holeCount > 0);
   const roundLinkedCourses = data.courses.filter((course) => course.roundCount > 0);
+  const heroArtworkVariant = mappedCourses.length > 0 ? "fairway" : "courseMap";
 
   return (
     <PageShell>
@@ -216,9 +217,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                   subtitle={course.country ?? "Course board"}
                   media={
                     <PageArtwork
-                      variant="fairway"
+                      variant={courseArtworkVariant(course)}
                       alt=""
-                      crop="random"
+                      crop={courseArtworkCrop(course)}
                       cropKey={course.id}
                       className="block h-36 min-h-0 rounded-lg"
                       sizes="100vw"
@@ -280,9 +281,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
           description="Open record boards, find live events, and manage the tee-set data behind round reviews and handicap estimates."
           visual={
             <PageArtwork
-              variant="fairway"
+              variant={heroArtworkVariant}
               alt=""
-              crop="fairway"
+              crop={heroArtworkVariant === "courseMap" ? undefined : "fairway"}
               className="h-full min-h-44"
               priority
             />
@@ -446,9 +447,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
               className="apple-panel-strong block p-4"
             >
               <PageArtwork
-                variant="fairway"
+                variant={courseArtworkVariant(course)}
                 alt=""
-                crop="random"
+                crop={courseArtworkCrop(course)}
                 cropKey={course.id}
                 className="mb-3 block h-24 min-h-0 rounded-xl"
                 sizes="90vw"
@@ -497,9 +498,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                         }
                       >
                         <PageArtwork
-                          variant="fairway"
+                          variant={courseArtworkVariant(course)}
                           alt=""
-                          crop="random"
+                          crop={courseArtworkCrop(course)}
                           cropKey={course.id}
                           className="block h-20 min-h-0 rounded-xl"
                           sizes="100vw"
@@ -857,6 +858,16 @@ function courseLibraryPreference(course: {
     course.recordCount +
     (course.createdByUserId ? 1 : 0)
   );
+}
+
+function courseArtworkVariant(
+  course: Awaited<ReturnType<typeof getCoursesData>>["courses"][number],
+) {
+  return course.holeCount > 0 ? ("fairway" as const) : ("courseMap" as const);
+}
+
+function courseArtworkCrop(course: Awaited<ReturnType<typeof getCoursesData>>["courses"][number]) {
+  return course.holeCount > 0 ? ("random" as const) : undefined;
 }
 
 function courseSourceLabel(

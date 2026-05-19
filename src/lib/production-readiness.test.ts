@@ -86,6 +86,21 @@ describe("production readiness gate", () => {
     expect(feedCardSource).toContain("h-24 min-h-0 md:h-28");
   });
 
+  it("keeps course map placeholder artwork wired into unmapped course cards", () => {
+    const artworkSource = readFileSync(
+      join(root, "src/components/visuals/page-artwork.tsx"),
+      "utf8",
+    );
+    const coursesPageSource = readFileSync(join(root, "src/app/courses/page.tsx"), "utf8");
+
+    expect(existsSync(join(root, "public/assets/course-placeholder-map.webp"))).toBe(true);
+    expect(artworkSource).toContain('courseMap: "/assets/course-placeholder-map.webp"');
+    expect(coursesPageSource).toContain("function courseArtworkVariant");
+    expect(coursesPageSource).toContain('("courseMap" as const)');
+    expect(coursesPageSource).toContain("function courseArtworkCrop");
+    expect(coursesPageSource).toContain('heroArtworkVariant === "courseMap" ? undefined');
+  });
+
   it("keeps authenticated E2E state capture documented and ignored", () => {
     const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
       scripts: Record<string, string>;

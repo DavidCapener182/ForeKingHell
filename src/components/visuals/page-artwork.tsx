@@ -13,6 +13,7 @@ export type PageArtworkVariant =
   | "achievements"
   | "import"
   | "handicap"
+  | "courseMap"
   | "courseRecords"
   | "feedEmpty"
   | "feedPb"
@@ -39,6 +40,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   achievements: "/assets/page-achievements.png",
   import: "/assets/page-import-rapsodo.webp",
   handicap: "/assets/page-handicap-scorecard.webp",
+  courseMap: "/assets/course-placeholder-map.webp",
   courseRecords: "/assets/page-course-records-honours.webp",
   feedEmpty: "/assets/feed-empty-state.webp",
   feedPb: "/assets/feed-pb-card-bg.webp",
@@ -77,6 +79,7 @@ const overlayByVariant: Record<PageArtworkVariant, string> = {
   achievements: "from-white/70 via-amber-50/30 to-emerald-50/20",
   import: "from-white/75 via-white/30 to-sky-50/20",
   handicap: "from-white/72 via-amber-50/20 to-emerald-50/20",
+  courseMap: "from-white/62 via-sky-50/18 to-emerald-950/10",
   courseRecords: "from-white/58 via-amber-50/18 to-emerald-950/12",
   feedEmpty: "from-white/78 via-sky-50/22 to-emerald-50/20",
   feedPb: "from-black/10 via-transparent to-emerald-950/25",
