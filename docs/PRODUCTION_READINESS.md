@@ -80,6 +80,7 @@ Rules: use `next/image` for raster assets, keep fixed aspect ratios, provide use
 - Import/Rapsodo leads with Source -> Upload/Sync -> Review -> Match -> Submit/Share.
 - Import Quality Score covers mapped clubs, rows saved, duplicates, missing metrics, distance unit confidence, course detection, scorecard match and eligible events.
 - Data Health Score covers last import, club sample sizes, missing club mapping, course/rating gaps, low-confidence stock yardages, rounds needing verification and provider sync.
+- Settings exposes Privacy Preview, Visibility Simulator and Data export/delete status before destructive account controls.
 - Social remains secondary on data pages. Feed, friends, groups, challenges, tournaments and leaderboards support verified golf data rather than replacing the data product.
 
 ## Current Verification Notes

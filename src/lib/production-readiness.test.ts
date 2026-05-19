@@ -47,4 +47,13 @@ describe("production readiness gate", () => {
     expect(source).toContain("stripe-signature");
     expect(source).toContain("Invalid Stripe signature.");
   });
+
+  it("keeps tester-facing settings privacy controls visible", () => {
+    const source = readFileSync(join(root, "src/app/settings/page.tsx"), "utf8");
+
+    expect(source).toContain("Visibility simulator");
+    expect(source).toContain("Data export/delete status");
+    expect(source).toContain("Private by default");
+    expect(source).toContain("Friends do not get account access");
+  });
 });

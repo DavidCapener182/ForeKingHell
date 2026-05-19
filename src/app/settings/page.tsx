@@ -190,6 +190,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             >
               Sharing
             </a>
+            <a
+              href="#visibility-simulator"
+              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+            >
+              Visibility
+            </a>
             <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">
               Data export
             </a>
@@ -234,6 +240,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </section>
 
       <DataHealthFeaturePanel data={featureData} />
+      <VisibilitySimulatorPanel
+        privacy={privacy}
+        ownedMembershipCount={ownedMemberships.length}
+        receivedMembershipCount={receivedMemberships.length}
+      />
+      <DataControlStatusPanel
+        profile={profile}
+        ownedInvitationCount={ownedInvitations.length}
+        ownedMembershipCount={ownedMemberships.length}
+        receivedMembershipCount={receivedMemberships.length}
+      />
 
       <SettingsMobileDisclosure
         id="profile-settings"
@@ -470,6 +487,150 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </SettingsMobileDisclosure>
       </section>
     </PageShell>
+  );
+}
+
+function VisibilitySimulatorPanel({
+  privacy,
+  ownedMembershipCount,
+  receivedMembershipCount,
+}: {
+  privacy: PrivacySettings;
+  ownedMembershipCount: number;
+  receivedMembershipCount: number;
+}) {
+  const rows = [
+    {
+      label: "Public visitor",
+      value: privacy.publicProfile ? "Profile preview" : "Hidden",
+      detail: privacy.publicProfile
+        ? "Public visitors can see the profile shell you choose to expose."
+        : "Public visitors cannot browse your profile by default.",
+    },
+    {
+      label: "Friend",
+      value: privacy.allowLeaderboard ? "Leaderboard allowed" : "No leaderboard",
+      detail: "Friends can see only friend-visible profile, feed and leaderboard surfaces.",
+    },
+    {
+      label: "Coach/viewer/editor",
+      value: privacy.allowCoachAccess ? `${ownedMembershipCount} shared` : "Invite only",
+      detail: "Account access is controlled by explicit memberships, not friendship.",
+    },
+    {
+      label: "Shared with me",
+      value: receivedMembershipCount,
+      detail: "Accounts you can open because an owner granted role-scoped access.",
+    },
+  ];
+
+  return (
+    <SettingsMobileDisclosure
+      id="visibility-simulator"
+      title="Visibility simulator"
+      description="Public, friend and coach views."
+    >
+      <DataPanel>
+        <SectionHeader
+          title="Visibility simulator"
+          description="Preview what each audience can access before sharing profile, feed, leaderboard or account data."
+          action={
+            <StatusPill
+              tone={privacy.publicProfile || privacy.allowLeaderboard ? "amber" : "green"}
+            >
+              {privacy.publicProfile || privacy.allowLeaderboard ? "Sharing on" : "Private"}
+            </StatusPill>
+          }
+        />
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {rows.map((row) => (
+            <div key={row.label} className="rounded-lg border bg-[#F5F6F4] p-3">
+              <p className="text-xs text-muted-foreground">{row.label}</p>
+              <p className="mt-1 text-sm font-semibold">{row.value}</p>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">{row.detail}</p>
+            </div>
+          ))}
+        </CardContent>
+        <div className="border-t border-slate-200 px-4 py-3 text-sm leading-6 text-muted-foreground">
+          Private by default. Friends do not get account access. Coach, viewer and editor access is
+          separate from social friendship.
+        </div>
+      </DataPanel>
+    </SettingsMobileDisclosure>
+  );
+}
+
+function DataControlStatusPanel({
+  profile,
+  ownedInvitationCount,
+  ownedMembershipCount,
+  receivedMembershipCount,
+}: {
+  profile: Awaited<ReturnType<typeof getSettingsData>>["profile"];
+  ownedInvitationCount: number;
+  ownedMembershipCount: number;
+  receivedMembershipCount: number;
+}) {
+  const rows = [
+    {
+      label: "Export status",
+      value: "Available",
+      detail: "JSON export includes user-owned golf data from the current account.",
+    },
+    {
+      label: "Delete status",
+      value: "Confirmation required",
+      detail: `Deletion requires typing ${profile.email ?? "your user id"} exactly.`,
+    },
+    {
+      label: "Shared by me",
+      value: ownedMembershipCount,
+      detail: `${ownedInvitationCount} pending invitations.`,
+    },
+    {
+      label: "Shared with me",
+      value: receivedMembershipCount,
+      detail: "Role-scoped collaborator accounts linked to this login.",
+    },
+  ];
+
+  return (
+    <SettingsMobileDisclosure
+      id="data-control-status"
+      title="Data export/delete status"
+      description="Export, delete and shared-account state."
+    >
+      <DataPanel>
+        <SectionHeader
+          title="Data export/delete status"
+          description="Shows whether account data can be exported, what deletion requires, and whether shared account access exists."
+          action={<StatusPill tone="sky">Control centre</StatusPill>}
+        />
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {rows.map((row) => (
+            <div key={row.label} className="rounded-lg border bg-[#F5F6F4] p-3">
+              <p className="text-xs text-muted-foreground">{row.label}</p>
+              <p className="mt-1 text-sm font-semibold">{row.value}</p>
+              <p className="mt-2 text-sm leading-5 text-muted-foreground">{row.detail}</p>
+            </div>
+          ))}
+        </CardContent>
+        <div className="flex flex-col gap-2 border-t border-slate-200 p-4 sm:flex-row">
+          <Button asChild variant="outline" className="rounded-xl">
+            <Link href="/api/settings/export" prefetch={false}>
+              <Download className="size-4" />
+              Export my data
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-xl">
+            <a href="#danger-zone">
+              <Trash2 className="size-4" />
+              Delete controls
+            </a>
+          </Button>
+        </div>
+      </DataPanel>
+    </SettingsMobileDisclosure>
   );
 }
 

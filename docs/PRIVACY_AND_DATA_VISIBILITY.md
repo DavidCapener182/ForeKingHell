@@ -24,6 +24,8 @@ ForeKingHell should be safe for first public testers because data visibility is 
 
 ## Verification Checklist
 
+- Settings Visibility Simulator shows public, friend, coach/viewer/editor and shared-with-me states.
+- Settings Data export/delete status shows export availability, delete confirmation and shared-account counts.
 - Private profile defaults.
 - Public profile visibility.
 - Friend-only profile/feed visibility.
