@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildAiCoachPayload,
-  buildCoachPrompt,
-  parseAiCoachSummary,
-} from "@/lib/ai-coach-summary";
+import { buildAiCoachPayload, buildCoachPrompt, parseAiCoachSummary } from "@/lib/ai-coach-summary";
 import type { CoachSummary } from "@/lib/coach";
 
 describe("AI coach summary helpers", () => {
@@ -46,7 +42,9 @@ function fakeCoachSummary() {
     nextPriority: null,
     focusArea: "direction",
     signals: [{ label: "Carry", value: "+8 yd", detail: "Latest 30 vs first 30", tone: "green" }],
-    sessionPlan: [{ title: "Driver block", detail: "Hit 10 no-left balls.", duration: "20 min", tone: "pink" }],
+    sessionPlan: [
+      { title: "Driver block", detail: "Hit 10 no-left balls.", duration: "20 min", tone: "pink" },
+    ],
     trainingImpact: [
       {
         clubId: "driver-id",

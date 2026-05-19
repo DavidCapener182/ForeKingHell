@@ -15,7 +15,10 @@ import {
 } from "@/lib/social";
 
 export async function sendFriendRequestAction(formData: FormData) {
-  await sendFriendRequest(requiredString(formData, "recipientUserId"), nullableString(formData, "message"));
+  await sendFriendRequest(
+    requiredString(formData, "recipientUserId"),
+    nullableString(formData, "message"),
+  );
   redirect(safeNext(formData, "/friends?request=sent"));
 }
 

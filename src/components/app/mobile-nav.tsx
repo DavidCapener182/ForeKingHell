@@ -76,34 +76,24 @@ export function MobileNav({
               <SheetHeader className="border-b border-border p-4 text-left">
                 <div className="flex items-center gap-3">
                   <Avatar size="lg">
-                    {profile?.avatarUrl ? (
-                      <AvatarImage src={profile.avatarUrl} alt="" />
-                    ) : null}
+                    {profile?.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt="" /> : null}
                     <AvatarFallback>{profileInitials}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
                     <SheetTitle className="truncate">ForeKingHell</SheetTitle>
-                    <SheetDescription className="truncate">
-                      {profileLabel}
-                    </SheetDescription>
+                    <SheetDescription className="truncate">{profileLabel}</SheetDescription>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Badge variant="secondary">Lvl {level}</Badge>
-                  <Badge variant="outline">
-                    {xpFormatter.format(totalXp)} XP
-                  </Badge>
+                  <Badge variant="outline">{xpFormatter.format(totalXp)} XP</Badge>
                   {isAdmin ? <Badge>Admin</Badge> : null}
                 </div>
               </SheetHeader>
               <ScrollArea className="h-[calc(100dvh-12rem)]">
                 <div className="grid gap-4 p-3">
                   {groups.map((group) => (
-                    <MobileNavGroup
-                      key={group.label}
-                      group={group}
-                      pathname={pathname}
-                    />
+                    <MobileNavGroup key={group.label} group={group} pathname={pathname} />
                   ))}
                 </div>
               </ScrollArea>
@@ -117,11 +107,7 @@ export function MobileNav({
                   </SheetClose>
                 </Button>
                 <form action="/auth/sign-out" method="post">
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
+                  <Button type="submit" variant="outline" className="w-full justify-start">
                     Sign out
                   </Button>
                 </form>
@@ -137,7 +123,11 @@ export function MobileNav({
             ForeKingHell
           </Link>
 
-          <Button asChild variant="secondary" className="relative z-10 ml-auto h-9 rounded-full px-3">
+          <Button
+            asChild
+            variant="secondary"
+            className="relative z-10 ml-auto h-9 rounded-full px-3"
+          >
             <Link
               href="/achievements"
               aria-label={`Level ${level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
@@ -150,10 +140,7 @@ export function MobileNav({
         </div>
       </div>
 
-      <nav
-        aria-label="Mobile primary"
-        className="fixed inset-x-0 bottom-0 z-40 sm:hidden"
-      >
+      <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
         <div className="grid grid-cols-5 border-t border-border bg-white/98 px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
@@ -183,13 +170,7 @@ export function MobileNav({
   );
 }
 
-function MobileNavGroup({
-  group,
-  pathname,
-}: {
-  group: AppNavGroup;
-  pathname: string;
-}) {
+function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: string }) {
   return (
     <section className="grid gap-1">
       <div className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -208,9 +189,7 @@ function MobileNavGroup({
                 prefetch={false}
                 className={cn(
                   "grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground hover:bg-muted",
+                  active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
                 )}
               >
                 <Icon className="size-4" aria-hidden />

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { calculateClubAnalytics, type ClubAnalyticsShot } from "@/lib/club-analytics";
-import { buildCoachDrillChallenges, buildCoachSummary, type CoachDrillChallenge } from "@/lib/coach";
+import {
+  buildCoachDrillChallenges,
+  buildCoachSummary,
+  type CoachDrillChallenge,
+} from "@/lib/coach";
 import { evaluateCoachDrillProgress } from "@/lib/coach-drill-awards";
 
 describe("buildCoachSummary", () => {

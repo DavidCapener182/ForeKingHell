@@ -28,24 +28,19 @@ export function AdminNav({ active }: { active: string }) {
   return (
     <nav aria-label="Admin sections">
       <ButtonGroup className="flex-wrap">
-      {adminLinks.map((item) => {
-        const Icon = item.icon;
-        const current = item.href === active;
+        {adminLinks.map((item) => {
+          const Icon = item.icon;
+          const current = item.href === active;
 
-        return (
-          <Button
-            key={item.href}
-            asChild
-            variant={current ? "default" : "outline"}
-            size="sm"
-          >
-            <Link href={item.href} aria-current={current ? "page" : undefined}>
-              <Icon className="size-4" />
-              {item.label}
-            </Link>
-          </Button>
-        );
-      })}
+          return (
+            <Button key={item.href} asChild variant={current ? "default" : "outline"} size="sm">
+              <Link href={item.href} aria-current={current ? "page" : undefined}>
+                <Icon className="size-4" />
+                {item.label}
+              </Link>
+            </Button>
+          );
+        })}
       </ButtonGroup>
     </nav>
   );
@@ -63,7 +58,17 @@ export function AdminNotice({ status, error }: { status?: string; error?: string
   );
 }
 
-export function AdminMetric({ icon: Icon, label, value, detail }: { icon: LucideIcon; label: string; value: ReactNode; detail?: ReactNode }) {
+export function AdminMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+  detail?: ReactNode;
+}) {
   return (
     <Card className="premium-card">
       <CardHeader>
@@ -73,12 +78,24 @@ export function AdminMetric({ icon: Icon, label, value, detail }: { icon: Lucide
         </CardDescription>
         <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>
       </CardHeader>
-      {detail ? <CardContent className="text-xs text-muted-foreground">{detail}</CardContent> : null}
+      {detail ? (
+        <CardContent className="text-xs text-muted-foreground">{detail}</CardContent>
+      ) : null}
     </Card>
   );
 }
 
-export function AdminSection({ title, description, action, children }: { title: string; description?: string; action?: ReactNode; children: ReactNode }) {
+export function AdminSection({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <Card className="premium-card">
       <CardHeader>
@@ -100,7 +117,11 @@ export function PlanBadge({ plan }: { plan: string }) {
 
 export function StatusBadge({ status }: { status: string | null | undefined }) {
   const safeStatus = status ?? "unknown";
-  return <Badge variant={safeStatus === "active" || safeStatus === "open" ? "secondary" : "outline"}>{label(safeStatus)}</Badge>;
+  return (
+    <Badge variant={safeStatus === "active" || safeStatus === "open" ? "secondary" : "outline"}>
+      {label(safeStatus)}
+    </Badge>
+  );
 }
 
 export function label(value: string) {

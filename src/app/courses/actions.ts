@@ -52,18 +52,16 @@ export async function createCourseAction(formData: FormData) {
     })
     .returning({ id: courses.id });
 
-  await db
-    .insert(teeSets)
-    .values({
-      courseId: course.id,
-      name: teeName,
-      par,
-      courseRating,
-      slopeRating,
-      yards,
-      meters: yards === null ? null : Math.round(yards * 0.9144),
-      updatedAt: now,
-    });
+  await db.insert(teeSets).values({
+    courseId: course.id,
+    name: teeName,
+    par,
+    courseRating,
+    slopeRating,
+    yards,
+    meters: yards === null ? null : Math.round(yards * 0.9144),
+    updatedAt: now,
+  });
 
   revalidateCourses(course.id);
   redirect(`/courses/${course.id}/holes`);
@@ -81,10 +79,14 @@ export async function createGoogleCourseAction(formData: FormData) {
   }
 
   const importedHoles =
-    details.latitude === null || details.longitude === null ? [] : await getOsmHoleGeometry(details.latitude, details.longitude);
+    details.latitude === null || details.longitude === null
+      ? []
+      : await getOsmHoleGeometry(details.latitude, details.longitude);
   const teeSetName = "Google Places";
-  const teeSetPar = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
-  const teeSetYards = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
+  const teeSetPar =
+    importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
+  const teeSetYards =
+    importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
   const existingCourse = await findGoogleImportTargetCourse(details, importedHoles.length > 0);
   const courseValues = {
     address: details.address,
@@ -161,7 +163,10 @@ export async function createGoogleCourseAction(formData: FormData) {
   redirect(`/courses/${course.id}/holes`);
 }
 
-async function findGoogleImportTargetCourse(details: GoogleCourseDetails, canReplaceDuplicateGeometry: boolean) {
+async function findGoogleImportTargetCourse(
+  details: GoogleCourseDetails,
+  canReplaceDuplicateGeometry: boolean,
+) {
   const db = getDb();
   const rows = await db
     .select({
@@ -184,7 +189,8 @@ async function findGoogleImportTargetCourse(details: GoogleCourseDetails, canRep
 
   if (seededMatch && exactGoogleMatch && seededMatch.id !== exactGoogleMatch.id) {
     const removedDuplicate =
-      canReplaceDuplicateGeometry && (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id));
+      canReplaceDuplicateGeometry &&
+      (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id));
 
     return removedDuplicate ? seededMatch : exactGoogleMatch;
   }
@@ -316,8 +322,10 @@ export async function createOsmCourseAction(formData: FormData) {
   const teeName = nullableString(formData, "teeName") ?? "OpenStreetMap";
   const importedHoles = parseOsmHoles(formData);
   const now = new Date();
-  const par = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
-  const yards = importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
+  const par =
+    importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
+  const yards =
+    importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
 
   const [course] = await db
     .insert(courses)

@@ -49,12 +49,7 @@ type MobileTopBarProps = {
   className?: string;
 };
 
-export function MobileTopBar({
-  title,
-  leading,
-  actions,
-  className,
-}: MobileTopBarProps) {
+export function MobileTopBar({ title, leading, actions, className }: MobileTopBarProps) {
   return (
     <header
       className={cn(
@@ -64,15 +59,11 @@ export function MobileTopBar({
     >
       <div className="h-9" aria-hidden="true" />
       <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#E5E7EB] px-4">
-        <div className="flex min-w-0 items-center justify-start gap-1.5">
-          {leading}
-        </div>
+        <div className="flex min-w-0 items-center justify-start gap-1.5">{leading}</div>
         <h1 className="max-w-[12rem] truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal">
           {title}
         </h1>
-        <div className="flex min-w-0 items-center justify-end gap-1.5">
-          {actions}
-        </div>
+        <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
       </div>
     </header>
   );
@@ -88,12 +79,7 @@ export function MobileIconButton({
   icon: LucideIcon;
 }) {
   return (
-    <Button
-      asChild
-      variant="ghost"
-      size="icon"
-      className="size-10 rounded-full text-[#050505]"
-    >
+    <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-[#050505]">
       <Link href={href} prefetch={false} aria-label={label}>
         <Icon className="size-5" />
       </Link>
@@ -166,9 +152,7 @@ export function MobileRouteTabs({
       tabs={mobileRouteGroups[group]}
       activeKey={activeKey}
       className={cn(
-        sticky
-          ? "sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
-          : "",
+        sticky ? "sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white" : "",
         className,
       )}
     />
@@ -234,9 +218,7 @@ export function MobileTabBar({
             aria-current={active ? "page" : undefined}
             className={cn(
               "shrink-0 whitespace-nowrap border-b-2 py-3 text-base font-semibold tracking-normal",
-              active
-                ? "border-[#0B7A3B] text-[#050505]"
-                : "border-transparent text-[#6B7280]",
+              active ? "border-[#0B7A3B] text-[#050505]" : "border-transparent text-[#6B7280]",
             )}
           >
             {tab.label}
@@ -266,12 +248,14 @@ export function MobileStatusAction({
           {value}
         </p>
         {detail ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
-            {detail}
-          </p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">{detail}</p>
         ) : null}
       </div>
-      {action ? <div data-primary-action className="shrink-0">{action}</div> : null}
+      {action ? (
+        <div data-primary-action className="shrink-0">
+          {action}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -297,14 +281,10 @@ export function NativeListSection({
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
             {title ? (
-              <h2 className="text-xl font-semibold tracking-normal text-[#050505]">
-                {title}
-              </h2>
+              <h2 className="text-xl font-semibold tracking-normal text-[#050505]">{title}</h2>
             ) : null}
             {description ? (
-              <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-                {description}
-              </p>
+              <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -423,9 +403,7 @@ export function ActivityCard({
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
         <div className="pt-0.5">{avatar}</div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#050505]">
-            {actor}
-          </p>
+          <p className="truncate text-sm font-semibold text-[#050505]">{actor}</p>
           <p className="truncate text-xs text-[#6B7280]">{meta}</p>
         </div>
         {action ?? <MoreHorizontal className="size-5 text-[#6B7280]" />}
@@ -436,20 +414,23 @@ export function ActivityCard({
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-              {description}
-            </p>
+            <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
           ) : null}
         </div>
         {metric ? (
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2">
-            <div className="min-w-0 text-sm font-semibold text-[#050505]">
-              {metric}
-            </div>
+            <div className="min-w-0 text-sm font-semibold text-[#050505]">{metric}</div>
             <ProofBadge tier="gold" />
           </div>
         ) : null}
-        {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
+        {media ? (
+          <div
+            data-media-container
+            className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
+          >
+            {media}
+          </div>
+        ) : null}
         <div className="flex items-center gap-5 text-sm font-semibold text-[#6B7280]">
           <span className="inline-flex items-center gap-1.5">
             <ThumbsUp className="size-4" />
@@ -500,19 +481,19 @@ export function EventHeroCard({
 }) {
   return (
     <article className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
-      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden bg-[#F5F6F4]">{media}</div> : null}
+      {media ? (
+        <div data-media-container className="relative aspect-[16/9] overflow-hidden bg-[#F5F6F4]">
+          {media}
+        </div>
+      ) : null}
       <div className="grid gap-3 p-3">
-        {eyebrow ? (
-          <p className="text-sm font-semibold text-[#0B7A3B]">{eyebrow}</p>
-        ) : null}
+        {eyebrow ? <p className="text-sm font-semibold text-[#0B7A3B]">{eyebrow}</p> : null}
         <div>
           <h2 className="text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-              {description}
-            </p>
+            <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
           ) : null}
         </div>
         {meta ? <div className="text-sm text-[#6B7280]">{meta}</div> : null}
@@ -553,27 +534,26 @@ export function ChallengeCard({
       prefetch={false}
       className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
     >
-      {media ? <div data-media-container className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
+      {media ? (
+        <div
+          data-media-container
+          className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F5F6F4]"
+        >
+          {media}
+        </div>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold tracking-normal text-[#050505]">
-            {title}
-          </h3>
+          <h3 className="truncate text-lg font-semibold tracking-normal text-[#050505]">{title}</h3>
           {description ? (
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
-              {description}
-            </p>
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">{description}</p>
           ) : null}
         </div>
         <Trophy className="size-5 shrink-0 text-[#C7972B]" />
       </div>
-      <div className="flex flex-wrap gap-2 text-xs font-medium text-[#6B7280]">
-        {meta}
-      </div>
+      <div className="flex flex-wrap gap-2 text-xs font-medium text-[#6B7280]">{meta}</div>
       {leader ? (
-        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm text-[#050505]">
-          {leader}
-        </div>
+        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm text-[#050505]">{leader}</div>
       ) : null}
       <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#0B7A3B]">
         {cta}
@@ -606,24 +586,25 @@ export function CourseCard({
       prefetch={false}
       className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
     >
-      {media ? <div data-media-container className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]">{media}</div> : null}
+      {media ? (
+        <div
+          data-media-container
+          className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
+        >
+          {media}
+        </div>
+      ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-xl font-semibold tracking-normal text-[#050505]">
-            {title}
-          </h2>
-          {subtitle ? (
-            <p className="mt-1 truncate text-sm text-[#6B7280]">{subtitle}</p>
-          ) : null}
+          <h2 className="truncate text-xl font-semibold tracking-normal text-[#050505]">{title}</h2>
+          {subtitle ? <p className="mt-1 truncate text-sm text-[#6B7280]">{subtitle}</p> : null}
         </div>
         <span className="rounded-full bg-[#F5F6F4] px-3 py-1 text-sm font-semibold text-[#0B7A3B]">
           Open
         </span>
       </div>
       {champion ? (
-        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-          {champion}
-        </div>
+        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">{champion}</div>
       ) : null}
       {stats ? <div className="flex flex-wrap gap-2 text-xs text-[#6B7280]">{stats}</div> : null}
     </Link>
@@ -699,25 +680,23 @@ export function PodiumStrip({
           key={`${item.rank}-${item.href ?? String(item.name)}`}
           className={cn(
             "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2",
-            item.rank === 1
-              ? "bg-[#C7972B]/12 text-[#050505]"
-              : "bg-[#F5F6F4] text-[#050505]",
+            item.rank === 1 ? "bg-[#C7972B]/12 text-[#050505]" : "bg-[#F5F6F4] text-[#050505]",
           )}
         >
-          <Badge variant={item.rank === 1 ? "default" : "outline"}>
-            #{item.rank ?? "--"}
-          </Badge>
+          <Badge variant={item.rank === 1 ? "default" : "outline"}>#{item.rank ?? "--"}</Badge>
           <div className="min-w-0">
             {item.href ? (
-              <Link href={item.href} prefetch={false} className="block truncate text-sm font-semibold hover:underline">
+              <Link
+                href={item.href}
+                prefetch={false}
+                className="block truncate text-sm font-semibold hover:underline"
+              >
                 {item.name}
               </Link>
             ) : (
               <p className="truncate text-sm font-semibold">{item.name}</p>
             )}
-            {item.detail ? (
-              <p className="truncate text-xs text-[#6B7280]">{item.detail}</p>
-            ) : null}
+            {item.detail ? <p className="truncate text-xs text-[#6B7280]">{item.detail}</p> : null}
           </div>
           <p className="font-semibold">{item.value}</p>
         </div>
@@ -776,12 +755,8 @@ export function ProgressCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[#6B7280]">{title}</p>
-          <p className="mt-1 text-3xl font-semibold tracking-normal text-[#050505]">
-            {value}
-          </p>
-          {detail ? (
-            <p className="mt-1 text-sm leading-5 text-[#6B7280]">{detail}</p>
-          ) : null}
+          <p className="mt-1 text-3xl font-semibold tracking-normal text-[#050505]">{value}</p>
+          {detail ? <p className="mt-1 text-sm leading-5 text-[#6B7280]">{detail}</p> : null}
         </div>
         <span className="size-2 rounded-full bg-[#16A34A] ring-4 ring-[#16A34A]/15" />
       </div>
@@ -804,9 +779,7 @@ export function PBCard({
   const content = (
     <article className="rounded-lg bg-[#F5F6F4] px-3 py-2">
       <p className="text-xs font-semibold text-[#6B7280]">{title}</p>
-      <p className="mt-1 text-lg font-semibold tracking-normal text-[#050505]">
-        {value}
-      </p>
+      <p className="mt-1 text-lg font-semibold tracking-normal text-[#050505]">{value}</p>
       {detail ? <p className="mt-1 text-xs text-[#6B7280]">{detail}</p> : null}
     </article>
   );

@@ -15,8 +15,12 @@ describe("achievement registry", () => {
 
   it("adds club-volume identity achievements for every tracked club", () => {
     expect(GENERATED_CLUB_VOLUME_ACHIEVEMENTS).toHaveLength(136);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_volume_5")).toBe(true);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_volume_100")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_volume_5")).toBe(
+      true,
+    );
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_volume_100")).toBe(
+      true,
+    );
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_volume_15")).toBe(true);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_volume_25")).toBe(true);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_sw_volume_35")).toBe(true);
@@ -27,19 +31,33 @@ describe("achievement registry", () => {
 
   it("adds bronze, silver, and gold per-session club achievements", () => {
     expect(GENERATED_CLUB_SESSION_VOLUME_ACHIEVEMENTS).toHaveLength(119);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_session_5")).toBe(true);
+    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_session_5")).toBe(
+      true,
+    );
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_7i_session_15")).toBe(true);
     expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_lw_session_40")).toBe(true);
-    expect(ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_5")?.tier).toBe("bronze");
-    expect(ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_15")?.tier).toBe("silver");
-    expect(ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_40")?.tier).toBe("gold");
+    expect(
+      ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_5")?.tier,
+    ).toBe("bronze");
+    expect(
+      ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_15")?.tier,
+    ).toBe("silver");
+    expect(
+      ACHIEVEMENTS.find((achievement) => achievement.id === "club_driver_session_40")?.tier,
+    ).toBe("gold");
   });
 
   it("adds full-shot club-session mastery achievements", () => {
     expect(GENERATED_CLUB_MASTERY_ACHIEVEMENTS).toHaveLength(750);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_mastery_carry_spread_12")).toBe(true);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_7i_mastery_launch_spread_25")).toBe(true);
-    expect(ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_mastery_smash_average_129")).toBe(true);
+    expect(
+      ACHIEVEMENTS.some((achievement) => achievement.id === "club_driver_mastery_carry_spread_12"),
+    ).toBe(true);
+    expect(
+      ACHIEVEMENTS.some((achievement) => achievement.id === "club_7i_mastery_launch_spread_25"),
+    ).toBe(true);
+    expect(
+      ACHIEVEMENTS.some((achievement) => achievement.id === "club_pw_mastery_smash_average_129"),
+    ).toBe(true);
   });
 });
 

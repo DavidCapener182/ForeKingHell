@@ -51,7 +51,12 @@ export function formatClubModelName(club: {
   brand?: string | null;
   model?: string | null;
 }) {
-  return [club.brand, club.model].map((part) => part?.trim()).filter(Boolean).join(" ") || formatClubType(club.type);
+  return (
+    [club.brand, club.model]
+      .map((part) => part?.trim())
+      .filter(Boolean)
+      .join(" ") || formatClubType(club.type)
+  );
 }
 
 export function clubSortValue(value: string) {

@@ -67,7 +67,9 @@ async function fetchWebsiteHtml(initialUrl: URL) {
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
-        const redirectedUrl = location ? safeRemoteResourceUrl(location, currentUrl, { allowHttp: true }) : null;
+        const redirectedUrl = location
+          ? safeRemoteResourceUrl(location, currentUrl, { allowHttp: true })
+          : null;
 
         if (!redirectedUrl) {
           return null;
@@ -158,7 +160,11 @@ function imageUrlsFromHtml(html: string, pageUrl: URL) {
 }
 
 function jsonLdImageUrlsFromHtml(html: string, pageUrl: URL) {
-  return [...html.matchAll(/<script\b[^>]*type\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json')[^>]*>([\s\S]*?)<\/script>/gi)]
+  return [
+    ...html.matchAll(
+      /<script\b[^>]*type\s*=\s*(?:"application\/ld\+json"|'application\/ld\+json')[^>]*>([\s\S]*?)<\/script>/gi,
+    ),
+  ]
     .flatMap((match) => jsonLdImageValues(match[1] ?? ""))
     .map((value) => safeRemoteResourceUrl(value, pageUrl))
     .filter((url): url is URL => Boolean(url))
@@ -178,7 +184,10 @@ function contentImageUrlsFromHtml(html: string, pageUrl: URL, keywords: string[]
       score: scoreContentImageUrl(value, keywords),
       url: safeRemoteResourceUrl(value, pageUrl),
     }))
-    .filter((entry): entry is { index: number; score: number; url: URL } => Boolean(entry.url) && entry.score > 0)
+    .filter(
+      (entry): entry is { index: number; score: number; url: URL } =>
+        Boolean(entry.url) && entry.score > 0,
+    )
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.url.toString());
 }
@@ -208,7 +217,9 @@ function googleFaviconUrl(pageUrl: URL) {
 }
 
 function isIconRel(rel: string) {
-  return rel.split(/\s+/).some((part) => part === "icon" || part === "shortcut" || part === "apple-touch-icon");
+  return rel
+    .split(/\s+/)
+    .some((part) => part === "icon" || part === "shortcut" || part === "apple-touch-icon");
 }
 
 function isImageMetaKey(key: string) {
@@ -245,9 +256,11 @@ function cssImageUrlsFromHtml(html: string) {
 }
 
 function absoluteImageUrlsFromHtml(html: string) {
-  return [...html.replace(/\\\//g, "/").matchAll(/https?:\/\/[^\s"'<>\\)]+?\.(?:avif|jpe?g|png|svg|webp)(?:\?[^\s"'<>\\)]*)?/gi)].map(
-    (match) => match[0],
-  );
+  return [
+    ...html
+      .replace(/\\\//g, "/")
+      .matchAll(/https?:\/\/[^\s"'<>\\)]+?\.(?:avif|jpe?g|png|svg|webp)(?:\?[^\s"'<>\\)]*)?/gi),
+  ].map((match) => match[0]);
 }
 
 function srcSetUrls(value: string | null) {
@@ -274,7 +287,20 @@ function scoreContentImageUrl(value: string, keywords: string[]) {
     }
   }
 
-  for (const term of ["hero", "banner", "course", "golf", "club", "resort", "ocean", "players", "green", "fairway", "hole", "view"]) {
+  for (const term of [
+    "hero",
+    "banner",
+    "course",
+    "golf",
+    "club",
+    "resort",
+    "ocean",
+    "players",
+    "green",
+    "fairway",
+    "hole",
+    "view",
+  ]) {
     if (normalized.includes(term)) {
       score += 3;
     }
@@ -295,7 +321,10 @@ function isLikelyContentImage(normalizedUrl: string) {
 function imageKeywords(values: Array<string | null | undefined>) {
   return values
     .flatMap((value) => normalizeForImageMatching(value ?? "").split(" "))
-    .filter((token) => token.length > 2 && !["and", "club", "course", "golf", "the", "usa"].includes(token));
+    .filter(
+      (token) =>
+        token.length > 2 && !["and", "club", "course", "golf", "the", "usa"].includes(token),
+    );
 }
 
 function imageMetaPriority(key: string) {
@@ -350,7 +379,9 @@ function largestDeclaredSize(sizes: string) {
 }
 
 function attributeValue(tag: string, attribute: string) {
-  const match = tag.match(new RegExp(`\\b${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>` + "`" + `]+))`, "i"));
+  const match = tag.match(
+    new RegExp(`\\b${attribute}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>` + "`" + `]+))`, "i"),
+  );
 
   return match?.[1] ?? match?.[2] ?? match?.[3] ?? null;
 }
@@ -373,7 +404,9 @@ function collectJsonLdImageValues(value: unknown): string[] {
   }
 
   const record = value as Record<string, unknown>;
-  const directValues = ["image", "logo", "thumbnailUrl"].flatMap((key) => stringValues(record[key]));
+  const directValues = ["image", "logo", "thumbnailUrl"].flatMap((key) =>
+    stringValues(record[key]),
+  );
   const graphValues = collectJsonLdImageValues(record["@graph"]);
 
   return [...directValues, ...graphValues];

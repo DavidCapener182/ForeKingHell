@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
-import {
-  buildCoachPrompt,
-  parseAiCoachSummary,
-  type AiCoachPayload,
-} from "@/lib/ai-coach-summary";
+import { buildCoachPrompt, parseAiCoachSummary, type AiCoachPayload } from "@/lib/ai-coach-summary";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 export const runtime = "nodejs";
@@ -82,10 +78,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Could not parse the AI coach response.",
+        message: error instanceof Error ? error.message : "Could not parse the AI coach response.",
       },
       { status: 422 },
     );

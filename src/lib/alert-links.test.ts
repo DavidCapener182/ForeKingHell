@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  achievementDomId,
-  achievementUnlockHref,
-  clubHref,
-  shotRowsHref,
-} from "./alert-links";
+import { achievementDomId, achievementUnlockHref, clubHref, shotRowsHref } from "./alert-links";
 
 describe("alert link helpers", () => {
   it("builds direct club and filtered shot row links for longest-shot alerts", () => {

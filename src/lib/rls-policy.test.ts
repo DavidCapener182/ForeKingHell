@@ -3,13 +3,31 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(join(process.cwd(), "drizzle/0008_public_master_mold.sql"), "utf8");
-const shareLinkMigration = readFileSync(join(process.cwd(), "drizzle/0010_messy_ikaris.sql"), "utf8");
-const socialMigration = readFileSync(join(process.cwd(), "drizzle/0014_social_foundations.sql"), "utf8");
-const networkMigration = readFileSync(join(process.cwd(), "drizzle/0015_network_growth.sql"), "utf8");
+const shareLinkMigration = readFileSync(
+  join(process.cwd(), "drizzle/0010_messy_ikaris.sql"),
+  "utf8",
+);
+const socialMigration = readFileSync(
+  join(process.cwd(), "drizzle/0014_social_foundations.sql"),
+  "utf8",
+);
+const networkMigration = readFileSync(
+  join(process.cwd(), "drizzle/0015_network_growth.sql"),
+  "utf8",
+);
 const adminMigration = readFileSync(join(process.cwd(), "drizzle/0016_admin_ops.sql"), "utf8");
-const commentReactionMigration = readFileSync(join(process.cwd(), "drizzle/0017_feed_comment_reactions.sql"), "utf8");
-const recordsTournamentsMigration = readFileSync(join(process.cwd(), "drizzle/0020_course_records_tournaments.sql"), "utf8");
-const featureFoundationsMigration = readFileSync(join(process.cwd(), "drizzle/0022_feature_foundations.sql"), "utf8");
+const commentReactionMigration = readFileSync(
+  join(process.cwd(), "drizzle/0017_feed_comment_reactions.sql"),
+  "utf8",
+);
+const recordsTournamentsMigration = readFileSync(
+  join(process.cwd(), "drizzle/0020_course_records_tournaments.sql"),
+  "utf8",
+);
+const featureFoundationsMigration = readFileSync(
+  join(process.cwd(), "drizzle/0022_feature_foundations.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -39,7 +57,7 @@ describe("RLS migration", () => {
   it("keeps shared courses readable while private courses stay owner controlled", () => {
     expect(migration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_read_course");
     expect(migration).toContain("course_row.visibility = 'shared'");
-    expect(migration).toContain("CREATE POLICY \"fkh_courses_update_owned\"");
+    expect(migration).toContain('CREATE POLICY "fkh_courses_update_owned"');
   });
 
   it("protects private share link records behind owner RLS", () => {
@@ -68,8 +86,8 @@ describe("RLS migration", () => {
     expect(socialMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_are_friends");
     expect(socialMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_has_social_block");
     expect(socialMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_feed_item");
-    expect(socialMigration).toContain("CREATE POLICY \"fkh_feed_items_select_visible\"");
-    expect(socialMigration).toContain("CREATE POLICY \"fkh_user_blocks_owner_all\"");
+    expect(socialMigration).toContain('CREATE POLICY "fkh_feed_items_select_visible"');
+    expect(socialMigration).toContain('CREATE POLICY "fkh_user_blocks_owner_all"');
   });
 
   it("enables RLS for groups, billing, providers, partners, and moderation tables", () => {
@@ -101,11 +119,11 @@ describe("RLS migration", () => {
 
     expect(networkMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_group");
     expect(networkMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_ai_summary");
-    expect(networkMigration).toContain("CREATE POLICY \"fkh_groups_select_visible\"");
-    expect(networkMigration).toContain("CREATE POLICY \"fkh_billing_customers_owner_all\"");
-    expect(networkMigration).toContain("CREATE POLICY \"fkh_provider_sessions_owner_all\"");
-    expect(networkMigration).toContain("CREATE POLICY \"fkh_partner_offers_select_active\"");
-    expect(networkMigration).toContain("CREATE POLICY \"fkh_social_reports_insert_reporter\"");
+    expect(networkMigration).toContain('CREATE POLICY "fkh_groups_select_visible"');
+    expect(networkMigration).toContain('CREATE POLICY "fkh_billing_customers_owner_all"');
+    expect(networkMigration).toContain('CREATE POLICY "fkh_provider_sessions_owner_all"');
+    expect(networkMigration).toContain('CREATE POLICY "fkh_partner_offers_select_active"');
+    expect(networkMigration).toContain('CREATE POLICY "fkh_social_reports_insert_reporter"');
   });
 
   it("enables RLS for admin operation tables", () => {
@@ -120,10 +138,18 @@ describe("RLS migration", () => {
   });
 
   it("keeps feed comment reactions behind visible comment RLS", () => {
-    expect(commentReactionMigration).toContain('ALTER TABLE "fkh_feed_comment_reactions" ENABLE ROW LEVEL SECURITY');
-    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_select_visible_comment"');
-    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_insert_self_visible_comment"');
-    expect(commentReactionMigration).toContain('CREATE POLICY "fkh_feed_comment_reactions_delete_self"');
+    expect(commentReactionMigration).toContain(
+      'ALTER TABLE "fkh_feed_comment_reactions" ENABLE ROW LEVEL SECURITY',
+    );
+    expect(commentReactionMigration).toContain(
+      'CREATE POLICY "fkh_feed_comment_reactions_select_visible_comment"',
+    );
+    expect(commentReactionMigration).toContain(
+      'CREATE POLICY "fkh_feed_comment_reactions_insert_self_visible_comment"',
+    );
+    expect(commentReactionMigration).toContain(
+      'CREATE POLICY "fkh_feed_comment_reactions_delete_self"',
+    );
     expect(commentReactionMigration).toContain("public.fkh_can_view_feed_item(item)");
     expect(commentReactionMigration).toContain('"user_id" = auth.uid()');
   });
@@ -147,12 +173,20 @@ describe("RLS migration", () => {
       "fkh_tournament_invites",
       "fkh_tournament_prizes",
     ]) {
-      expect(recordsTournamentsMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+      expect(recordsTournamentsMigration).toContain(
+        `ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`,
+      );
     }
 
-    expect(recordsTournamentsMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_course_record");
-    expect(recordsTournamentsMigration).toContain("CREATE OR REPLACE FUNCTION public.fkh_can_view_tournament");
-    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_records_select_visible"');
+    expect(recordsTournamentsMigration).toContain(
+      "CREATE OR REPLACE FUNCTION public.fkh_can_view_course_record",
+    );
+    expect(recordsTournamentsMigration).toContain(
+      "CREATE OR REPLACE FUNCTION public.fkh_can_view_tournament",
+    );
+    expect(recordsTournamentsMigration).toContain(
+      'CREATE POLICY "fkh_course_records_select_visible"',
+    );
     expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournaments_select_visible"');
   });
 
@@ -163,10 +197,18 @@ describe("RLS migration", () => {
     expect(recordsTournamentsMigration).toContain("record_row.scope = 'private'");
     expect(recordsTournamentsMigration).toContain("membership.group_id = record_row.group_id");
     expect(recordsTournamentsMigration).toContain("membership.group_id = tournament_row.group_id");
-    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_record_attempts_select_visible_record_or_self"');
-    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournament_submissions_select_visible_tournament_or_self"');
-    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_course_record_evidence_select_attempt_owner_or_admin"');
-    expect(recordsTournamentsMigration).toContain('CREATE POLICY "fkh_tournament_evidence_select_submission_owner_or_admin"');
+    expect(recordsTournamentsMigration).toContain(
+      'CREATE POLICY "fkh_course_record_attempts_select_visible_record_or_self"',
+    );
+    expect(recordsTournamentsMigration).toContain(
+      'CREATE POLICY "fkh_tournament_submissions_select_visible_tournament_or_self"',
+    );
+    expect(recordsTournamentsMigration).toContain(
+      'CREATE POLICY "fkh_course_record_evidence_select_attempt_owner_or_admin"',
+    );
+    expect(recordsTournamentsMigration).toContain(
+      'CREATE POLICY "fkh_tournament_evidence_select_submission_owner_or_admin"',
+    );
     expect(recordsTournamentsMigration).toContain("public.fkh_can_read_course(course)");
   });
 
@@ -179,12 +221,20 @@ describe("RLS migration", () => {
       "fkh_user_feature_preferences",
       "fkh_weekly_recaps",
     ]) {
-      expect(featureFoundationsMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+      expect(featureFoundationsMigration).toContain(
+        `ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`,
+      );
     }
 
-    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_practice_sessions_owner_all"');
-    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_course_record_goals_owner_all"');
-    expect(featureFoundationsMigration).toContain('CREATE POLICY "fkh_user_feature_preferences_owner_all"');
+    expect(featureFoundationsMigration).toContain(
+      'CREATE POLICY "fkh_practice_sessions_owner_all"',
+    );
+    expect(featureFoundationsMigration).toContain(
+      'CREATE POLICY "fkh_course_record_goals_owner_all"',
+    );
+    expect(featureFoundationsMigration).toContain(
+      'CREATE POLICY "fkh_user_feature_preferences_owner_all"',
+    );
     expect(featureFoundationsMigration).toContain("auth.uid() IS NOT NULL");
     expect(featureFoundationsMigration).toContain('"user_id" = auth.uid()');
   });

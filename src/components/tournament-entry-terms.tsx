@@ -13,12 +13,27 @@ type TournamentEntryTermsProps = {
   className?: string;
 };
 
-export function TournamentEntryTerms({ controlId, compact = false, className }: TournamentEntryTermsProps) {
+export function TournamentEntryTerms({
+  controlId,
+  compact = false,
+  className,
+}: TournamentEntryTermsProps) {
   return (
-    <div className={cn("rounded-xl border border-slate-200 bg-white/80 p-3 text-xs leading-5", className)}>
-      <input type="hidden" name={TOURNAMENT_ENTRY_TERMS_VERSION_FIELD} value={TOURNAMENT_ENTRY_TERMS_VERSION} />
+    <div
+      className={cn(
+        "rounded-xl border border-slate-200 bg-white/80 p-3 text-xs leading-5",
+        className,
+      )}
+    >
+      <input
+        type="hidden"
+        name={TOURNAMENT_ENTRY_TERMS_VERSION_FIELD}
+        value={TOURNAMENT_ENTRY_TERMS_VERSION}
+      />
       <div>
-        <p className="font-semibold text-slate-900">{compact ? "Entry terms" : "Terms and conditions of entry"}</p>
+        <p className="font-semibold text-slate-900">
+          {compact ? "Entry terms" : "Terms and conditions of entry"}
+        </p>
         <ul className="mt-2 grid gap-1 text-muted-foreground">
           {TOURNAMENT_ENTRY_TERMS.map((term) => (
             <li key={term}>{term}</li>

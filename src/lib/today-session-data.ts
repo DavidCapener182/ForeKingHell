@@ -218,7 +218,9 @@ export async function getTodayPracticeData(
 
     return true;
   });
-  const comparisonClubTypes = [...new Set(filteredTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType))];
+  const comparisonClubTypes = [
+    ...new Set(filteredTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType)),
+  ];
   const previousRows =
     comparisonClubTypes.length > 0
       ? await db
@@ -300,7 +302,12 @@ async function findLatestImportedSession(
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
     .where(and(...clauses))
-    .orderBy(desc(sessions.date), desc(shots.shotAt), desc(sessions.createdAt), desc(shots.shotNumber))
+    .orderBy(
+      desc(sessions.date),
+      desc(shots.shotAt),
+      desc(sessions.createdAt),
+      desc(shots.shotNumber),
+    )
     .limit(1);
 
   return session ?? null;
@@ -332,7 +339,10 @@ function buildTodayPracticeData({
   const allTimeByClub = groupBy(allTimeRows, (shot) => shot.clubType);
   const clubComparisons = [...todayByClub.entries()]
     .map(([clubType, todayShots]) => {
-      const previousShots = (previousByClub.get(clubType) ?? []).slice(0, PREVIOUS_SHOT_LIMIT_PER_CLUB);
+      const previousShots = (previousByClub.get(clubType) ?? []).slice(
+        0,
+        PREVIOUS_SHOT_LIMIT_PER_CLUB,
+      );
       return compareClubDay(clubType, todayShots, previousShots);
     })
     .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
@@ -396,7 +406,8 @@ function compareClubDay(
     smashDelta,
   });
   const verdict =
-    today.shotCount < MIN_TODAY_SHOTS_FOR_VERDICT || previous.shotCount < MIN_PREVIOUS_SHOTS_FOR_VERDICT
+    today.shotCount < MIN_TODAY_SHOTS_FOR_VERDICT ||
+    previous.shotCount < MIN_PREVIOUS_SHOTS_FOR_VERDICT
       ? "new"
       : score >= 2
         ? "better"
@@ -440,8 +451,22 @@ function buildClubMainStats(
     clubLabel: formatClubType(clubType),
     todayShotCount: todayShots.length,
     allTimeShotCount: allTimeShots.length,
-    carryYd: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.carryYd, "max", "one"),
-    totalYd: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.totalYd, "max", "one"),
+    carryYd: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.carryYd,
+      "max",
+      "one",
+    ),
+    totalYd: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.totalYd,
+      "max",
+      "one",
+    ),
     offlineYd: statMetric(
       todayShots,
       allTimeShots,
@@ -450,11 +475,46 @@ function buildClubMainStats(
       "min",
       "one",
     ),
-    ballSpeedMph: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.ballSpeedMph, "max", "one"),
-    clubSpeedMph: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.clubSpeedMph, "max", "one"),
-    smashFactor: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.smashFactor, "max", "two"),
-    launchAngleDeg: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.launchAngleDeg, "max", "one"),
-    apexFt: statMetric(todayShots, allTimeShots, previousShots, (shot) => shot.apexFt, "max", "one"),
+    ballSpeedMph: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.ballSpeedMph,
+      "max",
+      "one",
+    ),
+    clubSpeedMph: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.clubSpeedMph,
+      "max",
+      "one",
+    ),
+    smashFactor: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.smashFactor,
+      "max",
+      "two",
+    ),
+    launchAngleDeg: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.launchAngleDeg,
+      "max",
+      "one",
+    ),
+    apexFt: statMetric(
+      todayShots,
+      allTimeShots,
+      previousShots,
+      (shot) => shot.apexFt,
+      "max",
+      "one",
+    ),
   };
 }
 
@@ -520,7 +580,8 @@ function buildOverallComparison(
     return {
       verdict: "new",
       title: "Baseline still building",
-      summary: "This practice day is visible, but there are not enough previous shots for the same clubs to call better or worse yet.",
+      summary:
+        "This practice day is visible, but there are not enough previous shots for the same clubs to call better or worse yet.",
       today,
       previous,
       carryDeltaYd,
@@ -531,8 +592,10 @@ function buildOverallComparison(
   }
 
   const weightedScore =
-    comparable.reduce((total, comparison) => total + comparison.score * comparison.today.shotCount, 0) /
-    comparable.reduce((total, comparison) => total + comparison.today.shotCount, 0);
+    comparable.reduce(
+      (total, comparison) => total + comparison.score * comparison.today.shotCount,
+      0,
+    ) / comparable.reduce((total, comparison) => total + comparison.today.shotCount, 0);
   const verdict = weightedScore >= 1.2 ? "better" : weightedScore <= -1.2 ? "worse" : "mixed";
 
   return {
@@ -573,13 +636,20 @@ function improvementScore(input: {
 
   let score = 0;
 
-  if (isNumber(input.offlineDeltaYd)) score += input.offlineDeltaYd <= -2 ? 2 : input.offlineDeltaYd >= 2 ? -2 : 0;
-  if (isNumber(input.straightRateDelta)) score += input.straightRateDelta >= 10 ? 2 : input.straightRateDelta <= -10 ? -2 : 0;
-  if (isNumber(input.playableRateDelta)) score += input.playableRateDelta >= 8 ? 1 : input.playableRateDelta <= -8 ? -1 : 0;
-  if (isNumber(input.carryDeltaYd)) score += input.carryDeltaYd >= 3 ? 1 : input.carryDeltaYd <= -3 ? -1 : 0;
-  if (isNumber(input.consistencyDeltaYd)) score += input.consistencyDeltaYd <= -3 ? 1 : input.consistencyDeltaYd >= 3 ? -1 : 0;
-  if (isNumber(input.ballSpeedDeltaMph)) score += input.ballSpeedDeltaMph >= 2 ? 1 : input.ballSpeedDeltaMph <= -2 ? -1 : 0;
-  if (isNumber(input.smashDelta)) score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
+  if (isNumber(input.offlineDeltaYd))
+    score += input.offlineDeltaYd <= -2 ? 2 : input.offlineDeltaYd >= 2 ? -2 : 0;
+  if (isNumber(input.straightRateDelta))
+    score += input.straightRateDelta >= 10 ? 2 : input.straightRateDelta <= -10 ? -2 : 0;
+  if (isNumber(input.playableRateDelta))
+    score += input.playableRateDelta >= 8 ? 1 : input.playableRateDelta <= -8 ? -1 : 0;
+  if (isNumber(input.carryDeltaYd))
+    score += input.carryDeltaYd >= 3 ? 1 : input.carryDeltaYd <= -3 ? -1 : 0;
+  if (isNumber(input.consistencyDeltaYd))
+    score += input.consistencyDeltaYd <= -3 ? 1 : input.consistencyDeltaYd >= 3 ? -1 : 0;
+  if (isNumber(input.ballSpeedDeltaMph))
+    score += input.ballSpeedDeltaMph >= 2 ? 1 : input.ballSpeedDeltaMph <= -2 ? -1 : 0;
+  if (isNumber(input.smashDelta))
+    score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
 
   return score;
 }
@@ -587,18 +657,28 @@ function improvementScore(input: {
 function snapshot(shots: TodayPracticeShot[]): MetricSnapshot {
   const carryValues = values(shots.map((shot) => shot.carryYd));
   const totalValues = values(shots.map((shot) => shot.totalYd));
-  const offlineValues = values(shots.map((shot) => shot.sideCarryYd).map((value) => (value === null ? null : Math.abs(value))));
+  const offlineValues = values(
+    shots.map((shot) => shot.sideCarryYd).map((value) => (value === null ? null : Math.abs(value))),
+  );
   const ballSpeedValues = values(shots.map((shot) => shot.ballSpeedMph));
   const smashValues = values(shots.map((shot) => shot.smashFactor));
-  const directionalShots = shots.filter((shot) => isNumber(shot.sideCarryYd) || isNumber(shot.launchDirectionDeg));
+  const directionalShots = shots.filter(
+    (shot) => isNumber(shot.sideCarryYd) || isNumber(shot.launchDirectionDeg),
+  );
 
   return {
     shotCount: shots.length,
     carryAverageYd: roundOne(mean(carryValues)),
     totalAverageYd: roundOne(mean(totalValues)),
     offlineAverageYd: roundOne(mean(offlineValues)),
-    straightRate: directionalShots.length > 0 ? percent(directionalShots.filter(isStraightShot).length, directionalShots.length) : null,
-    playableRate: directionalShots.length > 0 ? percent(directionalShots.filter(isPlayableShot).length, directionalShots.length) : null,
+    straightRate:
+      directionalShots.length > 0
+        ? percent(directionalShots.filter(isStraightShot).length, directionalShots.length)
+        : null,
+    playableRate:
+      directionalShots.length > 0
+        ? percent(directionalShots.filter(isPlayableShot).length, directionalShots.length)
+        : null,
     carryStdDevYd: roundOne(stddev(carryValues)),
     ballSpeedAverageMph: roundOne(mean(ballSpeedValues)),
     smashAverage: roundTwo(mean(smashValues)),
@@ -633,7 +713,9 @@ function isComparisonShot(shot: TodayPracticeShot) {
 
 function isStraightShot(shot: TodayPracticeShot) {
   const sideOk = isNumber(shot.sideCarryYd) ? Math.abs(shot.sideCarryYd) <= 10 : true;
-  const startOk = isNumber(shot.launchDirectionDeg) ? Math.abs(shot.launchDirectionDeg) <= 3.5 : true;
+  const startOk = isNumber(shot.launchDirectionDeg)
+    ? Math.abs(shot.launchDirectionDeg) <= 3.5
+    : true;
   return sideOk && startOk;
 }
 
@@ -719,14 +801,20 @@ function clubSummary({
   previousShotCount: number;
 }) {
   if (verdict === "new") {
-    return previousShotCount > 0 ? "Need a few more review shots for a fair call." : "No previous baseline for this club yet.";
+    return previousShotCount > 0
+      ? "Need a few more review shots for a fair call."
+      : "No previous baseline for this club yet.";
   }
 
   const signals = [
-    isNumber(offlineDeltaYd) ? `${offlineDeltaYd <= 0 ? "offline down" : "offline up"} ${Math.abs(offlineDeltaYd).toFixed(1)} yd` : null,
+    isNumber(offlineDeltaYd)
+      ? `${offlineDeltaYd <= 0 ? "offline down" : "offline up"} ${Math.abs(offlineDeltaYd).toFixed(1)} yd`
+      : null,
     isNumber(straightRateDelta) ? `straight rate ${formatDelta(straightRateDelta, "pp")}` : null,
     isNumber(carryDeltaYd) ? `carry ${formatDelta(carryDeltaYd, "yd")}` : null,
-    isNumber(consistencyDeltaYd) ? `carry spread ${consistencyDeltaYd <= 0 ? "down" : "up"} ${Math.abs(consistencyDeltaYd).toFixed(1)} yd` : null,
+    isNumber(consistencyDeltaYd)
+      ? `carry spread ${consistencyDeltaYd <= 0 ? "down" : "up"} ${Math.abs(consistencyDeltaYd).toFixed(1)} yd`
+      : null,
   ].filter(Boolean);
 
   return signals.slice(0, 3).join(" / ");
@@ -744,8 +832,12 @@ function overallSummary({
   carryDeltaYd: number | null;
 }) {
   const parts = [
-    isNumber(offlineDeltaYd) ? `${offlineDeltaYd <= 0 ? "offline was better by" : "offline was worse by"} ${Math.abs(offlineDeltaYd).toFixed(1)} yd` : null,
-    isNumber(straightRateDelta) ? `straight-shot rate ${formatDelta(straightRateDelta, "pp")}` : null,
+    isNumber(offlineDeltaYd)
+      ? `${offlineDeltaYd <= 0 ? "offline was better by" : "offline was worse by"} ${Math.abs(offlineDeltaYd).toFixed(1)} yd`
+      : null,
+    isNumber(straightRateDelta)
+      ? `straight-shot rate ${formatDelta(straightRateDelta, "pp")}`
+      : null,
     isNumber(carryDeltaYd) ? `carry ${formatDelta(carryDeltaYd, "yd")}` : null,
   ].filter(Boolean);
 
@@ -872,7 +964,9 @@ function delta(current: number | null, previous: number | null) {
 }
 
 function roundedDelta(current: number | null, previous: number | null, precision: "one" | "two") {
-  return isNumber(current) && isNumber(previous) ? roundByPrecision(current - previous, precision) : null;
+  return isNumber(current) && isNumber(previous)
+    ? roundByPrecision(current - previous, precision)
+    : null;
 }
 
 function bestValue(items: number[], direction: "max" | "min") {
@@ -880,16 +974,23 @@ function bestValue(items: number[], direction: "max" | "min") {
     return null;
   }
 
-  return items.reduce((best, item) => {
-    if (!isNumber(best)) {
-      return item;
-    }
+  return items.reduce(
+    (best, item) => {
+      if (!isNumber(best)) {
+        return item;
+      }
 
-    return direction === "max" ? Math.max(best, item) : Math.min(best, item);
-  }, null as number | null);
+      return direction === "max" ? Math.max(best, item) : Math.min(best, item);
+    },
+    null as number | null,
+  );
 }
 
-function bestStatus(todayBest: number | null, previousBest: number | null, direction: "max" | "min"): ClubBestStatus {
+function bestStatus(
+  todayBest: number | null,
+  previousBest: number | null,
+  direction: "max" | "min",
+): ClubBestStatus {
   if (!isNumber(todayBest)) {
     return "none";
   }

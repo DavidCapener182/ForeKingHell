@@ -3,8 +3,7 @@ import fs from "node:fs";
 import postgres from "postgres";
 
 const DEFAULT_LEGACY_USER_ID = "00000000-0000-0000-0000-000000000001";
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const userOwnedColumns = [
   ["fkh_clubs", "user_id"],
@@ -103,7 +102,11 @@ try {
               and import_file.raw_csv_hash = session.raw_csv_hash
           )
       `;
-      counts.push({ table: "fkh_import_files", column: "backfill", count: missingImportFiles.count });
+      counts.push({
+        table: "fkh_import_files",
+        column: "backfill",
+        count: missingImportFiles.count,
+      });
 
       return counts;
     }
@@ -157,7 +160,11 @@ try {
         and session.raw_csv_hash is not null
       on conflict (user_id, raw_csv_hash) do nothing
     `;
-    counts.push({ table: "fkh_import_files", column: "backfill", count: backfilledImportFiles.count });
+    counts.push({
+      table: "fkh_import_files",
+      column: "backfill",
+      count: backfilledImportFiles.count,
+    });
 
     return counts;
   });

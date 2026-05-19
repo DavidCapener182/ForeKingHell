@@ -1,6 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, Copy, Globe2, Lock, MessageCircle, Plus, Settings, Trophy, Users } from "lucide-react";
+import {
+  Award,
+  Copy,
+  Globe2,
+  Lock,
+  MessageCircle,
+  Plus,
+  Settings,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { createGroupPostAction } from "@/app/groups/actions";
@@ -65,7 +75,11 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge variant="outline" className="gap-1">
-                    {data.group.visibility === "public" ? <Globe2 className="size-3" /> : <Lock className="size-3" />}
+                    {data.group.visibility === "public" ? (
+                      <Globe2 className="size-3" />
+                    ) : (
+                      <Lock className="size-3" />
+                    )}
                     {label(data.group.visibility)}
                   </Badge>
                   <Badge variant="secondary" className="gap-1">
@@ -83,7 +97,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                 </div>
               </div>
               <Button asChild variant="outline">
-                <Link href="/groups" prefetch={false}>All groups</Link>
+                <Link href="/groups" prefetch={false}>
+                  All groups
+                </Link>
               </Button>
             </div>
             {flags?.created || flags?.posted ? (
@@ -95,7 +111,11 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
 
           <nav className="premium-card flex flex-wrap gap-2 p-3" aria-label="Group sections">
             {groupTabs.map((tab) => (
-              <a key={tab.href} href={tab.href} className="rounded-lg border bg-[#F5F6F4] px-3 py-1.5 text-sm font-medium hover:bg-white">
+              <a
+                key={tab.href}
+                href={tab.href}
+                className="rounded-lg border bg-[#F5F6F4] px-3 py-1.5 text-sm font-medium hover:bg-white"
+              >
                 {tab.label}
               </a>
             ))}
@@ -114,7 +134,10 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                   className="rounded-lg border bg-white px-3 py-2 text-sm"
                   required
                 />
-                <Button type="submit" className="w-fit rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                <Button
+                  type="submit"
+                  className="w-fit rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                >
                   <Plus className="size-4" />
                   Post to group
                 </Button>
@@ -124,7 +147,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
 
           <section className="grid gap-3">
             {data.posts.length === 0 ? (
-              <p className="rounded-xl border border-dashed bg-white p-5 text-sm text-muted-foreground">No group posts yet.</p>
+              <p className="rounded-xl border border-dashed bg-white p-5 text-sm text-muted-foreground">
+                No group posts yet.
+              </p>
             ) : (
               data.posts.map((post) => (
                 <article key={post.id} className="premium-card p-4">
@@ -136,15 +161,25 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                       href={`/profile/${post.profile.username}`}
                     />
                     <div className="min-w-0">
-                      <Link href={`/profile/${post.profile.username}`} prefetch={false} className="text-sm font-semibold hover:underline">
+                      <Link
+                        href={`/profile/${post.profile.username}`}
+                        prefetch={false}
+                        className="text-sm font-semibold hover:underline"
+                      >
                         {post.profile.displayName}
                       </Link>
-                      <p className="text-xs text-muted-foreground">@{post.profile.username} · {dateFormatter.format(post.createdAt)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        @{post.profile.username} · {dateFormatter.format(post.createdAt)}
+                      </p>
                     </div>
                     {post.pinned ? <Badge variant="secondary">Pinned</Badge> : null}
                   </header>
-                  {post.title ? <h2 className="mt-4 text-lg font-semibold tracking-normal">{post.title}</h2> : null}
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{post.body}</p>
+                  {post.title ? (
+                    <h2 className="mt-4 text-lg font-semibold tracking-normal">{post.title}</h2>
+                  ) : null}
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                    {post.body}
+                  </p>
                 </article>
               ))
             )}
@@ -154,10 +189,14 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Group leaderboard</p>
-                <p className="mt-1 text-sm text-muted-foreground">Use linked records, tournaments and challenge boards for group-scoped competition.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Use linked records, tournaments and challenge boards for group-scoped competition.
+                </p>
               </div>
               <Button asChild variant="outline">
-                <Link href="/leaderboard" prefetch={false}>Open leaderboards</Link>
+                <Link href="/leaderboard" prefetch={false}>
+                  Open leaderboards
+                </Link>
               </Button>
             </div>
           </section>
@@ -203,7 +242,10 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {data.members.map((member) => (
-                <div key={member.userId} className="flex items-center gap-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
+                <div
+                  key={member.userId}
+                  className="flex items-center gap-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm"
+                >
                   <SocialAvatar
                     displayName={member.displayName}
                     username={member.username}
@@ -212,10 +254,16 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                     size="sm"
                   />
                   <div className="min-w-0">
-                    <Link href={`/profile/${member.username}`} prefetch={false} className="truncate font-medium hover:underline">
+                    <Link
+                      href={`/profile/${member.username}`}
+                      prefetch={false}
+                      className="truncate font-medium hover:underline"
+                    >
                       {member.displayName}
                     </Link>
-                    <p className="truncate text-xs text-muted-foreground">@{member.username} · {label(member.role)}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      @{member.username} · {label(member.role)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -227,9 +275,21 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Group activity</p>
             <div className="mt-3 grid gap-2 text-sm">
-              <SideMetric icon={<Users className="size-4 text-emerald-600" />} label="Members" value={data.group.memberCount} />
-              <SideMetric icon={<MessageCircle className="size-4 text-sky-600" />} label="Posts" value={data.group.postCount} />
-              <SideMetric icon={<Trophy className="size-4 text-amber-600" />} label="Challenges" value={data.group.challengeCount} />
+              <SideMetric
+                icon={<Users className="size-4 text-emerald-600" />}
+                label="Members"
+                value={data.group.memberCount}
+              />
+              <SideMetric
+                icon={<MessageCircle className="size-4 text-sky-600" />}
+                label="Posts"
+                value={data.group.postCount}
+              />
+              <SideMetric
+                icon={<Trophy className="size-4 text-amber-600" />}
+                label="Challenges"
+                value={data.group.challengeCount}
+              />
             </div>
             <div className="mt-3 grid gap-2">
               <Button asChild variant="outline" size="sm">
@@ -251,7 +311,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
             <p className="text-sm font-semibold">Linked challenges</p>
             <div className="mt-3 grid gap-2">
               {data.challenges.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">No linked challenges yet.</p>
+                <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">
+                  No linked challenges yet.
+                </p>
               ) : (
                 data.challenges.map((challenge) => (
                   <Link
@@ -261,7 +323,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                     className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm hover:bg-white"
                   >
                     <p className="font-medium">{challenge.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{challenge.templateName} · {challenge.status}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {challenge.templateName} · {challenge.status}
+                    </p>
                   </Link>
                 ))
               )}
@@ -271,7 +335,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           {data.group.rules ? (
             <section className="premium-card p-4">
               <p className="text-sm font-semibold">Rules</p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{data.group.rules}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                {data.group.rules}
+              </p>
             </section>
           ) : null}
 
@@ -289,7 +355,9 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                   className="mx-auto aspect-square w-full max-w-36"
                 />
               </div>
-              <p className="mt-2 break-all rounded-lg bg-[#F5F6F4] px-3 py-2 font-mono text-xs">{data.group.inviteCode}</p>
+              <p className="mt-2 break-all rounded-lg bg-[#F5F6F4] px-3 py-2 font-mono text-xs">
+                {data.group.inviteCode}
+              </p>
             </section>
           ) : null}
 
@@ -299,8 +367,13 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               Settings
             </p>
             <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
-              <p>Groups are private by default. Admin controls can manage rules, invites and linked challenges.</p>
-              <Badge variant="outline" className="w-fit">{data.group.ownerUserId ? "Admin controls ready" : "Member view"}</Badge>
+              <p>
+                Groups are private by default. Admin controls can manage rules, invites and linked
+                challenges.
+              </p>
+              <Badge variant="outline" className="w-fit">
+                {data.group.ownerUserId ? "Admin controls ready" : "Member view"}
+              </Badge>
             </div>
           </section>
         </aside>
@@ -312,7 +385,10 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
 function SideMetric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
-      <span className="flex items-center gap-2 text-muted-foreground">{icon}{label}</span>
+      <span className="flex items-center gap-2 text-muted-foreground">
+        {icon}
+        {label}
+      </span>
       <span className="font-semibold tracking-normal">{value}</span>
     </div>
   );

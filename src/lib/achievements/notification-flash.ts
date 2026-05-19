@@ -17,9 +17,7 @@ export async function getAchievementUnlockFlash() {
   );
 }
 
-export async function setAchievementUnlockFlash(
-  notifications: AchievementUnlockNotification[],
-) {
+export async function setAchievementUnlockFlash(notifications: AchievementUnlockNotification[]) {
   if (notifications.length === 0) {
     return;
   }
@@ -33,15 +31,11 @@ export async function setAchievementUnlockFlash(
     MAX_FLASH_ACHIEVEMENT_NOTIFICATIONS,
   );
 
-  cookieStore.set(
-    ACHIEVEMENT_UNLOCK_FLASH_COOKIE,
-    encodeAchievementUnlockNotifications(next),
-    {
-      maxAge: FLASH_COOKIE_MAX_AGE_SECONDS,
-      path: "/",
-      sameSite: "lax",
-    },
-  );
+  cookieStore.set(ACHIEVEMENT_UNLOCK_FLASH_COOKIE, encodeAchievementUnlockNotifications(next), {
+    maxAge: FLASH_COOKIE_MAX_AGE_SECONDS,
+    path: "/",
+    sameSite: "lax",
+  });
 }
 
 function dedupeNotifications(notifications: AchievementUnlockNotification[]) {

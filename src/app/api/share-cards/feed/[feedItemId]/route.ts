@@ -17,7 +17,9 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const { feedItemId } = await context.params;
-  const item = (await getVisibleFeedItemsForViewer(userId, { limit: 80 })).find((candidate) => candidate.id === feedItemId);
+  const item = (await getVisibleFeedItemsForViewer(userId, { limit: 80 })).find(
+    (candidate) => candidate.id === feedItemId,
+  );
 
   if (!item) {
     return Response.json({ message: "Feed item not found." }, { status: 404 });

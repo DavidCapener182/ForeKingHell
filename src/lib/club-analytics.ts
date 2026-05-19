@@ -243,10 +243,17 @@ export function calculateClubAnalytics({
   shots: ClubAnalyticsShot[];
   bagContext?: BagClubAnalyticsContext[];
 }): ClubAnalytics {
-  const orderedShots = [...shots].sort((left, right) => dateValue(left.shotAt) - dateValue(right.shotAt));
-  const latestShotAt = orderedShots.length > 0 ? new Date(dateValue(orderedShots[orderedShots.length - 1].shotAt)) : null;
+  const orderedShots = [...shots].sort(
+    (left, right) => dateValue(left.shotAt) - dateValue(right.shotAt),
+  );
+  const latestShotAt =
+    orderedShots.length > 0
+      ? new Date(dateValue(orderedShots[orderedShots.length - 1].shotAt))
+      : null;
   const allSample = selectStockYardageShots(orderedShots, orderedShots.length, { clubType });
-  const trendShots = [...allSample.filteredShots].sort((left, right) => dateValue(left.shotAt) - dateValue(right.shotAt));
+  const trendShots = [...allSample.filteredShots].sort(
+    (left, right) => dateValue(left.shotAt) - dateValue(right.shotAt),
+  );
   const stockSample = selectStockYardageShots(orderedShots, 50, { clubType });
   const cleanShots = stockSample.cleanShots;
   const stockShots = stockSample.filteredShots;
@@ -268,8 +275,12 @@ export function calculateClubAnalytics({
   const launchWindow = launchWindowForClub(clubType);
   const shapeCounts = countShotShapes(stockShots);
   const primaryShape = primaryShotShape(shapeCounts);
-  const clubDataShots = stockShots.filter((shot) => isNumber(shot.clubPathDeg) || isNumber(shot.attackAngleDeg));
-  const estimatedClubDataShots = clubDataShots.filter((shot) => isEstimatedClubData(shot.clubDataEstType));
+  const clubDataShots = stockShots.filter(
+    (shot) => isNumber(shot.clubPathDeg) || isNumber(shot.attackAngleDeg),
+  );
+  const estimatedClubDataShots = clubDataShots.filter((shot) =>
+    isEstimatedClubData(shot.clubDataEstType),
+  );
   const facePathProxyValues = stockShots
     .map((shot) =>
       isNumber(shot.launchDirectionDeg) && isNumber(shot.clubPathDeg)
@@ -300,7 +311,10 @@ export function calculateClubAnalytics({
     absoluteOfflineAverageYd: roundOne(meanOrNull(sideValues.map(Math.abs))),
     leftMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd < -5),
     rightMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd > 5),
-    bigMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) > bigMissLimit),
+    bigMissRate: rate(
+      stockShots,
+      (shot) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) > bigMissLimit,
+    ),
     playableShotRate: rate(
       stockShots,
       (shot) =>
@@ -308,7 +322,11 @@ export function calculateClubAnalytics({
         Math.abs(shot.sideCarryYd) <= playableLimit &&
         (distance.stockCarryYd === null || (shot.carryYd ?? 0) >= distance.stockCarryYd * 0.85),
     ),
-    shotConeWidthYd: roundOne(percentile(sideValues, 0.9) !== null && percentile(sideValues, 0.1) !== null ? (percentile(sideValues, 0.9) ?? 0) - (percentile(sideValues, 0.1) ?? 0) : null),
+    shotConeWidthYd: roundOne(
+      percentile(sideValues, 0.9) !== null && percentile(sideValues, 0.1) !== null
+        ? (percentile(sideValues, 0.9) ?? 0) - (percentile(sideValues, 0.1) ?? 0)
+        : null,
+    ),
     startLineAverageDeg: roundOne(meanOrNull(launchDirectionValues)),
     startLineStdDevDeg: roundOne(standardDeviationOrNull(launchDirectionValues)),
     primaryMiss: primaryMiss(sideValues),
@@ -319,13 +337,22 @@ export function calculateClubAnalytics({
     launchAverageDeg: roundOne(meanOrNull(launchValues)),
     launchSpreadDeg: roundOne(standardDeviationOrNull(launchValues)),
     launchWindow,
-    launchWindowScore: rate(stockShots, (shot) => isNumber(shot.launchAngleDeg) && shot.launchAngleDeg >= launchWindow.low && shot.launchAngleDeg <= launchWindow.high),
+    launchWindowScore: rate(
+      stockShots,
+      (shot) =>
+        isNumber(shot.launchAngleDeg) &&
+        shot.launchAngleDeg >= launchWindow.low &&
+        shot.launchAngleDeg <= launchWindow.high,
+    ),
     apexAverageFt: roundOne(meanOrNull(apexValues)),
     apexSpreadFt: roundOne(standardDeviationOrNull(apexValues)),
     descentAverageDeg: roundOne(meanOrNull(descentValues)),
     stoppingPowerScore: stoppingPowerScore(clubType, descentValues),
     lowFlightRate: rate(stockShots, (shot) => isLowFlight(clubType, shot)),
-    balloonRate: rate(stockShots, (shot) => isNumber(shot.launchAngleDeg) && shot.launchAngleDeg > launchWindow.high + 4),
+    balloonRate: rate(
+      stockShots,
+      (shot) => isNumber(shot.launchAngleDeg) && shot.launchAngleDeg > launchWindow.high + 4,
+    ),
   };
   const strike = {
     ballSpeedAverageMph: roundOne(meanOrNull(ballSpeedValues)),
@@ -334,14 +361,23 @@ export function calculateClubAnalytics({
     clubSpeedSpreadMph: roundOne(standardDeviationOrNull(clubSpeedValues)),
     smashAverage: roundTwo(meanOrNull(smashValues)),
     smashSpread: roundTwo(standardDeviationOrNull(smashValues)),
-    highSmashRate: rate(stockShots, (shot) => isNumber(shot.smashFactor) && shot.smashFactor >= highSmashThreshold(clubType)),
-    lowSmashRate: rate(stockShots, (shot) => isNumber(shot.smashFactor) && shot.smashFactor <= lowSmashThreshold(clubType)),
+    highSmashRate: rate(
+      stockShots,
+      (shot) => isNumber(shot.smashFactor) && shot.smashFactor >= highSmashThreshold(clubType),
+    ),
+    lowSmashRate: rate(
+      stockShots,
+      (shot) => isNumber(shot.smashFactor) && shot.smashFactor <= lowSmashThreshold(clubType),
+    ),
     speedLeakageRate: speedLeakageRate(stockShots),
   };
   const delivery = {
     clubPathAverageDeg: roundOne(meanOrNull(pathValues)),
     clubPathSpreadDeg: roundOne(standardDeviationOrNull(pathValues)),
-    pathSpikeRate: rate(stockShots, (shot) => isNumber(shot.clubPathDeg) && Math.abs(shot.clubPathDeg) > 8),
+    pathSpikeRate: rate(
+      stockShots,
+      (shot) => isNumber(shot.clubPathDeg) && Math.abs(shot.clubPathDeg) > 8,
+    ),
     attackAngleAverageDeg: roundOne(meanOrNull(attackValues)),
     attackAngleSpreadDeg: roundOne(standardDeviationOrNull(attackValues)),
     facePathProxyAverageDeg: roundOne(meanOrNull(facePathProxyValues)),
@@ -349,7 +385,11 @@ export function calculateClubAnalytics({
     blockRiskScore: riskScore(stockShots, "block"),
     clubDataAvailableRate: percent(clubDataShots.length, stockShots.length),
     clubDataEstimatedRate: percent(estimatedClubDataShots.length, clubDataShots.length),
-    dataWarning: clubDataWarning(clubDataShots.length, estimatedClubDataShots.length, stockShots.length),
+    dataWarning: clubDataWarning(
+      clubDataShots.length,
+      estimatedClubDataShots.length,
+      stockShots.length,
+    ),
   };
   const consistency = buildConsistency({
     stock,
@@ -488,7 +528,12 @@ export function likelyMishitTags({
     tags.push("mishit floor");
   }
 
-  if (isNumber(shot.launchAngleDeg) && isNumber(shot.apexFt) && shot.launchAngleDeg < 8 && shot.apexFt < 35) {
+  if (
+    isNumber(shot.launchAngleDeg) &&
+    isNumber(shot.apexFt) &&
+    shot.launchAngleDeg < 8 &&
+    shot.apexFt < 35
+  ) {
     tags.push(family === "driver" || family === "wood" ? "low bullet" : "thin/top");
   }
 
@@ -507,7 +552,12 @@ export function likelyMishitTags({
     tags.push("overdraw/hook");
   }
 
-  if (isNumber(shot.launchDirectionDeg) && isNumber(shot.sideCarryYd) && shot.launchDirectionDeg > 3 && shot.sideCarryYd > BIG_MISS_LIMIT_BY_FAMILY[family]) {
+  if (
+    isNumber(shot.launchDirectionDeg) &&
+    isNumber(shot.sideCarryYd) &&
+    shot.launchDirectionDeg > 3 &&
+    shot.sideCarryYd > BIG_MISS_LIMIT_BY_FAMILY[family]
+  ) {
     tags.push("block");
   }
 
@@ -541,7 +591,9 @@ function emptyShapeCounts(): Record<ShotShape, number> {
 }
 
 function primaryShotShape(shapeCounts: Record<ShotShape, number>): ShotShape {
-  const entries = Object.entries(shapeCounts).filter(([shape]) => shape !== "unknown") as Array<[ShotShape, number]>;
+  const entries = Object.entries(shapeCounts).filter(([shape]) => shape !== "unknown") as Array<
+    [ShotShape, number]
+  >;
   const [shape, count] = entries.sort((left, right) => right[1] - left[1])[0] ?? ["unknown", 0];
   return count > 0 ? shape : "unknown";
 }
@@ -625,7 +677,8 @@ function buildDiagnosis(input: {
     return {
       title: "Direction is costing trust",
       likelyCause:
-        input.delivery.clubPathAverageDeg !== null && Math.abs(input.delivery.clubPathAverageDeg) >= 6
+        input.delivery.clubPathAverageDeg !== null &&
+        Math.abs(input.delivery.clubPathAverageDeg) >= 6
           ? "Delivery path is far enough from neutral that face control has to work too hard."
           : "Start line and face control are moving more than the distance pattern.",
       evidence: `${formatNullableRate(input.accuracy.playableShotRate)} playable rate, ${formatNullableRate(input.accuracy.bigMissRate)} big-miss rate, ${input.accuracy.primaryMiss.toLowerCase()} bias.`,
@@ -637,7 +690,8 @@ function buildDiagnosis(input: {
   if ((input.launch.launchWindowScore ?? 100) < 60 || (input.launch.lowFlightRate ?? 0) >= 25) {
     return {
       title: "Launch window is the limiter",
-      likelyCause: "The strike or delivered loft is changing enough to move the flight out of its useful window.",
+      likelyCause:
+        "The strike or delivered loft is changing enough to move the flight out of its useful window.",
       evidence: `${formatNullableRate(input.launch.launchWindowScore)} launch-window score against ${input.launch.launchWindow.low}-${input.launch.launchWindow.high} degrees.`,
       practiceFocus: `Hit 12 stock shots and make the first pass/fail goal launch between ${input.launch.launchWindow.low} and ${input.launch.launchWindow.high} degrees.`,
       severity: "medium",
@@ -649,7 +703,8 @@ function buildDiagnosis(input: {
       title: "Strike efficiency is leaking speed",
       likelyCause: "Club speed is not consistently turning into ball speed.",
       evidence: `${formatNullableRate(input.strike.lowSmashRate)} low-smash rate and ${formatNullableRate(input.strike.speedLeakageRate)} speed-leakage rate.`,
-      practiceFocus: "Hit 12 balls at 80% speed and only add speed when ball speed and smash stay stable.",
+      practiceFocus:
+        "Hit 12 balls at 80% speed and only add speed when ball speed and smash stay stable.",
       severity: "medium",
     };
   }
@@ -657,9 +712,11 @@ function buildDiagnosis(input: {
   if ((input.distance.carrySpreadYd ?? 0) >= 18 || input.consistency.carryConsistencyScore < 62) {
     return {
       title: "Distance reliability needs tightening",
-      likelyCause: "The middle of the carry window is still too wide to make one number feel automatic.",
+      likelyCause:
+        "The middle of the carry window is still too wide to make one number feel automatic.",
       evidence: `${formatNullableYards(input.distance.carrySpreadYd)} carry spread with ${input.consistency.carryConsistencyScore}% distance reliability.`,
-      practiceFocus: "Hit two five-ball stock sets and compare whether both sets land in the same carry window.",
+      practiceFocus:
+        "Hit two five-ball stock sets and compare whether both sets land in the same carry window.",
       severity: "medium",
     };
   }
@@ -668,7 +725,8 @@ function buildDiagnosis(input: {
     title: "The pattern is playable",
     likelyCause: "Distance, launch, strike, and direction are balanced enough for normal use.",
     evidence: `${input.consistency.clubTrustIndex}% trust with ${formatNullableRate(input.accuracy.playableShotRate)} playable shots.`,
-    practiceFocus: "Maintain the current stock routine and only push max carry when the miss is safe.",
+    practiceFocus:
+      "Maintain the current stock routine and only push max carry when the miss is safe.",
     severity: "low",
   };
 }
@@ -742,8 +800,14 @@ function buildGappingProfile(
   const index = orderedClubs.findIndex((club) => club.clubType === clubType);
   const previous = index > 0 ? orderedClubs[index - 1] : null;
   const next = index >= 0 && index < orderedClubs.length - 1 ? orderedClubs[index + 1] : null;
-  const previousGapYd = previous && isNumber(stockCarryYd) && isNumber(previous.stockCarryYd) ? previous.stockCarryYd - stockCarryYd : null;
-  const nextGapYd = next && isNumber(stockCarryYd) && isNumber(next.stockCarryYd) ? stockCarryYd - next.stockCarryYd : null;
+  const previousGapYd =
+    previous && isNumber(stockCarryYd) && isNumber(previous.stockCarryYd)
+      ? previous.stockCarryYd - stockCarryYd
+      : null;
+  const nextGapYd =
+    next && isNumber(stockCarryYd) && isNumber(next.stockCarryYd)
+      ? stockCarryYd - next.stockCarryYd
+      : null;
   const gaps = [previousGapYd, nextGapYd].filter(isNumber);
 
   if (!isNumber(stockCarryYd) || gaps.length === 0) {
@@ -787,16 +851,24 @@ function buildConsistency(input: {
   const carryIqr = interquartileRange(input.carryValues);
   const carryMedian = median(input.carryValues);
   const carryConsistencyScore =
-    carryIqr === null || carryMedian === null ? 0 : scoreFromRatio(carryIqr / Math.max(1, carryMedian), 0.22);
+    carryIqr === null || carryMedian === null
+      ? 0
+      : scoreFromRatio(carryIqr / Math.max(1, carryMedian), 0.22);
   const sideStdDev = standardDeviationOrNull(input.sideValues);
   const startStdDev = standardDeviationOrNull(input.launchDirectionValues);
   const directionConsistencyScore = scoreFromRaw((sideStdDev ?? 45) + (startStdDev ?? 8) * 3, 70);
   const smashStdDev = standardDeviationOrNull(input.smashValues);
   const ballSpeedStdDev = standardDeviationOrNull(input.ballSpeedValues);
-  const strikeConsistencyScore = scoreFromRaw((smashStdDev ?? 0.12) * 260 + (ballSpeedStdDev ?? 12), 42);
+  const strikeConsistencyScore = scoreFromRaw(
+    (smashStdDev ?? 0.12) * 260 + (ballSpeedStdDev ?? 12),
+    42,
+  );
   const launchStdDev = standardDeviationOrNull(input.launchValues);
   const apexStdDev = standardDeviationOrNull(input.apexValues);
-  const flightConsistencyScore = scoreFromRaw((launchStdDev ?? 8) * 4 + (apexStdDev ?? 40) * 0.45, 58);
+  const flightConsistencyScore = scoreFromRaw(
+    (launchStdDev ?? 8) * 4 + (apexStdDev ?? 40) * 0.45,
+    58,
+  );
   const sampleSizeScore = clamp(input.stock.sampleSize / 30, 0, 1) * 100;
   const clubTrustIndex = Math.round(
     carryConsistencyScore * 0.35 +
@@ -831,7 +903,10 @@ function buildInsights(input: {
   const clubName = formatClubType(input.clubType);
   const insights: ClubInsight[] = [];
 
-  if (input.progress.baselineDelta?.carryDeltaYd !== null && input.progress.baselineDelta?.carryDeltaYd !== undefined) {
+  if (
+    input.progress.baselineDelta?.carryDeltaYd !== null &&
+    input.progress.baselineDelta?.carryDeltaYd !== undefined
+  ) {
     const delta = input.progress.baselineDelta.carryDeltaYd;
     insights.push({
       title: `${clubName} distance trend`,
@@ -847,11 +922,17 @@ function buildInsights(input: {
     insights.push({
       title: "Usual miss",
       body: `${clubName} is ${input.accuracy.primaryMiss.toLowerCase()}-biased with ${formatNullableRate(input.accuracy.playableShotRate)} playable shots in the current clean sample.`,
-      tone: input.accuracy.playableShotRate !== null && input.accuracy.playableShotRate >= 65 ? "green" : "pink",
+      tone:
+        input.accuracy.playableShotRate !== null && input.accuracy.playableShotRate >= 65
+          ? "green"
+          : "pink",
     });
   }
 
-  if (input.delivery.clubPathAverageDeg !== null && Math.abs(input.delivery.clubPathAverageDeg) >= 6) {
+  if (
+    input.delivery.clubPathAverageDeg !== null &&
+    Math.abs(input.delivery.clubPathAverageDeg) >= 6
+  ) {
     insights.push({
       title: "Delivery pattern",
       body: `Club path averages ${formatSigned(input.delivery.clubPathAverageDeg)} degrees. That is enough to create a repeatable curve pattern if face control is off.`,
@@ -879,7 +960,12 @@ function buildInsights(input: {
     insights.push({
       title: "Gapping",
       body: input.gapping.note,
-      tone: input.gapping.status === "Healthy" ? "green" : input.gapping.status === "Overlap" ? "pink" : "amber",
+      tone:
+        input.gapping.status === "Healthy"
+          ? "green"
+          : input.gapping.status === "Overlap"
+            ? "pink"
+            : "amber",
     });
   }
 
@@ -912,7 +998,11 @@ function practiceRecommendation(
 ): ClubAnalytics["practice"] {
   const family = clubFamily(clubType);
 
-  if ((family === "driver" || family === "wood") && delivery.hookRiskScore !== null && delivery.hookRiskScore >= 35) {
+  if (
+    (family === "driver" || family === "wood") &&
+    delivery.hookRiskScore !== null &&
+    delivery.hookRiskScore >= 35
+  ) {
     return {
       title: "No-left control block",
       drill: "Hit 10 balls where the only goal is no finish more than 20 yd left.",
@@ -920,7 +1010,11 @@ function practiceRecommendation(
     };
   }
 
-  if ((family === "wood" || family === "hybrid") && launch.lowFlightRate !== null && launch.lowFlightRate >= 25) {
+  if (
+    (family === "wood" || family === "hybrid") &&
+    launch.lowFlightRate !== null &&
+    launch.lowFlightRate >= 25
+  ) {
     return {
       title: "Sweep-the-grass strike ladder",
       drill: "Hit 15 balls from a brushed lie. Count only shots with usable height.",
@@ -1001,7 +1095,12 @@ function groupBySession(shots: ClubAnalyticsShot[]) {
     .sort((left, right) => left.dateValue - right.dateValue);
 }
 
-function windowDelta(shots: ClubAnalyticsShot[], label: string, currentDays: number, previousDays: number) {
+function windowDelta(
+  shots: ClubAnalyticsShot[],
+  label: string,
+  currentDays: number,
+  previousDays: number,
+) {
   const now = Date.now();
   const currentStart = now - currentDays * 86_400_000;
   const previousStart = now - previousDays * 86_400_000;
@@ -1015,7 +1114,11 @@ function windowDelta(shots: ClubAnalyticsShot[], label: string, currentDays: num
     return null;
   }
 
-  return delta(label, snapshot("Previous window", previousShots), snapshot("Current window", currentShots));
+  return delta(
+    label,
+    snapshot("Previous window", previousShots),
+    snapshot("Current window", currentShots),
+  );
 }
 
 function snapshot(label: string, shots: ClubAnalyticsShot[]): ProgressSnapshot | null {
@@ -1027,14 +1130,31 @@ function snapshot(label: string, shots: ClubAnalyticsShot[]): ProgressSnapshot |
     label,
     shotCount: shots.length,
     carryMedianYd: roundOne(median(shots.map((shot) => shot.carryYd).filter(isNumber))),
-    ballSpeedAverageMph: roundOne(meanOrNull(shots.map((shot) => shot.ballSpeedMph).filter(isNumber))),
-    launchAverageDeg: roundOne(meanOrNull(shots.map((shot) => shot.launchAngleDeg).filter(isNumber))),
-    absoluteOfflineAverageYd: roundOne(meanOrNull(shots.map((shot) => shot.sideCarryYd).filter(isNumber).map(Math.abs))),
-    clubPathAverageDeg: roundOne(meanOrNull(shots.map((shot) => shot.clubPathDeg).filter(isNumber))),
+    ballSpeedAverageMph: roundOne(
+      meanOrNull(shots.map((shot) => shot.ballSpeedMph).filter(isNumber)),
+    ),
+    launchAverageDeg: roundOne(
+      meanOrNull(shots.map((shot) => shot.launchAngleDeg).filter(isNumber)),
+    ),
+    absoluteOfflineAverageYd: roundOne(
+      meanOrNull(
+        shots
+          .map((shot) => shot.sideCarryYd)
+          .filter(isNumber)
+          .map(Math.abs),
+      ),
+    ),
+    clubPathAverageDeg: roundOne(
+      meanOrNull(shots.map((shot) => shot.clubPathDeg).filter(isNumber)),
+    ),
   };
 }
 
-function delta(label: string, baseline: ProgressSnapshot | null, current: ProgressSnapshot | null): ProgressDelta | null {
+function delta(
+  label: string,
+  baseline: ProgressSnapshot | null,
+  current: ProgressSnapshot | null,
+): ProgressDelta | null {
   if (!baseline || !current) {
     return null;
   }
@@ -1044,7 +1164,10 @@ function delta(label: string, baseline: ProgressSnapshot | null, current: Progre
     carryDeltaYd: nullableDelta(current.carryMedianYd, baseline.carryMedianYd),
     ballSpeedDeltaMph: nullableDelta(current.ballSpeedAverageMph, baseline.ballSpeedAverageMph),
     launchDeltaDeg: nullableDelta(current.launchAverageDeg, baseline.launchAverageDeg),
-    offlineDeltaYd: nullableDelta(current.absoluteOfflineAverageYd, baseline.absoluteOfflineAverageYd),
+    offlineDeltaYd: nullableDelta(
+      current.absoluteOfflineAverageYd,
+      baseline.absoluteOfflineAverageYd,
+    ),
     clubPathDeltaDeg: nullableDelta(current.clubPathAverageDeg, baseline.clubPathAverageDeg),
   };
 }
@@ -1053,7 +1176,11 @@ function nullableDelta(current: number | null, baseline: number | null) {
   return current === null || baseline === null ? null : roundOne(current - baseline);
 }
 
-function clubDataWarning(clubDataShotCount: number, estimatedClubDataShotCount: number, stockShotCount: number) {
+function clubDataWarning(
+  clubDataShotCount: number,
+  estimatedClubDataShotCount: number,
+  stockShotCount: number,
+) {
   if (stockShotCount === 0) {
     return null;
   }
@@ -1080,13 +1207,21 @@ function stoppingPowerScore(clubType: string, descentValues: number[]) {
   }
 
   const family = clubFamily(clubType);
-  const target = family === "driver" ? 30 : family === "wood" || family === "hybrid" ? 36 : family === "wedge" ? 45 : 42;
+  const target =
+    family === "driver"
+      ? 30
+      : family === "wood" || family === "hybrid"
+        ? 36
+        : family === "wedge"
+          ? 45
+          : 42;
   return Math.round(clamp((averageDescent / target) * 100, 0, 100));
 }
 
 function isLowFlight(clubType: string, shot: ClubAnalyticsShot) {
   const family = clubFamily(clubType);
-  const apexThreshold = family === "driver" || family === "wood" ? 45 : family === "wedge" ? 50 : 55;
+  const apexThreshold =
+    family === "driver" || family === "wood" ? 45 : family === "wedge" ? 50 : 55;
   const launchThreshold = launchWindowForClub(clubType).low - 4;
   return (
     (isNumber(shot.apexFt) && shot.apexFt < apexThreshold) ||
@@ -1095,7 +1230,9 @@ function isLowFlight(clubType: string, shot: ClubAnalyticsShot) {
 }
 
 function riskScore(shots: ClubAnalyticsShot[], type: "hook" | "block") {
-  const usableShots = shots.filter((shot) => isNumber(shot.clubPathDeg) && isNumber(shot.sideCarryYd));
+  const usableShots = shots.filter(
+    (shot) => isNumber(shot.clubPathDeg) && isNumber(shot.sideCarryYd),
+  );
 
   if (usableShots.length === 0) {
     return null;
@@ -1106,7 +1243,11 @@ function riskScore(shots: ClubAnalyticsShot[], type: "hook" | "block") {
       return (shot.clubPathDeg ?? 0) > 4 && (shot.sideCarryYd ?? 0) < -20;
     }
 
-    return (shot.clubPathDeg ?? 0) > 4 && (shot.launchDirectionDeg ?? 0) > 3 && (shot.sideCarryYd ?? 0) > 15;
+    return (
+      (shot.clubPathDeg ?? 0) > 4 &&
+      (shot.launchDirectionDeg ?? 0) > 3 &&
+      (shot.sideCarryYd ?? 0) > 15
+    );
   }).length;
 
   return Math.round((riskCount / usableShots.length) * 100);
@@ -1177,7 +1318,10 @@ function primaryMiss(sideValues: number[]): ClubAnalytics["accuracy"]["primaryMi
   return "Balanced";
 }
 
-function confidenceLabel(score: number, sampleSize: number): ClubAnalytics["consistency"]["confidenceLabel"] {
+function confidenceLabel(
+  score: number,
+  sampleSize: number,
+): ClubAnalytics["consistency"]["confidenceLabel"] {
   if (sampleSize < 5 || score <= 30) {
     return "Not enough data";
   }
@@ -1198,7 +1342,10 @@ function confidenceLabel(score: number, sampleSize: number): ClubAnalytics["cons
 }
 
 function launchWindowForClub(clubType: string) {
-  return LAUNCH_WINDOWS[clubType] ?? (isShortGameTouchClubType(clubType) ? LAUNCH_WINDOWS.sw : { low: 16, high: 28 });
+  return (
+    LAUNCH_WINDOWS[clubType] ??
+    (isShortGameTouchClubType(clubType) ? LAUNCH_WINDOWS.sw : { low: 16, high: 28 })
+  );
 }
 
 function clubFamily(clubType: string): keyof typeof BIG_MISS_LIMIT_BY_FAMILY {
@@ -1262,7 +1409,9 @@ function formatSigned(value: number) {
 }
 
 function meanOrNull(values: number[]) {
-  return values.length === 0 ? null : values.reduce((total, value) => total + value, 0) / values.length;
+  return values.length === 0
+    ? null
+    : values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function median(values: number[]) {

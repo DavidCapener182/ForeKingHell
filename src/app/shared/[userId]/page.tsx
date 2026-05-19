@@ -19,7 +19,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { clubs, sessions, shots, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireReadableAccountUserId } from "@/lib/account-access";
@@ -58,10 +65,26 @@ export default async function SharedAccountPage({ params }: PageProps) {
         title={data.profile.name ?? data.profile.email ?? "ForeKingHell player"}
         description="Read-only account overview for coach, viewer, and editor roles. Mutations still require owner/editor-scoped actions."
         metrics={[
-          { label: "Sessions", value: integerFormatter.format(data.sessionCount), detail: "Imported and manual rounds." },
-          { label: "Shots", value: integerFormatter.format(data.shotCount), detail: "Launch-monitor records." },
-          { label: "Active clubs", value: integerFormatter.format(data.activeClubCount), detail: "Current bag entries." },
-          { label: "30 day shots", value: integerFormatter.format(data.recentShotCount), detail: "Recent practice volume." },
+          {
+            label: "Sessions",
+            value: integerFormatter.format(data.sessionCount),
+            detail: "Imported and manual rounds.",
+          },
+          {
+            label: "Shots",
+            value: integerFormatter.format(data.shotCount),
+            detail: "Launch-monitor records.",
+          },
+          {
+            label: "Active clubs",
+            value: integerFormatter.format(data.activeClubCount),
+            detail: "Current bag entries.",
+          },
+          {
+            label: "30 day shots",
+            value: integerFormatter.format(data.recentShotCount),
+            detail: "Recent practice volume.",
+          },
         ]}
       />
 
@@ -76,7 +99,9 @@ export default async function SharedAccountPage({ params }: PageProps) {
           {
             label: "Top club",
             value: data.topClub?.clubType ?? "--",
-            detail: data.topClub ? `${integerFormatter.format(data.topClub.count)} shots` : "No shots yet",
+            detail: data.topClub
+              ? `${integerFormatter.format(data.topClub.count)} shots`
+              : "No shots yet",
             tone: "green",
           },
           {
@@ -105,7 +130,11 @@ export default async function SharedAccountPage({ params }: PageProps) {
         <MetricCard
           label="Most used club"
           value={data.topClub?.clubType ?? "--"}
-          detail={data.topClub ? `${integerFormatter.format(data.topClub.count)} shots recorded.` : "No shots yet."}
+          detail={
+            data.topClub
+              ? `${integerFormatter.format(data.topClub.count)} shots recorded.`
+              : "No shots yet."
+          }
           icon={Target}
           tone="green"
         />
@@ -156,7 +185,9 @@ export default async function SharedAccountPage({ params }: PageProps) {
                 {data.recentRounds.map((round) => (
                   <TableRow key={round.id}>
                     <TableCell>{formatDate(round.date)}</TableCell>
-                    <TableCell><Badge variant="outline">{round.type}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{round.type}</Badge>
+                    </TableCell>
                     <TableCell>{round.courseName ?? round.fileName ?? "--"}</TableCell>
                     <TableCell className="text-right">{round.totalScore ?? "--"}</TableCell>
                     <TableCell className="text-right">{round.holesPlayed}</TableCell>
@@ -209,9 +240,10 @@ async function getSharedAccountData(targetUserId: string) {
   }
 
   const clubCounts = countBy(shotRows.map((shot) => shot.clubType));
-  const topClub = [...clubCounts.entries()]
-    .map(([clubType, count]) => ({ clubType, count }))
-    .sort((a, b) => b.count - a.count)[0] ?? null;
+  const topClub =
+    [...clubCounts.entries()]
+      .map(([clubType, count]) => ({ clubType, count }))
+      .sort((a, b) => b.count - a.count)[0] ?? null;
   const longestDriveYd =
     shotRows
       .filter((shot) => shot.clubType === "driver" && typeof shot.totalYd === "number")
@@ -252,7 +284,9 @@ function countBy(values: string[]) {
 }
 
 function scorecardTotal(scorecard: NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>) {
-  const scores = scorecard.map((hole) => hole.score).filter((score): score is number => typeof score === "number");
+  const scores = scorecard
+    .map((hole) => hole.score)
+    .filter((score): score is number => typeof score === "number");
   return scores.length > 0 ? scores.reduce((total, score) => total + score, 0) : null;
 }
 

@@ -102,8 +102,17 @@ export async function getAdminDashboardData() {
   const feedCount = await countRows(feedItems);
   const challengeCount = await countRows(challenges);
   const openReportCount = await countRows(socialReports, eq(socialReports.status, "open"));
-  const activeSubscriptionCount = await countRows(subscriptions, inArray(subscriptions.status, [...activeSubscriptionStatuses]));
-  const lifetimeGrantCount = await countRows(entitlements, and(eq(entitlements.entitlementKey, "lifetime_full"), sql`${entitlements.valueJson}->>'value' = 'true'`));
+  const activeSubscriptionCount = await countRows(
+    subscriptions,
+    inArray(subscriptions.status, [...activeSubscriptionStatuses]),
+  );
+  const lifetimeGrantCount = await countRows(
+    entitlements,
+    and(
+      eq(entitlements.entitlementKey, "lifetime_full"),
+      sql`${entitlements.valueJson}->>'value' = 'true'`,
+    ),
+  );
   const usageEventCount = await countRows(usageEvents);
   const recentUsers = await getAdminUsers({ limit: 8 });
   const recentAuditRows = await db
@@ -137,7 +146,9 @@ export async function getAdminDashboardData() {
   };
 }
 
-export async function getAdminUsers(options: { q?: string; limit?: number } = {}): Promise<AdminUserListItem[]> {
+export async function getAdminUsers(
+  options: { q?: string; limit?: number } = {},
+): Promise<AdminUserListItem[]> {
   await requireAdminUser();
   const db = getDb();
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
@@ -181,7 +192,12 @@ export async function getAdminUsers(options: { q?: string; limit?: number } = {}
           createdAt: subscriptions.createdAt,
         })
         .from(subscriptions)
-        .where(and(inArray(subscriptions.userId, ids), inArray(subscriptions.status, [...activeSubscriptionStatuses])))
+        .where(
+          and(
+            inArray(subscriptions.userId, ids),
+            inArray(subscriptions.status, [...activeSubscriptionStatuses]),
+          ),
+        )
         .orderBy(desc(subscriptions.createdAt))
     : [];
   const fullEntitlements = ids.length
@@ -212,11 +228,14 @@ export async function getAdminUsers(options: { q?: string; limit?: number } = {}
   return rows.map((row) => ({
     id: row.id,
     email: row.email,
-    displayName: safeAdminDisplayName(row.profileDisplayName) ?? safeAdminDisplayName(row.name) ?? "ForeKingHell Player",
+    displayName:
+      safeAdminDisplayName(row.profileDisplayName) ??
+      safeAdminDisplayName(row.name) ??
+      "ForeKingHell Player",
     username: row.username && !isSharedDatabaseArtifact(row.username) ? row.username : null,
     adminRole: row.adminStatus === "active" ? row.adminRole : null,
     adminStatus: row.adminStatus,
-    activePlan: fullGrantIds.has(row.id) ? "full" : subscriptionMap.get(row.id) ?? "free",
+    activePlan: fullGrantIds.has(row.id) ? "full" : (subscriptionMap.get(row.id) ?? "free"),
     sessionCount: sessionMap.get(row.id) ?? 0,
     feedCount: feedMap.get(row.id) ?? 0,
     createdAt: row.createdAt,
@@ -226,7 +245,10 @@ export async function getAdminUsers(options: { q?: string; limit?: number } = {}
 export async function getAdminBillingData() {
   await requireAdminUser();
   const db = getDb();
-  const planRows = await db.select().from(planLimits).orderBy(planLimits.planKey, planLimits.limitKey);
+  const planRows = await db
+    .select()
+    .from(planLimits)
+    .orderBy(planLimits.planKey, planLimits.limitKey);
   const subscriptionRows = await db
     .select({
       id: subscriptions.id,
@@ -268,11 +290,17 @@ export async function getAdminBillingData() {
     planLimits: planRows,
     subscriptions: subscriptionRows.map((row) => ({
       ...row,
-      displayName: safeAdminDisplayName(row.profileDisplayName) ?? safeAdminDisplayName(row.name) ?? "ForeKingHell Player",
+      displayName:
+        safeAdminDisplayName(row.profileDisplayName) ??
+        safeAdminDisplayName(row.name) ??
+        "ForeKingHell Player",
     })),
     entitlements: entitlementRows.map((row) => ({
       ...row,
-      displayName: safeAdminDisplayName(row.profileDisplayName) ?? safeAdminDisplayName(row.name) ?? "ForeKingHell Player",
+      displayName:
+        safeAdminDisplayName(row.profileDisplayName) ??
+        safeAdminDisplayName(row.name) ??
+        "ForeKingHell Player",
     })),
   };
 }
@@ -296,7 +324,11 @@ export async function getAdminModerationData() {
     .from(socialReports)
     .orderBy(desc(socialReports.createdAt))
     .limit(80);
-  const events = await db.select().from(moderationEvents).orderBy(desc(moderationEvents.createdAt)).limit(80);
+  const events = await db
+    .select()
+    .from(moderationEvents)
+    .orderBy(desc(moderationEvents.createdAt))
+    .limit(80);
 
   return { reports, events };
 }
@@ -340,7 +372,11 @@ export async function getAdminChallengesData() {
     challenges: challengeRows.map((row) => ({
       ...row,
       templateName: row.templateName ?? "Custom",
-      creatorDisplayName: safeAdminDisplayName(row.creatorProfileName) ?? safeAdminDisplayName(row.creatorName) ?? row.creatorEmail ?? "ForeKingHell Player",
+      creatorDisplayName:
+        safeAdminDisplayName(row.creatorProfileName) ??
+        safeAdminDisplayName(row.creatorName) ??
+        row.creatorEmail ??
+        "ForeKingHell Player",
       entryCount: entryMap.get(row.id) ?? 0,
       attemptCount: attemptMap.get(row.id) ?? 0,
       resultCount: resultMap.get(row.id) ?? 0,
@@ -359,7 +395,10 @@ export async function getAdminOperationsSnapshot() {
   const sponsorCount = await countRows(sponsors);
   const partnerOfferCount = await countRows(partnerOffers);
   const aiSummaryCount = await countRows(aiSocialSummaries);
-  const billingFailureCount = await countRows(subscriptions, inArray(subscriptions.status, ["past_due", "unpaid", "incomplete_expired"]));
+  const billingFailureCount = await countRows(
+    subscriptions,
+    inArray(subscriptions.status, ["past_due", "unpaid", "incomplete_expired"]),
+  );
   const providerImportFailureCount = await countRows(importJobs, eq(importJobs.status, "failed"));
 
   return {
@@ -460,7 +499,10 @@ export async function resolveSocialReport(reportId: string) {
   const now = new Date();
 
   await getDb().transaction(async (tx) => {
-    await tx.update(socialReports).set({ status: "resolved", resolvedAt: now }).where(eq(socialReports.id, reportId));
+    await tx
+      .update(socialReports)
+      .set({ status: "resolved", resolvedAt: now })
+      .where(eq(socialReports.id, reportId));
     await tx.insert(adminAuditLog).values({
       actorUserId: admin.userId,
       action: "social_report_resolved",
@@ -475,7 +517,10 @@ export async function resolveModerationEvent(eventId: string) {
   const now = new Date();
 
   await getDb().transaction(async (tx) => {
-    await tx.update(moderationEvents).set({ status: "resolved", resolvedAt: now }).where(eq(moderationEvents.id, eventId));
+    await tx
+      .update(moderationEvents)
+      .set({ status: "resolved", resolvedAt: now })
+      .where(eq(moderationEvents.id, eventId));
     await tx.insert(adminAuditLog).values({
       actorUserId: admin.userId,
       action: "moderation_event_resolved",
@@ -490,7 +535,11 @@ async function grantLifetimeFullAccess(targetUserId: string, actorUserId: string
   const db = getDb();
 
   await db.transaction(async (tx) => {
-    const [user] = await tx.select({ email: users.email }).from(users).where(eq(users.id, targetUserId)).limit(1);
+    const [user] = await tx
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
     const [customer] = await tx
       .insert(billingCustomers)
       .values({
@@ -590,7 +639,9 @@ async function findUserByEmail(email: string) {
 }
 
 async function countRows(table: AnyPgTable, where?: SQL) {
-  const query = getDb().select({ count: sql<number>`count(*)::int` }).from(table);
+  const query = getDb()
+    .select({ count: sql<number>`count(*)::int` })
+    .from(table);
   const [row] = where ? await query.where(where) : await query;
   return Number(row?.count ?? 0);
 }

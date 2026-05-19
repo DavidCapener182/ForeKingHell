@@ -2,7 +2,14 @@ import "server-only";
 
 import { desc, eq, inArray } from "drizzle-orm";
 
-import { billingCustomers, entitlements, planLimits, subscriptions, usageEvents, users } from "@/db/schema";
+import {
+  billingCustomers,
+  entitlements,
+  planLimits,
+  subscriptions,
+  usageEvents,
+  users,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 
@@ -54,7 +61,13 @@ export const billingPlans: BillingPlan[] = [
     yearlyPrice: "£0",
     audience: "Rapsodo CSV starters",
     description: "Core importing, public records and friend social features.",
-    features: ["Rapsodo CSV import", "Public course records", "Monthly public boards", "Basic friend records", "Limited verified attempts"],
+    features: [
+      "Rapsodo CSV import",
+      "Public course records",
+      "Monthly public boards",
+      "Basic friend records",
+      "Limited verified attempts",
+    ],
     priceEnv: {},
   },
   {
@@ -63,8 +76,15 @@ export const billingPlans: BillingPlan[] = [
     monthlyPrice: "£4.99",
     yearlyPrice: "£49",
     audience: "Players tracking long-term improvement",
-    description: "Advanced history, private record boards, friend tournaments and share-card customisation.",
-    features: ["Unlimited history", "Private course record boards", "Private friend tournaments", "Advanced leaderboards", "Custom share cards"],
+    description:
+      "Advanced history, private record boards, friend tournaments and share-card customisation.",
+    features: [
+      "Unlimited history",
+      "Private course record boards",
+      "Private friend tournaments",
+      "Advanced leaderboards",
+      "Custom share cards",
+    ],
     priceEnv: {
       monthly: "STRIPE_PLUS_MONTHLY_PRICE_ID",
       yearly: "STRIPE_PLUS_YEARLY_PRICE_ID",
@@ -76,8 +96,15 @@ export const billingPlans: BillingPlan[] = [
     monthlyPrice: "£8.99-£12.99",
     yearlyPrice: "£89-£119",
     audience: "Launch-monitor power users",
-    description: "AI coaching, tournament prep, record strategy and advanced verification analytics.",
-    features: ["AI coach", "AI tournament prep", "AI record strategy", "Advanced verification analytics", "Friend comparison insights"],
+    description:
+      "AI coaching, tournament prep, record strategy and advanced verification analytics.",
+    features: [
+      "AI coach",
+      "AI tournament prep",
+      "AI record strategy",
+      "Advanced verification analytics",
+      "Friend comparison insights",
+    ],
     priceEnv: {
       monthly: "STRIPE_PRO_MONTHLY_PRICE_ID",
       yearly: "STRIPE_PRO_YEARLY_PRICE_ID",
@@ -90,7 +117,13 @@ export const billingPlans: BillingPlan[] = [
     yearlyPrice: "Custom",
     audience: "Coaches, societies and simulator venues",
     description: "Host leagues, major-style tournaments, player groups and evidence review.",
-    features: ["Host leagues", "Major-style tournaments", "Evidence review queue", "Player seats", "Export standings"],
+    features: [
+      "Host leagues",
+      "Major-style tournaments",
+      "Evidence review queue",
+      "Player seats",
+      "Export standings",
+    ],
     priceEnv: {
       monthly: "STRIPE_COACH_MONTHLY_PRICE_ID",
       yearly: "STRIPE_COACH_YEARLY_PRICE_ID",
@@ -103,7 +136,13 @@ export const billingPlans: BillingPlan[] = [
     yearlyPrice: "No renewal",
     audience: "Internal owner grant",
     description: "Permanent full access for owner and operator accounts that run the site.",
-    features: ["Unlimited imports", "AI coach", "Major-style tournaments", "All provider adapters", "Admin operations"],
+    features: [
+      "Unlimited imports",
+      "AI coach",
+      "Major-style tournaments",
+      "All provider adapters",
+      "Admin operations",
+    ],
     priceEnv: {},
     internal: true,
   },
@@ -112,16 +151,35 @@ export const billingPlans: BillingPlan[] = [
 export async function getBillingPageData() {
   const userId = await requireCurrentUserId();
   const db = getDb();
-  const [user] = await db.select({ email: users.email, name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
-  const [billingCustomer] = await db.select().from(billingCustomers).where(eq(billingCustomers.userId, userId)).limit(1);
+  const [user] = await db
+    .select({ email: users.email, name: users.name })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const [billingCustomer] = await db
+    .select()
+    .from(billingCustomers)
+    .where(eq(billingCustomers.userId, userId))
+    .limit(1);
   const [latestSubscription] = await db
     .select()
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
-  const entitlementRows = await db.select().from(entitlements).where(eq(entitlements.userId, userId));
-  const limitRows = await db.select().from(planLimits).where(inArray(planLimits.planKey, billingPlans.map((plan) => plan.key)));
+  const entitlementRows = await db
+    .select()
+    .from(entitlements)
+    .where(eq(entitlements.userId, userId));
+  const limitRows = await db
+    .select()
+    .from(planLimits)
+    .where(
+      inArray(
+        planLimits.planKey,
+        billingPlans.map((plan) => plan.key),
+      ),
+    );
   const activePlanKey = resolveActivePlanKey(latestSubscription, entitlementRows);
 
   return {
@@ -143,7 +201,10 @@ export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> 
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
-  const entitlementRows = await getDb().select().from(entitlements).where(eq(entitlements.userId, userId));
+  const entitlementRows = await getDb()
+    .select()
+    .from(entitlements)
+    .where(eq(entitlements.userId, userId));
 
   return resolveActivePlanKey(latestSubscription, entitlementRows);
 }
@@ -184,7 +245,10 @@ export async function createCheckoutSession(input: {
   params.set("mode", "subscription");
   params.set("line_items[0][price]", priceId);
   params.set("line_items[0][quantity]", "1");
-  params.set("success_url", `${input.origin}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`);
+  params.set(
+    "success_url",
+    `${input.origin}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+  );
   params.set("cancel_url", `${input.origin}/billing?checkout=cancelled`);
   params.set("client_reference_id", userId);
   params.set("metadata[user_id]", userId);
@@ -273,13 +337,15 @@ export async function recordUsageEvent(input: {
   metadataJson?: Record<string, unknown>;
 }) {
   const userId = await requireCurrentUserId();
-  await getDb().insert(usageEvents).values({
-    userId,
-    eventType: input.eventType.slice(0, 80),
-    quantity: Math.max(1, input.quantity ?? 1),
-    sourceId: input.sourceId?.slice(0, 220) ?? null,
-    metadataJson: input.metadataJson ?? {},
-  });
+  await getDb()
+    .insert(usageEvents)
+    .values({
+      userId,
+      eventType: input.eventType.slice(0, 80),
+      quantity: Math.max(1, input.quantity ?? 1),
+      sourceId: input.sourceId?.slice(0, 220) ?? null,
+      metadataJson: input.metadataJson ?? {},
+    });
 }
 
 async function ensureBillingCustomer(userId: string) {
@@ -309,24 +375,36 @@ async function ensureBillingCustomer(userId: string) {
 }
 
 function parsePlanKey(value: string | null | undefined): PlanKey {
-  return value === "plus" || value === "pro" || value === "coach" || value === "full" ? value : "free";
+  return value === "plus" || value === "pro" || value === "coach" || value === "full"
+    ? value
+    : "free";
 }
 
 function resolveActivePlanKey(
   latestSubscription: Pick<typeof subscriptions.$inferSelect, "planKey" | "status"> | null,
-  entitlementRows: Array<Pick<typeof entitlements.$inferSelect, "entitlementKey" | "valueJson" | "expiresAt">>,
+  entitlementRows: Array<
+    Pick<typeof entitlements.$inferSelect, "entitlementKey" | "valueJson" | "expiresAt">
+  >,
 ): PlanKey {
   const now = Date.now();
   const hasLifetimeFull = entitlementRows.some((entitlement) => {
     const active = !entitlement.expiresAt || entitlement.expiresAt.getTime() > now;
-    return entitlement.entitlementKey === "lifetime_full" && active && entitlement.valueJson?.value === true;
+    return (
+      entitlement.entitlementKey === "lifetime_full" &&
+      active &&
+      entitlement.valueJson?.value === true
+    );
   });
 
   if (hasLifetimeFull) {
     return "full";
   }
 
-  return parsePlanKey(latestSubscription?.status === "active" || latestSubscription?.status === "trialing" ? latestSubscription.planKey : "free");
+  return parsePlanKey(
+    latestSubscription?.status === "active" || latestSubscription?.status === "trialing"
+      ? latestSubscription.planKey
+      : "free",
+  );
 }
 
 function readStripeError(payload: unknown) {

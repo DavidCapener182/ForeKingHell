@@ -31,7 +31,9 @@ export function parseTableDensity(value: FormDataEntryValue | null): TableDensit
 
 export function parseDashboardPins(values: FormDataEntryValue[]): DashboardPin[] {
   const allowedPins = new Set<string>(dashboardPinOptions);
-  return values.filter((value): value is DashboardPin => typeof value === "string" && allowedPins.has(value));
+  return values.filter(
+    (value): value is DashboardPin => typeof value === "string" && allowedPins.has(value),
+  );
 }
 
 export function parsePrivacySettings(formData: FormData): PrivacySettings {

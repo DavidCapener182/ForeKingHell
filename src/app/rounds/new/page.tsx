@@ -3,13 +3,7 @@ import { ArrowLeft, MapPinned } from "lucide-react";
 import { asc, eq, or } from "drizzle-orm";
 
 import { createManualRoundAction } from "@/app/rounds/actions";
-import {
-  DataPanel,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -47,7 +41,9 @@ export default async function NewRoundPage() {
         eyebrow={<StatusPill tone="green">Real round</StatusPill>}
         title="Add Round"
         description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
-        visual={<PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />}
+        visual={
+          <PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />
+        }
         metrics={[
           {
             label: "Course source",
@@ -112,23 +108,25 @@ async function getRoundCourseOptions(): Promise<RoundCourseOption[]> {
     holesByTeeSet.set(hole.teeSetId, group);
   }
 
-  return courseRows.map((course) => ({
-    id: course.id,
-    name: course.name,
-    country: course.country,
-    teeSets: (teeSetsByCourse.get(course.id) ?? []).map((teeSet) => ({
-      id: teeSet.id,
-      name: teeSet.name,
-      par: teeSet.par,
-      courseRating: teeSet.courseRating,
-      slopeRating: teeSet.slopeRating,
-      yards: teeSet.yards,
-      holes: (holesByTeeSet.get(teeSet.id) ?? []).map((hole) => ({
-        holeNumber: hole.holeNumber,
-        par: hole.par,
-        yards: hole.yards,
-        strokeIndex: hole.strokeIndex,
+  return courseRows
+    .map((course) => ({
+      id: course.id,
+      name: course.name,
+      country: course.country,
+      teeSets: (teeSetsByCourse.get(course.id) ?? []).map((teeSet) => ({
+        id: teeSet.id,
+        name: teeSet.name,
+        par: teeSet.par,
+        courseRating: teeSet.courseRating,
+        slopeRating: teeSet.slopeRating,
+        yards: teeSet.yards,
+        holes: (holesByTeeSet.get(teeSet.id) ?? []).map((hole) => ({
+          holeNumber: hole.holeNumber,
+          par: hole.par,
+          yards: hole.yards,
+          strokeIndex: hole.strokeIndex,
+        })),
       })),
-    })),
-  })).filter((course) => course.teeSets.length > 0);
+    }))
+    .filter((course) => course.teeSets.length > 0);
 }

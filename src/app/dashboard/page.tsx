@@ -58,10 +58,7 @@ import {
 import { getDb } from "@/db/client";
 import { buildCoachSummary } from "@/lib/coach";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
-import {
-  buildCourseDecisionAdvice,
-  getClubDecisionLabel,
-} from "@/lib/course-decision-advice";
+import { buildCourseDecisionAdvice, getClubDecisionLabel } from "@/lib/course-decision-advice";
 import {
   clubSortValue,
   formatClubType,
@@ -124,20 +121,14 @@ function MissingDatabaseUrlSetup() {
             <AlertTitle>Set DATABASE_URL</AlertTitle>
             <AlertDescription className="space-y-3">
               <p>
-                Use your Supabase (or other Postgres) connection string and
-                configure Supabase Auth public keys so each request can be
-                scoped to the signed-in user.
+                Use your Supabase (or other Postgres) connection string and configure Supabase Auth
+                public keys so each request can be scoped to the signed-in user.
               </p>
               <p className="text-muted-foreground">
                 After deploying with env vars, run{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                  npm run db:migrate
-                </code>{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">npm run db:migrate</code>{" "}
                 locally with the same{" "}
-                <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                  DATABASE_URL
-                </code>
-                .
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">DATABASE_URL</code>.
               </p>
             </AlertDescription>
           </Alert>
@@ -168,20 +159,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const activeDashboardSection = parseDashboardSection(params?.section);
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
-  const primaryActionLabel =
-    data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
+  const primaryActionLabel = data.stats.shotCount > 0 ? "Open bag map" : "Import first CSV";
   const latestSession = data.recentSessions[0] ?? null;
   const bestClub = getBestClub(data.bagPreview);
   const firstSignal = data.whatChanged[0] ?? null;
   const practiceHref = data.coachPreview
     ? `/bag/${data.coachPreview.clubId}/analytics`
     : primaryAction;
-  const latestRoundHref = data.latestRound
-    ? `/rounds/${data.latestRound.id}`
-    : "/rounds";
-  const mappedClubCount = data.bagPreview.filter(
-    (club) => club.stock.confidenceScore >= 60,
-  ).length;
+  const latestRoundHref = data.latestRound ? `/rounds/${data.latestRound.id}` : "/rounds";
+  const mappedClubCount = data.bagPreview.filter((club) => club.stock.confidenceScore >= 60).length;
 
   const metrics = [
     {
@@ -357,8 +343,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       title: "Compare",
-      description:
-        "Compare a focused session against the previous-session baseline.",
+      description: "Compare a focused session against the previous-session baseline.",
       href: "/compare",
       metric: "Session delta",
       icon: GitCompareArrows,
@@ -382,8 +367,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       title: "Handicap",
-      description:
-        "Review scoring ceiling, playing estimate, and data-limited warnings.",
+      description: "Review scoring ceiling, playing estimate, and data-limited warnings.",
       href: "/handicap",
       metric: formatHandicapValue(data.stats.combinedHandicap.value),
       icon: LineChart,
@@ -423,8 +407,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       title: "Coach",
-      description:
-        "Open the next practice priority, diagnosis, and session plan.",
+      description: "Open the next practice priority, diagnosis, and session plan.",
       href: "/coach",
       metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
       icon: Brain,
@@ -480,8 +463,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     },
     {
       title: "Round review",
-      description:
-        "Open real scorecards, simulator overlays, and handicap inputs.",
+      description: "Open real scorecards, simulator overlays, and handicap inputs.",
       href: data.latestRound ? `/rounds/${data.latestRound.id}` : "/rounds",
       metric: data.latestRound ? "Latest round" : "No round yet",
       icon: MapPinned,
@@ -514,6 +496,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           primaryActionLabel={primaryActionLabel}
           latestRound={data.latestRound}
         />
+
+        <DashboardDataHealthPanel data={data} />
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
           <div className="flex min-w-0 flex-col gap-6">
@@ -554,9 +538,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <LatestRoundPanel latestRound={data.latestRound} />
             ) : null}
 
-            {metrics.length > 0 ? (
-              <PerformanceSnapshot metrics={metrics} paired />
-            ) : null}
+            {metrics.length > 0 ? <PerformanceSnapshot metrics={metrics} paired /> : null}
 
             <DashboardSocialPulse social={social} />
 
@@ -619,10 +601,21 @@ function DashboardMobileLayout({
       <MobileStatusAction
         label="Latest signal"
         value={data.coachPreview?.clubName ?? "Build baseline"}
-        detail={data.coachPreview?.issueLabel ?? "Import a session to unlock your next recommendation."}
+        detail={
+          data.coachPreview?.issueLabel ?? "Import a session to unlock your next recommendation."
+        }
         action={
-          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href={data.coachPreview ? `/bag/${data.coachPreview.clubId}/analytics` : primaryAction} prefetch={false}>
+          <Button
+            asChild
+            size="sm"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
+            <Link
+              href={
+                data.coachPreview ? `/bag/${data.coachPreview.clubId}/analytics` : primaryAction
+              }
+              prefetch={false}
+            >
               {data.coachPreview ? "Open" : primaryActionLabel}
             </Link>
           </Button>
@@ -720,26 +713,18 @@ function DashboardMobileLayout({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-semibold">
-                        {data.coachPreview.trustIndex}%
-                      </p>
+                      <p className="text-2xl font-semibold">{data.coachPreview.trustIndex}%</p>
                       <p className="text-xs text-muted-foreground">trust</p>
                     </div>
                   </div>
-                  <p className="mt-4 text-sm font-medium">
-                    {data.coachPreview.drill}
-                  </p>
-                  <Progress
-                    value={data.coachPreview.trustIndex}
-                    className="mt-4"
-                  />
+                  <p className="mt-4 text-sm font-medium">{data.coachPreview.drill}</p>
+                  <Progress value={data.coachPreview.trustIndex} className="mt-4" />
                 </Link>
               ) : (
                 <div className="apple-panel-strong p-5">
                   <p className="font-semibold">No coach priority yet</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Import a range session to unlock club-specific practice
-                    recommendations.
+                    Import a range session to unlock club-specific practice recommendations.
                   </p>
                   <Button asChild variant="outline" className="mt-4">
                     <Link href="/coach" prefetch={false}>
@@ -759,12 +744,7 @@ function DashboardMobileLayout({
           title="Key tools"
           description="The fastest paths into today's golf work."
           action={
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="min-h-10 rounded-lg"
-            >
+            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
               <Link href="/dashboard#tools" prefetch={false}>
                 Tools
               </Link>
@@ -782,9 +762,7 @@ function DashboardMobileLayout({
                 prefetch={false}
                 className="apple-panel-strong block min-h-28 p-3"
               >
-                <div
-                  className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}
-                >
+                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
                   <Icon className="size-5" />
                 </div>
                 <p className="font-semibold tracking-normal">{card.title}</p>
@@ -819,7 +797,9 @@ function DashboardMobileLayout({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold">{card.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{card.description}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {card.description}
+                    </span>
                   </span>
                   <span className="text-xs font-medium text-muted-foreground">{card.metric}</span>
                 </Link>
@@ -829,21 +809,13 @@ function DashboardMobileLayout({
         </MobileAccordionSection>
       </section>
 
-      <section
-        id="bag"
-        className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]"
-      >
+      <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         {pinnedDashboardSections.has("bag") ? (
           <MobileHorizontalRail
             title="Bag confidence"
             description="Stock numbers and confidence by club."
             action={
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="min-h-10 rounded-lg"
-              >
+              <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
                 <Link href="/bag" prefetch={false}>
                   View all
                 </Link>
@@ -857,21 +829,11 @@ function DashboardMobileLayout({
                 prefetch={false}
                 className="apple-panel-strong block p-4"
               >
-                <p className="text-lg font-semibold tracking-normal">
-                  {formatClubType(club.type)}
-                </p>
-                <p className="mt-1 truncate text-sm text-muted-foreground">
-                  {club.brandModel}
-                </p>
+                <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
+                <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MiniMetric
-                    label="Carry"
-                    value={formatYards(club.stock.carryMedianYd)}
-                  />
-                  <MiniMetric
-                    label="Trust"
-                    value={`${club.stock.confidenceScore}%`}
-                  />
+                  <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+                  <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
                 </div>
                 <Progress value={club.stock.confidenceScore} className="mt-4" />
               </Link>
@@ -895,35 +857,22 @@ function DashboardMobileLayout({
                       {formatSessionType(data.latestRound.type)}
                     </p>
                     <p className="mt-1 text-2xl font-semibold tracking-normal">
-                      {data.latestRound.courseName ??
-                        data.latestRound.fileName ??
-                        "Untitled round"}
+                      {data.latestRound.courseName ?? data.latestRound.fileName ?? "Untitled round"}
                     </p>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <RoundMetric
-                      label="Score"
-                      value={data.latestRound.totalScore}
-                    />
+                    <RoundMetric label="Score" value={data.latestRound.totalScore} />
                     <RoundMetric label="Par" value={data.latestRound.totalPar} />
-                    <RoundMetric
-                      label="Putts"
-                      value={data.latestRound.totalPutts}
-                    />
+                    <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
                     <RoundMetric
                       label="Diff"
-                      value={formatHandicapValue(
-                        data.latestRound.handicapDifferential,
-                      )}
+                      value={formatHandicapValue(data.latestRound.handicapDifferential)}
                     />
                   </div>
                   <Separator />
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Button asChild className="flex-1">
-                      <Link
-                        href={`/rounds/${data.latestRound.id}`}
-                        prefetch={false}
-                      >
+                      <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
                         <Flag className="size-4" />
                         Review round
                       </Link>
@@ -939,8 +888,8 @@ function DashboardMobileLayout({
                 <div className="apple-panel p-6">
                   <p className="font-medium">No round imports yet</p>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Save a simulated-course CSV to unlock scorecards, hole
-                    review, and round shot maps.
+                    Save a simulated-course CSV to unlock scorecards, hole review, and round shot
+                    maps.
                   </p>
                   <Button asChild variant="outline" className="mt-4">
                     <Link href="/import" prefetch={false}>
@@ -961,17 +910,7 @@ function DashboardMobileLayout({
 }
 
 function DashboardMobileDataHealth({ data }: { data: DashboardData }) {
-  const latestSession = data.recentSessions[0] ?? null;
-  const thinSamples = data.bagPreview.filter((club) => club.stock.sampleSize < 8).length;
-  const missingClubMapping = Math.max(0, data.stats.shotCount - data.bagPreview.reduce((total, club) => total + club.shotCount, 0));
-  const nextImport =
-    data.stats.shotCount === 0
-      ? "Import first Rapsodo CSV"
-      : thinSamples > 0
-        ? "Add samples for thin clubs"
-        : missingClubMapping > 0
-          ? "Review club mapping"
-          : "Import latest session";
+  const health = buildDashboardDataHealth(data);
 
   return (
     <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
@@ -982,21 +921,61 @@ function DashboardMobileDataHealth({ data }: { data: DashboardData }) {
             Last import, club mapping and next useful data check.
           </p>
         </div>
-        <StatusPill tone={thinSamples > 0 || missingClubMapping > 0 ? "amber" : "green"}>
-          {thinSamples > 0 || missingClubMapping > 0 ? "Check" : "Ready"}
-        </StatusPill>
+        <StatusPill tone={health.tone}>{health.status}</StatusPill>
       </div>
       <div className="grid gap-2">
-        <DataPair
-          label="Last import"
-          value={latestSession ? formatDate(latestSession.date) : "None"}
-        />
-        <DataPair label="Missing club mapping" value={missingClubMapping} />
-        <DataPair label="Weak sample clubs" value={thinSamples} />
-        <DataPair label="Next import" value={nextImport} />
+        <DataPair label="Last import" value={health.lastImport} />
+        <DataPair label="Missing club mapping" value={health.missingClubMapping} />
+        <DataPair label="Weak sample clubs" value={health.thinSamples} />
+        <DataPair label="Next import" value={health.nextImport} />
       </div>
     </section>
   );
+}
+
+function DashboardDataHealthPanel({ data }: { data: DashboardData }) {
+  const health = buildDashboardDataHealth(data);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Data health"
+        description="This keeps the dashboard data-first: import freshness, club mapping, weak samples and the next useful fix before any social prompt."
+        action={<StatusPill tone={health.tone}>{health.status}</StatusPill>}
+      />
+      <CardContent className="grid gap-3 md:grid-cols-4">
+        <DataPair label="Last import" value={health.lastImport} />
+        <DataPair label="Missing club mapping" value={health.missingClubMapping} />
+        <DataPair label="Weak sample clubs" value={health.thinSamples} />
+        <DataPair label="Next useful action" value={health.nextImport} />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function buildDashboardDataHealth(data: DashboardData) {
+  const latestSession = data.recentSessions[0] ?? null;
+  const thinSamples = data.bagPreview.filter((club) => club.stock.sampleSize < 8).length;
+  const mappedShots = data.bagPreview.reduce((total, club) => total + club.shotCount, 0);
+  const missingClubMapping = Math.max(0, data.stats.shotCount - mappedShots);
+  const needsWork = thinSamples > 0 || missingClubMapping > 0 || data.stats.shotCount === 0;
+  const nextImport =
+    data.stats.shotCount === 0
+      ? "Import first Rapsodo CSV"
+      : thinSamples > 0
+        ? "Add samples for thin clubs"
+        : missingClubMapping > 0
+          ? "Review club mapping"
+          : "Import latest session";
+
+  return {
+    lastImport: latestSession ? formatDate(latestSession.date) : "None",
+    missingClubMapping,
+    thinSamples,
+    nextImport,
+    status: needsWork ? "Check" : "Ready",
+    tone: needsWork ? ("amber" as const) : ("green" as const),
+  };
 }
 
 function TodayPlan({
@@ -1023,7 +1002,11 @@ function TodayPlan({
         description="Start here: latest practice form, latest change, club costing you shots, and what to practise next."
         action={
           <div data-primary-action>
-            <Button asChild size="sm" className="min-h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              asChild
+              size="sm"
+              className="min-h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Link
                 href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
                 prefetch={false}
@@ -1072,9 +1055,7 @@ function TodayPlan({
             {
               label: "Your game",
               value: `${totalShots.toLocaleString("en-GB")} shots`,
-              detail: firstSignal
-                ? firstSignal.detail
-                : "Waiting for enough data to spot movement",
+              detail: firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement",
               tone: firstSignal?.tone ?? "slate",
             },
             {
@@ -1088,13 +1069,9 @@ function TodayPlan({
             {
               label: "Practice priority",
               value: biggestProblem?.clubName ?? primaryActionLabel,
-              detail:
-                biggestProblem?.drill ??
-                "Import data or review the latest round",
+              detail: biggestProblem?.drill ?? "Import data or review the latest round",
               tone: biggestProblem?.tone ?? "amber",
-              href: biggestProblem
-                ? `/bag/${biggestProblem.clubId}/analytics`
-                : primaryAction,
+              href: biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction,
             },
           ]}
         />
@@ -1102,7 +1079,6 @@ function TodayPlan({
     </DataPanel>
   );
 }
-
 function DashboardMobileSocialPulse({
   social,
   challenges,
@@ -1123,10 +1099,8 @@ function DashboardMobileSocialPulse({
   const closingSoon =
     challenges
       .filter((challenge) => challenge.endsAt)
-      .sort(
-        (left, right) =>
-          (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0),
-      )[0] ?? null;
+      .sort((left, right) => (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0))[0] ??
+    null;
 
   return (
     <DataPanel>
@@ -1187,13 +1161,10 @@ function DashboardMobileSocialPulse({
         />
         <div className="grid gap-2">
           {topItems.length > 0 ? (
-            topItems.map((item) => (
-              <DashboardMobileSocialMoment key={item.id} item={item} />
-            ))
+            topItems.map((item) => <DashboardMobileSocialMoment key={item.id} item={item} />)
           ) : (
             <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No visible social moments yet. Add friends or join a challenge to
-              populate this pulse.
+              No visible social moments yet. Add friends or join a challenge to populate this pulse.
             </p>
           )}
         </div>
@@ -1213,8 +1184,7 @@ function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
         <p className="font-medium">{item.headline}</p>
         <StatusPill
           tone={
-            item.verificationLabel === "Manual" ||
-            item.verificationLabel === "Unverified"
+            item.verificationLabel === "Manual" || item.verificationLabel === "Unverified"
               ? "slate"
               : "green"
           }
@@ -1240,20 +1210,12 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RoundMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string | null;
-}) {
+function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">
-        {typeof value === "number"
-          ? integerFormatter.format(value)
-          : (value ?? "--")}
+        {typeof value === "number" ? integerFormatter.format(value) : (value ?? "--")}
       </span>
     </div>
   );
@@ -1288,9 +1250,7 @@ function DashboardPanel({
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">
-              {description}
-            </p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">{description}</p>
           ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
@@ -1319,9 +1279,7 @@ function DashboardSummaryHero({
   primaryActionLabel: string;
   latestRound: DashboardData["latestRound"];
 }) {
-  const practiceHref = coachPreview
-    ? `/bag/${coachPreview.clubId}/analytics`
-    : primaryAction;
+  const practiceHref = coachPreview ? `/bag/${coachPreview.clubId}/analytics` : primaryAction;
   const practiceTitle = coachPreview
     ? `${coachPreview.clubName} ${coachPreview.issueLabel.toLowerCase()}`
     : primaryActionLabel;
@@ -1334,10 +1292,7 @@ function DashboardSummaryHero({
 
   return (
     <section className="relative overflow-hidden rounded-[24px] border border-[#CFE7D6] bg-white shadow-[0_12px_30px_rgba(8,122,61,0.06)]">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-80"
-      >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-80">
         <div className="absolute inset-0 bg-[linear-gradient(115deg,#F8FAF8_0%,#FFFFFF_48%,#ECF7F1_100%)]" />
         <div className="absolute right-0 top-0 h-full w-[46%] border-l border-[#DCECE0] bg-[repeating-linear-gradient(90deg,rgba(15,143,77,0.10)_0,rgba(15,143,77,0.10)_1px,transparent_1px,transparent_54px)]" />
         <div className="absolute right-10 top-8 h-40 w-40 rounded-full border border-[#BFE4CA]" />
@@ -1363,8 +1318,7 @@ function DashboardSummaryHero({
               ForeKingHell
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
-              Your golf operating system: form, bag confidence, practice and
-              rounds.
+              Your golf operating system: form, bag confidence, practice and rounds.
             </p>
             <p className="mt-5 max-w-3xl text-base font-medium leading-7 text-[#111827]">
               Today&apos;s read: {todayRead}.
@@ -1372,21 +1326,13 @@ function DashboardSummaryHero({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-lg border-[#DFE7DF] bg-white"
-            >
+            <Button asChild variant="outline" className="rounded-lg border-[#DFE7DF] bg-white">
               <Link href="/today" prefetch={false}>
                 <CalendarDays className="size-4" />
                 Review latest practice
               </Link>
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-lg border-[#DFE7DF] bg-white"
-            >
+            <Button asChild variant="outline" className="rounded-lg border-[#DFE7DF] bg-white">
               <Link href="/shots" prefetch={false}>
                 <Database className="size-4" />
                 Shot database
@@ -1411,9 +1357,7 @@ function DashboardSummaryHero({
               {practiceTitle}
             </h2>
             <p className="mt-1 text-sm font-semibold text-[#087A3D]">
-              {coachPreview
-                ? `${coachPreview.trustIndex}% trust`
-                : "Build the first trust signal"}
+              {coachPreview ? `${coachPreview.trustIndex}% trust` : "Build the first trust signal"}
             </p>
             <p className="mt-4 text-sm leading-6 text-[#667085]">
               {coachPreview
@@ -1461,13 +1405,11 @@ function DashboardSummaryHero({
         <HeroInsightCard
           title="Latest round"
           value={
-            latestRound
-              ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
-              : "--"
+            latestRound ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar) : "--"
           }
           detail={
             latestRound
-              ? latestRound.courseName ?? latestRound.fileName ?? "Review round"
+              ? (latestRound.courseName ?? latestRound.fileName ?? "Review round")
               : "No round imported yet"
           }
           href={latestRound ? `/rounds/${latestRound.id}` : "/rounds"}
@@ -1507,9 +1449,7 @@ function HeroInsightCard({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-          {title}
-        </p>
+        <p className="text-[15px] font-semibold leading-6 text-[#111827]">{title}</p>
         {actionText ? (
           <span className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#087A3D] px-3 text-xs font-semibold text-white transition-colors group-hover:bg-[#065F32]">
             {actionText}
@@ -1519,9 +1459,7 @@ function HeroInsightCard({
           <DashboardDot tone={tone} />
         )}
       </div>
-      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
-        {value}
-      </p>
+      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">{value}</p>
       <p className="mt-1.5 text-sm leading-5 text-[#667085]">{detail}</p>
     </Link>
   );
@@ -1578,12 +1516,12 @@ function LatestPracticeSignalPanel({
             value={
               latestRound
                 ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
-                : firstSignal?.value ?? "Building"
+                : (firstSignal?.value ?? "Building")
             }
             detail={
               latestRound
-                ? latestRound.courseName ?? latestRound.fileName ?? "Latest round"
-                : firstSignal?.detail ?? "Keep adding shots to surface trend changes."
+                ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
+                : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
             }
           />
         </div>
@@ -1610,14 +1548,14 @@ function LatestPracticeSignalPanel({
             value={
               latestRound
                 ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
-                : firstSignal?.value ?? "Building"
+                : (firstSignal?.value ?? "Building")
             }
             detail={
               latestRound
-                ? latestRound.courseName ?? latestRound.fileName ?? "Latest round"
-                : firstSignal?.detail ?? "Keep adding shots to surface trend changes."
+                ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
+                : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
             }
-            tone={latestRound ? "amber" : firstSignal?.tone ?? "slate"}
+            tone={latestRound ? "amber" : (firstSignal?.tone ?? "slate")}
           />
         </div>
       )}
@@ -1649,12 +1587,8 @@ function CompactSignalRow({
   return (
     <div className="grid gap-1 rounded-lg border border-[#DFE7DF] bg-white px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
-          {label}
-        </p>
-        <p className="text-right text-sm font-semibold text-[#111827]">
-          {value}
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">{label}</p>
+        <p className="text-right text-sm font-semibold text-[#111827]">{value}</p>
       </div>
       <p className="text-sm leading-5 text-[#667085]">{detail}</p>
     </div>
@@ -1675,17 +1609,13 @@ function SignalTile({
   return (
     <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
-          {label}
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">{label}</p>
         <DashboardDot tone={tone} />
       </div>
       <p className="mt-3 truncate text-2xl font-bold leading-8 tracking-normal text-[#111827]">
         {value}
       </p>
-      <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#667085]">
-        {detail}
-      </p>
+      <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#667085]">{detail}</p>
     </div>
   );
 }
@@ -1701,12 +1631,8 @@ function PracticeRecommendationCard({
   primaryActionLabel: string;
   className?: string;
 }) {
-  const href = coachPreview
-    ? `/bag/${coachPreview.clubId}/analytics`
-    : primaryAction;
-  const taskCopy = coachPreview
-    ? getDashboardPracticeTask(coachPreview)
-    : "";
+  const href = coachPreview ? `/bag/${coachPreview.clubId}/analytics` : primaryAction;
+  const taskCopy = coachPreview ? getDashboardPracticeTask(coachPreview) : "";
 
   return (
     <section
@@ -1720,9 +1646,7 @@ function PracticeRecommendationCard({
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-                Next practice
-              </p>
+              <p className="text-[15px] font-semibold leading-6 text-[#111827]">Next practice</p>
               <StatusPill tone={normalizeDashboardTone(coachPreview.tone)}>
                 {coachPreview.trustIndex}% trust
               </StatusPill>
@@ -1738,9 +1662,7 @@ function PracticeRecommendationCard({
                 Goal: path inside +/-5 degrees with a predictable start line.
               </span>
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">
-              {coachPreview.reason}
-            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">{coachPreview.reason}</p>
             <TargetLaneVisual coachPreview={coachPreview} />
           </div>
 
@@ -1749,14 +1671,9 @@ function PracticeRecommendationCard({
               <Crosshair className="size-5" />
               <p className="text-sm font-semibold">Practice task</p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-[#111827]">
-              {taskCopy}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-[#111827]">{taskCopy}</p>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <Button
-                asChild
-                className="h-9 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
-              >
+              <Button asChild className="h-9 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]">
                 <Link href={href} prefetch={false}>
                   Open drill
                   <ArrowRight className="size-4" />
@@ -1771,9 +1688,7 @@ function PracticeRecommendationCard({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-              Next practice
-            </p>
+            <p className="text-[15px] font-semibold leading-6 text-[#111827]">Next practice</p>
             <h2 className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
               {primaryActionLabel}
             </h2>
@@ -1801,11 +1716,7 @@ function TargetLaneVisual({
 }) {
   const missSide = getPracticeMissSide(coachPreview);
   const markerPosition =
-    missSide === "left"
-      ? "left-[34%]"
-      : missSide === "right"
-        ? "left-[66%]"
-        : "left-1/2";
+    missSide === "left" ? "left-[34%]" : missSide === "right" ? "left-[66%]" : "left-1/2";
   const markerLabel =
     missSide === "left"
       ? "Left miss trend"
@@ -1836,19 +1747,31 @@ function TargetLaneVisual({
         <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#087A3D] shadow-sm">
           Target
         </span>
-        <div className={cn("absolute bottom-4 flex -translate-x-1/2 flex-col items-center", markerPosition)}>
+        <div
+          className={cn(
+            "absolute bottom-4 flex -translate-x-1/2 flex-col items-center",
+            markerPosition,
+          )}
+        >
           <span className="whitespace-nowrap rounded-full border border-[#DFE7DF] bg-white px-2 py-1 text-[11px] font-semibold text-[#111827] shadow-sm">
             {markerLabel}
           </span>
           <span className={cn("h-3 w-px", markerTone)} />
-          <span className={cn("size-3 rounded-full border-2 border-white shadow-[0_0_0_5px_rgba(17,24,39,0.10)]", markerTone)} />
+          <span
+            className={cn(
+              "size-3 rounded-full border-2 border-white shadow-[0_0_0_5px_rgba(17,24,39,0.10)]",
+              markerTone,
+            )}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function getPracticeMissSide(coachPreview: NonNullable<DashboardData["coachPreview"]>): PracticeMissSide {
+function getPracticeMissSide(
+  coachPreview: NonNullable<DashboardData["coachPreview"]>,
+): PracticeMissSide {
   const reason = coachPreview.reason.toLowerCase();
 
   if (/\bleft miss\b|\bleft miss tendency\b|\bleft tendency\b/.test(reason)) {
@@ -1893,15 +1816,11 @@ function PerformanceSnapshot({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-5 text-[#111827]">
-                    {metric.label}
-                  </p>
+                  <p className="text-sm font-semibold leading-5 text-[#111827]">{metric.label}</p>
                   <p
                     className={cn(
                       "mt-2 font-bold tracking-normal text-[#111827]",
-                      paired
-                        ? "text-2xl leading-8"
-                        : "text-[28px] leading-[34px]",
+                      paired ? "text-2xl leading-8" : "text-[28px] leading-[34px]",
                     )}
                   >
                     {metric.value}
@@ -1943,16 +1862,14 @@ function BagConfidencePanel({
 }) {
   const trustedClubs = [...clubs]
     .sort((left, right) => {
-      const trustDelta =
-        right.stock.confidenceScore - left.stock.confidenceScore;
+      const trustDelta = right.stock.confidenceScore - left.stock.confidenceScore;
       return trustDelta || right.shotCount - left.shotCount;
     })
     .slice(0, 3);
   const needsDataClub =
     [...clubs]
       .sort((left, right) => {
-        const trustDelta =
-          left.stock.confidenceScore - right.stock.confidenceScore;
+        const trustDelta = left.stock.confidenceScore - right.stock.confidenceScore;
         return trustDelta || left.shotCount - right.shotCount;
       })
       .find((club) => club.stock.confidenceScore < 60) ?? null;
@@ -2043,9 +1960,7 @@ function BagSignalPill({
       )}
     >
       <span className="font-semibold">{label}</span>
-      <span className="text-xs font-semibold uppercase tracking-[0.08em]">
-        {value}
-      </span>
+      <span className="text-xs font-semibold uppercase tracking-[0.08em]">{value}</span>
     </Link>
   );
 }
@@ -2063,28 +1978,16 @@ function getDashboardLadderClubs(clubs: DashboardData["bagPreview"]) {
 
   return [...clubs]
     .filter((club) => club.type !== "sw")
-    .sort(
-      (left, right) =>
-        (right.stock.carryMedianYd ?? 0) - (left.stock.carryMedianYd ?? 0),
-    )
+    .sort((left, right) => (right.stock.carryMedianYd ?? 0) - (left.stock.carryMedianYd ?? 0))
     .slice(0, 4);
 }
 
-function ClubConfidenceLadder({
-  clubs,
-}: {
-  clubs: DashboardData["bagPreview"];
-}) {
-  const maxCarry = Math.max(
-    1,
-    ...clubs.map((club) => club.stock.carryMedianYd ?? 0),
-  );
+function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] }) {
+  const maxCarry = Math.max(1, ...clubs.map((club) => club.stock.carryMedianYd ?? 0));
 
   return (
     <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
-      <p className="text-sm font-semibold text-[#111827]">
-        Club-distance ladder
-      </p>
+      <p className="text-sm font-semibold text-[#111827]">Club-distance ladder</p>
       <div className="mt-3 grid gap-2.5">
         {clubs.map((club) => {
           const carry = club.stock.carryMedianYd ?? 0;
@@ -2097,9 +2000,7 @@ function ClubConfidenceLadder({
               prefetch={false}
               className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
             >
-              <span className="font-semibold text-[#111827]">
-                {formatClubType(club.type)}
-              </span>
+              <span className="font-semibold text-[#111827]">{formatClubType(club.type)}</span>
               <span className="h-2 overflow-hidden rounded-full bg-[#EEF2F0]">
                 <span
                   className="block h-full rounded-full bg-[#9AD7AE]"
@@ -2188,8 +2089,7 @@ function LatestRoundPanel({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-md text-sm leading-6 text-[#667085]">
-            Save a round CSV to unlock scorecards, hole review, and round shot
-            maps.
+            Save a round CSV to unlock scorecards, hole review, and round shot maps.
           </p>
           <Button asChild variant="outline" className="rounded-lg">
             <Link href="/import" prefetch={false}>
@@ -2203,13 +2103,7 @@ function LatestRoundPanel({
   );
 }
 
-function RoundSignalPill({
-  label,
-  value,
-}: {
-  label: string;
-  value: ReactNode;
-}) {
+function RoundSignalPill({ label, value }: { label: string; value: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2 text-sm">
       <span className="font-medium text-[#667085]">{label}</span>
@@ -2252,11 +2146,7 @@ function HoleResultStrip({
   );
 }
 
-function CourseDecisionPanel({
-  items,
-}: {
-  items: DashboardData["courseAdvice"];
-}) {
+function CourseDecisionPanel({ items }: { items: DashboardData["courseAdvice"] }) {
   return (
     <DashboardPanel
       id="decisions"
@@ -2279,9 +2169,7 @@ function CourseDecisionPanel({
             prefetch={false}
             className={cn(
               "group min-w-0 px-3 py-2 transition-colors hover:bg-[#F8FAF8] md:px-4",
-              index > 0
-                ? "border-t border-[#EDF1ED] md:border-l md:border-t-0"
-                : "",
+              index > 0 ? "border-t border-[#EDF1ED] md:border-l md:border-t-0" : "",
             )}
           >
             <div className="flex items-center gap-2">
@@ -2293,16 +2181,12 @@ function CourseDecisionPanel({
               >
                 <DecisionIcon itemKey={item.key} />
               </span>
-              <p className="text-sm font-semibold leading-5 text-[#111827]">
-                {item.label}
-              </p>
+              <p className="text-sm font-semibold leading-5 text-[#111827]">{item.label}</p>
             </div>
             <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
               {item.value}
             </p>
-            <p className="mt-1 text-sm leading-5 text-[#667085]">
-              {item.detail}
-            </p>
+            <p className="mt-1 text-sm leading-5 text-[#667085]">{item.detail}</p>
           </Link>
         ))}
       </div>
@@ -2310,12 +2194,7 @@ function CourseDecisionPanel({
   );
 }
 
-
-function DecisionIcon({
-  itemKey,
-}: {
-  itemKey: DashboardData["courseAdvice"][number]["key"];
-}) {
+function DecisionIcon({ itemKey }: { itemKey: DashboardData["courseAdvice"][number]["key"] }) {
   if (itemKey === "180-tee") {
     return <Flag className="size-4" />;
   }
@@ -2362,15 +2241,11 @@ function WhatChangedPanel({
               ) : null}
             </div>
             <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
-              <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-                {insight.label}
-              </p>
+              <p className="text-[15px] font-semibold leading-6 text-[#111827]">{insight.label}</p>
               <p className="mt-1 text-lg font-bold leading-7 tracking-normal text-[#111827]">
                 {insight.value}
               </p>
-              <p className="mt-1 text-sm leading-6 text-[#667085]">
-                {insight.detail}
-              </p>
+              <p className="mt-1 text-sm leading-6 text-[#667085]">{insight.detail}</p>
             </div>
           </div>
         ))}
@@ -2422,18 +2297,14 @@ function DashboardSocialPulse({
           />
         </div>
         <div className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
-          <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-            Latest activity
-          </p>
+          <p className="text-[15px] font-semibold leading-6 text-[#111827]">Latest activity</p>
           <div className="mt-3 divide-y divide-[#EDF1ED]">
             {topItems.length > 0 ? (
-              topItems.map((item) => (
-                <DashboardSocialMoment key={item.id} item={item} />
-              ))
+              topItems.map((item) => <DashboardSocialMoment key={item.id} item={item} />)
             ) : (
               <p className="py-4 text-sm leading-6 text-[#667085]">
-                No visible social moments yet. Add friends or join a challenge
-                to populate this pulse.
+                No visible social moments yet. Add friends or join a challenge to populate this
+                pulse.
               </p>
             )}
           </div>
@@ -2463,56 +2334,66 @@ function SocialStatLink({
       className="group block rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-white"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-          {label}
-        </p>
+        <p className="text-[15px] font-semibold leading-6 text-[#111827]">{label}</p>
         {Icon ? <Icon className="size-4 text-[#087A3D]" /> : null}
       </div>
-      <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-        {value}
-      </p>
+      <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">{value}</p>
       <p className="mt-1 text-sm leading-5 text-[#667085]">{detail}</p>
     </Link>
   );
 }
 
 function QuickActions({ routes }: { routes: DashboardRoute[] }) {
+  const primaryRoutes = routes.slice(0, 6);
+  const secondaryRoutes = routes.slice(6);
+
+  const renderRoute = (route: DashboardRoute) => {
+    const Icon = route.icon;
+
+    return (
+      <Link
+        key={route.href}
+        href={route.href}
+        prefetch={false}
+        title={route.description}
+        className="group flex min-h-12 items-center gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-white"
+      >
+        <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${route.accent}`}>
+          <Icon className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold leading-5 text-[#111827]">
+            {route.title}
+          </span>
+          <span className="block truncate text-xs font-medium leading-5 text-[#667085]">
+            {route.metric}
+          </span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-[#667085] transition-transform group-hover:translate-x-0.5 group-hover:text-[#087A3D]" />
+      </Link>
+    );
+  };
+
   return (
     <DashboardPanel
       id="tools"
       title="Quick actions"
       description="Action-first shortcuts for import, practice, shots, bag and rounds."
     >
-      <div className="grid gap-2 sm:grid-cols-2">
-        {routes.map((route) => {
-          const Icon = route.icon;
-
-          return (
-            <Link
-              key={route.href}
-              href={route.href}
-              prefetch={false}
-              title={route.description}
-              className="group flex min-h-12 items-center gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-white"
-            >
-              <span
-                className={`grid size-8 shrink-0 place-items-center rounded-lg ${route.accent}`}
-              >
-                <Icon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold leading-5 text-[#111827]">
-                  {route.title}
-                </span>
-                <span className="block truncate text-xs font-medium leading-5 text-[#667085]">
-                  {route.metric}
-                </span>
-              </span>
-              <ArrowRight className="size-4 shrink-0 text-[#667085] transition-transform group-hover:translate-x-0.5 group-hover:text-[#087A3D]" />
-            </Link>
-          );
-        })}
-      </div>
+      <div className="grid gap-2 sm:grid-cols-2">{primaryRoutes.map(renderRoute)}</div>
+      {secondaryRoutes.length > 0 ? (
+        <details className="mt-3 rounded-lg border border-[#DFE7DF] bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-[#111827] marker:hidden">
+            <span>All tools</span>
+            <span className="text-xs font-medium text-[#667085]">
+              {secondaryRoutes.length} more
+            </span>
+          </summary>
+          <div className="grid gap-2 border-t border-[#E5E7EB] p-3 sm:grid-cols-2">
+            {secondaryRoutes.map(renderRoute)}
+          </div>
+        </details>
+      ) : null}
     </DashboardPanel>
   );
 }
@@ -2525,13 +2406,10 @@ function DashboardSocialMoment({ item }: { item: FeedItemView }) {
       className="block py-3 text-sm transition-colors hover:bg-[#F8FAF8]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold leading-6 text-[#111827]">
-          {item.headline}
-        </p>
+        <p className="font-semibold leading-6 text-[#111827]">{item.headline}</p>
         <StatusPill
           tone={
-            item.verificationLabel === "Manual" ||
-            item.verificationLabel === "Unverified"
+            item.verificationLabel === "Manual" || item.verificationLabel === "Unverified"
               ? "slate"
               : "green"
           }
@@ -2549,18 +2427,13 @@ function DashboardSocialMoment({ item }: { item: FeedItemView }) {
 }
 
 function DashboardDot({ tone }: { tone: DashboardTone }) {
-  return (
-    <span
-      className={cn("size-2.5 shrink-0 rounded-full ring-4", toneDotClass(tone))}
-    />
-  );
+  return <span className={cn("size-2.5 shrink-0 rounded-full ring-4", toneDotClass(tone))} />;
 }
 
 function getBestClub(clubs: DashboardData["bagPreview"]) {
   return (
     [...clubs].sort((left, right) => {
-      const trustDelta =
-        right.stock.confidenceScore - left.stock.confidenceScore;
+      const trustDelta = right.stock.confidenceScore - left.stock.confidenceScore;
       return trustDelta || right.shotCount - left.shotCount;
     })[0] ?? null
   );
@@ -2598,37 +2471,24 @@ function formatScoreVsPar(score: number | null, par: number | null) {
   return `${integerFormatter.format(score)} (${versusPar >= 0 ? "+" : ""}${integerFormatter.format(versusPar)})`;
 }
 
-function getRoundHoleHighlights(
-  latestRound: NonNullable<DashboardData["latestRound"]>,
-) {
+function getRoundHoleHighlights(latestRound: NonNullable<DashboardData["latestRound"]>) {
   const holes = (latestRound.scorecardJson ?? [])
     .map((hole, index) => ({
       holeNumber: index + 1,
-      delta:
-        typeof hole.score === "number" ? hole.score - hole.par : null,
+      delta: typeof hole.score === "number" ? hole.score - hole.par : null,
     }))
-    .filter(
-      (hole): hole is { holeNumber: number; delta: number } =>
-        hole.delta !== null,
-    );
+    .filter((hole): hole is { holeNumber: number; delta: number } => hole.delta !== null);
 
   if (holes.length === 0) {
     return null;
   }
 
-  const best = holes.reduce((left, right) =>
-    right.delta < left.delta ? right : left,
-  );
-  const worst = holes.reduce((left, right) =>
-    right.delta > left.delta ? right : left,
-  );
+  const best = holes.reduce((left, right) => (right.delta < left.delta ? right : left));
+  const worst = holes.reduce((left, right) => (right.delta > left.delta ? right : left));
 
   return {
     best: `${best.delta <= -1 ? "Birdie" : formatHoleResult(best.delta)} · hole ${best.holeNumber}`,
-    watch:
-      worst.delta > 0
-        ? `+${worst.delta} · hole ${worst.holeNumber}`
-        : null,
+    watch: worst.delta > 0 ? `+${worst.delta} · hole ${worst.holeNumber}` : null,
   };
 }
 
@@ -2676,9 +2536,7 @@ function getCompactPracticeTask(drill: string) {
   return drill.split(/\s+The goal\b/i)[0]?.trim() || drill;
 }
 
-function getDashboardPracticeTask(
-  coachPreview: NonNullable<DashboardData["coachPreview"]>,
-) {
+function getDashboardPracticeTask(coachPreview: NonNullable<DashboardData["coachPreview"]>) {
   if (/direction/i.test(coachPreview.issueLabel)) {
     return "Hit 10 balls with a hard left boundary. Count only shots inside the playable window.";
   }
@@ -2686,9 +2544,7 @@ function getDashboardPracticeTask(
   return getCompactPracticeTask(coachPreview.drill);
 }
 
-function normalizeDashboardTone(
-  tone: DashboardTone,
-): Exclude<DashboardTone, "pink"> {
+function normalizeDashboardTone(tone: DashboardTone): Exclude<DashboardTone, "pink"> {
   return tone === "pink" ? "amber" : tone;
 }
 
@@ -2718,13 +2574,9 @@ function toneSoftClass(tone: DashboardTone) {
   }
 }
 
-function normalizeDashboardPins(
-  value: string[] | null | undefined,
-): DashboardPin[] {
+function normalizeDashboardPins(value: string[] | null | undefined): DashboardPin[] {
   const allowedPins = new Set<string>(dashboardPinOptions);
-  const pins = (value ?? []).filter((pin): pin is DashboardPin =>
-    allowedPins.has(pin),
-  );
+  const pins = (value ?? []).filter((pin): pin is DashboardPin => allowedPins.has(pin));
 
   return pins.length > 0 ? pins : [...dashboardPinOptions];
 }
@@ -2744,14 +2596,8 @@ async function getDashboardData() {
     recentStockShots,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
-    db
-      .select({ value: count() })
-      .from(importRows)
-      .where(eq(importRows.userId, userId)),
-    db
-      .select({ value: count() })
-      .from(sessions)
-      .where(eq(sessions.userId, userId)),
+    db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
+    db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
     db
       .select({ dashboardPins: users.dashboardPins })
       .from(users)
@@ -2784,16 +2630,8 @@ async function getDashboardData() {
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(
-        rapsodoSyncSessions,
-        eq(sessions.id, rapsodoSyncSessions.importedSessionId),
-      )
-      .where(
-        and(
-          eq(sessions.userId, userId),
-          inArray(sessions.type, [...roundSessionTypes]),
-        ),
-      )
+      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
+      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
       .orderBy(desc(sessions.date), asc(sessions.fileName)),
     db
       .select({
@@ -2846,12 +2684,7 @@ async function getDashboardData() {
               count: count(),
             })
             .from(shots)
-            .where(
-              and(
-                eq(shots.userId, userId),
-                inArray(shots.sessionId, recentSessionIds),
-              ),
-            )
+            .where(and(eq(shots.userId, userId), inArray(shots.sessionId, recentSessionIds)))
             .groupBy(shots.sessionId),
           db
             .select({
@@ -2860,10 +2693,7 @@ async function getDashboardData() {
             })
             .from(importRows)
             .where(
-              and(
-                eq(importRows.userId, userId),
-                inArray(importRows.sessionId, recentSessionIds),
-              ),
+              and(eq(importRows.userId, userId), inArray(importRows.sessionId, recentSessionIds)),
             )
             .groupBy(importRows.sessionId),
         ])
@@ -2872,12 +2702,8 @@ async function getDashboardData() {
   const shotCountBySessionId = new Map(
     shotCountsBySession.map((row) => [row.sessionId, row.count]),
   );
-  const rawCountBySessionId = new Map(
-    rawCountsBySession.map((row) => [row.sessionId, row.count]),
-  );
-  const shotCountByClubId = new Map(
-    shotCountsByClub.map((row) => [row.clubId, row.count]),
-  );
+  const rawCountBySessionId = new Map(rawCountsBySession.map((row) => [row.sessionId, row.count]));
+  const shotCountByClubId = new Map(shotCountsByClub.map((row) => [row.clubId, row.count]));
   const stockShotsByClubId = new Map<string, typeof recentStockShots>();
 
   for (const shot of recentStockShots) {
@@ -2895,9 +2721,7 @@ async function getDashboardData() {
   const bag = clubRows
     .map((club) => {
       const clubShots = stockShotsByClubId.get(club.id) ?? [];
-      const brandModel =
-        [club.brand, club.model].filter(Boolean).join(" ") ||
-        "Unspecified model";
+      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const stock = calculateStockYardage(clubShots, 50, {
         clubType: club.type,
       });
@@ -2922,16 +2746,11 @@ async function getDashboardData() {
     })
     .sort((left, right) => {
       const shotCountDifference = right.shotCount - left.shotCount;
-      return (
-        shotCountDifference ||
-        clubSortValue(left.type) - clubSortValue(right.type)
-      );
+      return shotCountDifference || clubSortValue(left.type) - clubSortValue(right.type);
     });
   const bagPreview = bag.slice(0, 5);
   const courseAdvice = buildCourseDecisionAdvice(bag);
-  const roundSummaries = roundRows
-    .filter(isRoundHistorySession)
-    .map(summarizeRound);
+  const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
   const realHandicap = calculateHandicapSummary(
     roundSummaries
@@ -3040,12 +2859,8 @@ function buildWhatChangedInsights({
         return shotDate >= previousStart && shotDate < currentStart;
       });
 
-      const currentCarry = median(
-        currentShots.map((shot) => shot.carryYd).filter(isNumber),
-      );
-      const previousCarry = median(
-        previousShots.map((shot) => shot.carryYd).filter(isNumber),
-      );
+      const currentCarry = median(currentShots.map((shot) => shot.carryYd).filter(isNumber));
+      const previousCarry = median(previousShots.map((shot) => shot.carryYd).filter(isNumber));
       const currentMiss = averageNumber(
         currentShots
           .map((shot) => shot.sideCarryYd)
@@ -3071,13 +2886,9 @@ function buildWhatChangedInsights({
         currentCount: currentShots.length,
         previousCount: previousShots.length,
         carryDelta:
-          currentCarry !== null && previousCarry !== null
-            ? currentCarry - previousCarry
-            : null,
+          currentCarry !== null && previousCarry !== null ? currentCarry - previousCarry : null,
         missDelta:
-          currentMiss !== null && previousMiss !== null
-            ? currentMiss - previousMiss
-            : null,
+          currentMiss !== null && previousMiss !== null ? currentMiss - previousMiss : null,
         ballSpeedDelta:
           currentBallSpeed !== null && previousBallSpeed !== null
             ? currentBallSpeed - previousBallSpeed
@@ -3095,15 +2906,9 @@ function buildWhatChangedInsights({
 
   const strongestCarryChange = clubChanges
     .filter((change) => change.carryDelta !== null)
-    .sort(
-      (left, right) =>
-        Math.abs(right.carryDelta ?? 0) - Math.abs(left.carryDelta ?? 0),
-    )[0];
+    .sort((left, right) => Math.abs(right.carryDelta ?? 0) - Math.abs(left.carryDelta ?? 0))[0];
 
-  if (
-    strongestCarryChange?.carryDelta !== null &&
-    strongestCarryChange?.carryDelta !== undefined
-  ) {
+  if (strongestCarryChange?.carryDelta !== null && strongestCarryChange?.carryDelta !== undefined) {
     insights.push({
       label: `${formatClubType(strongestCarryChange.clubType)} carry`,
       value: `${formatSignedYards(strongestCarryChange.carryDelta)} vs previous 30`,
@@ -3114,21 +2919,14 @@ function buildWhatChangedInsights({
 
   const strongestMissChange = clubChanges
     .filter((change) => change.missDelta !== null)
-    .sort(
-      (left, right) =>
-        Math.abs(right.missDelta ?? 0) - Math.abs(left.missDelta ?? 0),
-    )[0];
+    .sort((left, right) => Math.abs(right.missDelta ?? 0) - Math.abs(left.missDelta ?? 0))[0];
 
-  if (
-    strongestMissChange?.missDelta !== null &&
-    strongestMissChange?.missDelta !== undefined
-  ) {
+  if (strongestMissChange?.missDelta !== null && strongestMissChange?.missDelta !== undefined) {
     const tighter = strongestMissChange.missDelta < 0;
     insights.push({
       label: `${formatClubType(strongestMissChange.clubType)} dispersion`,
       value: `${numberFormatter.format(Math.abs(strongestMissChange.missDelta))} yd ${tighter ? "tighter" : "wider"}`,
-      detail:
-        "Average left/right miss compared with the previous 30-day window.",
+      detail: "Average left/right miss compared with the previous 30-day window.",
       tone: tighter ? "green" : "amber",
     });
   }
@@ -3136,9 +2934,7 @@ function buildWhatChangedInsights({
   const strongestSpeedChange = clubChanges
     .filter((change) => change.ballSpeedDelta !== null)
     .sort(
-      (left, right) =>
-        Math.abs(right.ballSpeedDelta ?? 0) -
-        Math.abs(left.ballSpeedDelta ?? 0),
+      (left, right) => Math.abs(right.ballSpeedDelta ?? 0) - Math.abs(left.ballSpeedDelta ?? 0),
     )[0];
 
   if (
@@ -3153,11 +2949,7 @@ function buildWhatChangedInsights({
     });
   }
 
-  if (
-    latestRound &&
-    latestRound.totalScore !== null &&
-    latestRound.totalPar !== null
-  ) {
+  if (latestRound && latestRound.totalScore !== null && latestRound.totalPar !== null) {
     const versusPar = latestRound.totalScore - latestRound.totalPar;
     insights.push({
       label: "Latest round",
@@ -3201,8 +2993,7 @@ function buildWhatChangedInsights({
     {
       label: "Next step",
       value: "Log a session",
-      detail:
-        "More recent shots produce sharper insight cards on this dashboard.",
+      detail: "More recent shots produce sharper insight cards on this dashboard.",
       tone: "slate",
     },
     {
@@ -3243,9 +3034,7 @@ function summarizeRound(round: {
   const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
   const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
   const totalPar =
-    scorecard.length > 0
-      ? scorecard.reduce((total, hole) => total + hole.par, 0)
-      : null;
+    scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
   const handicapDifferential = calculateRoundDifferential({
     totalScore,
     totalPar,
@@ -3264,12 +3053,8 @@ function summarizeRound(round: {
 }
 
 function sumNullable(values: Array<number | null>) {
-  const present = values.filter(
-    (value): value is number => typeof value === "number",
-  );
-  return present.length > 0
-    ? present.reduce((total, value) => total + value, 0)
-    : null;
+  const present = values.filter((value): value is number => typeof value === "number");
+  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
 }
 
 function daysBefore(value: Date, days: number) {
@@ -3286,9 +3071,7 @@ function median(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
 
-  return sorted.length % 2 === 0
-    ? (sorted[middle - 1] + sorted[middle]) / 2
-    : sorted[middle];
+  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 }
 
 function averageNumber(values: number[]) {

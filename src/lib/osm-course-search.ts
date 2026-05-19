@@ -164,7 +164,10 @@ function parseOverpassElement(element: OverpassElement): OsmHoleGeometry | null 
   const green = geometry[geometry.length - 1];
   const par = clampInteger(parseNumber(tags.par) ?? 4, 3, 6);
   const lengthMeters = parseLengthMeters(tags.length ?? tags.distance);
-  const yards = Math.max(1, Math.round((lengthMeters ?? haversineMeters(tee.lat, tee.lon, green.lat, green.lon)) * 1.09361));
+  const yards = Math.max(
+    1,
+    Math.round((lengthMeters ?? haversineMeters(tee.lat, tee.lon, green.lat, green.lon)) * 1.09361),
+  );
 
   return {
     holeNumber,
@@ -230,8 +233,7 @@ function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number)
   const deltaPhi = toRadians(lat2 - lat1);
   const deltaLambda = toRadians(lon2 - lon1);
   const a =
-    Math.sin(deltaPhi / 2) ** 2 +
-    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+    Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
   return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 

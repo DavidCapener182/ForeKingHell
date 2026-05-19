@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildRapsodoSyncSessionKey,
-  hashRapsodoExportCsv,
-} from "@/lib/rapsodo/sync-identity";
+import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/sync-identity";
 
 describe("Rapsodo sync identity", () => {
   it("keys remote sync rows by provider kind and provider session id", () => {

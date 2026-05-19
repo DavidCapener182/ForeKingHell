@@ -95,9 +95,11 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("sync", (event) => {
   if (event.tag === "forekinghell-offline-sync") {
-    event.waitUntil(self.clients.matchAll({ type: "window" }).then((clients) => {
-      clients.forEach((client) => client.postMessage({ type: "FKH_OFFLINE_SYNC_REQUESTED" }));
-    }));
+    event.waitUntil(
+      self.clients.matchAll({ type: "window" }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: "FKH_OFFLINE_SYNC_REQUESTED" }));
+      }),
+    );
   }
 });
 
@@ -114,9 +116,12 @@ async function networkFirstPage(request) {
     return response;
   } catch {
     const cached = await cache.match(request);
-    return cached || new Response("ForeKingHell is offline and this page is not cached yet.", {
-      status: 503,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
+    return (
+      cached ||
+      new Response("ForeKingHell is offline and this page is not cached yet.", {
+        status: 503,
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      })
+    );
   }
 }

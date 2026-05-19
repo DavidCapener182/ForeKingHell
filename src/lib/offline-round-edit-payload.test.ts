@@ -35,6 +35,8 @@ describe("offline round edit payloads", () => {
   });
 
   it("rejects unknown edit kinds", () => {
-    expect(parseOfflineRoundEditPayload({ editKind: "delete-round", fields: [["id", "1"]] })).toBeNull();
+    expect(
+      parseOfflineRoundEditPayload({ editKind: "delete-round", fields: [["id", "1"]] }),
+    ).toBeNull();
   });
 });

@@ -111,11 +111,16 @@ export function compareClubCarryToBenchmark(
     };
   }
 
-  const achievedLevel = [...benchmark.levels].reverse().find((level) => carryYd >= level.yards) ?? null;
+  const achievedLevel =
+    [...benchmark.levels].reverse().find((level) => carryYd >= level.yards) ?? null;
   const nextLevel = benchmark.levels.find((level) => carryYd < level.yards) ?? null;
   const firstLevel = benchmark.levels[0];
   const finalLevel = benchmark.levels[benchmark.levels.length - 1];
-  const progressPercent = clamp(((carryYd - firstLevel.yards) / (finalLevel.yards - firstLevel.yards)) * 100, 0, 100);
+  const progressPercent = clamp(
+    ((carryYd - firstLevel.yards) / (finalLevel.yards - firstLevel.yards)) * 100,
+    0,
+    100,
+  );
 
   if (!nextLevel) {
     return {

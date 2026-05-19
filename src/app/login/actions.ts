@@ -18,11 +18,14 @@ export async function sendMagicLinkAction(
   if (!isSupabaseAuthConfigured()) {
     return {
       status: "error",
-      message: "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+      message:
+        "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
     };
   }
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
   if (!email) {
@@ -57,11 +60,14 @@ export async function signInWithPasswordAction(
   if (!isSupabaseAuthConfigured()) {
     return {
       status: "error",
-      message: "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+      message:
+        "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
     };
   }
 
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const nextRaw = String(formData.get("next") ?? "");
   const next = safeNextPath(nextRaw) ?? "/dashboard";

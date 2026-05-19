@@ -10,7 +10,9 @@ export function getSupabaseBrowserClient() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!url || !publishableKey) {
-      throw new Error("NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required.");
+      throw new Error(
+        "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY are required.",
+      );
     }
 
     client = createBrowserClient(url, publishableKey);

@@ -241,7 +241,9 @@ export async function googleStreetViewResponse({
 
 export async function getGoogleElevations(points: Array<{ latitude: number; longitude: number }>) {
   const apiKey = googleMapsApiKey();
-  const validPoints = points.filter((point) => isFiniteCoordinate(point.latitude, point.longitude)).slice(0, 512);
+  const validPoints = points
+    .filter((point) => isFiniteCoordinate(point.latitude, point.longitude))
+    .slice(0, 512);
 
   if (!apiKey || validPoints.length === 0) {
     return [];
@@ -275,7 +277,11 @@ export async function getGoogleElevations(points: Array<{ latitude: number; long
         const longitude = result.location?.lng;
         const elevation = result.elevation;
 
-        if (typeof latitude !== "number" || typeof longitude !== "number" || typeof elevation !== "number") {
+        if (
+          typeof latitude !== "number" ||
+          typeof longitude !== "number" ||
+          typeof elevation !== "number"
+        ) {
           return null;
         }
 
@@ -304,13 +310,16 @@ function placeResultToSearchResult(result: GooglePlaceResult): GoogleCourseSearc
   return {
     address: result.formatted_address ?? null,
     country: countryFromAddress(result.formatted_address),
-    latitude: typeof result.geometry?.location?.lat === "number" ? result.geometry.location.lat : null,
-    longitude: typeof result.geometry?.location?.lng === "number" ? result.geometry.location.lng : null,
+    latitude:
+      typeof result.geometry?.location?.lat === "number" ? result.geometry.location.lat : null,
+    longitude:
+      typeof result.geometry?.location?.lng === "number" ? result.geometry.location.lng : null,
     name: result.name,
     placeId: result.place_id,
     rating: typeof result.rating === "number" ? result.rating : null,
     types: result.types ?? [],
-    userRatingsTotal: typeof result.user_ratings_total === "number" ? result.user_ratings_total : null,
+    userRatingsTotal:
+      typeof result.user_ratings_total === "number" ? result.user_ratings_total : null,
   };
 }
 
@@ -323,7 +332,9 @@ function placeResultToDetails(result: GooglePlaceResult): GoogleCourseDetails | 
 
   return {
     ...base,
-    attributions: uniqueStrings((result.photos ?? []).flatMap((photo) => photo.html_attributions ?? [])),
+    attributions: uniqueStrings(
+      (result.photos ?? []).flatMap((photo) => photo.html_attributions ?? []),
+    ),
     googleMapsUrl: result.url ?? null,
     openingHours: result.opening_hours ?? {},
     phoneNumber: result.formatted_phone_number ?? null,
@@ -339,7 +350,9 @@ function photoReferencesFromPlace(result: GooglePlaceResult) {
       photoReference: photo.photo_reference,
       score: photoScore(photo.width ?? 0, photo.height ?? 0),
     }))
-    .filter((photo): photo is { index: number; photoReference: string; score: number } => Boolean(photo.photoReference))
+    .filter((photo): photo is { index: number; photoReference: string; score: number } =>
+      Boolean(photo.photoReference),
+    )
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((photo) => photo.photoReference);
 }
@@ -357,7 +370,8 @@ async function googleImageResponse(url: URL, options: GoogleImageResponseOptions
       return null;
     }
 
-    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+    const contentType =
+      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
 
     if (!contentType.startsWith("image/")) {
       return null;
@@ -394,15 +408,23 @@ async function googleImageResponse(url: URL, options: GoogleImageResponseOptions
 function isLikelyGolfCourse(result: GoogleCourseSearchResult) {
   const haystack = `${result.name} ${result.address ?? ""} ${result.types.join(" ")}`.toLowerCase();
 
-  return haystack.includes("golf") || haystack.includes("country club") || haystack.includes("club");
+  return (
+    haystack.includes("golf") || haystack.includes("country club") || haystack.includes("club")
+  );
 }
 
 function googleMapsApiKey() {
-  return (process.env.GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_PLACES_API_KEY)?.trim().replace(/^['"]|['"]$/g, "");
+  return (process.env.GOOGLE_MAPS_API_KEY ?? process.env.GOOGLE_PLACES_API_KEY)
+    ?.trim()
+    .replace(/^['"]|['"]$/g, "");
 }
 
 function countryFromAddress(address: string | null | undefined) {
-  const parts = address?.split(",").map((part) => part.trim()).filter(Boolean) ?? [];
+  const parts =
+    address
+      ?.split(",")
+      .map((part) => part.trim())
+      .filter(Boolean) ?? [];
 
   return parts.at(-1) ?? null;
 }
@@ -431,11 +453,20 @@ function photoScore(width: number, height: number) {
   const shortestSide = Math.min(width, height);
   const aspectRatio = shortestSide ? longestSide / shortestSide : 10;
 
-  return Math.min(longestSide, 2000) + Math.min(shortestSide, 1200) - Math.max(aspectRatio - 2.2, 0) * 300;
+  return (
+    Math.min(longestSide, 2000) +
+    Math.min(shortestSide, 1200) -
+    Math.max(aspectRatio - 2.2, 0) * 300
+  );
 }
 
 function isFiniteCoordinate(latitude: number, longitude: number) {
-  return Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 &&
+    Math.abs(longitude) <= 180
+  );
 }
 
 function clampImageDimension(value: number) {

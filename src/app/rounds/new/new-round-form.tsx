@@ -61,7 +61,8 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
   const [selectedTeeSetId, setSelectedTeeSetId] = useState(allTeeSets[0]?.id ?? "");
   const [mobileStep, setMobileStep] = useState<MobileRoundStep>("setup");
   const [activeHoleIndex, setActiveHoleIndex] = useState(0);
-  const selectedTeeSet = allTeeSets.find((teeSet) => teeSet.id === selectedTeeSetId) ?? allTeeSets[0] ?? null;
+  const selectedTeeSet =
+    allTeeSets.find((teeSet) => teeSet.id === selectedTeeSetId) ?? allTeeSets[0] ?? null;
   const holes = useMemo(() => buildRoundHoles(selectedTeeSet), [selectedTeeSet]);
   const activeStepIndex = mobileRoundSteps.findIndex((step) => step.id === mobileStep);
   const activeHole = holes[activeHoleIndex] ?? holes[0] ?? null;
@@ -78,7 +79,11 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
   }
 
   return (
-    <form action={createRoundAction} className="grid gap-5" onSubmit={() => trackPlausibleEvent("Round Created")}>
+    <form
+      action={createRoundAction}
+      className="grid gap-5"
+      onSubmit={() => trackPlausibleEvent("Round Created")}
+    >
       <input type="hidden" name="holeCount" value={holes.length} />
 
       <MobileRoundStepper step={mobileStep} onStepChange={setMobileStep} />
@@ -89,7 +94,12 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           mobileStep === "setup" || mobileStep === "stats" ? "grid" : "hidden sm:grid",
         )}
       >
-        <label className={cn("grid gap-2 text-sm font-medium", mobileStep === "stats" ? "hidden sm:grid" : "")}>
+        <label
+          className={cn(
+            "grid gap-2 text-sm font-medium",
+            mobileStep === "stats" ? "hidden sm:grid" : "",
+          )}
+        >
           <span>Course / tee</span>
           <select
             name="teeSetId"
@@ -108,11 +118,27 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             ))}
           </select>
         </label>
-        <label className={cn("grid gap-2 text-sm font-medium", mobileStep === "stats" ? "hidden sm:grid" : "")}>
+        <label
+          className={cn(
+            "grid gap-2 text-sm font-medium",
+            mobileStep === "stats" ? "hidden sm:grid" : "",
+          )}
+        >
           <span>Date</span>
-          <Input name="date" type="date" defaultValue={todayIso} className="h-11 rounded-xl bg-white" required />
+          <Input
+            name="date"
+            type="date"
+            defaultValue={todayIso}
+            className="h-11 rounded-xl bg-white"
+            required
+          />
         </label>
-        <label className={cn("grid gap-2 text-sm font-medium", mobileStep === "stats" ? "hidden sm:grid" : "")}>
+        <label
+          className={cn(
+            "grid gap-2 text-sm font-medium",
+            mobileStep === "stats" ? "hidden sm:grid" : "",
+          )}
+        >
           <span>Status</span>
           <select
             name="roundStatus"
@@ -123,31 +149,67 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <option value="in_progress">In progress</option>
           </select>
         </label>
-        <label className={cn("grid gap-2 text-sm font-medium lg:col-span-2", mobileStep === "stats" ? "hidden sm:grid" : "")}>
+        <label
+          className={cn(
+            "grid gap-2 text-sm font-medium lg:col-span-2",
+            mobileStep === "stats" ? "hidden sm:grid" : "",
+          )}
+        >
           <span>Notes</span>
-          <Input name="notes" placeholder="Weather, tees, match notes..." className="h-11 rounded-xl bg-white" />
+          <Input
+            name="notes"
+            placeholder="Weather, tees, match notes..."
+            className="h-11 rounded-xl bg-white"
+          />
         </label>
-        <div className={cn("grid gap-3 lg:col-span-2 sm:grid-cols-3", mobileStep === "setup" ? "hidden sm:grid" : "")}>
+        <div
+          className={cn(
+            "grid gap-3 lg:col-span-2 sm:grid-cols-3",
+            mobileStep === "setup" ? "hidden sm:grid" : "",
+          )}
+        >
           <label className="grid gap-2 text-sm font-medium">
             <span>Conditions</span>
-            <Input name="weatherConditions" placeholder="Dry, soft, rain..." className="h-11 rounded-xl bg-white" />
+            <Input
+              name="weatherConditions"
+              placeholder="Dry, soft, rain..."
+              className="h-11 rounded-xl bg-white"
+            />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             <span>Wind</span>
-            <Input name="wind" placeholder="10 mph into / cross" className="h-11 rounded-xl bg-white" />
+            <Input
+              name="wind"
+              placeholder="10 mph into / cross"
+              className="h-11 rounded-xl bg-white"
+            />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             <span>Temperature</span>
             <Input name="temperature" placeholder="14C" className="h-11 rounded-xl bg-white" />
           </label>
         </div>
-        <label className={cn("grid gap-2 text-sm font-medium lg:col-span-2", mobileStep === "setup" ? "hidden sm:grid" : "")}>
+        <label
+          className={cn(
+            "grid gap-2 text-sm font-medium lg:col-span-2",
+            mobileStep === "setup" ? "hidden sm:grid" : "",
+          )}
+        >
           <span>Equipment notes</span>
-          <Input name="equipmentNotes" placeholder="Ball, shaft setting, new club, grip changes..." className="h-11 rounded-xl bg-white" />
+          <Input
+            name="equipmentNotes"
+            placeholder="Ball, shaft setting, new club, grip changes..."
+            className="h-11 rounded-xl bg-white"
+          />
         </label>
       </div>
 
-      <div className={cn("rounded-2xl border bg-white p-4", mobileStep === "score" ? "block" : "hidden sm:block")}>
+      <div
+        className={cn(
+          "rounded-2xl border bg-white p-4",
+          mobileStep === "score" ? "block" : "hidden sm:block",
+        )}
+      >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-2xl font-semibold tracking-normal">{selectedTeeSet.courseName}</p>
@@ -184,7 +246,10 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           {holes.map((hole, index) => (
             <div
               key={hole.holeNumber}
-              className={cn("apple-panel-strong p-3", index === activeHoleIndex ? "block" : "hidden sm:block")}
+              className={cn(
+                "apple-panel-strong p-3",
+                index === activeHoleIndex ? "block" : "hidden sm:block",
+              )}
             >
               <input type="hidden" name={`holeNumber-${index}`} value={hole.holeNumber} />
               <input type="hidden" name={`par-${index}`} value={hole.par} />
@@ -211,7 +276,11 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
                 <RoundNumberField label="Sand" name={`greensideSandShots-${index}`} min={0} />
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <BooleanSelect label="Fairway" name={`fairwayHit-${index}`} disabled={hole.par === 3} />
+                <BooleanSelect
+                  label="Fairway"
+                  name={`fairwayHit-${index}`}
+                  disabled={hole.par === 3}
+                />
                 <BooleanSelect label="GIR" name={`gir-${index}`} />
               </div>
             </div>
@@ -219,7 +288,12 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
         </div>
       </div>
 
-      <div className={cn("premium-card grid gap-3 p-4 sm:hidden", mobileStep === "review" ? "grid" : "hidden")}>
+      <div
+        className={cn(
+          "premium-card grid gap-3 p-4 sm:hidden",
+          mobileStep === "review" ? "grid" : "hidden",
+        )}
+      >
         <div>
           <p className="text-lg font-semibold tracking-normal">Ready to save</p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -228,12 +302,19 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
         </div>
         <div className="grid grid-cols-3 gap-2">
           <ReviewMetric label="Par" value={selectedTeeSet.par.toString()} />
-          <ReviewMetric label="Yards" value={selectedTeeSet.yards ? selectedTeeSet.yards.toLocaleString("en-GB") : "--"} />
+          <ReviewMetric
+            label="Yards"
+            value={selectedTeeSet.yards ? selectedTeeSet.yards.toLocaleString("en-GB") : "--"}
+          />
           <ReviewMetric label="Hole" value={activeHole ? activeHole.holeNumber.toString() : "--"} />
         </div>
       </div>
 
-      <Button type="submit" size="lg" className="hidden w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:flex sm:w-fit">
+      <Button
+        type="submit"
+        size="lg"
+        className="hidden w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:flex sm:w-fit"
+      >
         <Save className="size-4" />
         Save real round
       </Button>
@@ -259,7 +340,11 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <Button
               type="button"
               className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              onClick={() => setMobileStep(mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id)}
+              onClick={() =>
+                setMobileStep(
+                  mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id,
+                )
+              }
             >
               Next
               <ChevronRight className="size-4" />
@@ -279,7 +364,10 @@ function MobileRoundStepper({
   onStepChange: (step: MobileRoundStep) => void;
 }) {
   return (
-    <nav className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden" aria-label="Round steps">
+    <nav
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
+      aria-label="Round steps"
+    >
       {mobileRoundSteps.map((item) => (
         <button
           key={item.id}
@@ -308,19 +396,16 @@ function ReviewMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RoundNumberField({
-  label,
-  name,
-  min,
-}: {
-  label: string;
-  name: string;
-  min: number;
-}) {
+function RoundNumberField({ label, name, min }: { label: string; name: string; min: number }) {
   return (
     <label className="grid gap-1 text-xs font-medium text-muted-foreground">
       <span>{label}</span>
-      <Input name={name} type="number" min={min} className="h-9 rounded-lg bg-white text-sm text-foreground" />
+      <Input
+        name={name}
+        type="number"
+        min={min}
+        className="h-9 rounded-lg bg-white text-sm text-foreground"
+      />
     </label>
   );
 }
@@ -351,7 +436,9 @@ function BooleanSelect({
   );
 }
 
-function buildRoundHoles(teeSet: (RoundCourseOption["teeSets"][number] & { courseName: string }) | null) {
+function buildRoundHoles(
+  teeSet: (RoundCourseOption["teeSets"][number] & { courseName: string }) | null,
+) {
   if (!teeSet) {
     return [];
   }

@@ -51,7 +51,8 @@ export type LaunchMonitorProvider = {
 };
 
 export function parseDelimitedRows(text: string) {
-  const delimiter = text.includes("\t") && text.split("\t").length > text.split(",").length ? "\t" : ",";
+  const delimiter =
+    text.includes("\t") && text.split("\t").length > text.split(",").length ? "\t" : ",";
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())

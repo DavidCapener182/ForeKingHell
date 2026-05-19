@@ -1,20 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  suggestRapsodoClub,
-  type RapsodoClubChoice,
-} from "@/lib/rapsodo/club-inference";
+import { suggestRapsodoClub, type RapsodoClubChoice } from "@/lib/rapsodo/club-inference";
 import { parseRapsodoCsv } from "@/lib/rapsodo/parser";
 
 describe("suggestRapsodoClub", () => {
   it("trusts a tracked Rapsodo club when stock yardage does not clearly contradict it", () => {
-    const suggestion = suggestRapsodoClub(
-      shot("Driver", 241, 265, 151),
-      [
-        club("driver", "Driver", 240, 265, 151, 24),
-        club("7i", "7 Iron", 150, 160, 112, 24),
-      ],
-    );
+    const suggestion = suggestRapsodoClub(shot("Driver", 241, 265, 151), [
+      club("driver", "Driver", 240, 265, 151, 24),
+      club("7i", "7 Iron", 150, 160, 112, 24),
+    ]);
 
     expect(suggestion.choice.clubType).toBe("driver");
     expect(suggestion.confidence).toBe("trusted");
@@ -22,13 +16,10 @@ describe("suggestRapsodoClub", () => {
   });
 
   it("infers an unknown Rapsodo club from closest stock yardage", () => {
-    const suggestion = suggestRapsodoClub(
-      shot("Other", 151, 161, 113),
-      [
-        club("driver", "Driver", 240, 265, 151, 24),
-        club("7i", "7 Iron", 150, 160, 112, 24),
-      ],
-    );
+    const suggestion = suggestRapsodoClub(shot("Other", 151, 161, 113), [
+      club("driver", "Driver", 240, 265, 151, 24),
+      club("7i", "7 Iron", 150, 160, 112, 24),
+    ]);
 
     expect(suggestion.choice.clubType).toBe("7i");
     expect(suggestion.confidenceScore).toBeGreaterThanOrEqual(78);
@@ -36,13 +27,10 @@ describe("suggestRapsodoClub", () => {
   });
 
   it("overrides a tracked club when another bag club is materially closer", () => {
-    const suggestion = suggestRapsodoClub(
-      shot("Driver", 152, 162, 113),
-      [
-        club("driver", "Driver", 240, 265, 151, 24),
-        club("7i", "7 Iron", 150, 160, 112, 24),
-      ],
-    );
+    const suggestion = suggestRapsodoClub(shot("Driver", 152, 162, 113), [
+      club("driver", "Driver", 240, 265, 151, 24),
+      club("7i", "7 Iron", 150, 160, 112, 24),
+    ]);
 
     expect(suggestion.choice.clubType).toBe("7i");
     expect(suggestion.reason).toContain("materially closer");
@@ -78,24 +66,23 @@ describe("suggestRapsodoClub", () => {
   });
 
   it("filters retired clubs out of stock-yardage recommendations and alternatives", () => {
-    const suggestion = suggestRapsodoClub(
-      shot("Other", 151, 161, 113),
-      [
-        club("7i", "7 Iron", 151, 161, 113, 24, {
-          clubKey: "7i:retired:generic",
-          clubBrand: "Retired",
-          active: false,
-        }),
-        club("8i", "8 Iron", 142, 150, 106, 24, {
-          clubKey: "8i:active:generic",
-          clubBrand: "Active",
-          active: true,
-        }),
-      ],
-    );
+    const suggestion = suggestRapsodoClub(shot("Other", 151, 161, 113), [
+      club("7i", "7 Iron", 151, 161, 113, 24, {
+        clubKey: "7i:retired:generic",
+        clubBrand: "Retired",
+        active: false,
+      }),
+      club("8i", "8 Iron", 142, 150, 106, 24, {
+        clubKey: "8i:active:generic",
+        clubBrand: "Active",
+        active: true,
+      }),
+    ]);
 
     expect(suggestion.choice.clubKey).toBe("8i:active:generic");
-    expect(suggestion.alternatives.map((alternative) => alternative.clubKey)).not.toContain("7i:retired:generic");
+    expect(suggestion.alternatives.map((alternative) => alternative.clubKey)).not.toContain(
+      "7i:retired:generic",
+    );
   });
 
   it("falls back to low confidence when there is no stock-yardage candidate", () => {

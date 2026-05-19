@@ -22,8 +22,19 @@ import {
 } from "@/lib/round-handicap";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 
-export type CompareFocusMode = "today" | "latest-session" | "session" | "last-7" | "last-30" | "custom";
-export type CompareBaselineMode = "before-focus" | "all-time" | "previous-session" | "previous-30" | "custom";
+export type CompareFocusMode =
+  | "today"
+  | "latest-session"
+  | "session"
+  | "last-7"
+  | "last-30"
+  | "custom";
+export type CompareBaselineMode =
+  | "before-focus"
+  | "all-time"
+  | "previous-session"
+  | "previous-30"
+  | "custom";
 
 export type CompareFilters = {
   focus: CompareFocusMode;
@@ -269,13 +280,11 @@ type PlayerSessionRow = {
   courseName: string | null;
   location: string | null;
   fileName: string | null;
-  scorecardJson:
-    | Array<{
-        score?: number | null;
-        netScore?: number | null;
-        par?: number | null;
-      }>
-    | null;
+  scorecardJson: Array<{
+    score?: number | null;
+    netScore?: number | null;
+    par?: number | null;
+  }> | null;
   courseRating: number | null;
   slopeRating: number | null;
 };
@@ -391,7 +400,12 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
     shotCount: allShots.filter((shot) => shot.clubId === club.id).length,
   }));
   const focusSelection = resolveFocusSelection(scopedShots, filters, sessionOptions);
-  const baselineSelection = resolveBaselineSelection(scopedShots, filters, focusSelection, sessionOptions);
+  const baselineSelection = resolveBaselineSelection(
+    scopedShots,
+    filters,
+    focusSelection,
+    sessionOptions,
+  );
   const focus = summarizeSelection(focusSelection);
   const baseline = summarizeSelection(baselineSelection);
   const delta = buildDelta(focus, baseline);
@@ -416,7 +430,9 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
       first: requestedClubA ?? clubRowsForScope[0] ?? null,
       second:
         requestedClubB ??
-        clubRowsForScope.find((row) => row.clubId !== (requestedClubA ?? clubRowsForScope[0])?.clubId) ??
+        clubRowsForScope.find(
+          (row) => row.clubId !== (requestedClubA ?? clubRowsForScope[0])?.clubId,
+        ) ??
         null,
     },
   };
@@ -509,14 +525,28 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
     active: club.active,
   }));
   const clubsWithShots = clubOptions.filter((club) => club.shotCount > 0);
-  const selectedA = clubOptions.find((club) => club.id === filters.clubAId) ?? clubsWithShots[0] ?? clubOptions[0] ?? null;
+  const selectedA =
+    clubOptions.find((club) => club.id === filters.clubAId) ??
+    clubsWithShots[0] ??
+    clubOptions[0] ??
+    null;
   const selectedB =
     clubOptions.find((club) => club.id === filters.clubBId && club.id !== selectedA?.id) ??
     clubsWithShots.find((club) => club.id !== selectedA?.id) ??
     clubOptions.find((club) => club.id !== selectedA?.id) ??
     null;
-  const clubA = selectedA ? buildClubCompareSide(selectedA, allShots.filter((shot) => shot.clubId === selectedA.id)) : null;
-  const clubB = selectedB ? buildClubCompareSide(selectedB, allShots.filter((shot) => shot.clubId === selectedB.id)) : null;
+  const clubA = selectedA
+    ? buildClubCompareSide(
+        selectedA,
+        allShots.filter((shot) => shot.clubId === selectedA.id),
+      )
+    : null;
+  const clubB = selectedB
+    ? buildClubCompareSide(
+        selectedB,
+        allShots.filter((shot) => shot.clubId === selectedB.id),
+      )
+    : null;
 
   return {
     filters: {
@@ -530,7 +560,9 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
   };
 }
 
-export async function getPlayerCompareData(filters: PlayerCompareFilters): Promise<PlayerCompareData> {
+export async function getPlayerCompareData(
+  filters: PlayerCompareFilters,
+): Promise<PlayerCompareData> {
   const db = getDb();
   const viewerUserId = await requireCurrentUserId();
   const profileRows = await db
@@ -550,15 +582,22 @@ export async function getPlayerCompareData(filters: PlayerCompareFilters): Promi
       worldRank: profileWorldRank(profile.pbShowcaseJson),
     }))
     .sort((left, right) => {
-      const rankDelta = (left.worldRank ?? Number.POSITIVE_INFINITY) - (right.worldRank ?? Number.POSITIVE_INFINITY);
+      const rankDelta =
+        (left.worldRank ?? Number.POSITIVE_INFINITY) -
+        (right.worldRank ?? Number.POSITIVE_INFINITY);
       return rankDelta || left.displayName.localeCompare(right.displayName);
     });
-  const selectedA = players.find((player) => player.userId === filters.playerAId) ?? players[0] ?? null;
+  const selectedA =
+    players.find((player) => player.userId === filters.playerAId) ?? players[0] ?? null;
   const selectedB =
-    players.find((player) => player.userId === filters.playerBId && player.userId !== selectedA?.userId) ??
+    players.find(
+      (player) => player.userId === filters.playerBId && player.userId !== selectedA?.userId,
+    ) ??
     players.find((player) => player.userId !== selectedA?.userId) ??
     null;
-  const selectedIds = [selectedA?.userId, selectedB?.userId].filter((value): value is string => Boolean(value));
+  const selectedIds = [selectedA?.userId, selectedB?.userId].filter((value): value is string =>
+    Boolean(value),
+  );
 
   if (selectedIds.length === 0) {
     return {
@@ -803,7 +842,9 @@ function resolveFocusSelection(
     const session = sessions.find((item) => item.id === sessionId);
     return {
       label: session ? session.label : "Selected session",
-      detail: session ? `${session.dateLabel} - ${formatSessionType(session.type)}` : "Session comparison",
+      detail: session
+        ? `${session.dateLabel} - ${formatSessionType(session.type)}`
+        : "Session comparison",
       shots: sessionShots,
       start: minDate(sessionShots.map((shot) => shot.shotAt)),
       end: maxDate(sessionShots.map((shot) => shot.shotAt)),
@@ -815,7 +856,9 @@ function resolveFocusSelection(
     const sessionShots = session ? shots.filter((shot) => shot.sessionId === session.id) : [];
     return {
       label: session?.label ?? "Latest session",
-      detail: session ? `${session.dateLabel} - ${formatSessionType(session.type)}` : "Latest imported session",
+      detail: session
+        ? `${session.dateLabel} - ${formatSessionType(session.type)}`
+        : "Latest imported session",
       shots: sessionShots,
       start: minDate(sessionShots.map((shot) => shot.shotAt)),
       end: maxDate(sessionShots.map((shot) => shot.shotAt)),
@@ -849,7 +892,9 @@ function resolveFocusSelection(
 
   const currentDay = startOfLocalDay(new Date());
   const currentDayEnd = endOfLocalDay(currentDay);
-  const currentDayShots = shots.filter((shot) => isBetween(shot.sessionDate, currentDay, currentDayEnd));
+  const currentDayShots = shots.filter((shot) =>
+    isBetween(shot.sessionDate, currentDay, currentDayEnd),
+  );
 
   if (currentDayShots.length > 0) {
     return {
@@ -865,7 +910,9 @@ function resolveFocusSelection(
   const latestShot = latestSessionShots[0];
 
   return {
-    label: latestShot ? `Latest imported session: ${latestShot.sessionLabel}` : "Latest imported session",
+    label: latestShot
+      ? `Latest imported session: ${latestShot.sessionLabel}`
+      : "Latest imported session",
     detail: latestShot
       ? `${formatDate(latestShot.sessionDate)} - ${formatSessionType(latestShot.sessionType)}`
       : "No imported session found",
@@ -910,7 +957,9 @@ function resolveBaselineSelection(
 
     return {
       label: session ? session.label : "Previous session",
-      detail: session ? `${session.dateLabel} - ${formatSessionType(session.type)}` : "No previous session found",
+      detail: session
+        ? `${session.dateLabel} - ${formatSessionType(session.type)}`
+        : "No previous session found",
       shots: sessionShots,
       start: minDate(sessionShots.map((shot) => shot.shotAt)),
       end: maxDate(sessionShots.map((shot) => shot.shotAt)),
@@ -937,7 +986,9 @@ function resolveBaselineSelection(
     return {
       label: "Custom baseline",
       detail: `${formatDate(start)} to ${formatDate(end)}`,
-      shots: shots.filter((shot) => isBetween(shot.sessionDate, start, end) && !focusIds.has(shot.id)),
+      shots: shots.filter(
+        (shot) => isBetween(shot.sessionDate, start, end) && !focusIds.has(shot.id),
+      ),
       start,
       end,
     };
@@ -949,7 +1000,9 @@ function resolveBaselineSelection(
 
   return {
     label: "All time before focus",
-    detail: focusStart ? `Before ${formatDate(focusStart)}` : "All tracked shots outside the focus sample",
+    detail: focusStart
+      ? `Before ${formatDate(focusStart)}`
+      : "All tracked shots outside the focus sample",
     shots: baselineShots,
     start: minDate(baselineShots.map((shot) => shot.shotAt)),
     end: maxDate(baselineShots.map((shot) => shot.shotAt)),
@@ -992,12 +1045,19 @@ function summarizeSelection(selection: Selection): CompareSampleSummary {
         (!isNumber(carry) || !isNumber(stockCarry) || carry >= stockCarry * 0.85)
       );
     }),
-    bigMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) > bigMissLimit(shot.clubType)),
+    bigMissRate: rate(
+      stockShots,
+      (shot) =>
+        isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) > bigMissLimit(shot.clubType),
+    ),
     leftMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd < -5),
     rightMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd > 5),
     primaryMiss: primaryMiss(sideValues),
     dispersion: stockShots
-      .filter((shot): shot is CompareShot & { carryYd: number; sideCarryYd: number } => isNumber(shot.carryYd) && isNumber(shot.sideCarryYd))
+      .filter(
+        (shot): shot is CompareShot & { carryYd: number; sideCarryYd: number } =>
+          isNumber(shot.carryYd) && isNumber(shot.sideCarryYd),
+      )
       .slice(0, 180)
       .map((shot) => ({
         id: shot.id,
@@ -1016,7 +1076,9 @@ function selectComparableShots(shots: CompareShot[]) {
 
   for (const clubShots of byClub.values()) {
     const clubType = clubShots[0]?.clubType;
-    selected.push(...selectStockYardageShots(clubShots, clubShots.length, { clubType }).filteredShots);
+    selected.push(
+      ...selectStockYardageShots(clubShots, clubShots.length, { clubType }).filteredShots,
+    );
   }
 
   return selected.sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime());
@@ -1093,7 +1155,10 @@ function emptyDelta(): CompareDelta {
   };
 }
 
-function buildClubCompareSide(club: ClubCompareClubOption, clubShots: CompareShot[]): ClubCompareSide {
+function buildClubCompareSide(
+  club: ClubCompareClubOption,
+  clubShots: CompareShot[],
+): ClubCompareSide {
   const start = minDate(clubShots.map((shot) => shot.shotAt));
   const end = maxDate(clubShots.map((shot) => shot.shotAt));
   const summary = summarizeSelection({
@@ -1143,10 +1208,16 @@ function buildPlayerCompareSide({
     .map((session) => normalisedScorecardRound(session))
     .filter((row): row is NormalisedScorecardRound => row !== null);
   const scores = scoreRows.map((row) => row.score);
-  const latestScore = [...scoreRows].sort((left, right) => right.date.getTime() - left.date.getTime())[0]?.score ?? null;
-  const handicapEstimate = calculateHandicapSummary(scoreRows.map((row) => row.handicapDifferential)).value;
+  const latestScore =
+    [...scoreRows].sort((left, right) => right.date.getTime() - left.date.getTime())[0]?.score ??
+    null;
+  const handicapEstimate = calculateHandicapSummary(
+    scoreRows.map((row) => row.handicapDifferential),
+  ).value;
   const generatedHandicapBand = handicapBandFromValue(handicapEstimate);
-  const latestStanding = [...tournamentRows].sort((left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime())[0];
+  const latestStanding = [...tournamentRows].sort(
+    (left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime(),
+  )[0];
 
   return {
     ...summary,
@@ -1181,7 +1252,10 @@ function buildPlayerCompareSide({
   };
 }
 
-function buildPlayerDelta(playerA: PlayerCompareSide, playerB: PlayerCompareSide): PlayerCompareDelta {
+function buildPlayerDelta(
+  playerA: PlayerCompareSide,
+  playerB: PlayerCompareSide,
+): PlayerCompareDelta {
   return {
     handicapEstimateDelta: diff(playerA.handicapEstimate, playerB.handicapEstimate),
     bestScoreDelta: diff(playerA.bestScore, playerB.bestScore),
@@ -1229,9 +1303,8 @@ function normalisedScorecardRound(session: PlayerSessionRow): NormalisedScorecar
     return null;
   }
 
-  const rawTotalPar = scorecard.length > 0
-    ? scorecard.reduce((total, hole) => total + (hole.par ?? 0), 0)
-    : null;
+  const rawTotalPar =
+    scorecard.length > 0 ? scorecard.reduce((total, hole) => total + (hole.par ?? 0), 0) : null;
   const handicapInput = normaliseHandicapRoundInput({
     totalScore: rawTotalScore,
     totalPar: rawTotalPar,
@@ -1253,12 +1326,20 @@ function scorecardGrossTotal(scorecard: PlayerSessionRow["scorecardJson"]) {
 }
 
 function latestStockCarry(stockRows: PlayerStockRow[], clubType: string) {
-  return [...stockRows]
-    .filter((row) => row.clubType === clubType)
-    .sort((left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime())[0]?.carryMedianYd ?? null;
+  return (
+    [...stockRows]
+      .filter((row) => row.clubType === clubType)
+      .sort((left, right) => right.calculatedAt.getTime() - left.calculatedAt.getTime())[0]
+      ?.carryMedianYd ?? null
+  );
 }
 
-function formatCompareClubLabel(club: { type: string; brand: string | null; model: string | null; active: boolean }) {
+function formatCompareClubLabel(club: {
+  type: string;
+  brand: string | null;
+  model: string | null;
+  active: boolean;
+}) {
   const label = [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" - ");
   return club.active ? label : `${label} (retired)`;
 }
@@ -1273,7 +1354,11 @@ function dateRangeLabel(start: Date | null, end: Date | null) {
   return startLabel === endLabel ? startLabel : `${startLabel} to ${endLabel}`;
 }
 
-function buildBenefit(focus: CompareSampleSummary, baseline: CompareSampleSummary, delta: CompareDelta): CompareData["benefit"] {
+function buildBenefit(
+  focus: CompareSampleSummary,
+  baseline: CompareSampleSummary,
+  delta: CompareDelta,
+): CompareData["benefit"] {
   const score = benefitScore(focus, baseline, delta);
   const positives: string[] = [];
   const warnings: string[] = [];
@@ -1337,7 +1422,11 @@ function buildBenefit(focus: CompareSampleSummary, baseline: CompareSampleSummar
   };
 }
 
-function benefitScore(focus: CompareSampleSummary, baseline: CompareSampleSummary, delta: CompareDelta) {
+function benefitScore(
+  focus: CompareSampleSummary,
+  baseline: CompareSampleSummary,
+  delta: CompareDelta,
+) {
   let score = 50;
 
   if (isNumber(delta.offlineDeltaYd)) score += clamp(-delta.offlineDeltaYd * 2, -18, 18);
@@ -1373,7 +1462,10 @@ function medianCarryByClub(shots: CompareShot[]) {
   const byClub = groupBy(shots, (shot) => shot.clubId);
 
   for (const [clubId, clubShots] of byClub.entries()) {
-    result.set(clubId, roundOne(percentile(clubShots.map((shot) => shot.carryYd).filter(isNumber), 0.5)));
+    result.set(
+      clubId,
+      roundOne(percentile(clubShots.map((shot) => shot.carryYd).filter(isNumber), 0.5)),
+    );
   }
 
   return result;
@@ -1415,12 +1507,28 @@ function compareImportedSessionRecency(left: CompareShot, right: CompareShot) {
 
 function playableLimit(clubType: string) {
   const family = clubFamily(clubType);
-  return family === "driver" ? 45 : family === "wood" ? 36 : family === "hybrid" ? 32 : family === "iron" ? 26 : 18;
+  return family === "driver"
+    ? 45
+    : family === "wood"
+      ? 36
+      : family === "hybrid"
+        ? 32
+        : family === "iron"
+          ? 26
+          : 18;
 }
 
 function bigMissLimit(clubType: string) {
   const family = clubFamily(clubType);
-  return family === "driver" ? 35 : family === "wood" ? 30 : family === "hybrid" ? 26 : family === "iron" ? 22 : 16;
+  return family === "driver"
+    ? 35
+    : family === "wood"
+      ? 30
+      : family === "hybrid"
+        ? 26
+        : family === "iron"
+          ? 22
+          : 16;
 }
 
 function clubFamily(clubType: string): "driver" | "wood" | "hybrid" | "iron" | "wedge" {
@@ -1471,7 +1579,9 @@ function percentile(values: number[], percentileValue: number) {
 }
 
 function mean(values: number[]) {
-  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : null;
+  return values.length > 0
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : null;
 }
 
 function minDate(values: Date[]) {

@@ -30,7 +30,9 @@ export async function listOfflineActions() {
   });
 }
 
-export async function queueOfflineAction(record: Omit<OfflineActionRecord, "createdAt" | "retryCount">) {
+export async function queueOfflineAction(
+  record: Omit<OfflineActionRecord, "createdAt" | "retryCount">,
+) {
   const db = await openOfflineDb();
   const value: OfflineActionRecord = {
     ...record,

@@ -15,7 +15,11 @@ const dashboardTabs = [
 
 export type DashboardTabKey = (typeof dashboardTabs)[number]["key"];
 
-export function DashboardMobileHeader({ initialActiveKey = "today" }: { initialActiveKey?: DashboardTabKey }) {
+export function DashboardMobileHeader({
+  initialActiveKey = "today",
+}: {
+  initialActiveKey?: DashboardTabKey;
+}) {
   const [activeKey, setActiveKey] = useState<DashboardTabKey>(initialActiveKey);
 
   useEffect(() => {
@@ -64,7 +68,10 @@ export function DashboardMobileHeader({ initialActiveKey = "today" }: { initialA
         </h1>
         <span aria-hidden="true" />
       </header>
-      <nav aria-label="Dashboard sections" className="-mx-4 flex max-w-[100vw] gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4">
+      <nav
+        aria-label="Dashboard sections"
+        className="-mx-4 flex max-w-[100vw] gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4"
+      >
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;
 
@@ -77,9 +84,7 @@ export function DashboardMobileHeader({ initialActiveKey = "today" }: { initialA
               onClick={() => setActiveKey(tab.key)}
               className={cn(
                 "shrink-0 whitespace-nowrap border-b-2 py-3 text-base font-semibold tracking-normal",
-                active
-                  ? "border-[#0B7A3B] text-[#050505]"
-                  : "border-transparent text-[#6B7280]",
+                active ? "border-[#0B7A3B] text-[#050505]" : "border-transparent text-[#6B7280]",
               )}
             >
               {tab.label}

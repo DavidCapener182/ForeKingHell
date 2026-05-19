@@ -26,16 +26,16 @@ export type ScorecardCourseHole = {
 };
 
 const TPC_WHITE_YARDAGES = [
-  360, 469, 134, 324, 422, 333, 382, 168, 522, 351, 469, 296, 141, 377, 366, 470,
-  115, 387,
+  360, 469, 134, 324, 422, 333, 382, 168, 522, 351, 469, 296, 141, 377, 366, 470, 115, 387,
 ];
 const BOOTLE_YELLOW_YARDAGES = [
-  190, 336, 371, 325, 165, 326, 371, 375, 473, 349, 131, 366, 330, 177, 442,
-  373, 352, 387,
+  190, 336, 371, 325, 165, 326, 371, 375, 473, 349, 131, 366, 330, 177, 442, 373, 352, 387,
 ];
 const MOUNTAIN_PARK_YELLOW_YARDAGES = [167, 257, 271, 165, 313, 447, 380, 358, 236];
 
-export async function ensureKnownCourseForSession(courseName: string | null | undefined): Promise<CourseSessionLink> {
+export async function ensureKnownCourseForSession(
+  courseName: string | null | undefined,
+): Promise<CourseSessionLink> {
   const canonicalName = canonicalKnownCourseNameForSession(courseName);
 
   if (!canonicalName) {
@@ -101,7 +101,9 @@ async function ensureManualScorecardCourseForSession(
   scorecardHoles: ScorecardCourseHole[] | null | undefined,
 ): Promise<CourseSessionLink> {
   const name = courseName?.trim();
-  const holesForTee = scorecardHoles?.filter((hole) => Number.isFinite(hole.par) && Number.isFinite(hole.yards)) ?? [];
+  const holesForTee =
+    scorecardHoles?.filter((hole) => Number.isFinite(hole.par) && Number.isFinite(hole.yards)) ??
+    [];
 
   if (!name || holesForTee.length === 0) {
     return { courseId: null, teeSetId: null };

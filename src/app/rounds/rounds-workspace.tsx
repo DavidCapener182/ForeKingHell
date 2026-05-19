@@ -7,13 +7,7 @@ import { ChevronRight, Flag, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -80,12 +74,7 @@ export function RoundsWorkspace({
 
     return rounds.filter((round) => {
       const matchesFilter = filterRound(round, activeFilter);
-      const searchableText = [
-        round.courseName,
-        round.fileName,
-        round.typeLabel,
-        round.dateLabel,
-      ]
+      const searchableText = [round.courseName, round.fileName, round.typeLabel, round.dateLabel]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -95,9 +84,7 @@ export function RoundsWorkspace({
   }, [activeFilter, rounds, searchTerm]);
 
   const selectedRound =
-    filteredRounds.find((round) => round.id === selectedRoundId) ??
-    filteredRounds[0] ??
-    null;
+    filteredRounds.find((round) => round.id === selectedRoundId) ?? filteredRounds[0] ?? null;
 
   return (
     <section className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -200,9 +187,15 @@ export function RoundsWorkspace({
                           </Badge>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-right">{formatInteger(round.totalScore)}</TableCell>
-                      <TableCell className="text-right">{round.handicapDifferentialLabel}</TableCell>
-                      <TableCell className="text-right">{formatInteger(round.totalPutts)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatInteger(round.totalScore)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {round.handicapDifferentialLabel}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatInteger(round.totalPutts)}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DataBadge round={round} />
                       </TableCell>
@@ -265,12 +258,8 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               <p className="text-sm leading-5 text-muted-foreground">
                 {round.dateLabel} · {round.typeLabel}
               </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-                {roundTitle(round)}
-              </h2>
-              <p className="mt-2 text-3xl font-semibold tracking-normal">
-                {round.scoreSummary}
-              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-normal">{roundTitle(round)}</h2>
+              <p className="mt-2 text-3xl font-semibold tracking-normal">{round.scoreSummary}</p>
             </div>
 
             <div className="grid gap-2">
@@ -398,9 +387,7 @@ function RoundMetric({ label, value }: { label: string; value: string }) {
 
 function DataBadge({ round }: { round: RoundsWorkspaceRound }) {
   return (
-    <Badge variant={round.shotCount > 0 ? "secondary" : "outline"}>
-      {round.rowDataLabel}
-    </Badge>
+    <Badge variant={round.shotCount > 0 ? "secondary" : "outline"}>{round.rowDataLabel}</Badge>
   );
 }
 

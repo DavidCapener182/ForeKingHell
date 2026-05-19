@@ -108,7 +108,11 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             : "Compare player profiles, handicap, scoring, stock yardages, tournament scores, then drill into club-vs-club data."
         }
         actions={
-          <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button
+            asChild
+            size="lg"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
             <Link href="/shots" prefetch={false}>
               <Crosshair className="size-4" />
               Open shots
@@ -191,7 +195,8 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             <div>
               <p className="text-xl font-semibold">Choose two clubs</p>
               <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                The comparison page only needs a Club A and Club B now. Imported and retired clubs are both available.
+                The comparison page only needs a Club A and Club B now. Imported and retired clubs
+                are both available.
               </p>
             </div>
           </CardContent>
@@ -256,7 +261,9 @@ function PlayerCompareForm({ data }: { data: PlayerCompareData }) {
               </option>
             ))}
           </SelectField>
-          <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">vs</div>
+          <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
+            vs
+          </div>
           <SelectField label="Player B" name="playerBId" defaultValue={data.filters.playerBId}>
             {data.players.map((player) => (
               <option key={player.userId} value={player.userId}>
@@ -265,9 +272,13 @@ function PlayerCompareForm({ data }: { data: PlayerCompareData }) {
             ))}
           </SelectField>
           <div className="flex gap-2">
-            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">Compare</Button>
+            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              Compare
+            </Button>
             <Button asChild variant="outline">
-              <Link href="/compare" prefetch={false}>Reset</Link>
+              <Link href="/compare" prefetch={false}>
+                Reset
+              </Link>
             </Button>
           </div>
         </form>
@@ -293,7 +304,9 @@ function ClubCompareForm({ data }: { data: ClubCompareData }) {
               </option>
             ))}
           </SelectField>
-          <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">vs</div>
+          <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
+            vs
+          </div>
           <SelectField label="Club B" name="clubBId" defaultValue={data.filters.clubBId}>
             {data.clubs.map((club) => (
               <option key={club.id} value={club.id}>
@@ -302,9 +315,13 @@ function ClubCompareForm({ data }: { data: ClubCompareData }) {
             ))}
           </SelectField>
           <div className="flex gap-2">
-            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">Compare</Button>
+            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              Compare
+            </Button>
             <Button asChild variant="outline">
-              <Link href="/compare" prefetch={false}>Reset</Link>
+              <Link href="/compare" prefetch={false}>
+                Reset
+              </Link>
             </Button>
           </div>
         </form>
@@ -327,7 +344,11 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <select name={name} defaultValue={defaultValue} className="h-10 rounded-lg border bg-white/90 px-3 text-sm">
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
+      >
         {children}
       </select>
     </label>
@@ -360,7 +381,10 @@ function ClubSummaryCard({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Usable shots" value={`${integerFormatter.format(club.stockShots)} / ${integerFormatter.format(club.rawShots)}`} />
+        <MiniStat
+          label="Usable shots"
+          value={`${integerFormatter.format(club.stockShots)} / ${integerFormatter.format(club.rawShots)}`}
+        />
         <MiniStat label="Sessions" value={integerFormatter.format(club.sessions)} />
         <MiniStat label="Carry" value={formatYards(club.carryMedianYd)} />
         <MiniStat label="Total" value={formatYards(club.totalMedianYd)} />
@@ -394,11 +418,16 @@ function PlayerSummaryCard({
             <span className={`size-2 rounded-full ${dotClass}`} />
             {side}
           </p>
-          <Link href={`/profile/${player.username}`} prefetch={false} className="mt-2 block truncate text-xl font-semibold tracking-normal hover:underline">
+          <Link
+            href={`/profile/${player.username}`}
+            prefetch={false}
+            className="mt-2 block truncate text-xl font-semibold tracking-normal hover:underline"
+          >
             {player.displayName}
           </Link>
           <p className="mt-1 truncate text-sm text-muted-foreground">
-            @{player.username}{player.homeCourse ? ` · ${player.homeCourse}` : ""}
+            @{player.username}
+            {player.homeCourse ? ` · ${player.homeCourse}` : ""}
           </p>
         </div>
         <StatusPill tone={tone === "emerald" ? "green" : "sky"}>
@@ -412,7 +441,12 @@ function PlayerSummaryCard({
         <MiniStat label="Scoring avg" value={formatScore(player.scoringAverage)} />
         <MiniStat label="Latest score" value={formatScore(player.latestScore)} />
         <MiniStat label="Tournament total" value={formatTournamentTotal(player)} />
-        <MiniStat label="Tournament rank" value={player.tournamentRank ? `#${integerFormatter.format(player.tournamentRank)}` : "--"} />
+        <MiniStat
+          label="Tournament rank"
+          value={
+            player.tournamentRank ? `#${integerFormatter.format(player.tournamentRank)}` : "--"
+          }
+        />
         <MiniStat label="Driver carry" value={formatYards(player.driverCarryYd)} />
         <MiniStat label="7i carry" value={formatYards(player.sevenIronCarryYd)} />
         <MiniStat label="Playable" value={formatRate(player.playableRate)} />
@@ -434,12 +468,16 @@ function PlayerDeltaTable({
   const playerAHandicap = playerHandicapLabel(playerA);
   const playerBHandicap = playerHandicapLabel(playerB);
   const handicapEstimateDelta = delta.handicapEstimateDelta;
-  const handicapDiff = handicapEstimateDelta === null
-    ? playerAHandicap === playerBHandicap ? "Same" : "Different"
-    : formatSignedStrokes(handicapEstimateDelta);
-  const handicapOutcome = handicapEstimateDelta === null
-    ? contextOutcome()
-    : playerMetricOutcome(handicapEstimateDelta, "lower", "shots");
+  const handicapDiff =
+    handicapEstimateDelta === null
+      ? playerAHandicap === playerBHandicap
+        ? "Same"
+        : "Different"
+      : formatSignedStrokes(handicapEstimateDelta);
+  const handicapOutcome =
+    handicapEstimateDelta === null
+      ? contextOutcome()
+      : playerMetricOutcome(handicapEstimateDelta, "lower", "shots");
   const rows = [
     {
       label: "Handicap",
@@ -563,7 +601,13 @@ function RecentTournamentScores({
   );
 }
 
-function RecentScoresList({ player, tone }: { player: PlayerCompareSide; tone: "emerald" | "sky" }) {
+function RecentScoresList({
+  player,
+  tone,
+}: {
+  player: PlayerCompareSide;
+  tone: "emerald" | "sky";
+}) {
   const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
 
   return (
@@ -718,13 +762,7 @@ function DeltaTable({
   );
 }
 
-function ClubDispersionPlot({
-  clubA,
-  clubB,
-}: {
-  clubA: ClubCompareSide;
-  clubB: ClubCompareSide;
-}) {
+function ClubDispersionPlot({ clubA, clubB }: { clubA: ClubCompareSide; clubB: ClubCompareSide }) {
   const points = [...clubA.dispersion, ...clubB.dispersion];
 
   if (points.length === 0) {
@@ -746,27 +784,62 @@ function ClubDispersionPlot({
 
   return (
     <ChartFrame className="p-3">
-      <svg viewBox="0 0 720 360" role="img" aria-label="Club shot dispersion comparison" className="aspect-[2/1] w-full">
+      <svg
+        viewBox="0 0 720 360"
+        role="img"
+        aria-label="Club shot dispersion comparison"
+        className="aspect-[2/1] w-full"
+      >
         <rect x="0" y="0" width="720" height="360" rx="12" fill="#ffffff" />
         <line x1="360" x2="360" y1="36" y2="320" stroke="#94a3b8" strokeDasharray="5 5" />
         <line x1="48" x2="672" y1="312" y2="312" stroke="#cbd5e1" />
         <line x1="48" x2="48" y1="36" y2="312" stroke="#cbd5e1" />
-        <text x="360" y="28" textAnchor="middle" className="fill-slate-500 text-[12px]">Target line</text>
-        <text x="48" y="338" textAnchor="start" className="fill-slate-500 text-[12px]">Left</text>
-        <text x="672" y="338" textAnchor="end" className="fill-slate-500 text-[12px]">Right</text>
-        <text x="56" y="50" className="fill-slate-500 text-[12px]">Carry</text>
+        <text x="360" y="28" textAnchor="middle" className="fill-slate-500 text-[12px]">
+          Target line
+        </text>
+        <text x="48" y="338" textAnchor="start" className="fill-slate-500 text-[12px]">
+          Left
+        </text>
+        <text x="672" y="338" textAnchor="end" className="fill-slate-500 text-[12px]">
+          Right
+        </text>
+        <text x="56" y="50" className="fill-slate-500 text-[12px]">
+          Carry
+        </text>
         {clubB.dispersion.map((point) => {
           const position = plot(point);
-          return <circle key={`club-b-${point.id}`} cx={position.x} cy={position.y} r="4" fill="#0284c7" opacity="0.58" />;
+          return (
+            <circle
+              key={`club-b-${point.id}`}
+              cx={position.x}
+              cy={position.y}
+              r="4"
+              fill="#0284c7"
+              opacity="0.58"
+            />
+          );
         })}
         {clubA.dispersion.map((point) => {
           const position = plot(point);
-          return <circle key={`club-a-${point.id}`} cx={position.x} cy={position.y} r="5" fill="#059669" opacity="0.78" />;
+          return (
+            <circle
+              key={`club-a-${point.id}`}
+              cx={position.x}
+              cy={position.y}
+              r="5"
+              fill="#059669"
+              opacity="0.78"
+            />
+          );
         })}
       </svg>
       <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-600" /> Club A</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-600" /> Club B</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-emerald-600" /> Club A
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-sky-600" /> Club B
+        </span>
       </div>
     </ChartFrame>
   );
@@ -776,7 +849,8 @@ function parseFilters(searchParams: Awaited<SearchParams>): ClubCompareFilters {
   const defaults = defaultClubCompareFilters();
 
   return {
-    clubAId: stringParam(searchParams.clubAId) || stringParam(searchParams.clubId) || defaults.clubAId,
+    clubAId:
+      stringParam(searchParams.clubAId) || stringParam(searchParams.clubId) || defaults.clubAId,
     clubBId: stringParam(searchParams.clubBId) || defaults.clubBId,
   };
 }
@@ -791,13 +865,16 @@ function parsePlayerFilters(searchParams: Awaited<SearchParams>): PlayerCompareF
 }
 
 function stringParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 function playerOptionLabel(player: PlayerCompareData["players"][number]) {
   const rank = player.worldRank
     ? `OWGR #${player.worldRank}`
-    : player.handicapBand ?? (typeof player.handicapEstimate === "number" ? `Hcp ${numberFormatter.format(player.handicapEstimate)}` : "Player");
+    : (player.handicapBand ??
+      (typeof player.handicapEstimate === "number"
+        ? `Hcp ${numberFormatter.format(player.handicapEstimate)}`
+        : "Player"));
   return `${player.displayName} (${rank})`;
 }
 

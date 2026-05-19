@@ -20,7 +20,9 @@ type CompetitionFixture = {
 
 const databaseUrl = process.env.DATABASE_URL ?? loadEnvFile().DATABASE_URL;
 const authUserId = authStorageState ? extractSupabaseUserId(authStorageState) : null;
-const canRunCompetitions = Boolean(databaseUrl && authStorageState && existsSync(authStorageState) && authUserId);
+const canRunCompetitions = Boolean(
+  databaseUrl && authStorageState && existsSync(authStorageState) && authUserId,
+);
 
 test.describe("course records and major-style tournaments", () => {
   test.skip(
@@ -49,7 +51,9 @@ test.describe("course records and major-style tournaments", () => {
     await sql?.end();
   });
 
-  test("submits a verified course record, enters a major and sends mismatches to review", async ({ page }) => {
+  test("submits a verified course record, enters a major and sends mismatches to review", async ({
+    page,
+  }) => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
@@ -62,12 +66,11 @@ test.describe("course records and major-style tournaments", () => {
     await expectPageReady(page, /Best gross score/i);
     const recordForm = page.locator("[data-course-record-attempt-form]");
     await recordForm.locator('select[name="sessionId"]').selectOption(data.sessionId);
-    await recordForm.locator('input[name="screenshotPath"]').evaluate(
-      (input: HTMLInputElement, value) => {
+    await recordForm
+      .locator('input[name="screenshotPath"]')
+      .evaluate((input: HTMLInputElement, value) => {
         input.value = value;
-      },
-      `/uploads/scorecards/${data.token}.png`,
-    );
+      }, `/uploads/scorecards/${data.token}.png`);
     await recordForm.locator('input[name="extractedScorecardTotal"]').fill("72");
     await recordForm.locator('input[name="scorecardProofToken"]').evaluate(
       (input: HTMLInputElement, token) => {
@@ -160,14 +163,22 @@ test.describe("course records and major-style tournaments", () => {
   });
 });
 
-async function submitTournamentRound(page: import("@playwright/test").Page, round: string, gross: string, extracted: string, hash: string) {
+async function submitTournamentRound(
+  page: import("@playwright/test").Page,
+  round: string,
+  gross: string,
+  extracted: string,
+  hash: string,
+) {
   const form = page.locator("[data-tournament-submit-form]");
   await expect(form).toBeVisible();
   await form.locator('input[name="roundNumber"]').fill(round);
   await form.locator('input[name="grossScore"]').fill(gross);
   await form.locator('input[name="netScore"]').fill(gross);
   await form.locator('input[name="csvHash"]').fill(hash);
-  await form.locator('input[name="scorecardScreenshotPath"]').fill(`/uploads/scorecards/${hash}.png`);
+  await form
+    .locator('input[name="scorecardScreenshotPath"]')
+    .fill(`/uploads/scorecards/${hash}.png`);
   await form.locator('input[name="extractedScorecardTotal"]').fill(extracted);
   await form.locator('input[name="hasRapsodoDirect"]').check();
   await Promise.all([
@@ -297,10 +308,24 @@ async function seedCompetitionFixture(sql: Sql, authUserId: string): Promise<Com
       (${tournamentId}, 4, 'Round 4', ${now}, ${new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000)}, 'scheduled', ${now})
   `;
 
-  return { token, courseId, teeSetId, categoryId, recordId, tournamentId, sessionId, courseName, tournamentTitle };
+  return {
+    token,
+    courseId,
+    teeSetId,
+    categoryId,
+    recordId,
+    tournamentId,
+    sessionId,
+    courseName,
+    tournamentTitle,
+  };
 }
 
-async function cleanupCompetitionFixture(sql: Sql, fixture: CompetitionFixture, authUserId: string) {
+async function cleanupCompetitionFixture(
+  sql: Sql,
+  fixture: CompetitionFixture,
+  authUserId: string,
+) {
   await sql`delete from fkh_moderation_events where actor_user_id = ${authUserId} and metadata_json::text like ${`%${fixture.token}%`}`;
   await sql`delete from fkh_feed_items where user_id = ${authUserId} and headline like ${`%${fixture.token}%`}`;
   await sql`delete from fkh_tournaments where id = ${fixture.tournamentId}`;
@@ -353,7 +378,9 @@ function extractSupabaseUserId(storageStatePath: string) {
   const state = JSON.parse(readFileSync(storageStatePath, "utf8")) as {
     cookies?: Array<{ name: string; value: string }>;
   };
-  const cookie = state.cookies?.find((item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"));
+  const cookie = state.cookies?.find(
+    (item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"),
+  );
   if (!cookie) {
     return null;
   }
@@ -370,7 +397,9 @@ function extractSupabaseUserId(storageStatePath: string) {
     }
 
     const [, payload] = token.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: string };
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      sub?: string;
+    };
     return claims.sub ?? null;
   } catch {
     return null;
@@ -378,7 +407,10 @@ function extractSupabaseUserId(storageStatePath: string) {
 }
 
 function unquote(value: string) {
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 

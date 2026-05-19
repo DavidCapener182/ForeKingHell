@@ -40,10 +40,7 @@ type GoogleImageSearchOptions = {
 
 const searchCache = new Map<string, CachedSearchResult>();
 
-export async function searchGoogleImages(
-  query: string,
-  options: GoogleImageSearchOptions = {},
-) {
+export async function searchGoogleImages(query: string, options: GoogleImageSearchOptions = {}) {
   const normalizedQuery = normalizeQuery(query);
 
   if (!normalizedQuery) {
@@ -73,7 +70,10 @@ export async function searchGoogleImages(
   searchUrl.searchParams.set("searchType", "image");
   searchUrl.searchParams.set("safe", "active");
   searchUrl.searchParams.set("num", String(num));
-  searchUrl.searchParams.set("fields", "items(title,link,displayLink,mime,image(thumbnailLink,contextLink))");
+  searchUrl.searchParams.set(
+    "fields",
+    "items(title,link,displayLink,mime,image(thumbnailLink,contextLink))",
+  );
 
   try {
     const response = await fetchWithTimeout(searchUrl, SEARCH_TIMEOUT_MS, {

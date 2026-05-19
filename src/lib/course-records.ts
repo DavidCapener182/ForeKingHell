@@ -322,7 +322,11 @@ export function evaluateVerification(input: VerificationInput): VerificationDeci
     reasons.push("Tee set mismatch");
   }
 
-  if (typeof expectedScore === "number" && typeof extractedTotal === "number" && expectedScore !== extractedTotal) {
+  if (
+    typeof expectedScore === "number" &&
+    typeof extractedTotal === "number" &&
+    expectedScore !== extractedTotal
+  ) {
     reasons.push(`Scorecard total ${extractedTotal} does not match submitted ${expectedScore}`);
   }
 
@@ -338,9 +342,16 @@ export function evaluateVerification(input: VerificationInput): VerificationDeci
     reasons.push("Manual edits flagged");
   }
 
-  if (reasons.some((reason) => /mismatch|does not match|duplicate|outside|required|manual edits/i.test(reason))) {
+  if (
+    reasons.some((reason) =>
+      /mismatch|does not match|duplicate|outside|required|manual edits/i.test(reason),
+    )
+  ) {
     return {
-      status: /required/i.test(reasons.join(" ")) && !hasDirect && !hasCsv && !hasScreenshot ? "pending_evidence" : "mismatch",
+      status:
+        /required/i.test(reasons.join(" ")) && !hasDirect && !hasCsv && !hasScreenshot
+          ? "pending_evidence"
+          : "mismatch",
       tier: hasDirect ? "gold" : hasCsv ? "silver" : hasScreenshot ? "bronze" : "manual",
       proofStatus: "needs_review",
       reasons,
@@ -348,29 +359,56 @@ export function evaluateVerification(input: VerificationInput): VerificationDeci
   }
 
   if (hasDirect && hasScreenshot) {
-    return { status: "verified", tier: "gold", proofStatus: "verified", reasons: ["Rapsodo Cloud and screenshot matched"] };
+    return {
+      status: "verified",
+      tier: "gold",
+      proofStatus: "verified",
+      reasons: ["Rapsodo Cloud and screenshot matched"],
+    };
   }
 
   if (hasCsv && hasScreenshot) {
-    return { status: "verified", tier: "silver", proofStatus: "verified", reasons: ["CSV hash and screenshot matched"] };
+    return {
+      status: "verified",
+      tier: "silver",
+      proofStatus: "verified",
+      reasons: ["CSV hash and screenshot matched"],
+    };
   }
 
   if (hasScreenshot) {
-    return { status: "manual_only", tier: "bronze", proofStatus: "manual_only", reasons: ["Screenshot only"] };
+    return {
+      status: "manual_only",
+      tier: "bronze",
+      proofStatus: "manual_only",
+      reasons: ["Screenshot only"],
+    };
   }
 
   if (!hasDirect && !hasCsv && !hasScreenshot) {
-    return { status: "manual_only", tier: "manual", proofStatus: "manual_only", reasons: ["Manual score only"] };
+    return {
+      status: "manual_only",
+      tier: "manual",
+      proofStatus: "manual_only",
+      reasons: ["Manual score only"],
+    };
   }
 
-  return { status: "pending_evidence", tier: "unverified", proofStatus: "pending_evidence", reasons: ["More evidence required"] };
+  return {
+    status: "pending_evidence",
+    tier: "unverified",
+    proofStatus: "pending_evidence",
+    reasons: ["More evidence required"],
+  };
 }
 
 export function rankRecordAttempts(
   attempts: RankableRecordAttempt[],
   scoringDirection: ScoringDirection,
 ): RankedRecordResult[] {
-  const verifiedAttempts = attempts.filter((attempt) => isBoardEligibleStatus(attempt.verificationStatus));
+  const verifiedAttempts = attempts.filter((attempt) =>
+    isBoardEligibleStatus(attempt.verificationStatus),
+  );
   const bestByUser = new Map<string, RankableRecordAttempt>();
 
   for (const attempt of verifiedAttempts) {
@@ -454,7 +492,9 @@ export async function getCourseRecordsHubData() {
       .filter((row): row is { courseId: string; count: number } => Boolean(row.courseId))
       .map((row) => [row.courseId, Number(row.count)]),
   );
-  const courseRows = dedupeCoursesByName(allCourseRows, (course) => coursePreference(course, sessionCounts));
+  const courseRows = dedupeCoursesByName(allCourseRows, (course) =>
+    coursePreference(course, sessionCounts),
+  );
 
   for (const course of courseRows.slice(0, 12)) {
     await ensureCourseRecordBoards(course.id, viewerUserId);
@@ -474,7 +514,12 @@ export async function getCourseRecordsHubData() {
             .from(courseRecordResults)
             .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
             .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-            .where(and(inArray(courseRecords.courseId, visibleCourseIds), eq(courseRecordResults.rank, 1))),
+            .where(
+              and(
+                inArray(courseRecords.courseId, visibleCourseIds),
+                eq(courseRecordResults.rank, 1),
+              ),
+            ),
           db.select().from(teeSets).where(inArray(teeSets.courseId, visibleCourseIds)),
         ])
       : [[], [], []];
@@ -509,11 +554,15 @@ export async function getCourseRecordsHubData() {
       };
     }),
     totalRecords: uniqueRecordRows.length,
-    verifiedChampions: resultRows.filter((row) => row.result.verificationStatus === "verified").length,
+    verifiedChampions: resultRows.filter((row) => row.result.verificationStatus === "verified")
+      .length,
   };
 }
 
-export async function getCourseRecordCourseData(courseId: string, activeTab: "all_time" | "month" | "friends" | "holes" = "all_time") {
+export async function getCourseRecordCourseData(
+  courseId: string,
+  activeTab: "all_time" | "month" | "friends" | "holes" = "all_time",
+) {
   const viewerUserId = await requireCurrentUserId();
   await ensureDefaultCourseRecordCategories();
   await ensureCourseRecordBoards(courseId, viewerUserId);
@@ -526,8 +575,16 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
 
   const [teeRows, categoryRows, recordRows, previousRoundRows, friendIds] = await Promise.all([
     db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)),
-    db.select().from(courseRecordCategories).where(eq(courseRecordCategories.active, true)).orderBy(asc(courseRecordCategories.sortOrder)),
-    db.select().from(courseRecords).where(eq(courseRecords.courseId, courseId)).orderBy(asc(courseRecords.createdAt)),
+    db
+      .select()
+      .from(courseRecordCategories)
+      .where(eq(courseRecordCategories.active, true))
+      .orderBy(asc(courseRecordCategories.sortOrder)),
+    db
+      .select()
+      .from(courseRecords)
+      .where(eq(courseRecords.courseId, courseId))
+      .orderBy(asc(courseRecords.createdAt)),
     db
       .select({
         session: sessions,
@@ -570,7 +627,12 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     db
       .select()
       .from(courseRecordAttempts)
-      .where(and(eq(courseRecordAttempts.courseId, courseId), eq(courseRecordAttempts.userId, viewerUserId)))
+      .where(
+        and(
+          eq(courseRecordAttempts.courseId, courseId),
+          eq(courseRecordAttempts.userId, viewerUserId),
+        ),
+      )
       .orderBy(desc(courseRecordAttempts.submittedAt))
       .limit(40),
   ]);
@@ -585,7 +647,11 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     }
 
     if (activeTab === "holes") {
-      return record.recordType === "best_hole_score" || record.recordType === "closest_to_pin" || record.recordType === "longest_drive";
+      return (
+        record.recordType === "best_hole_score" ||
+        record.recordType === "closest_to_pin" ||
+        record.recordType === "longest_drive"
+      );
     }
 
     return record.period === "all_time" && record.scope === "public";
@@ -595,7 +661,8 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
       const category = categoryById.get(record.categoryId);
       const leaders = resultRows.filter((row) => row.record.id === record.id);
       const champion = leaders.find((row) => row.result.rank === 1) ?? leaders[0] ?? null;
-      const friendToBeat = leaders.find((row) => row.profile && friendIds.includes(row.profile.userId)) ?? null;
+      const friendToBeat =
+        leaders.find((row) => row.profile && friendIds.includes(row.profile.userId)) ?? null;
       const viewerBest = leaders.find((row) => row.result.userId === viewerUserId) ?? null;
 
       return category
@@ -610,7 +677,10 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .sort((left, right) => left.category.sortOrder - right.category.sortOrder);
-  const championCard = recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ?? recordCards.find((card) => card.champion) ?? null;
+  const championCard =
+    recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ??
+    recordCards.find((card) => card.champion) ??
+    null;
   const bestViewerAttempt = viewerAttemptRows[0] ?? null;
   const previousRounds = previousRoundRows
     .map((row) =>
@@ -629,10 +699,14 @@ export async function getCourseRecordCourseData(courseId: string, activeTab: "al
     course,
     teeSets: teeRows.map(normaliseTeeSetNameForCourseRecords),
     tabs: {
-      allTimeCount: uniqueRecordRows.filter((record) => record.period === "all_time" && record.scope === "public").length,
+      allTimeCount: uniqueRecordRows.filter(
+        (record) => record.period === "all_time" && record.scope === "public",
+      ).length,
       monthCount: uniqueRecordRows.filter((record) => record.period === "month").length,
       friendsCount: uniqueRecordRows.filter((record) => record.scope === "friends").length,
-      holesCount: uniqueRecordRows.filter((record) => ["best_hole_score", "closest_to_pin", "longest_drive"].includes(record.recordType)).length,
+      holesCount: uniqueRecordRows.filter((record) =>
+        ["best_hole_score", "closest_to_pin", "longest_drive"].includes(record.recordType),
+      ).length,
     },
     recordCards,
     championCard,
@@ -665,7 +739,12 @@ async function getCourseRecordShotRowsBySession(userId: string, sessionIds: stri
     })
     .from(shots)
     .where(and(eq(shots.userId, userId), inArray(shots.sessionId, uniqueSessionIds)))
-    .orderBy(asc(shots.sessionId), asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber));
+    .orderBy(
+      asc(shots.sessionId),
+      asc(shots.courseHoleNumber),
+      asc(shots.courseHoleShotNumber),
+      asc(shots.shotNumber),
+    );
 
   for (const shot of shotRows) {
     const rows = rowsBySession.get(shot.sessionId) ?? [];
@@ -744,7 +823,11 @@ export async function getCourseRecordDetailData(recordId: string) {
   ]);
   const recentRounds = recentSessions
     .map(({ session, teeSet, sync }) => {
-      const summary = summarizeRoundWithShots(session, teeSet, shotRowsBySession.get(session.id) ?? []);
+      const summary = summarizeRoundWithShots(
+        session,
+        teeSet,
+        shotRowsBySession.get(session.id) ?? [],
+      );
       const metricValue = metricValueForRecordType(row.record.recordType, summary);
 
       if (metricValue === null) {
@@ -833,15 +916,18 @@ export async function submitCourseRecordAttempt(input: {
   const csvHash = input.csvHash ?? roundSubmission?.csvHash ?? null;
   const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
   const scorecardProof = verifyScorecardProofToken(input.scorecardProofToken, userId);
-  const extractedScorecardTotal = scorecardProof?.totalScore ?? input.extractedScorecardTotal ?? null;
+  const extractedScorecardTotal =
+    scorecardProof?.totalScore ?? input.extractedScorecardTotal ?? null;
   const hasScorecardProof =
     Boolean(scorecardProof) &&
     typeof scorecardProof?.totalScore === "number" &&
     (input.extractedScorecardTotal === null ||
       input.extractedScorecardTotal === undefined ||
       input.extractedScorecardTotal === scorecardProof.totalScore);
-  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId) || (!roundSubmission && Boolean(input.hasRapsodoDirect));
-  const manualEdit = input.manualEdit || (roundSubmission ? roundSubmission.session.source !== "rapsodo" : false);
+  const hasRapsodoDirect =
+    Boolean(rapsodoSyncSessionId) || (!roundSubmission && Boolean(input.hasRapsodoDirect));
+  const manualEdit =
+    input.manualEdit || (roundSubmission ? roundSubmission.session.source !== "rapsodo" : false);
   const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
   const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
   const dateMatches = input.dateMatches ?? true;
@@ -854,10 +940,14 @@ export async function submitCourseRecordAttempt(input: {
   const [previousLeader] = await db
     .select()
     .from(courseRecordResults)
-    .where(and(eq(courseRecordResults.recordId, recordRow.record.id), eq(courseRecordResults.rank, 1)))
+    .where(
+      and(eq(courseRecordResults.recordId, recordRow.record.id), eq(courseRecordResults.rank, 1)),
+    )
     .limit(1);
   const previousLeaderWasFriend =
-    previousLeader && previousLeader.userId !== userId ? await areFriends(userId, previousLeader.userId) : false;
+    previousLeader && previousLeader.userId !== userId
+      ? await areFriends(userId, previousLeader.userId)
+      : false;
   const duplicateImport = csvHash ? await hasDuplicateRecordEvidence(userId, csvHash) : false;
   const verification = evaluateVerification({
     expectedScore: scoreExpectedForRecord(recordRow.record.recordType, {
@@ -875,7 +965,12 @@ export async function submitCourseRecordAttempt(input: {
     teeMatches,
     duplicateImport,
     manualEdit,
-    screenshotRequired: ["best_gross_score", "best_net_score", "best_front_nine", "best_back_nine"].includes(recordRow.record.recordType),
+    screenshotRequired: [
+      "best_gross_score",
+      "best_net_score",
+      "best_front_nine",
+      "best_back_nine",
+    ].includes(recordRow.record.recordType),
     directRapsodoRequired: recordRow.record.verificationRequired === "gold",
   });
   const now = new Date();
@@ -1025,8 +1120,14 @@ export async function recalculateCourseRecordResults(recordId: string) {
     return [];
   }
 
-  const attempts = await db.select().from(courseRecordAttempts).where(eq(courseRecordAttempts.recordId, recordId));
-  const ranked = rankRecordAttempts(attempts, recordRow.category.scoringDirection === "desc" ? "desc" : "asc");
+  const attempts = await db
+    .select()
+    .from(courseRecordAttempts)
+    .where(eq(courseRecordAttempts.recordId, recordId));
+  const ranked = rankRecordAttempts(
+    attempts,
+    recordRow.category.scoringDirection === "desc" ? "desc" : "asc",
+  );
   const now = new Date();
   const results: Array<typeof courseRecordResults.$inferSelect> = [];
 
@@ -1100,23 +1201,27 @@ export async function getEligibleBoardsForSession(sessionId: string) {
   }
 
   await ensureCourseRecordBoards(session.courseId, userId);
-  const records = dedupeCourseRecordBoardRows(await db
-    .select({
-      record: courseRecords,
-      category: courseRecordCategories,
-      course: courses,
-    })
-    .from(courseRecords)
-    .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
-    .innerJoin(courses, eq(courseRecords.courseId, courses.id))
-    .where(
-      and(
-        eq(courseRecords.courseId, session.courseId),
-        session.teeSetId ? eq(courseRecords.teeSetId, session.teeSetId) : isNull(courseRecords.teeSetId),
-      ),
-    )
-    .orderBy(asc(courseRecordCategories.sortOrder))
-    .limit(60));
+  const records = dedupeCourseRecordBoardRows(
+    await db
+      .select({
+        record: courseRecords,
+        category: courseRecordCategories,
+        course: courses,
+      })
+      .from(courseRecords)
+      .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
+      .innerJoin(courses, eq(courseRecords.courseId, courses.id))
+      .where(
+        and(
+          eq(courseRecords.courseId, session.courseId),
+          session.teeSetId
+            ? eq(courseRecords.teeSetId, session.teeSetId)
+            : isNull(courseRecords.teeSetId),
+        ),
+      )
+      .orderBy(asc(courseRecordCategories.sortOrder))
+      .limit(60),
+  );
 
   return {
     courseRecords: records.filter((row) => row.record.period === "all_time").slice(0, 4),
@@ -1168,11 +1273,23 @@ export async function ensureCourseRecordBoards(courseId: string, createdByUserId
   }
 
   const [categories, teeRows] = await Promise.all([
-    db.select().from(courseRecordCategories).where(eq(courseRecordCategories.active, true)).orderBy(asc(courseRecordCategories.sortOrder)),
-    db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)).limit(1),
+    db
+      .select()
+      .from(courseRecordCategories)
+      .where(eq(courseRecordCategories.active, true))
+      .orderBy(asc(courseRecordCategories.sortOrder)),
+    db
+      .select()
+      .from(teeSets)
+      .where(eq(teeSets.courseId, courseId))
+      .orderBy(asc(teeSets.name))
+      .limit(1),
   ]);
   const teeSetId = teeRows[0]?.id ?? null;
-  const existing = await db.select().from(courseRecords).where(eq(courseRecords.courseId, courseId));
+  const existing = await db
+    .select()
+    .from(courseRecords)
+    .where(eq(courseRecords.courseId, courseId));
   const existingKeys = new Set(existing.map(recordKey));
   const now = new Date();
   const monthStart = currentMonthStart();
@@ -1246,7 +1363,11 @@ async function canViewRecord(viewerUserId: string, record: typeof courseRecords.
     return true;
   }
 
-  if (record.scope === "friends" && record.createdByUserId && (await areFriends(viewerUserId, record.createdByUserId))) {
+  if (
+    record.scope === "friends" &&
+    record.createdByUserId &&
+    (await areFriends(viewerUserId, record.createdByUserId))
+  ) {
     return true;
   }
 
@@ -1272,24 +1393,31 @@ async function createRecordModerationEvent(input: {
   extractedScore: number | null;
   reasons: string[];
 }) {
-  await getDb().insert(moderationEvents).values({
-    targetType: "course_record_attempt",
-    targetId: input.attemptId,
-    actorUserId: input.userId,
-    eventType: "record_score_mismatch",
-    severity: "medium",
-    status: "open",
-    reason: input.reasons.join("; ").slice(0, 1000),
-    metadataJson: {
-      course: input.courseName,
-      imported: input.importedScore,
-      screenshot: input.extractedScore,
-      reasons: input.reasons,
-    },
-  });
+  await getDb()
+    .insert(moderationEvents)
+    .values({
+      targetType: "course_record_attempt",
+      targetId: input.attemptId,
+      actorUserId: input.userId,
+      eventType: "record_score_mismatch",
+      severity: "medium",
+      status: "open",
+      reason: input.reasons.join("; ").slice(0, 1000),
+      metadataJson: {
+        course: input.courseName,
+        imported: input.importedScore,
+        screenshot: input.extractedScore,
+        reasons: input.reasons,
+      },
+    });
 }
 
-async function awardCourseRecordAchievement(userId: string, achievementId: string, sourceId: string, xp: number) {
+async function awardCourseRecordAchievement(
+  userId: string,
+  achievementId: string,
+  sourceId: string,
+  xp: number,
+) {
   const now = new Date();
   await getDb()
     .insert(userAchievements)
@@ -1333,15 +1461,22 @@ async function awardCourseRecordAchievement(userId: string, achievementId: strin
     });
 }
 
-function compareAttempts(left: RankableRecordAttempt, right: RankableRecordAttempt, scoringDirection: ScoringDirection) {
+function compareAttempts(
+  left: RankableRecordAttempt,
+  right: RankableRecordAttempt,
+  scoringDirection: ScoringDirection,
+) {
   const scoreDiff =
-    scoringDirection === "desc" ? right.metricValue - left.metricValue : left.metricValue - right.metricValue;
+    scoringDirection === "desc"
+      ? right.metricValue - left.metricValue
+      : left.metricValue - right.metricValue;
 
   if (scoreDiff !== 0) {
     return scoreDiff;
   }
 
-  const verificationDiff = verificationTierRank(right.verificationTier) - verificationTierRank(left.verificationTier);
+  const verificationDiff =
+    verificationTierRank(right.verificationTier) - verificationTierRank(left.verificationTier);
 
   if (verificationDiff !== 0) {
     return verificationDiff;
@@ -1447,8 +1582,8 @@ async function syncVerifiedRoundRecordAttempts({
   rounds: Array<{ session: SessionRow; teeSet: TeeSetRow | null; sync: RapsodoSyncRow | null }>;
   shotRowsBySession?: Map<string, CourseRecordShotRow[]>;
 }) {
-  const verifiedRounds = rounds.filter(({ session, sync }) =>
-    session.courseId === courseId && isVerifiedRoundData(session, sync),
+  const verifiedRounds = rounds.filter(
+    ({ session, sync }) => session.courseId === courseId && isVerifiedRoundData(session, sync),
   );
 
   if (records.length === 0 || verifiedRounds.length === 0) {
@@ -1507,7 +1642,11 @@ async function syncVerifiedRoundRecordAttempts({
         continue;
       }
 
-      const summary = summarizeRoundWithShots(session, teeSet, courseShotRowsBySession.get(session.id) ?? []);
+      const summary = summarizeRoundWithShots(
+        session,
+        teeSet,
+        courseShotRowsBySession.get(session.id) ?? [],
+      );
       const metricValue = metricValueForRecordType(record.recordType, summary);
 
       if (typeof metricValue !== "number" || !Number.isFinite(metricValue)) {
@@ -1542,9 +1681,10 @@ async function syncVerifiedRoundRecordAttempts({
             originalHoleCount: summary.originalHoleCount,
             normalisedHoleCount: summary.holeCount,
             nineHoleEquivalent: summary.isNineHoleEquivalent,
-            originalRoundScore: summary.isNineHoleEquivalent && typeof summary.totalScore === "number"
-              ? summary.totalScore / 2
-              : summary.totalScore,
+            originalRoundScore:
+              summary.isNineHoleEquivalent && typeof summary.totalScore === "number"
+                ? summary.totalScore / 2
+                : summary.totalScore,
           },
           submittedAt: session.date,
           updatedAt: now,
@@ -1609,7 +1749,11 @@ async function getRoundRecordSubmissionContext({
 
   const shotRowsBySession = await getCourseRecordShotRowsBySession(userId, [row.session.id]);
   const teeSet = row.teeSet ? normaliseTeeSetNameForCourseRecords(row.teeSet) : null;
-  const summary = summarizeRoundWithShots(row.session, teeSet, shotRowsBySession.get(row.session.id) ?? []);
+  const summary = summarizeRoundWithShots(
+    row.session,
+    teeSet,
+    shotRowsBySession.get(row.session.id) ?? [],
+  );
   const metricValue = metricValueForRecordType(record.recordType, summary);
 
   if (metricValue === null) {
@@ -1626,7 +1770,8 @@ async function getRoundRecordSubmissionContext({
     csvHash: row.session.rawCsvHash ?? row.sync?.exportRawCsvHash ?? null,
     rapsodoSyncSessionId: row.sync?.id ?? null,
     courseMatches: row.session.courseId === record.courseId,
-    teeMatches: !record.teeSetId || !row.session.teeSetId || row.session.teeSetId === record.teeSetId,
+    teeMatches:
+      !record.teeSetId || !row.session.teeSetId || row.session.teeSetId === record.teeSetId,
   };
 }
 
@@ -1635,7 +1780,8 @@ export function summarizeRound(session: SessionRow, teeSet: TeeSetRow | null): R
   const scoredHoles = holes.filter((hole) => typeof hole.score === "number");
   const netScoredHoles = holes.filter((hole) => typeof hole.netScore === "number");
   const rawTotalScore = sumHoleValues(scoredHoles, "score");
-  const rawTotalNetScore = netScoredHoles.length > 0 ? sumHoleValues(netScoredHoles, "netScore") : null;
+  const rawTotalNetScore =
+    netScoredHoles.length > 0 ? sumHoleValues(netScoredHoles, "netScore") : null;
   const totalPar = sumNullable(holes.map((hole) => hole.par));
   const holeCount = scoredHoles.length;
   const isNineHoleEquivalent = holeCount === 9;
@@ -1697,7 +1843,10 @@ export function longestDriveYardsFromShots(
   return distances.length > 0 ? roundOne(Math.max(...distances)) : null;
 }
 
-function metricValueForRecordType(recordType: string, summary: RoundRecordMetrics | RoundRecordSummary) {
+function metricValueForRecordType(
+  recordType: string,
+  summary: RoundRecordMetrics | RoundRecordSummary,
+) {
   switch (recordType) {
     case "best_gross_score":
       return summary.totalScore;
@@ -1748,8 +1897,7 @@ function isEligibleCourseDriveShot(shot: {
   }
 
   const isMappedCourseShot = typeof shot.courseHoleNumber === "number";
-  const isTeeShot =
-    shot.courseHoleShotNumber === 1 || (shot.shotCategory?.toLowerCase() === "tee");
+  const isTeeShot = shot.courseHoleShotNumber === 1 || shot.shotCategory?.toLowerCase() === "tee";
 
   return isMappedCourseShot && isTeeShot;
 }
@@ -1770,7 +1918,10 @@ function isVerifiedRoundData(session: SessionRow, sync: RapsodoSyncRow | null) {
   return Boolean(sync || session.rawCsvHash || hasScoredScorecard(session));
 }
 
-function autoSyncedRoundProof(session: SessionRow, sync: RapsodoSyncRow | null): {
+function autoSyncedRoundProof(
+  session: SessionRow,
+  sync: RapsodoSyncRow | null,
+): {
   verificationStatus: VerificationState;
   verificationTier: VerificationTier;
   proofStatus: VerificationState;
@@ -1863,7 +2014,10 @@ function displayCourseRecordTeeSetName(name: string) {
   return name.replace(/\(9 holes\)/gi, "(18 holes)");
 }
 
-function coursePreference(course: { id: string; createdByUserId: string | null }, sessionCounts: Map<string, number>) {
+function coursePreference(
+  course: { id: string; createdByUserId: string | null },
+  sessionCounts: Map<string, number>,
+) {
   return (sessionCounts.get(course.id) ?? 0) * 10 + (course.createdByUserId ? 1 : 0);
 }
 
@@ -1903,7 +2057,9 @@ function minNullable(values: Array<number | null | undefined>) {
 }
 
 function birdieCount(holes: ScorecardHole[]) {
-  const scored = holes.filter((hole) => typeof hole.score === "number" && typeof hole.par === "number");
+  const scored = holes.filter(
+    (hole) => typeof hole.score === "number" && typeof hole.par === "number",
+  );
 
   if (scored.length === 0) {
     return null;
@@ -1913,7 +2069,9 @@ function birdieCount(holes: ScorecardHole[]) {
 }
 
 function stablefordPoints(holes: ScorecardHole[]) {
-  const scored = holes.filter((hole) => typeof (hole.netScore ?? hole.score) === "number" && typeof hole.par === "number");
+  const scored = holes.filter(
+    (hole) => typeof (hole.netScore ?? hole.score) === "number" && typeof hole.par === "number",
+  );
 
   if (scored.length === 0) {
     return null;
@@ -1925,12 +2083,23 @@ function stablefordPoints(holes: ScorecardHole[]) {
   }, 0);
 }
 
-function metricLabelForCategory(category: Pick<typeof courseRecordCategories.$inferSelect, "metricKind" | "metadataJson">) {
-  const unit = typeof category.metadataJson.unit === "string" ? category.metadataJson.unit : category.metricKind;
+function metricLabelForCategory(
+  category: Pick<typeof courseRecordCategories.$inferSelect, "metricKind" | "metadataJson">,
+) {
+  const unit =
+    typeof category.metadataJson.unit === "string"
+      ? category.metadataJson.unit
+      : category.metricKind;
   return unit;
 }
 
-export function scoreLabel(value: number, category: Pick<typeof courseRecordCategories.$inferSelect, "metricKind" | "metadataJson" | "recordType">) {
+export function scoreLabel(
+  value: number,
+  category: Pick<
+    typeof courseRecordCategories.$inferSelect,
+    "metricKind" | "metadataJson" | "recordType"
+  >,
+) {
   const unit = typeof category.metadataJson.unit === "string" ? category.metadataJson.unit : "";
 
   if (category.metricKind === "strokes" || category.recordType.includes("score")) {
@@ -1956,18 +2125,27 @@ function recordKey(record: {
   period: string;
   groupId?: string | null;
 }) {
-  return [record.categoryId, record.courseId, record.teeSetId ?? "none", record.scope, record.period, record.groupId ?? "none"].join(":");
+  return [
+    record.categoryId,
+    record.courseId,
+    record.teeSetId ?? "none",
+    record.scope,
+    record.period,
+    record.groupId ?? "none",
+  ].join(":");
 }
 
-function dedupeCourseRecords<T extends {
-  categoryId: string;
-  courseId: string;
-  teeSetId: string | null;
-  scope: string;
-  period: string;
-  groupId?: string | null;
-  bestResultId?: string | null;
-}>(records: T[]) {
+function dedupeCourseRecords<
+  T extends {
+    categoryId: string;
+    courseId: string;
+    teeSetId: string | null;
+    scope: string;
+    period: string;
+    groupId?: string | null;
+    bestResultId?: string | null;
+  },
+>(records: T[]) {
   const byKey = new Map<string, T>();
 
   for (const record of records) {
@@ -1982,17 +2160,19 @@ function dedupeCourseRecords<T extends {
   return [...byKey.values()];
 }
 
-function dedupeCourseRecordBoardRows<T extends {
-  record: {
-    categoryId: string;
-    courseId: string;
-    teeSetId: string | null;
-    scope: string;
-    period: string;
-    groupId?: string | null;
-    bestResultId?: string | null;
-  };
-}>(rows: T[]) {
+function dedupeCourseRecordBoardRows<
+  T extends {
+    record: {
+      categoryId: string;
+      courseId: string;
+      teeSetId: string | null;
+      scope: string;
+      period: string;
+      groupId?: string | null;
+      bestResultId?: string | null;
+    };
+  },
+>(rows: T[]) {
   const byKey = new Map<string, T>();
 
   for (const row of rows) {

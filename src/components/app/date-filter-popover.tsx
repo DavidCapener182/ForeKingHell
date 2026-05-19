@@ -5,11 +5,7 @@ import { CalendarDays, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type DateFilterPopoverProps = {
   name: string;
@@ -23,11 +19,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-export function DateFilterPopover({
-  name,
-  label,
-  defaultValue = "",
-}: DateFilterPopoverProps) {
+export function DateFilterPopover({ name, label, defaultValue = "" }: DateFilterPopoverProps) {
   const initialDate = useMemo(() => parseIsoDate(defaultValue), [defaultValue]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
   const value = selectedDate ? toIsoDate(selectedDate) : "";

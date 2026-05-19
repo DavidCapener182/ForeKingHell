@@ -1,10 +1,4 @@
-export type AchievementTier =
-  | "bronze"
-  | "silver"
-  | "gold"
-  | "platinum"
-  | "diamond"
-  | "hidden";
+export type AchievementTier = "bronze" | "silver" | "gold" | "platinum" | "diamond" | "hidden";
 
 export type AchievementCategory =
   | "data"

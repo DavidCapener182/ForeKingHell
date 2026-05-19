@@ -65,10 +65,13 @@ function isLikelyShortGameTouch(shot: ShortGameTouchShot, options: { clubType?: 
 
   const category = shot.shotCategory?.toLowerCase();
   const isRoundShot = shot.courseHoleNumber !== null && shot.courseHoleNumber !== undefined;
-  const isPlayingSession = shot.sessionType !== undefined && shot.sessionType !== null && shot.sessionType !== "range";
+  const isPlayingSession =
+    shot.sessionType !== undefined && shot.sessionType !== null && shot.sessionType !== "range";
   const isTouchCategory = category ? TOUCH_CATEGORIES.has(category) : false;
 
-  return shot.carryYd <= TOUCH_CARRY_LIMIT_YD && (isPlayingSession || isRoundShot || isTouchCategory);
+  return (
+    shot.carryYd <= TOUCH_CARRY_LIMIT_YD && (isPlayingSession || isRoundShot || isTouchCategory)
+  );
 }
 
 function percentile(values: number[], percentileValue: number) {

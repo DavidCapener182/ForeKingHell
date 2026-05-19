@@ -27,7 +27,9 @@ type SocialFixture = {
 
 const databaseUrl = process.env.DATABASE_URL ?? loadEnvFile().DATABASE_URL;
 const authUserId = authStorageState ? extractSupabaseUserId(authStorageState) : null;
-const canRunSocial = Boolean(databaseUrl && authStorageState && existsSync(authStorageState) && authUserId);
+const canRunSocial = Boolean(
+  databaseUrl && authStorageState && existsSync(authStorageState) && authUserId,
+);
 
 test.describe("social friends and feed visibility", () => {
   test.skip(
@@ -81,7 +83,10 @@ test.describe("social friends and feed visibility", () => {
     await page.goto("/friends");
     await expectPageReady(page, /Incoming requests/i);
     await expect(page.locator("body")).toContainText(data.incomingDisplayName);
-    await page.getByRole("button", { name: /Accept/i }).first().click();
+    await page
+      .getByRole("button", { name: /Accept/i })
+      .first()
+      .click();
 
     const [userAId, userBId] = sortedUserPair(authUserId!, data.incomingUserId);
     await expect
@@ -142,7 +147,10 @@ test.describe("social friends and feed visibility", () => {
       .toBe(1);
 
     await page.goto("/feed");
-    const refreshedDigest = page.locator("article").filter({ hasText: data.friendHeadline }).first();
+    const refreshedDigest = page
+      .locator("article")
+      .filter({ hasText: data.friendHeadline })
+      .first();
     await refreshedDigest.getByText("Individual cards").click();
     const refreshedCard = page.locator(`[data-feed-item-id="${data.friendFeedItemId}"]`);
     await refreshedCard.getByPlaceholder(/Write a comment/i).fill(comment);
@@ -170,21 +178,26 @@ test.describe("social friends and feed visibility", () => {
     const reportForm = reportedCard.locator("[data-feed-report-form]");
     await expect(reportForm).toBeVisible();
     await Promise.all([
-      page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/feed")),
+      page.waitForRequest(
+        (request) => request.method() === "POST" && request.url().includes("/feed"),
+      ),
       reportForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
     ]);
 
     await expect
-      .poll(async () => {
-        const rows = await sql!`
+      .poll(
+        async () => {
+          const rows = await sql!`
           select id
           from fkh_social_reports
           where reporter_user_id = ${authUserId}
             and target_type = 'feed_item'
             and target_id = ${data.friendFeedItemId}
         `;
-        return rows.length;
-      }, { timeout: 60_000 })
+          return rows.length;
+        },
+        { timeout: 60_000 },
+      )
       .toBe(1);
   });
 
@@ -197,7 +210,9 @@ test.describe("social friends and feed visibility", () => {
     const blockForm = row.locator("[data-friend-block-form]");
     await expect(blockForm).toBeVisible();
     await Promise.all([
-      page.waitForRequest((request) => request.method() === "POST" && request.url().includes("/friends")),
+      page.waitForRequest(
+        (request) => request.method() === "POST" && request.url().includes("/friends"),
+      ),
       blockForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
     ]);
 
@@ -348,7 +363,7 @@ async function cleanupSocialFixture(sql: Sql, fixture: SocialFixture, authUserId
 }
 
 function sortedUserPair(userAId: string, userBId: string) {
-  return userAId < userBId ? [userAId, userBId] as const : [userBId, userAId] as const;
+  return userAId < userBId ? ([userAId, userBId] as const) : ([userBId, userAId] as const);
 }
 
 function loadEnvFile() {
@@ -380,7 +395,9 @@ function extractSupabaseUserId(storageStatePath: string) {
   const state = JSON.parse(readFileSync(storageStatePath, "utf8")) as {
     cookies?: Array<{ name: string; value: string }>;
   };
-  const cookie = state.cookies?.find((item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"));
+  const cookie = state.cookies?.find(
+    (item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"),
+  );
   if (!cookie) {
     return null;
   }
@@ -397,7 +414,9 @@ function extractSupabaseUserId(storageStatePath: string) {
     }
 
     const [, payload] = token.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: string };
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      sub?: string;
+    };
     return claims.sub ?? null;
   } catch {
     return null;
@@ -405,7 +424,10 @@ function extractSupabaseUserId(storageStatePath: string) {
 }
 
 function unquote(value: string) {
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 

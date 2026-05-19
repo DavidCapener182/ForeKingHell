@@ -24,10 +24,7 @@ import {
 } from "@/lib/rapsodo/token-cookie";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { requireCurrentUserId } from "@/lib/current-user";
-import {
-  type SaveRapsodoImportInput,
-  saveRapsodoImport,
-} from "@/lib/imports/save-rapsodo-import";
+import { type SaveRapsodoImportInput, saveRapsodoImport } from "@/lib/imports/save-rapsodo-import";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { formatClubType } from "@/lib/club-format";
 import { parseRapsodoCsv, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
@@ -37,7 +34,11 @@ import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string; code?: string };
 
 export async function getRapsodoConnectionStatusAction(): Promise<
-  ActionResult<{ connected: boolean; expiresAt: string | null; profile: Record<string, unknown> | null }>
+  ActionResult<{
+    connected: boolean;
+    expiresAt: string | null;
+    profile: Record<string, unknown> | null;
+  }>
 > {
   const stored = await getStoredRapsodoToken();
 
@@ -85,15 +86,21 @@ export async function disconnectRapsodoAction(): Promise<ActionResult<{ connecte
   return { ok: true, data: { connected: false } };
 }
 
-export async function listRapsodoSessionsAction(input: {
-  take?: number;
-  startDate?: string | null;
-  endDate?: string | null;
-} = {}): Promise<ActionResult<RapsodoSessionListItem[]>> {
+export async function listRapsodoSessionsAction(
+  input: {
+    take?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+  } = {},
+): Promise<ActionResult<RapsodoSessionListItem[]>> {
   const stored = await getStoredRapsodoToken();
 
   if (!stored) {
-    return { ok: false, message: "Sign in to R-Cloud before loading sessions.", code: "RAPSODO_NOT_CONNECTED" };
+    return {
+      ok: false,
+      message: "Sign in to R-Cloud before loading sessions.",
+      code: "RAPSODO_NOT_CONNECTED",
+    };
   }
 
   try {
@@ -123,7 +130,11 @@ export async function previewRapsodoSessionAction(
   const stored = await getStoredRapsodoToken();
 
   if (!stored) {
-    return { ok: false, message: "Sign in to R-Cloud before previewing a session.", code: "RAPSODO_NOT_CONNECTED" };
+    return {
+      ok: false,
+      message: "Sign in to R-Cloud before previewing a session.",
+      code: "RAPSODO_NOT_CONNECTED",
+    };
   }
 
   try {
@@ -134,7 +145,9 @@ export async function previewRapsodoSessionAction(
     if (parsed.shots.length === 0) {
       return {
         ok: false,
-        message: parsed.warnings[0] ?? "R-Cloud exported a CSV, but ForeKingHell could not find shot rows.",
+        message:
+          parsed.warnings[0] ??
+          "R-Cloud exported a CSV, but ForeKingHell could not find shot rows.",
       };
     }
 
@@ -196,7 +209,8 @@ export async function previewRapsodoSessionAction(
           sideCarryYd: shot.sideCarryYd,
           rapsodoShotId: rapsodoShotIdFor(shot.shotNumber, index, shotRefs),
           reportedChoice:
-            reportedChoices[index].clubType === "unknown" || reportedChoices[index].clubType === "other"
+            reportedChoices[index].clubType === "unknown" ||
+            reportedChoices[index].clubType === "other"
               ? null
               : reportedChoices[index],
           suggestion: suggestions[index],
@@ -228,7 +242,11 @@ export async function syncRapsodoShotClubsAction(input: {
   const stored = await getStoredRapsodoToken();
 
   if (!stored) {
-    return { ok: false, message: "Sign in to R-Cloud before updating Rapsodo clubs.", code: "RAPSODO_NOT_CONNECTED" };
+    return {
+      ok: false,
+      message: "Sign in to R-Cloud before updating Rapsodo clubs.",
+      code: "RAPSODO_NOT_CONNECTED",
+    };
   }
 
   const validUpdates = input.updates
@@ -250,7 +268,11 @@ export async function syncRapsodoShotClubsAction(input: {
   }
 
   try {
-    const updated = await new RapsodoCloudClient().updateShotClubs(stored.token, input.session, validUpdates);
+    const updated = await new RapsodoCloudClient().updateShotClubs(
+      stored.token,
+      input.session,
+      validUpdates,
+    );
 
     return {
       ok: true,
@@ -281,7 +303,11 @@ export async function importRapsodoSessionAction(input: {
 
     if (result.ok) {
       await setAchievementUnlockFlash(result.achievementUnlockNotifications);
-      await markRapsodoSessionImported(input.session, input.importInput.rawCsvText, result.sessionId);
+      await markRapsodoSessionImported(
+        input.session,
+        input.importInput.rawCsvText,
+        result.sessionId,
+      );
       revalidatePath("/rapsodo");
     }
 
@@ -362,11 +388,16 @@ async function upsertRapsodoSyncSessions(remoteSessions: RapsodoCloudSession[]) 
   }
 
   const syncByKey = new Map(
-    syncRows.map((row) => [buildRapsodoSyncSessionKey(row.providerKind, row.providerSessionId), row]),
+    syncRows.map((row) => [
+      buildRapsodoSyncSessionKey(row.providerKind, row.providerSessionId),
+      row,
+    ]),
   );
 
   return remoteSessions.map((session): RapsodoSessionListItem => {
-    const sync = syncByKey.get(buildRapsodoSyncSessionKey(session.providerKind, session.providerSessionId));
+    const sync = syncByKey.get(
+      buildRapsodoSyncSessionKey(session.providerKind, session.providerSessionId),
+    );
 
     return {
       providerKind: session.providerKind,
@@ -382,7 +413,9 @@ async function upsertRapsodoSyncSessions(remoteSessions: RapsodoCloudSession[]) 
       lastImportedAt: sync?.lastImportedAt?.toISOString() ?? null,
       firstSeenAt: sync?.createdAt?.toISOString() ?? null,
       lastSeenAt: sync?.lastSeenAt?.toISOString() ?? null,
-      isNew: !existingKeys.has(buildRapsodoSyncSessionKey(session.providerKind, session.providerSessionId)),
+      isNew: !existingKeys.has(
+        buildRapsodoSyncSessionKey(session.providerKind, session.providerSessionId),
+      ),
     };
   });
 }
@@ -433,9 +466,7 @@ async function reconcileExistingRapsodoImports(
   }
 
   const usedImportedIds = new Set(
-    syncRows
-      .map((row) => row.importedSessionId)
-      .filter((id): id is string => Boolean(id)),
+    syncRows.map((row) => row.importedSessionId).filter((id): id is string => Boolean(id)),
   );
   const links: Array<{
     providerKind: string;
@@ -444,7 +475,9 @@ async function reconcileExistingRapsodoImports(
   }> = [];
 
   for (const sync of unlinkedRows) {
-    const remote = remoteByKey.get(buildRapsodoSyncSessionKey(sync.providerKind, sync.providerSessionId));
+    const remote = remoteByKey.get(
+      buildRapsodoSyncSessionKey(sync.providerKind, sync.providerSessionId),
+    );
     const hashMatch = sync.exportRawCsvHash ? importedByHash.get(sync.exportRawCsvHash) : null;
     const match =
       hashMatch && !usedImportedIds.has(hashMatch.id)
@@ -510,7 +543,8 @@ function findExistingRapsodoImportMatch(
     return null;
   }
 
-  const remoteShotCount = remote?.shotCount ?? numberFromMetadata(sync.rawMetadataJson, "numberOfShots");
+  const remoteShotCount =
+    remote?.shotCount ?? numberFromMetadata(sync.rawMetadataJson, "numberOfShots");
   const remoteTitle = remote?.courseName ?? sync.title ?? "";
   const isCourse = isRapsodoCourseSync(sync, remote);
   const candidates = importedRows.filter((row) => {
@@ -526,25 +560,43 @@ function findExistingRapsodoImportMatch(
       return row.type === "simulated_course" && courseNamesLikelyMatch(remoteTitle, row.courseName);
     }
 
-    if (row.type === "simulated_course" || remoteShotCount === null || row.shotCount !== remoteShotCount) {
+    if (
+      row.type === "simulated_course" ||
+      remoteShotCount === null ||
+      row.shotCount !== remoteShotCount
+    ) {
       return false;
     }
 
-    return minutesBetween(row.date, remoteDate) <= 10 || fileNameDateMatches(row.fileName, remoteDate);
+    return (
+      minutesBetween(row.date, remoteDate) <= 10 || fileNameDateMatches(row.fileName, remoteDate)
+    );
   });
 
   if (candidates.length === 0) {
     return null;
   }
 
-  return candidates.sort((left, right) => matchDistance(left, remoteDate) - matchDistance(right, remoteDate))[0];
+  return candidates.sort(
+    (left, right) => matchDistance(left, remoteDate) - matchDistance(right, remoteDate),
+  )[0];
 }
 
 function isRapsodoCourseSync(
-  sync: Pick<typeof rapsodoSyncSessions.$inferSelect, "providerKind" | "providerSessionMode" | "providerSessionType" | "title">,
+  sync: Pick<
+    typeof rapsodoSyncSessions.$inferSelect,
+    "providerKind" | "providerSessionMode" | "providerSessionType" | "title"
+  >,
   remote: RapsodoCloudSession | undefined,
 ) {
-  return [remote?.providerSessionMode, remote?.providerSessionType, remote?.title, sync.providerSessionMode, sync.providerSessionType, sync.title]
+  return [
+    remote?.providerSessionMode,
+    remote?.providerSessionType,
+    remote?.title,
+    sync.providerSessionMode,
+    sync.providerSessionType,
+    sync.title,
+  ]
     .join(" ")
     .toLowerCase()
     .includes("course");
@@ -552,7 +604,8 @@ function isRapsodoCourseSync(
 
 function numberFromMetadata(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -592,7 +645,9 @@ function minutesBetween(left: Date, right: Date) {
 
 function matchDistance(row: { date: Date; fileName: string | null }, remoteDate: Date) {
   const directMinutes = minutesBetween(row.date, remoteDate);
-  return fileNameDateMatches(row.fileName, remoteDate) ? Math.min(directMinutes, 60 * 24) : directMinutes;
+  return fileNameDateMatches(row.fileName, remoteDate)
+    ? Math.min(directMinutes, 60 * 24)
+    : directMinutes;
 }
 
 function courseNamesLikelyMatch(remoteName: string, localName: string | null) {
@@ -629,7 +684,10 @@ function courseNameTokens(value: string) {
     .filter((token) => token.length >= 3 && !stopWords.has(token));
 }
 
-async function getRapsodoClubChoices(client: RapsodoCloudClient, token: string): Promise<RapsodoClubChoice[]> {
+async function getRapsodoClubChoices(
+  client: RapsodoCloudClient,
+  token: string,
+): Promise<RapsodoClubChoice[]> {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const [clubRows, stockRows, clubDateRows, rapsodoBagClubs] = await Promise.all([
@@ -725,8 +783,11 @@ async function getRapsodoClubChoices(client: RapsodoCloudClient, token: string):
         averageBallSpeedMph:
           ballSpeedValues.length === 0
             ? null
-            : Math.round((ballSpeedValues.reduce((total, value) => total + value, 0) / ballSpeedValues.length) * 10) /
-              10,
+            : Math.round(
+                (ballSpeedValues.reduce((total, value) => total + value, 0) /
+                  ballSpeedValues.length) *
+                  10,
+              ) / 10,
         sampleSize: latestStock ? latestStock.sampleSize : calculatedStock.sampleSize,
         rapsodoClubId: rapsodoClubIdFor(
           club.normalizedClubKey,
@@ -745,18 +806,20 @@ async function getRapsodoClubChoices(client: RapsodoCloudClient, token: string):
   const localKeys = new Set(localChoices.map((choice) => choice.clubKey));
   const rapsodoOnlyChoices = rapsodoBagClubs
     .filter((club) => !localKeys.has(club.clubKey))
-    .map((club): RapsodoClubChoice => ({
-      clubKey: club.clubKey,
-      clubType: club.clubType,
-      clubLabel: club.clubLabel,
-      clubBrand: club.clubBrand,
-      clubModel: club.clubModel,
-      stockCarryYd: null,
-      stockTotalYd: null,
-      averageBallSpeedMph: null,
-      sampleSize: 0,
-      rapsodoClubId: club.rapsodoClubId,
-    }));
+    .map(
+      (club): RapsodoClubChoice => ({
+        clubKey: club.clubKey,
+        clubType: club.clubType,
+        clubLabel: club.clubLabel,
+        clubBrand: club.clubBrand,
+        clubModel: club.clubModel,
+        stockCarryYd: null,
+        stockTotalYd: null,
+        averageBallSpeedMph: null,
+        sampleSize: 0,
+        rapsodoClubId: club.rapsodoClubId,
+      }),
+    );
 
   return uniqueClubChoices([...localChoices, ...rapsodoOnlyChoices]);
 }
@@ -766,7 +829,12 @@ function preferredClubKeyForShotDate(
   choices: RapsodoClubChoice[],
   sessionDateIso: string,
 ) {
-  if (shot.clubBrand || shot.clubModel || shot.clubType === "unknown" || shot.clubType === "other") {
+  if (
+    shot.clubBrand ||
+    shot.clubModel ||
+    shot.clubType === "unknown" ||
+    shot.clubType === "other"
+  ) {
     return null;
   }
 
@@ -918,7 +986,7 @@ function byteLength(value: string) {
 }
 
 function dateOnly(value: string | null | undefined) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value ?? "") ? value ?? null : null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value ?? "") ? (value ?? null) : null;
 }
 
 function parseOptionalDate(value: string | null) {
@@ -931,7 +999,8 @@ function rapsodoShotIdFor(
   index: number,
   shotRefs: Array<{ rapsodoShotId: string; shotNumber: number | null; sequenceIndex: number }>,
 ) {
-  const byShotNumber = shotNumber === null ? null : shotRefs.find((ref) => ref.shotNumber === shotNumber);
+  const byShotNumber =
+    shotNumber === null ? null : shotRefs.find((ref) => ref.shotNumber === shotNumber);
   return byShotNumber?.rapsodoShotId ?? shotRefs[index]?.rapsodoShotId ?? null;
 }
 
@@ -974,7 +1043,8 @@ function rapsodoActionError(error: unknown, fallback: string): ActionResult<neve
   if (isMissingRapsodoSyncMigrationError(error)) {
     return {
       ok: false,
-      message: "The Rapsodo sync database table is missing. Run npm run db:migrate, then load sessions again.",
+      message:
+        "The Rapsodo sync database table is missing. Run npm run db:migrate, then load sessions again.",
       code: "RAPSODO_SYNC_MIGRATION_MISSING",
     };
   }
@@ -990,7 +1060,10 @@ function isMissingRapsodoSyncMigrationError(error: unknown) {
     return false;
   }
 
-  return /fkh_rapsodo_sync_sessions/i.test(error.message) && /does not exist|failed query/i.test(error.message);
+  return (
+    /fkh_rapsodo_sync_sessions/i.test(error.message) &&
+    /does not exist|failed query/i.test(error.message)
+  );
 }
 
 function excluded(columnName: string) {

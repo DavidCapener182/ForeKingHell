@@ -29,7 +29,12 @@ import {
   type SocialVisibility,
 } from "@/lib/social";
 
-export const challengeVerificationLabels = ["Rapsodo CSV", "Rapsodo Cloud", "Manual", "Unverified"] as const;
+export const challengeVerificationLabels = [
+  "Rapsodo CSV",
+  "Rapsodo Cloud",
+  "Manual",
+  "Unverified",
+] as const;
 export type ChallengeVerificationLabel = (typeof challengeVerificationLabels)[number];
 
 type ChallengeRow = typeof challenges.$inferSelect;
@@ -118,7 +123,11 @@ export async function getChallengesPageData() {
   const viewerUserId = await requireCurrentUserId();
   await ensureSocialProfileForUser(viewerUserId);
   const [templates, friendIds, blockedIds, joinedEntries] = await Promise.all([
-    getDb().select().from(challengeTemplates).where(eq(challengeTemplates.active, true)).orderBy(asc(challengeTemplates.name)),
+    getDb()
+      .select()
+      .from(challengeTemplates)
+      .where(eq(challengeTemplates.active, true))
+      .orderBy(asc(challengeTemplates.name)),
     getFriendIds(viewerUserId),
     getBlockedUserIds(viewerUserId),
     getDb().select().from(challengeEntries).where(eq(challengeEntries.userId, viewerUserId)),
@@ -135,7 +144,10 @@ export async function getChallengesPageData() {
             eq(challenges.visibility, "public"),
             inArray(challenges.id, joinedChallengeIds),
           )
-        : or(inArray(challenges.creatorUserId, visibleCreatorIds), eq(challenges.visibility, "public")),
+        : or(
+            inArray(challenges.creatorUserId, visibleCreatorIds),
+            eq(challenges.visibility, "public"),
+          ),
     )
     .orderBy(desc(challenges.createdAt))
     .limit(80);
@@ -149,26 +161,46 @@ export async function getChallengesPageData() {
   };
 }
 
-export async function getChallengeDetailData(challengeId: string): Promise<ChallengeDetailData | null> {
+export async function getChallengeDetailData(
+  challengeId: string,
+): Promise<ChallengeDetailData | null> {
   const viewerUserId = await requireCurrentUserId();
   await ensureSocialProfileForUser(viewerUserId);
   const db = getDb();
-  const [challenge] = await db.select().from(challenges).where(eq(challenges.id, challengeId)).limit(1);
+  const [challenge] = await db
+    .select()
+    .from(challenges)
+    .where(eq(challenges.id, challengeId))
+    .limit(1);
 
   if (!challenge || !(await canViewChallenge(viewerUserId, challenge))) {
     return null;
   }
 
   const [templates, templateRows, entryRows, commentRows, friendIds] = await Promise.all([
-    db.select().from(challengeTemplates).where(eq(challengeTemplates.active, true)).orderBy(asc(challengeTemplates.name)),
+    db
+      .select()
+      .from(challengeTemplates)
+      .where(eq(challengeTemplates.active, true))
+      .orderBy(asc(challengeTemplates.name)),
     challenge.templateId
-      ? db.select().from(challengeTemplates).where(eq(challengeTemplates.id, challenge.templateId)).limit(1)
+      ? db
+          .select()
+          .from(challengeTemplates)
+          .where(eq(challengeTemplates.id, challenge.templateId))
+          .limit(1)
       : Promise.resolve([]),
-    db.select().from(challengeEntries).where(eq(challengeEntries.challengeId, challengeId)).orderBy(asc(challengeEntries.joinedAt)),
+    db
+      .select()
+      .from(challengeEntries)
+      .where(eq(challengeEntries.challengeId, challengeId))
+      .orderBy(asc(challengeEntries.joinedAt)),
     db
       .select()
       .from(challengeComments)
-      .where(and(eq(challengeComments.challengeId, challengeId), isNull(challengeComments.deletedAt)))
+      .where(
+        and(eq(challengeComments.challengeId, challengeId), isNull(challengeComments.deletedAt)),
+      )
       .orderBy(asc(challengeComments.createdAt)),
     getFriendIds(viewerUserId),
   ]);
@@ -219,7 +251,9 @@ export async function getChallengeDetailData(challengeId: string): Promise<Chall
       .map((result) => {
         const profile = profileMap.get(result.userId);
         const attempt = importedAttempts.find((item) => item.userId === result.userId);
-        return profile ? { result, verificationLabel: attempt?.verificationLabel ?? "Imported shots", profile } : null;
+        return profile
+          ? { result, verificationLabel: attempt?.verificationLabel ?? "Imported shots", profile }
+          : null;
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row)),
     comments: commentRows
@@ -260,7 +294,11 @@ export async function createChallenge(input: {
 }) {
   const creatorUserId = await requireCurrentUserId();
   const creatorProfile = await ensureSocialProfileForUser(creatorUserId);
-  const [template] = await getDb().select().from(challengeTemplates).where(eq(challengeTemplates.id, input.templateId)).limit(1);
+  const [template] = await getDb()
+    .select()
+    .from(challengeTemplates)
+    .where(eq(challengeTemplates.id, input.templateId))
+    .limit(1);
   const visibility = parseVisibility(input.visibility, "friends");
 
   if (!template) {
@@ -390,7 +428,11 @@ export async function submitChallengeAttempt(input: {
   const profile = await ensureSocialProfileForUser(userId);
   const challenge = await requireVisibleChallenge(userId, input.challengeId);
   const [template] = challenge.templateId
-    ? await getDb().select().from(challengeTemplates).where(eq(challengeTemplates.id, challenge.templateId)).limit(1)
+    ? await getDb()
+        .select()
+        .from(challengeTemplates)
+        .where(eq(challengeTemplates.id, challenge.templateId))
+        .limit(1)
     : [];
 
   if (!Number.isFinite(input.metricValue)) {
@@ -479,12 +521,14 @@ export async function addChallengeComment(challengeId: string, body: string) {
     throw new Error("Comment cannot be empty.");
   }
 
-  await getDb().insert(challengeComments).values({
-    challengeId,
-    userId,
-    body: cleanBody.slice(0, 1200),
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(challengeComments)
+    .values({
+      challengeId,
+      userId,
+      body: cleanBody.slice(0, 1200),
+      updatedAt: new Date(),
+    });
 
   revalidateChallengePaths(challengeId);
 }
@@ -522,16 +566,27 @@ export async function inviteFriendToChallenge(challengeId: string, inviteeUserId
 
 export async function recalculateChallengeResults(challengeId: string) {
   const db = getDb();
-  const [challenge] = await db.select().from(challenges).where(eq(challenges.id, challengeId)).limit(1);
+  const [challenge] = await db
+    .select()
+    .from(challenges)
+    .where(eq(challenges.id, challengeId))
+    .limit(1);
   const [template] = challenge?.templateId
-    ? await db.select().from(challengeTemplates).where(eq(challengeTemplates.id, challenge.templateId)).limit(1)
+    ? await db
+        .select()
+        .from(challengeTemplates)
+        .where(eq(challengeTemplates.id, challenge.templateId))
+        .limit(1)
     : [];
 
   if (!challenge) {
     return [];
   }
 
-  const attempts = await db.select().from(challengeAttempts).where(eq(challengeAttempts.challengeId, challengeId));
+  const attempts = await db
+    .select()
+    .from(challengeAttempts)
+    .where(eq(challengeAttempts.challengeId, challengeId));
   const bestByUser = new Map<string, ChallengeAttemptRow>();
   const direction = scoringDirection(template);
 
@@ -596,47 +651,58 @@ async function hydrateChallengeListItems(
   }
 
   const challengeIds = challengeRows.map((challenge) => challenge.id);
-  const entryRows = await getDb().select().from(challengeEntries).where(inArray(challengeEntries.challengeId, challengeIds));
+  const entryRows = await getDb()
+    .select()
+    .from(challengeEntries)
+    .where(inArray(challengeEntries.challengeId, challengeIds));
   const userIds = [...new Set(entryRows.map((entry) => entry.userId))];
   const profileMap = await challengeProfilesByUserId(userIds);
   const templateMap = new Map(templates.map((template) => [template.id, template]));
 
-  return Promise.all(challengeRows.map(async (challenge) => {
-    const template = (challenge.templateId ? templateMap.get(challenge.templateId) : null) ?? defaultTemplateForChallenge(challenge);
-    const entries = entryRows.filter((entry) => entry.challengeId === challenge.id);
-    const attempts = await calculateImportedChallengeAttempts(challenge, template, entries);
-    const results = rankImportedChallengeAttempts(challenge, template, attempts);
-    const leader = results.find((result) => result.rank === 1) ?? results.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0];
-    const leaderProfile = leader ? profileMap.get(leader.userId) : null;
-    const leaderAttempt = leader ? attempts.find((attempt) => attempt.userId === leader.userId) : null;
-    const viewerResult = results.find((result) => result.userId === viewerUserId);
+  return Promise.all(
+    challengeRows.map(async (challenge) => {
+      const template =
+        (challenge.templateId ? templateMap.get(challenge.templateId) : null) ??
+        defaultTemplateForChallenge(challenge);
+      const entries = entryRows.filter((entry) => entry.challengeId === challenge.id);
+      const attempts = await calculateImportedChallengeAttempts(challenge, template, entries);
+      const results = rankImportedChallengeAttempts(challenge, template, attempts);
+      const leader =
+        results.find((result) => result.rank === 1) ??
+        results.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0];
+      const leaderProfile = leader ? profileMap.get(leader.userId) : null;
+      const leaderAttempt = leader
+        ? attempts.find((attempt) => attempt.userId === leader.userId)
+        : null;
+      const viewerResult = results.find((result) => result.userId === viewerUserId);
 
-    return {
-      id: challenge.id,
-      title: challenge.title,
-      description: challenge.description,
-      visibility: parseVisibility(challenge.visibility, "friends"),
-      status: challenge.status,
-      startsAt: challenge.startsAt,
-      endsAt: challenge.endsAt,
-      templateName: template.name,
-      templateSlug: template.slug,
-      scoringDirection: scoringDirection(template),
-      participantCount: entries.length,
-      viewerJoined: entries.some((entry) => entry.userId === viewerUserId),
-      viewerRank: viewerResult?.rank ?? null,
-      leader:
-        leader && leaderProfile
-          ? {
-              userId: leader.userId,
-              username: leaderProfile.username,
-              displayName: leaderProfile.displayName,
-              scoreLabel: leader.scoreLabel,
-              verificationLabel: leaderAttempt?.verificationLabel ?? "Unverified",
-            }
-          : null,
-    };
-  }));
+      return {
+        id: challenge.id,
+        title: challenge.title,
+        description: challenge.description,
+        visibility: parseVisibility(challenge.visibility, "friends"),
+        status: challenge.status,
+        startsAt: challenge.startsAt,
+        endsAt: challenge.endsAt,
+        templateName: template.name,
+        templateSlug: template.slug,
+        scoringDirection: scoringDirection(template),
+        participantCount: entries.length,
+        viewerJoined: entries.some((entry) => entry.userId === viewerUserId),
+        viewerRank: viewerResult?.rank ?? null,
+        leader:
+          leader && leaderProfile
+            ? {
+                userId: leader.userId,
+                username: leaderProfile.username,
+                displayName: leaderProfile.displayName,
+                scoreLabel: leader.scoreLabel,
+                verificationLabel: leaderAttempt?.verificationLabel ?? "Unverified",
+              }
+            : null,
+      };
+    }),
+  );
 }
 
 async function calculateImportedChallengeAttempts(
@@ -689,7 +755,11 @@ async function calculateImportedChallengeAttempts(
   const attempts: ChallengeAttemptRow[] = [];
 
   for (const entry of entries) {
-    const scored = scoreImportedChallengeRows(challenge, template, rowsByUserId.get(entry.userId) ?? []);
+    const scored = scoreImportedChallengeRows(
+      challenge,
+      template,
+      rowsByUserId.get(entry.userId) ?? [],
+    );
 
     if (!scored) {
       continue;
@@ -732,7 +802,8 @@ function rankImportedChallengeAttempts(
 
   return [...attempts]
     .sort((a, b) => {
-      const scoreDelta = direction === "desc" ? b.metricValue - a.metricValue : a.metricValue - b.metricValue;
+      const scoreDelta =
+        direction === "desc" ? b.metricValue - a.metricValue : a.metricValue - b.metricValue;
       return scoreDelta || a.attemptedAt.getTime() - b.attemptedAt.getTime();
     })
     .map((attempt, index) => ({
@@ -775,7 +846,9 @@ function scoreImportedChallengeRows(
   const metric = typeof rules.metric === "string" ? rules.metric : "";
   const minShots = ruleNumber(rules, "minShots", kind === "practice_streak" ? 1 : 1);
   const clubTypes = ruleStringArray(rules, "clubTypes");
-  const eligibleRows = rows.filter((row) => clubTypes.length === 0 || clubMatches(row.clubType, clubTypes));
+  const eligibleRows = rows.filter(
+    (row) => clubTypes.length === 0 || clubMatches(row.clubType, clubTypes),
+  );
 
   if (kind === "practice_streak") {
     const dayCount = new Set(eligibleRows.map((row) => row.shotAt.toISOString().slice(0, 10))).size;
@@ -791,18 +864,24 @@ function scoreImportedChallengeRows(
 
   if (kind === "longest_drive") {
     const distances = eligibleRows.map((row) => row.totalYd ?? row.carryYd).filter(isNumber);
-    return distances.length >= minShots ? importedScore(Math.max(...distances), eligibleRows) : null;
+    return distances.length >= minShots
+      ? importedScore(Math.max(...distances), eligibleRows)
+      : null;
   }
 
   if (kind === "straightest_drive") {
     const offlineValues = eligibleRows.map(offlineYards).filter(isNumber);
-    return offlineValues.length >= minShots ? importedScore(Math.min(...offlineValues), eligibleRows) : null;
+    return offlineValues.length >= minShots
+      ? importedScore(Math.min(...offlineValues), eligibleRows)
+      : null;
   }
 
   if (kind === "wedge_ladder") {
     const carries = eligibleRows.map((row) => row.carryYd).filter(isNumber);
     const targets = ladderTargets(rules);
-    const errors = carries.map((carry) => Math.min(...targets.map((target) => Math.abs(carry - target))));
+    const errors = carries.map((carry) =>
+      Math.min(...targets.map((target) => Math.abs(carry - target))),
+    );
     return errors.length >= minShots ? importedScore(average(errors), eligibleRows) : null;
   }
 
@@ -822,7 +901,10 @@ function scoreImportedChallengeRows(
     if (carries.length < minShots) {
       return null;
     }
-    const score = metric === "carry_stddev" ? standardDeviation(carries) : Math.max(...carries) - Math.min(...carries);
+    const score =
+      metric === "carry_stddev"
+        ? standardDeviation(carries)
+        : Math.max(...carries) - Math.min(...carries);
     return importedScore(score, eligibleRows);
   }
 
@@ -837,7 +919,9 @@ function scoreImportedChallengeRows(
         return offlineYards(row);
       })
       .filter(isNumber);
-    return distances.length >= minShots ? importedScore(Math.min(...distances), eligibleRows) : null;
+    return distances.length >= minShots
+      ? importedScore(Math.min(...distances), eligibleRows)
+      : null;
   }
 
   return null;
@@ -851,7 +935,10 @@ function importedScore(
     source: string;
   }>,
 ) {
-  const latestRow = rows.reduce((latest, row) => (row.shotAt > latest.shotAt ? row : latest), rows[0]);
+  const latestRow = rows.reduce(
+    (latest, row) => (row.shotAt > latest.shotAt ? row : latest),
+    rows[0],
+  );
 
   if (!latestRow) {
     return null;
@@ -868,7 +955,11 @@ function importedScore(
 }
 
 async function requireVisibleChallenge(viewerUserId: string, challengeId: string) {
-  const [challenge] = await getDb().select().from(challenges).where(eq(challenges.id, challengeId)).limit(1);
+  const [challenge] = await getDb()
+    .select()
+    .from(challenges)
+    .where(eq(challenges.id, challengeId))
+    .limit(1);
 
   if (!challenge || !(await canViewChallenge(viewerUserId, challenge))) {
     throw new Error("Challenge not found.");
@@ -890,7 +981,10 @@ async function canViewChallenge(viewerUserId: string, challenge: ChallengeRow) {
     return true;
   }
 
-  if (challenge.visibility === "friends" && (await areFriends(viewerUserId, challenge.creatorUserId))) {
+  if (
+    challenge.visibility === "friends" &&
+    (await areFriends(viewerUserId, challenge.creatorUserId))
+  ) {
     return true;
   }
 
@@ -898,12 +992,22 @@ async function canViewChallenge(viewerUserId: string, challenge: ChallengeRow) {
     getDb()
       .select({ id: challengeEntries.id })
       .from(challengeEntries)
-      .where(and(eq(challengeEntries.challengeId, challenge.id), eq(challengeEntries.userId, viewerUserId)))
+      .where(
+        and(
+          eq(challengeEntries.challengeId, challenge.id),
+          eq(challengeEntries.userId, viewerUserId),
+        ),
+      )
       .limit(1),
     getDb()
       .select({ id: challengeInvites.id })
       .from(challengeInvites)
-      .where(and(eq(challengeInvites.challengeId, challenge.id), eq(challengeInvites.inviteeUserId, viewerUserId)))
+      .where(
+        and(
+          eq(challengeInvites.challengeId, challenge.id),
+          eq(challengeInvites.inviteeUserId, viewerUserId),
+        ),
+      )
       .limit(1),
   ]);
 
@@ -912,7 +1016,10 @@ async function canViewChallenge(viewerUserId: string, challenge: ChallengeRow) {
 
 async function challengeProfilesByUserId(userIds: string[]) {
   if (userIds.length === 0) {
-    return new Map<string, { userId: string; username: string; displayName: string; avatarUrl: string | null }>();
+    return new Map<
+      string,
+      { userId: string; username: string; displayName: string; avatarUrl: string | null }
+    >();
   }
 
   const rows = await getDb()
@@ -976,14 +1083,20 @@ function challengeRuleBullets(challenge: ChallengeRow, template: ChallengeTempla
 
   switch (challengeTemplateKind(template)) {
     case "straightest_drive":
-      bullets.unshift(`${clubs || "Driver"} shots only. Your score is the smallest side miss from the centre line; lowest score wins.`);
+      bullets.unshift(
+        `${clubs || "Driver"} shots only. Your score is the smallest side miss from the centre line; lowest score wins.`,
+      );
       break;
     case "wedge_ladder":
-      bullets.unshift(`${clubs || "Wedge"} shots only. Score each carry against the ${ladderTargets(rules).join(", ")} yd ladder; lowest average error wins.`);
+      bullets.unshift(
+        `${clubs || "Wedge"} shots only. Score each carry against the ${ladderTargets(rules).join(", ")} yd ladder; lowest average error wins.`,
+      );
       break;
     case "wedge_window": {
       const [low, high] = targetRange(rules, [50, 90]);
-      bullets.unshift(`${clubs || "Wedge"} shots only. Carries inside ${low}-${high} yd are on target; lowest average miss wins.`);
+      bullets.unshift(
+        `${clubs || "Wedge"} shots only. Carries inside ${low}-${high} yd are on target; lowest average miss wins.`,
+      );
       break;
     }
     case "consistency": {
@@ -995,15 +1108,23 @@ function challengeRuleBullets(challenge: ChallengeRow, template: ChallengeTempla
       bullets.unshift(`${clubs || "Driver"} shots only. Longest total distance wins.`);
       break;
     case "practice_streak":
-      bullets.unshift("Each day with at least one imported practice shot counts once; most days wins.");
+      bullets.unshift(
+        "Each day with at least one imported practice shot counts once; most days wins.",
+      );
       break;
     default:
-      bullets.unshift(`${clubs ? `${clubs} shots only. ` : ""}The template metric decides the score from imported shot data.`);
+      bullets.unshift(
+        `${clubs ? `${clubs} shots only. ` : ""}The template metric decides the score from imported shot data.`,
+      );
       break;
   }
 
   if (minShots > 1) {
-    bullets.splice(1, 0, `Minimum requirement: ${minShots} qualifying shots before a player appears on the board.`);
+    bullets.splice(
+      1,
+      0,
+      `Minimum requirement: ${minShots} qualifying shots before a player appears on the board.`,
+    );
   }
 
   return bullets;
@@ -1058,7 +1179,9 @@ function scoreLabel(score: number, template: ChallengeTemplateRow | undefined | 
 
 function ruleStringArray(rules: Record<string, unknown>, key: string) {
   const value = rules[key];
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function ruleNumber(rules: Record<string, unknown>, key: string, fallback: number) {
@@ -1104,7 +1227,9 @@ function clubRuleLabel(clubTypes: string[]) {
   }
 
   const labels = [...new Set(clubTypes.map(formatClubLabel))];
-  return labels.length <= 2 ? labels.join(" and ") : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+  return labels.length <= 2
+    ? labels.join(" and ")
+    : `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
 }
 
 function formatClubLabel(clubType: string) {

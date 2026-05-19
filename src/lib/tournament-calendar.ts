@@ -364,7 +364,9 @@ function startOfUtcDay(date: Date) {
 }
 
 function endOfUtcDay(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999),
+  );
 }
 
 function startOfUtcWeek(date: Date) {

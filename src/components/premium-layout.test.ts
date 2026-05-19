@@ -4,10 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("PageShell layout contract", () => {
   it("keeps app content shells full width", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/components/premium.tsx"),
-      "utf8",
-    );
+    const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
     const shellWidthsBlock = source.match(/const shellWidths = \{[\s\S]*?\};/)?.[0] ?? "";
 
     expect(shellWidthsBlock).toContain('"6xl": "max-w-none"');

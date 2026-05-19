@@ -131,12 +131,8 @@
           "name": "fkh_account_invitations_owner_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_account_invitations",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -144,12 +140,8 @@
           "name": "fkh_account_invitations_accepted_by_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_account_invitations",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "accepted_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["accepted_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -268,12 +260,8 @@
           "name": "fkh_account_memberships_owner_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_account_memberships",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -281,12 +269,8 @@
           "name": "fkh_account_memberships_member_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_account_memberships",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "member_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -391,12 +375,8 @@
           "name": "fkh_achievement_progress_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_achievement_progress",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -487,12 +467,8 @@
           "name": "fkh_achievement_sync_state_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_achievement_sync_state",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -609,12 +585,8 @@
           "name": "fkh_ball_models_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_ball_models",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -761,12 +733,8 @@
           "name": "fkh_club_equipment_history_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_club_equipment_history",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -774,12 +742,8 @@
           "name": "fkh_club_equipment_history_club_id_fkh_clubs_id_fk",
           "tableFrom": "fkh_club_equipment_history",
           "tableTo": "fkh_clubs",
-          "columnsFrom": [
-            "club_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["club_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -787,12 +751,8 @@
           "name": "fkh_club_equipment_history_ball_model_id_fkh_ball_models_id_fk",
           "tableFrom": "fkh_club_equipment_history",
           "tableTo": "fkh_ball_models",
-          "columnsFrom": [
-            "ball_model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ball_model_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -915,12 +875,8 @@
           "name": "fkh_clubs_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_clubs",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1053,12 +1009,8 @@
           "name": "fkh_courses_created_by_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_courses",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1204,12 +1156,8 @@
           "name": "fkh_holes_course_id_fkh_courses_id_fk",
           "tableFrom": "fkh_holes",
           "tableTo": "fkh_courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1217,12 +1165,8 @@
           "name": "fkh_holes_tee_set_id_fkh_tee_sets_id_fk",
           "tableFrom": "fkh_holes",
           "tableTo": "fkh_tee_sets",
-          "columnsFrom": [
-            "tee_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tee_set_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1407,12 +1351,8 @@
           "name": "fkh_import_files_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_import_files",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1420,12 +1360,8 @@
           "name": "fkh_import_files_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_import_files",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1528,12 +1464,8 @@
           "name": "fkh_import_rows_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_import_rows",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1541,12 +1473,8 @@
           "name": "fkh_import_rows_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_import_rows",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1726,12 +1654,8 @@
           "name": "fkh_rapsodo_sync_sessions_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_rapsodo_sync_sessions",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1739,12 +1663,8 @@
           "name": "fkh_rapsodo_sync_sessions_imported_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_rapsodo_sync_sessions",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "imported_session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["imported_session_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1960,12 +1880,8 @@
           "name": "fkh_sessions_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_sessions",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1973,12 +1889,8 @@
           "name": "fkh_sessions_course_id_fkh_courses_id_fk",
           "tableFrom": "fkh_sessions",
           "tableTo": "fkh_courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1986,12 +1898,8 @@
           "name": "fkh_sessions_tee_set_id_fkh_tee_sets_id_fk",
           "tableFrom": "fkh_sessions",
           "tableTo": "fkh_tee_sets",
-          "columnsFrom": [
-            "tee_set_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tee_set_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2320,12 +2228,8 @@
           "name": "fkh_shots_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2333,12 +2237,8 @@
           "name": "fkh_shots_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2346,12 +2246,8 @@
           "name": "fkh_shots_club_id_fkh_clubs_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_clubs",
-          "columnsFrom": [
-            "club_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["club_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -2503,12 +2399,8 @@
           "name": "fkh_stock_yardages_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_stock_yardages",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2516,12 +2408,8 @@
           "name": "fkh_stock_yardages_club_id_fkh_clubs_id_fk",
           "tableFrom": "fkh_stock_yardages",
           "tableTo": "fkh_clubs",
-          "columnsFrom": [
-            "club_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["club_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2813,12 +2701,8 @@
           "name": "fkh_strokes_gained_shot_events_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_strokes_gained_shot_events",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2826,12 +2710,8 @@
           "name": "fkh_strokes_gained_shot_events_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_strokes_gained_shot_events",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2839,12 +2719,8 @@
           "name": "fkh_strokes_gained_shot_events_shot_id_fkh_shots_id_fk",
           "tableFrom": "fkh_strokes_gained_shot_events",
           "tableTo": "fkh_shots",
-          "columnsFrom": [
-            "shot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shot_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2966,12 +2842,8 @@
           "name": "fkh_tee_sets_course_id_fkh_courses_id_fk",
           "tableFrom": "fkh_tee_sets",
           "tableTo": "fkh_courses",
-          "columnsFrom": [
-            "course_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["course_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3115,12 +2987,8 @@
           "name": "fkh_user_achievements_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_user_achievements",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3128,12 +2996,8 @@
           "name": "fkh_user_achievements_source_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_user_achievements",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "source_session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_session_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -3141,12 +3005,8 @@
           "name": "fkh_user_achievements_source_shot_id_fkh_shots_id_fk",
           "tableFrom": "fkh_user_achievements",
           "tableTo": "fkh_shots",
-          "columnsFrom": [
-            "source_shot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_shot_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -3381,12 +3241,8 @@
           "name": "fkh_xp_ledger_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_xp_ledger",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -3394,12 +3250,8 @@
           "name": "fkh_xp_ledger_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_xp_ledger",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -3407,12 +3259,8 @@
           "name": "fkh_xp_ledger_shot_id_fkh_shots_id_fk",
           "tableFrom": "fkh_xp_ledger",
           "tableTo": "fkh_shots",
-          "columnsFrom": [
-            "shot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["shot_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }

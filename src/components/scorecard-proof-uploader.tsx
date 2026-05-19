@@ -91,11 +91,7 @@ export function ScorecardProofUploader({
 
   return (
     <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-3">
-      <input
-        type="hidden"
-        name="scorecardProofToken"
-        value={proofToken}
-      />
+      <input type="hidden" name="scorecardProofToken" value={proofToken} />
       <input
         ref={fileInputRef}
         type="file"
@@ -113,7 +109,8 @@ export function ScorecardProofUploader({
             Proof check
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Upload a scorecard screenshot for OCR, then confirm the total against the imported provider round.
+            Upload a scorecard screenshot for OCR, then confirm the total against the imported
+            provider round.
           </p>
         </div>
         <Button
@@ -123,7 +120,11 @@ export function ScorecardProofUploader({
           disabled={state.status === "loading"}
           onClick={() => fileInputRef.current?.click()}
         >
-          {state.status === "loading" ? <Loader2 className="size-4 animate-spin" /> : <ImageIcon className="size-4" />}
+          {state.status === "loading" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ImageIcon className="size-4" />
+          )}
           {state.status === "loading" ? "Reading..." : "Upload"}
         </Button>
       </div>
@@ -150,7 +151,11 @@ export function ScorecardProofUploader({
         </label>
       </div>
       <p
-        className={state.status === "error" ? "flex items-start gap-2 text-xs leading-5 text-destructive" : "text-xs leading-5 text-muted-foreground"}
+        className={
+          state.status === "error"
+            ? "flex items-start gap-2 text-xs leading-5 text-destructive"
+            : "text-xs leading-5 text-muted-foreground"
+        }
         aria-live="polite"
       >
         {state.status === "error" ? <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> : null}
@@ -186,5 +191,7 @@ function proofSummary(
     typeof scorecard.totalScore === "number" ? `${scorecard.totalScore} total` : null,
   ].filter(Boolean);
 
-  return pieces.length > 0 ? `${fileName}: ${pieces.join(" - ")}` : `${fileName}: scorecard read. Confirm the total.`;
+  return pieces.length > 0
+    ? `${fileName}: ${pieces.join(" - ")}`
+    : `${fileName}: scorecard read. Confirm the total.`;
 }

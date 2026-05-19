@@ -11,10 +11,30 @@ import { ensureSocialProfileForUser, parseVisibility, type SocialVisibility } fr
 export async function getSocialIntelligencePageData() {
   const userId = await requireCurrentUserId();
   const [summaries, reports, moderation, recentFeed] = await Promise.all([
-    getDb().select().from(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId)).orderBy(desc(aiSocialSummaries.createdAt)).limit(20),
-    getDb().select().from(socialReports).where(eq(socialReports.reporterUserId, userId)).orderBy(desc(socialReports.createdAt)).limit(20),
-    getDb().select().from(moderationEvents).where(eq(moderationEvents.actorUserId, userId)).orderBy(desc(moderationEvents.createdAt)).limit(20),
-    getDb().select().from(feedItems).where(eq(feedItems.userId, userId)).orderBy(desc(feedItems.createdAt)).limit(12),
+    getDb()
+      .select()
+      .from(aiSocialSummaries)
+      .where(eq(aiSocialSummaries.userId, userId))
+      .orderBy(desc(aiSocialSummaries.createdAt))
+      .limit(20),
+    getDb()
+      .select()
+      .from(socialReports)
+      .where(eq(socialReports.reporterUserId, userId))
+      .orderBy(desc(socialReports.createdAt))
+      .limit(20),
+    getDb()
+      .select()
+      .from(moderationEvents)
+      .where(eq(moderationEvents.actorUserId, userId))
+      .orderBy(desc(moderationEvents.createdAt))
+      .limit(20),
+    getDb()
+      .select()
+      .from(feedItems)
+      .where(eq(feedItems.userId, userId))
+      .orderBy(desc(feedItems.createdAt))
+      .limit(12),
   ]);
 
   return {
@@ -31,23 +51,30 @@ export async function generateSocialSummary(input: {
 }) {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
-  const recentFeed = await getDb().select().from(feedItems).where(eq(feedItems.userId, userId)).orderBy(desc(feedItems.createdAt)).limit(8);
+  const recentFeed = await getDb()
+    .select()
+    .from(feedItems)
+    .where(eq(feedItems.userId, userId))
+    .orderBy(desc(feedItems.createdAt))
+    .limit(8);
   const headline = headlineForSummary(input.summaryType, profile.displayName);
   const body = bodyForSummary(input.summaryType, recentFeed);
 
-  await getDb().insert(aiSocialSummaries).values({
-    userId,
-    summaryType: input.summaryType,
-    headline,
-    body,
-    evidenceJson: {
-      feedItemIds: recentFeed.map((item) => item.id),
-      generatedFrom: "rules-v1",
-    },
-    visibility: parseVisibility(input.visibility, "private"),
-    model: "rules-v1",
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(aiSocialSummaries)
+    .values({
+      userId,
+      summaryType: input.summaryType,
+      headline,
+      body,
+      evidenceJson: {
+        feedItemIds: recentFeed.map((item) => item.id),
+        generatedFrom: "rules-v1",
+      },
+      visibility: parseVisibility(input.visibility, "private"),
+      model: "rules-v1",
+      updatedAt: new Date(),
+    });
 
   revalidateSocialIntelligence();
 }

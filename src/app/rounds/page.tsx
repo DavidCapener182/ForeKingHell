@@ -12,17 +12,15 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { createLatestRoundRecapAction } from "@/app/feature-actions";
+import { RoundOpportunityFeaturePanel } from "@/components/features/feature-panels";
 import { Button } from "@/components/ui/button";
-import {
-  MobileSectionChips,
-  PageShell,
-  StatusPill,
-} from "@/components/premium";
+import { MobileSectionChips, PageShell, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import {
   calculateHandicapSummary,
@@ -41,16 +39,22 @@ const handicapDeltaFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 export default async function RoundsPage() {
-  const rounds = await getRounds();
+  const [rounds, featureData] = await Promise.all([getRounds(), getFeatureIdeasData()]);
   const latestRound = rounds[0] ?? null;
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
   const scorecardOnlyRounds = rounds.filter((round) => round.shotCount === 0);
   const shotLinkedRounds = rounds.filter((round) => round.shotCount > 0);
   const shotCountTotal = rounds.reduce((total, round) => total + round.shotCount, 0);
-  const realHandicap = calculateHandicapSummary(realRounds.map((round) => round.handicapDifferential));
-  const simHandicap = calculateHandicapSummary(simulatorRounds.map((round) => round.handicapDifferential));
-  const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
+  const realHandicap = calculateHandicapSummary(
+    realRounds.map((round) => round.handicapDifferential),
+  );
+  const simHandicap = calculateHandicapSummary(
+    simulatorRounds.map((round) => round.handicapDifferential),
+  );
+  const combinedHandicap = calculateHandicapSummary(
+    rounds.map((round) => round.handicapDifferential),
+  );
   const roundsForWorkspace = rounds.map(toWorkspaceRound);
 
   return (
@@ -76,10 +80,9 @@ export default async function RoundsPage() {
         simulatorRounds={simulatorRounds.length}
       />
 
-      <RoundTasks
-        latestRound={latestRound}
-        scorecardOnlyRounds={scorecardOnlyRounds}
-      />
+      <RoundTasks latestRound={latestRound} scorecardOnlyRounds={scorecardOnlyRounds} />
+
+      <RoundOpportunityFeaturePanel data={featureData} />
 
       <MobileSectionChips
         items={[
@@ -241,7 +244,8 @@ function LatestRoundSpotlight({
             {formatScoreSummary(latestRound)}
           </p>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            Score {formatInteger(latestRound.totalScore)} · Par {formatInteger(latestRound.totalPar)}
+            Score {formatInteger(latestRound.totalScore)} · Par{" "}
+            {formatInteger(latestRound.totalPar)}
           </p>
         </div>
         <Button asChild variant="outline" className="w-full">
@@ -261,9 +265,7 @@ function HeroMetric({ detail, label, value }: { detail: string; label: string; v
       <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 truncate text-xl font-semibold tracking-normal sm:text-2xl">
-        {value}
-      </p>
+      <p className="mt-1 truncate text-xl font-semibold tracking-normal sm:text-2xl">{value}</p>
       <p className="mt-1 truncate text-sm text-muted-foreground">{detail}</p>
     </div>
   );
@@ -376,9 +378,7 @@ function RoundTaskHeader({
       </span>
       <span className="min-w-0">
         <span className="block font-semibold leading-5">{title}</span>
-        <span className="mt-1 block line-clamp-2 leading-5 text-muted-foreground">
-          {detail}
-        </span>
+        <span className="mt-1 block line-clamp-2 leading-5 text-muted-foreground">{detail}</span>
       </span>
     </div>
   );
@@ -402,7 +402,8 @@ function RoundTypeBreakdown({
       <div>
         <h2 className="text-lg font-semibold tracking-normal">Round type breakdown</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          Track real scorecards and simulator rounds separately so form, scoring and shot data stay clean.
+          Track real scorecards and simulator rounds separately so form, scoring and shot data stay
+          clean.
         </p>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -431,15 +432,7 @@ function RoundTypeBreakdown({
   );
 }
 
-function BreakdownCard({
-  detail,
-  label,
-  value,
-}: {
-  detail: string;
-  label: string;
-  value: number;
-}) {
+function BreakdownCard({ detail, label, value }: { detail: string; label: string; value: number }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -493,15 +486,15 @@ async function getRounds() {
     const scorecard = session.scorecardJson ?? [];
     const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
     const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const totalPar = scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
-    const handicapDifferential =
-      calculateRoundDifferential({
-        totalScore,
-        totalPar,
-        courseRating: session.courseRating,
-        slopeRating: session.slopeRating,
-        holesPlayed: scorecard.length,
-      });
+    const totalPar =
+      scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
+    const handicapDifferential = calculateRoundDifferential({
+      totalScore,
+      totalPar,
+      courseRating: session.courseRating,
+      slopeRating: session.slopeRating,
+      holesPlayed: scorecard.length,
+    });
 
     return {
       ...session,
@@ -514,7 +507,9 @@ async function getRounds() {
   });
 }
 
-function toWorkspaceRound(round: Awaited<ReturnType<typeof getRounds>>[number]): RoundsWorkspaceRound {
+function toWorkspaceRound(
+  round: Awaited<ReturnType<typeof getRounds>>[number],
+): RoundsWorkspaceRound {
   const holeResults = (round.scorecardJson ?? [])
     .slice()
     .sort((left, right) => left.holeNumber - right.holeNumber)
@@ -537,7 +532,8 @@ function toWorkspaceRound(round: Awaited<ReturnType<typeof getRounds>>[number]):
     shotCount: round.shotCount,
     dataLabel: roundDataLabel(round),
     rowDataLabel: roundRowDataLabel(round),
-    statusLabel: round.shotCount > 0 ? "Shot-linked · SG eligible" : "Scorecard only · add shot data",
+    statusLabel:
+      round.shotCount > 0 ? "Shot-linked · SG eligible" : "Scorecard only · add shot data",
     holeResults,
   };
 }
@@ -604,10 +600,7 @@ function roundTitle(round: Awaited<ReturnType<typeof getRounds>>[number]) {
   return round.courseName ?? round.fileName ?? "Untitled round";
 }
 
-function formatScoreSummary(round: {
-  totalPar: number | null;
-  totalScore: number | null;
-}) {
+function formatScoreSummary(round: { totalPar: number | null; totalScore: number | null }) {
   if (typeof round.totalScore !== "number") {
     return "--";
   }
@@ -615,10 +608,7 @@ function formatScoreSummary(round: {
   return `${integerFormatter.format(round.totalScore)} (${formatScoreToPar(round)})`;
 }
 
-function formatScoreToPar(round: {
-  totalPar: number | null;
-  totalScore: number | null;
-}) {
+function formatScoreToPar(round: { totalPar: number | null; totalScore: number | null }) {
   if (typeof round.totalScore !== "number" || typeof round.totalPar !== "number") {
     return "--";
   }
@@ -628,25 +618,24 @@ function formatScoreToPar(round: {
     return "E";
   }
 
-  return scoreToPar > 0 ? `+${integerFormatter.format(scoreToPar)}` : integerFormatter.format(scoreToPar);
+  return scoreToPar > 0
+    ? `+${integerFormatter.format(scoreToPar)}`
+    : integerFormatter.format(scoreToPar);
 }
 
-function roundDataLabel(round: {
-  shotCount: number;
-}) {
-  return round.shotCount > 0 ? `${integerFormatter.format(round.shotCount)} shots` : "Scorecard only";
+function roundDataLabel(round: { shotCount: number }) {
+  return round.shotCount > 0
+    ? `${integerFormatter.format(round.shotCount)} shots`
+    : "Scorecard only";
 }
 
-function roundRowDataLabel(round: {
-  shotCount: number;
-}) {
-  return round.shotCount > 0 ? `${integerFormatter.format(round.shotCount)} shots · SG ready` : "Scorecard only";
+function roundRowDataLabel(round: { shotCount: number }) {
+  return round.shotCount > 0
+    ? `${integerFormatter.format(round.shotCount)} shots · SG ready`
+    : "Scorecard only";
 }
 
-function formatHoleResult(hole: {
-  par: number;
-  score?: number | null;
-}) {
+function formatHoleResult(hole: { par: number; score?: number | null }) {
   if (typeof hole.score !== "number") {
     return "";
   }
@@ -671,7 +660,9 @@ function formatHoleResult(hole: {
     return "+2";
   }
 
-  return scoreToPar > 0 ? `+${integerFormatter.format(scoreToPar)}` : integerFormatter.format(scoreToPar);
+  return scoreToPar > 0
+    ? `+${integerFormatter.format(scoreToPar)}`
+    : integerFormatter.format(scoreToPar);
 }
 
 function sumNullable(values: Array<number | null>) {

@@ -62,7 +62,15 @@ function parseImportInput(value: unknown): SaveRapsodoImportInput | null {
     ? (value.distanceUnit as SaveRapsodoImportInput["distanceUnit"])
     : null;
 
-  if (!rawCsvText || !fileName || fileSizeBytes === null || !source || !sessionType || !sessionDate || !distanceUnit) {
+  if (
+    !rawCsvText ||
+    !fileName ||
+    fileSizeBytes === null ||
+    !source ||
+    !sessionType ||
+    !sessionDate ||
+    !distanceUnit
+  ) {
     return null;
   }
 

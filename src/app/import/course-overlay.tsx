@@ -58,11 +58,15 @@ export function CourseOverlay({
           tone={assignmentMatches ? "default" : "warning"}
         />
         <CourseMetric label="Holes" value={inference.completedHoleCount.toString()} />
-        <CourseMetric label="Scorecard" value={`${inference.totalScorecardYards.toLocaleString("en-GB")} yd`} />
+        <CourseMetric
+          label="Scorecard"
+          value={`${inference.totalScorecardYards.toLocaleString("en-GB")} yd`}
+        />
       </div>
       <div className="apple-panel flex flex-wrap items-center justify-between gap-3 p-3">
         <p className="text-sm text-muted-foreground">
-          Edit CSV shots to move the boundary between holes. Enter score and penalties to calculate putts.
+          Edit CSV shots to move the boundary between holes. Enter score and penalties to calculate
+          putts.
         </p>
         <Button type="button" variant="outline" size="sm" onClick={onReset}>
           Reset auto splits
@@ -121,8 +125,7 @@ function HoleOverlay({
       ? Math.max(0, score - hole.shots.length - explicitPutts)
       : Math.max(0, review?.penalties ?? 0);
   const putts =
-    explicitPutts ??
-    (score === null ? null : Math.max(0, score - hole.shots.length - penalties));
+    explicitPutts ?? (score === null ? null : Math.max(0, score - hole.shots.length - penalties));
 
   return (
     <div className="apple-panel-strong overflow-hidden">
@@ -139,7 +142,12 @@ function HoleOverlay({
         </div>
         <Flag className="size-4 shrink-0 text-emerald-600" />
       </div>
-      <svg viewBox="0 0 300 104" className="h-28 w-full bg-[#f4f7f2]" role="img" aria-label={`Hole ${hole.holeNumber} overlay`}>
+      <svg
+        viewBox="0 0 300 104"
+        className="h-28 w-full bg-[#f4f7f2]"
+        role="img"
+        aria-label={`Hole ${hole.holeNumber} overlay`}
+      >
         <rect x="0" y="0" width="300" height="104" fill="#f4f7f2" />
         <path
           d="M24 50 C82 20 132 80 184 48 C220 26 252 38 276 50 C252 62 220 74 184 56 C132 24 82 84 24 50Z"
@@ -148,7 +156,15 @@ function HoleOverlay({
         />
         <ellipse cx="266" cy="50" rx="18" ry="13" fill="#a7d8ab" stroke="#6ca771" />
         <circle cx="28" cy="50" r="5" fill="#f59e0b" />
-        <line x1="28" x2="272" y1="50" y2="50" stroke="#6b7280" strokeDasharray="4 5" strokeOpacity="0.35" />
+        <line
+          x1="28"
+          x2="272"
+          y1="50"
+          y2="50"
+          stroke="#6b7280"
+          strokeDasharray="4 5"
+          strokeOpacity="0.35"
+        />
         {points.map((point, index) => {
           const previous = index === 0 ? { x: 28, y: 50 } : points[index - 1];
 
@@ -181,7 +197,9 @@ function HoleOverlay({
       <div className="grid grid-cols-3 border-t px-3 py-2 text-xs">
         <span className="text-muted-foreground">Progress</span>
         <span className="text-center font-medium">{formatMetric(hole.progressYd)} yd</span>
-        <span className="text-right text-muted-foreground">{formatMetric(hole.distanceRemainingYd)} left</span>
+        <span className="text-right text-muted-foreground">
+          {formatMetric(hole.distanceRemainingYd)} left
+        </span>
       </div>
       <div className="grid gap-2 border-t bg-slate-50/80 p-3 text-sm sm:grid-cols-3">
         <NumberField
@@ -267,7 +285,9 @@ function NumberField({
           }
 
           const nextValue = Number(event.target.value);
-          onChange(Number.isFinite(nextValue) ? Math.max(min, Math.min(max, Math.floor(nextValue))) : null);
+          onChange(
+            Number.isFinite(nextValue) ? Math.max(min, Math.min(max, Math.floor(nextValue))) : null,
+          );
         }}
         className="mt-1 h-8 border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
       />

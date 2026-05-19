@@ -197,7 +197,10 @@ export async function syncTourEventLeaderboards(now = new Date()): Promise<SyncR
   };
 }
 
-export function pickTourCalendarEvents(calendar: EspnCalendarEvent[], now = new Date()): TourCalendarSelection[] {
+export function pickTourCalendarEvents(
+  calendar: EspnCalendarEvent[],
+  now = new Date(),
+): TourCalendarSelection[] {
   const monthStart = startOfUtcMonth(now);
   const monthEnd = endOfUtcMonth(now);
   const weekStart = startOfUtcWeek(now);
@@ -207,7 +210,9 @@ export function pickTourCalendarEvents(calendar: EspnCalendarEvent[], now = new 
     .filter((row): row is { event: EspnCalendarEvent; start: Date; end: Date } =>
       Boolean(row.event.id && row.event.label && row.start && row.end),
     );
-  const major = parsed.find((row) => isMajorTourEvent(row.event.label) && row.start >= monthStart && row.start <= monthEnd);
+  const major = parsed.find(
+    (row) => isMajorTourEvent(row.event.label) && row.start >= monthStart && row.start <= monthEnd,
+  );
   const weekly = parsed.find((row) => row.start <= weekEnd && row.end >= weekStart);
   const selections: TourCalendarSelection[] = [];
 
@@ -247,7 +252,9 @@ export function isMajorTourEvent(name: string | null | undefined) {
   );
 }
 
-export function parseEspnTourScores(event: EspnScoreboardEvent | null | undefined): ParsedTourScore[] {
+export function parseEspnTourScores(
+  event: EspnScoreboardEvent | null | undefined,
+): ParsedTourScore[] {
   const competitors = event?.competitions?.[0]?.competitors ?? [];
 
   return competitors
@@ -363,7 +370,11 @@ async function getSystemUserId() {
   return fallbackUser.id;
 }
 
-async function upsertTourTournament(userId: string, selection: TourCalendarSelection, event: TourEventRecord) {
+async function upsertTourTournament(
+  userId: string,
+  selection: TourCalendarSelection,
+  event: TourEventRecord,
+) {
   const db = getDb();
   const [existing] = await db
     .select()
@@ -404,7 +415,10 @@ async function upsertTourTournament(userId: string, selection: TourCalendarSelec
     screenshotRequired: true,
     directRapsodoRequired: false,
     cutRuleJson: event.isMajor ? { enabled: true, afterRound: 2, topAndTies: 50 } : {},
-    playoffRuleJson: { type: "countback", order: ["final_round", "back_nine", "earliest_submission"] },
+    playoffRuleJson: {
+      type: "countback",
+      order: ["final_round", "back_nine", "earliest_submission"],
+    },
     createdByUserId: userId,
     metadataJson: metadata,
     updatedAt: now,
@@ -421,10 +435,7 @@ async function upsertTourTournament(userId: string, selection: TourCalendarSelec
     return { tournament, course, teeSet };
   }
 
-  const [tournament] = await db
-    .insert(tournaments)
-    .values(tournamentValues)
-    .returning();
+  const [tournament] = await db.insert(tournaments).values(tournamentValues).returning();
   await upsertTourRounds(tournament.id, event, selection, now);
 
   return { tournament, course, teeSet };
@@ -523,13 +534,19 @@ async function upsertTourRounds(
   }
 }
 
-async function importTourScores(tournamentId: string, event: TourEventRecord, scoreRows: ParsedTourScore[]) {
+async function importTourScores(
+  tournamentId: string,
+  event: TourEventRecord,
+  scoreRows: ParsedTourScore[],
+) {
   const db = getDb();
   const profiles = await db
     .select()
     .from(userProfiles)
     .where(sql`${userProfiles.visibilitySettingsJson}->>'profileKind' = 'tour-player'`);
-  const profilesByName = new Map(profiles.map((profile) => [normalizeTourPlayerName(profile.displayName), profile]));
+  const profilesByName = new Map(
+    profiles.map((profile) => [normalizeTourPlayerName(profile.displayName), profile]),
+  );
   const now = new Date();
   let matchedPlayers = 0;
   let importedScores = 0;
@@ -676,7 +693,8 @@ function toTourEventRecord(
     parseDate(selection.event.endDate) ??
     selection.endsAt;
   const course = detail?.courses?.[0];
-  const eventName = detail?.name ?? scoreboardEvent?.name ?? selection.event.label ?? "PGA Tour event";
+  const eventName =
+    detail?.name ?? scoreboardEvent?.name ?? selection.event.label ?? "PGA Tour event";
   const status = scoreboardEvent?.competitions?.[0]?.status ?? scoreboardEvent?.status ?? null;
 
   return {
@@ -688,7 +706,8 @@ function toTourEventRecord(
     courseName: course?.name ?? eventName,
     country: course?.address?.country ?? null,
     isMajor: isMajorTourEvent(eventName),
-    statusDetail: status?.type?.detail ?? status?.type?.shortDetail ?? status?.type?.description ?? null,
+    statusDetail:
+      status?.type?.detail ?? status?.type?.shortDetail ?? status?.type?.description ?? null,
   };
 }
 
@@ -717,7 +736,9 @@ function startOfUtcDay(date: Date) {
 }
 
 function endOfUtcDay(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999));
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999),
+  );
 }
 
 function startOfUtcWeek(date: Date) {

@@ -1,4 +1,8 @@
-import { createDrizzleBillingWebhookStore, handleStripeWebhookEvent, verifyStripeSignature } from "@/lib/stripe-webhook";
+import {
+  createDrizzleBillingWebhookStore,
+  handleStripeWebhookEvent,
+  verifyStripeSignature,
+} from "@/lib/stripe-webhook";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,7 +38,9 @@ export async function POST(request: Request) {
   return Response.json({ received: true, ...result });
 }
 
-function isStripeWebhookEvent(value: unknown): value is Parameters<typeof handleStripeWebhookEvent>[0] {
+function isStripeWebhookEvent(
+  value: unknown,
+): value is Parameters<typeof handleStripeWebhookEvent>[0] {
   return (
     value !== null &&
     typeof value === "object" &&

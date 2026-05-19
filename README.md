@@ -39,6 +39,8 @@ Point Stripe webhooks at `/api/stripe/webhook`. The handler verifies `Stripe-Sig
 
 ```bash
 npm run dev
+npm run format
+npm run format:check
 npm run test
 npm run lint
 npm run build
@@ -54,17 +56,72 @@ Authenticated Playwright coverage is opt-in because Supabase sessions are cookie
 
 ## Current Product Scope
 
-- `/dashboard` summarizes the latest sessions, totals, trends, and next actions.
-- `/import` previews Rapsodo MLM2PRO CSV files, supports manual column mapping when export headers change, defaults unknown distance units to yards, and saves raw CSV plus normalized shot rows. Simulated-course imports can include a scorecard so shot order is inferred into hole overlays.
-- `/shots` is a paginated shot explorer with filters for club, session, shot category, date range, and file/course search. Advanced metrics remain available in expandable row details.
-- `/bag` and `/bag/[clubId]` analyze club gapping, stock yardages, dispersion, longest shots, and per-club analytics.
-- `/rounds`, `/rounds/new`, and `/rounds/[sessionId]` support manual rounds, linked course scorecards, shot-to-hole assignment, and hole scoring.
-- `/feed`, `/friends`, `/profile`, `/groups`, `/challenges`, and `/leaderboard` provide social profiles, friend requests, privacy-first feed cards, group homes, competition boards, podiums, comments, kudos, reporting and leaderboard opt-in.
-- `/billing` is the pricing and entitlement surface for Free, Plus, Pro, Coach/Club and internal lifetime-full access.
-- `/providers` is the import hub for Rapsodo live, Square beta/coming soon and TrackMan coming soon adapters.
-- `/partners` and `/admin` are role-gated operational surfaces for sponsors, offers, fulfilment, billing, moderation, challenges and site health.
-- `/social-intelligence` is presented as Recaps & Safety for weekly recaps, challenge recaps, reports and suspicious social activity.
-- `/handicap`, `/courses`, `/progress`, `/coach`, and `/achievements` add playing trends, course data, practice priorities, AI-assisted coaching, XP, and achievement tracking.
+- `/dashboard` is the data command centre: latest signal, data health, compact metrics, action centre, on-course decisions, practice priorities, tools and social pulse.
+- `/import` and `/rapsodo` are the tester-first Rapsodo flow: connect/sync or upload CSV, review import quality, map clubs, preserve source files, surface eligible records/challenges/tournaments only after data checks.
+- `/shots` is a paginated shot explorer with filters, saved views, compact mobile shot cards and expandable advanced launch data.
+- `/bag`, `/bag/[clubId]`, `/bag/[clubId]/analytics`, and `/bag/longest` cover stock yardages, gapping ladder, target-distance recommendations, club identity cards, dispersion, longest shots and coach links.
+- `/rounds`, `/rounds/new`, and `/rounds/[sessionId]` support latest-round review, scorecards, shot-to-hole assignment, round opportunities, handicap eligibility and record/tournament proof.
+- `/handicap`, `/progress`, `/coach`, `/strokes-gained`, and `/achievements` cover trend confidence, weekly recaps, practice mode, coach confidence, XP and achievement categories.
+- `/courses`, `/courses/new`, `/courses/[courseId]/holes`, `/courses/[courseId]/records`, and `/course-records` provide course hubs, Google/OSM/manual course setup, course data quality, source labels, champion boards, proof tiers, goals and record notifications.
+- `/challenges`, `/tournaments`, `/leaderboard`, and tournament detail routes provide daily micro-challenges, scheduled events, proof checklists, round-due reminders, podiums and ways-to-climb prompts.
+- `/feed`, `/friends`, `/profile`, `/profile/[username]`, `/groups`, and `/social-intelligence` provide privacy-first feed cards, PB/record/tournament highlights, friend comparison, group digest, public profile preview, reporting and suspicious-activity review.
+- `/equipment`, `/billing`, `/providers`, `/partners`, `/settings`, and `/admin` cover active equipment setup, before/after equipment history, plans/entitlements, provider health, sponsor operations, privacy preview, collaborator access and admin moderation.
+
+## Google Course Enrichment
+
+Migration `0023_google_course_enrichment.sql` adds Google Places metadata to courses: address, coordinates, Google Place ID, website, Google Maps URL, rating, rating count, opening hours, attribution JSON and enrichment timestamp. The course setup flow can import a Google Place, merge likely duplicates, and pull OSM hole geometry when coordinates are available.
+
+Configure Google Maps Platform keys in `.env` using the variables listed in `.env.example`. Course UI should always distinguish the data source:
+
+- Google-enriched
+- OSM geometry
+- Manual course
+- Rapsodo alias
+- Merged provider course
+
+Course cards and tables expose data health signals such as address, location, mapped holes, rating/slope and provider alias state so testers know what is trusted and what still needs setup.
+
+## Social, Competition, and Sharing
+
+The social layer is deliberately secondary to the data product. Feed cards, friend boards, groups, challenges, tournaments and public profiles should amplify verified practice and round data rather than replace the core Rapsodo/import/bag/coach loop.
+
+Proof tiers are used consistently across records and tournaments:
+
+- Gold: direct Rapsodo/import-backed proof
+- Silver: provider or scorecard-supported proof
+- Bronze: reviewable saved-round proof
+- Manual: unverified/manual entry
+
+Public sharing stays opt-in through profile and settings privacy controls.
+
+## Visual Assets
+
+Reusable app art lives in `public/assets` and is wired through `PageArtwork`, `ClubArtwork`, `CourseLogoArtwork` and mobile sports components. Current assets cover import/Rapsodo, shots, stock yardages, rounds, handicap, coach, progress, achievements, course records, feed, provider devices, tour covers, challenge cards, course fallback imagery and club artwork.
+
+Keep media containers small and intentional. Prefer `h-16`, `h-24`, `h-32`, `aspect-[16/9]`, `aspect-[4/3]` or `aspect-square`, and do not render empty image boxes.
+
+## Testing and Visual Audit
+
+Core checks:
+
+- `npm run lint`
+- `npm run test`
+- `npm run build`
+- `npm run test:e2e`
+- `npm run format:check`
+
+Playwright includes layout overflow, mobile density, accessibility, user isolation, social, challenges, course records/tournaments and visual spacing checks. The visual spacing audit checks horizontal overflow, blank mobile zones, empty media containers, mobile header height, sticky/bottom navigation overlap, repeated CTA stacks, tables above the mobile fold and empty rails.
+
+## Public Tester Launch Checklist
+
+Before inviting Facebook/Rapsodo testers:
+
+- Run `npm run format:check`, `npm run lint`, `npm run test`, `npm run build`, and the authenticated Playwright pack.
+- Verify Supabase Auth providers and RLS in the target project.
+- Run Drizzle migrations through the latest course enrichment and feature foundation migrations.
+- Configure Stripe prices/webhooks if billing is visible.
+- Configure Google Maps/Places keys and quota alerts if course enrichment is enabled.
+- Confirm the first-run flow: sign up, import or sync Rapsodo, map clubs, see stock yardages, see one insight, review practice next step, then optionally share or compete.
 
 ## Social, Privacy, and RLS
 

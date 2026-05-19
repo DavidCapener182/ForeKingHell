@@ -123,7 +123,9 @@ export async function addTournamentCommentAction(formData: FormData) {
 }
 
 function parseFormat(value: string | null): TournamentFormat {
-  return tournamentFormats.includes(value as TournamentFormat) ? (value as TournamentFormat) : "two_round_open";
+  return tournamentFormats.includes(value as TournamentFormat)
+    ? (value as TournamentFormat)
+    : "two_round_open";
 }
 
 function parseCourseTee(value: string | null) {

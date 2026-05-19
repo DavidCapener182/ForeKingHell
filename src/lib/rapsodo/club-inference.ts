@@ -42,7 +42,11 @@ export function suggestRapsodoClub(
   options: RapsodoClubSuggestionOptions = {},
 ): RapsodoClubSuggestion {
   const activeCandidates = candidates.filter(isActiveChoice);
-  const preferredChoice = preferredRapsodoClubChoice(shot, activeCandidates, options.preferredClubKey);
+  const preferredChoice = preferredRapsodoClubChoice(
+    shot,
+    activeCandidates,
+    options.preferredClubKey,
+  );
   const reportedChoice = reportedRapsodoClubChoice(shot, candidates, options);
   const activeReportedChoice = activeRapsodoClubChoice(shot, activeCandidates, {
     preferredClubKey: preferredChoice?.clubKey ?? options.preferredClubKey,
@@ -174,9 +178,11 @@ function preferredRapsodoClubChoice(
     return null;
   }
 
-  return candidates.find(
-    (candidate) => candidate.clubKey === preferredClubKey && candidate.clubType === shot.clubType,
-  ) ?? null;
+  return (
+    candidates.find(
+      (candidate) => candidate.clubKey === preferredClubKey && candidate.clubType === shot.clubType,
+    ) ?? null
+  );
 }
 
 function activeRapsodoClubChoice(
@@ -269,7 +275,10 @@ function noStockDataReason({
 function sameTypeActiveChoice(shot: ParsedRapsodoShot, activeCandidates: RapsodoClubChoice[]) {
   const [choice] = activeCandidates
     .filter((candidate) => candidate.clubType === shot.clubType)
-    .sort((left, right) => right.sampleSize - left.sampleSize || left.clubLabel.localeCompare(right.clubLabel));
+    .sort(
+      (left, right) =>
+        right.sampleSize - left.sampleSize || left.clubLabel.localeCompare(right.clubLabel),
+    );
 
   return choice ?? null;
 }

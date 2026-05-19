@@ -48,19 +48,11 @@ type AppShellProps = {
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 
-export function AppShell({
-  children,
-  totalXp,
-  isAdmin = false,
-  profile = null,
-}: AppShellProps) {
+export function AppShell({ children, totalXp, isAdmin = false, profile = null }: AppShellProps) {
   const pathname = usePathname();
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
-  const desktopNavGroups = useMemo(
-    () => buildDesktopNavGroups(isAdmin),
-    [isAdmin],
-  );
+  const desktopNavGroups = useMemo(() => buildDesktopNavGroups(isAdmin), [isAdmin]);
 
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
@@ -68,10 +60,7 @@ export function AppShell({
 
   return (
     <SidebarProvider>
-      <Sidebar
-        collapsible="icon"
-        className="border-sidebar-border bg-sidebar"
-      >
+      <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 px-1 py-1">
             <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
@@ -81,9 +70,7 @@ export function AppShell({
                 </span>
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">ForeKingHell</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Golf analytics
-                  </span>
+                  <span className="truncate text-xs text-muted-foreground">Golf analytics</span>
                 </span>
               </Link>
             </SidebarMenuButton>
@@ -145,9 +132,7 @@ export function AppShell({
           <Button asChild className="w-full justify-start">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
-              <span className="group-data-[collapsible=icon]:hidden">
-                Import data
-              </span>
+              <span className="group-data-[collapsible=icon]:hidden">Import data</span>
             </Link>
           </Button>
           <ProfileDropdown
@@ -220,9 +205,7 @@ function ProfileDropdown({
         <DropdownMenuLabel>
           <div className="grid gap-1">
             <span className="truncate text-sm text-foreground">{profileLabel}</span>
-            <span>
-              {xpFormatter.format(xpToNextLevel)} XP to next level
-            </span>
+            <span>{xpFormatter.format(xpToNextLevel)} XP to next level</span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

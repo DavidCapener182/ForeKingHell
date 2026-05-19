@@ -53,8 +53,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
 const cropOptions = ["green", "fairway", "tee"] as const;
 
 const imageTreatmentByCrop: Record<(typeof cropOptions)[number], string> = {
-  green:
-    "origin-top object-[50%_0%] opacity-90 saturate-[1.08] brightness-[0.98] scale-[1.65]",
+  green: "origin-top object-[50%_0%] opacity-90 saturate-[1.08] brightness-[0.98] scale-[1.65]",
   fairway:
     "origin-center object-[50%_50%] opacity-90 saturate-[1.08] brightness-[0.98] scale-[1.45]",
   tee: "origin-bottom object-[50%_100%] opacity-90 saturate-[1.08] brightness-[0.98] scale-[1.65]",
@@ -125,18 +124,9 @@ export function PageArtwork({
         fill
         loading={priority ? "eager" : "lazy"}
         sizes={sizes}
-        className={cn(
-          "object-cover opacity-80 saturate-[0.92]",
-          resolvedTreatment,
-          imageClassName,
-        )}
+        className={cn("object-cover opacity-80 saturate-[0.92]", resolvedTreatment, imageClassName)}
       />
-      <div
-        className={cn(
-          "absolute inset-0 bg-gradient-to-br",
-          overlayByVariant[variant],
-        )}
-      />
+      <div className={cn("absolute inset-0 bg-gradient-to-br", overlayByVariant[variant])} />
     </div>
   );
 }
@@ -176,12 +166,7 @@ export function MobileVisualCard({
           "opacity-10 saturate-[0.82] sm:opacity-20",
         )}
       />
-      <div
-        className={cn(
-          "absolute inset-0 bg-gradient-to-br",
-          overlayByVariant[variant],
-        )}
-      />
+      <div className={cn("absolute inset-0 bg-gradient-to-br", overlayByVariant[variant])} />
       {children ? <div className="relative">{children}</div> : null}
     </div>
   );

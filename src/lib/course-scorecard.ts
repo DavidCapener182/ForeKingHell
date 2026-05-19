@@ -140,7 +140,11 @@ export function inferCourseShots(
     const hole = playableScorecard[partition.holeIndex];
     let progress = 0;
 
-    for (let shotIndex = partition.startShotIndex; shotIndex < partition.endShotIndex; shotIndex += 1) {
+    for (
+      let shotIndex = partition.startShotIndex;
+      shotIndex < partition.endShotIndex;
+      shotIndex += 1
+    ) {
       const sourceShot = playableShots[shotIndex];
       const forwardDistance = forwardDistanceYd(sourceShot);
       const shotDistance = sourceShot.totalYd ?? sourceShot.carryYd;
@@ -169,17 +173,23 @@ export function inferCourseShots(
     }
 
     inferredHoles[partition.holeIndex].progressYd = roundOne(progress);
-    inferredHoles[partition.holeIndex].distanceRemainingYd = roundOne(Math.max(0, hole.yards - progress));
+    inferredHoles[partition.holeIndex].distanceRemainingYd = roundOne(
+      Math.max(0, hole.yards - progress),
+    );
   }
 
   const unassignedShotCount = shots.length - inferredShots.length;
 
   if (unassignedShotCount > 0) {
-    warnings.push(`${unassignedShotCount} shot${unassignedShotCount === 1 ? "" : "s"} could not be assigned to the scorecard.`);
+    warnings.push(
+      `${unassignedShotCount} shot${unassignedShotCount === 1 ? "" : "s"} could not be assigned to the scorecard.`,
+    );
   }
 
   if (scorecard.length > shots.length) {
-    warnings.push("There are fewer shots than scorecard holes, so later holes have no shot overlay.");
+    warnings.push(
+      "There are fewer shots than scorecard holes, so later holes have no shot overlay.",
+    );
   }
 
   return {
@@ -257,7 +267,9 @@ export function inferCourseShotsFromHoleShotCounts(
   const unassignedShotCount = Math.max(0, shots.length - inferredShots.length);
 
   if (unassignedShotCount > 0) {
-    warnings.push(`${unassignedShotCount} shot${unassignedShotCount === 1 ? "" : "s"} are still unassigned. Increase the CSV shot counts on the review rows.`);
+    warnings.push(
+      `${unassignedShotCount} shot${unassignedShotCount === 1 ? "" : "s"} are still unassigned. Increase the CSV shot counts on the review rows.`,
+    );
   }
 
   return {
@@ -287,10 +299,7 @@ function parseScorecardLine(line: string, oneBasedLineNumber: number): CourseSco
   const par = hasExplicitHole ? numbers[1].value : numbers[0].value;
   const yards = hasExplicitHole ? numbers[2].value : numbers[1].value;
   const nameStartIndex = hasExplicitHole ? numbers[2].index + 1 : numbers[1].index + 1;
-  const name = cells
-    .slice(nameStartIndex)
-    .join(" ")
-    .trim();
+  const name = cells.slice(nameStartIndex).join(" ").trim();
 
   if (!isHoleNumber(holeNumber) || par < 3 || par > 6) {
     return null;
@@ -310,10 +319,15 @@ function parseScorecardLine(line: string, oneBasedLineNumber: number): CourseSco
 
 function splitScorecardLine(line: string) {
   if (/[,\t;]/.test(line)) {
-    return parseDelimitedLine(line).map((cell) => cell.trim()).filter(Boolean);
+    return parseDelimitedLine(line)
+      .map((cell) => cell.trim())
+      .filter(Boolean);
   }
 
-  return line.split(/\s+/).map((cell) => cell.trim()).filter(Boolean);
+  return line
+    .split(/\s+/)
+    .map((cell) => cell.trim())
+    .filter(Boolean);
 }
 
 function parseDelimitedLine(line: string) {
@@ -392,8 +406,7 @@ function findBestPartitions(
         const hole = holes[holeIndex - 1];
         const distance = prefixDistances[endShotIndex] - prefixDistances[startShotIndex];
         const totalCost =
-          previousCost +
-          holePartitionCost(hole, shots, startShotIndex, endShotIndex, distance);
+          previousCost + holePartitionCost(hole, shots, startShotIndex, endShotIndex, distance);
 
         if (totalCost < dp[holeIndex][endShotIndex]) {
           dp[holeIndex][endShotIndex] = totalCost;
@@ -449,7 +462,12 @@ function holePartitionCost(
     cost += teeShotPenalty(firstShot, hole);
   }
 
-  if (lastShot && groupSize > 1 && isLikelyTeeClub(lastShot.clubType) && distance < hole.yards * 0.75) {
+  if (
+    lastShot &&
+    groupSize > 1 &&
+    isLikelyTeeClub(lastShot.clubType) &&
+    distance < hole.yards * 0.75
+  ) {
     cost += 45;
   }
 

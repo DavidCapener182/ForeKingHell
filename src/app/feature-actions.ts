@@ -29,7 +29,8 @@ export async function completePracticeDrillAction(formData: FormData) {
     title: requiredString(formData, "title"),
     focusArea: optionalString(formData, "focusArea") ?? "practice",
     targetShots: optionalNumber(formData, "targetShots") ?? 12,
-    recordedShots: optionalNumber(formData, "recordedShots") ?? optionalNumber(formData, "targetShots") ?? 12,
+    recordedShots:
+      optionalNumber(formData, "recordedShots") ?? optionalNumber(formData, "targetShots") ?? 12,
     notes: optionalString(formData, "notes"),
   });
 }

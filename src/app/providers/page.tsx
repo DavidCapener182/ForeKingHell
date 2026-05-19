@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { Cable, CheckCircle2, Database, FileSpreadsheet, FlaskConical, GitCompareArrows, Upload } from "lucide-react";
+import {
+  Cable,
+  CheckCircle2,
+  Database,
+  FileSpreadsheet,
+  FlaskConical,
+  GitCompareArrows,
+  Upload,
+} from "lucide-react";
 
 import { ProviderHealthFeaturePanel } from "@/components/features/feature-panels";
 import { MobileRouteHeader } from "@/components/mobile-sports";
@@ -20,7 +28,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default async function ProvidersPage() {
-  const [data, featureData] = await Promise.all([getProviderIntegrationsPageData(), getFeatureIdeasData()]);
+  const [data, featureData] = await Promise.all([
+    getProviderIntegrationsPageData(),
+    getFeatureIdeasData(),
+  ]);
 
   return (
     <PageShell size="7xl">
@@ -30,13 +41,20 @@ export default async function ProvidersPage() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <StatusPill tone="sky">Import expansion</StatusPill>
-            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">Launch monitor providers</h1>
+            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">
+              Launch monitor providers
+            </h1>
             <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
-              ForeKingHell becomes your cross-device golf performance history. Rapsodo is live; Square and TrackMan are staged as beta provider tiles.
+              ForeKingHell becomes your cross-device golf performance history. Rapsodo is live;
+              Square and TrackMan are staged as beta provider tiles.
             </p>
           </div>
           <div data-primary-action className="shrink-0">
-            <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              asChild
+              size="sm"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
                 Import file
@@ -57,10 +75,16 @@ export default async function ProvidersPage() {
             />
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Badge variant={provider.status === "live" ? "secondary" : "outline"}>{provider.status}</Badge>
+                <Badge variant={provider.status === "live" ? "secondary" : "outline"}>
+                  {provider.status}
+                </Badge>
                 <h2 className="mt-3 text-xl font-semibold tracking-normal">{provider.label}</h2>
               </div>
-              {provider.status === "live" ? <CheckCircle2 className="size-5 text-emerald-600" /> : <FlaskConical className="size-5 text-amber-600" />}
+              {provider.status === "live" ? (
+                <CheckCircle2 className="size-5 text-emerald-600" />
+              ) : (
+                <FlaskConical className="size-5 text-amber-600" />
+              )}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
               <Mini label="Accounts" value={provider.accountCount} />
@@ -74,9 +98,17 @@ export default async function ProvidersPage() {
               <ProviderStep done={provider.sessionCount > 0} label="Review sessions" />
               <ProviderStep done={provider.sessionCount > 0} label="Normalise metrics" />
             </div>
-            <Button asChild variant={provider.status === "live" ? "default" : "outline"} className="mt-4 w-full">
+            <Button
+              asChild
+              variant={provider.status === "live" ? "default" : "outline"}
+              className="mt-4 w-full"
+            >
               <Link href={provider.status === "live" ? "/import" : "/billing"} prefetch={false}>
-                {provider.status === "live" ? <Upload className="size-4" /> : <GitCompareArrows className="size-4" />}
+                {provider.status === "live" ? (
+                  <Upload className="size-4" />
+                ) : (
+                  <GitCompareArrows className="size-4" />
+                )}
                 {provider.status === "live" ? "Import from provider" : "View adapter access"}
               </Link>
             </Button>
@@ -94,13 +126,17 @@ export default async function ProvidersPage() {
           </p>
           <div className="mt-4 grid gap-2">
             {data.sessions.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No provider sessions recorded yet.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No provider sessions recorded yet.
+              </p>
             ) : (
               data.sessions.map((session) => (
                 <div key={session.id} className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="font-medium">{session.title ?? session.providerSessionId}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {session.providerKind} · {session.sessionDate ? dateFormatter.format(session.sessionDate) : "No date"} · {session.importedAt ? "imported" : "pending"}
+                    {session.providerKind} ·{" "}
+                    {session.sessionDate ? dateFormatter.format(session.sessionDate) : "No date"} ·{" "}
+                    {session.importedAt ? "imported" : "pending"}
                   </p>
                 </div>
               ))
@@ -118,10 +154,16 @@ export default async function ProvidersPage() {
               {data.files.slice(0, 8).map((file) => (
                 <div key={file.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                   <p className="truncate font-medium">{file.fileName}</p>
-                  <p className="text-xs text-muted-foreground">{file.providerKind} · {file.status}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.providerKind} · {file.status}
+                  </p>
                 </div>
               ))}
-              {data.files.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No source files yet.</p> : null}
+              {data.files.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  No source files yet.
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -133,11 +175,20 @@ export default async function ProvidersPage() {
             <div className="mt-3 grid gap-2">
               {data.jobs.slice(0, 6).map((job) => (
                 <div key={job.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                  <p className="font-medium">{job.providerKind} · {job.status}</p>
-                  <p className="text-xs text-muted-foreground">{job.detectedProviderKind ?? "No detected provider"}{job.errorMessage ? ` · ${job.errorMessage}` : ""}</p>
+                  <p className="font-medium">
+                    {job.providerKind} · {job.status}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {job.detectedProviderKind ?? "No detected provider"}
+                    {job.errorMessage ? ` · ${job.errorMessage}` : ""}
+                  </p>
                 </div>
               ))}
-              {data.jobs.length === 0 ? <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">No import jobs yet.</p> : null}
+              {data.jobs.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+                  No import jobs yet.
+                </p>
+              ) : null}
             </div>
           </section>
 
@@ -147,7 +198,8 @@ export default async function ProvidersPage() {
               Import health
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Each connected source reports mapping, review and sync status before new shots enter your performance history.
+              Each connected source reports mapping, review and sync status before new shots enter
+              your performance history.
             </p>
           </section>
         </aside>

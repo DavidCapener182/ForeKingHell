@@ -4,7 +4,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "ForeKingHell",
     short_name: "FKH",
-    description: "Personal golf analytics for launch monitor data, bag mapping, rounds, and progress tracking.",
+    description:
+      "Personal golf analytics for launch monitor data, bag mapping, rounds, and progress tracking.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

@@ -143,19 +143,27 @@ export async function GET() {
     db.select().from(achievementSyncState).where(eq(achievementSyncState.userId, userId)),
     db.select().from(rapsodoSyncSessions).where(eq(rapsodoSyncSessions.userId, userId)),
     db.select().from(shareLinks).where(eq(shareLinks.userId, userId)),
-    db
-      .select()
-      .from(accountMemberships)
-      .where(orOwnerOrMember(userId)),
-    db
-      .select()
-      .from(accountInvitations)
-      .where(eq(accountInvitations.ownerUserId, userId)),
+    db.select().from(accountMemberships).where(orOwnerOrMember(userId)),
+    db.select().from(accountInvitations).where(eq(accountInvitations.ownerUserId, userId)),
     db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
-    db.select().from(friendRequests).where(or(eq(friendRequests.requesterUserId, userId), eq(friendRequests.recipientUserId, userId))),
-    db.select().from(friendships).where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId))),
-    db.select().from(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId))),
-    db.select().from(userFollows).where(or(eq(userFollows.followerUserId, userId), eq(userFollows.followedUserId, userId))),
+    db
+      .select()
+      .from(friendRequests)
+      .where(
+        or(eq(friendRequests.requesterUserId, userId), eq(friendRequests.recipientUserId, userId)),
+      ),
+    db
+      .select()
+      .from(friendships)
+      .where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId))),
+    db
+      .select()
+      .from(userBlocks)
+      .where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId))),
+    db
+      .select()
+      .from(userFollows)
+      .where(or(eq(userFollows.followerUserId, userId), eq(userFollows.followedUserId, userId))),
     db.select().from(feedItems).where(eq(feedItems.userId, userId)),
     db.select().from(feedReactions).where(eq(feedReactions.userId, userId)),
     db.select().from(feedCommentReactions).where(eq(feedCommentReactions.userId, userId)),
@@ -165,10 +173,18 @@ export async function GET() {
     db.select().from(challengeAttempts).where(eq(challengeAttempts.userId, userId)),
     db.select().from(challengeResults).where(eq(challengeResults.userId, userId)),
     db.select().from(challengeComments).where(eq(challengeComments.userId, userId)),
-    db.select().from(challengeInvites).where(or(eq(challengeInvites.inviterUserId, userId), eq(challengeInvites.inviteeUserId, userId))),
+    db
+      .select()
+      .from(challengeInvites)
+      .where(
+        or(eq(challengeInvites.inviterUserId, userId), eq(challengeInvites.inviteeUserId, userId)),
+      ),
     db.select().from(groups).where(eq(groups.ownerUserId, userId)),
     db.select().from(groupMemberships).where(eq(groupMemberships.userId, userId)),
-    db.select().from(groupInvites).where(or(eq(groupInvites.inviterUserId, userId), eq(groupInvites.inviteeUserId, userId))),
+    db
+      .select()
+      .from(groupInvites)
+      .where(or(eq(groupInvites.inviterUserId, userId), eq(groupInvites.inviteeUserId, userId))),
     db.select().from(groupPosts).where(eq(groupPosts.userId, userId)),
     db.select().from(groupChallengeLinks).where(eq(groupChallengeLinks.createdByUserId, userId)),
     db.select().from(billingCustomers).where(eq(billingCustomers.userId, userId)),
@@ -183,8 +199,16 @@ export async function GET() {
     db.select().from(importJobs).where(eq(importJobs.userId, userId)),
     db.select().from(importMappings).where(eq(importMappings.userId, userId)),
     db.select().from(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId)),
-    db.select().from(socialReports).where(or(eq(socialReports.reporterUserId, userId), eq(socialReports.reportedUserId, userId))),
-    db.select().from(moderationEvents).where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId))),
+    db
+      .select()
+      .from(socialReports)
+      .where(
+        or(eq(socialReports.reporterUserId, userId), eq(socialReports.reportedUserId, userId)),
+      ),
+    db
+      .select()
+      .from(moderationEvents)
+      .where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId))),
     db.select().from(courses).where(eq(courses.createdByUserId, userId)),
   ]);
 
@@ -207,24 +231,70 @@ export async function GET() {
       ? await Promise.all([
           db.select().from(teeSets).where(inArray(teeSets.courseId, courseIds)),
           db.select().from(holes).where(inArray(holes.courseId, courseIds)),
-          groupIds.length > 0 ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupChallengeLinks).where(inArray(groupChallengeLinks.groupId, groupIds)) : Promise.resolve([]),
-          challengeIds.length > 0 ? db.select().from(challengeRewards).where(inArray(challengeRewards.challengeId, challengeIds)) : Promise.resolve([]),
-          sponsorIds.length > 0 ? db.select().from(challengeRewards).where(inArray(challengeRewards.sponsorId, sponsorIds)) : Promise.resolve([]),
-          sponsorIds.length > 0 ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds)) : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db
+                .select()
+                .from(groupChallengeLinks)
+                .where(inArray(groupChallengeLinks.groupId, groupIds))
+            : Promise.resolve([]),
+          challengeIds.length > 0
+            ? db
+                .select()
+                .from(challengeRewards)
+                .where(inArray(challengeRewards.challengeId, challengeIds))
+            : Promise.resolve([]),
+          sponsorIds.length > 0
+            ? db
+                .select()
+                .from(challengeRewards)
+                .where(inArray(challengeRewards.sponsorId, sponsorIds))
+            : Promise.resolve([]),
+          sponsorIds.length > 0
+            ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
+            : Promise.resolve([]),
         ])
       : await Promise.all([
           Promise.resolve([]),
           Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds)) : Promise.resolve([]),
-          groupIds.length > 0 ? db.select().from(groupChallengeLinks).where(inArray(groupChallengeLinks.groupId, groupIds)) : Promise.resolve([]),
-          challengeIds.length > 0 ? db.select().from(challengeRewards).where(inArray(challengeRewards.challengeId, challengeIds)) : Promise.resolve([]),
-          sponsorIds.length > 0 ? db.select().from(challengeRewards).where(inArray(challengeRewards.sponsorId, sponsorIds)) : Promise.resolve([]),
-          sponsorIds.length > 0 ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds)) : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db
+                .select()
+                .from(groupChallengeLinks)
+                .where(inArray(groupChallengeLinks.groupId, groupIds))
+            : Promise.resolve([]),
+          challengeIds.length > 0
+            ? db
+                .select()
+                .from(challengeRewards)
+                .where(inArray(challengeRewards.challengeId, challengeIds))
+            : Promise.resolve([]),
+          sponsorIds.length > 0
+            ? db
+                .select()
+                .from(challengeRewards)
+                .where(inArray(challengeRewards.sponsorId, sponsorIds))
+            : Promise.resolve([]),
+          sponsorIds.length > 0
+            ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
+            : Promise.resolve([]),
         ]);
 
   const payload = {
@@ -299,7 +369,10 @@ export async function GET() {
 }
 
 function orOwnerOrMember(userId: string) {
-  return or(eq(accountMemberships.ownerUserId, userId), eq(accountMemberships.memberUserId, userId));
+  return or(
+    eq(accountMemberships.ownerUserId, userId),
+    eq(accountMemberships.memberUserId, userId),
+  );
 }
 
 function uniqueById<T extends { id: string }>(rows: T[]) {

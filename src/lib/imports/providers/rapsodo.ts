@@ -1,5 +1,9 @@
 import { parseRapsodoCsv } from "@/lib/rapsodo/parser";
-import type { LaunchMonitorProvider, NormalizedMetric, ProviderInput } from "@/lib/imports/providers/types";
+import type {
+  LaunchMonitorProvider,
+  NormalizedMetric,
+  ProviderInput,
+} from "@/lib/imports/providers/types";
 
 export const rapsodoProvider: LaunchMonitorProvider = {
   providerKind: "rapsodo",
@@ -7,7 +11,11 @@ export const rapsodoProvider: LaunchMonitorProvider = {
   status: "live",
   async detect(input: ProviderInput) {
     const providerMarker = `${input.fileName ?? ""}\n${input.text.slice(0, 500)}`.toLowerCase();
-    if (providerMarker.includes("square") || providerMarker.includes("trackman") || providerMarker.includes("track man")) {
+    if (
+      providerMarker.includes("square") ||
+      providerMarker.includes("trackman") ||
+      providerMarker.includes("track man")
+    ) {
       return false;
     }
 

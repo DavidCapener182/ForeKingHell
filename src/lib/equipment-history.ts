@@ -18,7 +18,10 @@ export type NormalizedEquipmentHistory = {
   notes: string | null;
 };
 
-export function normalizeEquipmentHistory(input: EquipmentHistoryInput, now = new Date()): NormalizedEquipmentHistory {
+export function normalizeEquipmentHistory(
+  input: EquipmentHistoryInput,
+  now = new Date(),
+): NormalizedEquipmentHistory {
   const effectiveFrom = parseDate(input.effectiveFrom) ?? now;
   const effectiveTo = parseDate(input.effectiveTo);
 
@@ -37,7 +40,12 @@ export function normalizeEquipmentHistory(input: EquipmentHistoryInput, now = ne
   };
 }
 
-function normalizeDegree(value: number | null | undefined, min: number, max: number, label: string) {
+function normalizeDegree(
+  value: number | null | undefined,
+  min: number,
+  max: number,
+  label: string,
+) {
   if (value === null || value === undefined) {
     return null;
   }

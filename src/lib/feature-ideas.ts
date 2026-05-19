@@ -38,7 +38,12 @@ import {
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { areFriends, createFeedItem, ensureSocialProfileForUser, parseVisibility } from "@/lib/social";
+import {
+  areFriends,
+  createFeedItem,
+  ensureSocialProfileForUser,
+  parseVisibility,
+} from "@/lib/social";
 
 type ShotRow = typeof shots.$inferSelect;
 type ClubRow = typeof clubs.$inferSelect;
@@ -100,22 +105,114 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     selectFeaturePreferenceRows(db, userId),
     db.select().from(clubs).where(eq(clubs.userId, userId)).orderBy(clubs.type),
     db.select().from(shots).where(eq(shots.userId, userId)).orderBy(desc(shots.shotAt)).limit(1200),
-    db.select().from(stockYardages).where(eq(stockYardages.userId, userId)).orderBy(desc(stockYardages.calculatedAt)).limit(120),
-    db.select().from(sessions).where(eq(sessions.userId, userId)).orderBy(desc(sessions.date)).limit(120),
-    db.select().from(importFiles).where(eq(importFiles.userId, userId)).orderBy(desc(importFiles.createdAt)).limit(40),
-    db.select().from(importJobs).where(eq(importJobs.userId, userId)).orderBy(desc(importJobs.createdAt)).limit(40),
-    optionalFeatureRows(db.select().from(providerAccounts).where(eq(providerAccounts.userId, userId)).orderBy(desc(providerAccounts.updatedAt))),
-    optionalFeatureRows(db.select().from(providerSessions).where(eq(providerSessions.userId, userId)).orderBy(desc(providerSessions.lastSeenAt)).limit(40)),
-    optionalFeatureRows(db.select().from(shotSavedViews).where(eq(shotSavedViews.userId, userId)).orderBy(desc(shotSavedViews.pinned), desc(shotSavedViews.updatedAt))),
-    optionalFeatureRows(db.select().from(practiceSessions).where(eq(practiceSessions.userId, userId)).orderBy(desc(practiceSessions.createdAt)).limit(30)),
-    optionalFeatureRows(db.select().from(courseRecordGoals).where(eq(courseRecordGoals.userId, userId)).orderBy(desc(courseRecordGoals.updatedAt)).limit(30)),
-    optionalFeatureRows(db.select().from(courseFollows).where(eq(courseFollows.userId, userId)).orderBy(desc(courseFollows.updatedAt)).limit(30)),
-    optionalFeatureRows(db.select().from(weeklyRecaps).where(eq(weeklyRecaps.userId, userId)).orderBy(desc(weeklyRecaps.createdAt)).limit(8)),
-    db.select().from(feedItems).where(eq(feedItems.userId, userId)).orderBy(desc(feedItems.createdAt)).limit(20),
-    db.select().from(tournamentEntries).where(eq(tournamentEntries.userId, userId)).orderBy(desc(tournamentEntries.joinedAt)).limit(20),
-    db.select().from(challenges).where(eq(challenges.creatorUserId, userId)).orderBy(desc(challenges.createdAt)).limit(20),
-    db.select().from(groupMemberships).where(eq(groupMemberships.userId, userId)).orderBy(desc(groupMemberships.joinedAt)).limit(20),
-    db.select().from(courseRecords).where(eq(courseRecords.status, "active")).orderBy(desc(courseRecords.createdAt)).limit(12),
+    db
+      .select()
+      .from(stockYardages)
+      .where(eq(stockYardages.userId, userId))
+      .orderBy(desc(stockYardages.calculatedAt))
+      .limit(120),
+    db
+      .select()
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.date))
+      .limit(120),
+    db
+      .select()
+      .from(importFiles)
+      .where(eq(importFiles.userId, userId))
+      .orderBy(desc(importFiles.createdAt))
+      .limit(40),
+    db
+      .select()
+      .from(importJobs)
+      .where(eq(importJobs.userId, userId))
+      .orderBy(desc(importJobs.createdAt))
+      .limit(40),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(providerAccounts)
+        .where(eq(providerAccounts.userId, userId))
+        .orderBy(desc(providerAccounts.updatedAt)),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(providerSessions)
+        .where(eq(providerSessions.userId, userId))
+        .orderBy(desc(providerSessions.lastSeenAt))
+        .limit(40),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(shotSavedViews)
+        .where(eq(shotSavedViews.userId, userId))
+        .orderBy(desc(shotSavedViews.pinned), desc(shotSavedViews.updatedAt)),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(practiceSessions)
+        .where(eq(practiceSessions.userId, userId))
+        .orderBy(desc(practiceSessions.createdAt))
+        .limit(30),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(courseRecordGoals)
+        .where(eq(courseRecordGoals.userId, userId))
+        .orderBy(desc(courseRecordGoals.updatedAt))
+        .limit(30),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(courseFollows)
+        .where(eq(courseFollows.userId, userId))
+        .orderBy(desc(courseFollows.updatedAt))
+        .limit(30),
+    ),
+    optionalFeatureRows(
+      db
+        .select()
+        .from(weeklyRecaps)
+        .where(eq(weeklyRecaps.userId, userId))
+        .orderBy(desc(weeklyRecaps.createdAt))
+        .limit(8),
+    ),
+    db
+      .select()
+      .from(feedItems)
+      .where(eq(feedItems.userId, userId))
+      .orderBy(desc(feedItems.createdAt))
+      .limit(20),
+    db
+      .select()
+      .from(tournamentEntries)
+      .where(eq(tournamentEntries.userId, userId))
+      .orderBy(desc(tournamentEntries.joinedAt))
+      .limit(20),
+    db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.creatorUserId, userId))
+      .orderBy(desc(challenges.createdAt))
+      .limit(20),
+    db
+      .select()
+      .from(groupMemberships)
+      .where(eq(groupMemberships.userId, userId))
+      .orderBy(desc(groupMemberships.joinedAt))
+      .limit(20),
+    db
+      .select()
+      .from(courseRecords)
+      .where(eq(courseRecords.status, "active"))
+      .orderBy(desc(courseRecords.createdAt))
+      .limit(12),
     optionalFeatureRows(
       db
         .select({
@@ -129,10 +226,14 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
 
   const followedCourseIds = courseFollowRows.map((follow) => follow.courseId);
   const recordIds = recordGoalRows.map((goal) => goal.recordId);
-  const recordTargetUserIds = recordGoalRows.map((goal) => goal.targetUserId).filter((id): id is string => Boolean(id));
+  const recordTargetUserIds = recordGoalRows
+    .map((goal) => goal.targetUserId)
+    .filter((id): id is string => Boolean(id));
   const tournamentIds = tournamentEntryRows.map((entry) => entry.tournamentId);
   const groupIds = membershipRows.map((membership) => membership.groupId);
-  const friendIds = friendshipRows.map((row) => (row.userAId === userId ? row.userBId : row.userAId));
+  const friendIds = friendshipRows.map((row) =>
+    row.userAId === userId ? row.userBId : row.userAId,
+  );
   const friendAndTargetIds = [...new Set([...friendIds, ...recordTargetUserIds])];
 
   const [
@@ -147,30 +248,74 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     groupPostRows,
     groupChallengeRows,
   ] = await Promise.all([
-    followedCourseIds.length ? db.select().from(courses).where(inArray(courses.id, followedCourseIds)) : Promise.resolve([]),
     followedCourseIds.length
-      ? optionalFeatureRows(db.select().from(courseProviderAliases).where(inArray(courseProviderAliases.courseId, followedCourseIds)))
+      ? db.select().from(courses).where(inArray(courses.id, followedCourseIds))
       : Promise.resolve([]),
-    recordIds.length ? db.select().from(courseRecords).where(inArray(courseRecords.id, recordIds)) : Promise.resolve([]),
-    recordIds.length ? db.select().from(courseRecordResults).where(inArray(courseRecordResults.recordId, recordIds)) : Promise.resolve([]),
-    friendAndTargetIds.length ? db.select().from(userProfiles).where(inArray(userProfiles.userId, friendAndTargetIds)) : Promise.resolve([]),
-    tournamentIds.length ? db.select().from(tournaments).where(inArray(tournaments.id, tournamentIds)) : Promise.resolve([]),
+    followedCourseIds.length
+      ? optionalFeatureRows(
+          db
+            .select()
+            .from(courseProviderAliases)
+            .where(inArray(courseProviderAliases.courseId, followedCourseIds)),
+        )
+      : Promise.resolve([]),
+    recordIds.length
+      ? db.select().from(courseRecords).where(inArray(courseRecords.id, recordIds))
+      : Promise.resolve([]),
+    recordIds.length
+      ? db
+          .select()
+          .from(courseRecordResults)
+          .where(inArray(courseRecordResults.recordId, recordIds))
+      : Promise.resolve([]),
+    friendAndTargetIds.length
+      ? db.select().from(userProfiles).where(inArray(userProfiles.userId, friendAndTargetIds))
+      : Promise.resolve([]),
+    tournamentIds.length
+      ? db.select().from(tournaments).where(inArray(tournaments.id, tournamentIds))
+      : Promise.resolve([]),
     tournamentIds.length
       ? db
           .select()
           .from(tournamentSubmissions)
-          .where(and(inArray(tournamentSubmissions.tournamentId, tournamentIds), eq(tournamentSubmissions.userId, userId)))
+          .where(
+            and(
+              inArray(tournamentSubmissions.tournamentId, tournamentIds),
+              eq(tournamentSubmissions.userId, userId),
+            ),
+          )
       : Promise.resolve([]),
-    groupIds.length ? db.select().from(groups).where(inArray(groups.id, groupIds)) : Promise.resolve([]),
-    groupIds.length ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds)).orderBy(desc(groupPosts.createdAt)).limit(40) : Promise.resolve([]),
-    groupIds.length ? optionalFeatureRows(db.select().from(groupChallengeLinks).where(inArray(groupChallengeLinks.groupId, groupIds))) : Promise.resolve([]),
+    groupIds.length
+      ? db.select().from(groups).where(inArray(groups.id, groupIds))
+      : Promise.resolve([]),
+    groupIds.length
+      ? db
+          .select()
+          .from(groupPosts)
+          .where(inArray(groupPosts.groupId, groupIds))
+          .orderBy(desc(groupPosts.createdAt))
+          .limit(40)
+      : Promise.resolve([]),
+    groupIds.length
+      ? optionalFeatureRows(
+          db
+            .select()
+            .from(groupChallengeLinks)
+            .where(inArray(groupChallengeLinks.groupId, groupIds)),
+        )
+      : Promise.resolve([]),
   ]);
 
   const preferences = preferenceRows[0] ?? defaultFeaturePreferences(userId);
   const latestShotsByClub = groupShotsByClub(shotRows);
   const latestStockByClub = latestStockRows(stockRows);
   const importQuality = buildImportQuality(importFileRows, importJobRows, shotRows, clubRows);
-  const providerHealth = buildProviderHealth(providerAccountRows, providerSessionRows, importJobRows, importFileRows);
+  const providerHealth = buildProviderHealth(
+    providerAccountRows,
+    providerSessionRows,
+    importJobRows,
+    importFileRows,
+  );
   const bagAlerts = buildBagAlerts(clubRows, latestStockByClub, latestShotsByClub);
   const targetDistanceOptions = buildTargetDistanceOptions(clubRows, latestStockByClub);
   const savedViews = [
@@ -186,14 +331,30 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
   const clubIdentities = buildClubIdentities(clubRows, latestStockByClub, latestShotsByClub);
   const roundOpportunities = buildRoundOpportunities(sessionRows);
   const handicapConfidence = buildHandicapConfidence(sessionRows);
-  const weeklyRecap = buildWeeklyRecap({ shots: shotRows, sessions: sessionRows, recaps: recapRows, week });
+  const weeklyRecap = buildWeeklyRecap({
+    shots: shotRows,
+    sessions: sessionRows,
+    recaps: recapRows,
+    week,
+  });
   const coachConfidence = buildCoachConfidence(shotRows, clubRows, practiceRows);
   const practicePlan = buildPracticePlan(bagAlerts, clubIdentities, practiceRows);
   const friendTargets = buildFriendTargetOptions(friendIds, friendProfileRows);
-  const courseRecordGoalsData = buildCourseRecordGoals(recordGoalRows, goalRecords, goalResults, friendTargets);
+  const courseRecordGoalsData = buildCourseRecordGoals(
+    recordGoalRows,
+    goalRecords,
+    goalResults,
+    friendTargets,
+  );
   const courseFollowsData = buildCourseFollows(courseFollowRows, followedCourses, followedAliases);
-  const tournamentChecklist = buildTournamentChecklist(tournamentEntryRows, tournamentRows, tournamentSubmissionRows);
-  const roundDueReminders = tournamentChecklist.filter((item) => item.status !== "complete").slice(0, 3);
+  const tournamentChecklist = buildTournamentChecklist(
+    tournamentEntryRows,
+    tournamentRows,
+    tournamentSubmissionRows,
+  );
+  const roundDueReminders = tournamentChecklist
+    .filter((item) => item.status !== "complete")
+    .slice(0, 3);
   const waysToClimb = buildWaysToClimb({
     importQuality,
     providerHealth,
@@ -201,7 +362,13 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     tournamentChecklist,
     challengeRows,
   });
-  const social = buildSocialFeatures(preferences, profileRows[0] ?? null, feedRows, clubIdentities, goalRecords.length);
+  const social = buildSocialFeatures(
+    preferences,
+    profileRows[0] ?? null,
+    feedRows,
+    clubIdentities,
+    goalRecords.length,
+  );
   const groupDigest = buildGroupDigest(groupRows, groupPostRows, groupChallengeRows);
 
   return {
@@ -214,7 +381,10 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     targetDistanceOptions,
     savedViews,
     savedViewOptions: {
-      clubs: [...new Set(clubRows.map((club) => club.type))].map((type) => ({ value: type, label: formatClubType(type) })),
+      clubs: [...new Set(clubRows.map((club) => club.type))].map((type) => ({
+        value: type,
+        label: formatClubType(type),
+      })),
       categories: ["tee", "approach", "pitch", "chip", "full", "recovery"].map((category) => ({
         value: category,
         label: titleCase(category),
@@ -365,7 +535,7 @@ export async function upsertCourseRecordGoal(input: {
       userId,
       recordId: input.recordId,
       targetUserId,
-      targetValue: Number.isFinite(input.targetValue) ? input.targetValue ?? null : null,
+      targetValue: Number.isFinite(input.targetValue) ? (input.targetValue ?? null) : null,
       targetLabel: cleanNullable(input.targetLabel),
       notifyWhenBeaten: input.notifyWhenBeaten !== false,
       status: "active",
@@ -375,7 +545,7 @@ export async function upsertCourseRecordGoal(input: {
       target: [courseRecordGoals.userId, courseRecordGoals.recordId],
       set: {
         targetUserId,
-        targetValue: Number.isFinite(input.targetValue) ? input.targetValue ?? null : null,
+        targetValue: Number.isFinite(input.targetValue) ? (input.targetValue ?? null) : null,
         targetLabel: cleanNullable(input.targetLabel),
         notifyWhenBeaten: input.notifyWhenBeaten !== false,
         status: "active",
@@ -395,7 +565,10 @@ export async function featureCourseRecord(recordId: string) {
     .where(eq(userFeaturePreferences.userId, userId))
     .limit(1);
   const now = new Date();
-  const featuredRecordIdsJson = [recordId, ...((existing?.featuredRecordIdsJson ?? []).filter((id) => id !== recordId))].slice(0, 6);
+  const featuredRecordIdsJson = [
+    recordId,
+    ...(existing?.featuredRecordIdsJson ?? []).filter((id) => id !== recordId),
+  ].slice(0, 6);
 
   await getDb()
     .insert(userFeaturePreferences)
@@ -471,7 +644,9 @@ export async function followCourse(input: {
       .values({
         courseId: input.courseId,
         providerKind: alias.provider,
-        providerCourseId: alias.providerCourseId ?? `feature:${input.courseId}:${alias.provider}:${normaliseCourseName(alias.alias)}`,
+        providerCourseId:
+          alias.providerCourseId ??
+          `feature:${input.courseId}:${alias.provider}:${normaliseCourseName(alias.alias)}`,
         providerCourseName: alias.alias,
         providerTeeName: alias.teeName,
         normalisedName: normaliseCourseName(alias.alias),
@@ -601,7 +776,12 @@ export async function createLatestRoundRecap() {
   const [round] = await db
     .select()
     .from(sessions)
-    .where(and(eq(sessions.userId, userId), inArray(sessions.type, ["round", "course", "scorecard", "sim_round"])))
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        inArray(sessions.type, ["round", "course", "scorecard", "sim_round"]),
+      ),
+    )
     .orderBy(desc(sessions.date))
     .limit(1);
 
@@ -733,9 +913,9 @@ function isMissingFeatureTable(error: unknown) {
   const message = `${maybeError.message ?? ""} ${maybeError.cause?.message ?? ""}`;
 
   return (
-    (maybeError.code === "42P01" ||
-      maybeError.cause?.code === "42P01" ||
-      message.includes("does not exist"))
+    maybeError.code === "42P01" ||
+    maybeError.cause?.code === "42P01" ||
+    message.includes("does not exist")
   );
 }
 
@@ -766,10 +946,16 @@ function buildImportQuality(
 } {
   const latestFile = files[0] ?? null;
   const latestJob = jobs[0] ?? null;
-  const duplicateCount = files.filter((file) => file.status === "duplicate" || file.duplicateOfFileId).length;
+  const duplicateCount = files.filter(
+    (file) => file.status === "duplicate" || file.duplicateOfFileId,
+  ).length;
   const mappedClubCount = new Set(shotRows.map((shot) => shot.clubId).filter(Boolean)).size;
-  const missingCarry = shotRows.filter((shot) => shot.carryYd === null && shot.totalYd === null).length;
-  const missingLaunch = shotRows.filter((shot) => shot.launchAngleDeg === null || shot.ballSpeedMph === null).length;
+  const missingCarry = shotRows.filter(
+    (shot) => shot.carryYd === null && shot.totalYd === null,
+  ).length;
+  const missingLaunch = shotRows.filter(
+    (shot) => shot.launchAngleDeg === null || shot.ballSpeedMph === null,
+  ).length;
   const score = clamp(
     45 +
       Math.min(25, mappedClubCount * 4) +
@@ -795,14 +981,18 @@ function buildImportQuality(
       {
         title: "Clubs mapped",
         metric: `${mappedClubCount}/${Math.max(clubRows.length, mappedClubCount)}`,
-        detail: mappedClubCount ? "Shot data is tied to bag clubs." : "Map clubs after your next import.",
+        detail: mappedClubCount
+          ? "Shot data is tied to bag clubs."
+          : "Map clubs after your next import.",
         href: "/bag",
         tone: mappedClubCount ? "green" : "amber",
       },
       {
         title: "Duplicates found",
         metric: integerFormatter.format(duplicateCount),
-        detail: duplicateCount ? "Review duplicate files before scoring records." : "No duplicate files in the recent library.",
+        detail: duplicateCount
+          ? "Review duplicate files before scoring records."
+          : "No duplicate files in the recent library.",
         href: "/import",
         tone: duplicateCount ? "amber" : "green",
       },
@@ -816,7 +1006,9 @@ function buildImportQuality(
       {
         title: "Eligible events",
         metric: latestFile ? "Ready" : "Waiting",
-        detail: latestFile ? "Recent imports can feed records, tournaments and challenges." : "Import a file to unlock submissions.",
+        detail: latestFile
+          ? "Recent imports can feed records, tournaments and challenges."
+          : "Import a file to unlock submissions.",
         href: "/course-records",
         tone: latestFile ? "green" : "slate",
       },
@@ -834,19 +1026,31 @@ function buildProviderHealth(
 
   return providers.map((provider) => {
     const providerAccounts = accounts.filter((account) => account.providerKind === provider);
-    const sessionsForProvider = providerSessionRows.filter((session) => session.providerKind === provider);
+    const sessionsForProvider = providerSessionRows.filter(
+      (session) => session.providerKind === provider,
+    );
     const jobsForProvider = jobs.filter((job) => job.providerKind === provider);
-    const filesForProvider = files.filter((file) => file.source === provider || file.source.includes(provider));
+    const filesForProvider = files.filter(
+      (file) => file.source === provider || file.source.includes(provider),
+    );
     const latestError = jobsForProvider.find((job) => job.status === "failed" || job.errorMessage);
-    const lastSeen = sessionsForProvider[0]?.lastSeenAt ?? filesForProvider[0]?.createdAt ?? providerAccounts[0]?.updatedAt ?? null;
+    const lastSeen =
+      sessionsForProvider[0]?.lastSeenAt ??
+      filesForProvider[0]?.createdAt ??
+      providerAccounts[0]?.updatedAt ??
+      null;
     const live = provider === "rapsodo" || provider === "manual_csv";
-    const healthy = !latestError && (providerAccounts.length > 0 || sessionsForProvider.length > 0 || filesForProvider.length > 0);
+    const healthy =
+      !latestError &&
+      (providerAccounts.length > 0 ||
+        sessionsForProvider.length > 0 ||
+        filesForProvider.length > 0);
 
     return {
       title: providerLabel(provider),
       metric: healthy ? "Healthy" : live ? "Ready" : "Beta",
       detail: latestError
-        ? latestError.errorMessage ?? "Latest import job failed."
+        ? (latestError.errorMessage ?? "Latest import job failed.")
         : lastSeen
           ? `Last activity ${relativeDate(lastSeen)}.`
           : live
@@ -864,7 +1068,11 @@ function buildBagAlerts(
   shotsByClub: Map<string, ShotRow[]>,
 ): FeatureInsight[] {
   const stockList = clubRows
-    .map((club) => ({ club, stock: stockByClub.get(club.id), shots: shotsByClub.get(club.id) ?? [] }))
+    .map((club) => ({
+      club,
+      stock: stockByClub.get(club.id),
+      shots: shotsByClub.get(club.id) ?? [],
+    }))
     .filter((row) => row.stock?.carryMedianYd !== null)
     .sort((left, right) => (left.stock?.carryMedianYd ?? 0) - (right.stock?.carryMedianYd ?? 0));
   const alerts: FeatureInsight[] = [];
@@ -922,7 +1130,11 @@ function buildBagAlerts(
 function buildTargetDistanceOptions(clubRows: ClubRow[], stockByClub: Map<string, StockRow>) {
   const stockList = clubRows
     .map((club) => ({ club, stock: stockByClub.get(club.id) }))
-    .filter((row) => typeof row.stock?.recommendedPlayNumberYd === "number" || typeof row.stock?.carryMedianYd === "number");
+    .filter(
+      (row) =>
+        typeof row.stock?.recommendedPlayNumberYd === "number" ||
+        typeof row.stock?.carryMedianYd === "number",
+    );
   const targets = [90, 110, 125, 140, 150, 165, 180, 200, 225];
 
   return targets.map((target) => {
@@ -931,7 +1143,9 @@ function buildTargetDistanceOptions(clubRows: ClubRow[], stockByClub: Map<string
         club: row.club,
         distance: row.stock?.recommendedPlayNumberYd ?? row.stock?.carryMedianYd ?? 0,
       }))
-      .sort((left, right) => Math.abs(left.distance - target) - Math.abs(right.distance - target))[0];
+      .sort(
+        (left, right) => Math.abs(left.distance - target) - Math.abs(right.distance - target),
+      )[0];
 
     return {
       target,
@@ -968,7 +1182,9 @@ function buildClubIdentities(
         href: `/bag/${club.id}`,
       };
     })
-    .sort((left, right) => Number.parseInt(right.confidence, 10) - Number.parseInt(left.confidence, 10))
+    .sort(
+      (left, right) => Number.parseInt(right.confidence, 10) - Number.parseInt(left.confidence, 10),
+    )
     .slice(0, 6);
 }
 
@@ -999,14 +1215,18 @@ function buildRoundOpportunities(sessionRows: SessionRow[]): FeatureInsight[] {
     {
       title: "Course board eligible",
       metric: latest.courseId ? "Yes" : "Course missing",
-      detail: latest.courseId ? "Mapped course data can feed course records." : "Match this round to a course before submitting records.",
+      detail: latest.courseId
+        ? "Mapped course data can feed course records."
+        : "Match this round to a course before submitting records.",
       href: latest.courseId ? "/course-records" : `/rounds/${latest.id}`,
       tone: latest.courseId ? "green" : "amber",
     },
     {
       title: "Proof checklist",
       metric: latest.rawCsvHash ? "Import proof" : "Manual",
-      detail: latest.rawCsvHash ? "CSV hash is available for verification." : "Add scorecard evidence before competitions.",
+      detail: latest.rawCsvHash
+        ? "CSV hash is available for verification."
+        : "Add scorecard evidence before competitions.",
       href: `/rounds/${latest.id}`,
       tone: latest.rawCsvHash ? "green" : "amber",
     },
@@ -1023,7 +1243,10 @@ function buildHandicapConfidence(sessionRows: SessionRow[]) {
   return {
     title: "Handicap confidence",
     metric: `${score}/100`,
-    detail: score >= 70 ? "Estimate has enough round context to be useful." : "Add rated tee sets and more real rounds to improve confidence.",
+    detail:
+      score >= 70
+        ? "Estimate has enough round context to be useful."
+        : "Add rated tee sets and more real rounds to improve confidence.",
     href: "/handicap",
     tone: score >= 70 ? "green" : score >= 40 ? "amber" : "pink",
     checks: [
@@ -1047,7 +1270,9 @@ function buildWeeklyRecap({
   week: { start: Date; end: Date };
 }) {
   const weekShots = shotRows.filter((shot) => shot.shotAt >= week.start && shot.shotAt <= week.end);
-  const weekSessions = sessionRows.filter((session) => session.date >= week.start && session.date <= week.end);
+  const weekSessions = sessionRows.filter(
+    (session) => session.date >= week.start && session.date <= week.end,
+  );
   const bestClub = bestClubThisWeek(weekShots);
   const cached = recaps.find((recap) => sameDateKey(recap.weekStart, week.start));
   const cachedSummary = cached?.summaryJson ?? {};
@@ -1058,17 +1283,29 @@ function buildWeeklyRecap({
   return {
     title: "Weekly data recap",
     metric: `${integerFormatter.format(weekShots.length)} shots`,
-    detail: cached?.headline ?? `${integerFormatter.format(weekSessions.length)} sessions this week. Best signal: ${bestClub}.`,
+    detail:
+      cached?.headline ??
+      `${integerFormatter.format(weekSessions.length)} sessions this week. Best signal: ${bestClub}.`,
     href: "/progress",
     tone: weekShots.length >= 20 ? "green" : weekShots.length > 0 ? "amber" : "slate",
     bestClub,
-    weakestSignal: stringFromRecord(cachedSummary, "weakestSignal") ?? (weekShots.length < 20 ? "Sample size" : "Review coach deltas"),
+    weakestSignal:
+      stringFromRecord(cachedSummary, "weakestSignal") ??
+      (weekShots.length < 20 ? "Sample size" : "Review coach deltas"),
     newPbs: stringFromRecord(cachedSummary, "newPbs") ?? "PBs appear in Feed and Achievements",
-    nextGoal: stringFromRecord(cachedSummary, "nextGoal") ?? (weekShots.length >= 20 ? "Review trends" : "Import or record 20 shots"),
+    nextGoal:
+      stringFromRecord(cachedSummary, "nextGoal") ??
+      (weekShots.length >= 20 ? "Review trends" : "Import or record 20 shots"),
     coachNote:
       cachedCoachNote ??
       `${integerFormatter.format(weekSessions.length)} sessions and ${integerFormatter.format(weekShots.length)} shots are in this week's sample. Keep the next goal tight and measurable.`,
-    practicePlan: cachedPracticePlan.length ? cachedPracticePlan : ["Review the top coach signal", "Hit one measured 12-shot block", "Save the result and compare next week"],
+    practicePlan: cachedPracticePlan.length
+      ? cachedPracticePlan
+      : [
+          "Review the top coach signal",
+          "Hit one measured 12-shot block",
+          "Save the result and compare next week",
+        ],
     generatedFrom: cachedGeneratedFrom ?? "rules-live",
   };
 }
@@ -1114,7 +1351,8 @@ async function generateWeeklyRecapCopy(input: {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_WEEKLY_RECAP_MODEL ?? process.env.OPENAI_COACH_MODEL ?? "gpt-4.1-mini",
+        model:
+          process.env.OPENAI_WEEKLY_RECAP_MODEL ?? process.env.OPENAI_COACH_MODEL ?? "gpt-4.1-mini",
         input: [
           {
             role: "user",
@@ -1166,19 +1404,48 @@ function parseWeeklyRecapResponse(text: string) {
     watchOut?: unknown;
   };
   const practicePlan = Array.isArray(parsed.practicePlan)
-    ? parsed.practicePlan.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 4)
+    ? parsed.practicePlan
+        .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+        .slice(0, 4)
     : [];
 
   return {
-    headline: typeof parsed.headline === "string" && parsed.headline.trim() ? parsed.headline.trim() : "Weekly data recap",
-    coachNote: typeof parsed.coachNote === "string" && parsed.coachNote.trim() ? parsed.coachNote.trim() : "Review this week's ForeKingHell data, then keep the next practice block measurable.",
-    practicePlan: practicePlan.length ? practicePlan : ["Review the top coach signal", "Hit one measured 12-shot block", "Save the result and compare next week"],
-    watchOut: typeof parsed.watchOut === "string" && parsed.watchOut.trim() ? parsed.watchOut.trim() : "Do not overreact to a small sample.",
+    headline:
+      typeof parsed.headline === "string" && parsed.headline.trim()
+        ? parsed.headline.trim()
+        : "Weekly data recap",
+    coachNote:
+      typeof parsed.coachNote === "string" && parsed.coachNote.trim()
+        ? parsed.coachNote.trim()
+        : "Review this week's ForeKingHell data, then keep the next practice block measurable.",
+    practicePlan: practicePlan.length
+      ? practicePlan
+      : [
+          "Review the top coach signal",
+          "Hit one measured 12-shot block",
+          "Save the result and compare next week",
+        ],
+    watchOut:
+      typeof parsed.watchOut === "string" && parsed.watchOut.trim()
+        ? parsed.watchOut.trim()
+        : "Do not overreact to a small sample.",
   };
 }
 
-function buildCoachConfidence(shotRows: ShotRow[], clubRows: ClubRow[], practiceRows: Array<typeof practiceSessions.$inferSelect>) {
-  const score = clamp(Math.round((shotRows.length / 80) * 70 + (clubRows.length / 10) * 20 + Math.min(10, practiceRows.length * 2)), 0, 100);
+function buildCoachConfidence(
+  shotRows: ShotRow[],
+  clubRows: ClubRow[],
+  practiceRows: Array<typeof practiceSessions.$inferSelect>,
+) {
+  const score = clamp(
+    Math.round(
+      (shotRows.length / 80) * 70 +
+        (clubRows.length / 10) * 20 +
+        Math.min(10, practiceRows.length * 2),
+    ),
+    0,
+    100,
+  );
   const tone: FeatureInsight["tone"] = score >= 80 ? "green" : score >= 45 ? "amber" : "pink";
 
   return {
@@ -1199,14 +1466,18 @@ function buildPracticePlan(
   clubIdentities: ReturnType<typeof buildClubIdentities>,
   practiceRows: Array<typeof practiceSessions.$inferSelect>,
 ) {
-  const completedSourceIds = new Set(practiceRows.map((session) => session.sourceId).filter(Boolean));
+  const completedSourceIds = new Set(
+    practiceRows.map((session) => session.sourceId).filter(Boolean),
+  );
   const primaryClub = clubIdentities[0] ?? null;
   const alerts = bagAlerts.filter((alert) => alert.tone !== "green");
   const plan = [
     {
       id: "twenty-minute-plan",
       title: primaryClub ? `${primaryClub.name} 20-minute plan` : "20-minute baseline plan",
-      detail: primaryClub ? `Use this club for a tight stock-window drill. Dangerous miss: ${primaryClub.dangerousMiss}.` : "Record a clean 12-shot baseline.",
+      detail: primaryClub
+        ? `Use this club for a tight stock-window drill. Dangerous miss: ${primaryClub.dangerousMiss}.`
+        : "Record a clean 12-shot baseline.",
       targetShots: 12,
       focusArea: "stock-window",
       clubId: primaryClub?.clubId ?? null,
@@ -1228,7 +1499,10 @@ function buildPracticePlan(
   return plan.slice(0, 3);
 }
 
-function buildPracticeCalendar(practiceRows: Array<typeof practiceSessions.$inferSelect>, practicePlan: ReturnType<typeof buildPracticePlan>) {
+function buildPracticeCalendar(
+  practiceRows: Array<typeof practiceSessions.$inferSelect>,
+  practicePlan: ReturnType<typeof buildPracticePlan>,
+) {
   const planned = practiceRows
     .filter((session) => session.plannedAt || session.completedAt)
     .slice(0, 5)
@@ -1277,10 +1551,14 @@ function buildCourseRecordGoals(
 
   return goals.map((goal) => {
     const record = recordById.get(goal.recordId);
-    const sortedResults = (resultsByRecord.get(goal.recordId) ?? []).sort((left, right) => (left.rank ?? 999) - (right.rank ?? 999));
+    const sortedResults = (resultsByRecord.get(goal.recordId) ?? []).sort(
+      (left, right) => (left.rank ?? 999) - (right.rank ?? 999),
+    );
     const leader = sortedResults[0];
     const targetFriend = goal.targetUserId ? friendById.get(goal.targetUserId) : null;
-    const friendResult = goal.targetUserId ? sortedResults.find((result) => result.userId === goal.targetUserId) : null;
+    const friendResult = goal.targetUserId
+      ? sortedResults.find((result) => result.userId === goal.targetUserId)
+      : null;
     const targetText = targetFriend
       ? friendResult
         ? `Friend target: ${targetFriend.label} at ${friendResult.scoreLabel}.`
@@ -1292,7 +1570,10 @@ function buildCourseRecordGoals(
     return {
       title: goal.targetLabel ?? `Record goal ${record?.recordType ?? ""}`.trim(),
       metric: goal.notifyWhenBeaten ? "Notify on" : "Tracking",
-      detail: [leader ? `Current leader: ${leader.scoreLabel}.` : "No current result on this board.", targetText]
+      detail: [
+        leader ? `Current leader: ${leader.scoreLabel}.` : "No current result on this board.",
+        targetText,
+      ]
         .filter(Boolean)
         .join(" "),
       href: `/course-records/${goal.recordId}`,
@@ -1301,7 +1582,10 @@ function buildCourseRecordGoals(
   });
 }
 
-function buildFriendTargetOptions(friendIds: string[], profileRows: Array<typeof userProfiles.$inferSelect>): FriendTargetOption[] {
+function buildFriendTargetOptions(
+  friendIds: string[],
+  profileRows: Array<typeof userProfiles.$inferSelect>,
+): FriendTargetOption[] {
   const friendSet = new Set(friendIds);
   return profileRows
     .filter((profile) => friendSet.has(profile.userId))
@@ -1365,7 +1649,9 @@ function buildTournamentChecklist(
 
   return entries.slice(0, 4).map((entry) => {
     const tournament = tournamentById.get(entry.tournamentId);
-    const completedRounds = submissions.filter((submission) => submission.entryId === entry.id).length;
+    const completedRounds = submissions.filter(
+      (submission) => submission.entryId === entry.id,
+    ).length;
     const requiredRounds = tournament?.roundCount ?? 1;
     const due = Math.max(0, requiredRounds - completedRounds);
 
@@ -1383,9 +1669,7 @@ function buildTournamentChecklist(
   });
 }
 
-function practicePlanToInsight(
-  plan: ReturnType<typeof buildPracticePlan>[number],
-): FeatureInsight {
+function practicePlanToInsight(plan: ReturnType<typeof buildPracticePlan>[number]): FeatureInsight {
   return {
     title: plan.title,
     metric: plan.status === "complete" ? "Done" : "Practice",
@@ -1404,14 +1688,12 @@ function buildDashboardActions(input: {
   waysToClimb: FeatureInsight[];
 }): FeatureInsight[] {
   const rapsodo =
-    input.providerHealth.find((item) => /rapsodo/i.test(item.title)) ??
-    input.providerHealth[0];
+    input.providerHealth.find((item) => /rapsodo/i.test(item.title)) ?? input.providerHealth[0];
   const tournamentDue =
     input.tournamentChecklist.find((item) => /due/i.test(item.metric ?? "")) ??
     input.tournamentChecklist[0];
   const gapAlert =
-    input.bagAlerts.find((item) => /wide gap/i.test(item.title)) ??
-    input.bagAlerts[0];
+    input.bagAlerts.find((item) => /wide gap/i.test(item.title)) ?? input.bagAlerts[0];
   const practiceInsight = input.practicePlan[0]
     ? practicePlanToInsight(input.practicePlan[0])
     : null;
@@ -1447,7 +1729,9 @@ function buildWaysToClimb(input: {
     },
     {
       title: "Enter Wedge Window",
-      metric: input.challengeRows.some((challenge) => /wedge/i.test(challenge.title)) ? "Live" : "Open",
+      metric: input.challengeRows.some((challenge) => /wedge/i.test(challenge.title))
+        ? "Live"
+        : "Open",
       detail: "A daily micro-challenge can move your friends board without a full round.",
       href: "/challenges",
       tone: "sky",
@@ -1466,7 +1750,11 @@ function buildDailyMicroChallenges(
   practicePlan: ReturnType<typeof buildPracticePlan>,
   challengeRows: Array<typeof challenges.$inferSelect>,
 ) {
-  const liveTitles = new Set(challengeRows.filter((challenge) => challenge.status === "open").map((challenge) => challenge.title));
+  const liveTitles = new Set(
+    challengeRows
+      .filter((challenge) => challenge.status === "open")
+      .map((challenge) => challenge.title),
+  );
   return [
     {
       title: "12-shot wedge window",
@@ -1515,7 +1803,10 @@ function buildSocialFeatures(
     recordGoalCount > 0,
   ];
   const completeCount = completenessChecks.filter(Boolean).length;
-  const latestHighlight = feedRows.find((item) => item.itemType.includes("pb") || item.itemType.includes("record")) ?? feedRows[0] ?? null;
+  const latestHighlight =
+    feedRows.find((item) => item.itemType.includes("pb") || item.itemType.includes("record")) ??
+    feedRows[0] ??
+    null;
 
   return {
     autoShare: {
@@ -1626,7 +1917,9 @@ function queryStringFromFilter(value: Record<string, unknown>) {
 }
 
 function primaryMissLabel(shotRows: ShotRow[]) {
-  const sideValues = shotRows.map((shot) => shot.sideCarryYd).filter((value): value is number => typeof value === "number");
+  const sideValues = shotRows
+    .map((shot) => shot.sideCarryYd)
+    .filter((value): value is number => typeof value === "number");
   if (!sideValues.length) {
     return "Needs dispersion data";
   }
@@ -1655,12 +1948,19 @@ function clubPurpose(clubType: string, stockCarry: number | null) {
 }
 
 function isRoundLike(session: SessionRow) {
-  return session.type === "round" || session.type === "course" || session.type === "scorecard" || session.type === "sim_round";
+  return (
+    session.type === "round" ||
+    session.type === "course" ||
+    session.type === "scorecard" ||
+    session.type === "sim_round"
+  );
 }
 
 function roundScore(session: SessionRow) {
   const holes = session.scorecardJson ?? [];
-  const scores = holes.map((hole) => hole.score).filter((score): score is number => typeof score === "number");
+  const scores = holes
+    .map((hole) => hole.score)
+    .filter((score): score is number => typeof score === "number");
   return scores.length ? scores.reduce((sum, score) => sum + score, 0) : null;
 }
 
@@ -1743,7 +2043,11 @@ function readResponseText(payload: unknown) {
 }
 
 function extractJson(text: string) {
-  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "");
+  const trimmed = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "");
   const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0];
 
   if (!jsonText) {
@@ -1760,7 +2064,9 @@ function stringFromRecord(value: Record<string, unknown>, key: string) {
 
 function arrayOfStringsFromRecord(value: Record<string, unknown>, key: string) {
   const item = value[key];
-  return Array.isArray(item) ? item.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
+  return Array.isArray(item)
+    ? item.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -1792,7 +2098,12 @@ function cleanNullable(value: string | null | undefined) {
   return value?.trim() || null;
 }
 
-function boundedInteger(value: number | null | undefined, fallback: number, min: number, max: number) {
+function boundedInteger(
+  value: number | null | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+) {
   return clamp(Math.round(Number.isFinite(value) ? Number(value) : fallback), min, max);
 }
 

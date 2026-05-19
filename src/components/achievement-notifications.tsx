@@ -6,9 +6,7 @@ import { Award, ExternalLink, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  ACHIEVEMENT_UNLOCK_FLASH_COOKIE,
-} from "@/lib/achievements/notification-cookie";
+import { ACHIEVEMENT_UNLOCK_FLASH_COOKIE } from "@/lib/achievements/notification-cookie";
 import { achievementUnlockHref } from "@/lib/alert-links";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import { cn } from "@/lib/utils";
@@ -31,22 +29,15 @@ type Props = {
   initialNotifications: AchievementUnlockNotification[];
 };
 
-export function notifyAchievementUnlocks(
-  notifications: AchievementUnlockNotification[],
-) {
+export function notifyAchievementUnlocks(notifications: AchievementUnlockNotification[]) {
   if (typeof window === "undefined" || notifications.length === 0) {
     return;
   }
 
-  window.dispatchEvent(
-    new CustomEvent(ACHIEVEMENT_UNLOCK_EVENT, { detail: notifications }),
-  );
+  window.dispatchEvent(new CustomEvent(ACHIEVEMENT_UNLOCK_EVENT, { detail: notifications }));
 }
 
-export function AchievementNotificationProvider({
-  children,
-  initialNotifications,
-}: Props) {
+export function AchievementNotificationProvider({ children, initialNotifications }: Props) {
   const [toasts, setToasts] = useState<AchievementToast[]>([]);
   const seenNotificationKeys = useRef(new Set<string>());
   const initialSignature = useMemo(
@@ -54,33 +45,30 @@ export function AchievementNotificationProvider({
     [initialNotifications],
   );
 
-  const pushNotifications = useCallback(
-    (notifications: AchievementUnlockNotification[]) => {
-      const freshNotifications = notifications.filter((notification) => {
-        const key = notificationKey(notification);
+  const pushNotifications = useCallback((notifications: AchievementUnlockNotification[]) => {
+    const freshNotifications = notifications.filter((notification) => {
+      const key = notificationKey(notification);
 
-        if (seenNotificationKeys.current.has(key)) {
-          return false;
-        }
-
-        seenNotificationKeys.current.add(key);
-        return true;
-      });
-
-      if (freshNotifications.length === 0) {
-        return;
+      if (seenNotificationKeys.current.has(key)) {
+        return false;
       }
 
-      const toast: AchievementToast = {
-        id: `${Date.now()}-${freshNotifications.map((notification) => notification.achievementId).join("-")}`,
-        notifications: freshNotifications.slice(0, MAX_ITEMS_PER_TOAST),
-        totalCount: freshNotifications.length,
-      };
+      seenNotificationKeys.current.add(key);
+      return true;
+    });
 
-      setToasts((current) => [toast, ...current].slice(0, MAX_VISIBLE_TOASTS));
-    },
-    [],
-  );
+    if (freshNotifications.length === 0) {
+      return;
+    }
+
+    const toast: AchievementToast = {
+      id: `${Date.now()}-${freshNotifications.map((notification) => notification.achievementId).join("-")}`,
+      notifications: freshNotifications.slice(0, MAX_ITEMS_PER_TOAST),
+      totalCount: freshNotifications.length,
+    };
+
+    setToasts((current) => [toast, ...current].slice(0, MAX_VISIBLE_TOASTS));
+  }, []);
 
   useEffect(() => {
     if (initialNotifications.length === 0) {
@@ -155,7 +143,9 @@ function AchievementToastCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">
-            {toast.totalCount === 1 ? "Achievement unlocked" : `${toast.totalCount} achievements unlocked`}
+            {toast.totalCount === 1
+              ? "Achievement unlocked"
+              : `${toast.totalCount} achievements unlocked`}
           </p>
           <p className="mt-0.5 text-xs leading-5 text-slate-300">
             XP has been added and the latest unlocks are in Achievements.

@@ -15,7 +15,9 @@ describe("course image helpers", () => {
   });
 
   it("builds exact Google image queries for course logos", () => {
-    expect(buildCourseLogoSearchQueries({ name: "Aintree Golf Centre", country: "England" })).toEqual([
+    expect(
+      buildCourseLogoSearchQueries({ name: "Aintree Golf Centre", country: "England" }),
+    ).toEqual([
       '"Aintree Golf Centre" England golf course logo',
       '"Aintree Golf Centre" England logo',
       '"Aintree Golf Centre" golf club crest',
@@ -63,5 +65,4 @@ describe("course image helpers", () => {
       ),
     ).toBeLessThan(6);
   });
-
 });

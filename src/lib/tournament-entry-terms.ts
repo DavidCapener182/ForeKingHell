@@ -25,5 +25,8 @@ export function hasAcceptedTournamentEntryTerms(
 }
 
 export function hasCurrentTournamentEntryTermsMetadata(metadata: Record<string, unknown>) {
-  return metadata.entryTermsAccepted === true && metadata.entryTermsVersion === TOURNAMENT_ENTRY_TERMS_VERSION;
+  return (
+    metadata.entryTermsAccepted === true &&
+    metadata.entryTermsVersion === TOURNAMENT_ENTRY_TERMS_VERSION
+  );
 }

@@ -77,10 +77,11 @@ export class RapsodoCloudClient {
   private readonly fetchFn: typeof fetch;
 
   constructor(options: RapsodoCloudClientOptions = {}) {
-    this.apiBaseUrl = (options.apiBaseUrl ?? process.env.RAPSODO_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(
-      /\/$/,
-      "",
-    );
+    this.apiBaseUrl = (
+      options.apiBaseUrl ??
+      process.env.RAPSODO_API_BASE_URL ??
+      DEFAULT_API_BASE_URL
+    ).replace(/\/$/, "");
     this.fetchFn = options.fetchFn ?? fetch;
   }
 
@@ -125,7 +126,9 @@ export class RapsodoCloudClient {
       throw authFailure.reason;
     }
 
-    const sessions = results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
+    const sessions = results.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    );
 
     if (sessions.length === 0 && results.every((result) => result.status === "rejected")) {
       const firstFailure = results.find((result) => result.status === "rejected");
@@ -251,10 +254,16 @@ export class RapsodoCloudClient {
         ...(list.sessionModes ? { sessionModes: list.sessionModes } : {}),
       },
     });
-    const payload = await this.requestJson<unknown>(`session/user/list?${params}`, { method: "GET" }, token);
+    const payload = await this.requestJson<unknown>(
+      `session/user/list?${params}`,
+      { method: "GET" },
+      token,
+    );
     const rows = firstArray(payload, ["data", "sessions", "items", "rows"]);
 
-    return rows.map((row) => normalizeSession(row, "practice", list.mode)).filter(isRapsodoCloudSession);
+    return rows
+      .map((row) => normalizeSession(row, "practice", list.mode))
+      .filter(isRapsodoCloudSession);
   }
 
   private async listSimulationSessions(
@@ -276,7 +285,9 @@ export class RapsodoCloudClient {
     );
     const rows = firstArray(payload, ["simulations", "data", "sessions", "items", "rows"]);
 
-    return rows.map((row) => normalizeSession(row, "simulation", list.mode)).filter(isRapsodoCloudSession);
+    return rows
+      .map((row) => normalizeSession(row, "simulation", list.mode))
+      .filter(isRapsodoCloudSession);
   }
 
   private async switchTokenIfAvailable(token: string, profile: Record<string, unknown> | null) {
@@ -379,7 +390,10 @@ async function toRapsodoError(response: Response) {
 
   return new RapsodoCloudError(message, {
     status: response.status,
-    code: response.status === 401 || response.status === 403 ? "RAPSODO_AUTH_EXPIRED" : "RAPSODO_REQUEST_FAILED",
+    code:
+      response.status === 401 || response.status === 403
+        ? "RAPSODO_AUTH_EXPIRED"
+        : "RAPSODO_REQUEST_FAILED",
   });
 }
 
@@ -404,20 +418,43 @@ function normalizeSession(
     return null;
   }
 
-  const providerSessionId = stringValue(value, ["id", "_id", "sessionId", "sessionid", "simulationId", "simulationid"]);
+  const providerSessionId = stringValue(value, [
+    "id",
+    "_id",
+    "sessionId",
+    "sessionid",
+    "simulationId",
+    "simulationid",
+  ]);
 
   if (!providerSessionId) {
     return null;
   }
 
-  const providerSessionMode = fallbackMode ?? stringValue(value, ["gameType", "mode", "sessionMode"]);
+  const providerSessionMode =
+    fallbackMode ?? stringValue(value, ["gameType", "mode", "sessionMode"]);
   const providerSessionType = stringValue(value, ["type", "sessionType", "sessionTypeName"]);
   const courseName = stringValue(value, ["courseName", "coursename", "course", "golfCourseName"]);
   const title =
-    stringValue(value, ["customName", "customname", "name", "title", "sessionName", "displayName"]) ||
+    stringValue(value, [
+      "customName",
+      "customname",
+      "name",
+      "title",
+      "sessionName",
+      "displayName",
+    ]) ||
     courseName ||
     `${providerSessionMode ?? providerKind} session`;
-  const dateIso = dateIsoValue(value, ["startDate", "startdate", "createdAt", "createdat", "date", "sessionDate", "updatedAt"]);
+  const dateIso = dateIsoValue(value, [
+    "startDate",
+    "startdate",
+    "createdAt",
+    "createdat",
+    "date",
+    "sessionDate",
+    "updatedAt",
+  ]);
 
   return {
     providerKind,
@@ -426,7 +463,13 @@ function normalizeSession(
     providerSessionMode,
     title,
     dateIso,
-    shotCount: numberValue(value, ["shotCount", "shotcount", "shotsCount", "totalShots", "numberOfShots"]),
+    shotCount: numberValue(value, [
+      "shotCount",
+      "shotcount",
+      "shotsCount",
+      "totalShots",
+      "numberOfShots",
+    ]),
     courseName,
     raw: value,
   };
@@ -443,7 +486,14 @@ function normalizeBagClub(value: unknown): RapsodoBagClub | null {
     return null;
   }
 
-  const clubTypeRaw = stringValue(value, ["clubCode", "code", "clubType", "type", "clubName", "name"]);
+  const clubTypeRaw = stringValue(value, [
+    "clubCode",
+    "code",
+    "clubType",
+    "type",
+    "clubName",
+    "name",
+  ]);
   const clubType = normalizeClubType(clubTypeRaw);
   const clubBrand = stringValue(value, ["brandName", "brand", "clubBrand"]);
   const clubModel = stringValue(value, ["modelName", "model", "clubModel"]);
@@ -578,7 +628,12 @@ function numberValue(value: unknown, keys: string[]) {
 
   for (const key of keys) {
     const candidate = value[key];
-    const parsed = typeof candidate === "number" ? candidate : typeof candidate === "string" ? Number(candidate) : NaN;
+    const parsed =
+      typeof candidate === "number"
+        ? candidate
+        : typeof candidate === "string"
+          ? Number(candidate)
+          : NaN;
 
     if (Number.isFinite(parsed)) {
       return parsed;

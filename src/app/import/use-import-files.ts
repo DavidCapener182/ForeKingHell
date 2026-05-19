@@ -3,18 +3,29 @@
 import { useMemo, useState } from "react";
 
 import type { UploadedCsv } from "@/app/import/import-types";
-import { type DistanceUnit, type RapsodoColumnMapping, parseRapsodoCsv } from "@/lib/rapsodo/parser";
+import {
+  type DistanceUnit,
+  type RapsodoColumnMapping,
+  parseRapsodoCsv,
+} from "@/lib/rapsodo/parser";
 
 export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: RapsodoColumnMapping) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedCsv[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [readProgress, setReadProgress] = useState<{ fileName: string; loaded: number; total: number } | null>(null);
+  const [readProgress, setReadProgress] = useState<{
+    fileName: string;
+    loaded: number;
+    total: number;
+  } | null>(null);
 
   const parsedFiles = useMemo(
     () =>
       uploadedFiles.map((file) => ({
         ...file,
-        parsed: parseRapsodoCsv(file.rawCsvText, { fallbackDistanceUnit: distanceUnit, columnMapping }),
+        parsed: parseRapsodoCsv(file.rawCsvText, {
+          fallbackDistanceUnit: distanceUnit,
+          columnMapping,
+        }),
       })),
     [columnMapping, distanceUnit, uploadedFiles],
   );
@@ -22,7 +33,11 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
   async function readSelectedFiles(files: FileList | File[]) {
     const csvFiles = Array.from(files).filter((file) => {
       const name = file.name.toLowerCase();
-      return name.endsWith(".csv") || file.type === "text/csv" || file.type === "application/vnd.ms-excel";
+      return (
+        name.endsWith(".csv") ||
+        file.type === "text/csv" ||
+        file.type === "application/vnd.ms-excel"
+      );
     });
 
     if (csvFiles.length === 0) {
@@ -74,7 +89,10 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
   };
 }
 
-function readFileAsTextWithProgress(file: File, onProgress: (loaded: number, total: number) => void) {
+function readFileAsTextWithProgress(
+  file: File,
+  onProgress: (loaded: number, total: number) => void,
+) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
 

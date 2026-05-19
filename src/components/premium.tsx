@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  ChevronDown,
-  SlidersHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -101,9 +96,7 @@ export function PageHeader({
 
   return (
     <>
-      <header
-        className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}
-      >
+      <header className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <div className="min-w-0">
             {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
@@ -137,7 +130,10 @@ export function PageHeader({
               <span aria-hidden />
             )}
             {actions ? (
-              <div data-primary-action className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
+              <div
+                data-primary-action
+                className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3"
+              >
                 {actions}
               </div>
             ) : null}
@@ -145,15 +141,11 @@ export function PageHeader({
         ) : null}
       </header>
 
-      <header
-        className={cn("desktop-page-header hidden sm:block", className)}
-      >
+      <header className={cn("desktop-page-header hidden sm:block", className)}>
         <div
           className={cn(
             "grid gap-4",
-            visual
-              ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center"
-              : "",
+            visual ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center" : "",
           )}
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -164,9 +156,7 @@ export function PageHeader({
                   {title}
                 </h1>
                 {description ? (
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {description}
-                  </p>
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
                 ) : null}
               </div>
             </div>
@@ -177,7 +167,9 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="hidden h-28 overflow-hidden rounded-lg lg:block" data-compact-media>{visual}</div>
+            <div className="hidden h-28 overflow-hidden rounded-lg lg:block" data-compact-media>
+              {visual}
+            </div>
           ) : null}
         </div>
         {metrics?.length ? (
@@ -191,9 +183,7 @@ export function PageHeader({
                   {metric.value}
                 </p>
                 {metric.detail ? (
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {metric.detail}
-                  </p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p>
                 ) : null}
               </div>
             ))}
@@ -251,15 +241,16 @@ export function MobileCompactPageHeader({
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {metricLabel}
               </p>
-              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
-                {metricValue}
-              </p>
+              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">{metricValue}</p>
             </div>
           ) : (
             <span aria-hidden />
           )}
           {action ? (
-            <div data-primary-action className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3">
+            <div
+              data-primary-action
+              className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3"
+            >
               {action}
             </div>
           ) : null}
@@ -316,7 +307,10 @@ export function StickyMobileAction({
         className,
       )}
     >
-      <div data-sticky-mobile-action className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+      <div
+        data-sticky-mobile-action
+        className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+      >
         {children}
       </div>
     </div>
@@ -378,10 +372,7 @@ export function MobileFilterSheet({
             <SlidersHorizontal className="size-4" aria-hidden />
             {label}
             {activeCount > 0 ? (
-              <Badge
-                variant="secondary"
-                className="ml-1 rounded-full px-1.5 py-0 text-[11px]"
-              >
+              <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">
                 {activeCount}
               </Badge>
             ) : null}
@@ -390,9 +381,7 @@ export function MobileFilterSheet({
         <DrawerContent className="max-h-[86vh]">
           <DrawerHeader className="text-left">
             <DrawerTitle>{label}</DrawerTitle>
-            <DrawerDescription>
-              Refine the current view without leaving the page.
-            </DrawerDescription>
+            <DrawerDescription>Refine the current view without leaving the page.</DrawerDescription>
           </DrawerHeader>
           <ScrollArea className="overflow-y-auto px-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">
             {children}
@@ -454,15 +443,9 @@ export function MobileHorizontalRail({
       {title || action ? (
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
-            {title ? (
-              <h2 className="text-base font-semibold tracking-normal">
-                {title}
-              </h2>
-            ) : null}
+            {title ? <h2 className="text-base font-semibold tracking-normal">{title}</h2> : null}
             {description ? (
-              <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
-                {description}
-              </p>
+              <p className="mt-0.5 text-sm leading-5 text-muted-foreground">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -519,12 +502,7 @@ export function MobileBentoSummary({
                 <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {item.label}
                 </p>
-                <span
-                  className={cn(
-                    "size-2 rounded-full ring-4",
-                    compactToneClasses[tone],
-                  )}
-                />
+                <span className={cn("size-2 rounded-full ring-4", compactToneClasses[tone])} />
               </div>
               <p
                 className={cn(
@@ -541,21 +519,14 @@ export function MobileBentoSummary({
               ) : null}
             </div>
             {item.action ? (
-              <div className="[&_[data-slot=button]]:min-h-10">
-                {item.action}
-              </div>
+              <div className="[&_[data-slot=button]]:min-h-10">{item.action}</div>
             ) : null}
           </div>
         );
 
         if (item.href) {
           return (
-            <Link
-              key={index}
-              href={item.href}
-              prefetch={false}
-              className="block"
-            >
+            <Link key={index} href={item.href} prefetch={false} className="block">
               {content}
             </Link>
           );
@@ -594,26 +565,17 @@ export function MobileAccordionSection({
     >
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold tracking-normal">
-            {title}
-          </span>
+          <span className="block truncate text-sm font-semibold tracking-normal">{title}</span>
           {description ? (
-            <span className="block truncate text-xs text-muted-foreground">
-              {description}
-            </span>
+            <span className="block truncate text-xs text-muted-foreground">{description}</span>
           ) : null}
         </span>
         <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
           {count ? <span>{count}</span> : null}
-          <ChevronDown
-            className="size-4 transition-transform group-open:rotate-180"
-            aria-hidden
-          />
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
         </span>
       </summary>
-      <div className={cn("border-t border-slate-200 p-3", contentClassName)}>
-        {children}
-      </div>
+      <div className={cn("border-t border-slate-200 p-3", contentClassName)}>{children}</div>
     </details>
   );
 }
@@ -635,19 +597,13 @@ export function MobileCurrentItemCard({
 }) {
   return (
     <section className={cn("grid gap-3 sm:hidden", className)}>
-      {selector ? (
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">{selector}</div>
-      ) : null}
+      {selector ? <div className="-mx-1 overflow-x-auto px-1 pb-1">{selector}</div> : null}
       <div className="premium-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold tracking-normal">
-              {title}
-            </h2>
+            <h2 className="truncate text-lg font-semibold tracking-normal">{title}</h2>
             {subtitle ? (
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                {subtitle}
-              </p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">{subtitle}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -688,9 +644,7 @@ export function TopThreeDisclosure({
             {moreLabel}
           </summary>
           <div className="contents">
-            {hiddenItems.map((item, index) =>
-              render(item, index + initialCount),
-            )}
+            {hiddenItems.map((item, index) => render(item, index + initialCount))}
           </div>
         </details>
       </div>
@@ -765,16 +719,11 @@ export function MetricCard({
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
         <div className="space-y-1">
           <CardDescription>{label}</CardDescription>
-          <CardTitle className="text-2xl font-semibold tracking-normal">
-            {value}
-          </CardTitle>
+          <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>
         </div>
         {Icon ? (
           <div
-            className={cn(
-              "grid size-8 place-items-center rounded-md ring-1",
-              toneClasses[tone],
-            )}
+            className={cn("grid size-8 place-items-center rounded-md ring-1", toneClasses[tone])}
           >
             <Icon className="size-5" />
           </div>
@@ -879,12 +828,8 @@ export function InsightBlock({
         </p>
         <span className={cn("size-2 rounded-full ring-4", toneClasses[tone])} />
       </div>
-      <p className="mt-3 text-lg font-semibold tracking-normal sm:text-xl">
-        {value}
-      </p>
-      {detail ? (
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
-      ) : null}
+      <p className="mt-3 text-lg font-semibold tracking-normal sm:text-xl">{value}</p>
+      {detail ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
     </div>
   );
 }
@@ -919,10 +864,7 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
   const content = (
     <>
       <span
-        className={cn(
-          "mt-1.5 size-2.5 shrink-0 rounded-full ring-4",
-          compactToneClasses[tone],
-        )}
+        className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-4", compactToneClasses[tone])}
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -932,9 +874,7 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
           {item.value}
         </span>
         {item.detail ? (
-          <span className="mt-0.5 block truncate text-sm text-muted-foreground">
-            {item.detail}
-          </span>
+          <span className="mt-0.5 block truncate text-sm text-muted-foreground">{item.detail}</span>
         ) : null}
       </span>
       {item.href ? (
@@ -957,18 +897,11 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
         title={title}
         aria-label={
           item.ariaLabel ??
-          [
-            stringValue(item.label),
-            stringValue(item.value),
-            stringValue(item.detail),
-          ]
+          [stringValue(item.label), stringValue(item.value), stringValue(item.detail)]
             .filter(Boolean)
             .join(". ")
         }
-        className={cn(
-          baseClassName,
-          "group transition-colors hover:bg-emerald-50/70",
-        )}
+        className={cn(baseClassName, "group transition-colors hover:bg-emerald-50/70")}
       >
         {content}
       </Link>
@@ -1010,28 +943,16 @@ export function CompactLinkGrid({
             href={item.href}
             prefetch={false}
             title={item.description}
-            aria-label={
-              item.description
-                ? `${item.title}: ${item.description}`
-                : item.title
-            }
+            aria-label={item.description ? `${item.title}: ${item.description}` : item.title}
             className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-slate-200/70 px-3 py-2 transition-colors hover:bg-emerald-50/70 sm:border-r"
           >
-            <span
-              className={cn(
-                "grid size-8 shrink-0 place-items-center rounded-md",
-                item.accent,
-              )}
-            >
+            <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", item.accent)}>
               <item.icon className="size-4" aria-hidden />
             </span>
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate font-semibold">{item.title}</span>
               {item.metric ? (
-                <Badge
-                  variant="outline"
-                  className="shrink-0 bg-white/70 px-1.5 py-0 text-[11px]"
-                >
+                <Badge variant="outline" className="shrink-0 bg-white/70 px-1.5 py-0 text-[11px]">
                   {item.metric}
                 </Badge>
               ) : null}
@@ -1054,18 +975,10 @@ function readoutKey(item: CompactReadoutItem, index: number) {
 }
 
 function stringValue(value: ReactNode) {
-  return typeof value === "string" || typeof value === "number"
-    ? String(value)
-    : undefined;
+  return typeof value === "string" || typeof value === "number" ? String(value) : undefined;
 }
 
-export function PageActions({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function PageActions({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(
@@ -1078,13 +991,7 @@ export function PageActions({
   );
 }
 
-export function FilterPanel({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function FilterPanel({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <DataPanel className={className}>
       <CardContent className="pt-4">
@@ -1112,13 +1019,9 @@ export function DataTableFrame({
           className,
         )}
       >
-        <ScrollArea className="w-full">
-          {children}
-        </ScrollArea>
+        <ScrollArea className="w-full">{children}</ScrollArea>
       </div>
-      {mobile ? (
-        <div className="min-w-0 overflow-hidden sm:hidden">{mobile}</div>
-      ) : null}
+      {mobile ? <div className="min-w-0 overflow-hidden sm:hidden">{mobile}</div> : null}
     </>
   );
 }
@@ -1135,9 +1038,7 @@ export function MobileDataList({
   const hasChildren = Children.count(children) > 0;
 
   return (
-    <div className={cn("grid min-w-0 gap-3", className)}>
-      {hasChildren ? children : empty}
-    </div>
+    <div className={cn("grid min-w-0 gap-3", className)}>{hasChildren ? children : empty}</div>
   );
 }
 
@@ -1162,21 +1063,17 @@ export function MobileDataCard({
         <div className="min-w-0">
           <p className="truncate font-semibold tracking-normal">{title}</p>
           {subtitle ? (
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {subtitle}
-            </p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{subtitle}</p>
           ) : null}
         </div>
-        {action ? (
-          <div className="max-w-[42%] shrink-0 overflow-hidden">{action}</div>
-        ) : null}
+        {action ? <div className="max-w-[42%] shrink-0 overflow-hidden">{action}</div> : null}
       </div>
       {children ? <div className="mt-3 grid min-w-0 gap-2">{children}</div> : null}
     </>
   );
 
   const cardClassName = cn(
-        "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
+    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
     className,
   );
 
@@ -1208,9 +1105,7 @@ export function DataPair({
       )}
     >
       <span className="min-w-0 truncate text-muted-foreground">{label}</span>
-      <span className="min-w-0 truncate text-right font-semibold tabular-nums">
-        {value}
-      </span>
+      <span className="min-w-0 truncate text-right font-semibold tabular-nums">{value}</span>
     </div>
   );
 }
@@ -1237,12 +1132,6 @@ export function EmptyState({
   );
 }
 
-export function ChartFrame({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function ChartFrame({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("chart-frame", className)}>{children}</div>;
 }

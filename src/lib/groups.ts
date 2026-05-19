@@ -15,7 +15,12 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { createFeedItem, ensureSocialProfileForUser, parseVisibility, type SocialVisibility } from "@/lib/social";
+import {
+  createFeedItem,
+  ensureSocialProfileForUser,
+  parseVisibility,
+  type SocialVisibility,
+} from "@/lib/social";
 
 export const groupTypes = [
   "friends",
@@ -103,13 +108,19 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     .from(groups)
     .where(
       memberGroupIds.length > 0
-        ? or(eq(groups.visibility, "public"), eq(groups.ownerUserId, userId), inArray(groups.id, memberGroupIds))
+        ? or(
+            eq(groups.visibility, "public"),
+            eq(groups.ownerUserId, userId),
+            inArray(groups.id, memberGroupIds),
+          )
         : or(eq(groups.visibility, "public"), eq(groups.ownerUserId, userId)),
     )
     .orderBy(desc(groups.createdAt))
     .limit(80);
   const hydrated = await hydrateGroupList(rows, memberships);
-  const invitePreview = inviteCode ? await getGroupInvitePreview(inviteCode, userId, memberships) : null;
+  const invitePreview = inviteCode
+    ? await getGroupInvitePreview(inviteCode, userId, memberships)
+    : null;
 
   return {
     profile: {
@@ -128,7 +139,11 @@ export async function getGroupsPageData(inviteCode?: string | null) {
 export async function getGroupDetailData(slug: string): Promise<GroupDetailData | null> {
   const userId = await requireCurrentUserId();
   await ensureSocialProfileForUser(userId);
-  const [group] = await getDb().select().from(groups).where(eq(groups.slug, normalizeGroupSlug(slug))).limit(1);
+  const [group] = await getDb()
+    .select()
+    .from(groups)
+    .where(eq(groups.slug, normalizeGroupSlug(slug)))
+    .limit(1);
 
   if (!group || !(await canViewGroup(userId, group))) {
     return null;
@@ -146,7 +161,9 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .orderBy(desc(groupPosts.pinned), desc(groupPosts.createdAt))
     .limit(40);
   const profileMap = await profilesByUserId([...new Set(postRows.map((post) => post.userId))]);
-  const memberProfileMap = await profilesByUserId([...new Set(memberships.map((membership) => membership.userId))]);
+  const memberProfileMap = await profilesByUserId([
+    ...new Set(memberships.map((membership) => membership.userId)),
+  ]);
   const challengeRows = await getDb()
     .select({
       id: challenges.id,
@@ -160,7 +177,9 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .where(eq(groupChallengeLinks.groupId, group.id))
     .orderBy(desc(groupChallengeLinks.createdAt))
     .limit(12);
-  const viewerMembership = memberships.find((membership) => membership.userId === userId && membership.status === "active");
+  const viewerMembership = memberships.find(
+    (membership) => membership.userId === userId && membership.status === "active",
+  );
 
   return {
     group: {
@@ -328,17 +347,22 @@ export async function createGroupPost(groupId: string, title: string | null, bod
     throw new Error("Post body cannot be empty.");
   }
 
-  await getDb().insert(groupPosts).values({
-    groupId: group.id,
-    userId,
-    title: nullableClean(title)?.slice(0, 180) ?? null,
-    body: cleanBody.slice(0, 2000),
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(groupPosts)
+    .values({
+      groupId: group.id,
+      userId,
+      title: nullableClean(title)?.slice(0, 180) ?? null,
+      body: cleanBody.slice(0, 2000),
+      updatedAt: new Date(),
+    });
   revalidateGroups(group.slug);
 }
 
-async function hydrateGroupList(groupRows: GroupRow[], memberships: GroupMembershipRow[]): Promise<GroupListItem[]> {
+async function hydrateGroupList(
+  groupRows: GroupRow[],
+  memberships: GroupMembershipRow[],
+): Promise<GroupListItem[]> {
   if (groupRows.length === 0) {
     return [];
   }
@@ -348,7 +372,9 @@ async function hydrateGroupList(groupRows: GroupRow[], memberships: GroupMembers
     getDb()
       .select({ groupId: groupMemberships.groupId, value: sql<number>`count(*)::int` })
       .from(groupMemberships)
-      .where(and(inArray(groupMemberships.groupId, groupIds), eq(groupMemberships.status, "active")))
+      .where(
+        and(inArray(groupMemberships.groupId, groupIds), eq(groupMemberships.status, "active")),
+      )
       .groupBy(groupMemberships.groupId),
     getDb()
       .select({ groupId: groupPosts.groupId, value: sql<number>`count(*)::int` })
@@ -386,7 +412,11 @@ async function getGroupInvitePreview(
   userId: string,
   memberships: GroupMembershipRow[],
 ): Promise<GroupInvitePreview | null> {
-  const [group] = await getDb().select().from(groups).where(eq(groups.inviteCode, cleanRequired(inviteCode, ""))).limit(1);
+  const [group] = await getDb()
+    .select()
+    .from(groups)
+    .where(eq(groups.inviteCode, cleanRequired(inviteCode, "")))
+    .limit(1);
 
   if (!group) {
     return null;
@@ -405,13 +435,20 @@ async function getGroupInvitePreview(
     description: item.description,
     visibility: item.visibility,
     memberCount: item.memberCount,
-    viewerRole: memberships.find((membership) => membership.userId === userId && membership.groupId === group.id)?.role ?? null,
+    viewerRole:
+      memberships.find(
+        (membership) => membership.userId === userId && membership.groupId === group.id,
+      )?.role ?? null,
     inviteCode: group.inviteCode ?? inviteCode,
   };
 }
 
 async function canViewGroup(userId: string, group: GroupRow) {
-  return group.visibility === "public" || group.ownerUserId === userId || (await isGroupMember(userId, group.id));
+  return (
+    group.visibility === "public" ||
+    group.ownerUserId === userId ||
+    (await isGroupMember(userId, group.id))
+  );
 }
 
 async function getVisibleGroupForUser(groupId: string, userId: string) {
@@ -423,7 +460,13 @@ async function isGroupMember(userId: string, groupId: string) {
   const [row] = await getDb()
     .select({ id: groupMemberships.id })
     .from(groupMemberships)
-    .where(and(eq(groupMemberships.userId, userId), eq(groupMemberships.groupId, groupId), eq(groupMemberships.status, "active")))
+    .where(
+      and(
+        eq(groupMemberships.userId, userId),
+        eq(groupMemberships.groupId, groupId),
+        eq(groupMemberships.status, "active"),
+      ),
+    )
     .limit(1);
   return Boolean(row);
 }
@@ -451,7 +494,11 @@ async function uniqueGroupSlug(name: string) {
 
   for (let index = 0; index < 12; index += 1) {
     const slug = index === 0 ? base : `${base.slice(0, 68)}-${index}`;
-    const [existing] = await getDb().select({ id: groups.id }).from(groups).where(eq(groups.slug, slug)).limit(1);
+    const [existing] = await getDb()
+      .select({ id: groups.id })
+      .from(groups)
+      .where(eq(groups.slug, slug))
+      .limit(1);
 
     if (!existing) {
       return slug;

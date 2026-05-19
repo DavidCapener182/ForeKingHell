@@ -21,7 +21,12 @@ describe("course dedupe helpers", () => {
   it("dedupes Google-backed variants by place id before name", () => {
     const rows = [
       { googlePlaceId: "place-1", id: "manual-name", name: "Quail Hollow Club", score: 1 },
-      { googlePlaceId: "place-1", id: "google-name", name: "Quail Hollow Club Charlotte", score: 10 },
+      {
+        googlePlaceId: "place-1",
+        id: "google-name",
+        name: "Quail Hollow Club Charlotte",
+        score: 10,
+      },
     ];
 
     expect(dedupeCoursesByName(rows, (row) => row.score)).toEqual([rows[1]]);

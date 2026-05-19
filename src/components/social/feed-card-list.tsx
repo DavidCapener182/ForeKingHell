@@ -86,7 +86,9 @@ export function FeedCardList({
     <div className={compact ? "grid gap-3" : "grid gap-4"}>
       {compact
         ? items.map((item) => <FeedItemCard key={item.id} item={item} compact />)
-        : groupItemsByDayAndUser(items).map((group) => <FeedDayDigestCard key={group.key} group={group} />)}
+        : groupItemsByDayAndUser(items).map((group) => (
+            <FeedDayDigestCard key={group.key} group={group} />
+          ))}
     </div>
   );
 }
@@ -99,7 +101,9 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
   }
 
   const achievements = group.items.filter((item) => item.itemType === "achievement_unlock");
-  const nonAchievementHighlights = group.items.filter((item) => item.itemType !== "achievement_unlock");
+  const nonAchievementHighlights = group.items.filter(
+    (item) => item.itemType !== "achievement_unlock",
+  );
   const highlights = nonAchievementHighlights.slice(0, 2);
   const multipleProfiles = new Set(group.items.map((item) => item.userId)).size > 1;
   const visibility = groupedVisibility(group.items);
@@ -137,7 +141,11 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
             </h2>
           </div>
           <Badge variant="outline" className="h-fit gap-1">
-            {visibility === "mixed" ? <Users className="size-3" /> : <VisibilityIcon visibility={visibility} />}
+            {visibility === "mixed" ? (
+              <Users className="size-3" />
+            ) : (
+              <VisibilityIcon visibility={visibility} />
+            )}
             {visibility === "mixed" ? "Mixed" : titleCase(visibility)}
           </Badge>
         </header>
@@ -199,7 +207,9 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
               {achievements.map((item) => (
                 <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-sm">
                   <p className="line-clamp-1 font-medium">{achievementTitle(item)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.metricValue ?? "Achievement"} · {item.context ?? "Verified activity"}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {item.metricValue ?? "Achievement"} · {item.context ?? "Verified activity"}
+                  </p>
                   <ActivityActions item={item} showCommentThread={false} />
                 </div>
               ))}
@@ -264,9 +274,17 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
                 {item.profile.displayName}
               </Link>
               <span className="text-xs text-muted-foreground">@{item.profile.username}</span>
-              <span className="text-xs text-muted-foreground">{dateFormatter.format(item.createdAt)}</span>
+              <span className="text-xs text-muted-foreground">
+                {dateFormatter.format(item.createdAt)}
+              </span>
             </div>
-            <h2 className={compact ? "mt-1 text-sm font-medium leading-5" : "mt-1 text-lg font-semibold leading-6"}>
+            <h2
+              className={
+                compact
+                  ? "mt-1 text-sm font-medium leading-5"
+                  : "mt-1 text-lg font-semibold leading-6"
+              }
+            >
               {item.headline}
             </h2>
           </div>
@@ -283,10 +301,14 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
                 <BarChart3 className="size-3.5" />
                 {item.metricLabel ?? "Metric"}
               </p>
-              <p className="text-3xl font-semibold tracking-normal text-[#050505]">{item.metricValue}</p>
+              <p className="text-3xl font-semibold tracking-normal text-[#050505]">
+                {item.metricValue}
+              </p>
             </div>
           ) : null}
-          {item.context ? <p className="text-sm leading-6 text-muted-foreground">{item.context}</p> : null}
+          {item.context ? (
+            <p className="text-sm leading-6 text-muted-foreground">{item.context}</p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="gap-1">
               <ShieldCheck className="size-3" />
@@ -320,7 +342,9 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
             <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
             {item.proofUrl ? (
               <Button asChild variant="ghost" size="sm">
-                <Link href={item.proofUrl} prefetch={false}>Open related</Link>
+                <Link href={item.proofUrl} prefetch={false}>
+                  Open related
+                </Link>
               </Button>
             ) : null}
           </div>
@@ -336,7 +360,12 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               ) : null}
               <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <Textarea name="body" placeholder="Write a comment" rows={2} className="min-h-10 resize-none rounded-lg bg-white" />
+                <Textarea
+                  name="body"
+                  placeholder="Write a comment"
+                  rows={2}
+                  className="min-h-10 resize-none rounded-lg bg-white"
+                />
                 <Button type="submit" variant="outline">
                   <MessageCircle className="size-4" />
                   Post
@@ -361,7 +390,9 @@ function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: 
             {item.headline}
           </p>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {item.metricValue ? `${item.metricLabel ?? "Metric"} ${item.metricValue}` : feedTypeLabel(item.itemType)}
+            {item.metricValue
+              ? `${item.metricLabel ?? "Metric"} ${item.metricValue}`
+              : feedTypeLabel(item.itemType)}
             {item.context ? ` · ${item.context}` : ""}
           </p>
         </div>
@@ -399,7 +430,12 @@ function DigestComments({ items }: { items: FeedItemView[] }) {
             </div>
             <form action={addFeedCommentAction} className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto]">
               <input type="hidden" name="feedItemId" value={item.id} />
-              <Textarea name="body" placeholder="Write a comment" rows={2} className="min-h-10 resize-none rounded-xl bg-white" />
+              <Textarea
+                name="body"
+                placeholder="Write a comment"
+                rows={2}
+                className="min-h-10 resize-none rounded-xl bg-white"
+              />
               <Button type="submit" variant="outline">
                 <MessageCircle className="size-4" />
                 Post
@@ -420,7 +456,9 @@ function CommentCard({
   compact?: boolean;
 }) {
   return (
-    <div className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-white ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}>
+    <div
+      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-white ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}
+    >
       <SocialAvatar
         displayName={comment.profile.displayName}
         username={comment.profile.username}
@@ -431,7 +469,11 @@ function CommentCard({
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="font-medium">{comment.profile.displayName}</p>
-          <form action={comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction}>
+          <form
+            action={
+              comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction
+            }
+          >
             <input type="hidden" name="commentId" value={comment.id} />
             <Button type="submit" variant={comment.viewerLiked ? "secondary" : "ghost"} size="xs">
               <ThumbsUp className="size-3" />
@@ -486,7 +528,11 @@ function ActivityActions({
               ) : null}
               <form action={addFeedCommentAction} className="grid gap-2 sm:grid-cols-[1fr_auto]">
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <Input name="body" placeholder="Write a comment" className="h-8 rounded-lg bg-white text-xs" />
+                <Input
+                  name="body"
+                  placeholder="Write a comment"
+                  className="h-8 rounded-lg bg-white text-xs"
+                />
                 <Button type="submit" variant="outline" size="sm">
                   Post
                 </Button>
@@ -514,7 +560,9 @@ function ActivityActions({
 
 function FeedItemControls({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
   const isOwnItem = item.profile.relationship === "self";
-  const panelClassName = compact ? "mt-2 grid w-72 gap-2 rounded-lg border bg-[#F5F6F4] p-2" : "mt-2 grid w-80 max-w-full gap-3 rounded-lg border bg-[#F5F6F4] p-3";
+  const panelClassName = compact
+    ? "mt-2 grid w-72 gap-2 rounded-lg border bg-[#F5F6F4] p-2"
+    : "mt-2 grid w-80 max-w-full gap-3 rounded-lg border bg-[#F5F6F4] p-3";
 
   return (
     <details className="group w-fit">
@@ -523,18 +571,25 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
           compact ? "h-6 px-2 text-xs" : "h-7 px-2.5 text-[0.8rem]"
         }`}
       >
-          <ShieldCheck className="size-4 text-slate-600" />
-          Controls
+        <ShieldCheck className="size-4 text-slate-600" />
+        Controls
       </summary>
       <div className={panelClassName}>
         <p className="px-1 text-xs font-semibold text-slate-600">Feed controls</p>
         {isOwnItem ? (
           <>
-            <form action={updateFeedItemVisibilityAction} className="grid gap-2 rounded-lg bg-white p-2">
+            <form
+              action={updateFeedItemVisibilityAction}
+              className="grid gap-2 rounded-lg bg-white p-2"
+            >
               <input type="hidden" name="feedItemId" value={item.id} />
               <label className="grid gap-1 text-xs font-medium">
                 <span>Edit visibility</span>
-                <select name="visibility" defaultValue={item.visibility} className="h-8 rounded-lg border bg-white px-2 text-xs">
+                <select
+                  name="visibility"
+                  defaultValue={item.visibility}
+                  className="h-8 rounded-lg border bg-white px-2 text-xs"
+                >
                   {socialVisibilityOptions.map((option) => (
                     <option key={option} value={option}>
                       {titleCase(option)}
@@ -542,7 +597,9 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
                   ))}
                 </select>
               </label>
-              <Button type="submit" variant="outline" size="sm">Save visibility</Button>
+              <Button type="submit" variant="outline" size="sm">
+                Save visibility
+              </Button>
             </form>
             <form action={deleteFeedItemAction} className="rounded-lg bg-white p-2">
               <input type="hidden" name="feedItemId" value={item.id} />
@@ -577,9 +634,17 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
             </form>
           </>
         )}
-        <form action={reportFeedItemAction} className="grid gap-2 rounded-lg bg-white p-2" data-feed-report-form>
+        <form
+          action={reportFeedItemAction}
+          className="grid gap-2 rounded-lg bg-white p-2"
+          data-feed-report-form
+        >
           <input type="hidden" name="feedItemId" value={item.id} />
-          <select name="reason" defaultValue="feed_report" className="h-8 rounded-lg border bg-white px-2 text-xs">
+          <select
+            name="reason"
+            defaultValue="feed_report"
+            className="h-8 rounded-lg border bg-white px-2 text-xs"
+          >
             <option value="feed_report">Report post</option>
             <option value="suspicious_result">Suspicious result</option>
             <option value="spam">Spam</option>
@@ -638,7 +703,9 @@ function groupItemsByDayAndUser(items: FeedItemView[]): FeedDayGroup[] {
 
   return [...grouped.entries()]
     .map(([key, groupItems]) => {
-      const sortedItems = [...groupItems].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const sortedItems = [...groupItems].sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+      );
       const firstItem = sortedItems[0];
 
       return {
@@ -651,7 +718,10 @@ function groupItemsByDayAndUser(items: FeedItemView[]): FeedDayGroup[] {
         typeSummaries: summarizeItemTypes(sortedItems),
       };
     })
-    .sort((left, right) => (right.items[0]?.createdAt.getTime() ?? 0) - (left.items[0]?.createdAt.getTime() ?? 0));
+    .sort(
+      (left, right) =>
+        (right.items[0]?.createdAt.getTime() ?? 0) - (left.items[0]?.createdAt.getTime() ?? 0),
+    );
 }
 
 function summarizeItemTypes(items: FeedItemView[]) {

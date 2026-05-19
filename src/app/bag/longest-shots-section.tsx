@@ -51,9 +51,7 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
                 <Trophy className="size-5 text-amber-500" />
                 Longest shots
               </CardTitle>
-              <CardDescription>
-                Best total-distance shot recorded for each club.
-              </CardDescription>
+              <CardDescription>Best total-distance shot recorded for each club.</CardDescription>
             </div>
             <Badge variant="outline">{shots.length} clubs</Badge>
           </div>
@@ -108,7 +106,9 @@ function LongestShotButton({
         {formatClubType(shot.clubType).slice(0, 2)}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold text-foreground">{formatClubType(shot.clubType)}</span>
+        <span className="block truncate font-semibold text-foreground">
+          {formatClubType(shot.clubType)}
+        </span>
         <span className="block truncate text-xs text-muted-foreground">{shot.brandModel}</span>
       </span>
       <span className="shrink-0 text-right">
@@ -169,7 +169,14 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             `}
           </style>
 
-          <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+          <image
+            href="/assets/hole-350-aerial.jpg"
+            x="0"
+            y="0"
+            width="644"
+            height="1024"
+            preserveAspectRatio="xMidYMid slice"
+          />
           <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.08" />
 
           {[50, 100, 150, 200, 250, 300, 350].map((yard) => {
@@ -184,7 +191,13 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
                   strokeDasharray="10 10"
                   strokeWidth="2.5"
                 />
-                <text x={Math.min(592, geometry.tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
+                <text
+                  x={Math.min(592, geometry.tee.x + arcWidth + 12)}
+                  y={y + 12}
+                  fill="#f8fafc"
+                  fontSize="18"
+                  fontWeight="700"
+                >
                   {yard}
                 </text>
               </g>
@@ -209,14 +222,58 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             strokeLinecap="round"
             opacity="0.78"
           />
-          <circle cx={geometry.tee.x} cy={geometry.tee.y} r="8" fill="#f8fafc" stroke="#111827" strokeWidth="3" />
-          <circle cx={geometry.carry.x} cy={geometry.carry.y} r="10" fill={shot.accent} stroke="#111827" strokeWidth="3" />
-          <circle cx={geometry.total.x} cy={geometry.total.y} r="15" fill="none" stroke={shot.accent} strokeWidth="4" className="longest-shot-pulse" />
-          <circle cx={geometry.total.x} cy={geometry.total.y} r="7" fill="#f8fafc" stroke={shot.accent} strokeWidth="3" />
+          <circle
+            cx={geometry.tee.x}
+            cy={geometry.tee.y}
+            r="8"
+            fill="#f8fafc"
+            stroke="#111827"
+            strokeWidth="3"
+          />
+          <circle
+            cx={geometry.carry.x}
+            cy={geometry.carry.y}
+            r="10"
+            fill={shot.accent}
+            stroke="#111827"
+            strokeWidth="3"
+          />
+          <circle
+            cx={geometry.total.x}
+            cy={geometry.total.y}
+            r="15"
+            fill="none"
+            stroke={shot.accent}
+            strokeWidth="4"
+            className="longest-shot-pulse"
+          />
+          <circle
+            cx={geometry.total.x}
+            cy={geometry.total.y}
+            r="7"
+            fill="#f8fafc"
+            stroke={shot.accent}
+            strokeWidth="3"
+          />
 
-          <Label x={geometry.carryLabel.x} y={geometry.carryLabel.y} title="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
-          <Label x={geometry.totalLabel.x} y={geometry.totalLabel.y} title="Total" value={`${formatMetric(shot.totalYd ?? shot.carryYd)} yd`} />
-          <Label x={geometry.sideLabel.x} y={geometry.sideLabel.y} title="Offline" value={formatSide(shot.sideCarryYd)} />
+          <Label
+            x={geometry.carryLabel.x}
+            y={geometry.carryLabel.y}
+            title="Carry"
+            value={`${formatMetric(shot.carryYd)} yd`}
+          />
+          <Label
+            x={geometry.totalLabel.x}
+            y={geometry.totalLabel.y}
+            title="Total"
+            value={`${formatMetric(shot.totalYd ?? shot.carryYd)} yd`}
+          />
+          <Label
+            x={geometry.sideLabel.x}
+            y={geometry.sideLabel.y}
+            title="Offline"
+            value={formatSide(shot.sideCarryYd)}
+          />
         </svg>
       </div>
 
@@ -236,12 +293,28 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
         <FlightProfile shot={shot} />
 
         <div className="grid grid-cols-2 gap-2">
-          <SimulationMetric icon={Target} label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
-          <SimulationMetric icon={Activity} label="Launch/loft" value={`${formatMetric(shot.launchAngleDeg)} deg`} />
+          <SimulationMetric
+            icon={Target}
+            label="Carry"
+            value={`${formatMetric(shot.carryYd)} yd`}
+          />
+          <SimulationMetric
+            icon={Activity}
+            label="Launch/loft"
+            value={`${formatMetric(shot.launchAngleDeg)} deg`}
+          />
           <SimulationMetric icon={Gauge} label="Apex" value={`${formatMetric(shot.apexFt)} ft`} />
           <SimulationMetric icon={Wind} label="Curve" value={formatSide(shot.sideCarryYd)} />
-          <SimulationMetric icon={Gauge} label="Ball speed" value={`${formatMetric(shot.ballSpeedMph)} mph`} />
-          <SimulationMetric icon={Activity} label="Spin" value={`${formatMetric(shot.spinRate)} rpm`} />
+          <SimulationMetric
+            icon={Gauge}
+            label="Ball speed"
+            value={`${formatMetric(shot.ballSpeedMph)} mph`}
+          />
+          <SimulationMetric
+            icon={Activity}
+            label="Spin"
+            value={`${formatMetric(shot.spinRate)} rpm`}
+          />
         </div>
       </div>
     </div>
@@ -301,17 +374,7 @@ function SimulationMetric({
   );
 }
 
-function Label({
-  x,
-  y,
-  title,
-  value,
-}: {
-  x: number;
-  y: number;
-  title: string;
-  value: string;
-}) {
+function Label({ x, y, title, value }: { x: number; y: number; title: string; value: string }) {
   return (
     <g>
       <rect x={x} y={y} width="104" height="44" rx="8" fill="#0f172a" opacity="0.82" />
@@ -335,7 +398,11 @@ function buildShotGeometry(shot: LongestShot) {
   const tee = { x: 322, y: 936 };
   const carry = pointForShot(carryDistance, carrySide, maxDistance, playHeight, tee);
   const total = pointForShot(totalDistance, side, maxDistance, playHeight, tee);
-  const curve = clamp((shot.spinAxis ?? side) * 1.2 + (shot.launchDirectionDeg ?? 0) * 7, -150, 150);
+  const curve = clamp(
+    (shot.spinAxis ?? side) * 1.2 + (shot.launchDirectionDeg ?? 0) * 7,
+    -150,
+    150,
+  );
   const controlOne = { x: tee.x + curve * 0.25, y: tee.y - playHeight * 0.42 };
   const controlTwo = { x: total.x - curve * 0.42, y: total.y + playHeight * 0.3 };
   const labelDirection = side >= 0 ? 1 : -1;
@@ -348,13 +415,25 @@ function buildShotGeometry(shot: LongestShot) {
     playHeight,
     rollControl: labelDirection * 34,
     tracerPath: `M ${tee.x} ${tee.y} C ${controlOne.x} ${controlOne.y} ${controlTwo.x} ${controlTwo.y} ${carry.x} ${carry.y}`,
-    carryLabel: { x: clamp(carry.x - labelDirection * 126, 16, 524), y: clamp(carry.y - 70, 16, 964) },
-    totalLabel: { x: clamp(total.x + labelDirection * 22, 16, 524), y: clamp(total.y - 20, 16, 964) },
+    carryLabel: {
+      x: clamp(carry.x - labelDirection * 126, 16, 524),
+      y: clamp(carry.y - 70, 16, 964),
+    },
+    totalLabel: {
+      x: clamp(total.x + labelDirection * 22, 16, 524),
+      y: clamp(total.y - 20, 16, 964),
+    },
     sideLabel: { x: clamp(total.x - 52, 16, 524), y: clamp(total.y + 36, 16, 964) },
   };
 }
 
-function pointForShot(distance: number, side: number, maxDistance: number, playHeight: number, tee: { x: number; y: number }) {
+function pointForShot(
+  distance: number,
+  side: number,
+  maxDistance: number,
+  playHeight: number,
+  tee: { x: number; y: number },
+) {
   return {
     x: tee.x + (side / 90) * 158,
     y: tee.y - (distance / maxDistance) * playHeight,

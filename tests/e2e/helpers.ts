@@ -7,7 +7,10 @@ const axePath = path.join(process.cwd(), "node_modules", "axe-core", "axe.min.js
 export const authStorageState = process.env.PLAYWRIGHT_AUTH_STATE;
 
 export function skipWhenNoAuth() {
-  test.skip(!authStorageState || !existsSync(authStorageState), "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.");
+  test.skip(
+    !authStorageState || !existsSync(authStorageState),
+    "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.",
+  );
 }
 
 export async function expectPageReady(page: Page, expectedText: RegExp | string) {
@@ -22,11 +25,18 @@ export async function injectAxe(page: Page) {
 export async function expectNoCriticalAxeViolations(page: Page) {
   await injectAxe(page);
   const violations = await page.evaluate(async () => {
-    const axe = (window as typeof window & {
-      axe: {
-        run: (context?: unknown, options?: unknown) => Promise<{ violations: Array<{ id: string; impact: string | null; nodes: unknown[] }> }>;
-      };
-    }).axe;
+    const axe = (
+      window as typeof window & {
+        axe: {
+          run: (
+            context?: unknown,
+            options?: unknown,
+          ) => Promise<{
+            violations: Array<{ id: string; impact: string | null; nodes: unknown[] }>;
+          }>;
+        };
+      }
+    ).axe;
     const result = await axe.run(document, {
       resultTypes: ["violations"],
       rules: {

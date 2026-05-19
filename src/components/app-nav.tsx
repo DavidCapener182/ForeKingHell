@@ -49,8 +49,7 @@ const navGroups = [
         href: "/dashboard",
         label: "Dashboard",
         icon: Gauge,
-        isActive: (pathname: string) =>
-          pathname === "/" || pathname === "/dashboard",
+        isActive: (pathname: string) => pathname === "/" || pathname === "/dashboard",
       },
       {
         href: "/progress",
@@ -377,9 +376,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
             {desktopNavGroups.map((group) => {
               const items = group.items;
-              const groupActive = items.some((item) =>
-                item.isActive(pathname),
-              );
+              const groupActive = items.some((item) => item.isActive(pathname));
               const menuId = `desktop-nav-${group.label.toLowerCase()}`;
 
               return (
@@ -422,9 +419,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
                         >
                           <Icon
                             className={
-                              active
-                                ? "size-4 text-[#0B7A3B]"
-                                : "size-4 text-muted-foreground"
+                              active ? "size-4 text-[#0B7A3B]" : "size-4 text-muted-foreground"
                             }
                           />
                           {item.label}
@@ -453,10 +448,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
                       : "h-14 rounded-none"
                   }
                 >
-                  <Link
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                  >
+                  <Link href={item.href} aria-current={active ? "page" : undefined}>
                     <Icon className="size-4" />
                     {item.label}
                   </Link>
@@ -483,11 +475,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>
           </Link>
-          <form
-            action="/auth/sign-out"
-            method="post"
-            className="hidden sm:block"
-          >
+          <form action="/auth/sign-out" method="post" className="hidden sm:block">
             <Button
               type="submit"
               variant="ghost"
@@ -527,10 +515,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
         </Link>
       </div>
 
-      <nav
-        aria-label="Mobile primary"
-        className="fixed inset-x-0 bottom-0 z-50 sm:hidden"
-      >
+      <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-50 sm:hidden">
         <div className="grid grid-cols-5 border-t border-[#E5E7EB] bg-white px-2 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;

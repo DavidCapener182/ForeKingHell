@@ -165,7 +165,9 @@ function buildCoachDrillChallenge(
   dateKey: string,
   index: number,
 ): CoachDrillChallenge {
-  const slug = `${dateKey}-${card.clubType}-${card.issue}`.replace(/[^a-z0-9-]/gi, "-").toLowerCase();
+  const slug = `${dateKey}-${card.clubType}-${card.issue}`
+    .replace(/[^a-z0-9-]/gi, "-")
+    .toLowerCase();
   const template = drillChallengeTemplate(card);
 
   return {
@@ -194,7 +196,8 @@ function drillChallengeTemplate(card: CoachClubCard) {
   if (card.issue === "data") {
     return {
       title: `${card.clubName} baseline builder`,
-      detail: "Hit normal stock swings and keep the sample clean: no chips, recoveries, or obvious warm-up swings.",
+      detail:
+        "Hit normal stock swings and keep the sample clean: no chips, recoveries, or obvious warm-up swings.",
       target: "Record 12 full stock shots.",
       winCondition: "Win it by importing a clean 12-shot sample for this club.",
       completionTarget: 12,
@@ -244,7 +247,8 @@ function drillChallengeTemplate(card: CoachClubCard) {
     return {
       title: `${card.clubName} delivery window`,
       detail: card.drill,
-      target: "10 balls. Score one point when path is inside +/-5 degrees with a predictable start line.",
+      target:
+        "10 balls. Score one point when path is inside +/-5 degrees with a predictable start line.",
       winCondition: "Win it with 7 or more delivery-window shots.",
       completionTarget: 10,
       winRule: { kind: "delivery-window" as const, target: 7 },
@@ -266,15 +270,24 @@ function primaryIssue(analytics: ClubAnalytics): CoachFocusArea {
     return "data";
   }
 
-  if ((analytics.accuracy.bigMissRate ?? 0) >= 30 || (analytics.accuracy.playableShotRate ?? 100) < 55) {
+  if (
+    (analytics.accuracy.bigMissRate ?? 0) >= 30 ||
+    (analytics.accuracy.playableShotRate ?? 100) < 55
+  ) {
     return "direction";
   }
 
-  if ((analytics.launch.launchWindowScore ?? 100) < 60 || (analytics.launch.lowFlightRate ?? 0) >= 25) {
+  if (
+    (analytics.launch.launchWindowScore ?? 100) < 60 ||
+    (analytics.launch.lowFlightRate ?? 0) >= 25
+  ) {
     return "launch";
   }
 
-  if ((analytics.strike.lowSmashRate ?? 0) >= 25 || (analytics.strike.speedLeakageRate ?? 0) >= 20) {
+  if (
+    (analytics.strike.lowSmashRate ?? 0) >= 25 ||
+    (analytics.strike.speedLeakageRate ?? 0) >= 20
+  ) {
     return "strike";
   }
 
@@ -287,7 +300,10 @@ function primaryIssue(analytics: ClubAnalytics): CoachFocusArea {
     return "delivery";
   }
 
-  if ((analytics.distance.carrySpreadYd ?? 0) >= 18 || analytics.consistency.carryConsistencyScore < 62) {
+  if (
+    (analytics.distance.carrySpreadYd ?? 0) >= 18 ||
+    analytics.consistency.carryConsistencyScore < 62
+  ) {
     return "distance";
   }
 
@@ -356,7 +372,8 @@ function buildSessionPlan(clubCards: CoachClubCard[]): CoachSessionBlock[] {
   return [
     {
       title: "Warm-up calibration",
-      detail: "Hit five easy wedges, five mid-irons, then three normal tee-club swings. Do not chase speed.",
+      detail:
+        "Hit five easy wedges, five mid-irons, then three normal tee-club swings. Do not chase speed.",
       duration: "10 min",
       tone: "slate",
     },
@@ -377,7 +394,10 @@ function buildSessionPlan(clubCards: CoachClubCard[]): CoachSessionBlock[] {
   ];
 }
 
-function buildTrainingImpact(clubs: ProgressClub[], clubCards: CoachClubCard[]): CoachTrainingImpact[] {
+function buildTrainingImpact(
+  clubs: ProgressClub[],
+  clubCards: CoachClubCard[],
+): CoachTrainingImpact[] {
   const clubsById = new Map(clubs.map((club) => [club.clubId, club]));
 
   return clubCards
@@ -436,7 +456,10 @@ function buildTrainingImpactCard(club: ProgressClub, card: CoachClubCard): Coach
   };
 }
 
-function impactStatus(issue: CoachFocusArea, analytics: ClubAnalytics): CoachTrainingImpact["status"] {
+function impactStatus(
+  issue: CoachFocusArea,
+  analytics: ClubAnalytics,
+): CoachTrainingImpact["status"] {
   const previous = analytics.progress.previousSession;
   const latest = analytics.progress.latestSession;
   const delta = analytics.progress.lastSessionDelta;
@@ -539,7 +562,11 @@ function impactHeadline(card: CoachClubCard, status: CoachTrainingImpact["status
   return `${card.clubName} is mixed after the latest session`;
 }
 
-function impactDetail(card: CoachClubCard, status: CoachTrainingImpact["status"], delta: NonNullable<ClubAnalytics["progress"]["lastSessionDelta"]>) {
+function impactDetail(
+  card: CoachClubCard,
+  status: CoachTrainingImpact["status"],
+  delta: NonNullable<ClubAnalytics["progress"]["lastSessionDelta"]>,
+) {
   if (card.issue === "direction") {
     const offline = delta.offlineDeltaYd;
     return status === "better"
@@ -711,7 +738,10 @@ function launchTone(analytics: ClubAnalytics) {
   return movement < 0 ? "green" : "amber";
 }
 
-function compareHigherIsBetter(value: number | null, threshold: number): CoachTrainingImpact["status"] {
+function compareHigherIsBetter(
+  value: number | null,
+  threshold: number,
+): CoachTrainingImpact["status"] {
   if (value === null || Math.abs(value) < threshold) {
     return "mixed";
   }
@@ -719,7 +749,10 @@ function compareHigherIsBetter(value: number | null, threshold: number): CoachTr
   return value > 0 ? "better" : "worse";
 }
 
-function compareLowerIsBetter(value: number | null, threshold: number): CoachTrainingImpact["status"] {
+function compareLowerIsBetter(
+  value: number | null,
+  threshold: number,
+): CoachTrainingImpact["status"] {
   if (value === null || Math.abs(value) < threshold) {
     return "mixed";
   }

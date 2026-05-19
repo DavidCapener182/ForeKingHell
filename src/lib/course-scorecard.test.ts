@@ -9,7 +9,9 @@ import type { ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 
 describe("parseScorecardText", () => {
   it("parses comma-separated hole, par, yardage rows", () => {
-    const result = parseScorecardText(["Hole,Par,Yards,Name", "1,4,423,Opening", "2,5,532"].join("\n"));
+    const result = parseScorecardText(
+      ["Hole,Par,Yards,Name", "1,4,423,Opening", "2,5,532"].join("\n"),
+    );
 
     expect(result.holes).toEqual([
       { holeNumber: 1, par: 4, yards: 423, name: "Opening" },

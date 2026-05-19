@@ -15,12 +15,35 @@ describe("Stripe webhook handling", () => {
     const payload = JSON.stringify({ id: "evt_test", type: "checkout.session.completed" });
     const secret = "whsec_test";
     const timestamp = 1_700_000_000;
-    const signature = createHmac("sha256", secret).update(`${timestamp}.${payload}`, "utf8").digest("hex");
+    const signature = createHmac("sha256", secret)
+      .update(`${timestamp}.${payload}`, "utf8")
+      .digest("hex");
     const header = `t=${timestamp},v1=${signature}`;
 
-    expect(verifyStripeSignature({ payload, signatureHeader: header, webhookSecret: secret, nowSeconds: timestamp })).toBe(true);
-    expect(verifyStripeSignature({ payload: `${payload} `, signatureHeader: header, webhookSecret: secret, nowSeconds: timestamp })).toBe(false);
-    expect(verifyStripeSignature({ payload, signatureHeader: header, webhookSecret: secret, nowSeconds: timestamp + 301 })).toBe(false);
+    expect(
+      verifyStripeSignature({
+        payload,
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(true);
+    expect(
+      verifyStripeSignature({
+        payload: `${payload} `,
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: timestamp,
+      }),
+    ).toBe(false);
+    expect(
+      verifyStripeSignature({
+        payload,
+        signatureHeader: header,
+        webhookSecret: secret,
+        nowSeconds: timestamp + 301,
+      }),
+    ).toBe(false);
   });
 
   it("maps subscription updates to customers, subscriptions, and active entitlements", async () => {
@@ -63,15 +86,29 @@ describe("Stripe webhook handling", () => {
       cancelAtPeriodEnd: false,
     });
     expect(store.entitlements.get(userId)?.map((row) => row.entitlementKey)).toEqual(
-      expect.arrayContaining(["can_use_ai_coach", "friend_comparison_insights", "device_import_trackman"]),
+      expect.arrayContaining([
+        "can_use_ai_coach",
+        "friend_comparison_insights",
+        "device_import_trackman",
+      ]),
     );
   });
 
   it("revokes plan entitlements when subscriptions are deleted", async () => {
     const store = new FakeBillingWebhookStore();
     const userId = randomUUID();
-    await store.upsertBillingCustomer({ userId, stripeCustomerId: "cus_deleted", email: "player@example.test" });
-    await store.replacePlanEntitlements({ userId, planKey: "plus", active: true, expiresAt: null, source: "plan" });
+    await store.upsertBillingCustomer({
+      userId,
+      stripeCustomerId: "cus_deleted",
+      email: "player@example.test",
+    });
+    await store.replacePlanEntitlements({
+      userId,
+      planKey: "plus",
+      active: true,
+      expiresAt: null,
+      source: "plan",
+    });
 
     const event: StripeWebhookEvent = {
       type: "customer.subscription.deleted",
@@ -100,7 +137,11 @@ describe("Stripe webhook handling", () => {
   it("marks failed invoice subscriptions past_due and removes access", async () => {
     const store = new FakeBillingWebhookStore();
     const userId = randomUUID();
-    await store.upsertBillingCustomer({ userId, stripeCustomerId: "cus_failed", email: "player@example.test" });
+    await store.upsertBillingCustomer({
+      userId,
+      stripeCustomerId: "cus_failed",
+      email: "player@example.test",
+    });
     await store.upsertSubscription({
       userId,
       billingCustomerId: "customer-row",
@@ -112,7 +153,13 @@ describe("Stripe webhook handling", () => {
       cancelAtPeriodEnd: false,
       metadataJson: {},
     });
-    await store.replacePlanEntitlements({ userId, planKey: "coach", active: true, expiresAt: null, source: "plan" });
+    await store.replacePlanEntitlements({
+      userId,
+      planKey: "coach",
+      active: true,
+      expiresAt: null,
+      source: "plan",
+    });
 
     const result = await handleStripeWebhookEvent(
       {
@@ -158,7 +205,11 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
   >();
   entitlements = new Map<string, StoredEntitlement[]>();
 
-  async upsertBillingCustomer(input: { userId: string; stripeCustomerId: string | null; email: string | null }) {
+  async upsertBillingCustomer(input: {
+    userId: string;
+    stripeCustomerId: string | null;
+    email: string | null;
+  }) {
     const id = input.stripeCustomerId ?? `cus_${input.userId}`;
     this.customers.set(id, {
       id,
@@ -186,7 +237,11 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
     this.subscriptions.set(input.stripeSubscriptionId, input);
   }
 
-  async markSubscriptionStatus(input: { stripeSubscriptionId: string; status: string; metadataJson: Record<string, unknown> }) {
+  async markSubscriptionStatus(input: {
+    stripeSubscriptionId: string;
+    status: string;
+    metadataJson: Record<string, unknown>;
+  }) {
     const subscription = this.subscriptions.get(input.stripeSubscriptionId);
 
     if (subscription) {

@@ -23,13 +23,7 @@ import { notifyAchievementUnlocks } from "@/components/achievement-notifications
 import { EmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -41,12 +35,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { MobileFilterSheet } from "@/components/premium";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { achievementDomId } from "@/lib/alert-links";
 import type { AchievementPageData, AchievementView } from "@/lib/achievements/service";
 import type { AchievementTier } from "@/lib/achievements/types";
@@ -150,7 +139,20 @@ const monthNames = [
   "November",
   "December",
 ];
-const shortMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const shortMonthNames = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const weekdayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const shortWeekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -188,7 +190,8 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
   const [query, setQuery] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileAchievementTab>("next");
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
-  const focusedAchievementId = focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
+  const focusedAchievementId =
+    focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<string | null>(initialCalendarDay);
   const [calendarMonth, setCalendarMonth] = useState(() =>
     monthKeyFromDayKey(initialCalendarDay ?? dayKeyFromDate(new Date())),
@@ -210,10 +213,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     });
   }, [data.needsSync, router]);
 
-  const unlockCalendar = useMemo(
-    () => buildUnlockCalendar(data.achievements),
-    [data.achievements],
-  );
+  const unlockCalendar = useMemo(() => buildUnlockCalendar(data.achievements), [data.achievements]);
   const effectiveCalendarDay = selectedCalendarDay ?? unlockCalendar.latestDay;
 
   const typeOptions = useMemo(
@@ -227,10 +227,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     [data.categorySummaries],
   );
 
-  const trackedClubTypeSet = useMemo(
-    () => new Set(data.trackedClubTypes),
-    [data.trackedClubTypes],
-  );
+  const trackedClubTypeSet = useMemo(() => new Set(data.trackedClubTypes), [data.trackedClubTypes]);
 
   const clubOptions = useMemo(() => {
     const clubCounts = new Map<string, { total: number; unlocked: number }>();
@@ -320,7 +317,16 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         .toLowerCase()
         .includes(normalizedQuery);
     });
-  }, [clubFilter, data.achievements, focusedAchievementId, hideCompleted, query, statusFilter, tierFilter, typeFilter]);
+  }, [
+    clubFilter,
+    data.achievements,
+    focusedAchievementId,
+    hideCompleted,
+    query,
+    statusFilter,
+    tierFilter,
+    typeFilter,
+  ]);
   const isFiltered =
     statusFilter !== defaultStatusFilter ||
     typeFilter !== "all" ||
@@ -342,10 +348,14 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
       ? "All tiers"
       : (tierOptions.find((item) => item.id === tierFilter)?.label ?? "All tiers");
   const shownAchievements =
-    !query.trim() && filteredAchievements.length > 360 ? filteredAchievements.slice(0, 360) : filteredAchievements;
-  const nextUnlock = data.achievements
-    .filter((achievement) => !achievement.unlocked)
-    .sort((left, right) => (right.progressPercent ?? -1) - (left.progressPercent ?? -1))[0] ?? null;
+    !query.trim() && filteredAchievements.length > 360
+      ? filteredAchievements.slice(0, 360)
+      : filteredAchievements;
+  const nextUnlock =
+    data.achievements
+      .filter((achievement) => !achievement.unlocked)
+      .sort((left, right) => (right.progressPercent ?? -1) - (left.progressPercent ?? -1))[0] ??
+    null;
   const mobileShownAchievements = shownAchievements.slice(0, 12);
 
   function clearFilters() {
@@ -363,7 +373,12 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
       <MobileAchievementTabs tab={mobileTab} onTabChange={setMobileTab} />
 
       <section className={mobileTab === "next" ? "space-y-4" : "hidden sm:block"}>
-        <NextUnlockCard achievement={nextUnlock} totalXp={data.totalXp} unlockedCount={data.unlockedCount} totalCount={data.totalCount} />
+        <NextUnlockCard
+          achievement={nextUnlock}
+          totalXp={data.totalXp}
+          unlockedCount={data.unlockedCount}
+          totalCount={data.totalCount}
+        />
       </section>
 
       <Card className={cn("premium-card", mobileTab === "cabinet" ? "flex" : "hidden sm:flex")}>
@@ -371,7 +386,9 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <CardTitle>Trophy cabinet</CardTitle>
-              <CardDescription>Unlocked achievement tiers from launch monitor and round data.</CardDescription>
+              <CardDescription>
+                Unlocked achievement tiers from launch monitor and round data.
+              </CardDescription>
             </div>
             <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-600">
               <Trophy className="size-5" />
@@ -381,33 +398,40 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         <CardContent>
           <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
             <div className="grid sm:grid-cols-2 lg:grid-cols-5">
-            {trophyCabinet.map((tier) => (
-              <button
-                key={tier.id}
-                type="button"
-                onClick={() => setTierFilter(tier.id)}
-                className={cn(
-                  "min-w-0 border-b border-slate-200/70 px-3 py-2.5 text-left transition-colors hover:bg-amber-50/70 sm:border-r",
-                  tierFilter === tier.id && "bg-amber-50/80 ring-2 ring-zinc-900/10",
-                )}
-              >
-                <div className="flex min-w-0 items-center justify-between gap-3">
-                  <Badge className={cn("border", tierStyles[tier.id])}>{tier.label}</Badge>
-                  <span className="text-xs text-muted-foreground">{tier.completion}%</span>
-                </div>
-                <p className="mt-1 text-base font-semibold tracking-normal">
-                  {tier.unlocked.toLocaleString("en-GB")}
-                  <span className="text-sm font-medium text-muted-foreground">/{tier.total.toLocaleString("en-GB")}</span>
-                </p>
-                <Progress value={tier.completion} className="mt-2 h-1.5" />
-              </button>
-            ))}
+              {trophyCabinet.map((tier) => (
+                <button
+                  key={tier.id}
+                  type="button"
+                  onClick={() => setTierFilter(tier.id)}
+                  className={cn(
+                    "min-w-0 border-b border-slate-200/70 px-3 py-2.5 text-left transition-colors hover:bg-amber-50/70 sm:border-r",
+                    tierFilter === tier.id && "bg-amber-50/80 ring-2 ring-zinc-900/10",
+                  )}
+                >
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <Badge className={cn("border", tierStyles[tier.id])}>{tier.label}</Badge>
+                    <span className="text-xs text-muted-foreground">{tier.completion}%</span>
+                  </div>
+                  <p className="mt-1 text-base font-semibold tracking-normal">
+                    {tier.unlocked.toLocaleString("en-GB")}
+                    <span className="text-sm font-medium text-muted-foreground">
+                      /{tier.total.toLocaleString("en-GB")}
+                    </span>
+                  </p>
+                  <Progress value={tier.completion} className="mt-2 h-1.5" />
+                </button>
+              ))}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <section className={cn("grid gap-4 lg:grid-cols-[0.85fr_1.15fr]", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
+      <section
+        className={cn(
+          "grid gap-4 lg:grid-cols-[0.85fr_1.15fr]",
+          mobileTab === "next" ? "grid" : "hidden sm:grid",
+        )}
+      >
         <Card className="premium-card border-zinc-900 bg-[#111827] text-white" size="sm">
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
@@ -426,18 +450,27 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <Metric label="Total XP" value={data.totalXp.toLocaleString("en-GB")} dark />
               <Metric label="Unlocked" value={`${data.unlockedCount}/${data.totalCount}`} dark />
-              <Metric label="Next level" value={`${data.level.progressXp}/${data.level.neededXp}`} dark />
+              <Metric
+                label="Next level"
+                value={`${data.level.progressXp}/${data.level.neededXp}`}
+                dark
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm text-zinc-300">
                 <span>XP to level {data.level.level + 1}</span>
                 <span>{data.level.progressPercent}%</span>
               </div>
-              <Progress value={data.level.progressPercent} className="bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-300" />
+              <Progress
+                value={data.level.progressPercent}
+                className="bg-white/15 [&_[data-slot=progress-indicator]]:bg-emerald-300"
+              />
             </div>
             {data.needsSync || isPending ? (
               <p className="text-sm text-zinc-300">
-                {isPending ? "Syncing historical rounds and provider sessions..." : "Achievement sync queued."}
+                {isPending
+                  ? "Syncing historical rounds and provider sessions..."
+                  : "Achievement sync queued."}
               </p>
             ) : null}
           </CardContent>
@@ -467,11 +500,24 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         </Card>
       </section>
 
-      <section className={cn("grid gap-3 md:grid-cols-4", mobileTab === "next" ? "grid" : "hidden sm:grid")}>
+      <section
+        className={cn(
+          "grid gap-3 md:grid-cols-4",
+          mobileTab === "next" ? "grid" : "hidden sm:grid",
+        )}
+      >
         <Metric label="Catalog" value={data.totalCount.toLocaleString("en-GB")} />
         <Metric label="Provider + round" value="Enabled" />
-        <Metric label="Hidden found" value={data.achievements.filter((achievement) => achievement.hidden && achievement.unlocked).length.toString()} />
-        <Metric label="Completion" value={`${Math.round((data.unlockedCount / Math.max(1, data.totalCount)) * 100)}%`} />
+        <Metric
+          label="Hidden found"
+          value={data.achievements
+            .filter((achievement) => achievement.hidden && achievement.unlocked)
+            .length.toString()}
+        />
+        <Metric
+          label="Completion"
+          value={`${Math.round((data.unlockedCount / Math.max(1, data.totalCount)) * 100)}%`}
+        />
       </section>
 
       <div className={mobileTab === "calendar" ? "block" : "hidden sm:block"}>
@@ -506,9 +552,27 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                     className="pl-9"
                   />
                 </div>
-                <AchievementSelect label="Achievement type" value={typeFilter} onValueChange={setTypeFilter} options={typeOptions} allLabel="All types" />
-                <AchievementSelect label="Club" value={clubFilter} onValueChange={setClubFilter} options={clubOptions} allLabel="All clubs" />
-                <AchievementSelect label="Tier" value={tierFilter} onValueChange={setTierFilter} options={tierOptions} allLabel="All tiers" />
+                <AchievementSelect
+                  label="Achievement type"
+                  value={typeFilter}
+                  onValueChange={setTypeFilter}
+                  options={typeOptions}
+                  allLabel="All types"
+                />
+                <AchievementSelect
+                  label="Club"
+                  value={clubFilter}
+                  onValueChange={setClubFilter}
+                  options={clubOptions}
+                  allLabel="All clubs"
+                />
+                <AchievementSelect
+                  label="Tier"
+                  value={tierFilter}
+                  onValueChange={setTierFilter}
+                  options={tierOptions}
+                  allLabel="All tiers"
+                />
                 <Button
                   type="button"
                   variant={hideCompleted ? "default" : "outline"}
@@ -593,7 +657,9 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               onClick={() => setStatusFilter("unlocked")}
             >
               Unlocked
-              <span className="ml-1 text-xs opacity-70">{data.unlockedCount}/{data.unlockedCount}</span>
+              <span className="ml-1 text-xs opacity-70">
+                {data.unlockedCount}/{data.unlockedCount}
+              </span>
             </Button>
             <Button
               type="button"
@@ -602,7 +668,9 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               onClick={() => setStatusFilter("all")}
             >
               All
-              <span className="ml-1 text-xs opacity-70">{data.unlockedCount}/{data.totalCount}</span>
+              <span className="ml-1 text-xs opacity-70">
+                {data.unlockedCount}/{data.totalCount}
+              </span>
             </Button>
             {isFiltered ? (
               <Button type="button" size="sm" variant="ghost" onClick={clearFilters}>
@@ -611,14 +679,17 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               </Button>
             ) : null}
             <span className="text-sm text-muted-foreground">
-              Showing {shownAchievements.length.toLocaleString("en-GB")} of {filteredAchievements.length.toLocaleString("en-GB")}
+              Showing {shownAchievements.length.toLocaleString("en-GB")} of{" "}
+              {filteredAchievements.length.toLocaleString("en-GB")}
             </span>
           </div>
         </CardHeader>
         <CardContent>
           {!query.trim() && filteredAchievements.length > shownAchievements.length ? (
             <div className="apple-panel mb-4 px-3 py-2 text-sm text-muted-foreground">
-              Showing the first {shownAchievements.length.toLocaleString("en-GB")} achievements. Use search, club, type, or tier filters to narrow the full {filteredAchievements.length.toLocaleString("en-GB")} set.
+              Showing the first {shownAchievements.length.toLocaleString("en-GB")} achievements. Use
+              search, club, type, or tier filters to narrow the full{" "}
+              {filteredAchievements.length.toLocaleString("en-GB")} set.
             </div>
           ) : null}
 
@@ -670,7 +741,10 @@ function AchievementUnlockCalendar({
   onSelectedDayChange: (dayKey: string) => void;
 }) {
   const selectedAchievements = selectedDay ? (calendar.byDay.get(selectedDay) ?? []) : [];
-  const selectedXp = selectedAchievements.reduce((total, achievement) => total + achievement.xpAwarded, 0);
+  const selectedXp = selectedAchievements.reduce(
+    (total, achievement) => total + achievement.xpAwarded,
+    0,
+  );
   const cells = buildCalendarCells(monthKey, calendar.byDay, selectedDay);
 
   return (
@@ -732,7 +806,9 @@ function AchievementUnlockCalendar({
                       : cell.unlockCount > 0
                         ? "border-emerald-300 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
                         : "border-border bg-white hover:bg-[#f3f4f6]",
-                    !cell.isCurrentMonth && !cell.isSelected && "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100",
+                    !cell.isCurrentMonth &&
+                      !cell.isSelected &&
+                      "border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100",
                   )}
                   style={calendarCellStyle}
                   aria-pressed={cell.isSelected}
@@ -858,7 +934,9 @@ function NextUnlockCard({
       <CardContent className="space-y-3">
         {achievement ? (
           <>
-            <p className="text-sm leading-6 text-muted-foreground">{achievement.displayDescription}</p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {achievement.displayDescription}
+            </p>
             {achievement.progressPercent !== null ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -870,7 +948,9 @@ function NextUnlockCard({
             ) : null}
           </>
         ) : (
-          <p className="text-sm leading-6 text-muted-foreground">Import sessions or save rounds to unlock the first badges.</p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Import sessions or save rounds to unlock the first badges.
+          </p>
         )}
         <div className="grid grid-cols-3 gap-2">
           <Metric label="XP" value={totalXp.toLocaleString("en-GB")} />
@@ -898,7 +978,11 @@ function AchievementSelect({
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className="h-10 w-full rounded-lg" aria-label={label}>
-        <span className="truncate">{value === "all" ? allLabel : options.find((item) => item.id === value)?.label ?? allLabel}</span>
+        <span className="truncate">
+          {value === "all"
+            ? allLabel
+            : (options.find((item) => item.id === value)?.label ?? allLabel)}
+        </span>
       </SelectTrigger>
       <SelectContent position="popper" align="start" className="z-[80]">
         <SelectItem value="all">{allLabel}</SelectItem>
@@ -919,9 +1003,13 @@ function CalendarUnlockItem({ achievement }: { achievement: AchievementView }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold leading-5">{achievement.displayName}</p>
-            <Badge className={cn("border", tierStyles[achievement.tier])}>{tierLabels[achievement.tier]}</Badge>
+            <Badge className={cn("border", tierStyles[achievement.tier])}>
+              {tierLabels[achievement.tier]}
+            </Badge>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.displayDescription}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {achievement.displayDescription}
+          </p>
         </div>
         <span className="shrink-0 text-sm font-semibold text-emerald-700">
           {achievement.xpAwarded.toLocaleString("en-GB")} XP
@@ -952,16 +1040,22 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold leading-5">{achievement.displayName}</p>
-            <Badge className={cn("border", tierStyles[achievement.tier])}>{tierLabels[achievement.tier]}</Badge>
+            <Badge className={cn("border", tierStyles[achievement.tier])}>
+              {tierLabels[achievement.tier]}
+            </Badge>
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{achievement.displayDescription}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {achievement.displayDescription}
+          </p>
         </div>
         <div className="shrink-0 text-left text-xs text-muted-foreground sm:text-right">
           <div className="flex items-center gap-1 sm:justify-end">
             <CalendarDays className="size-3.5" />
             <span>{formatUnlockDate(achievement.unlockedAt)}</span>
           </div>
-          <p className="mt-1 font-medium text-foreground">{achievement.xpAwarded.toLocaleString("en-GB")} XP</p>
+          <p className="mt-1 font-medium text-foreground">
+            {achievement.xpAwarded.toLocaleString("en-GB")} XP
+          </p>
         </div>
       </div>
 
@@ -1050,11 +1144,15 @@ function AchievementCardBody({ achievement }: { achievement: AchievementView }) 
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <AchievementBadgeIcon achievement={achievement} />
-          <Badge className={cn("border", tierStyles[achievement.tier])}>{tierLabels[achievement.tier]}</Badge>
+          <Badge className={cn("border", tierStyles[achievement.tier])}>
+            {tierLabels[achievement.tier]}
+          </Badge>
         </div>
         <div>
           <p className="text-base font-semibold leading-6">{achievement.displayName}</p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{achievement.displayDescription}</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {achievement.displayDescription}
+          </p>
         </div>
       </div>
 
@@ -1162,8 +1260,20 @@ function formatUnlockDate(value: string | null) {
 
 function Metric({ label, value, dark = false }: { label: string; value: string; dark?: boolean }) {
   return (
-    <div className={cn("min-w-0 rounded-lg border p-2 sm:p-3", dark ? "border-white/10 bg-white/5" : "bg-white/80")}>
-      <p className={cn("truncate text-xs font-medium", dark ? "text-zinc-300" : "text-muted-foreground")}>{label}</p>
+    <div
+      className={cn(
+        "min-w-0 rounded-lg border p-2 sm:p-3",
+        dark ? "border-white/10 bg-white/5" : "bg-white/80",
+      )}
+    >
+      <p
+        className={cn(
+          "truncate text-xs font-medium",
+          dark ? "text-zinc-300" : "text-muted-foreground",
+        )}
+      >
+        {label}
+      </p>
       <p className="mt-1 flex min-w-0 items-center gap-2 text-xl font-semibold tracking-normal sm:text-2xl">
         {label === "Catalog" ? <Trophy className="size-5 text-amber-500" /> : null}
         <span className="min-w-0 truncate">{value}</span>

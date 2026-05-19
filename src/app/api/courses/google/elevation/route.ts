@@ -23,7 +23,9 @@ function parsePathParam(value: string | null) {
       .map((pair) => {
         const [latitude, longitude] = pair.split(",").map(Number);
 
-        return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+        return Number.isFinite(latitude) && Number.isFinite(longitude)
+          ? { latitude, longitude }
+          : null;
       })
       .filter((point): point is { latitude: number; longitude: number } => Boolean(point)) ?? []
   );

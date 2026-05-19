@@ -1,12 +1,6 @@
-import {
-  buildCourseLogoSearchQueries,
-  rankCourseLogoSearchCandidates,
-} from "@/lib/course-images";
+import { buildCourseLogoSearchQueries, rankCourseLogoSearchCandidates } from "@/lib/course-images";
 import { searchGoogleImages } from "@/lib/google-image-search";
-import {
-  findGooglePlaceMedia,
-  googlePlacePhotoResponseFromReference,
-} from "@/lib/google-places";
+import { findGooglePlaceMedia, googlePlacePhotoResponseFromReference } from "@/lib/google-places";
 import {
   DEFAULT_REMOTE_IMAGE_CACHE_CONTROL,
   remoteImageResponseFromUrl,

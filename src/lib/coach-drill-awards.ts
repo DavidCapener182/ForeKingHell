@@ -154,7 +154,12 @@ async function loadUnlockedCoachDrillAchievementIds(
       achievementId: userAchievements.achievementId,
     })
     .from(userAchievements)
-    .where(and(eq(userAchievements.userId, userId), inArray(userAchievements.achievementId, achievementIds)));
+    .where(
+      and(
+        eq(userAchievements.userId, userId),
+        inArray(userAchievements.achievementId, achievementIds),
+      ),
+    );
 
   return new Set(rows.map((row) => row.achievementId));
 }
@@ -284,7 +289,9 @@ function countWinningShots(
   }
 
   if (rule.kind === "solid-strike") {
-    return cleanShots.filter((shot) => isNumber(shot.smashFactor) && shot.smashFactor >= highSmashThreshold(clubType)).length;
+    return cleanShots.filter(
+      (shot) => isNumber(shot.smashFactor) && shot.smashFactor >= highSmashThreshold(clubType),
+    ).length;
   }
 
   if (rule.kind === "delivery-window") {
@@ -300,11 +307,7 @@ function countWinningShots(
   return countCarryWindowSets(cleanShots, rule.setSize, rule.maxSpreadYd);
 }
 
-function countCarryWindowSets(
-  cleanShots: CoachDrillShot[],
-  setSize: number,
-  maxSpreadYd: number,
-) {
+function countCarryWindowSets(cleanShots: CoachDrillShot[], setSize: number, maxSpreadYd: number) {
   let passingSets = 0;
 
   for (let index = 0; index + setSize <= cleanShots.length; index += setSize) {

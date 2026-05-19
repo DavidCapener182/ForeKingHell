@@ -42,8 +42,13 @@ export const adminUsers = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: varchar("role", { length: 24 }).notNull().default("operator"),
     status: varchar("status", { length: 24 }).notNull().default("active"),
-    permissionsJson: jsonb("permissions_json").$type<Record<string, unknown>>().notNull().default({}),
-    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    permissionsJson: jsonb("permissions_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -87,8 +92,12 @@ export const userProfiles = pgTable(
     handicapBand: varchar("handicap_band", { length: 40 }),
     publicProfile: boolean("public_profile").notNull().default(false),
     friendProfile: boolean("friend_profile").notNull().default(false),
-    feedVisibilityDefault: varchar("feed_visibility_default", { length: 24 }).notNull().default("private"),
-    leaderboardVisibility: varchar("leaderboard_visibility", { length: 24 }).notNull().default("private"),
+    feedVisibilityDefault: varchar("feed_visibility_default", { length: 24 })
+      .notNull()
+      .default("private"),
+    leaderboardVisibility: varchar("leaderboard_visibility", { length: 24 })
+      .notNull()
+      .default("private"),
     visibilitySettingsJson: jsonb("visibility_settings_json")
       .$type<{
         rounds?: "private" | "friends" | "public";
@@ -108,8 +117,14 @@ export const userProfiles = pgTable(
       }>()
       .notNull()
       .default({}),
-    achievementShowcaseJson: jsonb("achievement_showcase_json").$type<string[]>().notNull().default([]),
-    pbShowcaseJson: jsonb("pb_showcase_json").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    achievementShowcaseJson: jsonb("achievement_showcase_json")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    pbShowcaseJson: jsonb("pb_showcase_json")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -137,7 +152,10 @@ export const friendRequests = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_friend_requests_requester_recipient_idx").on(table.requesterUserId, table.recipientUserId),
+    uniqueIndex("fkh_friend_requests_requester_recipient_idx").on(
+      table.requesterUserId,
+      table.recipientUserId,
+    ),
     index("fkh_friend_requests_recipient_status_idx").on(table.recipientUserId, table.status),
     index("fkh_friend_requests_requester_status_idx").on(table.requesterUserId, table.status),
   ],
@@ -195,7 +213,10 @@ export const userFollows = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_user_follows_follower_followed_idx").on(table.followerUserId, table.followedUserId),
+    uniqueIndex("fkh_user_follows_follower_followed_idx").on(
+      table.followerUserId,
+      table.followedUserId,
+    ),
     index("fkh_user_follows_followed_idx").on(table.followedUserId),
   ],
 );
@@ -216,7 +237,9 @@ export const feedItems = pgTable(
     sourceType: varchar("source_type", { length: 60 }),
     sourceId: varchar("source_id", { length: 220 }),
     visibility: varchar("visibility", { length: 24 }).notNull().default("private"),
-    verificationLabel: varchar("verification_label", { length: 80 }).notNull().default("Unverified"),
+    verificationLabel: varchar("verification_label", { length: 80 })
+      .notNull()
+      .default("Unverified"),
     dedupeKey: varchar("dedupe_key", { length: 260 }),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -244,7 +267,11 @@ export const feedReactions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_feed_reactions_item_user_type_idx").on(table.feedItemId, table.userId, table.reactionType),
+    uniqueIndex("fkh_feed_reactions_item_user_type_idx").on(
+      table.feedItemId,
+      table.userId,
+      table.reactionType,
+    ),
     index("fkh_feed_reactions_user_idx").on(table.userId),
   ],
 );
@@ -318,7 +345,9 @@ export const challenges = pgTable(
   "fkh_challenges",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    templateId: uuid("template_id").references(() => challengeTemplates.id, { onDelete: "set null" }),
+    templateId: uuid("template_id").references(() => challengeTemplates.id, {
+      onDelete: "set null",
+    }),
     creatorUserId: uuid("creator_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -326,7 +355,10 @@ export const challenges = pgTable(
     description: text("description"),
     visibility: varchar("visibility", { length: 24 }).notNull().default("friends"),
     status: varchar("status", { length: 24 }).notNull().default("open"),
-    challengeRulesJson: jsonb("challenge_rules_json").$type<Record<string, unknown>>().notNull().default({}),
+    challengeRulesJson: jsonb("challenge_rules_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -398,7 +430,9 @@ export const challengeResults = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    bestAttemptId: uuid("best_attempt_id").references(() => challengeAttempts.id, { onDelete: "set null" }),
+    bestAttemptId: uuid("best_attempt_id").references(() => challengeAttempts.id, {
+      onDelete: "set null",
+    }),
     rank: integer("rank"),
     score: doublePrecision("score").notNull(),
     scoreLabel: varchar("score_label", { length: 120 }).notNull(),
@@ -454,7 +488,10 @@ export const challengeInvites = pgTable(
     respondedAt: timestamp("responded_at", { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex("fkh_challenge_invites_challenge_invitee_idx").on(table.challengeId, table.inviteeUserId),
+    uniqueIndex("fkh_challenge_invites_challenge_invitee_idx").on(
+      table.challengeId,
+      table.inviteeUserId,
+    ),
     index("fkh_challenge_invites_invitee_status_idx").on(table.inviteeUserId, table.status),
   ],
 );
@@ -573,7 +610,10 @@ export const groupChallengeLinks = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_group_challenge_links_group_challenge_idx").on(table.groupId, table.challengeId),
+    uniqueIndex("fkh_group_challenge_links_group_challenge_idx").on(
+      table.groupId,
+      table.challengeId,
+    ),
     index("fkh_group_challenge_links_challenge_idx").on(table.challengeId),
   ],
 );
@@ -603,7 +643,9 @@ export const subscriptions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    billingCustomerId: uuid("billing_customer_id").references(() => billingCustomers.id, { onDelete: "set null" }),
+    billingCustomerId: uuid("billing_customer_id").references(() => billingCustomers.id, {
+      onDelete: "set null",
+    }),
     stripeSubscriptionId: varchar("stripe_subscription_id", { length: 120 }),
     planKey: varchar("plan_key", { length: 40 }).notNull(),
     status: varchar("status", { length: 32 }).notNull().default("inactive"),
@@ -654,7 +696,11 @@ export const usageEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("fkh_usage_events_user_type_created_idx").on(table.userId, table.eventType, table.createdAt),
+    index("fkh_usage_events_user_type_created_idx").on(
+      table.userId,
+      table.eventType,
+      table.createdAt,
+    ),
   ],
 );
 
@@ -664,13 +710,14 @@ export const planLimits = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     planKey: varchar("plan_key", { length: 40 }).notNull(),
     limitKey: varchar("limit_key", { length: 80 }).notNull(),
-    limitValueJson: jsonb("limit_value_json").$type<Record<string, unknown>>().notNull().default({}),
+    limitValueJson: jsonb("limit_value_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    uniqueIndex("fkh_plan_limits_plan_key_idx").on(table.planKey, table.limitKey),
-  ],
+  (table) => [uniqueIndex("fkh_plan_limits_plan_key_idx").on(table.planKey, table.limitKey)],
 );
 
 export const sponsors = pgTable(
@@ -774,7 +821,11 @@ export const providerAccounts = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_provider_accounts_user_provider_account_idx").on(table.userId, table.providerKind, table.providerAccountId),
+    uniqueIndex("fkh_provider_accounts_user_provider_account_idx").on(
+      table.userId,
+      table.providerKind,
+      table.providerAccountId,
+    ),
     index("fkh_provider_accounts_user_provider_idx").on(table.userId, table.providerKind),
   ],
 );
@@ -786,20 +837,31 @@ export const providerSessions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    providerAccountId: uuid("provider_account_id").references(() => providerAccounts.id, { onDelete: "set null" }),
+    providerAccountId: uuid("provider_account_id").references(() => providerAccounts.id, {
+      onDelete: "set null",
+    }),
     providerKind: varchar("provider_kind", { length: 40 }).notNull(),
     providerSessionId: varchar("provider_session_id", { length: 180 }).notNull(),
     title: varchar("title", { length: 260 }),
     sessionDate: timestamp("session_date", { withTimezone: true }),
-    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
-    rawMetadataJson: jsonb("raw_metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    rawMetadataJson: jsonb("raw_metadata_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     importedAt: timestamp("imported_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_provider_sessions_user_provider_session_idx").on(table.userId, table.providerKind, table.providerSessionId),
+    uniqueIndex("fkh_provider_sessions_user_provider_session_idx").on(
+      table.userId,
+      table.providerKind,
+      table.providerSessionId,
+    ),
     index("fkh_provider_sessions_user_seen_idx").on(table.userId, table.lastSeenAt),
     index("fkh_provider_sessions_imported_idx").on(table.importedSessionId),
   ],
@@ -813,10 +875,14 @@ export const importJobs = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     providerKind: varchar("provider_kind", { length: 40 }).notNull(),
-    sourceFileId: uuid("source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    sourceFileId: uuid("source_file_id").references(() => importSourceFiles.id, {
+      onDelete: "set null",
+    }),
     status: varchar("status", { length: 32 }).notNull().default("queued"),
     detectedProviderKind: varchar("detected_provider_kind", { length: 40 }),
-    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
     errorMessage: text("error_message"),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -866,7 +932,11 @@ export const importMappings = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_import_mappings_user_provider_name_idx").on(table.userId, table.providerKind, table.mappingName),
+    uniqueIndex("fkh_import_mappings_user_provider_name_idx").on(
+      table.userId,
+      table.providerKind,
+      table.mappingName,
+    ),
     index("fkh_import_mappings_user_provider_idx").on(table.userId, table.providerKind),
   ],
 );
@@ -955,7 +1025,10 @@ export const accountMemberships = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_account_memberships_owner_member_idx").on(table.ownerUserId, table.memberUserId),
+    uniqueIndex("fkh_account_memberships_owner_member_idx").on(
+      table.ownerUserId,
+      table.memberUserId,
+    ),
     index("fkh_account_memberships_member_idx").on(table.memberUserId),
     index("fkh_account_memberships_owner_role_idx").on(table.ownerUserId, table.role),
   ],
@@ -973,7 +1046,9 @@ export const accountInvitations = pgTable(
     tokenHash: varchar("token_hash", { length: 128 }).notNull(),
     status: varchar("status", { length: 24 }).notNull().default("pending"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1003,7 +1078,11 @@ export const shareLinks = pgTable(
   },
   (table) => [
     uniqueIndex("fkh_share_links_token_hash_idx").on(table.tokenHash),
-    index("fkh_share_links_user_resource_idx").on(table.userId, table.resourceType, table.resourceId),
+    index("fkh_share_links_user_resource_idx").on(
+      table.userId,
+      table.resourceType,
+      table.resourceId,
+    ),
   ],
 );
 
@@ -1046,12 +1125,23 @@ export const courses = pgTable(
     googleRating: doublePrecision("google_rating"),
     googleUserRatingsTotal: integer("google_user_ratings_total"),
     googleTypesJson: jsonb("google_types_json").$type<string[]>().notNull().default([]),
-    googleOpeningHoursJson: jsonb("google_opening_hours_json").$type<Record<string, unknown>>().notNull().default({}),
-    googleAttributionsJson: jsonb("google_attributions_json").$type<string[]>().notNull().default([]),
-    googleMetadataJson: jsonb("google_metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    googleOpeningHoursJson: jsonb("google_opening_hours_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    googleAttributionsJson: jsonb("google_attributions_json")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    googleMetadataJson: jsonb("google_metadata_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     googleEnrichedAt: timestamp("google_enriched_at", { withTimezone: true }),
     visibility: varchar("visibility", { length: 24 }).notNull().default("shared"),
-    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1173,7 +1263,11 @@ export const sessions = pgTable(
     index("fkh_sessions_user_source_idx").on(table.userId, table.source),
     index("fkh_sessions_user_type_date_idx").on(table.userId, table.type, table.date),
     index("fkh_sessions_type_date_idx").on(table.type, table.date),
-    uniqueIndex("fkh_sessions_user_source_raw_hash_idx").on(table.userId, table.source, table.rawCsvHash),
+    uniqueIndex("fkh_sessions_user_source_raw_hash_idx").on(
+      table.userId,
+      table.source,
+      table.rawCsvHash,
+    ),
   ],
 );
 
@@ -1273,7 +1367,11 @@ export const shots = pgTable(
     index("fkh_shots_user_club_idx").on(table.userId, table.clubId),
     index("fkh_shots_user_shot_at_idx").on(table.userId, table.shotAt),
     index("fkh_shots_user_category_idx").on(table.userId, table.shotCategory),
-    index("fkh_shots_user_session_hole_idx").on(table.userId, table.sessionId, table.courseHoleNumber),
+    index("fkh_shots_user_session_hole_idx").on(
+      table.userId,
+      table.sessionId,
+      table.courseHoleNumber,
+    ),
     index("fkh_shots_session_idx").on(table.sessionId),
     index("fkh_shots_club_type_idx").on(table.clubType),
     index("fkh_shots_shot_at_idx").on(table.shotAt),
@@ -1421,7 +1519,9 @@ export const userAchievements = pgTable(
     firstUnlockedAt: timestamp("first_unlocked_at", { withTimezone: true }).notNull().defaultNow(),
     lastUnlockedAt: timestamp("last_unlocked_at", { withTimezone: true }).notNull().defaultNow(),
     unlockCount: integer("unlock_count").notNull().default(1),
-    sourceSessionId: uuid("source_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    sourceSessionId: uuid("source_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
     sourceShotId: uuid("source_shot_id").references(() => shots.id, { onDelete: "set null" }),
     xpAwarded: integer("xp_awarded").notNull().default(0),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>(),
@@ -1471,7 +1571,10 @@ export const achievementProgress = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_achievement_progress_user_achievement_idx").on(table.userId, table.achievementId),
+    uniqueIndex("fkh_achievement_progress_user_achievement_idx").on(
+      table.userId,
+      table.achievementId,
+    ),
     index("fkh_achievement_progress_user_idx").on(table.userId),
   ],
 );
@@ -1490,9 +1593,7 @@ export const achievementSyncState = pgTable(
     lastAchievementCount: integer("last_achievement_count").notNull().default(0),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>(),
   },
-  (table) => [
-    uniqueIndex("fkh_achievement_sync_state_user_idx").on(table.userId),
-  ],
+  (table) => [uniqueIndex("fkh_achievement_sync_state_user_idx").on(table.userId)],
 );
 
 export const rapsodoSyncSessions = pgTable(
@@ -1510,7 +1611,9 @@ export const rapsodoSyncSessions = pgTable(
     title: varchar("title", { length: 260 }),
     rawMetadataJson: jsonb("raw_metadata_json").$type<Record<string, unknown>>().notNull(),
     exportRawCsvHash: varchar("export_raw_csv_hash", { length: 64 }),
-    importedSessionId: uuid("imported_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    importedSessionId: uuid("imported_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
     lastImportedAt: timestamp("last_imported_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1567,7 +1670,9 @@ export const courseRecordCategories = pgTable(
     metricKind: varchar("metric_kind", { length: 40 }).notNull().default("score"),
     scoringDirection: varchar("scoring_direction", { length: 12 }).notNull().default("asc"),
     scopeDefault: varchar("scope_default", { length: 24 }).notNull().default("public"),
-    verificationRequired: varchar("verification_required", { length: 40 }).notNull().default("silver"),
+    verificationRequired: varchar("verification_required", { length: 40 })
+      .notNull()
+      .default("silver"),
     active: boolean("active").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(100),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
@@ -1593,13 +1698,17 @@ export const courseRecords = pgTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     teeSetId: uuid("tee_set_id").references(() => teeSets.id, { onDelete: "set null" }),
     groupId: uuid("group_id").references(() => groups.id, { onDelete: "cascade" }),
-    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
     recordType: varchar("record_type", { length: 60 }).notNull(),
     scope: varchar("scope", { length: 24 }).notNull().default("public"),
     period: varchar("period", { length: 24 }).notNull().default("all_time"),
     periodStart: timestamp("period_start", { withTimezone: true }),
     periodEnd: timestamp("period_end", { withTimezone: true }),
-    verificationRequired: varchar("verification_required", { length: 40 }).notNull().default("silver"),
+    verificationRequired: varchar("verification_required", { length: 40 })
+      .notNull()
+      .default("silver"),
     status: varchar("status", { length: 24 }).notNull().default("active"),
     bestResultId: uuid("best_result_id"),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
@@ -1646,7 +1755,9 @@ export const courseRecordAttempts = pgTable(
     stablefordPoints: integer("stableford_points"),
     metricValue: doublePrecision("metric_value").notNull(),
     metricLabel: varchar("metric_label", { length: 80 }).notNull(),
-    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationStatus: varchar("verification_status", { length: 40 })
+      .notNull()
+      .default("pending_evidence"),
     verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
     sourceKind: varchar("source_kind", { length: 60 }).notNull().default("manual"),
     proofStatus: varchar("proof_status", { length: 40 }).notNull().default("pending_evidence"),
@@ -1673,14 +1784,21 @@ export const courseRecordResults = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    bestAttemptId: uuid("best_attempt_id").references(() => courseRecordAttempts.id, { onDelete: "set null" }),
+    bestAttemptId: uuid("best_attempt_id").references(() => courseRecordAttempts.id, {
+      onDelete: "set null",
+    }),
     rank: integer("rank"),
     metricValue: doublePrecision("metric_value").notNull(),
     scoreLabel: varchar("score_label", { length: 120 }).notNull(),
-    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationStatus: varchar("verification_status", { length: 40 })
+      .notNull()
+      .default("pending_evidence"),
     verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
     status: varchar("status", { length: 24 }).notNull().default("active"),
-    tieBreakerJson: jsonb("tie_breaker_json").$type<Record<string, unknown>>().notNull().default({}),
+    tieBreakerJson: jsonb("tie_breaker_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1701,8 +1819,12 @@ export const courseRecordEvidence = pgTable(
       .references(() => courseRecordAttempts.id, { onDelete: "cascade" }),
     evidenceType: varchar("evidence_type", { length: 60 }).notNull(),
     storagePath: text("storage_path"),
-    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
-    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, {
+      onDelete: "set null",
+    }),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, {
+      onDelete: "set null",
+    }),
     csvHash: varchar("csv_hash", { length: 64 }),
     extractedScorecardTotal: integer("extracted_scorecard_total"),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
@@ -1758,7 +1880,10 @@ export const tournaments = pgTable(
     screenshotRequired: boolean("screenshot_required").notNull().default(false),
     directRapsodoRequired: boolean("direct_rapsodo_required").notNull().default(false),
     cutRuleJson: jsonb("cut_rule_json").$type<Record<string, unknown>>().notNull().default({}),
-    playoffRuleJson: jsonb("playoff_rule_json").$type<Record<string, unknown>>().notNull().default({}),
+    playoffRuleJson: jsonb("playoff_rule_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     createdByUserId: uuid("created_by_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -1837,15 +1962,23 @@ export const tournamentSubmissions = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     roundNumber: integer("round_number").notNull(),
     sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
-    scorecardSessionId: uuid("scorecard_session_id").references(() => sessions.id, { onDelete: "set null" }),
+    scorecardSessionId: uuid("scorecard_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
     grossScore: integer("gross_score").notNull(),
     netScore: integer("net_score"),
     stablefordPoints: integer("stableford_points"),
-    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
-    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, {
+      onDelete: "set null",
+    }),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, {
+      onDelete: "set null",
+    }),
     scorecardScreenshotPath: text("scorecard_screenshot_path"),
     extractedScorecardTotal: integer("extracted_scorecard_total"),
-    verificationStatus: varchar("verification_status", { length: 40 }).notNull().default("pending_evidence"),
+    verificationStatus: varchar("verification_status", { length: 40 })
+      .notNull()
+      .default("pending_evidence"),
     verificationTier: varchar("verification_tier", { length: 24 }).notNull().default("unverified"),
     proofStatus: varchar("proof_status", { length: 40 }).notNull().default("pending_evidence"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1856,7 +1989,10 @@ export const tournamentSubmissions = pgTable(
   },
   (table) => [
     uniqueIndex("fkh_tournament_submissions_entry_round_idx").on(table.entryId, table.roundNumber),
-    index("fkh_tournament_submissions_tournament_round_idx").on(table.tournamentId, table.roundNumber),
+    index("fkh_tournament_submissions_tournament_round_idx").on(
+      table.tournamentId,
+      table.roundNumber,
+    ),
     index("fkh_tournament_submissions_status_idx").on(table.verificationStatus),
     index("fkh_tournament_submissions_session_idx").on(table.sessionId),
   ],
@@ -1871,8 +2007,12 @@ export const tournamentEvidence = pgTable(
       .references(() => tournamentSubmissions.id, { onDelete: "cascade" }),
     evidenceType: varchar("evidence_type", { length: 60 }).notNull(),
     storagePath: text("storage_path"),
-    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, { onDelete: "set null" }),
-    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, { onDelete: "set null" }),
+    importSourceFileId: uuid("import_source_file_id").references(() => importSourceFiles.id, {
+      onDelete: "set null",
+    }),
+    rapsodoSyncSessionId: uuid("rapsodo_sync_session_id").references(() => rapsodoSyncSessions.id, {
+      onDelete: "set null",
+    }),
     csvHash: varchar("csv_hash", { length: 64 }),
     extractedScorecardTotal: integer("extracted_scorecard_total"),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
@@ -1907,7 +2047,10 @@ export const tournamentStandings = pgTable(
     stablefordTotal: integer("stableford_total"),
     roundsCompleted: integer("rounds_completed").notNull().default(0),
     rank: integer("rank"),
-    tieBreakerJson: jsonb("tie_breaker_json").$type<Record<string, unknown>>().notNull().default({}),
+    tieBreakerJson: jsonb("tie_breaker_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     status: varchar("status", { length: 24 }).notNull().default("active"),
     calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1958,7 +2101,10 @@ export const tournamentInvites = pgTable(
     respondedAt: timestamp("responded_at", { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex("fkh_tournament_invites_tournament_invitee_idx").on(table.tournamentId, table.inviteeUserId),
+    uniqueIndex("fkh_tournament_invites_tournament_invitee_idx").on(
+      table.tournamentId,
+      table.inviteeUserId,
+    ),
     index("fkh_tournament_invites_invitee_status_idx").on(table.inviteeUserId, table.status),
     index("fkh_tournament_invites_email_idx").on(table.inviteeEmail),
   ],
@@ -2099,7 +2245,10 @@ export const userFeaturePreferences = pgTable("fkh_user_feature_preferences", {
   autoSharePractice: boolean("auto_share_practice").notNull().default(false),
   publicSharePreview: boolean("public_share_preview").notNull().default(false),
   featuredRecordIdsJson: jsonb("featured_record_ids_json").$type<string[]>().notNull().default([]),
-  highlightSettingsJson: jsonb("highlight_settings_json").$type<Record<string, unknown>>().notNull().default({}),
+  highlightSettingsJson: jsonb("highlight_settings_json")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

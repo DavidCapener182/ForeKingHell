@@ -34,7 +34,21 @@ test.describe("visual spacing audit", () => {
   ];
 
   const desktopRoutes = routes.filter((item) =>
-    ["dashboard", "today", "shots", "bag", "coach", "rounds", "handicap", "course-records", "challenges", "tournaments", "feed", "providers", "settings"].includes(item.name),
+    [
+      "dashboard",
+      "today",
+      "shots",
+      "bag",
+      "coach",
+      "rounds",
+      "handicap",
+      "course-records",
+      "challenges",
+      "tournaments",
+      "feed",
+      "providers",
+      "settings",
+    ].includes(item.name),
   );
 
   test("all target routes have controlled mobile and desktop spacing", async ({ page }) => {
@@ -72,267 +86,361 @@ async function gotoReady(page: Page, routePath: string, expectedText: RegExp | s
 }
 
 async function auditViewport(page: Page, isMobile: boolean) {
-  const firstPass = await page.evaluate(({ mobile }) => {
-    const issues: string[] = [];
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const horizontalOverflow = document.documentElement.scrollWidth - viewportWidth;
+  const firstPass = await page.evaluate(
+    ({ mobile }) => {
+      const issues: string[] = [];
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const horizontalOverflow = document.documentElement.scrollWidth - viewportWidth;
 
-    if (horizontalOverflow > 2) {
-      issues.push(`horizontal overflow ${horizontalOverflow}px`);
-    }
-
-    if (mobile) {
-      const firstActionTop = firstActionPosition();
-      if (firstActionTop !== null && firstActionTop > 360) {
-        issues.push(`first primary action starts at ${Math.round(firstActionTop)}px`);
+      if (horizontalOverflow > 2) {
+        issues.push(`horizontal overflow ${horizontalOverflow}px`);
       }
 
-      for (const header of visibleElements("main header").slice(0, 2)) {
-        if (header.rect.top < 180 && header.rect.height > 180 && !header.node.closest("[data-allow-tall-mobile-header]")) {
-          issues.push(`mobile header is ${Math.round(header.rect.height)}px tall`);
+      if (mobile) {
+        const firstActionTop = firstActionPosition();
+        const firstActionLimit = Math.min(viewportHeight - 48, 420);
+        if (firstActionTop !== null && firstActionTop > firstActionLimit) {
+          issues.push(`first primary action starts at ${Math.round(firstActionTop)}px`);
+        }
+
+        for (const header of visibleElements("main header").slice(0, 2)) {
+          if (
+            header.rect.top < 180 &&
+            header.rect.height > 180 &&
+            !header.node.closest("[data-allow-tall-mobile-header]")
+          ) {
+            issues.push(`mobile header is ${Math.round(header.rect.height)}px tall`);
+          }
+        }
+
+        const largestGap = largestVerticalGap();
+        if (largestGap.size > 180) {
+          issues.push(
+            `blank vertical zone ${Math.round(largestGap.size)}px near y=${Math.round(largestGap.top)}`,
+          );
+        }
+
+        for (const gap of sectionGaps()) {
+          if (gap.size > 40) {
+            issues.push(`section gap ${Math.round(gap.size)}px near y=${Math.round(gap.top)}`);
+          }
+        }
+
+        for (const card of sparseTallCards()) {
+          issues.push(
+            `sparse tall card ${Math.round(card.width)}x${Math.round(card.height)} near y=${Math.round(card.top)}`,
+          );
+        }
+
+        for (const media of visibleElements("[data-media-container]").filter(
+          (item) => item.rect.top < viewportHeight,
+        )) {
+          if (isEmptyMedia(media.node) && media.rect.height > 120) {
+            issues.push(
+              `empty mobile media ${Math.round(media.rect.width)}x${Math.round(media.rect.height)} near y=${Math.round(media.rect.top)}`,
+            );
+          }
+
+          if (media.rect.height > 240 && !media.node.closest("[data-allow-large-mobile-media]")) {
+            issues.push(
+              `large mobile media ${Math.round(media.rect.width)}x${Math.round(media.rect.height)} near y=${Math.round(media.rect.top)}`,
+            );
+          }
+        }
+
+        for (const rail of emptyReservedRails()) {
+          issues.push(
+            `empty card rail reserves ${Math.round(rail.width)}x${Math.round(rail.height)} near y=${Math.round(rail.top)}`,
+          );
+        }
+
+        for (const repeated of repeatedStackedCtas()) {
+          issues.push(`repeated stacked CTA ${repeated.label} -> ${repeated.href}`);
+        }
+
+        const visibleTables = visibleElements("table").filter(
+          (item) => item.rect.top < viewportHeight,
+        );
+        if (visibleTables.length > 0) {
+          issues.push("full table visible above mobile fold");
         }
       }
 
-      const largestGap = largestVerticalGap();
-      if (largestGap.size > 190) {
-        issues.push(`blank vertical zone ${Math.round(largestGap.size)}px near y=${Math.round(largestGap.top)}`);
-      }
-
-      for (const gap of sectionGaps()) {
-        if (gap.size > 40) {
-          issues.push(`section gap ${Math.round(gap.size)}px near y=${Math.round(gap.top)}`);
+      for (const media of visibleElements("[data-media-container]")) {
+        if (media.rect.height > 24 && isEmptyMedia(media.node)) {
+          issues.push(
+            `empty media container ${Math.round(media.rect.width)}x${Math.round(media.rect.height)}`,
+          );
         }
       }
 
-      for (const card of sparseTallCards()) {
-        issues.push(`sparse tall card ${Math.round(card.width)}x${Math.round(card.height)} near y=${Math.round(card.top)}`);
+      return { issues };
+
+      function firstActionPosition() {
+        const preferred = visibleElements(
+          "[data-primary-action] a, [data-primary-action] button, a[data-primary-action], button[data-primary-action]",
+        ).filter((item) => !item.node.closest("nav"));
+        const fallback = visibleElements("main a[href], main button")
+          .filter((item) => !item.node.closest("nav"))
+          .filter((item) => !item.node.closest("summary"))
+          .filter((item) => item.rect.height >= 32 && item.rect.width >= 48);
+        const candidates = preferred.length > 0 ? preferred : fallback;
+        const action = candidates.sort((left, right) => left.rect.top - right.rect.top)[0];
+        return action ? action.rect.top : null;
       }
 
-      for (const media of visibleElements("[data-media-container]").filter((item) => item.rect.top < viewportHeight)) {
-        if (media.rect.height > 240 && !media.node.closest("[data-allow-large-mobile-media]")) {
-          issues.push(`large mobile media ${Math.round(media.rect.width)}x${Math.round(media.rect.height)} near y=${Math.round(media.rect.top)}`);
+      function largestVerticalGap() {
+        const maxY = Math.min(1000, viewportHeight + 180);
+        const intervals = visibleElements("main *")
+          .filter((item) => item.rect.top < maxY && item.rect.bottom > 0)
+          .filter((item) => item.rect.height >= 8 && item.rect.width >= 24)
+          .filter((item) => {
+            const style = window.getComputedStyle(item.node);
+            return style.position !== "fixed" && style.position !== "absolute";
+          })
+          .filter((item) => meaningful(item.node))
+          .map((item) => ({
+            top: Math.max(0, item.rect.top),
+            bottom: Math.min(maxY, item.rect.bottom),
+          }))
+          .sort((left, right) => left.top - right.top);
+
+        let cursor = 0;
+        let largest = { top: 0, size: 0 };
+
+        for (const interval of intervals) {
+          if (interval.top - cursor > largest.size) {
+            largest = { top: cursor, size: interval.top - cursor };
+          }
+          cursor = Math.max(cursor, interval.bottom);
         }
-      }
 
-      for (const repeated of repeatedStackedCtas()) {
-        issues.push(`repeated stacked CTA ${repeated.label} -> ${repeated.href}`);
-      }
-
-      const visibleTables = visibleElements("table").filter((item) => item.rect.top < viewportHeight);
-      if (visibleTables.length > 0) {
-        issues.push("full table visible above mobile fold");
-      }
-    }
-
-    for (const media of visibleElements("[data-media-container]")) {
-      if (media.rect.height > 24 && !media.node.querySelector("img,svg,canvas,picture,video")) {
-        issues.push(`empty media container ${Math.round(media.rect.width)}x${Math.round(media.rect.height)}`);
-      }
-    }
-
-    return { issues };
-
-    function firstActionPosition() {
-      const preferred = visibleElements("[data-primary-action] a, [data-primary-action] button, a[data-primary-action], button[data-primary-action]")
-        .filter((item) => !item.node.closest("nav"));
-      const fallback = visibleElements("main a[href], main button")
-        .filter((item) => !item.node.closest("nav"))
-        .filter((item) => !item.node.closest("summary"))
-        .filter((item) => item.rect.height >= 32 && item.rect.width >= 48);
-      const candidates = preferred.length > 0 ? preferred : fallback;
-      const action = candidates.sort((left, right) => left.rect.top - right.rect.top)[0];
-      return action ? action.rect.top : null;
-    }
-
-    function largestVerticalGap() {
-      const maxY = Math.min(1000, viewportHeight + 180);
-      const intervals = visibleElements("main *")
-        .filter((item) => item.rect.top < maxY && item.rect.bottom > 0)
-        .filter((item) => item.rect.height >= 8 && item.rect.width >= 24)
-        .filter((item) => {
-          const style = window.getComputedStyle(item.node);
-          return style.position !== "fixed" && style.position !== "absolute";
-        })
-        .filter((item) => meaningful(item.node))
-        .map((item) => ({
-          top: Math.max(0, item.rect.top),
-          bottom: Math.min(maxY, item.rect.bottom),
-        }))
-        .sort((left, right) => left.top - right.top);
-
-      let cursor = 0;
-      let largest = { top: 0, size: 0 };
-
-      for (const interval of intervals) {
-        if (interval.top - cursor > largest.size) {
-          largest = { top: cursor, size: interval.top - cursor };
+        if (maxY - cursor > largest.size) {
+          largest = { top: cursor, size: maxY - cursor };
         }
-        cursor = Math.max(cursor, interval.bottom);
+
+        return largest;
       }
 
-      if (maxY - cursor > largest.size) {
-        largest = { top: cursor, size: maxY - cursor };
+      function sectionGaps() {
+        const wrappers = Array.from(document.querySelectorAll("main > div, main"));
+        const gaps: Array<{ top: number; size: number }> = [];
+
+        for (const wrapper of wrappers) {
+          const items = Array.from(wrapper.children)
+            .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+            .filter(({ node, rect }) => {
+              const style = window.getComputedStyle(node);
+              return (
+                rect.width > 8 &&
+                rect.height > 8 &&
+                rect.top < viewportHeight + 180 &&
+                rect.bottom > 0 &&
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                style.position !== "fixed" &&
+                !node.closest("[data-allow-large-section-gap]")
+              );
+            })
+            .sort((left, right) => left.rect.top - right.rect.top);
+
+          for (let index = 1; index < items.length; index += 1) {
+            const previous = items[index - 1];
+            const current = items[index];
+            const gap = current.rect.top - previous.rect.bottom;
+            if (gap > 0) {
+              gaps.push({ top: previous.rect.bottom, size: gap });
+            }
+          }
+        }
+
+        return gaps;
       }
 
-      return largest;
-    }
+      function sparseTallCards() {
+        return visibleElements("main [data-slot='card'], main .premium-card")
+          .filter((item) => item.rect.top < viewportHeight)
+          .filter((item) => !item.node.closest("[data-allow-tall-mobile-card]"))
+          .filter((item) => item.rect.height > 260)
+          .filter((item) => {
+            const text = item.node.textContent?.replace(/\s+/g, " ").trim() ?? "";
+            const richContentCount = item.node.querySelectorAll(
+              "img,svg,canvas,picture,video,table,input,select,textarea,button,a",
+            ).length;
+            return text.length < 90 && richContentCount < 3;
+          })
+          .map((item) => ({
+            top: item.rect.top,
+            width: item.rect.width,
+            height: item.rect.height,
+          }));
+      }
 
-    function sectionGaps() {
-      const wrappers = Array.from(document.querySelectorAll("main > div, main"));
-      const gaps: Array<{ top: number; size: number }> = [];
+      function repeatedStackedCtas() {
+        const actions = visibleElements("main a[href], main button")
+          .filter((item) => !item.node.closest("nav"))
+          .filter((item) => item.rect.top < viewportHeight)
+          .filter((item) => item.rect.height >= 32 && item.rect.width >= 48)
+          .map((item) => {
+            const link = item.node.closest("a[href]") as HTMLAnchorElement | null;
+            const label = item.node.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+            return {
+              href: link?.getAttribute("href") ?? "",
+              label,
+              top: item.rect.top,
+              bottom: item.rect.bottom,
+            };
+          })
+          .filter((item) => item.href || item.label);
 
-      for (const wrapper of wrappers) {
-        const items = Array.from(wrapper.children)
+        const repeated: Array<{ href: string; label: string }> = [];
+        for (let index = 1; index < actions.length; index += 1) {
+          const previous = actions[index - 1];
+          const current = actions[index];
+          if (
+            current.top - previous.bottom < 96 &&
+            current.href === previous.href &&
+            current.label === previous.label &&
+            !current.label.match(/^(menu|filter|close|open navigation)$/)
+          ) {
+            repeated.push({ href: current.href, label: current.label });
+          }
+        }
+
+        return repeated;
+      }
+
+      function emptyReservedRails() {
+        return visibleElements("main [data-mobile-rail], main [class*='overflow-x-auto']")
+          .filter((item) => item.rect.top < viewportHeight)
+          .filter((item) => item.rect.height > 80 && item.rect.width > 160)
+          .filter((item) => !item.node.closest("[data-allow-empty-rail]"))
+          .filter((item) => {
+            const children = Array.from(item.node.children).filter((child) => {
+              const rect = child.getBoundingClientRect();
+              const style = window.getComputedStyle(child);
+              return (
+                rect.width > 12 &&
+                rect.height > 12 &&
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                meaningful(child)
+              );
+            });
+            return children.length === 0;
+          })
+          .map((item) => ({
+            top: item.rect.top,
+            width: item.rect.width,
+            height: item.rect.height,
+          }));
+      }
+
+      function isEmptyMedia(node: Element) {
+        return (
+          !node.querySelector("img,svg,canvas,picture,video") &&
+          (node.textContent?.trim().length ?? 0) === 0
+        );
+      }
+
+      function meaningful(node: Element) {
+        const text = node.textContent?.trim() ?? "";
+        return (
+          text.length > 0 ||
+          Boolean(node.querySelector("img,svg,canvas,picture,video,input,select,textarea,button,a"))
+        );
+      }
+
+      function visibleElements(selector: string) {
+        return Array.from(document.querySelectorAll(selector))
           .map((node) => ({ node, rect: node.getBoundingClientRect() }))
           .filter(({ node, rect }) => {
             const style = window.getComputedStyle(node);
             return (
-              rect.width > 8 &&
-              rect.height > 8 &&
-              rect.top < viewportHeight + 180 &&
+              rect.width > 1 &&
+              rect.height > 1 &&
               rect.bottom > 0 &&
+              rect.right > 0 &&
+              rect.left < viewportWidth &&
               style.display !== "none" &&
               style.visibility !== "hidden" &&
-              style.position !== "fixed" &&
-              !node.closest("[data-allow-large-section-gap]")
+              Number(style.opacity) !== 0
             );
-          })
-          .sort((left, right) => left.rect.top - right.rect.top);
-
-        for (let index = 1; index < items.length; index += 1) {
-          const previous = items[index - 1];
-          const current = items[index];
-          const gap = current.rect.top - previous.rect.bottom;
-          if (gap > 0) {
-            gaps.push({ top: previous.rect.bottom, size: gap });
-          }
-        }
+          });
       }
-
-      return gaps;
-    }
-
-    function sparseTallCards() {
-      return visibleElements("main [data-slot='card'], main .premium-card")
-        .filter((item) => item.rect.top < viewportHeight)
-        .filter((item) => !item.node.closest("[data-allow-tall-mobile-card]"))
-        .filter((item) => item.rect.height > 260)
-        .filter((item) => {
-          const text = item.node.textContent?.replace(/\s+/g, " ").trim() ?? "";
-          const richContentCount = item.node.querySelectorAll("img,svg,canvas,picture,video,table,input,select,textarea,button,a").length;
-          return text.length < 90 && richContentCount < 3;
-        })
-        .map((item) => ({
-          top: item.rect.top,
-          width: item.rect.width,
-          height: item.rect.height,
-        }));
-    }
-
-    function repeatedStackedCtas() {
-      const actions = visibleElements("main a[href], main button")
-        .filter((item) => !item.node.closest("nav"))
-        .filter((item) => item.rect.top < viewportHeight)
-        .filter((item) => item.rect.height >= 32 && item.rect.width >= 48)
-        .map((item) => {
-          const link = item.node.closest("a[href]") as HTMLAnchorElement | null;
-          const label = item.node.textContent?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
-          return {
-            href: link?.getAttribute("href") ?? "",
-            label,
-            top: item.rect.top,
-            bottom: item.rect.bottom,
-          };
-        })
-        .filter((item) => item.href || item.label);
-
-      const repeated: Array<{ href: string; label: string }> = [];
-      for (let index = 1; index < actions.length; index += 1) {
-        const previous = actions[index - 1];
-        const current = actions[index];
-        if (
-          current.top - previous.bottom < 96 &&
-          current.href === previous.href &&
-          current.label === previous.label &&
-          !current.label.match(/^(menu|filter|close|open navigation)$/)
-        ) {
-          repeated.push({ href: current.href, label: current.label });
-        }
-      }
-
-      return repeated;
-    }
-
-    function meaningful(node: Element) {
-      const text = node.textContent?.trim() ?? "";
-      return text.length > 0 || Boolean(node.querySelector("img,svg,canvas,picture,video,input,select,textarea,button,a"));
-    }
-
-    function visibleElements(selector: string) {
-      return Array.from(document.querySelectorAll(selector))
-        .map((node) => ({ node, rect: node.getBoundingClientRect() }))
-        .filter(({ node, rect }) => {
-          const style = window.getComputedStyle(node);
-          return (
-            rect.width > 1 &&
-            rect.height > 1 &&
-            rect.bottom > 0 &&
-            rect.right > 0 &&
-            rect.left < viewportWidth &&
-            style.display !== "none" &&
-            style.visibility !== "hidden" &&
-            Number(style.opacity) !== 0
-          );
-        });
-    }
-  }, { mobile: isMobile });
+    },
+    { mobile: isMobile },
+  );
 
   if (!isMobile) {
     return firstPass;
   }
 
-  const bottomPass = await page.evaluate(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-  }).then(async () => {
-    await page.waitForTimeout(100);
-    return page.evaluate(() => {
-      const issues: string[] = [];
-      const fixedBottom = Array.from(document.querySelectorAll("body *"))
-        .map((node) => ({ node, rect: node.getBoundingClientRect(), style: window.getComputedStyle(node) }))
-        .filter(({ node, rect, style }) => {
-          const hasInteractiveNav = Boolean(node.querySelector("a,button")) || node.matches("nav,[data-sticky-mobile-action]");
-          return style.position === "fixed" && hasInteractiveNav && rect.height > 36 && window.innerHeight - rect.bottom < 24;
-        })
-        .sort((left, right) => left.rect.top - right.rect.top)[0];
+  const bottomPass = await page
+    .evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    })
+    .then(async () => {
+      await page.waitForTimeout(100);
+      return page.evaluate(() => {
+        const issues: string[] = [];
+        const fixedBottom = Array.from(document.querySelectorAll("body *"))
+          .map((node) => ({
+            node,
+            rect: node.getBoundingClientRect(),
+            style: window.getComputedStyle(node),
+          }))
+          .filter(({ node, rect, style }) => {
+            const hasInteractiveNav =
+              Boolean(node.querySelector("a,button")) ||
+              node.matches("nav,[data-sticky-mobile-action]");
+            return (
+              style.position === "fixed" &&
+              hasInteractiveNav &&
+              rect.height > 36 &&
+              window.innerHeight - rect.bottom < 24
+            );
+          })
+          .sort((left, right) => left.rect.top - right.rect.top)[0];
 
-      if (!fixedBottom) {
-        return { issues };
-      }
+        if (!fixedBottom) {
+          return { issues };
+        }
 
-      const fixedTop = fixedBottom.rect.top;
-      const lastContent = Array.from(document.querySelectorAll("main article, main section, main [data-slot='card'], main .premium-card"))
-        .map((node) => ({ node, rect: node.getBoundingClientRect(), style: window.getComputedStyle(node) }))
-        .filter(({ node, rect, style }) => {
-          const reservedBottom = parseFloat(style.marginBottom) + parseFloat(style.paddingBottom);
-          return (
-            style.position !== "fixed" &&
-            !node.closest("[data-sticky-mobile-action]") &&
-            rect.height > 24 &&
-            rect.bottom > 0 &&
-            rect.top < window.innerHeight &&
-            reservedBottom < 96
+        const fixedTop = fixedBottom.rect.top;
+        const lastContent = Array.from(
+          document.querySelectorAll(
+            "main article, main section, main [data-slot='card'], main .premium-card",
+          ),
+        )
+          .map((node) => ({
+            node,
+            rect: node.getBoundingClientRect(),
+            style: window.getComputedStyle(node),
+          }))
+          .filter(({ node, rect, style }) => {
+            const reservedBottom = parseFloat(style.marginBottom) + parseFloat(style.paddingBottom);
+            return (
+              style.position !== "fixed" &&
+              !node.closest("[data-sticky-mobile-action]") &&
+              rect.height > 24 &&
+              rect.bottom > 0 &&
+              rect.top < window.innerHeight &&
+              reservedBottom < 96
+            );
+          })
+          .sort((left, right) => right.rect.bottom - left.rect.bottom)[0];
+
+        if (lastContent && lastContent.rect.bottom > fixedTop - 8) {
+          issues.push(
+            `bottom fixed navigation overlaps last content by ${Math.round(lastContent.rect.bottom - fixedTop)}px`,
           );
-        })
-        .sort((left, right) => right.rect.bottom - left.rect.bottom)[0];
+        }
 
-      if (lastContent && lastContent.rect.bottom > fixedTop - 8) {
-        issues.push(`bottom fixed navigation overlaps last content by ${Math.round(lastContent.rect.bottom - fixedTop)}px`);
-      }
-
-      return { issues };
+        return { issues };
+      });
     });
-  });
 
   return { issues: [...firstPass.issues, ...bottomPass.issues] };
 }

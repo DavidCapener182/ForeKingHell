@@ -146,7 +146,7 @@ describe("user isolation source guards", () => {
       "await tx.delete(billingCustomers).where(eq(billingCustomers.userId, userId));",
     ]);
     expect(partnerActions).toContain("safeExternalUrl");
-    expect(partnerActions).toContain("url.protocol === \"https:\" || url.protocol === \"http:\"");
+    expect(partnerActions).toContain('url.protocol === "https:" || url.protocol === "http:"');
   });
 
   it("requires auth in app API routes that handle private data or external lookups", () => {

@@ -35,7 +35,10 @@ export async function getStoredRapsodoToken() {
   }
 }
 
-export async function setStoredRapsodoToken(token: string, profile: Record<string, unknown> | null) {
+export async function setStoredRapsodoToken(
+  token: string,
+  profile: Record<string, unknown> | null,
+) {
   const now = Date.now();
   const expiresAt = now + TOKEN_TTL_SECONDS * 1000;
   const encrypted = encryptTokenPayload({
@@ -78,7 +81,10 @@ function decryptTokenPayload(value: string): StoredRapsodoToken {
 
   const decipher = createDecipheriv(ALGORITHM, secretKey(), fromBase64Url(ivText));
   decipher.setAuthTag(fromBase64Url(tagText));
-  const decrypted = Buffer.concat([decipher.update(fromBase64Url(encryptedText)), decipher.final()]);
+  const decrypted = Buffer.concat([
+    decipher.update(fromBase64Url(encryptedText)),
+    decipher.final(),
+  ]);
   const payload = JSON.parse(decrypted.toString("utf8")) as StoredRapsodoToken;
 
   if (!payload.token || !Number.isFinite(payload.expiresAt)) {

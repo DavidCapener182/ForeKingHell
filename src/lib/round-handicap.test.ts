@@ -77,8 +77,7 @@ describe("round handicap", () => {
 
   it("uses the lowest 8 of the latest 20 differentials when enough scores exist", () => {
     const summary = calculateHandicapSummary([
-      10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
-      11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 0,
+      10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 0,
     ]);
 
     expect(summary.sampleSize).toBe(21);

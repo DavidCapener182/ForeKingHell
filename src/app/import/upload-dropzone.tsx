@@ -63,7 +63,9 @@ export function UploadDropzone({
       <div
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 px-4 py-8 text-center transition-colors",
-          isDragging ? "border-emerald-500 bg-emerald-50" : "border-border hover:border-emerald-400",
+          isDragging
+            ? "border-emerald-500 bg-emerald-50"
+            : "border-border hover:border-emerald-400",
         )}
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(event) => {
@@ -110,13 +112,18 @@ export function UploadDropzone({
         <div className="rounded-xl border bg-white p-3" aria-live="polite">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium">Reading {readProgress.fileName}</span>
-            <span className="text-muted-foreground">{formatPercent(readProgress.loaded, readProgress.total)}</span>
+            <span className="text-muted-foreground">
+              {formatPercent(readProgress.loaded, readProgress.total)}
+            </span>
           </div>
           <GolfLoader
             label="Reading launch data"
             className="mt-3 max-w-none border-0 bg-emerald-50/55 p-3 shadow-none [&_[data-loader-art]]:h-20"
           />
-          <Progress value={progressValue(readProgress.loaded, readProgress.total)} className="mt-2 h-2" />
+          <Progress
+            value={progressValue(readProgress.loaded, readProgress.total)}
+            className="mt-2 h-2"
+          />
         </div>
       ) : null}
 
@@ -140,7 +147,9 @@ export function UploadDropzone({
                     <p className="truncate text-sm font-medium">{file.fileName}</p>
                     <p className="text-xs text-muted-foreground">
                       {file.parsed.shotCount} shots
-                      {file.parsed.exportedAtIso ? `, ${formatDate(file.parsed.exportedAtIso)}` : ""}
+                      {file.parsed.exportedAtIso
+                        ? `, ${formatDate(file.parsed.exportedAtIso)}`
+                        : ""}
                       , {file.parsed.detectedDistanceUnit} detected
                     </p>
                   </div>

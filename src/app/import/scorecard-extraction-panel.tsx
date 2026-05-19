@@ -39,9 +39,9 @@ export function ScorecardExtractionPanel({
           <div className="space-y-1">
             <p className="text-sm font-medium">Course scorecard</p>
             <p className="text-sm leading-6 text-muted-foreground">
-              The CSV does not include hole labels, so the app uses the scorecard, shot order,
-              and review rows below to map shots to holes. Enter a hole score and anything
-              above CSV shots plus penalties is treated as putts.
+              The CSV does not include hole labels, so the app uses the scorecard, shot order, and
+              review rows below to map shots to holes. Enter a hole score and anything above CSV
+              shots plus penalties is treated as putts.
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onApplySawgrassPreset}>
@@ -61,8 +61,8 @@ export function ScorecardExtractionPanel({
             <div className="min-w-0">
               <p className="text-sm font-medium">Scorecard screenshot</p>
               <p className="text-xs leading-5 text-muted-foreground">
-                Upload an 18Birdies scorecard image to pull scores, putts, FIR, GIR,
-                handicap strokes and the round date into the review rows.
+                Upload an 18Birdies scorecard image to pull scores, putts, FIR, GIR, handicap
+                strokes and the round date into the review rows.
               </p>
             </div>
             <Button
@@ -84,7 +84,9 @@ export function ScorecardExtractionPanel({
             <p
               className={cn(
                 "text-xs leading-5",
-                scorecardExtractState.status === "error" ? "text-destructive" : "text-muted-foreground",
+                scorecardExtractState.status === "error"
+                  ? "text-destructive"
+                  : "text-muted-foreground",
               )}
               aria-live="polite"
             >

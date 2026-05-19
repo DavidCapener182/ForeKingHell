@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { clubAccent, clubSortValue, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import {
+  clubAccent,
+  clubSortValue,
+  isShortGameTouchClubType,
+  isTrackedClubType,
+} from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { LongestShotsSection, type LongestShot } from "../longest-shots-section";
 
@@ -43,7 +48,8 @@ export default async function LongestShotsPage() {
               Longest shot simulator
             </h1>
             <p className="text-base leading-7 text-muted-foreground">
-              Select a club to replay its best total-distance shot with tracer, curve, carry, launch, apex, and spin.
+              Select a club to replay its best total-distance shot with tracer, curve, carry,
+              launch, apex, and spin.
             </p>
           </div>
         </header>
@@ -158,7 +164,7 @@ function findLongestShot(shots: LongestShotRow[]) {
       return longest;
     }
 
-    const longestDistance = longest ? longest.totalYd ?? longest.carryYd : null;
+    const longestDistance = longest ? (longest.totalYd ?? longest.carryYd) : null;
     return longestDistance === null || shotDistance > longestDistance ? shot : longest;
   }, null);
 }

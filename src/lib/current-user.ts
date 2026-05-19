@@ -88,7 +88,8 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 export async function ensureUserProfile(user: CurrentUser) {
   const db = getDb();
   const now = new Date();
-  const fallbackName = safeDisplayName(user.name) ?? displayNameFromEmail(user.email) ?? "ForeKingHell Player";
+  const fallbackName =
+    safeDisplayName(user.name) ?? displayNameFromEmail(user.email) ?? "ForeKingHell Player";
 
   await db
     .insert(users)
@@ -173,7 +174,11 @@ function stringMetadata(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function defaultUsernameForProfile(displayName: string, email: string | null | undefined, userId: string) {
+function defaultUsernameForProfile(
+  displayName: string,
+  email: string | null | undefined,
+  userId: string,
+) {
   const base = (safeDisplayName(displayName) ?? email?.split("@")[0] ?? "player")
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, "-")

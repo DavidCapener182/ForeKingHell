@@ -4,10 +4,20 @@ import { detectLaunchMonitorProvider, launchMonitorProviders } from "@/lib/impor
 
 describe("launch monitor provider adapters", () => {
   it("keeps Rapsodo live while Square and TrackMan adapters are discoverable", () => {
-    expect(launchMonitorProviders.map((provider) => provider.providerKind)).toEqual(["rapsodo", "square", "trackman"]);
-    expect(launchMonitorProviders.find((provider) => provider.providerKind === "rapsodo")?.status).toBe("live");
-    expect(launchMonitorProviders.find((provider) => provider.providerKind === "square")?.status).toBe("beta");
-    expect(launchMonitorProviders.find((provider) => provider.providerKind === "trackman")?.status).toBe("research");
+    expect(launchMonitorProviders.map((provider) => provider.providerKind)).toEqual([
+      "rapsodo",
+      "square",
+      "trackman",
+    ]);
+    expect(
+      launchMonitorProviders.find((provider) => provider.providerKind === "rapsodo")?.status,
+    ).toBe("live");
+    expect(
+      launchMonitorProviders.find((provider) => provider.providerKind === "square")?.status,
+    ).toBe("beta");
+    expect(
+      launchMonitorProviders.find((provider) => provider.providerKind === "trackman")?.status,
+    ).toBe("research");
   });
 
   it("detects and normalises a Square-style file", async () => {

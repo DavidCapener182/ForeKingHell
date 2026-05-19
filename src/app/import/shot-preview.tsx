@@ -1,19 +1,8 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  DataPair,
-  DataTableFrame,
-  MobileDataCard,
-  MobileDataList,
-} from "@/components/premium";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataPair, DataTableFrame, MobileDataCard, MobileDataList } from "@/components/premium";
 import {
   Table,
   TableBody,
@@ -58,7 +47,8 @@ export function ShotPreview({
       <CardHeader>
         <CardTitle>Step 3: Review shots</CardTitle>
         <CardDescription>
-          Showing the first {shots.length} parsed shots across the selected batch. Distance values are stored in yards.
+          Showing the first {shots.length} parsed shots across the selected batch. Distance values
+          are stored in yards.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -127,7 +117,9 @@ export function ShotPreview({
                     <TableCell>{shot.fileShotNumber}</TableCell>
                     {isCourseUpload ? (
                       <TableCell>
-                        {shot.courseShot ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}` : "--"}
+                        {shot.courseShot
+                          ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}`
+                          : "--"}
                       </TableCell>
                     ) : null}
                     <TableCell className="font-medium">{shot.clubLabel}</TableCell>
@@ -135,7 +127,9 @@ export function ShotPreview({
                     <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
                     <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
                     <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.launchAngleDeg)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatMetric(shot.launchAngleDeg)}
+                    </TableCell>
                     <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
                     {isCourseUpload ? (
                       <TableCell className="text-right">
@@ -146,7 +140,10 @@ export function ShotPreview({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isCourseUpload ? 11 : 9} className="h-24 text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={isCourseUpload ? 11 : 9}
+                    className="h-24 text-center text-muted-foreground"
+                  >
                     Select one or more CSV files to preview shots.
                   </TableCell>
                 </TableRow>

@@ -136,7 +136,13 @@ function StatusUpdateComposerFields({
       />
 
       <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-        <SocialAvatar displayName={displayName} username={username} avatarUrl={avatarUrl} href="/profile" size={compact ? "sm" : "md"} />
+        <SocialAvatar
+          displayName={displayName}
+          username={username}
+          avatarUrl={avatarUrl}
+          href="/profile"
+          size={compact ? "sm" : "md"}
+        />
         <div className="grid gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold">Post a status update</p>
@@ -159,7 +165,9 @@ function StatusUpdateComposerFields({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imageDataUrl} alt="" className="max-h-80 w-full object-cover" />
               <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <span className="text-xs text-muted-foreground">{imageStatus ?? "Image ready."}</span>
+                <span className="text-xs text-muted-foreground">
+                  {imageStatus ?? "Image ready."}
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -178,13 +186,22 @@ function StatusUpdateComposerFields({
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <ImagePlus className="size-4" />
                 {imageDataUrl ? "Change image" : "Add image"}
               </Button>
               <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span>Visibility</span>
-                <select name="visibility" defaultValue={defaultVisibility} className="h-9 rounded-lg border bg-white px-2 text-xs text-foreground">
+                <select
+                  name="visibility"
+                  defaultValue={defaultVisibility}
+                  className="h-9 rounded-lg border bg-white px-2 text-xs text-foreground"
+                >
                   {visibilityOptions.map((option) => (
                     <option key={option} value={option}>
                       {titleCase(option)}
@@ -198,15 +215,27 @@ function StatusUpdateComposerFields({
                 {body.length}/{MAX_BODY_LENGTH}
               </span>
               <Button type="submit" disabled={pending || !canPost} size="sm">
-                {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                {pending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
                 Post
               </Button>
             </div>
           </div>
 
-          {imageStatus && !imageDataUrl ? <p className="text-xs text-muted-foreground">{imageStatus}</p> : null}
+          {imageStatus && !imageDataUrl ? (
+            <p className="text-xs text-muted-foreground">{imageStatus}</p>
+          ) : null}
           {state.message ? (
-            <p className={cn("text-xs", state.status === "error" ? "text-red-600" : "text-muted-foreground")} aria-live="polite">
+            <p
+              className={cn(
+                "text-xs",
+                state.status === "error" ? "text-red-600" : "text-muted-foreground",
+              )}
+              aria-live="polite"
+            >
               {state.message}
             </p>
           ) : null}

@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { Flag, ListChecks, Target, Trophy } from "lucide-react";
 
-import { AdminMetric, AdminNav, AdminSection, formatDateTime, label, StatusBadge } from "@/app/admin/admin-components";
+import {
+  AdminMetric,
+  AdminNav,
+  AdminSection,
+  formatDateTime,
+  label,
+  StatusBadge,
+} from "@/app/admin/admin-components";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,25 +30,53 @@ export default async function AdminChallengesPage() {
         <StatusPill tone="amber">Admin challenges</StatusPill>
         <h1 className="mt-3 text-3xl font-semibold tracking-normal">Challenges and tournaments</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Monitor challenge templates, active boards, participation, attempts and calculated results.
+          Monitor challenge templates, active boards, participation, attempts and calculated
+          results.
         </p>
       </header>
 
       <section className="grid gap-3 md:grid-cols-4">
-        <AdminMetric icon={ListChecks} label="Templates" value={data.templates.length} detail="Challenge formats" />
-        <AdminMetric icon={Trophy} label="Challenges" value={data.challenges.length} detail={`${openChallenges.length} open`} />
-        <AdminMetric icon={Flag} label="Entries" value={totalEntries} detail="Joined participants" />
-        <AdminMetric icon={Target} label="Attempts" value={totalAttempts} detail="Submitted scores" />
+        <AdminMetric
+          icon={ListChecks}
+          label="Templates"
+          value={data.templates.length}
+          detail="Challenge formats"
+        />
+        <AdminMetric
+          icon={Trophy}
+          label="Challenges"
+          value={data.challenges.length}
+          detail={`${openChallenges.length} open`}
+        />
+        <AdminMetric
+          icon={Flag}
+          label="Entries"
+          value={totalEntries}
+          detail="Joined participants"
+        />
+        <AdminMetric
+          icon={Target}
+          label="Attempts"
+          value={totalAttempts}
+          detail="Submitted scores"
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
-        <AdminSection title="Templates" description="Seeded formats available to public and private challenges.">
+        <AdminSection
+          title="Templates"
+          description="Seeded formats available to public and private challenges."
+        >
           <div className="grid gap-2">
             {data.templates.map((template) => (
               <div key={template.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
                 <p className="font-medium">{template.name}</p>
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{template.description ?? "No description"}</p>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">{label(template.challengeType)}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {template.description ?? "No description"}
+                </p>
+                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                  {label(template.challengeType)}
+                </p>
               </div>
             ))}
           </div>
@@ -50,7 +85,11 @@ export default async function AdminChallengesPage() {
         <AdminSection
           title="Challenge boards"
           description="Open the public challenge page for creation and participant-facing operations."
-          action={<Button asChild variant="outline"><Link href="/challenges">Open challenges</Link></Button>}
+          action={
+            <Button asChild variant="outline">
+              <Link href="/challenges">Open challenges</Link>
+            </Button>
+          }
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] text-left text-sm">
@@ -76,13 +115,20 @@ export default async function AdminChallengesPage() {
                     </td>
                     <td className="px-3 py-3">
                       <p className="font-medium">{challenge.creatorDisplayName}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{challenge.creatorEmail ?? "No email"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {challenge.creatorEmail ?? "No email"}
+                      </p>
                     </td>
-                    <td className="px-3 py-3"><StatusBadge status={challenge.status} /></td>
+                    <td className="px-3 py-3">
+                      <StatusBadge status={challenge.status} />
+                    </td>
                     <td className="px-3 py-3 text-muted-foreground">
-                      {challenge.entryCount} entries · {challenge.attemptCount} attempts · {challenge.resultCount} results
+                      {challenge.entryCount} entries · {challenge.attemptCount} attempts ·{" "}
+                      {challenge.resultCount} results
                     </td>
-                    <td className="px-3 py-3 text-xs text-muted-foreground">{formatDateTime(challenge.endsAt)}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground">
+                      {formatDateTime(challenge.endsAt)}
+                    </td>
                     <td className="px-3 py-3">
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/challenges/${challenge.id}`}>Open</Link>

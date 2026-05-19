@@ -13,7 +13,9 @@ export type ScorecardProofPayload = {
 const TOKEN_VERSION = "v1";
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
-export function createScorecardProofToken(input: Omit<ScorecardProofPayload, "createdAt" | "expiresAt">) {
+export function createScorecardProofToken(
+  input: Omit<ScorecardProofPayload, "createdAt" | "expiresAt">,
+) {
   const now = Date.now();
   const payload: ScorecardProofPayload = {
     ...input,
@@ -70,5 +72,10 @@ function base64UrlDecode(value: string) {
 }
 
 function proofSecret() {
-  return process.env.SCORECARD_PROOF_SECRET ?? process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "local-scorecard-proof-secret";
+  return (
+    process.env.SCORECARD_PROOF_SECRET ??
+    process.env.AUTH_SECRET ??
+    process.env.NEXTAUTH_SECRET ??
+    "local-scorecard-proof-secret"
+  );
 }

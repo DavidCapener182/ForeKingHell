@@ -127,14 +127,22 @@ export default async function ProgressPage() {
         visual={<PageArtwork variant="progress" alt="" className="h-full min-h-44" />}
         actions={
           mostImproved ? (
-            <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Link href={`/bag/${mostImproved.clubId}/analytics`} prefetch={false}>
                 <Brain className="size-4" />
                 View supporting shots
               </Link>
             </Button>
           ) : (
-            <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
                 Import first CSV
@@ -174,8 +182,8 @@ export default async function ProgressPage() {
               <div>
                 <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
                 <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-                  Import a Rapsodo CSV and ForeKingHell will build first-vs-latest club
-                  comparisons automatically.
+                  Import a Rapsodo CSV and ForeKingHell will build first-vs-latest club comparisons
+                  automatically.
                 </p>
               </div>
               <Button asChild>
@@ -226,7 +234,9 @@ export default async function ProgressPage() {
                 >
                   <Icon className="size-5 text-emerald-600" />
                   <span className="text-sm font-semibold">{step.title}</span>
-                  <span className="text-sm leading-5 text-muted-foreground">{step.description}</span>
+                  <span className="text-sm leading-5 text-muted-foreground">
+                    {step.description}
+                  </span>
                 </Link>
               );
             })}
@@ -255,7 +265,11 @@ export default async function ProgressPage() {
           </DataPanel>
 
           <PracticePlanPanel priorities={summary.practicePlan} />
-          <CoachReadoutPanel signal={summary.bestSignal} groups={summary.coachSummary} gaps={summary.dataGaps} />
+          <CoachReadoutPanel
+            signal={summary.bestSignal}
+            groups={summary.coachSummary}
+            gaps={summary.dataGaps}
+          />
 
           <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
             <BagMovementPanel rows={summary.clubRows} />
@@ -271,13 +285,7 @@ export default async function ProgressPage() {
   );
 }
 
-function WeeklyRecapPanel({
-  data,
-  summary,
-}: {
-  data: FeatureIdeasData;
-  summary: ProgressSummary;
-}) {
+function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: ProgressSummary }) {
   const bestClub = summary.rankings.mostTrusted ?? summary.rankings.mostImproved;
   const weakestSignal = summary.rankings.needsWork;
   const topPriority = summary.practicePlan[0];
@@ -314,14 +322,22 @@ function WeeklyRecapPanel({
           <WeeklyRecapCard
             label="Best club"
             value={bestClub ? formatClubType(bestClub.clubType) : data.weeklyRecap.bestClub}
-            detail={bestClub ? bestClubDetail(bestClub, summary) : "Keep building clean stock-shot samples"}
+            detail={
+              bestClub
+                ? bestClubDetail(bestClub, summary)
+                : "Keep building clean stock-shot samples"
+            }
             href={bestClub ? `/bag/${bestClub.clubId}/analytics` : undefined}
             tone="green"
           />
           <WeeklyRecapCard
             label="Weakest signal"
             value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
-            detail={weakestSignal ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club` : "Review the next clean baseline"}
+            detail={
+              weakestSignal
+                ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
+                : "Review the next clean baseline"
+            }
             href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
             tone="amber"
           />
@@ -348,12 +364,17 @@ function WeeklyRecapPanel({
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {data.practiceCalendar.slice(0, 4).map((item, index) => (
-              <div key={`${item.title}-${item.date.toISOString()}`} className="flex min-w-0 shrink-0 items-center gap-2">
+              <div
+                key={`${item.title}-${item.date.toISOString()}`}
+                className="flex min-w-0 shrink-0 items-center gap-2"
+              >
                 <div className="min-w-44 rounded-lg border border-slate-200 bg-white px-3 py-2">
                   <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                     {shortDateFormatter.format(item.date)}
                   </p>
-                  <p className="mt-1 truncate text-sm font-semibold">{compactPracticeTitle(item.title)}</p>
+                  <p className="mt-1 truncate text-sm font-semibold">
+                    {compactPracticeTitle(item.title)}
+                  </p>
                 </div>
                 {index < Math.min(data.practiceCalendar.length, 4) - 1 ? (
                   <ArrowRight className="size-4 shrink-0 text-slate-400" />
@@ -383,8 +404,12 @@ function WeeklyRecapCard({
   const content = (
     <div className="h-full rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-300">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
-        <span className={cn("mt-0.5 size-2 rounded-full", compactToneClasses[tone].split(" ")[0])} />
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </p>
+        <span
+          className={cn("mt-0.5 size-2 rounded-full", compactToneClasses[tone].split(" ")[0])}
+        />
       </div>
       <p className="mt-2 text-base font-semibold leading-6 tracking-normal">{value}</p>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
@@ -409,7 +434,9 @@ function MobileProgressFirstCard({ summary }: { summary: ProgressSummary }) {
       <div>
         <p className="text-sm font-semibold text-[#0B7A3B]">This week</p>
         <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-          {mostImproved ? `${formatClubType(mostImproved.clubType)} is moving best` : "Build a comparable baseline"}
+          {mostImproved
+            ? `${formatClubType(mostImproved.clubType)} is moving best`
+            : "Build a comparable baseline"}
         </h2>
         <p className="mt-2 text-sm leading-5 text-[#6B7280]">
           {needsWork
@@ -417,7 +444,11 @@ function MobileProgressFirstCard({ summary }: { summary: ProgressSummary }) {
             : "Import another session to separate best improvement, biggest drop and next action."}
         </p>
       </div>
-      <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]" data-primary-action>
+      <Button
+        asChild
+        className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+        data-primary-action
+      >
         <Link href={needsWork ? `/bag/${needsWork.clubId}/analytics` : "/import"} prefetch={false}>
           {needsWork ? "Open next action" : "Import session"}
         </Link>
@@ -432,25 +463,47 @@ function ComparisonBar({ summary }: { summary: ProgressSummary }) {
   return (
     <section className="grid gap-3 rounded-lg border border-[#D9DED8] bg-white px-4 py-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center">
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Comparison</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Comparison
+        </p>
         <p className="mt-1 font-semibold">Progress controls</p>
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Compared with</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Compared with
+        </p>
         <p className="mt-1 font-semibold">Personal baseline</p>
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Period</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Period
+        </p>
         <p className="mt-1 font-semibold">All saved data</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Confidence: based on {integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots
+          Confidence: based on {integerFormatter.format(summary.totals.trackedCleanShots)} clean
+          stock shots
         </p>
       </div>
       <Tabs defaultValue="all" className="sm:justify-self-end">
         <TabsList>
-          <TabsTrigger className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm" value="all">All data</TabsTrigger>
-          <TabsTrigger className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm" value="30d">Last 30 days</TabsTrigger>
-          <TabsTrigger className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm" value="10s">Last 10 sessions</TabsTrigger>
+          <TabsTrigger
+            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
+            value="all"
+          >
+            All data
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
+            value="30d"
+          >
+            Last 30 days
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
+            value="10s"
+          >
+            Last 10 sessions
+          </TabsTrigger>
         </TabsList>
       </Tabs>
     </section>
@@ -492,7 +545,11 @@ function ProgressSignalsPanel({
             icon={AlertTriangle}
             label="Main concern"
             value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
-            detail={mainConcern ? `${mainConcern.trustIndex}% trust · lowest trust club with usable data` : "No weak signal has separated yet"}
+            detail={
+              mainConcern
+                ? `${mainConcern.trustIndex}% trust · lowest trust club with usable data`
+                : "No weak signal has separated yet"
+            }
             href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
             tone="amber"
           />
@@ -501,7 +558,11 @@ function ProgressSignalsPanel({
           <MetricCard
             label="Most reliable"
             value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
-            detail={mostReliable ? `${mostReliable.trustIndex}% trust · ${mostReliable.sampleSize} clean shots` : "Need more shots"}
+            detail={
+              mostReliable
+                ? `${mostReliable.trustIndex}% trust · ${mostReliable.sampleSize} clean shots`
+                : "Need more shots"
+            }
             href={mostReliable ? `/bag/${mostReliable.clubId}/analytics` : undefined}
             icon={Gauge}
             tone="sky"
@@ -509,8 +570,14 @@ function ProgressSignalsPanel({
           <MetricCard
             label="Strongest improvement"
             value={strongestImprovement ? formatClubType(strongestImprovement.clubType) : "--"}
-            detail={strongestImprovement ? strongestImprovementDetail(strongestImprovement) : "Need comparable baselines"}
-            href={strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined}
+            detail={
+              strongestImprovement
+                ? strongestImprovementDetail(strongestImprovement)
+                : "Need comparable baselines"
+            }
+            href={
+              strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined
+            }
             icon={TrendingUp}
             tone="green"
           />
@@ -563,7 +630,9 @@ function LargeSignalCard({
         <Icon className="size-5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </p>
         <p className="mt-1 text-2xl font-semibold leading-tight tracking-normal">{value}</p>
         <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
         {note ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{note}</p> : null}
@@ -590,14 +659,21 @@ function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: Progress
           </p>
           <p className="mt-1 text-2xl font-semibold tracking-normal">{trend.value}</p>
         </div>
-        <div className={cn("grid size-8 shrink-0 place-items-center rounded-md ring-1", toneClasses[trend.tone])}>
+        <div
+          className={cn(
+            "grid size-8 shrink-0 place-items-center rounded-md ring-1",
+            toneClasses[trend.tone],
+          )}
+        >
           <BarChart3 className="size-4" />
         </div>
       </div>
       <Sparkline points={trend.points} tone={trend.tone} />
       <p className="mt-2 text-sm leading-5 text-muted-foreground">{trendVerdict(trend, summary)}</p>
       {trendFootnote(trend, summary) ? (
-        <p className="mt-1 text-xs leading-4 text-muted-foreground">{trendFootnote(trend, summary)}</p>
+        <p className="mt-1 text-xs leading-4 text-muted-foreground">
+          {trendFootnote(trend, summary)}
+        </p>
       ) : null}
     </div>
   );
@@ -623,10 +699,18 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
 
     return `${roundForSvg(x)},${roundForSvg(y)}`;
   });
-  const lastPoint = coordinates[coordinates.length - 1]?.split(",").map(Number) ?? [width, height / 2];
+  const lastPoint = coordinates[coordinates.length - 1]?.split(",").map(Number) ?? [
+    width,
+    height / 2,
+  ];
 
   return (
-    <svg className="mt-4 h-14 w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Trend line">
+    <svg
+      className="mt-4 h-14 w-full overflow-visible"
+      viewBox={`0 0 ${width} ${height}`}
+      role="img"
+      aria-label="Trend line"
+    >
       <line x1="0" x2={width} y1={height - 5} y2={height - 5} stroke="#E5E7EB" strokeWidth="1" />
       <polyline
         fill="none"
@@ -657,7 +741,11 @@ function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
             <PracticePriorityFeatureCard priority={topPriority} />
             <div className="grid gap-3">
               {secondaryPriorities.map((priority, index) => (
-                <PracticePriorityCompactCard key={priority.clubId} priority={priority} index={index + 2} />
+                <PracticePriorityCompactCard
+                  key={priority.clubId}
+                  priority={priority}
+                  index={index + 2}
+                />
               ))}
             </div>
           </div>
@@ -680,18 +768,26 @@ function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority 
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Badge variant="outline" className="bg-white">Priority 1</Badge>
-          <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-normal">{priority.title}</h2>
+          <Badge variant="outline" className="bg-white">
+            Priority 1
+          </Badge>
+          <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-normal">
+            {priority.title}
+          </h2>
         </div>
         <StatusPill tone={priority.tone}>{priority.priorityLabel}</StatusPill>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <div className="rounded-md bg-white p-3 ring-1 ring-emerald-100">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Why</p>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Why
+          </p>
           <p className="mt-1 text-sm leading-6">{practiceReasonCopy(priority)}</p>
         </div>
         <div className="rounded-md bg-white p-3 ring-1 ring-emerald-100">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Task</p>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Task
+          </p>
           <p className="mt-1 text-sm leading-6">{priority.drill}</p>
         </div>
       </div>
@@ -722,7 +818,9 @@ function PracticePriorityCompactCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge variant="outline">Priority {index}</Badge>
-          <h2 className="mt-2 text-base font-semibold leading-6 tracking-normal">{priority.title}</h2>
+          <h2 className="mt-2 text-base font-semibold leading-6 tracking-normal">
+            {priority.title}
+          </h2>
         </div>
         <StatusPill tone={priority.tone}>{priority.priorityLabel}</StatusPill>
       </div>
@@ -763,30 +861,39 @@ function CoachReadoutPanel({
           {groups.map((group) => (
             <div key={group.title} className="min-w-0">
               <div className="mb-3 flex items-center gap-2">
-                <span className={cn("size-2.5 rounded-full ring-4", compactToneClasses[group.tone])} />
+                <span
+                  className={cn("size-2.5 rounded-full ring-4", compactToneClasses[group.tone])}
+                />
                 <h2 className="font-semibold tracking-normal">{group.title}</h2>
               </div>
               <div className="space-y-3">
-                {group.title === "Data gaps" && gaps.length > 0 ? (
-                  gaps.slice(0, 2).map((gap) => <DataGapRichCard key={gap.clubId} gap={gap} />)
-                ) : (
-                  group.items.map((item, index) => {
-                    const content = (
-                      <div className="rounded-md border border-slate-200 bg-white p-3">
-                        <p className="text-sm font-medium leading-5">{item.label}</p>
-                        {item.detail ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p> : null}
-                      </div>
-                    );
+                {group.title === "Data gaps" && gaps.length > 0
+                  ? gaps.slice(0, 2).map((gap) => <DataGapRichCard key={gap.clubId} gap={gap} />)
+                  : group.items.map((item, index) => {
+                      const content = (
+                        <div className="rounded-md border border-slate-200 bg-white p-3">
+                          <p className="text-sm font-medium leading-5">{item.label}</p>
+                          {item.detail ? (
+                            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                              {item.detail}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
 
-                    return item.clubId ? (
-                      <Link key={`${group.title}-${index}`} href={`/bag/${item.clubId}/analytics`} prefetch={false} className="block hover:text-emerald-700">
-                        {content}
-                      </Link>
-                    ) : (
-                      <div key={`${group.title}-${index}`}>{content}</div>
-                    );
-                  })
-                )}
+                      return item.clubId ? (
+                        <Link
+                          key={`${group.title}-${index}`}
+                          href={`/bag/${item.clubId}/analytics`}
+                          prefetch={false}
+                          className="block hover:text-emerald-700"
+                        >
+                          {content}
+                        </Link>
+                      ) : (
+                        <div key={`${group.title}-${index}`}>{content}</div>
+                      );
+                    })}
               </div>
             </div>
           ))}
@@ -803,7 +910,9 @@ function DataGapRichCard({ gap }: { gap: DataGap }) {
       prefetch={false}
       className="block rounded-md border border-slate-200 bg-white p-3 hover:border-emerald-300"
     >
-      <p className="text-sm font-medium leading-5">{formatClubType(gap.clubType)} needs more clean stock shots</p>
+      <p className="text-sm font-medium leading-5">
+        {formatClubType(gap.clubType)} needs more clean stock shots
+      </p>
       <div className="mt-3 grid gap-2 text-sm">
         <DataPair label="Baseline" value={`${gap.cleanShots} clean baseline shots`} />
         <DataPair label="Target" value="10 full stock shots" />
@@ -861,13 +970,21 @@ function BagMovementPanel({ rows }: { rows: ProgressClubRow[] }) {
             {rows.map((row) => (
               <TableRow key={row.clubId}>
                 <TableCell className={cn("border-l-4", bagRowMarkerClass(row))}>
-                  <Link href={`/bag/${row.clubId}/analytics`} prefetch={false} className="font-semibold hover:text-emerald-700">
+                  <Link
+                    href={`/bag/${row.clubId}/analytics`}
+                    prefetch={false}
+                    className="font-semibold hover:text-emerald-700"
+                  >
                     {formatClubType(row.clubType)}
                   </Link>
-                  <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">{row.brandModel}</p>
+                  <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
+                    {row.brandModel}
+                  </p>
                 </TableCell>
                 <TableCell>
-                  <StatusPill tone={row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"}>
+                  <StatusPill
+                    tone={row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"}
+                  >
                     {row.trustIndex}% trust
                   </StatusPill>
                 </TableCell>
@@ -921,7 +1038,9 @@ function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
             className="grid grid-cols-[3.5rem_auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 hover:border-emerald-300"
           >
             <p className="font-semibold">{formatClubType(item.clubType)}</p>
-            <p className="font-semibold tabular-nums">{item.trustIndex === null ? "--" : `${item.trustIndex}%`}</p>
+            <p className="font-semibold tabular-nums">
+              {item.trustIndex === null ? "--" : `${item.trustIndex}%`}
+            </p>
             <div className="min-w-0 text-right">
               <p className="truncate text-sm font-medium">{item.note}</p>
               <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -1100,9 +1219,15 @@ function strongestImprovementRow(summary: ProgressSummary) {
 }
 
 function strongestDispersionImprovement(rows: ProgressClubRow[]) {
-  return [...rows]
-    .filter((row) => row.sampleSize >= 6 && row.offlineDeltaYd !== null && row.offlineDeltaYd <= -2)
-    .sort((left, right) => Math.abs(right.offlineDeltaYd ?? 0) - Math.abs(left.offlineDeltaYd ?? 0))[0] ?? null;
+  return (
+    [...rows]
+      .filter(
+        (row) => row.sampleSize >= 6 && row.offlineDeltaYd !== null && row.offlineDeltaYd <= -2,
+      )
+      .sort(
+        (left, right) => Math.abs(right.offlineDeltaYd ?? 0) - Math.abs(left.offlineDeltaYd ?? 0),
+      )[0] ?? null
+  );
 }
 
 function strongestImprovementDetail(row: ProgressClubRow) {
@@ -1144,7 +1269,9 @@ function trendVerdict(trend: ProgressTrend, summary: ProgressSummary) {
         .slice(0, 3)
         .map((item) => formatClubType(item.clubType));
       const dataGap = summary.dataGaps[0];
-      const reliableClause = reliable.length ? `${formatClubList(reliable)} ${reliable.length === 1 ? "is" : "are"} reliable` : "Trust is still forming";
+      const reliableClause = reliable.length
+        ? `${formatClubList(reliable)} ${reliable.length === 1 ? "is" : "are"} reliable`
+        : "Trust is still forming";
       const gapClause = dataGap ? `; ${formatClubType(dataGap.clubType)} still needs data.` : ".";
       return `Trust is uneven. ${reliableClause}${gapClause}`;
     }
@@ -1186,10 +1313,14 @@ function bagMovementSummary(rows: ProgressClubRow[]) {
   const parts = [
     carryLeader ? `${formatClubType(carryLeader.clubType)} gained the most carry` : null,
     tighterLeader ? `${formatClubType(tighterLeader.clubType)} tightened dispersion` : null,
-    needsWork ? `${formatClubType(needsWork.clubType)} remains the lowest-trust club with enough clean shots` : null,
+    needsWork
+      ? `${formatClubType(needsWork.clubType)} remains the lowest-trust club with enough clean shots`
+      : null,
   ].filter(Boolean);
 
-  return parts.length ? `${parts.join(", ")}.` : "Latest clean baseline vs first clean baseline. Offline going down is good.";
+  return parts.length
+    ? `${parts.join(", ")}.`
+    : "Latest clean baseline vs first clean baseline. Offline going down is good.";
 }
 
 function bagRowMarkerClass(row: ProgressClubRow) {
@@ -1273,10 +1404,7 @@ function strokeForTone(tone: Tone) {
   return strokes[tone];
 }
 
-function findAnalytics(
-  clubs: Array<{ clubId: string; analytics: ClubAnalytics }>,
-  clubId: string,
-) {
+function findAnalytics(clubs: Array<{ clubId: string; analytics: ClubAnalytics }>, clubId: string) {
   return clubs.find((club) => club.clubId === clubId)?.analytics;
 }
 

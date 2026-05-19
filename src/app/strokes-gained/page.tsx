@@ -125,11 +125,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-export default async function StrokesGainedPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
   const filters = parseFilters(await searchParams);
   const data = await getStrokesGainedData();
   const analysis = buildStrokesGainedAnalysis(data.events);
@@ -140,7 +136,9 @@ export default async function StrokesGainedPage({
     : data.events;
   const scopedRounds = buildRoundSummaries(scopedEvents);
   const scopedHoles = buildHoleSummaries(scopedEvents);
-  const scopedFiniteEvents = scopedEvents.filter((event) => typeof event.strokesGained === "number");
+  const scopedFiniteEvents = scopedEvents.filter(
+    (event) => typeof event.strokesGained === "number",
+  );
   const scopedGains = [...scopedFiniteEvents]
     .sort((a, b) => (b.strokesGained ?? 0) - (a.strokesGained ?? 0))
     .slice(0, 3);
@@ -177,9 +175,7 @@ export default async function StrokesGainedPage({
         metrics={heroMetrics(analysis, data.events.length, activeCategory)}
       />
 
-      <MobileBentoSummary
-        items={mobileHeroMetrics(analysis, data.events.length, activeCategory)}
-      />
+      <MobileBentoSummary items={mobileHeroMetrics(analysis, data.events.length, activeCategory)} />
 
       <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
 
@@ -283,14 +279,20 @@ function buildStrokesGainedAnalysis(events: StrokesGainedEvent[]) {
     weakestCategory,
     rounds: buildRoundSummaries(events),
     holes: buildHoleSummaries(events),
-    biggestGains: [...finiteEvents].sort((a, b) => (b.strokesGained ?? 0) - (a.strokesGained ?? 0)).slice(0, 3),
-    biggestLosses: [...finiteEvents].sort((a, b) => (a.strokesGained ?? 0) - (b.strokesGained ?? 0)).slice(0, 3),
+    biggestGains: [...finiteEvents]
+      .sort((a, b) => (b.strokesGained ?? 0) - (a.strokesGained ?? 0))
+      .slice(0, 3),
+    biggestLosses: [...finiteEvents]
+      .sort((a, b) => (a.strokesGained ?? 0) - (b.strokesGained ?? 0))
+      .slice(0, 3),
   };
 }
 
 function buildCategorySummaries(events: StrokesGainedEvent[]) {
   const categoryDefinitions = [...CATEGORY_DEFINITIONS];
-  const knownCategorySet = new Set<string>(categoryDefinitions.map((definition) => definition.category));
+  const knownCategorySet = new Set<string>(
+    categoryDefinitions.map((definition) => definition.category),
+  );
   const extraCategories = [...new Set(events.map((event) => event.category))]
     .filter((category) => !knownCategorySet.has(category))
     .sort()
@@ -415,9 +417,10 @@ function CategoryCard({
   bestCategory: CategorySummary | null;
   weakestCategory: CategorySummary | null;
 }) {
-  const href = category.eventCount > 0 || category.category === "putting"
-    ? `/strokes-gained?category=${category.category}`
-    : "/strokes-gained";
+  const href =
+    category.eventCount > 0 || category.category === "putting"
+      ? `/strokes-gained?category=${category.category}`
+      : "/strokes-gained";
   const isDataGap = category.sampleSize === 0;
   const highPending = hasHighPendingCount(category);
 
@@ -433,7 +436,12 @@ function CategoryCard({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-slate-950">{category.label}</p>
-            <p className={cn("mt-2 text-3xl font-semibold tracking-normal tabular-nums", sgTextClassName(category.total))}>
+            <p
+              className={cn(
+                "mt-2 text-3xl font-semibold tracking-normal tabular-nums",
+                sgTextClassName(category.total),
+              )}
+            >
               {formatSg(category.total, "No data")}
             </p>
           </div>
@@ -447,21 +455,27 @@ function CategoryCard({
           </div>
         </div>
         <div className="space-y-2">
-          <p className={cn("text-sm font-semibold", highPending || isDataGap ? "text-amber-800" : sgTextClassName(category.total))}>
+          <p
+            className={cn(
+              "text-sm font-semibold",
+              highPending || isDataGap ? "text-amber-800" : sgTextClassName(category.total),
+            )}
+          >
             {categoryStatus(category, bestCategory, weakestCategory)}
           </p>
-          <p className="text-sm leading-5 text-muted-foreground">
-            {categoryCardDetail(category)}
-          </p>
+          <p className="text-sm leading-5 text-muted-foreground">{categoryCardDetail(category)}</p>
           {category.pendingCount > 0 ? (
-            <p className={cn("text-xs", highPending ? "font-medium text-amber-800" : "text-muted-foreground")}>
+            <p
+              className={cn(
+                "text-xs",
+                highPending ? "font-medium text-amber-800" : "text-muted-foreground",
+              )}
+            >
               {integerFormatter.format(category.pendingCount)} pending or unmapped
               {highPending ? " - check coverage before over-reading" : ""}
             </p>
           ) : null}
-          <p className="text-xs font-medium text-slate-700">
-            {categoryRecommendation(category)}
-          </p>
+          <p className="text-xs font-medium text-slate-700">{categoryRecommendation(category)}</p>
         </div>
       </Card>
     </Link>
@@ -475,9 +489,8 @@ function CalculationCoverageStrip({
   analysis: ReturnType<typeof buildStrokesGainedAnalysis>;
   totalEvents: number;
 }) {
-  const calculatedPercent = totalEvents > 0
-    ? Math.round((analysis.totals.sampleSize / totalEvents) * 100)
-    : 0;
+  const calculatedPercent =
+    totalEvents > 0 ? Math.round((analysis.totals.sampleSize / totalEvents) * 100) : 0;
   const putting = analysis.categories.find((category) => category.category === "putting");
   const puttingMissing = !putting || putting.sampleSize === 0;
 
@@ -487,11 +500,16 @@ function CalculationCoverageStrip({
         <div>
           <p className="text-sm font-semibold text-slate-950">Calculation coverage</p>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            {integerFormatter.format(analysis.totals.sampleSize)} / {integerFormatter.format(totalEvents)} events calculated · {integerFormatter.format(analysis.pendingCount)} pending or unmapped{puttingMissing ? " · Putting not available yet" : ""}.
+            {integerFormatter.format(analysis.totals.sampleSize)} /{" "}
+            {integerFormatter.format(totalEvents)} events calculated ·{" "}
+            {integerFormatter.format(analysis.pendingCount)} pending or unmapped
+            {puttingMissing ? " · Putting not available yet" : ""}.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <StatusPill tone={calculatedPercent >= 80 ? "green" : calculatedPercent >= 60 ? "amber" : "pink"}>
+          <StatusPill
+            tone={calculatedPercent >= 80 ? "green" : calculatedPercent >= 60 ? "amber" : "pink"}
+          >
             {integerFormatter.format(calculatedPercent)}% calculated
           </StatusPill>
           <StatusPill tone={analysis.pendingCount > 0 ? "amber" : "green"}>
@@ -558,10 +576,7 @@ function CategoryBreakdown({
   categoryTotal: number;
   pendingCount: number;
 }) {
-  const maxAbsTotal = Math.max(
-    1,
-    ...categories.map((category) => Math.abs(category.total ?? 0)),
-  );
+  const maxAbsTotal = Math.max(1, ...categories.map((category) => Math.abs(category.total ?? 0)));
   const discrepancy = total === null ? null : roundOne(categoryTotal - total);
   const categorySumLabel =
     total === null
@@ -591,12 +606,12 @@ function CategoryBreakdown({
           ))}
         </div>
         <div className="grid gap-2 border-t border-slate-200 pt-3 text-sm text-muted-foreground sm:grid-cols-3">
-          <DataPair label="Calculated" value={`${integerFormatter.format(categories.reduce((sum, category) => sum + category.sampleSize, 0))}`} />
-          <DataPair label="Pending / unmapped" value={integerFormatter.format(pendingCount)} />
           <DataPair
-            label="Total category SG"
-            value={categorySumLabel}
+            label="Calculated"
+            value={`${integerFormatter.format(categories.reduce((sum, category) => sum + category.sampleSize, 0))}`}
           />
+          <DataPair label="Pending / unmapped" value={integerFormatter.format(pendingCount)} />
+          <DataPair label="Total category SG" value={categorySumLabel} />
         </div>
       </CardContent>
     </DataPanel>
@@ -611,7 +626,8 @@ function CategoryBarRow({
   maxAbsTotal: number;
 }) {
   const total = category.total;
-  const width = total === null ? 0 : Math.max(4, Math.min(100, (Math.abs(total) / maxAbsTotal) * 100));
+  const width =
+    total === null ? 0 : Math.max(4, Math.min(100, (Math.abs(total) / maxAbsTotal) * 100));
 
   return (
     <div className="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)_5rem] sm:items-center">
@@ -629,18 +645,12 @@ function CategoryBarRow({
       <div className="grid h-8 grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
         <div className="flex items-center justify-end border-r-2 border-slate-500">
           {total !== null && total < 0 ? (
-            <span
-              className="h-full rounded-l-md bg-[#B42318]"
-              style={{ width: `${width}%` }}
-            />
+            <span className="h-full rounded-l-md bg-[#B42318]" style={{ width: `${width}%` }} />
           ) : null}
         </div>
         <div className="flex items-center justify-start">
           {total !== null && total >= 0 ? (
-            <span
-              className="h-full rounded-r-md bg-[#087A3D]"
-              style={{ width: `${width}%` }}
-            />
+            <span className="h-full rounded-r-md bg-[#087A3D]" style={{ width: `${width}%` }} />
           ) : null}
         </div>
       </div>
@@ -666,8 +676,12 @@ function MainScoringLeak({
   const hasGain = summary !== null && summary.total !== null && summary.total > 0;
   const roughCount = leakEvents.filter((event) => event.endLie === "rough").length;
   const penaltyCount = leakEvents.filter((event) => event.penaltyStrokes > 0).length;
-  const lossCount = leakEvents.filter((event) => typeof event.strokesGained === "number" && event.strokesGained < 0).length;
-  const gainCount = leakEvents.filter((event) => typeof event.strokesGained === "number" && event.strokesGained > 0).length;
+  const lossCount = leakEvents.filter(
+    (event) => typeof event.strokesGained === "number" && event.strokesGained < 0,
+  ).length;
+  const gainCount = leakEvents.filter(
+    (event) => typeof event.strokesGained === "number" && event.strokesGained > 0,
+  ).length;
   const neutralCount = summary ? Math.max(0, summary.sampleSize - lossCount - gainCount) : 0;
   const sectionTitle = focusCategory ? `${focusCategory.label} diagnosis` : "Main scoring leak";
   const sectionDescription = focusCategory
@@ -679,7 +693,14 @@ function MainScoringLeak({
       <SectionHeader
         title={sectionTitle}
         description={sectionDescription}
-        action={<AlertTriangle className={cn("size-5", hasLeak ? "text-[#B42318]" : hasGain ? "text-emerald-700" : "text-amber-700")} />}
+        action={
+          <AlertTriangle
+            className={cn(
+              "size-5",
+              hasLeak ? "text-[#B42318]" : hasGain ? "text-emerald-700" : "text-amber-700",
+            )}
+          />
+        }
       />
       <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="soft-panel p-4">
@@ -690,17 +711,17 @@ function MainScoringLeak({
             {summary && summary.sampleSize === 0
               ? `${summary.label} cannot be judged yet.`
               : hasLeak && summary
-              ? `${summary.label} shots are costing ${formatSg(summary.total)}.`
-              : hasGain && summary
-                ? `${summary.label} is gaining ${formatSg(summary.total)} strokes.`
-                : "No negative category has separated yet."}
+                ? `${summary.label} shots are costing ${formatSg(summary.total)}.`
+                : hasGain && summary
+                  ? `${summary.label} is gaining ${formatSg(summary.total)} strokes.`
+                  : "No negative category has separated yet."}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {hasData && summary
               ? `${integerFormatter.format(summary.eventCount)} ${summary.label.toLowerCase()} events were analysed. ${integerFormatter.format(lossCount)} calculated shots lost value and ${integerFormatter.format(gainCount)} gained value.`
               : summary?.category === "putting"
                 ? "Add putt distances to mapped rounds before judging putting strokes gained."
-              : "Keep mapping complete rounds so the next scoring leak is based on enough calculated events."}
+                : "Keep mapping complete rounds so the next scoring leak is based on enough calculated events."}
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -709,13 +730,22 @@ function MainScoringLeak({
             <div className="mt-2">
               {summary && hasData ? (
                 <div className="grid grid-cols-2 gap-2">
-                  <CauseStat value={summary.eventCount} label={`${summary.label.toLowerCase()} events`} />
+                  <CauseStat
+                    value={summary.eventCount}
+                    label={`${summary.label.toLowerCase()} events`}
+                  />
                   <CauseStat value={lossCount} label="losing shots" tone="pink" />
                   <CauseStat value={gainCount} label="gaining shots" tone="green" />
                   <CauseStat value={neutralCount} label="neutral shots" />
-                  {roughCount > 0 ? <CauseStat value={roughCount} label="rough finishes" tone="amber" /> : null}
-                  {penaltyCount > 0 ? <CauseStat value={penaltyCount} label="penalties" tone="pink" /> : null}
-                  {summary.pendingCount > 0 ? <CauseStat value={summary.pendingCount} label="pending" tone="amber" /> : null}
+                  {roughCount > 0 ? (
+                    <CauseStat value={roughCount} label="rough finishes" tone="amber" />
+                  ) : null}
+                  {penaltyCount > 0 ? (
+                    <CauseStat value={penaltyCount} label="penalties" tone="pink" />
+                  ) : null}
+                  {summary.pendingCount > 0 ? (
+                    <CauseStat value={summary.pendingCount} label="pending" tone="amber" />
+                  ) : null}
                 </div>
               ) : summary?.category === "putting" ? (
                 <div className="grid gap-2 text-sm leading-5 text-muted-foreground">
@@ -823,7 +853,11 @@ function ShotHighlightPanel({
       <CardContent>
         <MobileDataList
           className="gap-2"
-          empty={<p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No calculated shot events yet.</p>}
+          empty={
+            <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              No calculated shot events yet.
+            </p>
+          }
         >
           {events.map((event) => (
             <Link
@@ -848,12 +882,11 @@ function ShotHighlightPanel({
                     </span>
                   </div>
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {formatPosition(event.startDistanceYd, event.startLie)} -&gt; {formatPosition(event.endDistanceYd, event.endLie)}
+                    {formatPosition(event.startDistanceYd, event.startLie)} -&gt;{" "}
+                    {formatPosition(event.endDistanceYd, event.endLie)}
                   </p>
                   {shotCostNote(event) ? (
-                    <p className="mt-1 text-xs font-medium text-slate-600">
-                      {shotCostNote(event)}
-                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-600">{shotCostNote(event)}</p>
                   ) : null}
                 </div>
                 <SgValue value={event.strokesGained} className="text-lg" />
@@ -884,7 +917,11 @@ function RoundTrendPanel({
     <DataPanel>
       <SectionHeader
         title={focusCategory ? `${focusCategory.label} SG by round` : "SG by round"}
-        description={rounds.length > 0 ? `Latest ${Math.min(6, rounds.length)} of ${integerFormatter.format(rounds.length)} mapped rounds.` : "No mapped rounds yet."}
+        description={
+          rounds.length > 0
+            ? `Latest ${Math.min(6, rounds.length)} of ${integerFormatter.format(rounds.length)} mapped rounds.`
+            : "No mapped rounds yet."
+        }
         action={<Flag className="size-5 text-emerald-700" />}
       />
       <CardContent className="grid gap-4">
@@ -904,7 +941,9 @@ function RoundTrendPanel({
                   <p className="truncate text-sm font-semibold text-slate-950">
                     {round.courseName ?? "Mapped round"}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(round.sessionDate)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {formatDate(round.sessionDate)}
+                  </p>
                 </div>
                 <SgValue value={round.total} className="shrink-0 text-lg" />
               </div>
@@ -941,7 +980,11 @@ function HoleImpactPanel({
     <DataPanel>
       <SectionHeader
         title="Hole impact"
-        description={focusCategory ? `${focusCategory.label} scoring impact by hole.` : "Best, costliest and most volatile holes from the calculated events."}
+        description={
+          focusCategory
+            ? `${focusCategory.label} scoring impact by hole.`
+            : "Best, costliest and most volatile holes from the calculated events."
+        }
         action={<Target className="size-5 text-emerald-700" />}
       />
       <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -950,26 +993,32 @@ function HoleImpactPanel({
         <HoleImpactSingle
           title="Most volatile"
           hole={mostVolatile}
-          detail={mostVolatile ? `${integerFormatter.format(mostVolatile.gainCount)} gains and ${integerFormatter.format(mostVolatile.lossCount)} losses` : "No calculated hole events yet."}
+          detail={
+            mostVolatile
+              ? `${integerFormatter.format(mostVolatile.gainCount)} gains and ${integerFormatter.format(mostVolatile.lossCount)} losses`
+              : "No calculated hole events yet."
+          }
         />
         <HoleImpactSingle
           title="Needs review"
           hole={needsReview}
-          detail={needsReview ? `${focusCategory?.label ?? "Tee"} pressure is highest here.` : "No calculated hole events yet."}
-          action={needsReview ? `Review ${focusCategory?.label.toLowerCase() ?? "tee"} strategy` : undefined}
+          detail={
+            needsReview
+              ? `${focusCategory?.label ?? "Tee"} pressure is highest here.`
+              : "No calculated hole events yet."
+          }
+          action={
+            needsReview
+              ? `Review ${focusCategory?.label.toLowerCase() ?? "tee"} strategy`
+              : undefined
+          }
         />
       </CardContent>
     </DataPanel>
   );
 }
 
-function HoleImpactList({
-  title,
-  holes,
-}: {
-  title: string;
-  holes: HoleSummary[];
-}) {
+function HoleImpactList({ title, holes }: { title: string; holes: HoleSummary[] }) {
   const maxAbsTotal = Math.max(1, ...holes.map((hole) => Math.abs(hole.total ?? 0)));
 
   return (
@@ -978,7 +1027,10 @@ function HoleImpactList({
       <div className="mt-2 grid gap-2">
         {holes.length > 0 ? (
           holes.map((hole) => (
-            <div key={hole.holeNumber} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 text-sm">
+            <div
+              key={hole.holeNumber}
+              className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 text-sm"
+            >
               <span className="font-medium">Hole {hole.holeNumber}</span>
               <SgMiniBar value={hole.total} maxAbs={maxAbsTotal} />
               <SgValue value={hole.total} />
@@ -1014,7 +1066,8 @@ function HoleImpactSingle({
           </div>
           <p className="text-sm leading-5 text-muted-foreground">{detail}</p>
           <p className="text-xs text-muted-foreground">
-            {integerFormatter.format(hole.sampleSize)} calculated · {integerFormatter.format(hole.pendingCount)} pending
+            {integerFormatter.format(hole.sampleSize)} calculated ·{" "}
+            {integerFormatter.format(hole.pendingCount)} pending
           </p>
           {action ? (
             <Link
@@ -1055,7 +1108,8 @@ function RecentShotEventsPanel({
               Recent shot events
             </span>
             <span className="mt-0.5 block text-sm text-muted-foreground">
-              {integerFormatter.format(events.length)} matching rows from {integerFormatter.format(totalEvents)} mapped events.
+              {integerFormatter.format(events.length)} matching rows from{" "}
+              {integerFormatter.format(totalEvents)} mapped events.
             </span>
           </span>
           <span className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
@@ -1080,7 +1134,10 @@ function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
   const shortcuts = [
     { label: "All", href: "/strokes-gained#events" },
     { label: "Gains", href: shortcutHref({ category: scopedCategory, sg: "gain", sort: "gains" }) },
-    { label: "Losses", href: shortcutHref({ category: scopedCategory, sg: "loss", sort: "losses" }) },
+    {
+      label: "Losses",
+      href: shortcutHref({ category: scopedCategory, sg: "loss", sort: "losses" }),
+    },
     { label: "Pending", href: shortcutHref({ category: scopedCategory, sg: "pending" }) },
     { label: "Tee", href: shortcutHref({ category: "tee" }) },
     { label: "Approach", href: shortcutHref({ category: "approach" }) },
@@ -1092,7 +1149,9 @@ function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
     <div className="flex flex-wrap gap-2">
       {shortcuts.map((shortcut) => (
         <Button key={shortcut.label} asChild variant="outline" size="sm">
-          <Link href={shortcut.href} prefetch={false}>{shortcut.label}</Link>
+          <Link href={shortcut.href} prefetch={false}>
+            {shortcut.label}
+          </Link>
         </Button>
       ))}
     </div>
@@ -1123,7 +1182,9 @@ function StrokesGainedFilterForm({
         <select name="sessionId" defaultValue={filters.sessionId} className={inputClassName}>
           <option value="">All rounds</option>
           {options.sessions.map((session) => (
-            <option key={session.id} value={session.id}>{session.label}</option>
+            <option key={session.id} value={session.id}>
+              {session.label}
+            </option>
           ))}
         </select>
       </label>
@@ -1132,7 +1193,9 @@ function StrokesGainedFilterForm({
         <select name="category" defaultValue={filters.category} className={inputClassName}>
           <option value="">All categories</option>
           {options.categories.map((category) => (
-            <option key={category.value} value={category.value}>{category.label}</option>
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
           ))}
         </select>
       </label>
@@ -1141,7 +1204,9 @@ function StrokesGainedFilterForm({
         <select name="hole" defaultValue={filters.hole} className={inputClassName}>
           <option value="">All holes</option>
           {options.holes.map((hole) => (
-            <option key={hole} value={hole.toString()}>Hole {hole}</option>
+            <option key={hole} value={hole.toString()}>
+              Hole {hole}
+            </option>
           ))}
         </select>
       </label>
@@ -1150,7 +1215,9 @@ function StrokesGainedFilterForm({
         <select name="startLie" defaultValue={filters.startLie} className={inputClassName}>
           <option value="">Any start lie</option>
           {options.startLies.map((lie) => (
-            <option key={lie} value={lie}>{titleCase(lie)}</option>
+            <option key={lie} value={lie}>
+              {titleCase(lie)}
+            </option>
           ))}
         </select>
       </label>
@@ -1159,7 +1226,9 @@ function StrokesGainedFilterForm({
         <select name="endLie" defaultValue={filters.endLie} className={inputClassName}>
           <option value="">Any end lie</option>
           {options.endLies.map((lie) => (
-            <option key={lie} value={lie}>{titleCase(lie)}</option>
+            <option key={lie} value={lie}>
+              {titleCase(lie)}
+            </option>
           ))}
         </select>
       </label>
@@ -1193,7 +1262,9 @@ function StrokesGainedFilterForm({
       <div className="flex items-end gap-2 md:col-span-3 xl:col-span-6">
         <Button type="submit">Apply filters</Button>
         <Button asChild variant="outline">
-          <Link href="/strokes-gained#events" prefetch={false}>Reset</Link>
+          <Link href="/strokes-gained#events" prefetch={false}>
+            Reset
+          </Link>
         </Button>
       </div>
     </form>
@@ -1204,7 +1275,13 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
   return (
     <DataTableFrame
       mobile={
-        <MobileDataList empty={<p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No event rows match these filters.</p>}>
+        <MobileDataList
+          empty={
+            <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              No event rows match these filters.
+            </p>
+          }
+        >
           {events.map((event) => (
             <MobileDataCard
               key={event.id}
@@ -1213,12 +1290,24 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
               href={`/rounds/${event.sessionId}`}
               action={<SgValue value={event.strokesGained} />}
             >
-              <DataPair label="Start" value={formatPosition(event.startDistanceYd, event.startLie)} />
+              <DataPair
+                label="Start"
+                value={formatPosition(event.startDistanceYd, event.startLie)}
+              />
               <DataPair label="End" value={formatPosition(event.endDistanceYd, event.endLie)} />
               <DataPair label="Distance change" value={formatDistanceChange(event)} />
-              <DataPair label="Expected before" value={formatExpectedStrokes(expectedStrokesForEvent(event, "start"))} />
-              <DataPair label="Expected after" value={formatExpectedStrokes(expectedStrokesForEvent(event, "end"))} />
-              <DataPair label="Status" value={event.strokesGained === null ? "Pending" : "Calculated"} />
+              <DataPair
+                label="Expected before"
+                value={formatExpectedStrokes(expectedStrokesForEvent(event, "start"))}
+              />
+              <DataPair
+                label="Expected after"
+                value={formatExpectedStrokes(expectedStrokesForEvent(event, "end"))}
+              />
+              <DataPair
+                label="Status"
+                value={event.strokesGained === null ? "Pending" : "Calculated"}
+              />
             </MobileDataCard>
           ))}
         </MobileDataList>
@@ -1234,8 +1323,12 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
               <TableHead className="sticky top-0 z-10 bg-white">From</TableHead>
               <TableHead className="sticky top-0 z-10 bg-white">To</TableHead>
               <TableHead className="sticky top-0 z-10 bg-white">Distance</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white text-right">Expected before</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white text-right">Expected after</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-white text-right">
+                Expected before
+              </TableHead>
+              <TableHead className="sticky top-0 z-10 bg-white text-right">
+                Expected after
+              </TableHead>
               <TableHead className="sticky top-0 z-10 bg-white text-right">SG</TableHead>
               <TableHead className="sticky top-0 z-10 bg-white">Status</TableHead>
             </TableRow>
@@ -1245,15 +1338,24 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
               events.map((event) => (
                 <TableRow key={event.id}>
                   <TableCell className="min-w-48">
-                    <Link href={`/rounds/${event.sessionId}`} className="font-medium text-emerald-700 hover:underline">
+                    <Link
+                      href={`/rounds/${event.sessionId}`}
+                      className="font-medium text-emerald-700 hover:underline"
+                    >
                       {event.courseName ?? "Round"}
                     </Link>
-                    <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.sessionDate)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDate(event.sessionDate)}
+                    </p>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{holeShotLabel(event)}</TableCell>
                   <TableCell>{titleCase(event.category)}</TableCell>
-                  <TableCell className="min-w-44">{formatPosition(event.startDistanceYd, event.startLie)}</TableCell>
-                  <TableCell className="min-w-44">{formatPosition(event.endDistanceYd, event.endLie)}</TableCell>
+                  <TableCell className="min-w-44">
+                    {formatPosition(event.startDistanceYd, event.startLie)}
+                  </TableCell>
+                  <TableCell className="min-w-44">
+                    {formatPosition(event.endDistanceYd, event.endLie)}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{formatDistanceChange(event)}</TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatExpectedStrokes(expectedStrokesForEvent(event, "start"))}
@@ -1285,13 +1387,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
   );
 }
 
-function SgValue({
-  value,
-  className,
-}: {
-  value: number | null;
-  className?: string;
-}) {
+function SgValue({ value, className }: { value: number | null; className?: string }) {
   return (
     <span className={cn("font-semibold tabular-nums", sgTextClassName(value), className)}>
       {formatSg(value)}
@@ -1311,9 +1407,10 @@ function heroDescription(
       return `${activeCategory.label} cannot be judged yet because there are no calculated events. Measured against your expected-strokes baseline. Positive numbers gained value; negative numbers lost value.`;
     }
 
-    const categoryResult = activeCategory.total !== null && activeCategory.total < 0
-      ? `${activeCategory.label} is costing ${formatSg(activeCategory.total)} strokes.`
-      : `${activeCategory.label} is gaining ${formatSg(activeCategory.total, "0.0")} strokes.`;
+    const categoryResult =
+      activeCategory.total !== null && activeCategory.total < 0
+        ? `${activeCategory.label} is costing ${formatSg(activeCategory.total)} strokes.`
+        : `${activeCategory.label} is gaining ${formatSg(activeCategory.total, "0.0")} strokes.`;
 
     return `${categoryResult} ${integerFormatter.format(activeCategory.sampleSize)} calculated events are mapped to this category, with ${integerFormatter.format(activeCategory.pendingCount)} pending or unmapped. Positive numbers gained value; negative numbers lost value.`;
   }
@@ -1411,7 +1508,11 @@ function categoryStatus(
     return category.category === "putting" ? "Data gap" : "No calculated data";
   }
 
-  if (weakestCategory?.category === category.category && category.total !== null && category.total < 0) {
+  if (
+    weakestCategory?.category === category.category &&
+    category.total !== null &&
+    category.total < 0
+  ) {
     return "Main scoring leak";
   }
 
@@ -1513,7 +1614,12 @@ function roundSignal(
     return `Round signal: ${focusCategory.label} is positive in ${integerFormatter.format(positiveRounds)} ${pluralise(positiveRounds, "round")} and negative in ${integerFormatter.format(negativeRounds)} ${pluralise(negativeRounds, "round")}.`;
   }
 
-  if (bestCategory && weakestCategory && weakestCategory.total !== null && weakestCategory.total < 0) {
+  if (
+    bestCategory &&
+    weakestCategory &&
+    weakestCategory.total !== null &&
+    weakestCategory.total < 0
+  ) {
     return `Round signal: ${bestCategory.label} gains are carrying most positive rounds; ${weakestCategory.label} losses explain the main negative pressure.`;
   }
 
@@ -1525,8 +1631,8 @@ function roundSignal(
 }
 
 function roundCategoryLine(round: RoundSummary, focusCategory: CategorySummary | null) {
-  const categories = round.categoryTotals.filter((category) =>
-    !focusCategory || category.category === focusCategory.category,
+  const categories = round.categoryTotals.filter(
+    (category) => !focusCategory || category.category === focusCategory.category,
   );
 
   if (categories.length === 0) {
@@ -1538,13 +1644,7 @@ function roundCategoryLine(round: RoundSummary, focusCategory: CategorySummary |
     .join(" · ");
 }
 
-function SgHorizontalBar({
-  value,
-  maxAbs,
-}: {
-  value: number | null;
-  maxAbs: number;
-}) {
+function SgHorizontalBar({ value, maxAbs }: { value: number | null; maxAbs: number }) {
   const width = value === null ? 0 : Math.max(6, Math.min(100, (Math.abs(value) / maxAbs) * 100));
 
   return (
@@ -1563,13 +1663,7 @@ function SgHorizontalBar({
   );
 }
 
-function SgMiniBar({
-  value,
-  maxAbs,
-}: {
-  value: number | null;
-  maxAbs: number;
-}) {
+function SgMiniBar({ value, maxAbs }: { value: number | null; maxAbs: number }) {
   const width = value === null ? 0 : Math.max(6, Math.min(100, (Math.abs(value) / maxAbs) * 100));
 
   return (
@@ -1617,7 +1711,9 @@ function shotCostNote(event: StrokesGainedEvent) {
 }
 
 function hasHighPendingCount(category: CategorySummary) {
-  return category.pendingCount >= 10 && category.pendingCount >= Math.max(1, category.sampleSize * 0.5);
+  return (
+    category.pendingCount >= 10 && category.pendingCount >= Math.max(1, category.sampleSize * 0.5)
+  );
 }
 
 function coveragePercentLabel(sampleSize: number, eventCount: number) {
@@ -1653,19 +1749,27 @@ function buildFilterOptions(events: StrokesGainedEvent[]): FilterOptions {
 
   const categorySet = new Set(events.map((event) => event.category));
   const categories = [...CATEGORY_DEFINITIONS]
-    .filter((definition) => categorySet.has(definition.category) || definition.category === "putting")
+    .filter(
+      (definition) => categorySet.has(definition.category) || definition.category === "putting",
+    )
     .map((definition) => ({ value: definition.category, label: definition.label }));
   const extraCategories = [...categorySet]
-    .filter((category) => !CATEGORY_DEFINITIONS.some((definition) => definition.category === category))
+    .filter(
+      (category) => !CATEGORY_DEFINITIONS.some((definition) => definition.category === category),
+    )
     .sort()
     .map((category) => ({ value: category, label: titleCase(category) }));
 
   return {
     sessions: [...sessionMap.values()].sort((a, b) => b.date.getTime() - a.date.getTime()),
     categories: [...categories, ...extraCategories],
-    holes: [...new Set(events.map((event) => event.holeNumber).filter(isFiniteNumber))].sort((a, b) => a - b),
+    holes: [...new Set(events.map((event) => event.holeNumber).filter(isFiniteNumber))].sort(
+      (a, b) => a - b,
+    ),
     startLies: sortLies([...new Set(events.map((event) => event.startLie).filter(Boolean))]),
-    endLies: sortLies([...new Set(events.map((event) => event.endLie).filter((lie): lie is string => Boolean(lie)))]),
+    endLies: sortLies([
+      ...new Set(events.map((event) => event.endLie).filter((lie): lie is string => Boolean(lie))),
+    ]),
   };
 }
 
@@ -1678,8 +1782,10 @@ function filterEvents(events: StrokesGainedEvent[], filters: StrokesGainedFilter
     if (filters.endLie && event.endLie !== filters.endLie) return false;
     if (filters.from && event.sessionDate < new Date(`${filters.from}T00:00:00.000Z`)) return false;
     if (filters.to && event.sessionDate > new Date(`${filters.to}T23:59:59.999Z`)) return false;
-    if (filters.sg === "gain" && (event.strokesGained === null || event.strokesGained <= 0)) return false;
-    if (filters.sg === "loss" && (event.strokesGained === null || event.strokesGained >= 0)) return false;
+    if (filters.sg === "gain" && (event.strokesGained === null || event.strokesGained <= 0))
+      return false;
+    if (filters.sg === "loss" && (event.strokesGained === null || event.strokesGained >= 0))
+      return false;
     if (filters.sg === "pending" && event.strokesGained !== null) return false;
 
     return true;
@@ -1739,15 +1845,32 @@ function buildActiveFilterChips(
   const chips: Array<{ label: string; href: string }> = [];
   const session = sessions.find((option) => option.id === filters.sessionId);
 
-  if (filters.sessionId) chips.push({ label: `${session?.label ?? "Round"} x`, href: filterHref(filters, "sessionId") });
-  if (filters.category) chips.push({ label: `${titleCase(filters.category)} x`, href: filterHref(filters, "category") });
-  if (filters.hole) chips.push({ label: `Hole ${filters.hole} x`, href: filterHref(filters, "hole") });
-  if (filters.startLie) chips.push({ label: `Start ${titleCase(filters.startLie)} x`, href: filterHref(filters, "startLie") });
-  if (filters.endLie) chips.push({ label: `End ${titleCase(filters.endLie)} x`, href: filterHref(filters, "endLie") });
-  if (filters.sg) chips.push({ label: `${sgResultLabel(filters.sg)} x`, href: filterHref(filters, "sg") });
-  if (filters.from) chips.push({ label: `From ${filters.from} x`, href: filterHref(filters, "from") });
+  if (filters.sessionId)
+    chips.push({ label: `${session?.label ?? "Round"} x`, href: filterHref(filters, "sessionId") });
+  if (filters.category)
+    chips.push({
+      label: `${titleCase(filters.category)} x`,
+      href: filterHref(filters, "category"),
+    });
+  if (filters.hole)
+    chips.push({ label: `Hole ${filters.hole} x`, href: filterHref(filters, "hole") });
+  if (filters.startLie)
+    chips.push({
+      label: `Start ${titleCase(filters.startLie)} x`,
+      href: filterHref(filters, "startLie"),
+    });
+  if (filters.endLie)
+    chips.push({
+      label: `End ${titleCase(filters.endLie)} x`,
+      href: filterHref(filters, "endLie"),
+    });
+  if (filters.sg)
+    chips.push({ label: `${sgResultLabel(filters.sg)} x`, href: filterHref(filters, "sg") });
+  if (filters.from)
+    chips.push({ label: `From ${filters.from} x`, href: filterHref(filters, "from") });
   if (filters.to) chips.push({ label: `To ${filters.to} x`, href: filterHref(filters, "to") });
-  if (filters.sort !== "recent") chips.push({ label: `${sortLabel(filters.sort)} x`, href: filterHref(filters, "sort") });
+  if (filters.sort !== "recent")
+    chips.push({ label: `${sortLabel(filters.sort)} x`, href: filterHref(filters, "sort") });
 
   return chips;
 }
@@ -1866,15 +1989,15 @@ function expectedStrokesForEvent(event: StrokesGainedEvent, position: "start" | 
     return null;
   }
 
-  const category = position === "start"
-    ? event.category
-    : categoryForLieAndDistance(lie, distanceYd);
-  const bucket = DEFAULT_STROKES_GAINED_BASELINE_BUCKETS.find((candidate) => (
-    candidate.category === category &&
-    candidate.lie === lie &&
-    distanceYd >= candidate.distanceStartYd &&
-    distanceYd <= candidate.distanceEndYd
-  ));
+  const category =
+    position === "start" ? event.category : categoryForLieAndDistance(lie, distanceYd);
+  const bucket = DEFAULT_STROKES_GAINED_BASELINE_BUCKETS.find(
+    (candidate) =>
+      candidate.category === category &&
+      candidate.lie === lie &&
+      distanceYd >= candidate.distanceStartYd &&
+      distanceYd <= candidate.distanceEndYd,
+  );
 
   return bucket?.expectedStrokes ?? null;
 }
@@ -1900,9 +2023,7 @@ function holeShotLabel(event: StrokesGainedEvent) {
 }
 
 function titleCase(value: string) {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function toneForSg(value: number | null) {
@@ -1950,7 +2071,7 @@ function categoryIconClassName(category: CategorySummary) {
 }
 
 function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 function dateParam(value: string) {

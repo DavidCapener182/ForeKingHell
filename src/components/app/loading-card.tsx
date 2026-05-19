@@ -2,13 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export function LoadingCard({
-  className,
-  rows = 3,
-}: {
-  className?: string;
-  rows?: number;
-}) {
+export function LoadingCard({ className, rows = 3 }: { className?: string; rows?: number }) {
   return (
     <Card className={cn("premium-card", className)}>
       <CardHeader>

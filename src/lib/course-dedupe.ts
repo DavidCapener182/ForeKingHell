@@ -1,7 +1,6 @@
-export function dedupeCoursesByName<T extends { canonicalCourseId?: string | null; googlePlaceId?: string | null; name: string }>(
-  courseRows: T[],
-  preference: (course: T) => number,
-) {
+export function dedupeCoursesByName<
+  T extends { canonicalCourseId?: string | null; googlePlaceId?: string | null; name: string },
+>(courseRows: T[], preference: (course: T) => number) {
   const byName = new Map<string, T>();
 
   for (const course of courseRows) {
@@ -16,7 +15,11 @@ export function dedupeCoursesByName<T extends { canonicalCourseId?: string | nul
   return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
-function courseDedupeKey(course: { canonicalCourseId?: string | null; googlePlaceId?: string | null; name: string }) {
+function courseDedupeKey(course: {
+  canonicalCourseId?: string | null;
+  googlePlaceId?: string | null;
+  name: string;
+}) {
   if (course.canonicalCourseId) {
     return `canonical:${course.canonicalCourseId}`;
   }
@@ -29,5 +32,9 @@ function courseDedupeKey(course: { canonicalCourseId?: string | null; googlePlac
 }
 
 export function normalisedCourseName(name: string) {
-  return name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
+  return name
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }

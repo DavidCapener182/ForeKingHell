@@ -28,9 +28,15 @@ export async function getUserHandicapProfile(userId: string) {
   const rounds = await getHandicapRoundsForUser(userId);
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
-  const realHandicap = calculateHandicapSummary(realRounds.map((round) => round.handicapDifferential));
-  const simulatorHandicap = calculateHandicapSummary(simulatorRounds.map((round) => round.handicapDifferential));
-  const combinedHandicap = calculateHandicapSummary(rounds.map((round) => round.handicapDifferential));
+  const realHandicap = calculateHandicapSummary(
+    realRounds.map((round) => round.handicapDifferential),
+  );
+  const simulatorHandicap = calculateHandicapSummary(
+    simulatorRounds.map((round) => round.handicapDifferential),
+  );
+  const combinedHandicap = calculateHandicapSummary(
+    rounds.map((round) => round.handicapDifferential),
+  );
   const playingHandicap = calculatePlayingHandicapSummary(
     rounds.map((round) => ({
       handicapDifferential: round.handicapDifferential,
@@ -38,7 +44,10 @@ export async function getUserHandicapProfile(userId: string) {
     })),
   );
   const displayValue =
-    playingHandicap.value ?? realHandicap.value ?? combinedHandicap.value ?? simulatorHandicap.value;
+    playingHandicap.value ??
+    realHandicap.value ??
+    combinedHandicap.value ??
+    simulatorHandicap.value;
 
   return {
     rounds,
@@ -48,15 +57,16 @@ export async function getUserHandicapProfile(userId: string) {
     playingHandicap,
     displayValue,
     band: handicapBandFromValue(displayValue),
-    sourceLabel: playingHandicap.value !== null
-      ? "Realistic playing estimate"
-      : realHandicap.value !== null
-        ? "Real best-form estimate"
-        : combinedHandicap.value !== null
-          ? "Combined score differentials"
-          : simulatorHandicap.value !== null
-            ? "Simulator best-form estimate"
-            : "No eligible score differentials",
+    sourceLabel:
+      playingHandicap.value !== null
+        ? "Realistic playing estimate"
+        : realHandicap.value !== null
+          ? "Real best-form estimate"
+          : combinedHandicap.value !== null
+            ? "Combined score differentials"
+            : simulatorHandicap.value !== null
+              ? "Simulator best-form estimate"
+              : "No eligible score differentials",
   };
 }
 
@@ -96,7 +106,8 @@ export async function getHandicapRoundsForUser(userId: string) {
     const scorecard = session.scorecardJson ?? [];
     const rawTotalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
     const rawTotalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const rawTotalPar = scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
+    const rawTotalPar =
+      scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
     const handicapInput = normaliseHandicapRoundInput({
       totalScore: rawTotalScore,
       totalPar: rawTotalPar,
@@ -110,7 +121,9 @@ export async function getHandicapRoundsForUser(userId: string) {
       ...session,
       courseRating: handicapInput.courseRating,
       totalScore: handicapInput.totalScore,
-      totalPutts: handicapInput.isNineHoleEquivalent ? doubleNullable(rawTotalPutts) : rawTotalPutts,
+      totalPutts: handicapInput.isNineHoleEquivalent
+        ? doubleNullable(rawTotalPutts)
+        : rawTotalPutts,
       totalPar: handicapInput.totalPar ?? null,
       handicapDifferential,
       holesPlayed: handicapInput.holesPlayed ?? null,

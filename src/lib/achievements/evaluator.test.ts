@@ -58,7 +58,9 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("club_3h_benchmark_tour");
     expect(ids).not.toContain("club_sw_benchmark_average");
     expect(ids).not.toContain("club_7w_benchmark_average");
-    expect(ACHIEVEMENTS.filter((achievement) => achievement.category === "hidden").length).toBeGreaterThan(350);
+    expect(
+      ACHIEVEMENTS.filter((achievement) => achievement.category === "hidden").length,
+    ).toBeGreaterThan(350);
   });
 
   it("unlocks generated hidden shot achievements from unusual shots", () => {
@@ -75,7 +77,9 @@ describe("Rapsodo achievement evaluation", () => {
     });
     const result = evaluateRapsodoSessionAchievements(makeSession(), [shot]);
     const ids = achievementIds(result.unlocks);
-    const leftDetour = result.unlocks.find((unlock) => unlock.achievementId === "club_driver_hidden_left_miss_70");
+    const leftDetour = result.unlocks.find(
+      (unlock) => unlock.achievementId === "club_driver_hidden_left_miss_70",
+    );
 
     expect(ids).toContain("club_driver_hidden_left_miss_70");
     expect(ids).toContain("club_driver_hidden_low_carry_45");
@@ -83,7 +87,11 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).toContain("club_driver_hidden_low_apex_20");
     expect(ids).toContain("club_driver_hidden_pure_wild_35");
     expect(ids).not.toContain("club_driver_hidden_centre_line_2");
-    expect(leftDetour?.metadata).toMatchObject({ clubName: "Driver", sideCarryYd: -75, targetValue: 70 });
+    expect(leftDetour?.metadata).toMatchObject({
+      clubName: "Driver",
+      sideCarryYd: -75,
+      targetValue: 70,
+    });
   });
 
   it("unlocks session, consistency, and 5W badges", () => {
@@ -125,8 +133,12 @@ describe("Rapsodo achievement evaluation", () => {
     );
     const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
     const ids = achievementIds(result.unlocks);
-    const firstStrike = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_1");
-    const acquainted = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_volume_10");
+    const firstStrike = result.unlocks.find(
+      (unlock) => unlock.achievementId === "club_7i_volume_1",
+    );
+    const acquainted = result.unlocks.find(
+      (unlock) => unlock.achievementId === "club_7i_volume_10",
+    );
 
     expect(ids).toContain("club_7i_volume_1");
     expect(ids).toContain("club_7i_volume_5");
@@ -151,7 +163,9 @@ describe("Rapsodo achievement evaluation", () => {
     const ids = achievementIds(result.unlocks);
     const firstMile = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_miles_1");
     const twoMiles = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_miles_2");
-    const fiveMileProgress = result.progress.find((progress) => progress.achievementId === "club_7i_miles_5");
+    const fiveMileProgress = result.progress.find(
+      (progress) => progress.achievementId === "club_7i_miles_5",
+    );
 
     expect(ids).toContain("club_7i_miles_1");
     expect(ids).toContain("club_7i_miles_2");
@@ -194,7 +208,9 @@ describe("Rapsodo achievement evaluation", () => {
     );
     const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
     const ids = achievementIds(result.unlocks);
-    const carryMastery = result.unlocks.find((unlock) => unlock.achievementId === "club_7i_mastery_carry_spread_12");
+    const carryMastery = result.unlocks.find(
+      (unlock) => unlock.achievementId === "club_7i_mastery_carry_spread_12",
+    );
 
     expect(ids).toContain("club_7i_mastery_carry_spread_12");
     expect(ids).toContain("club_7i_mastery_total_spread_15");
@@ -205,14 +221,21 @@ describe("Rapsodo achievement evaluation", () => {
     expect(carryMastery?.sourceSessionId).toBe("session-1");
   });
 
-
   it("unlocks short-game wedge control achievements and short-game distance ladders", () => {
     const shots = [
-      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-50-${index}`, clubType: "sw", carryYd: 50, shotNumber: index + 1 })),
-      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `sw-70-${index}`, clubType: "sw", carryYd: 70, shotNumber: index + 6 })),
+      ...Array.from({ length: 5 }, (_, index) =>
+        makeShot({ id: `sw-50-${index}`, clubType: "sw", carryYd: 50, shotNumber: index + 1 }),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        makeShot({ id: `sw-70-${index}`, clubType: "sw", carryYd: 70, shotNumber: index + 6 }),
+      ),
       makeShot({ id: "sw-30", clubType: "sw", carryYd: 30, shotNumber: 11 }),
-      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `lw-30-${index}`, clubType: "lw", carryYd: 30, shotNumber: index + 12 })),
-      ...Array.from({ length: 5 }, (_, index) => makeShot({ id: `lw-40-${index}`, clubType: "lw", carryYd: 40, shotNumber: index + 17 })),
+      ...Array.from({ length: 5 }, (_, index) =>
+        makeShot({ id: `lw-30-${index}`, clubType: "lw", carryYd: 30, shotNumber: index + 12 }),
+      ),
+      ...Array.from({ length: 5 }, (_, index) =>
+        makeShot({ id: `lw-40-${index}`, clubType: "lw", carryYd: 40, shotNumber: index + 17 }),
+      ),
       makeShot({ id: "lw-20", clubType: "lw", carryYd: 20, shotNumber: 22 }),
       makeShot({ id: "lw-50", clubType: "lw", carryYd: 50, shotNumber: 23 }),
     ];
@@ -255,9 +278,11 @@ describe("Rapsodo achievement evaluation", () => {
     ]);
 
     expect(deduped).toHaveLength(2);
-    expect(deduped.find((candidate) => candidate.achievementId === "break_90")?.unlockedAt?.toISOString()).toBe(
-      "2026-05-01T12:00:00.000Z",
-    );
+    expect(
+      deduped
+        .find((candidate) => candidate.achievementId === "break_90")
+        ?.unlockedAt?.toISOString(),
+    ).toBe("2026-05-01T12:00:00.000Z");
   });
 
   it("evaluates stock, gapping, and progress from historical context", () => {
@@ -339,9 +364,13 @@ describe("Rapsodo achievement evaluation", () => {
       ],
     });
     const ids = achievementIds(result.unlocks);
-    const firstGood = result.unlocks.find((unlock) => unlock.achievementId === "benchmark_first_good");
+    const firstGood = result.unlocks.find(
+      (unlock) => unlock.achievementId === "benchmark_first_good",
+    );
     const goodBag = result.unlocks.find((unlock) => unlock.achievementId === "benchmark_bag_good");
-    const driverGood = result.unlocks.find((unlock) => unlock.achievementId === "club_driver_benchmark_good");
+    const driverGood = result.unlocks.find(
+      (unlock) => unlock.achievementId === "club_driver_benchmark_good",
+    );
 
     expect(ids).toContain("benchmark_first_average");
     expect(ids).toContain("benchmark_first_good");
@@ -356,9 +385,22 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).not.toContain("benchmark_bag_advanced");
     expect(ids).not.toContain("club_driver_benchmark_advanced");
     expect(ids).not.toContain("club_driver_benchmark_tour");
-    expect(firstGood?.metadata).toMatchObject({ benchmarkLevel: "Good", actualLevel: "Good", clubName: "Driver" });
-    expect(driverGood?.metadata).toMatchObject({ benchmarkLevel: "Good", clubName: "Driver", targetYd: 250, carryYd: 250 });
-    expect(goodBag?.metadata).toMatchObject({ benchmarkLevel: "Good", benchmarkClubCount: 5, benchmarkAverageLevel: 2 });
+    expect(firstGood?.metadata).toMatchObject({
+      benchmarkLevel: "Good",
+      actualLevel: "Good",
+      clubName: "Driver",
+    });
+    expect(driverGood?.metadata).toMatchObject({
+      benchmarkLevel: "Good",
+      clubName: "Driver",
+      targetYd: 250,
+      carryYd: 250,
+    });
+    expect(goodBag?.metadata).toMatchObject({
+      benchmarkLevel: "Good",
+      benchmarkClubCount: 5,
+      benchmarkAverageLevel: 2,
+    });
   });
 });
 
@@ -474,7 +516,6 @@ describe("round achievement evaluation", () => {
     expect(ids).toContain("up_and_down");
     expect(ids).toContain("scramble_day");
   });
-
 });
 
 function achievementIds(candidates: Array<{ achievementId: string }>) {
@@ -518,7 +559,13 @@ function makeShot(overrides: Partial<AchievementShot>): AchievementShot {
   };
 }
 
-function stock(clubId: string, clubType: string, carryYd: number, confidence: number, date: string) {
+function stock(
+  clubId: string,
+  clubType: string,
+  carryYd: number,
+  confidence: number,
+  date: string,
+) {
   return {
     clubId,
     clubType,

@@ -174,7 +174,13 @@ export async function revokeRoundShareLinkAction(formData: FormData) {
   await db
     .update(shareLinks)
     .set({ revokedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(shareLinks.id, shareLinkId), eq(shareLinks.userId, userId), eq(shareLinks.resourceId, sessionId)));
+    .where(
+      and(
+        eq(shareLinks.id, shareLinkId),
+        eq(shareLinks.userId, userId),
+        eq(shareLinks.resourceId, sessionId),
+      ),
+    );
 
   revalidateRound(sessionId);
 }
@@ -303,7 +309,10 @@ export async function updateClubAction(formData: FormData) {
         .update(shots)
         .set({ clubId: duplicateClub.id, clubType: duplicateClub.type })
         .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
-      await tx.update(clubs).set({ active: false, updatedAt: now }).where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
+      await tx
+        .update(clubs)
+        .set({ active: false, updatedAt: now })
+        .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
     });
   } else {
     await db.transaction(async (tx) => {
@@ -318,7 +327,10 @@ export async function updateClubAction(formData: FormData) {
           updatedAt: now,
         })
         .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
-      await tx.update(shots).set({ clubType }).where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
+      await tx
+        .update(shots)
+        .set({ clubType })
+        .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
     });
   }
 
@@ -369,14 +381,21 @@ export async function updateRoundHoleAction(formData: FormData) {
       updatedHole.greensideSandShots = numberFromForm(formData, "greensideSandShots");
     }
 
-    if (typeof hole.netScore === "number" && typeof hole.score === "number" && typeof score === "number") {
+    if (
+      typeof hole.netScore === "number" &&
+      typeof hole.score === "number" &&
+      typeof score === "number"
+    ) {
       updatedHole.netScore = Math.max(0, hole.netScore + score - hole.score);
     }
 
     return updatedHole;
   });
 
-  await db.update(sessions).set({ scorecardJson: holes }).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await db
+    .update(sessions)
+    .set({ scorecardJson: holes })
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
 }
@@ -405,7 +424,9 @@ export async function resplitRoundAction(formData: FormData) {
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
   let cursor = 0;
 
-  for (const hole of session.scorecardJson.sort((left, right) => left.holeNumber - right.holeNumber)) {
+  for (const hole of session.scorecardJson.sort(
+    (left, right) => left.holeNumber - right.holeNumber,
+  )) {
     const count = Math.min(12, numberFromForm(formData, `holeCount-${hole.holeNumber}`) ?? 0);
     const holeShots = sessionShots.slice(cursor, cursor + count);
 
@@ -413,7 +434,9 @@ export async function resplitRoundAction(formData: FormData) {
       await db
         .update(shots)
         .set({ courseHoleNumber: hole.holeNumber })
-        .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
+        .where(
+          and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)),
+        );
     }
 
     cursor += count;
@@ -497,9 +520,19 @@ async function recalculateRoundAssignments(sessionId: string) {
               courseHolePar: hole.par,
               courseHoleYards: hole.yards,
               distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
-              shotCategory: classifyCourseShot(shot.clubType, shot.totalYd ?? shot.carryYd, index + 1),
+              shotCategory: classifyCourseShot(
+                shot.clubType,
+                shot.totalYd ?? shot.carryYd,
+                index + 1,
+              ),
             })
-            .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)));
+            .where(
+              and(
+                eq(shots.id, shot.id),
+                eq(shots.sessionId, sessionId),
+                eq(shots.userId, session.userId),
+              ),
+            );
         }
 
         return {
@@ -508,8 +541,11 @@ async function recalculateRoundAssignments(sessionId: string) {
           progressYd: roundOne(progressYd),
           distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
           penalties:
-            hole.score === null || hole.score === undefined || hole.putts === null || hole.putts === undefined
-              ? hole.penalties ?? 0
+            hole.score === null ||
+            hole.score === undefined ||
+            hole.putts === null ||
+            hole.putts === undefined
+              ? (hole.penalties ?? 0)
               : Math.max(0, hole.score - hole.putts - holeShots.length),
         };
       }),

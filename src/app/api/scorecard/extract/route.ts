@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { rejectOversizedDataUrl, rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
+import {
+  rejectOversizedDataUrl,
+  rejectOversizedRequest,
+  rateLimitRequest,
+} from "@/lib/api-protection";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
 import { createScorecardProofToken } from "@/lib/scorecard-proof-token";
@@ -144,9 +148,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message:
-          error instanceof Error
-            ? error.message
-            : "Could not parse the extracted scorecard JSON.",
+          error instanceof Error ? error.message : "Could not parse the extracted scorecard JSON.",
       },
       { status: 422 },
     );
@@ -186,7 +188,11 @@ function readResponseText(payload: unknown) {
 }
 
 function parseJsonObject(text: string) {
-  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "");
+  const trimmed = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "");
   const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0];
 
   if (!jsonText) {

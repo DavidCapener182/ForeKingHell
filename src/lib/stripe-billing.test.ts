@@ -28,7 +28,9 @@ function fakeStore(): BillingWebhookStore & {
     subscriptions,
     entitlements,
     expired,
-    findUserIdByCustomerId: vi.fn(async (customerId: string) => (customerId === "cus_known" ? "user_known" : null)),
+    findUserIdByCustomerId: vi.fn(async (customerId: string) =>
+      customerId === "cus_known" ? "user_known" : null,
+    ),
     upsertBillingCustomer: vi.fn(async () => "billing_customer_1"),
     upsertSubscription: vi.fn(async (input) => {
       subscriptions.push(input);
@@ -78,7 +80,11 @@ describe("Stripe billing webhook helpers", () => {
 
     expect(planKeyFromStripePriceId("price_pro_monthly")).toBe("pro");
     expect(entitlementValuesForPlan("pro").map(([key]) => key)).toEqual(
-      expect.arrayContaining(["can_use_ai_coach", "friend_comparison_insights", "device_import_square"]),
+      expect.arrayContaining([
+        "can_use_ai_coach",
+        "friend_comparison_insights",
+        "device_import_square",
+      ]),
     );
   });
 
@@ -102,12 +108,28 @@ describe("Stripe billing webhook helpers", () => {
       store,
     );
 
-    expect(result).toMatchObject({ handled: true, userId: "user_123", planKey: "plus", subscriptionStatus: "active" });
-    expect(store.upsertBillingCustomer).toHaveBeenCalledWith({ userId: "user_123", stripeCustomerId: "cus_123", email: "player@example.com" });
+    expect(result).toMatchObject({
+      handled: true,
+      userId: "user_123",
+      planKey: "plus",
+      subscriptionStatus: "active",
+    });
+    expect(store.upsertBillingCustomer).toHaveBeenCalledWith({
+      userId: "user_123",
+      stripeCustomerId: "cus_123",
+      email: "player@example.com",
+    });
     expect(store.subscriptions).toEqual([
-      expect.objectContaining({ userId: "user_123", stripeSubscriptionId: "sub_123", planKey: "plus", status: "active" }),
+      expect.objectContaining({
+        userId: "user_123",
+        stripeSubscriptionId: "sub_123",
+        planKey: "plus",
+        status: "active",
+      }),
     ]);
-    expect(store.entitlements).toEqual([expect.objectContaining({ userId: "user_123", planKey: "plus", expiresAt: null })]);
+    expect(store.entitlements).toEqual([
+      expect.objectContaining({ userId: "user_123", planKey: "plus", expiresAt: null }),
+    ]);
   });
 
   it("expires plan entitlements when invoice payment fails", async () => {
@@ -128,8 +150,17 @@ describe("Stripe billing webhook helpers", () => {
       store,
     );
 
-    expect(result).toMatchObject({ handled: true, userId: "user_known", planKey: "pro", subscriptionStatus: "past_due" });
-    expect(store.subscriptions).toEqual([expect.objectContaining({ status: "past_due", stripeSubscriptionId: "sub_known" })]);
-    expect(store.expired).toEqual([expect.objectContaining({ userId: "user_known", sourceEvent: "invoice.payment_failed" })]);
+    expect(result).toMatchObject({
+      handled: true,
+      userId: "user_known",
+      planKey: "pro",
+      subscriptionStatus: "past_due",
+    });
+    expect(store.subscriptions).toEqual([
+      expect.objectContaining({ status: "past_due", stripeSubscriptionId: "sub_known" }),
+    ]);
+    expect(store.expired).toEqual([
+      expect.objectContaining({ userId: "user_known", sourceEvent: "invoice.payment_failed" }),
+    ]);
   });
 });

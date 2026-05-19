@@ -13,7 +13,10 @@ export function GolfLoader({
     <div
       role="status"
       aria-live="polite"
-      className={cn("premium-card mx-auto grid max-w-sm place-items-center gap-4 p-6 text-center", className)}
+      className={cn(
+        "premium-card mx-auto grid max-w-sm place-items-center gap-4 p-6 text-center",
+        className,
+      )}
     >
       <div data-loader-art className="relative h-32 w-full max-w-[260px]" aria-hidden="true">
         <Image

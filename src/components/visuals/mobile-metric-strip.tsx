@@ -35,14 +35,20 @@ export function MobileMetricStrip({
           key={`${String(item.label)}-${index}`}
           className="grid min-w-36 shrink-0 grid-cols-[auto_1fr] gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
         >
-          <span className={cn("mt-1 size-2.5 rounded-full ring-4", dotTone[item.tone ?? "green"])} />
+          <span
+            className={cn("mt-1 size-2.5 rounded-full ring-4", dotTone[item.tone ?? "green"])}
+          />
           <span className="min-w-0">
             <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {item.label}
             </span>
-            <span className="mt-0.5 block truncate text-lg font-semibold tracking-normal">{item.value}</span>
+            <span className="mt-0.5 block truncate text-lg font-semibold tracking-normal">
+              {item.value}
+            </span>
             {item.detail ? (
-              <span className="mt-0.5 block truncate text-xs text-muted-foreground">{item.detail}</span>
+              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                {item.detail}
+              </span>
             ) : null}
           </span>
         </div>

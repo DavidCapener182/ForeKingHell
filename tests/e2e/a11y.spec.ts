@@ -17,7 +17,16 @@ test.describe("accessibility smoke checks", () => {
 test.describe("authenticated accessibility smoke checks", () => {
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
-  for (const route of ["/dashboard", "/import", "/shots", "/bag", "/rounds", "/handicap", "/coach", "/achievements"]) {
+  for (const route of [
+    "/dashboard",
+    "/import",
+    "/shots",
+    "/bag",
+    "/rounds",
+    "/handicap",
+    "/coach",
+    "/achievements",
+  ]) {
     test(`${route} has no critical or serious axe violations`, async ({ page }) => {
       skipWhenNoAuth();
 

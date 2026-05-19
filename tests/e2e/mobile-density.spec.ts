@@ -40,7 +40,11 @@ test.describe("mobile density screenshots", () => {
         { name: "rounds", path: "/rounds", text: /Rounds/i },
         { name: "handicap", path: "/handicap", text: /Handicap/i },
         { name: "courses", path: "/courses", text: /Courses/i },
-        { name: "course-records", path: "/course-records", text: /Course records|Course Champion/i },
+        {
+          name: "course-records",
+          path: "/course-records",
+          text: /Course records|Course Champion/i,
+        },
         { name: "challenges", path: "/challenges", text: /Challenges/i },
         { name: "tournaments", path: "/tournaments", text: /Tournaments|Daily, weekly/i },
         { name: "leaderboard", path: "/leaderboard", text: /Leaderboards/i },
@@ -119,7 +123,10 @@ test.describe("mobile density screenshots", () => {
     }
 
     test.skip(capturedRoutes === 0, "Stored auth state redirected every route to login.");
-    test.skip(authenticatedCaptures === 0, "Stored auth state only allowed public signed-out routes.");
+    test.skip(
+      authenticatedCaptures === 0,
+      "Stored auth state only allowed public signed-out routes.",
+    );
 
     for (const viewport of [...mobileViewports, ...desktopViewports]) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -200,7 +207,10 @@ async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
     }
 
     await page.waitForLoadState("domcontentloaded").catch(() => {});
-    const bodyText = await page.locator("body").innerText().catch(() => "");
+    const bodyText = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "");
     if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
       if (skipOnLogin) {
         test.skip(true, "Stored auth state redirected to login.");
@@ -217,11 +227,13 @@ async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
 async function firstHref(page: Page, selector: string, pattern: RegExp) {
   await page.waitForLoadState("domcontentloaded").catch(() => {});
   const readHrefs = () =>
-    page.locator(selector).evaluateAll((links) =>
-      links
-        .map((link) => link.getAttribute("href"))
-        .filter((href): href is string => Boolean(href)),
-    );
+    page
+      .locator(selector)
+      .evaluateAll((links) =>
+        links
+          .map((link) => link.getAttribute("href"))
+          .filter((href): href is string => Boolean(href)),
+      );
 
   let hrefs: string[];
   try {
@@ -239,7 +251,10 @@ async function firstHref(page: Page, selector: string, pattern: RegExp) {
 
 async function expectReadyOrSkip(page: Page, expectedText: RegExp | string, skipOnLogin = true) {
   await page.waitForLoadState("domcontentloaded").catch(() => {});
-  const initialBodyText = await page.locator("body").innerText().catch(() => "");
+  const initialBodyText = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
   if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(initialBodyText)) {
     if (skipOnLogin) {
       test.skip(true, "Stored auth state redirected to login.");
@@ -250,7 +265,10 @@ async function expectReadyOrSkip(page: Page, expectedText: RegExp | string, skip
   try {
     await expectPageReady(page, expectedText);
   } catch (error) {
-    const bodyText = await page.locator("body").innerText().catch(() => "");
+    const bodyText = await page
+      .locator("body")
+      .innerText()
+      .catch(() => "");
     if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
       if (skipOnLogin) {
         test.skip(true, "Stored auth state redirected to login.");

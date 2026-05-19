@@ -27,7 +27,11 @@ export function SocialAvatar({
       {avatarUrl ? (
         isDataImageUrl(avatarUrl) ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="aspect-square size-full rounded-full object-cover" />
+          <img
+            src={avatarUrl}
+            alt=""
+            className="aspect-square size-full rounded-full object-cover"
+          />
         ) : (
           <AvatarImage src={avatarUrl} alt="" />
         )

@@ -9,7 +9,9 @@ describe("getClubDecisionLabel", () => {
     expect(getClubDecisionLabel({ stockLabel: "Developing" })).toBe("Developing");
     expect(getClubDecisionLabel({ stockLabel: "Unstable" })).toBe("Needs calibration");
     expect(getClubDecisionLabel({ stockLabel: "Do not trust yet" })).toBe("Do not trust yet");
-    expect(getClubDecisionLabel({ isShortGameTouch: true, stockLabel: "Reliable" })).toBe("Touch shots only");
+    expect(getClubDecisionLabel({ isShortGameTouch: true, stockLabel: "Reliable" })).toBe(
+      "Touch shots only",
+    );
   });
 });
 

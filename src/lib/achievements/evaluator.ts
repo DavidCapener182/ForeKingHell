@@ -112,8 +112,14 @@ export function evaluateRapsodoSessionAchievements(
   }
 
   evaluateSession(collector, session, sortShots(sessionShots));
-  evaluateGeneratedClubVolumeSamples(collector, groupBy(sessionShots, (shot) => shot.clubType));
-  evaluateGeneratedClubMileageSamples(collector, groupBy(sessionShots, (shot) => shot.clubType));
+  evaluateGeneratedClubVolumeSamples(
+    collector,
+    groupBy(sessionShots, (shot) => shot.clubType),
+  );
+  evaluateGeneratedClubMileageSamples(
+    collector,
+    groupBy(sessionShots, (shot) => shot.clubType),
+  );
 
   return {
     unlocks: dedupeUnlockCandidates(collector.unlocks),
@@ -145,7 +151,10 @@ function addDataProgress(
   shotsBySessionId: Map<string, AchievementShot[]>,
 ) {
   const importedSessions = sessions.filter((session) => session.source === "rapsodo");
-  const maxSessionShots = Math.max(0, ...importedSessions.map((session) => shotsBySessionId.get(session.id)?.length ?? 0));
+  const maxSessionShots = Math.max(
+    0,
+    ...importedSessions.map((session) => shotsBySessionId.get(session.id)?.length ?? 0),
+  );
 
   collector.progressCandidate("first_import", Math.min(importedSessions.length, 1), 1);
   collector.progressCandidate("data_golfer", Math.min(importedSessions.length, 5), 5);
@@ -155,15 +164,24 @@ function addDataProgress(
   collector.progressCandidate("first_50_shot_session", Math.min(maxSessionShots, 50), 50);
 
   if (importedSessions.length >= 1) {
-    collector.unlock("first_import", { sourceSessionId: importedSessions[0]?.id, unlockedAt: importedSessions[0]?.date });
+    collector.unlock("first_import", {
+      sourceSessionId: importedSessions[0]?.id,
+      unlockedAt: importedSessions[0]?.date,
+    });
   }
 
   if (importedSessions.length >= 5) {
-    collector.unlock("data_golfer", { sourceSessionId: importedSessions[4]?.id, unlockedAt: importedSessions[4]?.date });
+    collector.unlock("data_golfer", {
+      sourceSessionId: importedSessions[4]?.id,
+      unlockedAt: importedSessions[4]?.date,
+    });
   }
 
   if (importedSessions.length >= 10) {
-    collector.unlock("range_rat", { sourceSessionId: importedSessions[9]?.id, unlockedAt: importedSessions[9]?.date });
+    collector.unlock("range_rat", {
+      sourceSessionId: importedSessions[9]?.id,
+      unlockedAt: importedSessions[9]?.date,
+    });
   }
 }
 
@@ -216,7 +234,10 @@ function evaluateSingleShot(
     }
 
     if ((shot.totalYd ?? 0) >= 220 && absOffline !== null && absOffline <= 10) {
-      collector.unlock("driver_bomb_straight", { ...source, metadata: { totalYd: shot.totalYd, offlineYd: offline } });
+      collector.unlock("driver_bomb_straight", {
+        ...source,
+        metadata: { totalYd: shot.totalYd, offlineYd: offline },
+      });
     }
 
     if (absOffline !== null && absOffline <= 20) {
@@ -232,11 +253,17 @@ function evaluateSingleShot(
     }
 
     if (shot.attackAngleDeg !== null && shot.attackAngleDeg >= 2) {
-      collector.unlock("driver_upward_attack", { ...source, metadata: { attackAngleDeg: shot.attackAngleDeg } });
+      collector.unlock("driver_upward_attack", {
+        ...source,
+        metadata: { attackAngleDeg: shot.attackAngleDeg },
+      });
     }
 
     if (between(shot.clubPathDeg, -1, 4)) {
-      collector.unlock("driver_path_neutral", { ...source, metadata: { clubPathDeg: shot.clubPathDeg } });
+      collector.unlock("driver_path_neutral", {
+        ...source,
+        metadata: { clubPathDeg: shot.clubPathDeg },
+      });
     }
   }
 
@@ -286,12 +313,19 @@ function evaluateSingleShot(
     collector.unlock("right_field", { ...source, metadata: { sideCarryYd: offline } });
   }
 
-  if ((shot.smashFactor ?? 0) >= smashTarget(shot.clubType) && absOffline !== null && absOffline >= 40) {
+  if (
+    (shot.smashFactor ?? 0) >= smashTarget(shot.clubType) &&
+    absOffline !== null &&
+    absOffline >= 40
+  ) {
     collector.unlock("efficient_but_ugly", source);
   }
 
   if (context.maxBallSpeed !== null && shot.ballSpeedMph === context.maxBallSpeed) {
-    collector.unlock("absolute_rocket", { ...source, metadata: { ballSpeedMph: shot.ballSpeedMph } });
+    collector.unlock("absolute_rocket", {
+      ...source,
+      metadata: { ballSpeedMph: shot.ballSpeedMph },
+    });
   }
 
   if (context.maxApex !== null && shot.apexFt === context.maxApex) {
@@ -320,7 +354,10 @@ function evaluateGeneratedHiddenShotAchievements(
   }
 }
 
-function generatedHiddenShotValue(generated: GeneratedHiddenShotAchievement, shot: AchievementShot) {
+function generatedHiddenShotValue(
+  generated: GeneratedHiddenShotAchievement,
+  shot: AchievementShot,
+) {
   const offline = shot.sideCarryYd;
   const absOffline = absNumber(offline);
 
@@ -399,7 +436,11 @@ function isHiddenFullShotCandidate(shot: AchievementShot) {
 }
 
 function evaluateGeneratedShotAchievements(collector: Collector, shot: AchievementShot) {
-  if (isShortGameTouchClubType(shot.clubType) && shot.courseHoleNumber !== null && shot.courseHoleNumber !== undefined) {
+  if (
+    isShortGameTouchClubType(shot.clubType) &&
+    shot.courseHoleNumber !== null &&
+    shot.courseHoleNumber !== undefined
+  ) {
     return;
   }
 
@@ -413,9 +454,7 @@ function evaluateGeneratedShotAchievements(collector: Collector, shot: Achieveme
     }
 
     const unlocked =
-      generated.operator === ">="
-        ? value >= generated.threshold
-        : value <= generated.threshold;
+      generated.operator === ">=" ? value >= generated.threshold : value <= generated.threshold;
 
     collector.progressCandidate(
       generated.id,
@@ -471,15 +510,28 @@ function metadataForGeneratedShotMetric(metric: GeneratedClubMetric, value: numb
   return { totalYd: rounded };
 }
 
-function evaluateSession(collector: Collector, session: AchievementSession, sessionShots: AchievementShot[]) {
+function evaluateSession(
+  collector: Collector,
+  session: AchievementSession,
+  sessionShots: AchievementShot[],
+) {
   if (sessionShots.length >= 10) {
-    collector.unlock("first_10_shot_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("first_10_shot_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sessionShots.length >= 25) {
-    collector.unlock("first_25_shot_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("first_25_shot_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sessionShots.length >= 50) {
-    collector.unlock("first_50_shot_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("first_50_shot_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 
   const byClub = groupBy(sessionShots, (shot) => shot.clubType);
@@ -516,52 +568,96 @@ function evaluateSession(collector: Collector, session: AchievementSession, sess
   evaluateSessionHidden(collector, session, sessionShots);
 }
 
-function evaluateDriverSession(collector: Collector, session: AchievementSession, driverShots: AchievementShot[]) {
+function evaluateDriverSession(
+  collector: Collector,
+  session: AchievementSession,
+  driverShots: AchievementShot[],
+) {
   const launchValues = driverShots.map((shot) => shot.launchAngleDeg).filter(isNumber);
   const pathValues = driverShots.map((shot) => shot.clubPathDeg).filter(isNumber);
   const sideValues = driverShots.map((shot) => shot.sideCarryYd).filter(isNumber);
 
   if (launchValues.length >= 5 && between(mean(launchValues), 13, 17)) {
-    collector.unlock("driver_launch_locked_5", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_launch_locked_5", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (launchValues.length >= 10 && between(mean(launchValues), 13, 17)) {
-    collector.unlock("driver_launch_locked_10", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_launch_locked_10", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (launchValues.length >= 10 && launchValues.every((value) => value >= 10)) {
-    collector.unlock("driver_no_low_bullets", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_no_low_bullets", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (launchValues.length >= 10 && launchValues.every((value) => value <= 21)) {
-    collector.unlock("driver_no_moon_balls", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_no_moon_balls", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sideValues.length >= 10 && sideValues.every((value) => value >= -20)) {
-    collector.unlock("driver_no_left_10", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_no_left_10", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sideValues.length >= 10 && sideValues.every((value) => value <= 20)) {
-    collector.unlock("driver_no_right_10", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_no_right_10", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sideValues.length >= 10 && spread(sideValues) <= 30) {
-    collector.unlock("driver_tight_pattern_10", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_tight_pattern_10", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (sideValues.length >= 20 && between(mean(sideValues), -5, 5)) {
-    collector.unlock("driver_neutral_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_neutral_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (pathValues.length >= 10 && between(mean(pathValues), 1, 4)) {
-    collector.unlock("driver_path_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_path_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
   if (hasConsecutive(driverShots, (shot) => (shot.smashFactor ?? 0) >= 1.45, 5)) {
-    collector.unlock("driver_smash_streak", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("driver_smash_streak", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 }
 
-function evaluateFiveWoodSession(collector: Collector, session: AchievementSession, fiveWoodShots: AchievementShot[]) {
+function evaluateFiveWoodSession(
+  collector: Collector,
+  session: AchievementSession,
+  fiveWoodShots: AchievementShot[],
+) {
   const carryValues = fiveWoodShots.map((shot) => shot.carryYd).filter(isNumber);
 
   if (carryValues.length >= 10 && carryValues.every((value) => value >= 120)) {
-    collector.unlock("fivewood_no_top_zone", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("fivewood_no_top_zone", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 
   if (carryValues.length >= 20 && mean(carryValues) >= 165 && spread(carryValues) <= 20) {
-    collector.unlock("fivewood_stock_built", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("fivewood_stock_built", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 }
 
@@ -579,12 +675,17 @@ function evaluateShortGameSession(
   if (countCarryWindow(swShots, 65, 75) >= 5) {
     collector.unlock("sw_dialled_70", { sourceSessionId: session.id, unlockedAt: session.date });
   }
-  if ([
-    countCarryWindow(swShots, 25, 35),
-    countCarryWindow(swShots, 45, 55),
-    countCarryWindow(swShots, 65, 75),
-  ].every((count) => count > 0)) {
-    collector.unlock("sw_wedge_ladder_i", { sourceSessionId: session.id, unlockedAt: session.date });
+  if (
+    [
+      countCarryWindow(swShots, 25, 35),
+      countCarryWindow(swShots, 45, 55),
+      countCarryWindow(swShots, 65, 75),
+    ].every((count) => count > 0)
+  ) {
+    collector.unlock("sw_wedge_ladder_i", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 
   if (countCarryWindow(lwShots, 25, 35) >= 5) {
@@ -593,12 +694,14 @@ function evaluateShortGameSession(
   if (countCarryWindow(lwShots, 35, 45) >= 5) {
     collector.unlock("lw_40_yard_touch", { sourceSessionId: session.id, unlockedAt: session.date });
   }
-  if ([
-    countCarryWindow(lwShots, 15, 25),
-    countCarryWindow(lwShots, 25, 35),
-    countCarryWindow(lwShots, 35, 45),
-    countCarryWindow(lwShots, 45, 55),
-  ].every((count) => count > 0)) {
+  if (
+    [
+      countCarryWindow(lwShots, 15, 25),
+      countCarryWindow(lwShots, 25, 35),
+      countCarryWindow(lwShots, 35, 45),
+      countCarryWindow(lwShots, 45, 55),
+    ].every((count) => count > 0)
+  ) {
     collector.unlock("lw_lob_ladder", { sourceSessionId: session.id, unlockedAt: session.date });
   }
 }
@@ -620,19 +723,34 @@ function evaluateConsistencySession(
     const apexValues = clubShots.map((shot) => shot.apexFt).filter(isNumber);
 
     if (carryValues.length >= 10 && spread(carryValues) <= 10) {
-      collector.unlock("carry_consistency", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("carry_consistency", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (totalValues.length >= 10 && spread(totalValues) <= 15) {
-      collector.unlock("total_consistency", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("total_consistency", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (launchValues.length >= 10 && spread(launchValues) <= 4) {
-      collector.unlock("launch_consistency", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("launch_consistency", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (directionValues.length >= 10 && spread(directionValues) <= 5) {
-      collector.unlock("direction_consistency", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("direction_consistency", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (apexValues.length >= 10 && spread(apexValues) <= 30) {
-      collector.unlock("apex_consistency", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("apex_consistency", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
   }
 
@@ -642,10 +760,18 @@ function evaluateConsistencySession(
         return false;
       }
 
-      return clubShots.every((shot) => (shot.carryYd ?? 0) >= 20 && absNumber(shot.sideCarryYd) !== null && absNumber(shot.sideCarryYd)! <= 80);
+      return clubShots.every(
+        (shot) =>
+          (shot.carryYd ?? 0) >= 20 &&
+          absNumber(shot.sideCarryYd) !== null &&
+          absNumber(shot.sideCarryYd)! <= 80,
+      );
     })
   ) {
-    collector.unlock("no_outlier_session", { sourceSessionId: session.id, unlockedAt: session.date });
+    collector.unlock("no_outlier_session", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+    });
   }
 }
 
@@ -676,7 +802,8 @@ function evaluateGeneratedClubSessionVolume(
         continue;
       }
 
-      const thresholdShot = sortedClubShots[generated.shotCount - 1] ?? sortedClubShots[sortedClubShots.length - 1];
+      const thresholdShot =
+        sortedClubShots[generated.shotCount - 1] ?? sortedClubShots[sortedClubShots.length - 1];
 
       collector.unlock(generated.id, {
         sourceSessionId: session.id,
@@ -730,7 +857,10 @@ function evaluateRollingSamples(
   collector: Collector,
   shotCountByClubId: Map<string, AchievementShot[]>,
 ) {
-  const maxCount = Math.max(0, ...[...shotCountByClubId.values()].map((clubShots) => clubShots.length));
+  const maxCount = Math.max(
+    0,
+    ...[...shotCountByClubId.values()].map((clubShots) => clubShots.length),
+  );
   collector.progressCandidate("ten_shot_sample", Math.min(maxCount, 10), 10);
   collector.progressCandidate("twenty_shot_sample", Math.min(maxCount, 20), 20);
   collector.progressCandidate("fifty_shot_sample", Math.min(maxCount, 50), 50);
@@ -772,7 +902,8 @@ function evaluateGeneratedClubVolumeSamples(
         continue;
       }
 
-      const thresholdShot = sortedClubShots[generated.shotCount - 1] ?? sortedClubShots[sortedClubShots.length - 1];
+      const thresholdShot =
+        sortedClubShots[generated.shotCount - 1] ?? sortedClubShots[sortedClubShots.length - 1];
 
       collector.unlock(generated.id, {
         sourceSessionId: thresholdShot?.sessionId,
@@ -843,7 +974,9 @@ function evaluateGeneratedClubMileageSamples(
         metadata: {
           clubType,
           targetMiles: generated.miles,
-          totalMiles: roundMetricValue((thresholdShot?.cumulativeYards ?? totalYards) / YARDS_PER_MILE),
+          totalMiles: roundMetricValue(
+            (thresholdShot?.cumulativeYards ?? totalYards) / YARDS_PER_MILE,
+          ),
           totalYards: roundOne(thresholdShot?.cumulativeYards ?? totalYards),
         },
       });
@@ -862,9 +995,15 @@ function evaluateGeneratedClubPersonalBests(
       continue;
     }
 
-    const carryAchievement = generatedAchievements.find((achievement) => achievement.metric === "carryYd");
-    const totalAchievement = generatedAchievements.find((achievement) => achievement.metric === "totalYd");
-    const controlAchievement = generatedAchievements.find((achievement) => achievement.metric === "withControl");
+    const carryAchievement = generatedAchievements.find(
+      (achievement) => achievement.metric === "carryYd",
+    );
+    const totalAchievement = generatedAchievements.find(
+      (achievement) => achievement.metric === "totalYd",
+    );
+    const controlAchievement = generatedAchievements.find(
+      (achievement) => achievement.metric === "withControl",
+    );
     let bestCarry: number | null = null;
     let bestTotal: number | null = null;
 
@@ -896,7 +1035,12 @@ function evaluateGeneratedClubPersonalBests(
           sourceSessionId: shot.sessionId,
           sourceShotId: shot.id,
           unlockedAt: shot.shotAt,
-          metadata: { clubType, carryYd: shot.carryYd, totalYd: shot.totalYd, offlineYd: shot.sideCarryYd },
+          metadata: {
+            clubType,
+            carryYd: shot.carryYd,
+            totalYd: shot.totalYd,
+            offlineYd: shot.sideCarryYd,
+          },
         });
       }
 
@@ -969,10 +1113,7 @@ function evaluateGeneratedClubMasterySession(
   }
 }
 
-function clubMasteryMetricValue(
-  metric: GeneratedClubMasteryMetric,
-  clubShots: AchievementShot[],
-) {
+function clubMasteryMetricValue(metric: GeneratedClubMasteryMetric, clubShots: AchievementShot[]) {
   if (metric === "carrySpreadYd") {
     return spreadMetric(clubShots.map((shot) => shot.carryYd));
   }
@@ -1031,7 +1172,9 @@ function evaluateStockAndGapping(
   );
   const reliableStocks = [...latestStockByClubId.values()].filter(
     (stock) =>
-      isTrackedClubType(stock.clubType) && !isShortGameTouchClubType(stock.clubType) && isReliableStock(stock),
+      isTrackedClubType(stock.clubType) &&
+      !isShortGameTouchClubType(stock.clubType) &&
+      isReliableStock(stock),
   );
   const reliableByType = new Map(reliableStocks.map((stock) => [stock.clubType, stock]));
   const activeClubIds = new Set(activeClubs.map((club) => club.id));
@@ -1057,7 +1200,10 @@ function evaluateStockAndGapping(
   if (activeClubs.length >= 5 && activeClubs.every((club) => latestStockByClubId.has(club.id))) {
     collector.unlock("full_bag_mapped", { metadata: { activeClubCount: activeClubs.length } });
   }
-  if (activeClubs.length >= 5 && activeClubs.every((club) => (latestStockByClubId.get(club.id)?.confidenceScore ?? 0) >= 70)) {
+  if (
+    activeClubs.length >= 5 &&
+    activeClubs.every((club) => (latestStockByClubId.get(club.id)?.confidenceScore ?? 0) >= 70)
+  ) {
     collector.unlock("reliable_bag", { metadata: { activeClubCount: activeClubs.length } });
   }
 
@@ -1073,7 +1219,9 @@ function evaluateStockAndGapping(
     const driverGap = driver.carryMedianYd - fiveWood.carryMedianYd;
     const fiveWoodGap = fiveWood.carryMedianYd - fiveIron.carryMedianYd;
     if (driverGap >= 15 && fiveWoodGap >= 15) {
-      collector.unlock("top_end_fixed", { metadata: { driverGap: roundOne(driverGap), fiveWoodGap: roundOne(fiveWoodGap) } });
+      collector.unlock("top_end_fixed", {
+        metadata: { driverGap: roundOne(driverGap), fiveWoodGap: roundOne(fiveWoodGap) },
+      });
     }
   }
 
@@ -1085,7 +1233,11 @@ function evaluateStockAndGapping(
     if (gap >= 8 && gap <= 12) {
       collector.unlock("eight_nine_gap_healthy", { metadata: { gapYd: roundOne(gap) } });
     }
-    if (pitchingWedge?.carryMedianYd && gap >= 8 && nineIron.carryMedianYd - pitchingWedge.carryMedianYd >= 8) {
+    if (
+      pitchingWedge?.carryMedianYd &&
+      gap >= 8 &&
+      nineIron.carryMedianYd - pitchingWedge.carryMedianYd >= 8
+    ) {
       collector.unlock("scoring_gap_fixed");
     }
   }
@@ -1107,17 +1259,23 @@ function evaluateBenchmarkLevels(collector: Collector, reliableStocks: Achieveme
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
-  const bestStock = benchmarkedStocks.reduce<(typeof benchmarkedStocks)[number] | null>((best, item) => {
-    if (!best || item.score > best.score) {
-      return item;
-    }
+  const bestStock = benchmarkedStocks.reduce<(typeof benchmarkedStocks)[number] | null>(
+    (best, item) => {
+      if (!best || item.score > best.score) {
+        return item;
+      }
 
-    if (item.score === best.score && item.comparison.progressPercent > best.comparison.progressPercent) {
-      return item;
-    }
+      if (
+        item.score === best.score &&
+        item.comparison.progressPercent > best.comparison.progressPercent
+      ) {
+        return item;
+      }
 
-    return best;
-  }, null);
+      return best;
+    },
+    null,
+  );
 
   for (const achievement of SINGLE_BENCHMARK_ACHIEVEMENTS) {
     collector.progressCandidate(
@@ -1125,13 +1283,21 @@ function evaluateBenchmarkLevels(collector: Collector, reliableStocks: Achieveme
       Math.min(bestStock?.score ?? 0, achievement.targetLevelIndex),
       achievement.targetLevelIndex,
       bestStock
-        ? metadataForBenchmarkStock(bestStock.stock, achievement.label, bestStock.comparison.levelLabel)
+        ? metadataForBenchmarkStock(
+            bestStock.stock,
+            achievement.label,
+            bestStock.comparison.levelLabel,
+          )
         : { benchmarkLevel: achievement.label },
     );
 
     if (bestStock && bestStock.score >= achievement.targetLevelIndex) {
       collector.unlock(achievement.id, {
-        metadata: metadataForBenchmarkStock(bestStock.stock, achievement.label, bestStock.comparison.levelLabel),
+        metadata: metadataForBenchmarkStock(
+          bestStock.stock,
+          achievement.label,
+          bestStock.comparison.levelLabel,
+        ),
       });
     }
   }
@@ -1156,7 +1322,8 @@ function evaluateBenchmarkLevels(collector: Collector, reliableStocks: Achieveme
   }
 
   const benchmarkClubCount = benchmarkedStocks.length;
-  const benchmarkAverageLevel = benchmarkClubCount === 0 ? 0 : mean(benchmarkedStocks.map((item) => item.score));
+  const benchmarkAverageLevel =
+    benchmarkClubCount === 0 ? 0 : mean(benchmarkedStocks.map((item) => item.score));
   const sampleProgressMultiplier = Math.min(benchmarkClubCount / 5, 1);
 
   for (const achievement of BAG_BENCHMARK_ACHIEVEMENTS) {
@@ -1169,7 +1336,11 @@ function evaluateBenchmarkLevels(collector: Collector, reliableStocks: Achieveme
 
     if (benchmarkClubCount >= 5 && benchmarkAverageLevel >= achievement.targetLevelIndex) {
       collector.unlock(achievement.id, {
-        metadata: metadataForBenchmarkBag(achievement.label, benchmarkClubCount, benchmarkAverageLevel),
+        metadata: metadataForBenchmarkBag(
+          achievement.label,
+          benchmarkClubCount,
+          benchmarkAverageLevel,
+        ),
       });
     }
   }
@@ -1229,10 +1400,18 @@ function evaluateProgress(
   const firstDriverStock = driverStocks[0];
   const latestDriverStock = driverStocks[driverStocks.length - 1];
 
-  if (firstDriverStock?.carryMedianYd && latestDriverStock?.carryMedianYd && driverStocks.length >= 2) {
+  if (
+    firstDriverStock?.carryMedianYd &&
+    latestDriverStock?.carryMedianYd &&
+    driverStocks.length >= 2
+  ) {
     const gain = latestDriverStock.carryMedianYd - firstDriverStock.carryMedianYd;
-    collector.progressCandidate("distance_up_5", Math.min(Math.max(0, gain), 5), 5, { gainYd: roundOne(gain) });
-    collector.progressCandidate("distance_up_10", Math.min(Math.max(0, gain), 10), 10, { gainYd: roundOne(gain) });
+    collector.progressCandidate("distance_up_5", Math.min(Math.max(0, gain), 5), 5, {
+      gainYd: roundOne(gain),
+    });
+    collector.progressCandidate("distance_up_10", Math.min(Math.max(0, gain), 10), 10, {
+      gainYd: roundOne(gain),
+    });
     if (gain >= 5) {
       collector.unlock("distance_up_5", { metadata: { gainYd: roundOne(gain) } });
     }
@@ -1251,23 +1430,48 @@ function evaluateProgress(
 
   if (earlyBallSpeed !== null && recentBallSpeed !== null && recentDriver.length >= 5) {
     const gain = recentBallSpeed - earlyBallSpeed;
-    collector.progressCandidate("ball_speed_gain", Math.min(Math.max(0, gain), 5), 5, { gainMph: roundOne(gain) });
+    collector.progressCandidate("ball_speed_gain", Math.min(Math.max(0, gain), 5), 5, {
+      gainMph: roundOne(gain),
+    });
     if (gain >= 5) {
       collector.unlock("ball_speed_gain", { metadata: { gainMph: roundOne(gain) } });
     }
   }
 
-  if (earlyLaunch !== null && recentLaunch !== null && !between(earlyLaunch, 13, 17) && between(recentLaunch, 13, 17)) {
-    collector.unlock("launch_fixed", { metadata: { earlyLaunch: roundOne(earlyLaunch), recentLaunch: roundOne(recentLaunch) } });
+  if (
+    earlyLaunch !== null &&
+    recentLaunch !== null &&
+    !between(earlyLaunch, 13, 17) &&
+    between(recentLaunch, 13, 17)
+  ) {
+    collector.unlock("launch_fixed", {
+      metadata: { earlyLaunch: roundOne(earlyLaunch), recentLaunch: roundOne(recentLaunch) },
+    });
   }
 
-  maybeUnlockImprovement(collector, "path_improved", earlyDriver, recentDriver, (shot) => absNumber(shot.clubPathDeg), 30);
-  maybeUnlockImprovement(collector, "side_carry_improved", earlyDriver, recentDriver, (shot) => absNumber(shot.sideCarryYd), 25);
+  maybeUnlockImprovement(
+    collector,
+    "path_improved",
+    earlyDriver,
+    recentDriver,
+    (shot) => absNumber(shot.clubPathDeg),
+    30,
+  );
+  maybeUnlockImprovement(
+    collector,
+    "side_carry_improved",
+    earlyDriver,
+    recentDriver,
+    (shot) => absNumber(shot.sideCarryYd),
+    25,
+  );
   maybeUnlockLeftMissImprovement(collector, earlyDriver, recentDriver);
 }
 
 function evaluateRoundScorecard(collector: Collector, session: AchievementSession) {
-  const holes = [...(session.scorecardJson ?? [])].sort((left, right) => left.holeNumber - right.holeNumber);
+  const holes = [...(session.scorecardJson ?? [])].sort(
+    (left, right) => left.holeNumber - right.holeNumber,
+  );
 
   if (holes.length === 0) {
     return;
@@ -1275,12 +1479,18 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
 
   const scoredHoles = holes.filter((hole) => isNumber(hole.score));
   const puttHoles = holes.filter((hole) => isNumber(hole.putts));
-  const fullScoreRound = holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.score));
-  const fullPuttRound = holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.putts));
+  const fullScoreRound =
+    holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.score));
+  const fullPuttRound =
+    holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.putts));
   const frontNine = holes.slice(0, 9);
   const backNine = holes.slice(9, 18);
-  const completeNines = [frontNine, backNine].filter((nine) => nine.length === 9 && nine.every((hole) => isNumber(hole.score)));
-  const completePuttNines = [frontNine, backNine].filter((nine) => nine.length === 9 && nine.every((hole) => isNumber(hole.putts)));
+  const completeNines = [frontNine, backNine].filter(
+    (nine) => nine.length === 9 && nine.every((hole) => isNumber(hole.score)),
+  );
+  const completePuttNines = [frontNine, backNine].filter(
+    (nine) => nine.length === 9 && nine.every((hole) => isNumber(hole.putts)),
+  );
 
   collector.progressCandidate("break_100", Math.min(scoredHoles.length, 18), 18);
   collector.progressCandidate("no_3_putt_round", Math.min(puttHoles.length, 18), 18);
@@ -1295,7 +1505,10 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
     thresholdLowRoundScore(collector, session, score, "break_80", 80);
 
     if (fullHoles.every((hole) => scoreVsPar(hole) < 2)) {
-      collector.unlock("no_doubles_round", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("no_doubles_round", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (fullHoles.every((hole) => scoreVsPar(hole) < 3)) {
       collector.unlock("clean_card", { sourceSessionId: session.id, unlockedAt: session.date });
@@ -1310,26 +1523,45 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
   for (const nine of completeNines) {
     const nineScore = sumNumbers(nine.map((hole) => hole.score));
     if (nineScore <= 39) {
-      collector.unlock("sub_40_nine", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { score: nineScore } });
+      collector.unlock("sub_40_nine", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { score: nineScore },
+      });
     }
     if (nine.every((hole) => scoreVsPar(hole) < 3)) {
       collector.unlock("clean_nine", { sourceSessionId: session.id, unlockedAt: session.date });
     }
     if (nine.every((hole) => scoreVsPar(hole) < 2)) {
-      collector.unlock("no_doubles_nine", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("no_doubles_nine", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
   }
 
   const birdies = scoredHoles.filter((hole) => scoreVsPar(hole) <= -1);
   const eagles = scoredHoles.filter((hole) => scoreVsPar(hole) <= -2);
   if (birdies.length >= 1) {
-    collector.unlock("birdie_hunter", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { holeNumber: birdies[0]?.holeNumber } });
+    collector.unlock("birdie_hunter", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { holeNumber: birdies[0]?.holeNumber },
+    });
   }
   if (birdies.length >= 2) {
-    collector.unlock("two_birdie_round", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { birdies: birdies.length } });
+    collector.unlock("two_birdie_round", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { birdies: birdies.length },
+    });
   }
   if (eagles.length >= 1) {
-    collector.unlock("eagle_landed", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { holeNumber: eagles[0]?.holeNumber } });
+    collector.unlock("eagle_landed", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { holeNumber: eagles[0]?.holeNumber },
+    });
   }
   if (hasBounceBack(scoredHoles)) {
     collector.unlock("bounce_back", { sourceSessionId: session.id, unlockedAt: session.date });
@@ -1344,20 +1576,35 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
       collector.unlock("no_3_putt_nine", { sourceSessionId: session.id, unlockedAt: session.date });
     }
     if (putts <= 15) {
-      collector.unlock("fifteen_putt_nine", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { putts } });
+      collector.unlock("fifteen_putt_nine", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { putts },
+      });
     }
   }
   if (fullPuttRound) {
     const fullHoles = holes.slice(0, 18);
     const putts = sumNumbers(fullHoles.map((hole) => hole.putts));
     if (fullHoles.every((hole) => (hole.putts ?? 99) <= 2)) {
-      collector.unlock("no_3_putt_round", { sourceSessionId: session.id, unlockedAt: session.date });
+      collector.unlock("no_3_putt_round", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+      });
     }
     if (putts <= 30) {
-      collector.unlock("thirty_putt_round", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { putts } });
+      collector.unlock("thirty_putt_round", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { putts },
+      });
     }
     if (putts <= 27) {
-      collector.unlock("flatstick_god_mode", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { putts } });
+      collector.unlock("flatstick_god_mode", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { putts },
+      });
     }
     if (fullHoles[17]?.putts === 1) {
       collector.unlock("clutch_finish", { sourceSessionId: session.id, unlockedAt: session.date });
@@ -1367,36 +1614,74 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
   evaluateRoundStats(collector, session, holes);
 }
 
-function evaluateRoundStats(collector: Collector, session: AchievementSession, holes: RoundScorecardHole[]) {
-  const fairwayHoles = holes.filter((hole) => hole.fairwayHit !== null && hole.fairwayHit !== undefined);
+function evaluateRoundStats(
+  collector: Collector,
+  session: AchievementSession,
+  holes: RoundScorecardHole[],
+) {
+  const fairwayHoles = holes.filter(
+    (hole) => hole.fairwayHit !== null && hole.fairwayHit !== undefined,
+  );
   const fairways = fairwayHoles.filter((hole) => hole.fairwayHit === true).length;
   const girHoles = holes.filter((hole) => hole.gir !== null && hole.gir !== undefined);
   const gir = girHoles.filter((hole) => hole.gir === true).length;
 
   if (fairways >= 4) {
-    collector.unlock("fairway_starter", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { fairways } });
+    collector.unlock("fairway_starter", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { fairways },
+    });
   }
   if (fairways >= 7) {
-    collector.unlock("fairway_finder_round", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { fairways } });
+    collector.unlock("fairway_finder_round", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { fairways },
+    });
   }
   if (fairwayHoles.length >= 7 && fairways / fairwayHoles.length >= 0.4) {
-    collector.unlock("driver_trust", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { fairwayRate: fairways / fairwayHoles.length } });
+    collector.unlock("driver_trust", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { fairwayRate: fairways / fairwayHoles.length },
+    });
   }
   if (fairwayHoles.length >= 7 && fairways / fairwayHoles.length >= 0.5) {
-    collector.unlock("tee_box_control", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { fairwayRate: fairways / fairwayHoles.length } });
+    collector.unlock("tee_box_control", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { fairwayRate: fairways / fairwayHoles.length },
+    });
   }
 
   if (gir >= 4) {
-    collector.unlock("gir_starter", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { gir } });
+    collector.unlock("gir_starter", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { gir },
+    });
   }
   if (gir >= 8) {
-    collector.unlock("gir_machine", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { gir } });
+    collector.unlock("gir_machine", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { gir },
+    });
   }
   if (gir >= 10) {
-    collector.unlock("ball_striking_day", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { gir } });
+    collector.unlock("ball_striking_day", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { gir },
+    });
   }
   if (girHoles.length >= 9 && gir / girHoles.length >= 0.5) {
-    collector.unlock("ball_striker_mode", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { girRate: gir / girHoles.length } });
+    collector.unlock("ball_striker_mode", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { girRate: gir / girHoles.length },
+    });
   }
 
   const missedGirScored = holes.filter((hole) => hole.gir === false && isNumber(hole.score));
@@ -1404,10 +1689,18 @@ function evaluateRoundStats(collector: Collector, session: AchievementSession, h
   if (missedGirScored.length >= 3) {
     const scrambleRate = saves / missedGirScored.length;
     if (scrambleRate >= 0.2) {
-      collector.unlock("scramble_upgrade", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { scrambleRate } });
+      collector.unlock("scramble_upgrade", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { scrambleRate },
+      });
     }
     if (scrambleRate >= 0.35) {
-      collector.unlock("short_game_sharp", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { scrambleRate } });
+      collector.unlock("short_game_sharp", {
+        sourceSessionId: session.id,
+        unlockedAt: session.date,
+        metadata: { scrambleRate },
+      });
     }
   }
 
@@ -1415,18 +1708,30 @@ function evaluateRoundStats(collector: Collector, session: AchievementSession, h
   if (sandHoles.length > 0) {
     collector.unlock("bunker_tool", { sourceSessionId: session.id, unlockedAt: session.date });
   }
-  if (sandHoles.some((hole) => (hole.putts ?? 99) <= 1 && isNumber(hole.score) && (hole.score ?? 99) <= hole.par)) {
+  if (
+    sandHoles.some(
+      (hole) => (hole.putts ?? 99) <= 1 && isNumber(hole.score) && (hole.score ?? 99) <= hole.par,
+    )
+  ) {
     collector.unlock("sand_save", { sourceSessionId: session.id, unlockedAt: session.date });
   }
   if (missedGirScored.some((hole) => (hole.putts ?? 99) <= 1 && (hole.score ?? 99) <= hole.par)) {
     collector.unlock("up_and_down", { sourceSessionId: session.id, unlockedAt: session.date });
   }
   if (saves >= 3) {
-    collector.unlock("scramble_day", { sourceSessionId: session.id, unlockedAt: session.date, metadata: { saves } });
+    collector.unlock("scramble_day", {
+      sourceSessionId: session.id,
+      unlockedAt: session.date,
+      metadata: { saves },
+    });
   }
 
   const penaltyHoles = holes.slice(0, 18).filter((hole) => isNumber(hole.penalties));
-  if (holes.length >= 18 && penaltyHoles.length >= 18 && penaltyHoles.every((hole) => hole.penalties === 0)) {
+  if (
+    holes.length >= 18 &&
+    penaltyHoles.length >= 18 &&
+    penaltyHoles.every((hole) => hole.penalties === 0)
+  ) {
     collector.unlock("penalty_free", { sourceSessionId: session.id, unlockedAt: session.date });
   }
 }
@@ -1438,9 +1743,14 @@ function thresholdShot(
   value: number | null,
   threshold: number,
 ) {
-  collector.progressCandidate(achievementId, Math.min(Math.max(value ?? 0, 0), threshold), threshold, {
-    bestValue: value,
-  });
+  collector.progressCandidate(
+    achievementId,
+    Math.min(Math.max(value ?? 0, 0), threshold),
+    threshold,
+    {
+      bestValue: value,
+    },
+  );
 
   if (value !== null && value >= threshold) {
     collector.unlock(achievementId, {
@@ -1494,9 +1804,14 @@ function maybeUnlockImprovement(
   }
 
   const improvement = ((early - recent) / early) * 100;
-  collector.progressCandidate(achievementId, Math.min(Math.max(0, improvement), targetPercent), targetPercent, {
-    improvementPercent: roundOne(improvement),
-  });
+  collector.progressCandidate(
+    achievementId,
+    Math.min(Math.max(0, improvement), targetPercent),
+    targetPercent,
+    {
+      improvementPercent: roundOne(improvement),
+    },
+  );
 
   if (improvement >= targetPercent) {
     collector.unlock(achievementId, { metadata: { improvementPercent: roundOne(improvement) } });
@@ -1508,8 +1823,12 @@ function maybeUnlockLeftMissImprovement(
   earlyShots: AchievementShot[],
   recentShots: AchievementShot[],
 ) {
-  const earlyLeft = averageMetric(earlyShots, (shot) => (shot.sideCarryYd !== null && shot.sideCarryYd < 0 ? Math.abs(shot.sideCarryYd) : null));
-  const recentLeft = averageMetric(recentShots, (shot) => (shot.sideCarryYd !== null && shot.sideCarryYd < 0 ? Math.abs(shot.sideCarryYd) : null));
+  const earlyLeft = averageMetric(earlyShots, (shot) =>
+    shot.sideCarryYd !== null && shot.sideCarryYd < 0 ? Math.abs(shot.sideCarryYd) : null,
+  );
+  const recentLeft = averageMetric(recentShots, (shot) =>
+    shot.sideCarryYd !== null && shot.sideCarryYd < 0 ? Math.abs(shot.sideCarryYd) : null,
+  );
 
   if (earlyLeft === null || recentLeft === null || earlyLeft <= 0 || recentShots.length < 5) {
     return;
@@ -1538,7 +1857,10 @@ function createCollector() {
   return {
     unlocks,
     progress,
-    unlock(achievementId: string, candidate: Omit<AchievementUnlockCandidate, "achievementId"> = {}) {
+    unlock(
+      achievementId: string,
+      candidate: Omit<AchievementUnlockCandidate, "achievementId"> = {},
+    ) {
       if (!getAchievement(achievementId)) {
         return;
       }
@@ -1601,7 +1923,9 @@ function latestStocks(stocks: AchievementStockYardage[]) {
 }
 
 function isReliableStock(stock: AchievementStockYardage) {
-  return (stock.confidenceScore ?? 0) >= 50 && stock.carryMedianYd !== null && stock.sampleSize >= 5;
+  return (
+    (stock.confidenceScore ?? 0) >= 50 && stock.carryMedianYd !== null && stock.sampleSize >= 5
+  );
 }
 
 function shotQualityScore(shot: AchievementShot) {
@@ -1647,7 +1971,12 @@ function hasConsecutive<T>(items: T[], predicate: (item: T) => boolean, target: 
 }
 
 function isFullShotClub(clubType: string) {
-  return clubType === "driver" || WOOD_TYPES.has(clubType) || IRON_PATTERN.test(clubType) || clubType === "pw";
+  return (
+    clubType === "driver" ||
+    WOOD_TYPES.has(clubType) ||
+    IRON_PATTERN.test(clubType) ||
+    clubType === "pw"
+  );
 }
 
 function smashTarget(clubType: string) {

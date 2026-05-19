@@ -38,46 +38,52 @@ export function SessionSettings({
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="session-date">Session date</FieldLabel>
+            <Input
+              id="session-date"
+              type="date"
+              value={sessionDate}
+              onChange={(event) => onSessionDateChange(event.target.value)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="session-type">Session type</FieldLabel>
+            <Select
+              value={sessionType}
+              onValueChange={(value) => onSessionTypeChange(value as SessionType)}
+            >
+              <SelectTrigger id="session-type" className="w-full">
+                <SelectValue placeholder="Range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="range">Range</SelectItem>
+                <SelectItem value="round">Round</SelectItem>
+                <SelectItem value="simulator">Simulator</SelectItem>
+                <SelectItem value="simulated_course">Simulated course</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+        </div>
         <Field>
-          <FieldLabel htmlFor="session-date">Session date</FieldLabel>
-          <Input
-            id="session-date"
-            type="date"
-            value={sessionDate}
-            onChange={(event) => onSessionDateChange(event.target.value)}
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="session-type">Session type</FieldLabel>
-          <Select value={sessionType} onValueChange={(value) => onSessionTypeChange(value as SessionType)}>
-            <SelectTrigger id="session-type" className="w-full">
-              <SelectValue placeholder="Range" />
+          <FieldLabel htmlFor="distance-unit">Fallback distance unit</FieldLabel>
+          <Select
+            value={distanceUnit}
+            onValueChange={(value) => onDistanceUnitChange(value as DistanceUnit)}
+          >
+            <SelectTrigger id="distance-unit" className="w-full">
+              <SelectValue placeholder="Yards" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="range">Range</SelectItem>
-              <SelectItem value="round">Round</SelectItem>
-              <SelectItem value="simulator">Simulator</SelectItem>
-              <SelectItem value="simulated_course">Simulated course</SelectItem>
+              <SelectItem value="yards">Yards</SelectItem>
+              <SelectItem value="meters">Metres</SelectItem>
             </SelectContent>
           </Select>
+          <FieldDescription>
+            Saved shot distances are normalized to yards. Apex is normalized to feet. Detected
+            units: {detectedUnits.length > 0 ? detectedUnits.join(", ") : "none yet"}.
+          </FieldDescription>
         </Field>
-        </div>
-      <Field>
-        <FieldLabel htmlFor="distance-unit">Fallback distance unit</FieldLabel>
-        <Select value={distanceUnit} onValueChange={(value) => onDistanceUnitChange(value as DistanceUnit)}>
-          <SelectTrigger id="distance-unit" className="w-full">
-            <SelectValue placeholder="Yards" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="yards">Yards</SelectItem>
-            <SelectItem value="meters">Metres</SelectItem>
-          </SelectContent>
-        </Select>
-        <FieldDescription>
-          Saved shot distances are normalized to yards. Apex is normalized to feet. Detected units:{" "}
-          {detectedUnits.length > 0 ? detectedUnits.join(", ") : "none yet"}.
-        </FieldDescription>
-      </Field>
       </CardContent>
     </Card>
   );

@@ -139,19 +139,18 @@ export function buildProgressSummary(clubs: ProgressClub[]): ProgressSummary {
     .map((club) => buildClubRow(club))
     .sort((left, right) => right.score - left.score);
   const averageTrust = average(clubRows.map((club) => club.trustIndex)) ?? 0;
-  const averagePlayableRate = average(
-    clubRows.map((club) => club.playableRate).filter(isNumber),
-  );
+  const averagePlayableRate = average(clubRows.map((club) => club.playableRate).filter(isNumber));
   const rankings = {
     mostTrusted:
       sortBy(
         clubRows.filter((club) => club.sampleSize >= 5),
         (club) => club.trustIndex,
       )[0] ?? null,
-    mostImproved: sortBy(
-      clubRows.filter((club) => club.sampleSize >= 6),
-      (club) => club.score,
-    )[0] ?? null,
+    mostImproved:
+      sortBy(
+        clubRows.filter((club) => club.sampleSize >= 6),
+        (club) => club.score,
+      )[0] ?? null,
     needsWork:
       [...clubRows]
         .filter((club) => club.sampleSize >= 3)
@@ -214,15 +213,25 @@ function buildSignals(
 ): ProgressSignal[] {
   const signals: ProgressSignal[] = [];
   const carryMover = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.carryDeltaYd) && Math.abs(row.carryDeltaYd) >= 1),
+    rows.filter(
+      (row) => row.sampleSize >= 6 && isNumber(row.carryDeltaYd) && Math.abs(row.carryDeltaYd) >= 1,
+    ),
     (row) => Math.abs(row.carryDeltaYd ?? 0),
   )[0];
   const dispersionMover = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.offlineDeltaYd) && Math.abs(row.offlineDeltaYd) >= 2),
+    rows.filter(
+      (row) =>
+        row.sampleSize >= 6 && isNumber(row.offlineDeltaYd) && Math.abs(row.offlineDeltaYd) >= 2,
+    ),
     (row) => Math.abs(row.offlineDeltaYd ?? 0),
   )[0];
   const speedMover = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.ballSpeedDeltaMph) && Math.abs(row.ballSpeedDeltaMph) >= 1),
+    rows.filter(
+      (row) =>
+        row.sampleSize >= 6 &&
+        isNumber(row.ballSpeedDeltaMph) &&
+        Math.abs(row.ballSpeedDeltaMph) >= 1,
+    ),
     (row) => Math.abs(row.ballSpeedDeltaMph ?? 0),
   )[0];
 
@@ -290,18 +299,16 @@ function buildSignals(
 }
 
 function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTrend[] {
-  const sortedRows = [...rows].sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+  const sortedRows = [...rows].sort(
+    (left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType),
+  );
   const trustPoints = sortedRows.map((row) => row.trustIndex);
   const playablePoints = sortedRows.map((row) => row.playableRate).filter(isNumber);
   const carryBaseline = average(
-    clubs
-      .map((club) => club.analytics.progress.baseline?.carryMedianYd)
-      .filter(isNumber),
+    clubs.map((club) => club.analytics.progress.baseline?.carryMedianYd).filter(isNumber),
   );
   const carryCurrent = average(
-    clubs
-      .map((club) => club.analytics.progress.current?.carryMedianYd)
-      .filter(isNumber),
+    clubs.map((club) => club.analytics.progress.current?.carryMedianYd).filter(isNumber),
   );
   const offlineBaseline = average(
     clubs
@@ -309,9 +316,7 @@ function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTr
       .filter(isNumber),
   );
   const offlineCurrent = average(
-    clubs
-      .map((club) => club.analytics.progress.current?.absoluteOfflineAverageYd)
-      .filter(isNumber),
+    clubs.map((club) => club.analytics.progress.current?.absoluteOfflineAverageYd).filter(isNumber),
   );
   const carryDelta = nullableDelta(carryCurrent, carryBaseline);
   const offlineDelta = nullableDelta(offlineCurrent, offlineBaseline);
@@ -359,7 +364,9 @@ function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTr
 
 function buildBestSignal(rows: ProgressClubRow[]): BestSignal | null {
   const improvedDispersion = sortBy(
-    rows.filter((row) => row.sampleSize >= 10 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2),
+    rows.filter(
+      (row) => row.sampleSize >= 10 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2,
+    ),
     (row) => Math.abs(row.offlineDeltaYd ?? 0) + row.sampleSize / 20,
   )[0];
 
@@ -375,7 +382,9 @@ function buildBestSignal(rows: ProgressClubRow[]): BestSignal | null {
   }
 
   const carryGain = sortBy(
-    rows.filter((row) => row.sampleSize >= 10 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1),
+    rows.filter(
+      (row) => row.sampleSize >= 10 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1,
+    ),
     (row) => (row.carryDeltaYd ?? 0) + row.sampleSize / 30,
   )[0];
 
@@ -407,15 +416,22 @@ function buildCoachSummaryGroups(
   const warnings = groups[1];
   const gaps = groups[2];
   const carryGain = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1),
+    rows.filter(
+      (row) => row.sampleSize >= 6 && isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 1,
+    ),
     (row) => row.carryDeltaYd ?? 0,
   )[0];
   const tighter = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2),
+    rows.filter(
+      (row) => row.sampleSize >= 6 && isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -2,
+    ),
     (row) => Math.abs(row.offlineDeltaYd ?? 0),
   )[0];
   const speedDrop = sortBy(
-    rows.filter((row) => row.sampleSize >= 6 && isNumber(row.ballSpeedDeltaMph) && row.ballSpeedDeltaMph <= -1),
+    rows.filter(
+      (row) =>
+        row.sampleSize >= 6 && isNumber(row.ballSpeedDeltaMph) && row.ballSpeedDeltaMph <= -1,
+    ),
     (row) => Math.abs(row.ballSpeedDeltaMph ?? 0),
   )[0];
 
@@ -473,15 +489,24 @@ function buildCoachSummaryGroups(
   }
 
   if (positives.items.length === 0) {
-    positives.items.push({ label: "No strong positive movement yet", detail: "Keep importing comparable stock-shot sessions." });
+    positives.items.push({
+      label: "No strong positive movement yet",
+      detail: "Keep importing comparable stock-shot sessions.",
+    });
   }
 
   if (warnings.items.length === 0) {
-    warnings.items.push({ label: "No clear warning has separated yet", detail: "The next import may make the trend clearer." });
+    warnings.items.push({
+      label: "No clear warning has separated yet",
+      detail: "The next import may make the trend clearer.",
+    });
   }
 
   if (gaps.items.length === 0) {
-    gaps.items.push({ label: "Tracked clubs have enough samples for a first read", detail: `${clubs.length} clubs are included.` });
+    gaps.items.push({
+      label: "Tracked clubs have enough samples for a first read",
+      detail: `${clubs.length} clubs are included.`,
+    });
   }
 
   return groups;
@@ -573,7 +598,13 @@ function buildTrustLadder(
               : speedWarning
                 ? "Watch ball speed"
                 : row.confidenceLabel,
-        tone: !hasEnoughData ? "slate" : row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber",
+        tone: !hasEnoughData
+          ? "slate"
+          : row.trustIndex >= 68
+            ? "green"
+            : row.trustIndex >= 62
+              ? "sky"
+              : "amber",
       };
     });
 }
@@ -656,10 +687,13 @@ function improvementScore(analytics: ClubAnalytics) {
   const speed = delta?.ballSpeedDeltaMph ?? 0;
   const offline = delta?.offlineDeltaYd ?? 0;
   const launch = delta?.launchDeltaDeg ?? 0;
-  const launchImprovement = analytics.launch.launchWindowScore !== null ? analytics.launch.launchWindowScore / 15 : 0;
+  const launchImprovement =
+    analytics.launch.launchWindowScore !== null ? analytics.launch.launchWindowScore / 15 : 0;
   const trust = analytics.consistency.clubTrustIndex / 8;
 
-  return Math.round(carry * 1.8 + speed * 3.2 - offline * 1.1 - Math.abs(launch) * 0.4 + launchImprovement + trust);
+  return Math.round(
+    carry * 1.8 + speed * 3.2 - offline * 1.1 - Math.abs(launch) * 0.4 + launchImprovement + trust,
+  );
 }
 
 function volatilityScore(analytics: ClubAnalytics | undefined) {
@@ -691,7 +725,10 @@ function practiceReason(analytics: ClubAnalytics) {
     return `Low-smash rate is ${Math.round(analytics.strike.lowSmashRate ?? 0)}%, so strike quality is leaking speed.`;
   }
 
-  return analytics.insights[0]?.body ?? "Highest-value club to keep moving based on the current trust profile.";
+  return (
+    analytics.insights[0]?.body ??
+    "Highest-value club to keep moving based on the current trust profile."
+  );
 }
 
 function practiceTitle(clubType: string, analytics: ClubAnalytics) {
@@ -709,7 +746,10 @@ function practiceTitle(clubType: string, analytics: ClubAnalytics) {
     return `Centre ${club} strike`;
   }
 
-  if (analytics.accuracy.primaryMiss !== "Balanced" && analytics.accuracy.primaryMiss !== "Unknown") {
+  if (
+    analytics.accuracy.primaryMiss !== "Balanced" &&
+    analytics.accuracy.primaryMiss !== "Unknown"
+  ) {
     return `Guard against ${club} ${analytics.accuracy.primaryMiss.toLowerCase()} miss`;
   }
 
@@ -762,7 +802,9 @@ function sortBy<T>(values: T[], score: (value: T) => number) {
 
 function average(values: number[]) {
   const usable = values.filter(isNumber);
-  return usable.length > 0 ? usable.reduce((total, value) => total + value, 0) / usable.length : null;
+  return usable.length > 0
+    ? usable.reduce((total, value) => total + value, 0) / usable.length
+    : null;
 }
 
 function isNumber(value: number | null | undefined): value is number {

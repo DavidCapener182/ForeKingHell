@@ -48,7 +48,9 @@ export function PwaRegister() {
     }
 
     const actions = await listOfflineActions().catch(() => []);
-    const syncableActions = actions.filter((action) => action.kind === "import-csv" || action.kind === "round-edit");
+    const syncableActions = actions.filter(
+      (action) => action.kind === "import-csv" || action.kind === "round-edit",
+    );
 
     if (syncableActions.length === 0) {
       refreshOfflineCount();
@@ -56,15 +58,20 @@ export function PwaRegister() {
       return;
     }
 
-    setSyncMessage(`Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}...`);
+    setSyncMessage(
+      `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}...`,
+    );
 
     for (const action of syncableActions) {
       try {
-        const response = await fetch(action.kind === "import-csv" ? "/api/offline/imports" : "/api/offline/round-edits", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(action.payload),
-        });
+        const response = await fetch(
+          action.kind === "import-csv" ? "/api/offline/imports" : "/api/offline/round-edits",
+          {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(action.payload),
+          },
+        );
 
         if (response.ok) {
           await removeOfflineAction(action.id);
@@ -172,22 +179,25 @@ export function PwaRegister() {
     }
 
     const registerServiceWorker = () => {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((registration) => {
-        if (registration.waiting) {
-          setUpdateReady(registration);
-        }
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((registration) => {
+          if (registration.waiting) {
+            setUpdateReady(registration);
+          }
 
-        registration.addEventListener("updatefound", () => {
-          const worker = registration.installing;
-          worker?.addEventListener("statechange", () => {
-            if (worker.state === "installed" && navigator.serviceWorker.controller) {
-              setUpdateReady(registration);
-            }
+          registration.addEventListener("updatefound", () => {
+            const worker = registration.installing;
+            worker?.addEventListener("statechange", () => {
+              if (worker.state === "installed" && navigator.serviceWorker.controller) {
+                setUpdateReady(registration);
+              }
+            });
           });
+        })
+        .catch(() => {
+          // A failed service-worker registration should never block the app UI.
         });
-      }).catch(() => {
-        // A failed service-worker registration should never block the app UI.
-      });
     };
 
     if (document.readyState === "complete") {
@@ -218,16 +228,22 @@ export function PwaRegister() {
       ? `${pendingOfflineActions} pending offline action${pendingOfflineActions === 1 ? "" : "s"} will sync when available.`
       : !isOnline
         ? "Offline mode is active. Previously loaded screens remain available."
-      : updateReady
-        ? "A ForeKingHell update is ready."
-        : "Install ForeKingHell for faster access on this device.";
+        : updateReady
+          ? "A ForeKingHell update is ready."
+          : "Install ForeKingHell for faster access on this device.";
 
   return (
     <div className="fixed inset-x-3 bottom-20 z-50 sm:bottom-4 sm:left-auto sm:right-4 sm:w-[360px]">
       <div className="glass-toolbar rounded-2xl p-3">
         <div className="flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#111827] text-white">
-            {!isOnline ? <WifiOff className="size-4" /> : updateReady ? <RefreshCw className="size-4" /> : <Download className="size-4" />}
+            {!isOnline ? (
+              <WifiOff className="size-4" />
+            ) : updateReady ? (
+              <RefreshCw className="size-4" />
+            ) : (
+              <Download className="size-4" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium">{message}</p>
@@ -262,7 +278,13 @@ export function PwaRegister() {
               ) : null}
             </div>
           </div>
-          <Button type="button" variant="ghost" size="icon" className="size-8" onClick={() => setDismissed(true)}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            onClick={() => setDismissed(true)}
+          >
             <X className="size-4" />
             <span className="sr-only">Dismiss PWA notice</span>
           </Button>

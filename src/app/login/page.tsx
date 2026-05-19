@@ -50,17 +50,33 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               Your rounds, records and range work in one clubhouse.
             </h1>
             <p className="mt-4 max-w-xl text-base leading-7 text-white/78 sm:text-lg">
-              Sign in or create an account to keep scorecards, practice sessions, PBs and course records tied to your own golf profile.
+              Sign in or create an account to keep scorecards, practice sessions, PBs and course
+              records tied to your own golf profile.
             </p>
-            <Link href="/privacy" className="mt-5 inline-flex text-sm font-semibold text-emerald-100 underline-offset-4 hover:underline">
+            <Link
+              href="/privacy"
+              className="mt-5 inline-flex text-sm font-semibold text-emerald-100 underline-offset-4 hover:underline"
+            >
               Read the data notice
             </Link>
           </div>
 
           <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
-            <GolfProof icon={<LockKeyhole className="size-4" />} label="Private by default" value="Your shot data stays scoped to your account." />
-            <GolfProof icon={<Zap className="size-4" />} label="Practice ready" value="Import sessions and turn range work into progress." />
-            <GolfProof icon={<Trophy className="size-4" />} label="Record chasing" value="Track PBs, achievements and course records." />
+            <GolfProof
+              icon={<LockKeyhole className="size-4" />}
+              label="Private by default"
+              value="Your shot data stays scoped to your account."
+            />
+            <GolfProof
+              icon={<Zap className="size-4" />}
+              label="Practice ready"
+              value="Import sessions and turn range work into progress."
+            />
+            <GolfProof
+              icon={<Trophy className="size-4" />}
+              label="Record chasing"
+              value="Track PBs, achievements and course records."
+            />
           </div>
         </header>
 
@@ -86,15 +102,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   );
 }
 
-function GolfProof({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function GolfProof({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-lg border border-white/20 bg-white/10 p-3 text-white shadow-sm backdrop-blur">
       <div className="flex items-center gap-2 text-emerald-100">
@@ -107,7 +115,7 @@ function GolfProof({
 }
 
 function first(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 function safeNextPath(value: string) {

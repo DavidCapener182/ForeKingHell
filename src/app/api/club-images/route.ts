@@ -24,7 +24,8 @@ export async function GET(request: Request) {
   const clubType = requestUrl.searchParams.get("type");
   const brand = requestUrl.searchParams.get("brand");
   const model = requestUrl.searchParams.get("model");
-  const fallback = safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
+  const fallback =
+    safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
   const hasBrand = Boolean(brand?.trim());
 
   if (hasBrand) {

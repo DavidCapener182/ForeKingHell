@@ -62,17 +62,24 @@ export async function fetchRemoteImage(
 
   for (let redirects = 0; redirects < maxRedirects; redirects += 1) {
     try {
-      const response = await fetchWithTimeout(currentUrl, options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS, {
-        headers: {
-          Accept: "image/avif,image/webp,image/png,image/jpeg,image/svg+xml,image/*;q=0.8,*/*;q=0.5",
-          "User-Agent": options.userAgent ?? DEFAULT_USER_AGENT,
+      const response = await fetchWithTimeout(
+        currentUrl,
+        options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS,
+        {
+          headers: {
+            Accept:
+              "image/avif,image/webp,image/png,image/jpeg,image/svg+xml,image/*;q=0.8,*/*;q=0.5",
+            "User-Agent": options.userAgent ?? DEFAULT_USER_AGENT,
+          },
+          redirect: "manual",
         },
-        redirect: "manual",
-      });
+      );
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get("location");
-        const redirectedUrl: URL | null = location ? safeRemoteResourceUrl(location, currentUrl) : null;
+        const redirectedUrl: URL | null = location
+          ? safeRemoteResourceUrl(location, currentUrl)
+          : null;
 
         if (!redirectedUrl) {
           return null;
@@ -86,7 +93,8 @@ export async function fetchRemoteImage(
         return null;
       }
 
-      const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+      const contentType =
+        response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
 
       if (!contentType.startsWith("image/")) {
         return null;
@@ -142,12 +150,21 @@ export async function fetchWithTimeout(input: URL, timeoutMs: number, init: Requ
   }
 }
 
-export function safeRemoteResourceUrl(value: string, base?: URL, options: { allowHttp?: boolean } = {}) {
+export function safeRemoteResourceUrl(
+  value: string,
+  base?: URL,
+  options: { allowHttp?: boolean } = {},
+) {
   try {
     const url = new URL(value, base);
     const allowedProtocols = options.allowHttp ? new Set(["http:", "https:"]) : new Set(["https:"]);
 
-    if (!allowedProtocols.has(url.protocol) || url.username || url.password || isBlockedHost(url.hostname)) {
+    if (
+      !allowedProtocols.has(url.protocol) ||
+      url.username ||
+      url.password ||
+      isBlockedHost(url.hostname)
+    ) {
       return null;
     }
 
@@ -261,11 +278,7 @@ function jpegDimensions(bytes: Uint8Array) {
       return null;
     }
 
-    if (
-      marker >= 0xc0 &&
-      marker <= 0xcf &&
-      ![0xc4, 0xc8, 0xcc].includes(marker)
-    ) {
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
       return {
         height: (bytes[offset + 5] << 8) + bytes[offset + 6],
         width: (bytes[offset + 7] << 8) + bytes[offset + 8],
@@ -279,11 +292,7 @@ function jpegDimensions(bytes: Uint8Array) {
 }
 
 function webpDimensions(bytes: Uint8Array) {
-  if (
-    bytes.length < 30 ||
-    ascii(bytes, 0, 4) !== "RIFF" ||
-    ascii(bytes, 8, 12) !== "WEBP"
-  ) {
+  if (bytes.length < 30 || ascii(bytes, 0, 4) !== "RIFF" || ascii(bytes, 8, 12) !== "WEBP") {
     return null;
   }
 

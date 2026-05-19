@@ -4,13 +4,7 @@ import { Upload, WifiOff } from "lucide-react";
 
 import { ChecklistItem } from "@/app/import/import-stepper";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function SaveChecklistCard({
   hasFiles,
@@ -36,7 +30,8 @@ export function SaveChecklistCard({
       <CardHeader>
         <CardTitle>Step 4: Save import</CardTitle>
         <CardDescription>
-          Save only when the checklist is green. Successful saves show PBs, achievements, and updated yardages.
+          Save only when the checklist is green. Successful saves show PBs, achievements, and
+          updated yardages.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -46,7 +41,13 @@ export function SaveChecklistCard({
           <ChecklistItem complete={hasCompleteCourseMapping}>Round mapping complete</ChecklistItem>
           <ChecklistItem complete={hasNoWarnings}>Warnings reviewed</ChecklistItem>
         </div>
-        <Button type="button" size="lg" disabled={!canSave} onClick={onSave} className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+        <Button
+          type="button"
+          size="lg"
+          disabled={!canSave}
+          onClick={onSave}
+          className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+        >
           {!isOnline ? <WifiOff className="size-4" /> : <Upload className="size-4" />}
           {isPending ? "Saving..." : isOnline ? "Save import" : "Queue offline"}
         </Button>

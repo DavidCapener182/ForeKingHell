@@ -126,7 +126,10 @@ describe("parseRapsodoCsv", () => {
   });
 
   it("uses a manual column mapping when Rapsodo changes header names", () => {
-    const csv = ["Club Used,Carry Metres,Ball Velocity,Start Direction", "7 Iron,140,109,-2.5"].join("\n");
+    const csv = [
+      "Club Used,Carry Metres,Ball Velocity,Start Direction",
+      "7 Iron,140,109,-2.5",
+    ].join("\n");
 
     const result = parseRapsodoCsv(csv, {
       fallbackDistanceUnit: "meters",
@@ -166,7 +169,10 @@ describe("club normalization", () => {
 
 describe("Rapsodo parser edge cases", () => {
   it("detects headers when a useful launch metric exists without carry distance", () => {
-    const csv = ["Club Type,Total Distance (yd),Ball Speed,Launch Angle", "7 Iron,156,112,18.5"].join("\n");
+    const csv = [
+      "Club Type,Total Distance (yd),Ball Speed,Launch Angle",
+      "7 Iron,156,112,18.5",
+    ].join("\n");
 
     const result = parseRapsodoCsv(csv);
 
@@ -175,7 +181,10 @@ describe("Rapsodo parser edge cases", () => {
   });
 
   it("preserves duplicate column names with stable suffixes", () => {
-    const csv = ["Club Type,Carry Distance,Carry Distance,Total Distance", "Driver,220,221,240"].join("\n");
+    const csv = [
+      "Club Type,Carry Distance,Carry Distance,Total Distance",
+      "Driver,220,221,240",
+    ].join("\n");
 
     const result = parseRapsodoCsv(csv);
 
@@ -184,11 +193,13 @@ describe("Rapsodo parser edge cases", () => {
   });
 
   it("warns on malformed quoted CSV", () => {
-    const csv = ['Club Type,Carry Distance', 'Driver,"220'].join("\n");
+    const csv = ["Club Type,Carry Distance", 'Driver,"220'].join("\n");
 
     const result = parseRapsodoCsv(csv);
 
-    expect(result.warnings).toContain("CSV contains an unterminated quoted field; parsed results may be incomplete.");
+    expect(result.warnings).toContain(
+      "CSV contains an unterminated quoted field; parsed results may be incomplete.",
+    );
   });
 
   it("warns that ambiguous slash dates are interpreted as US month/day/year", () => {
@@ -201,7 +212,9 @@ describe("Rapsodo parser edge cases", () => {
     const result = parseRapsodoCsv(csv);
 
     expect(result.exportedAtIso).toBe("2026-04-05T08:00:00.000Z");
-    expect(result.warnings).toContain("Export date is ambiguous; slash dates are interpreted as US month/day/year.");
+    expect(result.warnings).toContain(
+      "Export date is ambiguous; slash dates are interpreted as US month/day/year.",
+    );
   });
 
   it("keeps extreme side-carry values rather than dropping the shot", () => {

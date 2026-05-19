@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
   const payload = parseOfflineImportPayload(await request.json().catch(() => null));
 
   if (!payload) {
-    return Response.json({ ok: false, message: "Invalid offline import payload." }, { status: 400 });
+    return Response.json(
+      { ok: false, message: "Invalid offline import payload." },
+      { status: 400 },
+    );
   }
 
   const result = await saveRapsodoImportBatch(payload.inputs);

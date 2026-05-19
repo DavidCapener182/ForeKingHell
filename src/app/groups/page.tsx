@@ -1,7 +1,22 @@
 import Link from "next/link";
-import { Award, Globe2, Lock, MessageCircle, Plus, Radio, Search, Settings, Trophy, Users } from "lucide-react";
+import {
+  Award,
+  Globe2,
+  Lock,
+  MessageCircle,
+  Plus,
+  Radio,
+  Search,
+  Settings,
+  Trophy,
+  Users,
+} from "lucide-react";
 
-import { createGroupAction, joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
+import {
+  createGroupAction,
+  joinGroupAction,
+  joinGroupByInviteCodeAction,
+} from "@/app/groups/actions";
 import { GroupDigestFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
@@ -73,29 +88,54 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
           value={`${data.mine.length} active groups`}
           detail={`${challengeData.active.length} live challenges · ${data.discoverable.length} discoverable clubs`}
           action={
-            <BottomSheet label={<><Plus className="size-4" /> Create</>} title="Create group">
+            <BottomSheet
+              label={
+                <>
+                  <Plus className="size-4" /> Create
+                </>
+              }
+              title="Create group"
+            >
               <form action={createGroupAction} className="grid gap-3">
                 <label className="grid gap-1 text-sm font-medium">
                   <span>Name</span>
-                  <Input name="name" placeholder="ForeKingHell Launch Monitor League" className="h-11 rounded-lg bg-white" required />
+                  <Input
+                    name="name"
+                    placeholder="ForeKingHell Launch Monitor League"
+                    className="h-11 rounded-lg bg-white"
+                    required
+                  />
                 </label>
                 <label className="grid gap-1 text-sm font-medium">
                   <span>Type</span>
                   <select name="groupType" className="h-11 rounded-lg border bg-white px-3 text-sm">
                     {data.groupTypes.map((type) => (
-                      <option key={type} value={type}>{label(type)}</option>
+                      <option key={type} value={type}>
+                        {label(type)}
+                      </option>
                     ))}
                   </select>
                 </label>
                 <label className="grid gap-1 text-sm font-medium">
                   <span>Visibility</span>
-                  <select name="visibility" defaultValue="private" className="h-11 rounded-lg border bg-white px-3 text-sm">
+                  <select
+                    name="visibility"
+                    defaultValue="private"
+                    className="h-11 rounded-lg border bg-white px-3 text-sm"
+                  >
                     {socialVisibilityOptions.map((option) => (
-                      <option key={option} value={option}>{label(option)}</option>
+                      <option key={option} value={option}>
+                        {label(option)}
+                      </option>
                     ))}
                   </select>
                 </label>
-                <textarea name="description" rows={3} placeholder="Description" className="rounded-lg border bg-white px-3 py-2 text-sm" />
+                <textarea
+                  name="description"
+                  rows={3}
+                  placeholder="Description"
+                  className="rounded-lg border bg-white px-3 py-2 text-sm"
+                />
                 <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
                   <Plus className="size-4" />
                   Create group
@@ -193,29 +233,49 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <form action={createGroupAction} className="mt-3 grid gap-3">
               <label className="grid gap-1 text-sm font-medium">
                 <span>Name</span>
-                <Input name="name" placeholder="ForeKingHell Launch Monitor League" className="h-9 rounded-lg bg-white" required />
+                <Input
+                  name="name"
+                  placeholder="ForeKingHell Launch Monitor League"
+                  className="h-9 rounded-lg bg-white"
+                  required
+                />
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Type</span>
                 <select name="groupType" className="h-9 rounded-lg border bg-white px-3 text-sm">
                   {data.groupTypes.map((type) => (
-                    <option key={type} value={type}>{label(type)}</option>
+                    <option key={type} value={type}>
+                      {label(type)}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Visibility</span>
-                <select name="visibility" defaultValue="private" className="h-9 rounded-lg border bg-white px-3 text-sm">
+                <select
+                  name="visibility"
+                  defaultValue="private"
+                  className="h-9 rounded-lg border bg-white px-3 text-sm"
+                >
                   {socialVisibilityOptions.map((option) => (
-                    <option key={option} value={option}>{label(option)}</option>
+                    <option key={option} value={option}>
+                      {label(option)}
+                    </option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-sm font-medium">
                 <span>Description</span>
-                <textarea name="description" rows={3} className="rounded-lg border bg-white px-3 py-2 text-sm" />
+                <textarea
+                  name="description"
+                  rows={3}
+                  className="rounded-lg border bg-white px-3 py-2 text-sm"
+                />
               </label>
-              <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Button
+                type="submit"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
                 <Plus className="size-4" />
                 Create group
               </Button>
@@ -230,7 +290,8 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <StatusPill tone="green">Groups and leagues</StatusPill>
                 <h1 className="mt-3 text-3xl font-semibold tracking-normal">Groups</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Build launch-monitor leagues, golf societies, coach stables and simulator venue communities with their own feed, records, events and leaderboards.
+                  Build launch-monitor leagues, golf societies, coach stables and simulator venue
+                  communities with their own feed, records, events and leaderboards.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -262,22 +323,31 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                   <div>
                     <p className="font-semibold">Invite to {data.invitePreview.name}</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {data.invitePreview.description ?? `${data.invitePreview.memberCount} members · ${label(data.invitePreview.visibility)}`}
+                      {data.invitePreview.description ??
+                        `${data.invitePreview.memberCount} members · ${label(data.invitePreview.visibility)}`}
                     </p>
                   </div>
                   {data.invitePreview.viewerRole ? (
                     <Button asChild variant="outline">
-                      <Link href={`/groups/${data.invitePreview.slug}`} prefetch={false}>Open group</Link>
+                      <Link href={`/groups/${data.invitePreview.slug}`} prefetch={false}>
+                        Open group
+                      </Link>
                     </Button>
                   ) : (
                     <form action={joinGroupByInviteCodeAction}>
-                      <input type="hidden" name="inviteCode" value={data.invitePreview.inviteCode} />
+                      <input
+                        type="hidden"
+                        name="inviteCode"
+                        value={data.invitePreview.inviteCode}
+                      />
                       <Button type="submit">Join from invite</Button>
                     </form>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">That group invite is not valid or has expired.</p>
+                <p className="text-sm text-muted-foreground">
+                  That group invite is not valid or has expired.
+                </p>
               )}
             </section>
           ) : null}
@@ -286,7 +356,9 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">My groups</p>
-                <p className="text-sm text-muted-foreground">Private and joined groups stay scoped to members.</p>
+                <p className="text-sm text-muted-foreground">
+                  Private and joined groups stay scoped to members.
+                </p>
               </div>
               <Badge variant="secondary">{data.mine.length} joined</Badge>
             </div>
@@ -297,11 +369,16 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-semibold">Discoverable leagues</p>
-                <p className="text-sm text-muted-foreground">Public opt-in groups for monthly boards and community challenges.</p>
+                <p className="text-sm text-muted-foreground">
+                  Public opt-in groups for monthly boards and community challenges.
+                </p>
               </div>
               <Search className="size-5 text-sky-600" />
             </div>
-            <GroupGrid groups={data.discoverable} empty="No public groups yet. Create the first golf league." />
+            <GroupGrid
+              groups={data.discoverable}
+              empty="No public groups yet. Create the first golf league."
+            />
           </section>
 
           <GroupDigestFeaturePanel data={featureData} />
@@ -313,7 +390,11 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
 
 function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }) {
   if (groups.length === 0) {
-    return <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{empty}</p>;
+    return (
+      <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+        {empty}
+      </p>
+    );
   }
 
   return (
@@ -322,13 +403,23 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
         <article key={group.id} className="rounded-lg border bg-[#F5F6F4] p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <Link href={`/groups/${group.slug}`} prefetch={false} className="font-semibold hover:underline">
+              <Link
+                href={`/groups/${group.slug}`}
+                prefetch={false}
+                className="font-semibold hover:underline"
+              >
                 {group.name}
               </Link>
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{group.description ?? "No group description yet."}</p>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                {group.description ?? "No group description yet."}
+              </p>
             </div>
             <Badge variant="outline" className="gap-1">
-              {group.visibility === "public" ? <Globe2 className="size-3" /> : <Lock className="size-3" />}
+              {group.visibility === "public" ? (
+                <Globe2 className="size-3" />
+              ) : (
+                <Lock className="size-3" />
+              )}
               {label(group.visibility)}
             </Badge>
           </div>
@@ -353,7 +444,9 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
-              <Link href={`/groups/${group.slug}`} prefetch={false}>Open</Link>
+              <Link href={`/groups/${group.slug}`} prefetch={false}>
+                Open
+              </Link>
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/course-records" prefetch={false}>
@@ -370,7 +463,9 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
             {!group.viewerRole && group.visibility === "public" ? (
               <form action={joinGroupAction}>
                 <input type="hidden" name="groupId" value={group.id} />
-                <Button type="submit" size="sm">Join</Button>
+                <Button type="submit" size="sm">
+                  Join
+                </Button>
               </form>
             ) : group.viewerRole ? (
               <Badge variant="secondary">{label(group.viewerRole)}</Badge>
@@ -406,7 +501,11 @@ function MobileGroupCard({ group }: { group: GroupListItem }) {
           </p>
         </div>
         <Badge variant="outline" className="gap-1">
-          {group.visibility === "public" ? <Globe2 className="size-3" /> : <Lock className="size-3" />}
+          {group.visibility === "public" ? (
+            <Globe2 className="size-3" />
+          ) : (
+            <Lock className="size-3" />
+          )}
           {label(group.visibility)}
         </Badge>
       </div>

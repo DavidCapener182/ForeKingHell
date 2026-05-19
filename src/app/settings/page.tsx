@@ -1,7 +1,17 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { headers } from "next/headers";
-import { ChevronDown, Download, Link2, ShieldCheck, SlidersHorizontal, Trash2, UserCog, UserPlus, X } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  Link2,
+  ShieldCheck,
+  SlidersHorizontal,
+  Trash2,
+  UserCog,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { desc, eq, inArray } from "drizzle-orm";
 
 import {
@@ -12,13 +22,7 @@ import {
   updateUserSettingsAction,
 } from "@/app/settings/actions";
 import { SocialFeaturePanel } from "@/components/features/feature-panels";
-import {
-  DataPanel,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -67,7 +71,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const params = await searchParams;
   const requestHeaders = await headers();
   const [settingsData, featureData] = await Promise.all([getSettingsData(), getFeatureIdeasData()]);
-  const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } = settingsData;
+  const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } =
+    settingsData;
   const privacy = normalizePrivacy(profile.privacySettingsJson);
   const inviteUrl = params?.invite
     ? `${getRequestOrigin(requestHeaders)}/settings/invitations/${encodeURIComponent(params.invite)}`
@@ -83,7 +88,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         title="Settings"
         description="Manage profile preferences, privacy defaults, and data portability for your ForeKingHell account."
         actions={
-          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button
+            asChild
+            size="sm"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
             <a href="#profile-settings">
               <UserCog className="size-4" />
               Profile
@@ -96,7 +105,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <Alert>
           <ShieldCheck className="size-4" />
           <AlertTitle>Settings saved</AlertTitle>
-          <AlertDescription>Your profile and preference changes are active for this account.</AlertDescription>
+          <AlertDescription>
+            Your profile and preference changes are active for this account.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -104,7 +115,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <Alert>
           <ShieldCheck className="size-4" />
           <AlertTitle>Account data deleted</AlertTitle>
-          <AlertDescription>Your app data was removed. Signing in again recreates an empty profile.</AlertDescription>
+          <AlertDescription>
+            Your app data was removed. Signing in again recreates an empty profile.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -112,7 +125,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <Alert variant="destructive">
           <Trash2 className="size-4" />
           <AlertTitle>Deletion was not run</AlertTitle>
-          <AlertDescription>Type your account email exactly before deleting app data.</AlertDescription>
+          <AlertDescription>
+            Type your account email exactly before deleting app data.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -163,10 +178,27 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <aside className="premium-card sticky top-28 p-3">
           <p className="px-2 text-sm font-semibold">Settings</p>
           <nav className="mt-2 grid gap-1 text-sm">
-            <a href="#profile-settings" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Profile</a>
-            <a href="#sharing-settings" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Sharing</a>
-            <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">Data export</a>
-            <a href="#danger-zone" className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50">Danger zone</a>
+            <a
+              href="#profile-settings"
+              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+            >
+              Profile
+            </a>
+            <a
+              href="#sharing-settings"
+              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+            >
+              Sharing
+            </a>
+            <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">
+              Data export
+            </a>
+            <a
+              href="#danger-zone"
+              className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50"
+            >
+              Danger zone
+            </a>
           </nav>
         </aside>
 
@@ -176,9 +208,18 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             Privacy preview
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <SettingsPreviewRow label="Public profile" value={privacy.publicProfile ? "Allowed" : "Hidden"} />
-            <SettingsPreviewRow label="Leaderboard" value={privacy.allowLeaderboard ? "Enabled" : "Off"} />
-            <SettingsPreviewRow label="Coach access" value={privacy.allowCoachAccess ? "Allowed" : "Invite only"} />
+            <SettingsPreviewRow
+              label="Public profile"
+              value={privacy.publicProfile ? "Allowed" : "Hidden"}
+            />
+            <SettingsPreviewRow
+              label="Leaderboard"
+              value={privacy.allowLeaderboard ? "Enabled" : "Off"}
+            />
+            <SettingsPreviewRow
+              label="Coach access"
+              value={privacy.allowCoachAccess ? "Allowed" : "Invite only"}
+            />
           </div>
         </section>
 
@@ -192,173 +233,238 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </aside>
       </section>
 
-      <SettingsMobileDisclosure id="profile-settings" title="Profile" description={`${profile.preferredUnits}, ${profile.tableDensity} tables`} defaultOpen>
-      <DataPanel>
-        <SectionHeader
-          title="Profile and preferences"
-          description="These settings are stored with your user profile and control dashboard pins, units, and table density."
-          action={<SlidersHorizontal className="size-5 text-sky-600" />}
-        />
-        <CardContent>
-          <form action={updateUserSettingsAction} className="grid gap-5">
-            <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="Display name" name="name" defaultValue={profile.name ?? ""} />
-              <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
-            </div>
+      <SettingsMobileDisclosure
+        id="profile-settings"
+        title="Profile"
+        description={`${profile.preferredUnits}, ${profile.tableDensity} tables`}
+        defaultOpen
+      >
+        <DataPanel>
+          <SectionHeader
+            title="Profile and preferences"
+            description="These settings are stored with your user profile and control dashboard pins, units, and table density."
+            action={<SlidersHorizontal className="size-5 text-sky-600" />}
+          />
+          <CardContent>
+            <form action={updateUserSettingsAction} className="grid gap-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="Display name" name="name" defaultValue={profile.name ?? ""} />
+                <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
+              </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <SelectField label="Preferred units" name="preferredUnits" defaultValue={profile.preferredUnits} values={preferredUnitOptions} />
-              <SelectField label="Table density" name="tableDensity" defaultValue={profile.tableDensity} values={tableDensityOptions} />
-            </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <SelectField
+                  label="Preferred units"
+                  name="preferredUnits"
+                  defaultValue={profile.preferredUnits}
+                  values={preferredUnitOptions}
+                />
+                <SelectField
+                  label="Table density"
+                  name="tableDensity"
+                  defaultValue={profile.tableDensity}
+                  values={tableDensityOptions}
+                />
+              </div>
 
-            <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-              <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
-              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
-                {dashboardPinOptions.map((pin) => (
+              <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
+                <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
+                  {dashboardPinOptions.map((pin) => (
+                    <CheckboxField
+                      key={pin}
+                      name="dashboardPins"
+                      value={pin}
+                      label={dashboardPinLabels[pin]}
+                      defaultChecked={profile.dashboardPins.includes(pin)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
+                <div className="grid gap-2">
                   <CheckboxField
-                    key={pin}
-                    name="dashboardPins"
-                    value={pin}
-                    label={dashboardPinLabels[pin]}
-                    defaultChecked={profile.dashboardPins.includes(pin)}
+                    name="allowCoachAccess"
+                    label="Allow invited coaches to read my golf data"
+                    defaultChecked={privacy.allowCoachAccess}
                   />
-                ))}
-              </div>
-            </fieldset>
+                  <CheckboxField
+                    name="allowLeaderboard"
+                    label="Include my profile in friend leaderboards"
+                    defaultChecked={privacy.allowLeaderboard}
+                  />
+                  <CheckboxField
+                    name="publicProfile"
+                    label="Allow a public profile if sharing is enabled later"
+                    defaultChecked={privacy.publicProfile}
+                  />
+                </div>
+              </fieldset>
 
-            <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-              <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
-              <div className="grid gap-2">
-                <CheckboxField name="allowCoachAccess" label="Allow invited coaches to read my golf data" defaultChecked={privacy.allowCoachAccess} />
-                <CheckboxField name="allowLeaderboard" label="Include my profile in friend leaderboards" defaultChecked={privacy.allowLeaderboard} />
-                <CheckboxField name="publicProfile" label="Allow a public profile if sharing is enabled later" defaultChecked={privacy.publicProfile} />
-              </div>
-            </fieldset>
-
-            <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
-              <UserCog className="size-4" />
-              Save settings
-            </Button>
-          </form>
-        </CardContent>
-      </DataPanel>
+              <Button
+                type="submit"
+                className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+              >
+                <UserCog className="size-4" />
+                Save settings
+              </Button>
+            </form>
+          </CardContent>
+        </DataPanel>
       </SettingsMobileDisclosure>
 
-      <SettingsMobileDisclosure id="sharing-settings" title="Sharing" description="Invites, coaches and shared accounts.">
-      <DataPanel>
-        <SectionHeader
-          title="Sharing and collaboration"
-          description="Invite a coach, viewer, or editor. Invitations create role-scoped memberships before social and team features are enabled."
-          action={<UserPlus className="size-5 text-emerald-600" />}
-        />
-        <CardContent className="grid gap-5">
-          <form action={createInvitationAction} className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end">
-            <FormField label="Invite email" name="invitedEmail" type="email" placeholder="coach@example.com" required />
-            <SelectField label="Role" name="role" defaultValue="viewer" values={collaborationRoles} />
-            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <UserPlus className="size-4" />
-              Create invite
-            </Button>
-          </form>
+      <SettingsMobileDisclosure
+        id="sharing-settings"
+        title="Sharing"
+        description="Invites, coaches and shared accounts."
+      >
+        <DataPanel>
+          <SectionHeader
+            title="Sharing and collaboration"
+            description="Invite a coach, viewer, or editor. Invitations create role-scoped memberships before social and team features are enabled."
+            action={<UserPlus className="size-5 text-emerald-600" />}
+          />
+          <CardContent className="grid gap-5">
+            <form
+              action={createInvitationAction}
+              className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end"
+            >
+              <FormField
+                label="Invite email"
+                name="invitedEmail"
+                type="email"
+                placeholder="coach@example.com"
+                required
+              />
+              <SelectField
+                label="Role"
+                name="role"
+                defaultValue="viewer"
+                values={collaborationRoles}
+              />
+              <Button
+                type="submit"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                <UserPlus className="size-4" />
+                Create invite
+              </Button>
+            </form>
 
-          <section className="grid gap-3 lg:grid-cols-3">
-            <CollaborationList
-              title="Pending invites"
-              empty="No pending invites."
-              rows={ownedInvitations.map((invitation) => ({
-                id: invitation.id,
-                primary: invitation.invitedEmail,
-                secondary: `${titleCase(invitation.role)} access, expires ${formatDate(invitation.expiresAt)}`,
-                action: (
-                  <form action={cancelInvitationAction}>
-                    <input type="hidden" name="invitationId" value={invitation.id} />
-                    <Button type="submit" variant="ghost" size="sm">Cancel</Button>
-                  </form>
-                ),
-              }))}
-            />
-            <CollaborationList
-              title="Shared by me"
-              empty="No accepted collaborators."
-              rows={ownedMemberships.map((membership) => {
-                const member = relatedUsersById.get(membership.memberUserId);
-                return {
-                  id: membership.id,
-                  primary: member?.email ?? member?.name ?? membership.memberUserId,
-                  secondary: `${titleCase(membership.role)} access`,
+            <section className="grid gap-3 lg:grid-cols-3">
+              <CollaborationList
+                title="Pending invites"
+                empty="No pending invites."
+                rows={ownedInvitations.map((invitation) => ({
+                  id: invitation.id,
+                  primary: invitation.invitedEmail,
+                  secondary: `${titleCase(invitation.role)} access, expires ${formatDate(invitation.expiresAt)}`,
                   action: (
-                    <form action={removeMembershipAction}>
-                      <input type="hidden" name="membershipId" value={membership.id} />
-                      <Button type="submit" variant="ghost" size="sm">Remove</Button>
+                    <form action={cancelInvitationAction}>
+                      <input type="hidden" name="invitationId" value={invitation.id} />
+                      <Button type="submit" variant="ghost" size="sm">
+                        Cancel
+                      </Button>
                     </form>
                   ),
-                };
-              })}
-            />
-            <CollaborationList
-              title="Shared with me"
-              empty="No accounts shared with this login."
-              rows={receivedMemberships.map((membership) => {
-                const owner = relatedUsersById.get(membership.ownerUserId);
-                return {
-                  id: membership.id,
-                  primary: owner?.email ?? owner?.name ?? membership.ownerUserId,
-                  secondary: `${titleCase(membership.role)} access`,
-                  action: (
-                    <Button asChild variant="ghost" size="sm">
-                      <Link href={`/shared/${membership.ownerUserId}`} prefetch={false}>Open</Link>
-                    </Button>
-                  ),
-                };
-              })}
-            />
-          </section>
-        </CardContent>
-      </DataPanel>
+                }))}
+              />
+              <CollaborationList
+                title="Shared by me"
+                empty="No accepted collaborators."
+                rows={ownedMemberships.map((membership) => {
+                  const member = relatedUsersById.get(membership.memberUserId);
+                  return {
+                    id: membership.id,
+                    primary: member?.email ?? member?.name ?? membership.memberUserId,
+                    secondary: `${titleCase(membership.role)} access`,
+                    action: (
+                      <form action={removeMembershipAction}>
+                        <input type="hidden" name="membershipId" value={membership.id} />
+                        <Button type="submit" variant="ghost" size="sm">
+                          Remove
+                        </Button>
+                      </form>
+                    ),
+                  };
+                })}
+              />
+              <CollaborationList
+                title="Shared with me"
+                empty="No accounts shared with this login."
+                rows={receivedMemberships.map((membership) => {
+                  const owner = relatedUsersById.get(membership.ownerUserId);
+                  return {
+                    id: membership.id,
+                    primary: owner?.email ?? owner?.name ?? membership.ownerUserId,
+                    secondary: `${titleCase(membership.role)} access`,
+                    action: (
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href={`/shared/${membership.ownerUserId}`} prefetch={false}>
+                          Open
+                        </Link>
+                      </Button>
+                    ),
+                  };
+                })}
+              />
+            </section>
+          </CardContent>
+        </DataPanel>
       </SettingsMobileDisclosure>
 
       <SocialFeaturePanel data={featureData} />
 
       <section className="grid gap-4 lg:grid-cols-2">
-        <SettingsMobileDisclosure id="data-export" title="Data export" description="Download a JSON copy.">
-        <DataPanel>
-          <SectionHeader
-            title="Data export"
-            description="Download a JSON copy of your user-owned data, including shots, rounds, clubs, achievements, and private courses."
-            action={<Download className="size-5 text-emerald-600" />}
-          />
-          <CardContent>
-            <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/api/settings/export" prefetch={false}>
-                <Download className="size-4" />
-                Export my data
-              </Link>
-            </Button>
-          </CardContent>
-        </DataPanel>
+        <SettingsMobileDisclosure
+          id="data-export"
+          title="Data export"
+          description="Download a JSON copy."
+        >
+          <DataPanel>
+            <SectionHeader
+              title="Data export"
+              description="Download a JSON copy of your user-owned data, including shots, rounds, clubs, achievements, and private courses."
+              action={<Download className="size-5 text-emerald-600" />}
+            />
+            <CardContent>
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/api/settings/export" prefetch={false}>
+                  <Download className="size-4" />
+                  Export my data
+                </Link>
+              </Button>
+            </CardContent>
+          </DataPanel>
         </SettingsMobileDisclosure>
 
-        <SettingsMobileDisclosure id="danger-zone" title="Danger zone" description="Delete app data.">
-        <DataPanel>
-          <SectionHeader
-            title="Delete app data"
-            description="This removes ForeKingHell data for the signed-in account. It does not delete the Supabase Auth login itself."
-            action={<Trash2 className="size-5 text-destructive" />}
-          />
-          <CardContent>
-            <form action={deleteAccountDataAction} className="grid gap-3">
-              <FormField
-                label={`Type ${profile.email ?? profile.id} to confirm`}
-                name="confirmation"
-                autoComplete="off"
-              />
-              <Button type="submit" variant="destructive" className="w-full rounded-xl sm:w-fit">
-                <Trash2 className="size-4" />
-                Delete my app data
-              </Button>
-            </form>
-          </CardContent>
-        </DataPanel>
+        <SettingsMobileDisclosure
+          id="danger-zone"
+          title="Danger zone"
+          description="Delete app data."
+        >
+          <DataPanel>
+            <SectionHeader
+              title="Delete app data"
+              description="This removes ForeKingHell data for the signed-in account. It does not delete the Supabase Auth login itself."
+              action={<Trash2 className="size-5 text-destructive" />}
+            />
+            <CardContent>
+              <form action={deleteAccountDataAction} className="grid gap-3">
+                <FormField
+                  label={`Type ${profile.email ?? profile.id} to confirm`}
+                  name="confirmation"
+                  autoComplete="off"
+                />
+                <Button type="submit" variant="destructive" className="w-full rounded-xl sm:w-fit">
+                  <Trash2 className="size-4" />
+                  Delete my app data
+                </Button>
+              </form>
+            </CardContent>
+          </DataPanel>
         </SettingsMobileDisclosure>
       </section>
     </PageShell>
@@ -392,9 +498,14 @@ function SettingsMobileDisclosure({
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">
           <span className="block truncate font-semibold tracking-normal">{title}</span>
-          {description ? <span className="block truncate text-xs text-muted-foreground">{description}</span> : null}
+          {description ? (
+            <span className="block truncate text-xs text-muted-foreground">{description}</span>
+          ) : null}
         </span>
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+        <ChevronDown
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          aria-hidden
+        />
       </summary>
       <div className="hidden group-open:block sm:contents">{children}</div>
     </details>
@@ -471,7 +582,9 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <div className="flex h-10 items-center rounded-xl border bg-muted/50 px-3 text-muted-foreground">{value}</div>
+      <div className="flex h-10 items-center rounded-xl border bg-muted/50 px-3 text-muted-foreground">
+        {value}
+      </div>
     </div>
   );
 }
@@ -490,7 +603,11 @@ function SelectField<T extends string>({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <select name={name} defaultValue={defaultValue} className="h-10 rounded-xl border bg-white px-3 text-sm">
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="h-10 rounded-xl border bg-white px-3 text-sm"
+      >
         {values.map((value) => (
           <option key={value} value={value}>
             {titleCase(value)}
@@ -546,7 +663,10 @@ function CollaborationList({
       <div className="mt-3 grid gap-2">
         {rows.length > 0 ? (
           rows.map((row) => (
-            <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2">
+            <div
+              key={row.id}
+              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2"
+            >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{row.primary}</p>
                 <p className="text-xs text-muted-foreground">{row.secondary}</p>
@@ -555,7 +675,9 @@ function CollaborationList({
             </div>
           ))
         ) : (
-          <p className="rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">{empty}</p>
+          <p className="rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">
+            {empty}
+          </p>
         )}
       </div>
     </div>
@@ -603,6 +725,7 @@ function formatInviteError(value: string) {
 
 function getRequestOrigin(requestHeaders: Headers) {
   const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   return `${proto}://${host}`;
 }

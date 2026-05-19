@@ -52,7 +52,11 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone={profile.publicProfile ? "green" : "sky"}>{profile.relationship === "friend" ? "Friend profile" : "Social profile"}</StatusPill>}
+        eyebrow={
+          <StatusPill tone={profile.publicProfile ? "green" : "sky"}>
+            {profile.relationship === "friend" ? "Friend profile" : "Social profile"}
+          </StatusPill>
+        }
         title={profile.displayName}
         description={profile.bio ?? "ForeKingHell golfer"}
         actions={
@@ -64,21 +68,37 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
               </Link>
             </Button>
           ) : (
-            <ProfileActions userId={profile.userId} relationship={profile.relationship} next={`/profile/${profile.username}`} />
+            <ProfileActions
+              userId={profile.userId}
+              relationship={profile.relationship}
+              next={`/profile/${profile.username}`}
+            />
           )
         }
         metrics={[
           { label: "Home", value: profile.homeCourse ?? "--", detail: "Course or simulator venue" },
-          { label: "Launch monitor", value: profile.primaryLaunchMonitor ?? "--", detail: "Primary setup" },
+          {
+            label: "Launch monitor",
+            value: profile.primaryLaunchMonitor ?? "--",
+            detail: "Primary setup",
+          },
           { label: "Handicap band", value: profile.handicapBand ?? "--", detail: "Self-selected" },
-          { label: "Connection", value: titleCase(profile.relationship), detail: profile.publicProfile ? "Public opt-in" : "Friend scoped" },
+          {
+            label: "Connection",
+            value: titleCase(profile.relationship),
+            detail: profile.publicProfile ? "Public opt-in" : "Friend scoped",
+          },
         ]}
       />
 
       <article className="premium-card overflow-hidden">
         <div
           className="h-36 bg-cover bg-center"
-          style={{ backgroundImage: profileHeaderBackground(profileHeaderImageUrl(profile.headerImageUrl, profile.username)) }}
+          style={{
+            backgroundImage: profileHeaderBackground(
+              profileHeaderImageUrl(profile.headerImageUrl, profile.username),
+            ),
+          }}
         />
         <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-5 pt-4">
           <div className="flex min-w-0 items-start gap-3">
@@ -91,7 +111,9 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
               />
             </div>
             <div className="min-w-0 pt-1">
-              <h2 className="truncate text-2xl font-semibold tracking-normal">{profile.displayName}</h2>
+              <h2 className="truncate text-2xl font-semibold tracking-normal">
+                {profile.displayName}
+              </h2>
               <p className="text-sm text-muted-foreground">@{profile.username}</p>
             </div>
           </div>

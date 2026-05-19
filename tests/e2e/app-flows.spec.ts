@@ -35,7 +35,13 @@ test.describe("authenticated app flows", () => {
     await expectPageReady(page, /Import launch monitor shots/i);
     await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
-    const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "manual-column-map.csv");
+    const fixturePath = path.join(
+      process.cwd(),
+      "tests",
+      "e2e",
+      "fixtures",
+      "manual-column-map.csv",
+    );
     await page.setInputFiles("#csv-file", fixturePath);
 
     await expect(page.getByText("Manual column mapping")).toBeVisible();
@@ -51,7 +57,13 @@ test.describe("authenticated app flows", () => {
     await expectPageReady(page, /Import launch monitor shots/i);
     await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
 
-    const fixturePath = path.join(process.cwd(), "tests", "e2e", "fixtures", "standard-rapsodo.csv");
+    const fixturePath = path.join(
+      process.cwd(),
+      "tests",
+      "e2e",
+      "fixtures",
+      "standard-rapsodo.csv",
+    );
     await page.setInputFiles("#csv-file", fixturePath);
     await expect(page.getByText("Driver").first()).toBeVisible();
 
@@ -90,7 +102,10 @@ async function gotoAppRoute(page: Page, path: string) {
     await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
   } catch (error) {
     const message = String(error);
-    if (!message.includes("net::ERR_ABORTED") && !message.includes("net::ERR_NETWORK_IO_SUSPENDED")) {
+    if (
+      !message.includes("net::ERR_ABORTED") &&
+      !message.includes("net::ERR_NETWORK_IO_SUSPENDED")
+    ) {
       throw error;
     }
     await page.goto(path, { waitUntil: "commit", timeout: 60_000 });

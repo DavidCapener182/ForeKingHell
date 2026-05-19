@@ -14,7 +14,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ForeKingHell",
-  description: "Personal golf analytics for launch monitor data, bag mapping, and progress tracking.",
+  description:
+    "Personal golf analytics for launch monitor data, bag mapping, and progress tracking.",
   applicationName: "ForeKingHell",
   manifest: "/manifest.webmanifest",
   formatDetection: {
@@ -44,17 +45,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile] = await Promise.all([
-    getTotalXpForCurrentUser().catch(() => 0),
-    getAchievementUnlockFlash().catch(() => []),
-    getCurrentUserPreferences().catch(() => ({
-      preferredUnits: "yards" as const,
-      theme: "light" as const,
-      tableDensity: "comfortable" as const,
-    })),
-    isCurrentUserAdmin().catch(() => false),
-    getMobileNavProfile().catch(() => null),
-  ]);
+  const [totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile] =
+    await Promise.all([
+      getTotalXpForCurrentUser().catch(() => 0),
+      getAchievementUnlockFlash().catch(() => []),
+      getCurrentUserPreferences().catch(() => ({
+        preferredUnits: "yards" as const,
+        theme: "light" as const,
+        tableDensity: "comfortable" as const,
+      })),
+      isCurrentUserAdmin().catch(() => false),
+      getMobileNavProfile().catch(() => null),
+    ]);
 
   return (
     <html

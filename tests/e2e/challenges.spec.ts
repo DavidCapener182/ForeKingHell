@@ -19,7 +19,9 @@ type ChallengeFixture = {
 
 const databaseUrl = process.env.DATABASE_URL ?? loadEnvFile().DATABASE_URL;
 const authUserId = authStorageState ? extractSupabaseUserId(authStorageState) : null;
-const canRunChallenges = Boolean(databaseUrl && authStorageState && existsSync(authStorageState) && authUserId);
+const canRunChallenges = Boolean(
+  databaseUrl && authStorageState && existsSync(authStorageState) && authUserId,
+);
 
 test.describe("challenge competition flow", () => {
   test.skip(
@@ -60,7 +62,10 @@ test.describe("challenge competition flow", () => {
 
     await page.goto(`/challenges/${data.challengeId}`);
     await expectPageReady(page, new RegExp(data.title));
-    await page.getByRole("button", { name: /^Join$/ }).first().click();
+    await page
+      .getByRole("button", { name: /^Join$/ })
+      .first()
+      .click();
 
     await expect
       .poll(async () => {
@@ -218,7 +223,17 @@ async function seedChallengeFixture(sql: Sql, authUserId: string): Promise<Chall
     )
   `;
 
-  return { token, templateId, challengeId, clubId, sessionId, shotId, creatorUserId, friendUserId, title };
+  return {
+    token,
+    templateId,
+    challengeId,
+    clubId,
+    sessionId,
+    shotId,
+    creatorUserId,
+    friendUserId,
+    title,
+  };
 }
 
 async function cleanupChallengeFixture(sql: Sql, fixture: ChallengeFixture, authUserId: string) {
@@ -272,7 +287,9 @@ function extractSupabaseUserId(storageStatePath: string) {
   const state = JSON.parse(readFileSync(storageStatePath, "utf8")) as {
     cookies?: Array<{ name: string; value: string }>;
   };
-  const cookie = state.cookies?.find((item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"));
+  const cookie = state.cookies?.find(
+    (item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"),
+  );
   if (!cookie) {
     return null;
   }
@@ -289,7 +306,9 @@ function extractSupabaseUserId(storageStatePath: string) {
     }
 
     const [, payload] = token.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: string };
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      sub?: string;
+    };
     return claims.sub ?? null;
   } catch {
     return null;
@@ -297,7 +316,10 @@ function extractSupabaseUserId(storageStatePath: string) {
 }
 
 function unquote(value: string) {
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 

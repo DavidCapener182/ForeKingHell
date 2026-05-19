@@ -254,7 +254,9 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
       const now = new Date();
 
       await getDb().transaction(async (tx) => {
-        await tx.delete(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, input.source)));
+        await tx
+          .delete(entitlements)
+          .where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, input.source)));
 
         if (!input.active) {
           return;
@@ -314,7 +316,10 @@ function handleCheckoutSessionCompleted(
     email: stringFrom(object.customer_email),
     subscriptionId,
     planKey,
-    status: object.payment_status === "paid" || object.status === "complete" ? "active" : "checkout_completed",
+    status:
+      object.payment_status === "paid" || object.status === "complete"
+        ? "active"
+        : "checkout_completed",
     currentPeriodStart: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
@@ -337,7 +342,9 @@ async function handleSubscriptionUpdated(
 ): Promise<StripeWebhookResult> {
   const metadata = objectMetadata(object);
   const customerId = stripeId(object.customer);
-  const userId = stringFrom(metadata.user_id) ?? (customerId ? await store.findUserIdByStripeCustomerId(customerId) : null);
+  const userId =
+    stringFrom(metadata.user_id) ??
+    (customerId ? await store.findUserIdByStripeCustomerId(customerId) : null);
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
   const status = stringFrom(object.status) ?? "unknown";
 
@@ -398,7 +405,12 @@ async function handleInvoicePaid(
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
 
   if (!userId || !subscriptionId) {
-    return { handled: false, type, planKey, reason: !userId ? "missing_user_id" : "missing_subscription_id" };
+    return {
+      handled: false,
+      type,
+      planKey,
+      reason: !userId ? "missing_user_id" : "missing_subscription_id",
+    };
   }
 
   return upsertCustomerSubscriptionAndEntitlements({
@@ -437,7 +449,12 @@ async function handleInvoicePaymentFailed(
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
 
   if (!userId || !subscriptionId) {
-    return { handled: false, type, planKey, reason: !userId ? "missing_user_id" : "missing_subscription_id" };
+    return {
+      handled: false,
+      type,
+      planKey,
+      reason: !userId ? "missing_user_id" : "missing_subscription_id",
+    };
   }
 
   await store.markSubscriptionStatus({
@@ -514,15 +531,26 @@ async function upsertCustomerSubscriptionAndEntitlements(input: {
   };
 }
 
-function resolvePlanKey(metadata: Record<string, unknown>, priceId: string | null, env: StripeWebhookEnv): PlanKey {
+function resolvePlanKey(
+  metadata: Record<string, unknown>,
+  priceId: string | null,
+  env: StripeWebhookEnv,
+): PlanKey {
   const metadataPlan = stringFrom(metadata.plan_key);
 
-  if (metadataPlan === "plus" || metadataPlan === "pro" || metadataPlan === "coach" || metadataPlan === "full") {
+  if (
+    metadataPlan === "plus" ||
+    metadataPlan === "pro" ||
+    metadataPlan === "coach" ||
+    metadataPlan === "full"
+  ) {
     return metadataPlan;
   }
 
   if (priceId) {
-    for (const [planKey, envKeys] of Object.entries(priceEnvByPlan) as Array<[PlanKey, readonly string[]]>) {
+    for (const [planKey, envKeys] of Object.entries(priceEnvByPlan) as Array<
+      [PlanKey, readonly string[]]
+    >) {
       if (envKeys.some((envKey) => env[envKey] === priceId)) {
         return planKey;
       }
@@ -584,16 +612,24 @@ function firstPriceId(object: StripeObject): string | null {
     return directPrice;
   }
 
-  const items = isRecord(object.items) && Array.isArray(object.items.data) ? object.items.data : null;
-  const itemPrice = items?.map((item) => (isRecord(item) && isRecord(item.price) ? stripeId(item.price) : null)).find(Boolean);
+  const items =
+    isRecord(object.items) && Array.isArray(object.items.data) ? object.items.data : null;
+  const itemPrice = items
+    ?.map((item) => (isRecord(item) && isRecord(item.price) ? stripeId(item.price) : null))
+    .find(Boolean);
 
   if (itemPrice) {
     return itemPrice;
   }
 
-  const lines = isRecord(object.lines) && Array.isArray(object.lines.data) ? object.lines.data : null;
+  const lines =
+    isRecord(object.lines) && Array.isArray(object.lines.data) ? object.lines.data : null;
 
-  return lines?.map((line) => (isRecord(line) && isRecord(line.price) ? stripeId(line.price) : null)).find(Boolean) ?? null;
+  return (
+    lines
+      ?.map((line) => (isRecord(line) && isRecord(line.price) ? stripeId(line.price) : null))
+      .find(Boolean) ?? null
+  );
 }
 
 function invoicePeriodUnix(object: StripeObject, key: "start" | "end") {

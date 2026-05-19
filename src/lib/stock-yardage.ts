@@ -88,7 +88,8 @@ export function calculateStockYardage(
     carryP75Yd: roundOne(percentile(filteredCarry, 0.75)),
     carryP25Yd: roundOne(percentile(filteredCarry, 0.25)),
     totalMedianYd: filteredTotal.length > 0 ? roundOne(median(filteredTotal)) : null,
-    dispersionLeftYd: filteredSide.length > 0 ? roundOne(Math.abs(Math.min(0, ...filteredSide))) : null,
+    dispersionLeftYd:
+      filteredSide.length > 0 ? roundOne(Math.abs(Math.min(0, ...filteredSide))) : null,
     dispersionRightYd: filteredSide.length > 0 ? roundOne(Math.max(0, ...filteredSide)) : null,
     averageBallSpeedMph: filteredBallSpeed.length > 0 ? roundOne(mean(filteredBallSpeed)) : null,
     averageLaunchAngleDeg: filteredLaunch.length > 0 ? roundOne(mean(filteredLaunch)) : null,

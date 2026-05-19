@@ -7,10 +7,7 @@ import { InsightBlock } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { trackPlausibleEvent } from "@/lib/analytics";
-import type {
-  AiCoachGeneratedSummary,
-  AiCoachPayload,
-} from "@/lib/ai-coach-summary";
+import type { AiCoachGeneratedSummary, AiCoachPayload } from "@/lib/ai-coach-summary";
 
 type AiCoachCardProps = {
   payload: AiCoachPayload;
@@ -31,9 +28,10 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ payload }),
       });
-      const data = (await response.json().catch(() => null)) as
-        | { summary?: AiCoachGeneratedSummary; message?: string }
-        | null;
+      const data = (await response.json().catch(() => null)) as {
+        summary?: AiCoachGeneratedSummary;
+        message?: string;
+      } | null;
 
       if (!response.ok || !data?.summary) {
         setError(data?.message ?? "Could not generate the AI coach note.");
@@ -63,7 +61,11 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={generateSummary} disabled={isSummaryPending}>
-            {isSummaryPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {isSummaryPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
             Coach note
           </Button>
         </div>
@@ -78,10 +80,20 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
       {summary ? (
         <div className="grid gap-3">
           <InsightBlock
-            label={summary.confidence === "high" ? "AI coach note" : `AI coach note - ${summary.confidence} confidence`}
+            label={
+              summary.confidence === "high"
+                ? "AI coach note"
+                : `AI coach note - ${summary.confidence} confidence`
+            }
             value={summary.headline}
             detail={summary.coachNote}
-            tone={summary.confidence === "high" ? "green" : summary.confidence === "low" ? "amber" : "sky"}
+            tone={
+              summary.confidence === "high"
+                ? "green"
+                : summary.confidence === "low"
+                  ? "amber"
+                  : "sky"
+            }
           />
           <div className="grid gap-3 lg:grid-cols-3">
             <AiEvidenceTile label="Recommendation" value={summary.recommendation} />
@@ -100,9 +112,7 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
                 <li key={step}>{step}</li>
               ))}
             </ol>
-            <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">
-              {summary.watchOut}
-            </p>
+            <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">{summary.watchOut}</p>
           </div>
         </div>
       ) : null}
@@ -113,7 +123,9 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
 function AiEvidenceTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 text-sm font-semibold leading-5">{value}</p>
     </div>
   );

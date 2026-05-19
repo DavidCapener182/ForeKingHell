@@ -32,8 +32,20 @@ describe("strokes gained", () => {
   it("finds a matching baseline bucket by category, lie, and distance", () => {
     const bucket = findBaselineBucket(
       [
-        { category: "approach", lie: "fairway", distanceStartYd: 125, distanceEndYd: 150, expectedStrokes: 3.1 },
-        { category: "approach", lie: "rough", distanceStartYd: 125, distanceEndYd: 150, expectedStrokes: 3.4 },
+        {
+          category: "approach",
+          lie: "fairway",
+          distanceStartYd: 125,
+          distanceEndYd: 150,
+          expectedStrokes: 3.1,
+        },
+        {
+          category: "approach",
+          lie: "rough",
+          distanceStartYd: 125,
+          distanceEndYd: 150,
+          expectedStrokes: 3.4,
+        },
       ],
       { category: "approach", lie: "fairway", distanceYd: 141 },
     );

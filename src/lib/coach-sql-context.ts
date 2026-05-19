@@ -22,7 +22,10 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export async function buildCoachSqlContext(userId: string, question: string): Promise<CoachSqlContext> {
+export async function buildCoachSqlContext(
+  userId: string,
+  question: string,
+): Promise<CoachSqlContext> {
   const db = getDb();
   const [clubRows, stockRows, recentShotRows, roundRows, strokesGainedRows] = await Promise.all([
     db
@@ -125,7 +128,8 @@ export async function buildCoachSqlContext(userId: string, question: string): Pr
     return `${index + 1}. ${formatClubType(shot.clubType)} ${shot.shotCategory}: ${formatNumber(shot.carryYd)} carry, ${formatNumber(shot.totalYd)} total, ${formatNumber(shot.sideCarryYd)} side, ${formatNumber(shot.launchAngleDeg)} launch, ${formatNumber(shot.ballSpeedMph)} ball mph (${shot.courseName ?? shot.fileName ?? "session"}).`;
   });
   const roundLines = roundRows.map((round, index) => {
-    const totalScore = round.scorecardJson?.reduce((total, hole) => total + (hole.score ?? 0), 0) ?? 0;
+    const totalScore =
+      round.scorecardJson?.reduce((total, hole) => total + (hole.score ?? 0), 0) ?? 0;
     const totalPar = round.scorecardJson?.reduce((total, hole) => total + (hole.par ?? 0), 0) ?? 0;
     citations.push({
       id: `round-${round.id}`,
@@ -135,15 +139,17 @@ export async function buildCoachSqlContext(userId: string, question: string): Pr
     });
     return `${index + 1}. ${round.courseName ?? round.type}: ${totalScore || "unknown"} on par ${totalPar || "unknown"} from ${round.scorecardJson?.length ?? 0} holes.`;
   });
-  const strokesGainedLines = summarizeStrokesGainedByCategory(strokesGainedRows).map((summary, index) => {
-    citations.push({
-      id: `sg-${summary.category}`,
-      label: `${summary.category} strokes gained`,
-      detail: `${summary.sampleSize} events, ${formatNumber(summary.total)} total`,
-      href: "/strokes-gained",
-    });
-    return `${index + 1}. ${summary.category}: ${formatNumber(summary.total)} total, ${formatNumber(summary.average)} average, ${summary.sampleSize} events.`;
-  });
+  const strokesGainedLines = summarizeStrokesGainedByCategory(strokesGainedRows).map(
+    (summary, index) => {
+      citations.push({
+        id: `sg-${summary.category}`,
+        label: `${summary.category} strokes gained`,
+        detail: `${summary.sampleSize} events, ${formatNumber(summary.total)} total`,
+        href: "/strokes-gained",
+      });
+      return `${index + 1}. ${summary.category}: ${formatNumber(summary.total)} total, ${formatNumber(summary.average)} average, ${summary.sampleSize} events.`;
+    },
+  );
 
   return {
     question,
@@ -151,10 +157,16 @@ export async function buildCoachSqlContext(userId: string, question: string): Pr
     contextText: [
       "ForeKingHell SQL context. Use only these cited personal-data facts. If the data is insufficient, say exactly what is missing.",
       `Question: ${question}`,
-      stockLines.length ? `Stock yardages:\n${stockLines.join("\n")}` : "Stock yardages: none available.",
+      stockLines.length
+        ? `Stock yardages:\n${stockLines.join("\n")}`
+        : "Stock yardages: none available.",
       shotLines.length ? `Recent shots:\n${shotLines.join("\n")}` : "Recent shots: none available.",
-      roundLines.length ? `Recent rounds:\n${roundLines.join("\n")}` : "Recent rounds: none available.",
-      strokesGainedLines.length ? `Strokes gained:\n${strokesGainedLines.join("\n")}` : "Strokes gained: no event rows available.",
+      roundLines.length
+        ? `Recent rounds:\n${roundLines.join("\n")}`
+        : "Recent rounds: none available.",
+      strokesGainedLines.length
+        ? `Strokes gained:\n${strokesGainedLines.join("\n")}`
+        : "Strokes gained: no event rows available.",
     ].join("\n\n"),
   };
 }

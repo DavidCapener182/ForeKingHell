@@ -37,7 +37,7 @@ export function CourseLogoArtwork({
         "pointer-events-none relative hidden aspect-[16/9] min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F8FAF7] md:block",
         className,
       )}
-        aria-hidden={alt === ""}
+      aria-hidden={alt === ""}
     >
       <Image
         src={imageSrc}

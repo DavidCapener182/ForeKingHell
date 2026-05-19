@@ -116,12 +116,8 @@
           "name": "fkh_clubs_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_clubs",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -260,12 +256,8 @@
           "name": "fkh_sessions_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_sessions",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -510,12 +502,8 @@
           "name": "fkh_shots_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -523,12 +511,8 @@
           "name": "fkh_shots_session_id_fkh_sessions_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -536,12 +520,8 @@
           "name": "fkh_shots_club_id_fkh_clubs_id_fk",
           "tableFrom": "fkh_shots",
           "tableTo": "fkh_clubs",
-          "columnsFrom": [
-            "club_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["club_id"],
+          "columnsTo": ["id"],
           "onDelete": "restrict",
           "onUpdate": "no action"
         }
@@ -693,12 +673,8 @@
           "name": "fkh_stock_yardages_user_id_fkh_users_id_fk",
           "tableFrom": "fkh_stock_yardages",
           "tableTo": "fkh_users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -706,12 +682,8 @@
           "name": "fkh_stock_yardages_club_id_fkh_clubs_id_fk",
           "tableFrom": "fkh_stock_yardages",
           "tableTo": "fkh_clubs",
-          "columnsFrom": [
-            "club_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["club_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

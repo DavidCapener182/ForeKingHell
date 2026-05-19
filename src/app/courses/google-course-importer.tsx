@@ -44,15 +44,23 @@ export function GoogleCourseImporter() {
       return;
     }
 
-    setSearchState({ message: "Searching Google Places...", results: searchState.results, status: "loading" });
+    setSearchState({
+      message: "Searching Google Places...",
+      results: searchState.results,
+      status: "loading",
+    });
 
     try {
-      const response = await fetch(`/api/courses/google/search?query=${encodeURIComponent(trimmedQuery)}`);
+      const response = await fetch(
+        `/api/courses/google/search?query=${encodeURIComponent(trimmedQuery)}`,
+      );
       const payload = (await response.json()) as { results?: GoogleCourseSearchResult[] };
       const results = payload.results ?? [];
 
       setSearchState({
-        message: results.length ? `${results.length} Google matches found.` : "No Google course matches found.",
+        message: results.length
+          ? `${results.length} Google matches found.`
+          : "No Google course matches found.",
         results,
         status: "success",
       });
@@ -87,12 +95,21 @@ export function GoogleCourseImporter() {
           disabled={searchState.status === "loading"}
           onClick={() => void searchCourses()}
         >
-          {searchState.status === "loading" ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+          {searchState.status === "loading" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Search className="size-4" />
+          )}
           Search
         </Button>
       </div>
 
-      <p className={cn("text-sm", searchState.status === "error" ? "text-destructive" : "text-muted-foreground")}>
+      <p
+        className={cn(
+          "text-sm",
+          searchState.status === "error" ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
         {searchState.message}
       </p>
 
@@ -127,12 +144,17 @@ export function GoogleCourseImporter() {
       ) : null}
 
       {selected ? (
-        <form action={createGoogleCourseAction} className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+        <form
+          action={createGoogleCourseAction}
+          className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3"
+        >
           <input type="hidden" name="placeId" value={selected.placeId} />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{selected.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{selected.address ?? "Google Places match selected"}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {selected.address ?? "Google Places match selected"}
+              </p>
             </div>
             <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               Import Google course

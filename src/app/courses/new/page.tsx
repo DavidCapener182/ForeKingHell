@@ -38,7 +38,15 @@ export default function NewCoursePage() {
         eyebrow={<StatusPill tone="green">Manual course setup</StatusPill>}
         title="New Course"
         description="Create the course and first tee set now. The next screen lets you enter tee and green coordinates for each hole so round overlays can use the real course."
-        visual={<PageArtwork variant="fairway" alt="" crop="fairway" className="h-full min-h-44" priority />}
+        visual={
+          <PageArtwork
+            variant="fairway"
+            alt=""
+            crop="fairway"
+            className="h-full min-h-44"
+            priority
+          />
+        }
         metrics={[
           {
             label: "Required",
@@ -92,13 +100,25 @@ export default function NewCoursePage() {
           <CardContent>
             <form action={createCourseAction} className="grid gap-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Course name" name="name" placeholder="Bootle Golf Course" required />
+                <FormField
+                  label="Course name"
+                  name="name"
+                  placeholder="Bootle Golf Course"
+                  required
+                />
                 <FormField label="Country" name="country" placeholder="England" />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField label="Tee set" name="teeName" placeholder="Yellow" required />
-                <FormField label="Par" name="par" type="number" min={1} defaultValue={72} required />
+                <FormField
+                  label="Par"
+                  name="par"
+                  type="number"
+                  min={1}
+                  defaultValue={72}
+                  required
+                />
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -109,11 +129,22 @@ export default function NewCoursePage() {
                   step="0.1"
                   placeholder="71.5"
                 />
-                <FormField label="Slope rating" name="slopeRating" type="number" min={55} max={155} placeholder="123" />
+                <FormField
+                  label="Slope rating"
+                  name="slopeRating"
+                  type="number"
+                  min={55}
+                  max={155}
+                  placeholder="123"
+                />
                 <FormField label="Yards" name="yards" type="number" min={1} placeholder="5839" />
               </div>
 
-              <Button type="submit" size="lg" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+              >
                 <Save className="size-4" />
                 Create course
               </Button>
@@ -133,25 +164,36 @@ export default function NewCoursePage() {
         </DataPanel>
       </section>
 
-      <MobileAccordionSection title="OpenStreetMap import" description="Search and pull tagged golf-hole geometry.">
+      <MobileAccordionSection
+        title="OpenStreetMap import"
+        description="Search and pull tagged golf-hole geometry."
+      >
         <OsmCourseImporter />
       </MobileAccordionSection>
 
-      <MobileAccordionSection title="Google import" description="Search Google Places and create a canonical course shell.">
+      <MobileAccordionSection
+        title="Google import"
+        description="Search Google Places and create a canonical course shell."
+      >
         <GoogleCourseImporter />
       </MobileAccordionSection>
 
-      <MobileAccordionSection title="Overlay notes" description="How course maps power round overlays.">
+      <MobileAccordionSection
+        title="Overlay notes"
+        description="How course maps power round overlays."
+      >
         <div className="grid gap-3">
           <Alert className="border-emerald-200 bg-emerald-50/70">
             <MapPinned className="size-4" />
             <AlertTitle>Hole geometry drives the map</AlertTitle>
             <AlertDescription>
-              Round pages project launch-monitor shots from saved tee points toward saved green points.
+              Round pages project launch-monitor shots from saved tee points toward saved green
+              points.
             </AlertDescription>
           </Alert>
           <p className="rounded-xl border bg-white/80 p-3 text-sm leading-6 text-muted-foreground">
-            Tee and green coordinates are enough for useful overlays. Centreline refinement can happen later.
+            Tee and green coordinates are enough for useful overlays. Centreline refinement can
+            happen later.
           </p>
         </div>
       </MobileAccordionSection>
@@ -163,21 +205,21 @@ export default function NewCoursePage() {
           action={<MapPinned className="size-5 text-sky-600" />}
         />
         <CardContent className="grid gap-3 lg:grid-cols-2">
-            <Alert className="border-emerald-200 bg-emerald-50/70">
-              <MapPinned className="size-4" />
-              <AlertTitle>Hole geometry drives the map</AlertTitle>
-              <AlertDescription>
-                The round page projects each launch-monitor shot from the saved tee point toward
-                the green point using total distance and side carry.
-              </AlertDescription>
-            </Alert>
-            <div className="apple-panel-strong p-4">
-              <p className="font-semibold">Good enough for MVP</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                You only need tee and green coordinates to get useful overlays. The centreline can
-                be refined later when we build the full course editor.
-              </p>
-            </div>
+          <Alert className="border-emerald-200 bg-emerald-50/70">
+            <MapPinned className="size-4" />
+            <AlertTitle>Hole geometry drives the map</AlertTitle>
+            <AlertDescription>
+              The round page projects each launch-monitor shot from the saved tee point toward the
+              green point using total distance and side carry.
+            </AlertDescription>
+          </Alert>
+          <div className="apple-panel-strong p-4">
+            <p className="font-semibold">Good enough for MVP</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              You only need tee and green coordinates to get useful overlays. The centreline can be
+              refined later when we build the full course editor.
+            </p>
+          </div>
         </CardContent>
       </DataPanel>
     </PageShell>

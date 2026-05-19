@@ -80,7 +80,10 @@ export async function findGooglePlaceOfficialWebsite(input: CoursePlaceInput) {
   }
 
   const media = await findGooglePlaceMedia(input);
-  websiteCache.set(cacheKey, { expiresAt: Date.now() + PLACES_CACHE_TTL_MS, website: media.website });
+  websiteCache.set(cacheKey, {
+    expiresAt: Date.now() + PLACES_CACHE_TTL_MS,
+    website: media.website,
+  });
 
   return media.website;
 }
@@ -143,7 +146,8 @@ export async function googlePlacePhotoResponseFromReference(
       return null;
     }
 
-    const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
+    const contentType =
+      response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
 
     if (!contentType.startsWith("image/")) {
       return null;
@@ -276,7 +280,10 @@ function placeSearchQueries(input: CoursePlaceInput) {
   }
 
   const normalizedName = name.replace(/\s*[-–—]\s*/g, " ");
-  const splitName = name.split(/\s*[-–—]\s*/).map(normalizePart).filter(Boolean);
+  const splitName = name
+    .split(/\s*[-–—]\s*/)
+    .map(normalizePart)
+    .filter(Boolean);
   const [facilityName, courseName] = splitName;
   const courseFacilityName = facilityName && courseName ? `${courseName} ${facilityName}` : null;
 
@@ -300,7 +307,9 @@ function photoReferencesFromPlaceDetails(detailsPayload: PlacesDetailsResponse) 
       photoReference: photo.photo_reference,
       score: photoScore(photo),
     }))
-    .filter((photo): photo is { index: number; photoReference: string; score: number } => Boolean(photo.photoReference))
+    .filter((photo): photo is { index: number; photoReference: string; score: number } =>
+      Boolean(photo.photoReference),
+    )
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((photo) => photo.photoReference);
 }
@@ -312,7 +321,11 @@ function photoScore(photo: PlacePhoto) {
   const shortestSide = Math.min(width, height);
   const aspectRatio = shortestSide ? longestSide / shortestSide : 10;
 
-  return Math.min(longestSide, 2000) + Math.min(shortestSide, 1200) - Math.max(aspectRatio - 2.2, 0) * 300;
+  return (
+    Math.min(longestSide, 2000) +
+    Math.min(shortestSide, 1200) -
+    Math.max(aspectRatio - 2.2, 0) * 300
+  );
 }
 
 function emptyPlaceMedia(): CoursePlaceMedia {
@@ -322,7 +335,10 @@ function emptyPlaceMedia(): CoursePlaceMedia {
   };
 }
 
-function bestPlaceId(results: NonNullable<PlacesTextSearchResponse["results"]>, input: CoursePlaceInput) {
+function bestPlaceId(
+  results: NonNullable<PlacesTextSearchResponse["results"]>,
+  input: CoursePlaceInput,
+) {
   const firstResult = results.find((result) => result.place_id);
 
   if (firstResult && scorePlaceResult(firstResult, input) >= 4) {
@@ -342,7 +358,10 @@ function bestPlaceId(results: NonNullable<PlacesTextSearchResponse["results"]>, 
   return ranked[0]?.placeId ?? null;
 }
 
-function scorePlaceResult(result: NonNullable<PlacesTextSearchResponse["results"]>[number], input: CoursePlaceInput) {
+function scorePlaceResult(
+  result: NonNullable<PlacesTextSearchResponse["results"]>[number],
+  input: CoursePlaceInput,
+) {
   const name = normalizeForMatching(input.name);
   const country = normalizeForMatching(input.country);
   const resultName = normalizeForMatching(result.name);
@@ -374,11 +393,17 @@ function scorePlaceResult(result: NonNullable<PlacesTextSearchResponse["results"
 }
 
 function googlePlacesApiKey() {
-  return (process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY)?.trim().replace(/^['"]|['"]$/g, "");
+  return (process.env.GOOGLE_PLACES_API_KEY ?? process.env.GOOGLE_MAPS_API_KEY)
+    ?.trim()
+    .replace(/^['"]|['"]$/g, "");
 }
 
 function significantTokens(name: string) {
-  return name.split(" ").filter((token) => token.length > 2 && !["and", "club", "course", "golf", "the"].includes(token));
+  return name
+    .split(" ")
+    .filter(
+      (token) => token.length > 2 && !["and", "club", "course", "golf", "the"].includes(token),
+    );
 }
 
 function normalizePart(value: string | null | undefined) {

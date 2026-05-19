@@ -1,6 +1,20 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, BarChart3, Bell, Filter, Lock, MessageCircle, Plus, Radio, Search, Trophy, Upload, Users, Zap } from "lucide-react";
+import {
+  Award,
+  BarChart3,
+  Bell,
+  Filter,
+  Lock,
+  MessageCircle,
+  Plus,
+  Radio,
+  Search,
+  Trophy,
+  Upload,
+  Users,
+  Zap,
+} from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialFeaturePanel } from "@/components/features/feature-panels";
@@ -16,10 +30,8 @@ import {
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
-import {
-  PageShell,
-  StatusPill,
-} from "@/components/premium";
+import { PageShell, StatusPill } from "@/components/premium";
+import { DataFirstFlowPanel } from "@/components/product-polish";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
@@ -54,10 +66,50 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const comments = data.items.reduce((total, item) => total + item.commentCount, 0);
   const feedXp = data.items.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0);
   const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
-  const pbCount = data.items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive").length;
+  const pbCount = data.items.filter(
+    (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
+  ).length;
   const challengeCount = data.items.filter((item) => item.itemType.startsWith("challenge_")).length;
   const recordCount = data.items.filter((item) => item.itemType.startsWith("course_record")).length;
-  const tournamentCount = data.items.filter((item) => item.itemType.startsWith("tournament")).length;
+  const tournamentCount = data.items.filter((item) =>
+    item.itemType.startsWith("tournament"),
+  ).length;
+  const roundCount = data.items.filter((item) => item.itemType.includes("round")).length;
+  const highlightSteps = [
+    {
+      title: "Best PB",
+      detail: pbCount > 0 ? `${pbCount} PB moments ready.` : "Waiting for a PB import.",
+      href: "/feed?filter=pbs",
+      status: pbCount > 0 ? ("ready" as const) : ("needed" as const),
+    },
+    {
+      title: "Best round",
+      detail:
+        roundCount > 0 ? `${roundCount} round updates in the feed.` : "Log a round to rank it.",
+      href: "/feed?filter=rounds",
+      status: roundCount > 0 ? ("ready" as const) : ("needed" as const),
+    },
+    {
+      title: "Challenge result",
+      detail:
+        challengeCount > 0 ? `${challengeCount} challenge updates.` : "Join a micro challenge.",
+      href: "/challenges",
+      status: challengeCount > 0 ? ("ready" as const) : ("needed" as const),
+    },
+    {
+      title: "Most improved club",
+      detail:
+        feedXp > 0 ? `${numberFormatter.format(feedXp)} XP from activity.` : "Needs more data.",
+      href: "/progress",
+      status: feedXp > 0 ? ("ready" as const) : ("needed" as const),
+    },
+    {
+      title: "Share optional",
+      detail: "Post after proof and privacy look right.",
+      href: "/profile",
+      status: "optional" as const,
+    },
+  ];
 
   return (
     <PageShell size="7xl" className="bg-slate-50/20">
@@ -90,9 +142,18 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           detail="12 shots · 24-34° launch window · Rapsodo proof accepted"
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Link href="/challenges" prefetch={false}>Start</Link>
+              <Link href="/challenges" prefetch={false}>
+                Start
+              </Link>
             </Button>
           }
+        />
+        <DataFirstFlowPanel
+          title="Highlight of the week"
+          description="A compact readout of the best shareable golf moments before the social stream."
+          steps={highlightSteps}
+          actionHref="/profile"
+          actionLabel="Preview sharing"
         />
         {filteredItems[0] ? (
           <NativeListSection title="Latest activity">
@@ -112,7 +173,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
                 title={item.headline}
                 description={item.context}
-                metric={item.metricValue ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}` : feedTypeLabel(item.itemType)}
+                metric={
+                  item.metricValue
+                    ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}`
+                    : feedTypeLabel(item.itemType)
+                }
                 reactionCount={item.reactionCount}
                 commentCount={item.commentCount}
                 media={
@@ -135,7 +200,9 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             description="PBs, records, achievements and event eligibility will appear here first."
             href="/import"
             actionLabel="Import"
-            media={<PageArtwork variant="feedEmpty" alt="" className="h-full min-h-0" sizes="100vw" />}
+            media={
+              <PageArtwork variant="feedEmpty" alt="" className="h-full min-h-0" sizes="100vw" />
+            }
           />
         )}
         <SocialFeaturePanel data={featureData} />
@@ -146,7 +213,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           <section className="premium-card overflow-hidden">
             <div
               className="h-20 bg-cover bg-center"
-              style={{ backgroundImage: profileHeaderBackground(profileHeaderImageUrl(data.profile.headerImageUrl, data.profile.username)) }}
+              style={{
+                backgroundImage: profileHeaderBackground(
+                  profileHeaderImageUrl(data.profile.headerImageUrl, data.profile.username),
+                ),
+              }}
             />
             <div className="grid gap-3 p-4 pt-0">
               <div className="-mt-8">
@@ -169,7 +240,9 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 <MiniStat label="XP" value={numberFormatter.format(data.totalXp)} />
               </div>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>Edit profile</Link>
+                <Link href="/profile" prefetch={false}>
+                  Edit profile
+                </Link>
               </Button>
             </div>
           </section>
@@ -179,10 +252,26 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             <div className="mt-2 grid gap-1">
               <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
               <SideLink href="/groups" icon={<Users className="size-4" />} label="Groups" />
-              <SideLink href="/challenges" icon={<Trophy className="size-4" />} label="Challenges" />
-              <SideLink href="/course-records" icon={<Award className="size-4" />} label="Course records" />
-              <SideLink href="/tournaments" icon={<Trophy className="size-4" />} label="Tournaments" />
-              <SideLink href="/leaderboard" icon={<BarChart3 className="size-4" />} label="Leaderboards" />
+              <SideLink
+                href="/challenges"
+                icon={<Trophy className="size-4" />}
+                label="Challenges"
+              />
+              <SideLink
+                href="/course-records"
+                icon={<Award className="size-4" />}
+                label="Course records"
+              />
+              <SideLink
+                href="/tournaments"
+                icon={<Trophy className="size-4" />}
+                label="Tournaments"
+              />
+              <SideLink
+                href="/leaderboard"
+                icon={<BarChart3 className="size-4" />}
+                label="Leaderboards"
+              />
             </div>
           </section>
         </aside>
@@ -194,7 +283,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 <StatusPill tone="green">Social feed</StatusPill>
                 <h1 className="mt-3 text-2xl font-semibold tracking-normal sm:text-3xl">Feed</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  PBs, achievements, imports, rounds, course records and tournament moments from your golf network.
+                  PBs, achievements, imports, rounds, course records and tournament moments from
+                  your golf network.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -222,19 +312,40 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                   Social pulse
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {data.friendCount} friends connected · {pbCount} PBs · {recordCount} records · {tournamentCount} events · {comments} comments.
+                  {data.friendCount} friends connected · {pbCount} PBs · {recordCount} records ·{" "}
+                  {tournamentCount} events · {comments} comments.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <BadgeLike icon={<Users className="size-3" />} label={`${data.friendCount} friends`} />
+                <BadgeLike
+                  icon={<Users className="size-3" />}
+                  label={`${data.friendCount} friends`}
+                />
                 <BadgeLike icon={<Award className="size-3" />} label={`${pbCount} PBs`} />
-                <BadgeLike icon={<Trophy className="size-3" />} label={`${challengeCount} challenges`} />
+                <BadgeLike
+                  icon={<Trophy className="size-3" />}
+                  label={`${challengeCount} challenges`}
+                />
                 <BadgeLike icon={<Award className="size-3" />} label={`${recordCount} records`} />
-                <BadgeLike icon={<Trophy className="size-3" />} label={`${tournamentCount} events`} />
-                <BadgeLike icon={<MessageCircle className="size-3" />} label={`${comments} comments`} />
+                <BadgeLike
+                  icon={<Trophy className="size-3" />}
+                  label={`${tournamentCount} events`}
+                />
+                <BadgeLike
+                  icon={<MessageCircle className="size-3" />}
+                  label={`${comments} comments`}
+                />
               </div>
             </div>
           </section>
+
+          <DataFirstFlowPanel
+            title="Highlight of the week"
+            description="A compact readout of the best shareable golf moments before filters and the full stream."
+            steps={highlightSteps}
+            actionHref="/profile"
+            actionLabel="Preview sharing"
+          />
 
           <section className="premium-card p-4">
             <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
@@ -246,7 +357,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               />
               <div className="grid gap-3">
                 <div className="rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
-                  Your feed is automatic right now. Import a session, complete a round, or join a challenge to post a verified update.
+                  Your feed is automatic right now. Import a session, complete a round, or join a
+                  challenge to post a verified update.
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
@@ -282,14 +394,19 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             <section className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold">Build your golf network</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Add a friend or join a group to unlock friend-only PBs, challenge entries and comments in this feed.
+                Add a friend or join a group to unlock friend-only PBs, challenge entries and
+                comments in this feed.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/friends" prefetch={false}>Find friends</Link>
+                  <Link href="/friends" prefetch={false}>
+                    Find friends
+                  </Link>
                 </Button>
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/groups" prefetch={false}>Browse groups</Link>
+                  <Link href="/groups" prefetch={false}>
+                    Browse groups
+                  </Link>
                 </Button>
               </div>
             </section>
@@ -302,8 +419,16 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 Filter
               </span>
               {feedFilters.map((filter) => (
-                <Button key={filter.key} asChild variant={filter.key === activeFilter ? "default" : "outline"} size="sm">
-                  <Link href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`} prefetch={false}>
+                <Button
+                  key={filter.key}
+                  asChild
+                  variant={filter.key === activeFilter ? "default" : "outline"}
+                  size="sm"
+                >
+                  <Link
+                    href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`}
+                    prefetch={false}
+                  >
                     {filter.label}
                   </Link>
                 </Button>
@@ -320,20 +445,46 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Network pulse</p>
             <div className="mt-3 grid gap-2">
-              <PulseRow icon={<Zap className="size-4 text-emerald-600" />} label="Total XP" value={numberFormatter.format(data.totalXp)} />
-              <PulseRow icon={<Award className="size-4 text-orange-500" />} label="Feed XP" value={numberFormatter.format(feedXp)} />
-              <PulseRow icon={<Award className="size-4 text-emerald-600" />} label="Kudos" value={kudos} />
-              <PulseRow icon={<Radio className="size-4 text-sky-600" />} label="Comments" value={comments} />
+              <PulseRow
+                icon={<Zap className="size-4 text-emerald-600" />}
+                label="Total XP"
+                value={numberFormatter.format(data.totalXp)}
+              />
+              <PulseRow
+                icon={<Award className="size-4 text-orange-500" />}
+                label="Feed XP"
+                value={numberFormatter.format(feedXp)}
+              />
+              <PulseRow
+                icon={<Award className="size-4 text-emerald-600" />}
+                label="Kudos"
+                value={kudos}
+              />
+              <PulseRow
+                icon={<Radio className="size-4 text-sky-600" />}
+                label="Comments"
+                value={comments}
+              />
             </div>
           </section>
 
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Privacy state</p>
             <div className="mt-3 grid gap-3 text-sm text-muted-foreground">
-              <p>Default feed visibility is <span className="font-medium text-foreground">{data.profile.feedVisibilityDefault}</span>.</p>
-              <p>{data.publicProfileCount} golfers are discoverable through public profile search.</p>
+              <p>
+                Default feed visibility is{" "}
+                <span className="font-medium text-foreground">
+                  {data.profile.feedVisibilityDefault}
+                </span>
+                .
+              </p>
+              <p>
+                {data.publicProfileCount} golfers are discoverable through public profile search.
+              </p>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>Change social defaults</Link>
+                <Link href="/profile" prefetch={false}>
+                  Change social defaults
+                </Link>
               </Button>
             </div>
           </section>
@@ -374,7 +525,11 @@ function MiniStat({ label, value }: { label: string; value: ReactNode }) {
 
 function SideLink({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
-    <Link href={href} prefetch={false} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium hover:bg-[#F5F6F4]">
+    <Link
+      href={href}
+      prefetch={false}
+      className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium hover:bg-[#F5F6F4]"
+    >
       {icon}
       {label}
     </Link>
@@ -464,14 +619,22 @@ function feedTypeLabel(value: string) {
     .join(" ");
 }
 
-function filterFeedItems(items: Awaited<ReturnType<typeof getFeedPageData>>["items"], filter: FeedFilter, viewerUserId: string) {
+function filterFeedItems(
+  items: Awaited<ReturnType<typeof getFeedPageData>>["items"],
+  filter: FeedFilter,
+  viewerUserId: string,
+) {
   switch (filter) {
     case "friends":
       return items.filter((item) => item.userId !== viewerUserId);
     case "pbs":
-      return items.filter((item) => item.itemType === "new_pb" || item.itemType === "longest_drive");
+      return items.filter(
+        (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
+      );
     case "achievements":
-      return items.filter((item) => item.itemType === "achievement_unlock" || item.itemType === "level_up");
+      return items.filter(
+        (item) => item.itemType === "achievement_unlock" || item.itemType === "level_up",
+      );
     case "challenges":
       return items.filter((item) => item.itemType.startsWith("challenge_"));
     case "records":

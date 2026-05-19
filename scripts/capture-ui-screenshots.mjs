@@ -126,13 +126,15 @@ async function captureFirstLinkedDetail({
     return;
   }
 
-  const href = await page.locator(selector).evaluateAll(
-    (links, patternSource) =>
-      links
-        .map((link) => link.getAttribute("href"))
-        .find((value) => value && new RegExp(patternSource).test(value)) ?? null,
-    hrefPattern.source,
-  );
+  const href = await page
+    .locator(selector)
+    .evaluateAll(
+      (links, patternSource) =>
+        links
+          .map((link) => link.getAttribute("href"))
+          .find((value) => value && new RegExp(patternSource).test(value)) ?? null,
+      hrefPattern.source,
+    );
 
   if (!href) {
     skips.push(`${name}-${viewport.name}: no detail link`);
@@ -158,7 +160,10 @@ async function gotoAndVerify(routePath, expectedText) {
     return false;
   }
 
-  const bodyText = await page.locator("body").innerText({ timeout: 15_000 }).catch(() => "");
+  const bodyText = await page
+    .locator("body")
+    .innerText({ timeout: 15_000 })
+    .catch(() => "");
   if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
     failures.push(`${routePath}: redirected to login`);
     return false;

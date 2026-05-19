@@ -1,6 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowLeft, CalendarDays, Flag, Globe2, Medal, ShieldCheck, Target, Trophy, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Flag,
+  Globe2,
+  Medal,
+  ShieldCheck,
+  Target,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
 
 import {
@@ -13,6 +23,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import { DataFirstFlowPanel } from "@/components/product-polish";
 import { LeaderboardClimbPanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
@@ -27,7 +38,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   courseRecordCategories,
   courseRecordResults,
@@ -108,7 +126,39 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const params = await searchParams;
   const activeTab = parseTab(params?.tab);
   const filters = parseLeaderboardFilters(params);
-  const [data, featureData] = await Promise.all([getLeaderboardData(activeTab, filters), getFeatureIdeasData()]);
+  const [data, featureData] = await Promise.all([
+    getLeaderboardData(activeTab, filters),
+    getFeatureIdeasData(),
+  ]);
+  const leaderboardOrderSteps = [
+    {
+      title: "Your rank",
+      detail: mobileYourRankLabel(data.players, activeTab),
+      status: "ready" as const,
+      href: "/profile",
+    },
+    {
+      title: "Podium",
+      detail: "Top three stay above the detailed table.",
+      status: "ready" as const,
+    },
+    {
+      title: "Top five",
+      detail: "Show the board front page before filter controls.",
+      status: "ready" as const,
+    },
+    {
+      title: "Filters",
+      detail: "Source and verification filters sit below the first readout.",
+      status: "optional" as const,
+    },
+    {
+      title: "Full table",
+      detail: "The dense table stays below the fold on mobile.",
+      href: "#full-leaderboard",
+      status: "optional" as const,
+    },
+  ];
 
   return (
     <PageShell>
@@ -132,7 +182,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           detail="Best way to climb: Wedge Window or a verified course-record attempt."
           action={
             <BottomSheet
-              label={<><Target className="size-4" /> Filters</>}
+              label={
+                <>
+                  <Target className="size-4" /> Filters
+                </>
+              }
               title="Leaderboard filters"
               triggerClassName="bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
             >
@@ -140,7 +194,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 <input type="hidden" name="tab" value={activeTab} />
                 <label className="grid gap-1 text-sm font-medium">
                   Source
-                  <select name="provider" defaultValue={filters.provider} className="h-11 rounded-lg border bg-white px-3 text-sm">
+                  <select
+                    name="provider"
+                    defaultValue={filters.provider}
+                    className="h-11 rounded-lg border bg-white px-3 text-sm"
+                  >
                     <option value="all">All</option>
                     <option value="espn">ESPN</option>
                     <option value="rapsodo">Rapsodo file</option>
@@ -150,22 +208,39 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 </label>
                 <label className="grid gap-1 text-sm font-medium">
                   Verification
-                  <select name="verification" defaultValue={filters.verification} className="h-11 rounded-lg border bg-white px-3 text-sm">
+                  <select
+                    name="verification"
+                    defaultValue={filters.verification}
+                    className="h-11 rounded-lg border bg-white px-3 text-sm"
+                  >
                     <option value="all">All</option>
                     <option value="verified">Verified only</option>
                     <option value="mixed">Mixed</option>
                     <option value="manual">Manual only</option>
                   </select>
                 </label>
-                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">Apply filters</Button>
+                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                  Apply filters
+                </Button>
               </form>
             </BottomSheet>
           }
         />
+        <DataFirstFlowPanel
+          title="Leaderboard order"
+          description="Keep the mobile hierarchy predictable: your rank first, then the podium and the fuller table."
+          steps={leaderboardOrderSteps}
+          actionHref="/challenges"
+          actionLabel="Ways to climb"
+        />
         {activeTab === "courses" ? (
           <NativeListSection title="Course champions">
             <CompactLeaderboard
-              current={data.courseChampionBoards[0] ? `${data.courseChampionBoards[0].courseName} · ${data.courseChampionBoards[0].scoreLabel}` : "No course champions yet"}
+              current={
+                data.courseChampionBoards[0]
+                  ? `${data.courseChampionBoards[0].courseName} · ${data.courseChampionBoards[0].scoreLabel}`
+                  : "No course champions yet"
+              }
               items={data.courseChampionBoards.slice(0, 5).map((board, index) => ({
                 rank: index + 1,
                 name: board.champion.displayName,
@@ -238,133 +313,222 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
       </div>
 
       <div className="hidden sm:contents">
-      <PageHeader
-        eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
-        title="Leaderboards"
-        description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
-        metrics={[
-          { label: "Visible players", value: integerFormatter.format(data.players.length), detail: `${titleCase(activeTab)} scope` },
-          { label: "Friends", value: integerFormatter.format(data.friendCount), detail: "Accepted friendships only" },
-          { label: "Monthly shots", value: integerFormatter.format(data.monthlyShotTotal), detail: formatMonth(data.monthStart) },
-          { label: "Course champions", value: integerFormatter.format(data.courseChampionBoards.length), detail: "Verified record holders" },
-        ]}
-      />
-
-      <MobileBentoSummary
-        items={[
-          {
-            label: "Leader",
-            value:
-              activeTab === "courses"
-                ? data.courseChampionBoards[0]?.champion.displayName ?? "--"
-                : activeTab === "tournaments"
-                  ? data.tournamentBoards[0]?.champion.displayName ?? "--"
-                  : data.players[0]?.displayName ?? "--",
-            detail:
-              activeTab === "courses"
-                ? data.courseChampionBoards[0]?.courseName ?? "No course champions yet."
-                : activeTab === "tournaments"
-                  ? data.tournamentBoards[0]?.title ?? "No tournament leaders yet."
-                  : data.players[0]
-                    ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
-                    : "No visible players.",
-            tone: "amber",
-          },
-          {
-            label: "You",
-            value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
-            detail: "Profile-controlled visibility",
-            tone: "green",
-          },
-          {
-            label: "Monthly shots",
-            value: integerFormatter.format(data.monthlyShotTotal),
-            detail: formatMonth(data.monthStart),
-            tone: "sky",
-          },
-          {
-            label: "Boards",
-            value: integerFormatter.format(data.courseChampionBoards.length + data.challengeBoards.length + data.tournamentBoards.length),
-            detail: "Records, challenges, events",
-            tone: "slate",
-          },
-        ]}
-      />
-
-      <LeaderboardClimbPanel data={featureData} />
-
-      <section className="hidden gap-4 sm:grid md:grid-cols-3">
-        <MetricCard
-          label="Monthly XP"
-          value={data.monthlyLeader?.displayName ?? "--"}
-          detail={data.monthlyLeader ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.` : "No monthly XP yet."}
-          icon={CalendarDays}
-          tone="green"
+        <PageHeader
+          eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
+          title="Leaderboards"
+          description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
+          metrics={[
+            {
+              label: "Visible players",
+              value: integerFormatter.format(data.players.length),
+              detail: `${titleCase(activeTab)} scope`,
+            },
+            {
+              label: "Friends",
+              value: integerFormatter.format(data.friendCount),
+              detail: "Accepted friendships only",
+            },
+            {
+              label: "Monthly shots",
+              value: integerFormatter.format(data.monthlyShotTotal),
+              detail: formatMonth(data.monthStart),
+            },
+            {
+              label: "Course champions",
+              value: integerFormatter.format(data.courseChampionBoards.length),
+              detail: "Verified record holders",
+            },
+          ]}
         />
-        <MetricCard
-          label="Longest verified drive"
-          value={data.longDriveLeader?.displayName ?? "--"}
-          detail={data.longDriveLeader?.longestDriveYd ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}` : "No driver shots yet."}
-          icon={Medal}
-          tone="amber"
+
+        <MobileBentoSummary
+          items={[
+            {
+              label: "Leader",
+              value:
+                activeTab === "courses"
+                  ? (data.courseChampionBoards[0]?.champion.displayName ?? "--")
+                  : activeTab === "tournaments"
+                    ? (data.tournamentBoards[0]?.champion.displayName ?? "--")
+                    : (data.players[0]?.displayName ?? "--"),
+              detail:
+                activeTab === "courses"
+                  ? (data.courseChampionBoards[0]?.courseName ?? "No course champions yet.")
+                  : activeTab === "tournaments"
+                    ? (data.tournamentBoards[0]?.title ?? "No tournament leaders yet.")
+                    : data.players[0]
+                      ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
+                      : "No visible players.",
+              tone: "amber",
+            },
+            {
+              label: "You",
+              value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
+              detail: "Profile-controlled visibility",
+              tone: "green",
+            },
+            {
+              label: "Monthly shots",
+              value: integerFormatter.format(data.monthlyShotTotal),
+              detail: formatMonth(data.monthStart),
+              tone: "sky",
+            },
+            {
+              label: "Boards",
+              value: integerFormatter.format(
+                data.courseChampionBoards.length +
+                  data.challengeBoards.length +
+                  data.tournamentBoards.length,
+              ),
+              detail: "Records, challenges, events",
+              tone: "slate",
+            },
+          ]}
         />
-        <MetricCard
-          label="Challenge leader"
-          value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
-          detail={data.challengeBoards[0]?.leader ? data.challengeBoards[0].title : "No challenge results yet."}
-          icon={Trophy}
-          tone="sky"
+
+        <DataFirstFlowPanel
+          title="Leaderboard order"
+          description="Keep the first screen summary-led before filters and full tables."
+          steps={leaderboardOrderSteps}
+          actionHref="/challenges"
+          actionLabel="Ways to climb"
         />
-      </section>
 
-      <div className="flex flex-wrap gap-2">
-        <TabLink tab="friends" activeTab={activeTab} icon={<Users className="size-4" />} label="Friends" />
-        <TabLink tab="monthly" activeTab={activeTab} icon={<CalendarDays className="size-4" />} label="Monthly" />
-        <TabLink tab="courses" activeTab={activeTab} icon={<Medal className="size-4" />} label="Course Champions" />
-        <TabLink tab="challenges" activeTab={activeTab} icon={<Trophy className="size-4" />} label="Challenges" />
-        <TabLink tab="tournaments" activeTab={activeTab} icon={<Flag className="size-4" />} label="Tournaments" />
-        <TabLink tab="public" activeTab={activeTab} icon={<Globe2 className="size-4" />} label="Public opt-in" />
-      </div>
+        <LeaderboardClimbPanel data={featureData} />
 
-      {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
-      <section className="premium-card p-3">
-        <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
-          <input type="hidden" name="tab" value={activeTab} />
-          <label className="grid gap-1 text-xs font-medium">
-            <span>Source</span>
-            <select name="provider" defaultValue={filters.provider} className="h-9 rounded-lg border bg-white px-2 text-sm">
-              <option value="all">All</option>
-              <option value="espn">ESPN</option>
-              <option value="rapsodo">Rapsodo file</option>
-              <option value="rapsodo_cloud">Rapsodo Cloud</option>
-              <option value="manual">Manual</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-medium">
-            <span>Verification</span>
-            <select name="verification" defaultValue={filters.verification} className="h-9 rounded-lg border bg-white px-2 text-sm">
-              <option value="all">All</option>
-              <option value="verified">Verified only</option>
-              <option value="mixed">Mixed</option>
-              <option value="manual">Manual only</option>
-            </select>
-          </label>
-          <Button type="submit" variant="outline" size="sm">Apply filters</Button>
-          <Badge variant="outline" className="px-3 py-1.5">Scope: {titleCase(activeTab)}</Badge>
-          <Badge variant="outline" className="px-3 py-1.5">Month: {formatMonth(data.monthStart)}</Badge>
-        </form>
-      </section>
-      ) : null}
+        <section className="hidden gap-4 sm:grid md:grid-cols-3">
+          <MetricCard
+            label="Monthly XP"
+            value={data.monthlyLeader?.displayName ?? "--"}
+            detail={
+              data.monthlyLeader
+                ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.`
+                : "No monthly XP yet."
+            }
+            icon={CalendarDays}
+            tone="green"
+          />
+          <MetricCard
+            label="Longest verified drive"
+            value={data.longDriveLeader?.displayName ?? "--"}
+            detail={
+              data.longDriveLeader?.longestDriveYd
+                ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}`
+                : "No driver shots yet."
+            }
+            icon={Medal}
+            tone="amber"
+          />
+          <MetricCard
+            label="Challenge leader"
+            value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
+            detail={
+              data.challengeBoards[0]?.leader
+                ? data.challengeBoards[0].title
+                : "No challenge results yet."
+            }
+            icon={Trophy}
+            tone="sky"
+          />
+        </section>
 
-      {activeTab === "challenges" ? (
-        <ChallengeBoards boards={data.challengeBoards} />
-      ) : activeTab === "courses" ? (
-        <CourseChampionBoards boards={data.courseChampionBoards} />
-      ) : activeTab === "tournaments" ? (
-        <TournamentBoards boards={data.tournamentBoards} />
-      ) : (
-        <PlayerLeaderboard players={data.players} activeTab={activeTab} monthStart={data.monthStart} filters={filters} />
-      )}
+        <div className="flex flex-wrap gap-2">
+          <TabLink
+            tab="friends"
+            activeTab={activeTab}
+            icon={<Users className="size-4" />}
+            label="Friends"
+          />
+          <TabLink
+            tab="monthly"
+            activeTab={activeTab}
+            icon={<CalendarDays className="size-4" />}
+            label="Monthly"
+          />
+          <TabLink
+            tab="courses"
+            activeTab={activeTab}
+            icon={<Medal className="size-4" />}
+            label="Course Champions"
+          />
+          <TabLink
+            tab="challenges"
+            activeTab={activeTab}
+            icon={<Trophy className="size-4" />}
+            label="Challenges"
+          />
+          <TabLink
+            tab="tournaments"
+            activeTab={activeTab}
+            icon={<Flag className="size-4" />}
+            label="Tournaments"
+          />
+          <TabLink
+            tab="public"
+            activeTab={activeTab}
+            icon={<Globe2 className="size-4" />}
+            label="Public opt-in"
+          />
+        </div>
+
+        {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
+          <section className="premium-card p-3">
+            <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
+              <input type="hidden" name="tab" value={activeTab} />
+              <label className="grid gap-1 text-xs font-medium">
+                <span>Source</span>
+                <select
+                  name="provider"
+                  defaultValue={filters.provider}
+                  className="h-9 rounded-lg border bg-white px-2 text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="espn">ESPN</option>
+                  <option value="rapsodo">Rapsodo file</option>
+                  <option value="rapsodo_cloud">Rapsodo Cloud</option>
+                  <option value="manual">Manual</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-medium">
+                <span>Verification</span>
+                <select
+                  name="verification"
+                  defaultValue={filters.verification}
+                  className="h-9 rounded-lg border bg-white px-2 text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="verified">Verified only</option>
+                  <option value="mixed">Mixed</option>
+                  <option value="manual">Manual only</option>
+                </select>
+              </label>
+              <Button type="submit" variant="outline" size="sm">
+                Apply filters
+              </Button>
+              <Badge variant="outline" className="px-3 py-1.5">
+                Scope: {titleCase(activeTab)}
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1.5">
+                Month: {formatMonth(data.monthStart)}
+              </Badge>
+            </form>
+          </section>
+        ) : null}
+
+        {activeTab === "challenges" ? (
+          <ChallengeBoards boards={data.challengeBoards} />
+        ) : activeTab === "courses" ? (
+          <CourseChampionBoards boards={data.courseChampionBoards} />
+        ) : activeTab === "tournaments" ? (
+          <TournamentBoards boards={data.tournamentBoards} />
+        ) : (
+          <PlayerLeaderboard
+            players={data.players}
+            activeTab={activeTab}
+            monthStart={data.monthStart}
+            filters={filters}
+          />
+        )}
       </div>
     </PageShell>
   );
@@ -424,18 +588,30 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
             .innerJoin(users, eq(userProfiles.userId, users.id))
             .where(inArray(userProfiles.userId, scopedIds))
         : [];
-  const visibleProfiles = profileRows.filter((profile) => profile.id === userId || allowsLeaderboard(profile, activeTab));
+  const visibleProfiles = profileRows.filter(
+    (profile) => profile.id === userId || allowsLeaderboard(profile, activeTab),
+  );
   const visibleIds = visibleProfiles.map((profile) => profile.id);
-  const tourPlayerIds = new Set(visibleProfiles.filter(isTourPlayerProfile).map((profile) => profile.id));
+  const tourPlayerIds = new Set(
+    visibleProfiles.filter(isTourPlayerProfile).map((profile) => profile.id),
+  );
   const [xpRows, monthlyXpRows, previousMonthlyXpRows, rawShotRows, roundRows] =
     visibleIds.length > 0
       ? await Promise.all([
           db.select().from(xpLedger).where(inArray(xpLedger.userId, visibleIds)),
-          db.select().from(xpLedger).where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart))),
           db
             .select()
             .from(xpLedger)
-            .where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, previousMonthStart))),
+            .where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart))),
+          db
+            .select()
+            .from(xpLedger)
+            .where(
+              and(
+                inArray(xpLedger.userId, visibleIds),
+                gte(xpLedger.createdAt, previousMonthStart),
+              ),
+            ),
           db
             .select({
               userId: shots.userId,
@@ -500,7 +676,8 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
         displayName: profile.displayName ?? profile.name ?? profile.email ?? "ForeKingHell player",
         username: profile.username,
         isCurrentUser: profile.id === userId,
-        relationship: profile.id === userId ? "You" : friendIdSet.has(profile.id) ? "Friend" : "Public opt-in",
+        relationship:
+          profile.id === userId ? "You" : friendIdSet.has(profile.id) ? "Friend" : "Public opt-in",
         totalXp: totalXpByUser.get(profile.id) ?? 0,
         monthlyXp: monthlyXpByUser.get(profile.id) ?? 0,
         previousMonthlyXp: previousMonthlyXpByUser.get(profile.id) ?? 0,
@@ -512,8 +689,12 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
     })
     .sort((a, b) =>
       activeTab === "monthly"
-        ? b.monthlyXp - a.monthlyXp || b.monthlyShots - a.monthlyShots || a.displayName.localeCompare(b.displayName)
-        : b.totalXp - a.totalXp || b.monthlyXp - a.monthlyXp || a.displayName.localeCompare(b.displayName),
+        ? b.monthlyXp - a.monthlyXp ||
+          b.monthlyShots - a.monthlyShots ||
+          a.displayName.localeCompare(b.displayName)
+        : b.totalXp - a.totalXp ||
+          b.monthlyXp - a.monthlyXp ||
+          a.displayName.localeCompare(b.displayName),
     );
   const [challengeData, courseChampionBoards, tournamentBoards] = await Promise.all([
     getChallengesPageData(),
@@ -534,7 +715,10 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
   };
 }
 
-async function getCourseChampionBoards(viewerUserId: string, friendIds: string[]): Promise<CourseChampionBoard[]> {
+async function getCourseChampionBoards(
+  viewerUserId: string,
+  friendIds: string[],
+): Promise<CourseChampionBoard[]> {
   const creatorIds = [viewerUserId, ...friendIds];
   const visibilityConditions = [
     eq(courseRecords.scope, "public"),
@@ -542,7 +726,9 @@ async function getCourseChampionBoards(viewerUserId: string, friendIds: string[]
   ];
 
   if (creatorIds.length > 0) {
-    visibilityConditions.push(and(eq(courseRecords.scope, "friends"), inArray(courseRecords.createdByUserId, creatorIds))!);
+    visibilityConditions.push(
+      and(eq(courseRecords.scope, "friends"), inArray(courseRecords.createdByUserId, creatorIds))!,
+    );
   }
 
   const rows = await getDb()
@@ -580,7 +766,10 @@ async function getCourseChampionBoards(viewerUserId: string, friendIds: string[]
     }));
 }
 
-async function getTournamentBoards(viewerUserId: string, friendIds: string[]): Promise<TournamentBoard[]> {
+async function getTournamentBoards(
+  viewerUserId: string,
+  friendIds: string[],
+): Promise<TournamentBoard[]> {
   const creatorIds = [viewerUserId, ...friendIds];
   const rows = await getDb()
     .select({
@@ -637,15 +826,26 @@ function PlayerLeaderboard({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">Podium</p>
-              <p className="mt-1 text-sm text-muted-foreground">Top three in the active leaderboard scope.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Top three in the active leaderboard scope.
+              </p>
             </div>
             <Badge variant="outline">{formatMonth(monthStart)}</Badge>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {podium.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-3">No opted-in players yet.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-3">
+                No opted-in players yet.
+              </p>
             ) : (
-              podium.map((player, index) => <LeaderboardPodiumCard key={player.userId} player={player} rank={index + 1} activeTab={activeTab} />)
+              podium.map((player, index) => (
+                <LeaderboardPodiumCard
+                  key={player.userId}
+                  player={player}
+                  rank={index + 1}
+                  activeTab={activeTab}
+                />
+              ))
             )}
           </div>
         </article>
@@ -655,21 +855,33 @@ function PlayerLeaderboard({
           {currentUser ? (
             <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
               <Badge variant="secondary">#{currentUserIndex + 1}</Badge>
-              <p className="mt-3 text-2xl font-semibold tracking-normal">{integerFormatter.format(scoreForTab(currentUser, activeTab))} XP</p>
+              <p className="mt-3 text-2xl font-semibold tracking-normal">
+                {integerFormatter.format(scoreForTab(currentUser, activeTab))} XP
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">{movementLabel(currentUser)}</p>
               {currentUserIndex === 3 ? (
-                <p className="mt-2 text-sm text-muted-foreground">Best route to climb: enter a challenge board with verified attempts.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Best route to climb: enter a challenge board with verified attempts.
+                </p>
               ) : null}
             </div>
           ) : (
-            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Enable leaderboard visibility in your profile.</p>
+            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              Enable leaderboard visibility in your profile.
+            </p>
           )}
         </article>
       </section>
 
-      <DataPanel>
+      <DataPanel id="full-leaderboard">
         <SectionHeader
-          title={activeTab === "public" ? "Public opt-in leaderboard" : activeTab === "monthly" ? "Monthly leaderboard" : "Friend leaderboard"}
+          title={
+            activeTab === "public"
+              ? "Public opt-in leaderboard"
+              : activeTab === "monthly"
+                ? "Monthly leaderboard"
+                : "Friend leaderboard"
+          }
           description={`Ranks include opted-in players. Source filter: ${label(filters.provider)}. Verification filter: ${label(filters.verification)}.`}
           action={<Badge variant="outline">{formatMonth(monthStart)}</Badge>}
         />
@@ -696,18 +908,30 @@ function PlayerLeaderboard({
                     </TableCell>
                     <TableCell>
                       <div>
-                        <Link href={`/profile/${player.username}`} prefetch={false} className="font-medium hover:underline">
+                        <Link
+                          href={`/profile/${player.username}`}
+                          prefetch={false}
+                          className="font-medium hover:underline"
+                        >
                           {player.displayName}
                         </Link>
                         <p className="text-xs text-muted-foreground">{player.relationship}</p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{integerFormatter.format(player.totalXp)}</TableCell>
-                    <TableCell className="text-right">{integerFormatter.format(player.monthlyXp)}</TableCell>
-                    <TableCell className="text-right">{integerFormatter.format(player.monthlyShots)}</TableCell>
+                    <TableCell className="text-right">
+                      {integerFormatter.format(player.totalXp)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {integerFormatter.format(player.monthlyXp)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {integerFormatter.format(player.monthlyShots)}
+                    </TableCell>
                     <TableCell className="text-right">{player.bestRoundScore ?? "--"}</TableCell>
                     <TableCell className="text-right">
-                      {player.longestDriveYd ? `${numberFormatter.format(player.longestDriveYd)} yd` : "--"}
+                      {player.longestDriveYd
+                        ? `${numberFormatter.format(player.longestDriveYd)} yd`
+                        : "--"}
                     </TableCell>
                     <TableCell className="text-right">{player.verificationLabel}</TableCell>
                   </TableRow>
@@ -749,20 +973,46 @@ function mobileCurrentUserSummary(players: PlayerRow[], activeTab: LeaderboardTa
   return `You are #${index + 1} · ${integerFormatter.format(scoreForTab(player, activeTab))} XP`;
 }
 
-function LeaderboardPodiumCard({ player, rank, activeTab }: { player: PlayerRow; rank: number; activeTab: LeaderboardTab }) {
+function LeaderboardPodiumCard({
+  player,
+  rank,
+  activeTab,
+}: {
+  player: PlayerRow;
+  rank: number;
+  activeTab: LeaderboardTab;
+}) {
   return (
-    <article className={rank === 1 ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border bg-[#F5F6F4] p-4"}>
+    <article
+      className={
+        rank === 1
+          ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
+          : "rounded-lg border bg-[#F5F6F4] p-4"
+      }
+    >
       <Badge variant={rank === 1 ? "default" : "outline"}>#{rank}</Badge>
-      <Link href={`/profile/${player.username}`} prefetch={false} className="mt-3 block text-lg font-semibold tracking-normal hover:underline">
+      <Link
+        href={`/profile/${player.username}`}
+        prefetch={false}
+        className="mt-3 block text-lg font-semibold tracking-normal hover:underline"
+      >
         {player.displayName}
       </Link>
-      <p className="mt-1 text-2xl font-semibold tracking-normal">{integerFormatter.format(scoreForTab(player, activeTab))}</p>
-      <p className="text-sm text-muted-foreground">{activeTab === "monthly" ? "monthly XP" : "total XP"}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-normal">
+        {integerFormatter.format(scoreForTab(player, activeTab))}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {activeTab === "monthly" ? "monthly XP" : "total XP"}
+      </p>
     </article>
   );
 }
 
-function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLeaderboardData>>["challengeBoards"] }) {
+function ChallengeBoards({
+  boards,
+}: {
+  boards: Awaited<ReturnType<typeof getLeaderboardData>>["challengeBoards"];
+}) {
   return (
     <DataPanel>
       <SectionHeader
@@ -787,7 +1037,11 @@ function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLead
               {boards.map((board) => (
                 <TableRow key={board.id}>
                   <TableCell>
-                    <Link href={`/challenges/${board.id}`} prefetch={false} className="font-medium hover:underline">
+                    <Link
+                      href={`/challenges/${board.id}`}
+                      prefetch={false}
+                      className="font-medium hover:underline"
+                    >
                       {board.title}
                     </Link>
                   </TableCell>
@@ -795,7 +1049,11 @@ function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLead
                   <TableCell className="text-right">{board.participantCount}</TableCell>
                   <TableCell className="text-right">
                     {board.leader ? (
-                      <Link href={`/profile/${board.leader.username}`} prefetch={false} className="font-medium hover:underline">
+                      <Link
+                        href={`/profile/${board.leader.username}`}
+                        prefetch={false}
+                        className="font-medium hover:underline"
+                      >
                         {board.leader.displayName}
                       </Link>
                     ) : (
@@ -803,7 +1061,9 @@ function ChallengeBoards({ boards }: { boards: Awaited<ReturnType<typeof getLead
                     )}
                   </TableCell>
                   <TableCell className="text-right">{board.leader?.scoreLabel ?? "--"}</TableCell>
-                  <TableCell className="text-right">{board.leader?.verificationLabel ?? "--"}</TableCell>
+                  <TableCell className="text-right">
+                    {board.leader?.verificationLabel ?? "--"}
+                  </TableCell>
                 </TableRow>
               ))}
               {boards.length === 0 ? (
@@ -830,16 +1090,24 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Course Champions</p>
-            <p className="mt-1 text-sm text-muted-foreground">Verified and manual boards stay labelled by scope and proof tier.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Verified and manual boards stay labelled by scope and proof tier.
+            </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/course-records" prefetch={false}>Open records</Link>
+            <Link href="/course-records" prefetch={false}>
+              Open records
+            </Link>
           </Button>
         </div>
         {champion ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <Badge>Current champion</Badge>
-            <Link href={`/profile/${champion.champion.username}`} prefetch={false} className="mt-3 block text-2xl font-semibold tracking-normal hover:underline">
+            <Link
+              href={`/profile/${champion.champion.username}`}
+              prefetch={false}
+              className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
+            >
               {champion.champion.displayName}
             </Link>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -847,7 +1115,9 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
             </p>
           </div>
         ) : (
-          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No course champions yet.</p>
+          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            No course champions yet.
+          </p>
         )}
       </article>
 
@@ -864,9 +1134,13 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
                 <p className="truncate font-semibold">{board.courseName}</p>
                 <p className="mt-1 text-sm text-muted-foreground">{board.categoryName}</p>
               </div>
-              <Badge variant={board.verificationTier === "gold" ? "secondary" : "outline"}>{label(board.verificationTier)}</Badge>
+              <Badge variant={board.verificationTier === "gold" ? "secondary" : "outline"}>
+                {label(board.verificationTier)}
+              </Badge>
             </div>
-            <p className="mt-4 text-xl font-semibold tracking-normal">{board.champion.displayName}</p>
+            <p className="mt-4 text-xl font-semibold tracking-normal">
+              {board.champion.displayName}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {board.scoreLabel} · {label(board.scope)} · {label(board.period)}
             </p>
@@ -886,16 +1160,24 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold">Tournament Leaders</p>
-            <p className="mt-1 text-sm text-muted-foreground">Major-style events rank gross first, with net totals as tiebreak context.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Major-style events rank gross first, with net totals as tiebreak context.
+            </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/tournaments" prefetch={false}>Open events</Link>
+            <Link href="/tournaments" prefetch={false}>
+              Open events
+            </Link>
           </Button>
         </div>
         {leader ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <Badge>Event leader</Badge>
-            <Link href={`/profile/${leader.champion.username}`} prefetch={false} className="mt-3 block text-2xl font-semibold tracking-normal hover:underline">
+            <Link
+              href={`/profile/${leader.champion.username}`}
+              prefetch={false}
+              className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
+            >
               {leader.champion.displayName}
             </Link>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -903,7 +1185,9 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
             </p>
           </div>
         ) : (
-          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No tournament standings yet.</p>
+          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            No tournament standings yet.
+          </p>
         )}
       </article>
 
@@ -918,11 +1202,15 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-semibold">{board.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{formatTournamentLabel(board.format)}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {formatTournamentLabel(board.format)}
+                </p>
               </div>
               <Badge variant="outline">{board.roundsCompleted} rounds</Badge>
             </div>
-            <p className="mt-4 text-xl font-semibold tracking-normal">{board.champion.displayName}</p>
+            <p className="mt-4 text-xl font-semibold tracking-normal">
+              {board.champion.displayName}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">{board.grossTotal} gross total</p>
           </Link>
         ))}
@@ -952,16 +1240,19 @@ function TabLink({
   );
 }
 
-function allowsLeaderboard(profile: {
-  id: string;
-  privacySettingsJson: unknown;
-  leaderboardVisibility: string;
-  publicProfile: boolean;
-}, activeTab: LeaderboardTab) {
+function allowsLeaderboard(
+  profile: {
+    id: string;
+    privacySettingsJson: unknown;
+    leaderboardVisibility: string;
+    publicProfile: boolean;
+  },
+  activeTab: LeaderboardTab,
+) {
   const accountAllows = Boolean(
     profile.privacySettingsJson &&
-      typeof profile.privacySettingsJson === "object" &&
-      (profile.privacySettingsJson as { allowLeaderboard?: unknown }).allowLeaderboard === true,
+    typeof profile.privacySettingsJson === "object" &&
+    (profile.privacySettingsJson as { allowLeaderboard?: unknown }).allowLeaderboard === true,
   );
   const profileVisibility = parseVisibility(profile.leaderboardVisibility, "private");
 
@@ -972,7 +1263,10 @@ function allowsLeaderboard(profile: {
   return activeTab === "public" ? profileVisibility === "public" && profile.publicProfile : true;
 }
 
-function isTourPlayerProfile(profile: { username?: string | null; visibilitySettingsJson?: unknown }) {
+function isTourPlayerProfile(profile: {
+  username?: string | null;
+  visibilitySettingsJson?: unknown;
+}) {
   const settings = profile.visibilitySettingsJson;
 
   return Boolean(
@@ -980,7 +1274,7 @@ function isTourPlayerProfile(profile: { username?: string | null; visibilitySett
       typeof settings === "object" &&
       ((settings as { tourPlayer?: unknown }).tourPlayer === true ||
         (settings as { profileKind?: unknown }).profileKind === "tour-player")) ||
-      profile.username?.startsWith("tour-"),
+    profile.username?.startsWith("tour-"),
   );
 }
 
@@ -1127,7 +1421,9 @@ function parseTab(value: string | undefined): LeaderboardTab {
     : "friends";
 }
 
-function parseLeaderboardFilters(params: Awaited<LeaderboardPageProps["searchParams"]>): LeaderboardFilters {
+function parseLeaderboardFilters(
+  params: Awaited<LeaderboardPageProps["searchParams"]>,
+): LeaderboardFilters {
   return {
     provider:
       params?.provider === "espn" ||
@@ -1137,7 +1433,9 @@ function parseLeaderboardFilters(params: Awaited<LeaderboardPageProps["searchPar
         ? params.provider
         : "all",
     verification:
-      params?.verification === "verified" || params?.verification === "mixed" || params?.verification === "manual"
+      params?.verification === "verified" ||
+      params?.verification === "mixed" ||
+      params?.verification === "manual"
         ? params.verification
         : "all",
   };

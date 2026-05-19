@@ -40,7 +40,14 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const coordinateFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 6,
 });
-const AUTOMATIC_COURSE_PROVIDERS = new Set(["espn-pga", "google-places", "osm", "schedule", "seed", "tour-seed"]);
+const AUTOMATIC_COURSE_PROVIDERS = new Set([
+  "espn-pga",
+  "google-places",
+  "osm",
+  "schedule",
+  "seed",
+  "tour-seed",
+]);
 
 export default async function CourseHoleEditorPage({ params }: PageProps) {
   const { courseId } = await params;
@@ -61,11 +68,12 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
   const holeSlots = createHoleSlots(primaryTeeSet?.par ?? 72, holesForPrimaryTeeSet.length);
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
-  const mapStatus = mappedHoleCount === 0
-    ? "Import checked"
-    : mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36
-      ? "Ready"
-      : "Partial";
+  const mapStatus =
+    mappedHoleCount === 0
+      ? "Import checked"
+      : mappedHoleCount >= 18 || (primaryTeeSet?.par ?? 72) <= 36
+        ? "Ready"
+        : "Partial";
 
   return (
     <PageShell size="wide">
@@ -85,14 +93,27 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone={data.isEditable ? "green" : "sky"}>{data.isEditable ? "Course editor" : "Course reference"}</StatusPill>}
+        eyebrow={
+          <StatusPill tone={data.isEditable ? "green" : "sky"}>
+            {data.isEditable ? "Course editor" : "Course reference"}
+          </StatusPill>
+        }
         title={data.course.name}
         description={
           data.isEditable
             ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
             : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
         }
-        visual={<PageArtwork variant="fairway" alt="" crop="random" cropKey={courseId} className="h-full min-h-44" priority />}
+        visual={
+          <PageArtwork
+            variant="fairway"
+            alt=""
+            crop="random"
+            cropKey={courseId}
+            className="h-full min-h-44"
+            priority
+          />
+        }
         metrics={[
           {
             label: "Provider",
@@ -119,9 +140,24 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 
       <MobileMetricStrip
         items={[
-          { label: "Provider", value: data.course.provider, detail: data.course.country ?? "Country not set", tone: "green" },
-          { label: "Tee sets", value: integerFormatter.format(data.teeSets.length), detail: "Available", tone: "sky" },
-          { label: "Mapped", value: integerFormatter.format(mappedHoleCount), detail: "Saved holes", tone: "amber" },
+          {
+            label: "Provider",
+            value: data.course.provider,
+            detail: data.course.country ?? "Country not set",
+            tone: "green",
+          },
+          {
+            label: "Tee sets",
+            value: integerFormatter.format(data.teeSets.length),
+            detail: "Available",
+            tone: "sky",
+          },
+          {
+            label: "Mapped",
+            value: integerFormatter.format(mappedHoleCount),
+            detail: "Saved holes",
+            tone: "amber",
+          },
           {
             label: "Status",
             value: mapStatus,
@@ -145,13 +181,18 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 
       {!primaryTeeSet ? (
         <DataPanel>
-          <SectionHeader title="No tee set" description="This course needs a tee set before holes can be mapped." />
+          <SectionHeader
+            title="No tee set"
+            description="This course needs a tee set before holes can be mapped."
+          />
           <CardContent>
             {usesAutomaticCourseData ? (
               <AutoImportStatusContent autoImport={data.autoImport} />
             ) : (
               <Button asChild>
-                <Link href="/courses/new" prefetch={false}>Create a new course instead</Link>
+                <Link href="/courses/new" prefetch={false}>
+                  Create a new course instead
+                </Link>
               </Button>
             )}
           </CardContent>
@@ -204,7 +245,8 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           />
           <CardContent>
             <p className="text-sm leading-6 text-muted-foreground">
-              Reference courses can be selected for rounds and used in overlays. Editing stays limited to courses you own.
+              Reference courses can be selected for rounds and used in overlays. Editing stays
+              limited to courses you own.
             </p>
           </CardContent>
         </DataPanel>
@@ -225,8 +267,19 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                     <input type="hidden" name="courseId" value={data.course.id} />
                     <input type="hidden" name="teeSetId" value={primaryTeeSet.id} />
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <FormField label="Tee set" name="name" defaultValue={primaryTeeSet.name} required />
-                      <FormField label="Par" name="par" type="number" defaultValue={primaryTeeSet.par} required />
+                      <FormField
+                        label="Tee set"
+                        name="name"
+                        defaultValue={primaryTeeSet.name}
+                        required
+                      />
+                      <FormField
+                        label="Par"
+                        name="par"
+                        type="number"
+                        defaultValue={primaryTeeSet.par}
+                        required
+                      />
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
                       <FormField
@@ -242,9 +295,17 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                         type="number"
                         defaultValue={primaryTeeSet.slopeRating ?? undefined}
                       />
-                      <FormField label="Yards" name="yards" type="number" defaultValue={primaryTeeSet.yards ?? undefined} />
+                      <FormField
+                        label="Yards"
+                        name="yards"
+                        type="number"
+                        defaultValue={primaryTeeSet.yards ?? undefined}
+                      />
                     </div>
-                    <Button type="submit" className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit">
+                    <Button
+                      type="submit"
+                      className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                    >
                       <Save className="size-4" />
                       Save tee set
                     </Button>
@@ -253,8 +314,14 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                   <dl className="grid gap-3 text-sm sm:grid-cols-2">
                     <ReadonlyValue label="Tee set" value={primaryTeeSet.name} />
                     <ReadonlyValue label="Par" value={String(primaryTeeSet.par)} />
-                    <ReadonlyValue label="Course rating" value={formatOptionalNumber(primaryTeeSet.courseRating)} />
-                    <ReadonlyValue label="Slope" value={primaryTeeSet.slopeRating?.toString() ?? "--"} />
+                    <ReadonlyValue
+                      label="Course rating"
+                      value={formatOptionalNumber(primaryTeeSet.courseRating)}
+                    />
+                    <ReadonlyValue
+                      label="Slope"
+                      value={primaryTeeSet.slopeRating?.toString() ?? "--"}
+                    />
                     <ReadonlyValue label="Yards" value={primaryTeeSet.yards?.toString() ?? "--"} />
                   </dl>
                 )}
@@ -294,58 +361,44 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 
       {primaryTeeSet && allowManualHoleEditing ? (
         <>
-        <MobileCurrentItemCard
-          title="Hole editor"
-          subtitle="Edit one hole at a time on mobile."
-          selector={
-            <div className="flex gap-2">
-              {holeSlots.map((holeNumber) => (
-                <a
-                  key={holeNumber}
-                  href={`#mobile-hole-${holeNumber}`}
-                  className="grid min-h-10 min-w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold"
-                >
-                  {holeNumber}
-                </a>
-              ))}
+          <MobileCurrentItemCard
+            title="Hole editor"
+            subtitle="Edit one hole at a time on mobile."
+            selector={
+              <div className="flex gap-2">
+                {holeSlots.map((holeNumber) => (
+                  <a
+                    key={holeNumber}
+                    href={`#mobile-hole-${holeNumber}`}
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold"
+                  >
+                    {holeNumber}
+                  </a>
+                ))}
+              </div>
+            }
+            action={
+              <Badge variant="outline">
+                {holesForPrimaryTeeSet.length}/{holeSlots.length}
+              </Badge>
+            }
+          >
+            <div id="mobile-hole-1">
+              <HoleForm
+                courseId={data.course.id}
+                teeSetId={primaryTeeSet.id}
+                holeNumber={holeSlots[0] ?? 1}
+                hole={holeByNumber.get(holeSlots[0] ?? 1) ?? null}
+              />
             </div>
-          }
-          action={<Badge variant="outline">{holesForPrimaryTeeSet.length}/{holeSlots.length}</Badge>}
-        >
-          <div id="mobile-hole-1">
-            <HoleForm
-              courseId={data.course.id}
-              teeSetId={primaryTeeSet.id}
-              holeNumber={holeSlots[0] ?? 1}
-              hole={holeByNumber.get(holeSlots[0] ?? 1) ?? null}
-            />
-          </div>
-        </MobileCurrentItemCard>
+          </MobileCurrentItemCard>
 
-        <MobileAccordionSection
-          title="All hole forms"
-          count={holeSlots.length}
-          description="Open only when you need batch edits."
-          contentClassName="grid gap-3"
-        >
-          {holeSlots.map((holeNumber) => (
-            <HoleForm
-              key={holeNumber}
-              courseId={data.course.id}
-              teeSetId={primaryTeeSet.id}
-              holeNumber={holeNumber}
-              hole={holeByNumber.get(holeNumber) ?? null}
-            />
-          ))}
-        </MobileAccordionSection>
-
-        <DataPanel className="hidden sm:block">
-          <SectionHeader
-            title="Hole geometry"
-            description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
-            action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
-          />
-          <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+          <MobileAccordionSection
+            title="All hole forms"
+            count={holeSlots.length}
+            description="Open only when you need batch edits."
+            contentClassName="grid gap-3"
+          >
             {holeSlots.map((holeNumber) => (
               <HoleForm
                 key={holeNumber}
@@ -355,8 +408,26 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                 hole={holeByNumber.get(holeNumber) ?? null}
               />
             ))}
-          </CardContent>
-        </DataPanel>
+          </MobileAccordionSection>
+
+          <DataPanel className="hidden sm:block">
+            <SectionHeader
+              title="Hole geometry"
+              description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
+              action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
+            />
+            <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+              {holeSlots.map((holeNumber) => (
+                <HoleForm
+                  key={holeNumber}
+                  courseId={data.course.id}
+                  teeSetId={primaryTeeSet.id}
+                  holeNumber={holeNumber}
+                  hole={holeByNumber.get(holeNumber) ?? null}
+                />
+              ))}
+            </CardContent>
+          </DataPanel>
         </>
       ) : null}
     </PageShell>
@@ -366,7 +437,11 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 async function getCourseEditorData(courseId: string) {
   const db = getDb();
   const userId = await requireCurrentUserId();
-  let { course, teeSets: teeSetRows, holes: holeRows } = await loadCourseEditorRows(db, courseId, userId);
+  let {
+    course,
+    teeSets: teeSetRows,
+    holes: holeRows,
+  } = await loadCourseEditorRows(db, courseId, userId);
   let autoImport: CourseAutoImportResult = {
     changed: false,
     status: holeRows.length > 0 ? "ready" : "no_geometry_found",
@@ -380,7 +455,11 @@ async function getCourseEditorData(courseId: string) {
     autoImport = await ensureCourseAutoImport(course, holeRows.length);
 
     if (autoImport.changed) {
-      ({ course, teeSets: teeSetRows, holes: holeRows } = await loadCourseEditorRows(db, courseId, userId));
+      ({
+        course,
+        teeSets: teeSetRows,
+        holes: holeRows,
+      } = await loadCourseEditorRows(db, courseId, userId));
     }
   }
 
@@ -397,19 +476,24 @@ async function getCourseEditorData(courseId: string) {
   };
 }
 
-async function loadCourseEditorRows(db: ReturnType<typeof getDb>, courseId: string, userId: string) {
+async function loadCourseEditorRows(
+  db: ReturnType<typeof getDb>,
+  courseId: string,
+  userId: string,
+) {
   const [courseRows, teeSetRows, holeRows] = await Promise.all([
     db
       .select()
       .from(courses)
-      .where(and(eq(courses.id, courseId), or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId))))
+      .where(
+        and(
+          eq(courses.id, courseId),
+          or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+        ),
+      )
       .limit(1),
     db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)),
-    db
-      .select()
-      .from(holes)
-      .where(eq(holes.courseId, courseId))
-      .orderBy(asc(holes.holeNumber)),
+    db.select().from(holes).where(eq(holes.courseId, courseId)).orderBy(asc(holes.holeNumber)),
   ]);
 
   return {
@@ -446,7 +530,7 @@ function HoleForm({
   courseId: string;
   teeSetId: string;
   holeNumber: number;
-  hole: (typeof holes.$inferSelect) | null;
+  hole: typeof holes.$inferSelect | null;
 }) {
   return (
     <form action={upsertHoleAction} className="apple-panel-strong p-4">
@@ -464,8 +548,22 @@ function HoleForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <FormField label="Par" name="par" type="number" min={1} defaultValue={hole?.par ?? undefined} required />
-        <FormField label="Yards" name="yards" type="number" min={1} defaultValue={hole?.yards ?? undefined} required />
+        <FormField
+          label="Par"
+          name="par"
+          type="number"
+          min={1}
+          defaultValue={hole?.par ?? undefined}
+          required
+        />
+        <FormField
+          label="Yards"
+          name="yards"
+          type="number"
+          min={1}
+          defaultValue={hole?.yards ?? undefined}
+          required
+        />
         <FormField
           label="SI"
           name="strokeIndex"
@@ -513,8 +611,9 @@ function HoleForm({
 
       {hole ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          Tee {coordinateFormatter.format(hole.teeLat)}, {coordinateFormatter.format(hole.teeLng)} / Green{" "}
-          {coordinateFormatter.format(hole.greenLat)}, {coordinateFormatter.format(hole.greenLng)}
+          Tee {coordinateFormatter.format(hole.teeLat)}, {coordinateFormatter.format(hole.teeLng)} /
+          Green {coordinateFormatter.format(hole.greenLat)},{" "}
+          {coordinateFormatter.format(hole.greenLng)}
         </p>
       ) : null}
 
@@ -551,7 +650,11 @@ function ReadonlyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function CourseGeometryPreview({ holes: mappedHoles }: { holes: Array<typeof holes.$inferSelect> }) {
+function CourseGeometryPreview({
+  holes: mappedHoles,
+}: {
+  holes: Array<typeof holes.$inferSelect>;
+}) {
   if (mappedHoles.length === 0) {
     return (
       <div className="grid h-80 place-items-center rounded-2xl border bg-[#0f172a] text-sm text-slate-300">
@@ -573,8 +676,10 @@ function CourseGeometryPreview({ holes: mappedHoles }: { holes: Array<typeof hol
   const width = 900;
   const height = 420;
   const pad = 44;
-  const xFor = (lng: number) => pad + ((lng - minLng) / Math.max(0.000001, maxLng - minLng)) * (width - pad * 2);
-  const yFor = (lat: number) => height - pad - ((lat - minLat) / Math.max(0.000001, maxLat - minLat)) * (height - pad * 2);
+  const xFor = (lng: number) =>
+    pad + ((lng - minLng) / Math.max(0.000001, maxLng - minLng)) * (width - pad * 2);
+  const yFor = (lat: number) =>
+    height - pad - ((lat - minLat) / Math.max(0.000001, maxLat - minLat)) * (height - pad * 2);
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="h-80 w-full rounded-2xl border bg-[#0f172a]">
@@ -593,11 +698,34 @@ function CourseGeometryPreview({ holes: mappedHoles }: { holes: Array<typeof hol
 
         return (
           <g key={hole.id}>
-            <line x1={teeX} y1={teeY} x2={greenX} y2={greenY} stroke="#ffffff" strokeOpacity="0.28" strokeWidth="10" strokeLinecap="round" />
-            <line x1={teeX} y1={teeY} x2={greenX} y2={greenY} stroke="url(#course-line)" strokeWidth="4" strokeLinecap="round" />
+            <line
+              x1={teeX}
+              y1={teeY}
+              x2={greenX}
+              y2={greenY}
+              stroke="#ffffff"
+              strokeOpacity="0.28"
+              strokeWidth="10"
+              strokeLinecap="round"
+            />
+            <line
+              x1={teeX}
+              y1={teeY}
+              x2={greenX}
+              y2={greenY}
+              stroke="url(#course-line)"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
             <circle cx={teeX} cy={teeY} r="5" fill="#ffffff" stroke="#111827" strokeWidth="2" />
             <circle cx={greenX} cy={greenY} r="7" fill="#dcfce7" stroke="#22c55e" strokeWidth="3" />
-            <text x={(teeX + greenX) / 2} y={(teeY + greenY) / 2 - 8} fill="#e5e7eb" fontSize="12" textAnchor="middle">
+            <text
+              x={(teeX + greenX) / 2}
+              y={(teeY + greenY) / 2 - 8}
+              fill="#e5e7eb"
+              fontSize="12"
+              textAnchor="middle"
+            >
               {hole.holeNumber}
             </text>
           </g>

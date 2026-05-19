@@ -137,20 +137,39 @@ export function parseAiCoachSummary(text: string): AiCoachGeneratedSummary {
 
   return {
     headline: typeof parsed.headline === "string" ? parsed.headline : "Coach note",
-    recommendation: typeof parsed.recommendation === "string" ? parsed.recommendation : "Work from the top measured practice priority.",
-    evidence: typeof parsed.evidence === "string" ? parsed.evidence : "Evidence was limited to the structured ForeKingHell metrics supplied to the AI coach.",
+    recommendation:
+      typeof parsed.recommendation === "string"
+        ? parsed.recommendation
+        : "Work from the top measured practice priority.",
+    evidence:
+      typeof parsed.evidence === "string"
+        ? parsed.evidence
+        : "Evidence was limited to the structured ForeKingHell metrics supplied to the AI coach.",
     coachNote: typeof parsed.coachNote === "string" ? parsed.coachNote : text,
-    drill: typeof parsed.drill === "string" ? parsed.drill : practicePlan[0] ?? "Run one controlled stock-shot block and record the result.",
+    drill:
+      typeof parsed.drill === "string"
+        ? parsed.drill
+        : (practicePlan[0] ?? "Run one controlled stock-shot block and record the result."),
     timeNeeded: typeof parsed.timeNeeded === "string" ? parsed.timeNeeded : "20-30 minutes",
-    retest: typeof parsed.retest === "string" ? parsed.retest : "Retest after two comparable practice sessions.",
+    retest:
+      typeof parsed.retest === "string"
+        ? parsed.retest
+        : "Retest after two comparable practice sessions.",
     practicePlan,
-    watchOut: typeof parsed.watchOut === "string" ? parsed.watchOut : "Treat AI output as guidance, not a lesson diagnosis.",
+    watchOut:
+      typeof parsed.watchOut === "string"
+        ? parsed.watchOut
+        : "Treat AI output as guidance, not a lesson diagnosis.",
     confidence,
   };
 }
 
 function extractJson(text: string) {
-  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "");
+  const trimmed = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "");
   const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0];
 
   if (!jsonText) {

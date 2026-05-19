@@ -95,12 +95,12 @@ describe("RapsodoCloudClient", () => {
       if (url.includes("gameType=1")) {
         return jsonResponse({
           simulations: [
-              {
-                simulationId: "sim-1",
-                gameType: "range",
-                createdAt: "2026-05-02T10:00:00Z",
-                numberOfShots: "7",
-              },
+            {
+              simulationId: "sim-1",
+              gameType: "range",
+              createdAt: "2026-05-02T10:00:00Z",
+              numberOfShots: "7",
+            },
           ],
         });
       }
@@ -129,9 +129,15 @@ describe("RapsodoCloudClient", () => {
 
     expect(seenUrls).toEqual(
       expect.arrayContaining([
-        expect.stringContaining("/session/user/list?skip=0&take=25&startDate=2026-05-01&endDate=2026-05-05&type=0%2C+1%2C+2%2C+3"),
-        expect.stringContaining("/session/user/list?skip=0&take=25&startDate=2026-05-01&endDate=2026-05-05&type=0%2C+3&sessionModes=7"),
-        expect.stringContaining("/simulation/sessions?skip=0&take=25&minDate=2026-05-01&maxDate=2026-05-05&gameType=1"),
+        expect.stringContaining(
+          "/session/user/list?skip=0&take=25&startDate=2026-05-01&endDate=2026-05-05&type=0%2C+1%2C+2%2C+3",
+        ),
+        expect.stringContaining(
+          "/session/user/list?skip=0&take=25&startDate=2026-05-01&endDate=2026-05-05&type=0%2C+3&sessionModes=7",
+        ),
+        expect.stringContaining(
+          "/simulation/sessions?skip=0&take=25&minDate=2026-05-01&maxDate=2026-05-05&gameType=1",
+        ),
         expect.stringContaining("gameType=0%2C8%2C9"),
       ]),
     );
@@ -217,7 +223,10 @@ describe("RapsodoCloudClient", () => {
 
   it("normalizes opaque R-Cloud error codes into fallback guidance", async () => {
     const fetchFn = vi.fn(async () =>
-      jsonResponse({ message: "Something went wrong. Code: 8ca9a351-ac09-43f2-9dad-9ae6f16125e6" }, 500),
+      jsonResponse(
+        { message: "Something went wrong. Code: 8ca9a351-ac09-43f2-9dad-9ae6f16125e6" },
+        500,
+      ),
     );
     const client = new RapsodoCloudClient({
       apiBaseUrl: "https://rapsodo.test",
@@ -244,7 +253,10 @@ describe("RapsodoCloudClient", () => {
     });
 
     await expect(
-      client.exportSessionCsv("token", { providerKind: "practice", providerSessionId: "practice-1" }),
+      client.exportSessionCsv("token", {
+        providerKind: "practice",
+        providerSessionId: "practice-1",
+      }),
     ).resolves.toContain("Driver");
     await expect(
       client.exportSessionCsv("token", { providerKind: "simulation", providerSessionId: "sim-1" }),
@@ -294,7 +306,9 @@ describe("RapsodoCloudClient", () => {
 
   it("lists shot refs from the detail endpoint", async () => {
     const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      expect(input.toString()).toBe("https://rapsodo.test/session/practice-1/details?skip=0&take=200");
+      expect(input.toString()).toBe(
+        "https://rapsodo.test/session/practice-1/details?skip=0&take=200",
+      );
       expect((init?.headers as Record<string, string>).authorization).toBe("mlm-token");
 
       return jsonResponse({
@@ -310,7 +324,11 @@ describe("RapsodoCloudClient", () => {
     const refs = await new RapsodoCloudClient({
       apiBaseUrl: "https://rapsodo.test",
       fetchFn: fetchFn as unknown as typeof fetch,
-    }).listSessionShotRefs("mlm-token", { providerKind: "practice", providerSessionId: "practice-1" }, 200);
+    }).listSessionShotRefs(
+      "mlm-token",
+      { providerKind: "practice", providerSessionId: "practice-1" },
+      200,
+    );
 
     expect(refs).toEqual([
       expect.objectContaining({ rapsodoShotId: "shot-a", shotNumber: 1, sequenceIndex: 0 }),

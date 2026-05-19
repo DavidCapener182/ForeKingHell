@@ -59,7 +59,11 @@ export function ColumnMappingPanel({
   onColumnMappingChange: (mapping: RapsodoColumnMapping) => void;
 }) {
   const analyses = useMemo(
-    () => files.map((file) => ({ fileName: file.fileName, analysis: analyzeRapsodoCsvColumns(file.rawCsvText, { columnMapping }) })),
+    () =>
+      files.map((file) => ({
+        fileName: file.fileName,
+        analysis: analyzeRapsodoCsvColumns(file.rawCsvText, { columnMapping }),
+      })),
     [columnMapping, files],
   );
   const primaryAnalysis = analyses[0]?.analysis ?? null;
@@ -100,7 +104,8 @@ export function ColumnMappingPanel({
             </Badge>
           </div>
           <CardDescription>
-            If a Rapsodo export changes header names, map the first file&apos;s columns before previewing and saving.
+            If a Rapsodo export changes header names, map the first file&apos;s columns before
+            previewing and saving.
           </CardDescription>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -115,38 +120,47 @@ export function ColumnMappingPanel({
             </Button>
           ) : null}
           {hasMapping ? (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onColumnMappingChange({})}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onColumnMappingChange({})}
+            >
               Clear
             </Button>
           ) : null}
         </div>
       </CardHeader>
       <CardContent className="grid gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        {MAPPABLE_FIELDS.map((field) => (
-          <Field key={field} className="gap-1.5">
-            <FieldLabel className="text-xs" htmlFor={`column-map-${field}`}>
-              {RAPSODO_COLUMN_FIELD_LABELS[field]}
-            </FieldLabel>
-            <Select value={columnMapping[field] ?? AUTO_VALUE} onValueChange={(value) => setField(field, value)}>
-              <SelectTrigger id={`column-map-${field}`} className="h-9 w-full text-xs">
-                <SelectValue placeholder="Auto detect" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={AUTO_VALUE}>Auto detect</SelectItem>
-                {headers.map((header) => (
-                  <SelectItem key={`${field}-${header}`} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        ))}
-      </div>
-      <FieldDescription>
-        Header row: {primaryAnalysis?.headerRowNumber ?? "--"}. Mapping applies to this batch and is saved with queued offline imports.
-      </FieldDescription>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {MAPPABLE_FIELDS.map((field) => (
+            <Field key={field} className="gap-1.5">
+              <FieldLabel className="text-xs" htmlFor={`column-map-${field}`}>
+                {RAPSODO_COLUMN_FIELD_LABELS[field]}
+              </FieldLabel>
+              <Select
+                value={columnMapping[field] ?? AUTO_VALUE}
+                onValueChange={(value) => setField(field, value)}
+              >
+                <SelectTrigger id={`column-map-${field}`} className="h-9 w-full text-xs">
+                  <SelectValue placeholder="Auto detect" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={AUTO_VALUE}>Auto detect</SelectItem>
+                  {headers.map((header) => (
+                    <SelectItem key={`${field}-${header}`} value={header}>
+                      {header}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          ))}
+        </div>
+        <FieldDescription>
+          Header row: {primaryAnalysis?.headerRowNumber ?? "--"}. Mapping applies to this batch and
+          is saved with queued offline imports.
+        </FieldDescription>
       </CardContent>
     </Card>
   );

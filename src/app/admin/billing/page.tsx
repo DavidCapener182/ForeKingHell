@@ -1,7 +1,16 @@
 import { CreditCard, KeyRound, ListChecks, Zap } from "lucide-react";
 
 import { grantLifetimeFullAction } from "@/app/admin/actions";
-import { AdminMetric, AdminNav, AdminNotice, AdminSection, formatDateTime, label, PlanBadge, StatusBadge } from "@/app/admin/admin-components";
+import {
+  AdminMetric,
+  AdminNav,
+  AdminNotice,
+  AdminSection,
+  formatDateTime,
+  label,
+  PlanBadge,
+  StatusBadge,
+} from "@/app/admin/admin-components";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +28,12 @@ type AdminBillingPageProps = {
 export default async function AdminBillingPage({ searchParams }: AdminBillingPageProps) {
   const params = await searchParams;
   const data = await getAdminBillingData();
-  const lifetimeEntitlements = data.entitlements.filter((row) => row.entitlementKey === "lifetime_full" && row.valueJson?.value === true);
-  const activeSubscriptions = data.subscriptions.filter((row) => row.status === "active" || row.status === "trialing");
+  const lifetimeEntitlements = data.entitlements.filter(
+    (row) => row.entitlementKey === "lifetime_full" && row.valueJson?.value === true,
+  );
+  const activeSubscriptions = data.subscriptions.filter(
+    (row) => row.status === "active" || row.status === "trialing",
+  );
 
   return (
     <PageShell size="7xl">
@@ -31,23 +44,53 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
         <StatusPill tone="sky">Admin billing</StatusPill>
         <h1 className="mt-3 text-3xl font-semibold tracking-normal">Billing and entitlements</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Inspect active subscriptions, full-access grants and the entitlement limits that feature checks use.
+          Inspect active subscriptions, full-access grants and the entitlement limits that feature
+          checks use.
         </p>
       </header>
 
       <section className="grid gap-3 md:grid-cols-4">
-        <AdminMetric icon={CreditCard} label="Subscriptions" value={data.subscriptions.length} detail={`${activeSubscriptions.length} active or trialing`} />
-        <AdminMetric icon={Zap} label="Lifetime full" value={lifetimeEntitlements.length} detail="Permanent full-access grants" />
-        <AdminMetric icon={KeyRound} label="Entitlements" value={data.entitlements.length} detail="User entitlement rows" />
-        <AdminMetric icon={ListChecks} label="Plan limits" value={data.planLimits.length} detail="Configured limit rows" />
+        <AdminMetric
+          icon={CreditCard}
+          label="Subscriptions"
+          value={data.subscriptions.length}
+          detail={`${activeSubscriptions.length} active or trialing`}
+        />
+        <AdminMetric
+          icon={Zap}
+          label="Lifetime full"
+          value={lifetimeEntitlements.length}
+          detail="Permanent full-access grants"
+        />
+        <AdminMetric
+          icon={KeyRound}
+          label="Entitlements"
+          value={data.entitlements.length}
+          detail="User entitlement rows"
+        />
+        <AdminMetric
+          icon={ListChecks}
+          label="Plan limits"
+          value={data.planLimits.length}
+          detail="Configured limit rows"
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <aside className="grid gap-4 lg:sticky lg:top-28">
-          <AdminSection title="Grant lifetime full" description="Use this for owner, tester and permanent internal accounts.">
+          <AdminSection
+            title="Grant lifetime full"
+            description="Use this for owner, tester and permanent internal accounts."
+          >
             <form action={grantLifetimeFullAction} className="grid gap-3">
               <input type="hidden" name="returnTo" value="/admin/billing" />
-              <Input name="email" type="email" placeholder="user@example.com" className="h-10 rounded-xl bg-slate-50" required />
+              <Input
+                name="email"
+                type="email"
+                placeholder="user@example.com"
+                className="h-10 rounded-xl bg-slate-50"
+                required
+              />
               <Button type="submit" className="rounded-xl bg-[#111827] text-white">
                 <Zap className="size-4" />
                 Grant full access
@@ -62,7 +105,9 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                 .map((limit) => (
                   <div key={limit.id} className="rounded-lg bg-slate-50 px-3 py-2">
                     <p className="font-medium">{label(limit.limitKey)}</p>
-                    <p className="mt-1 break-all font-mono text-xs text-muted-foreground">{JSON.stringify(limit.limitValueJson)}</p>
+                    <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                      {JSON.stringify(limit.limitValueJson)}
+                    </p>
                   </div>
                 ))}
             </div>
@@ -87,15 +132,25 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                     <tr key={subscription.id} className="border-b last:border-b-0">
                       <td className="px-3 py-3">
                         <p className="font-medium">{subscription.displayName}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{subscription.email ?? "No email"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {subscription.email ?? "No email"}
+                        </p>
                       </td>
-                      <td className="px-3 py-3"><PlanBadge plan={subscription.planKey} /></td>
-                      <td className="px-3 py-3"><StatusBadge status={subscription.status} /></td>
+                      <td className="px-3 py-3">
+                        <PlanBadge plan={subscription.planKey} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <StatusBadge status={subscription.status} />
+                      </td>
                       <td className="px-3 py-3 text-xs text-muted-foreground">
-                        {subscription.currentPeriodEnd ? formatDateTime(subscription.currentPeriodEnd) : "No renewal"}
+                        {subscription.currentPeriodEnd
+                          ? formatDateTime(subscription.currentPeriodEnd)
+                          : "No renewal"}
                         {subscription.cancelAtPeriodEnd ? " · cancels" : ""}
                       </td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground">{formatDateTime(subscription.createdAt)}</td>
+                      <td className="px-3 py-3 text-xs text-muted-foreground">
+                        {formatDateTime(subscription.createdAt)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -106,14 +161,21 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
           <AdminSection title="Recent entitlements">
             <div className="grid gap-2">
               {data.entitlements.slice(0, 40).map((entitlement) => (
-                <div key={entitlement.id} className="grid gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center">
+                <div
+                  key={entitlement.id}
+                  className="grid gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
+                >
                   <div className="min-w-0">
                     <p className="truncate font-medium">{entitlement.displayName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{entitlement.email ?? "No email"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {entitlement.email ?? "No email"}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="truncate font-medium">{label(entitlement.entitlementKey)}</p>
-                    <p className="truncate font-mono text-xs text-muted-foreground">{JSON.stringify(entitlement.valueJson)}</p>
+                    <p className="truncate font-mono text-xs text-muted-foreground">
+                      {JSON.stringify(entitlement.valueJson)}
+                    </p>
                   </div>
                   <StatusBadge status={entitlement.source} />
                 </div>

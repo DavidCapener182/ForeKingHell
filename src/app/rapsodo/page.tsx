@@ -6,7 +6,10 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 export const dynamic = "force-dynamic";
 
 export default async function RapsodoPage() {
-  const [status, featureData] = await Promise.all([getRapsodoConnectionStatusAction(), getFeatureIdeasData()]);
+  const [status, featureData] = await Promise.all([
+    getRapsodoConnectionStatusAction(),
+    getFeatureIdeasData(),
+  ]);
 
   return (
     <>

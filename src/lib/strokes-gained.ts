@@ -15,28 +15,154 @@ export const DEFAULT_STROKES_GAINED_BASELINE_BUCKETS: StrokesGainedBaselineBucke
   { category: "tee", lie: "tee", distanceStartYd: 241, distanceEndYd: 320, expectedStrokes: 4.0 },
   { category: "tee", lie: "tee", distanceStartYd: 321, distanceEndYd: 450, expectedStrokes: 4.6 },
   { category: "tee", lie: "tee", distanceStartYd: 451, distanceEndYd: 620, expectedStrokes: 5.4 },
-  { category: "approach", lie: "fairway", distanceStartYd: 0, distanceEndYd: 60, expectedStrokes: 2.6 },
-  { category: "approach", lie: "fairway", distanceStartYd: 61, distanceEndYd: 100, expectedStrokes: 2.9 },
-  { category: "approach", lie: "fairway", distanceStartYd: 101, distanceEndYd: 140, expectedStrokes: 3.2 },
-  { category: "approach", lie: "fairway", distanceStartYd: 141, distanceEndYd: 180, expectedStrokes: 3.5 },
-  { category: "approach", lie: "fairway", distanceStartYd: 181, distanceEndYd: 230, expectedStrokes: 3.9 },
-  { category: "approach", lie: "fairway", distanceStartYd: 231, distanceEndYd: 320, expectedStrokes: 4.4 },
-  { category: "approach", lie: "rough", distanceStartYd: 0, distanceEndYd: 60, expectedStrokes: 2.8 },
-  { category: "approach", lie: "rough", distanceStartYd: 61, distanceEndYd: 100, expectedStrokes: 3.1 },
-  { category: "approach", lie: "rough", distanceStartYd: 101, distanceEndYd: 140, expectedStrokes: 3.4 },
-  { category: "approach", lie: "rough", distanceStartYd: 141, distanceEndYd: 180, expectedStrokes: 3.7 },
-  { category: "approach", lie: "rough", distanceStartYd: 181, distanceEndYd: 230, expectedStrokes: 4.1 },
-  { category: "approach", lie: "rough", distanceStartYd: 231, distanceEndYd: 320, expectedStrokes: 4.7 },
-  { category: "short_game", lie: "fairway", distanceStartYd: 0, distanceEndYd: 30, expectedStrokes: 2.3 },
-  { category: "short_game", lie: "fairway", distanceStartYd: 31, distanceEndYd: 60, expectedStrokes: 2.6 },
-  { category: "short_game", lie: "fairway", distanceStartYd: 61, distanceEndYd: 100, expectedStrokes: 2.9 },
-  { category: "short_game", lie: "rough", distanceStartYd: 0, distanceEndYd: 30, expectedStrokes: 2.5 },
-  { category: "short_game", lie: "rough", distanceStartYd: 31, distanceEndYd: 60, expectedStrokes: 2.8 },
-  { category: "short_game", lie: "rough", distanceStartYd: 61, distanceEndYd: 100, expectedStrokes: 3.1 },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 0,
+    distanceEndYd: 60,
+    expectedStrokes: 2.6,
+  },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 61,
+    distanceEndYd: 100,
+    expectedStrokes: 2.9,
+  },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 101,
+    distanceEndYd: 140,
+    expectedStrokes: 3.2,
+  },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 141,
+    distanceEndYd: 180,
+    expectedStrokes: 3.5,
+  },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 181,
+    distanceEndYd: 230,
+    expectedStrokes: 3.9,
+  },
+  {
+    category: "approach",
+    lie: "fairway",
+    distanceStartYd: 231,
+    distanceEndYd: 320,
+    expectedStrokes: 4.4,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 0,
+    distanceEndYd: 60,
+    expectedStrokes: 2.8,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 61,
+    distanceEndYd: 100,
+    expectedStrokes: 3.1,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 101,
+    distanceEndYd: 140,
+    expectedStrokes: 3.4,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 141,
+    distanceEndYd: 180,
+    expectedStrokes: 3.7,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 181,
+    distanceEndYd: 230,
+    expectedStrokes: 4.1,
+  },
+  {
+    category: "approach",
+    lie: "rough",
+    distanceStartYd: 231,
+    distanceEndYd: 320,
+    expectedStrokes: 4.7,
+  },
+  {
+    category: "short_game",
+    lie: "fairway",
+    distanceStartYd: 0,
+    distanceEndYd: 30,
+    expectedStrokes: 2.3,
+  },
+  {
+    category: "short_game",
+    lie: "fairway",
+    distanceStartYd: 31,
+    distanceEndYd: 60,
+    expectedStrokes: 2.6,
+  },
+  {
+    category: "short_game",
+    lie: "fairway",
+    distanceStartYd: 61,
+    distanceEndYd: 100,
+    expectedStrokes: 2.9,
+  },
+  {
+    category: "short_game",
+    lie: "rough",
+    distanceStartYd: 0,
+    distanceEndYd: 30,
+    expectedStrokes: 2.5,
+  },
+  {
+    category: "short_game",
+    lie: "rough",
+    distanceStartYd: 31,
+    distanceEndYd: 60,
+    expectedStrokes: 2.8,
+  },
+  {
+    category: "short_game",
+    lie: "rough",
+    distanceStartYd: 61,
+    distanceEndYd: 100,
+    expectedStrokes: 3.1,
+  },
   { category: "putting", lie: "green", distanceStartYd: 0, distanceEndYd: 3, expectedStrokes: 1.1 },
-  { category: "putting", lie: "green", distanceStartYd: 4, distanceEndYd: 10, expectedStrokes: 1.6 },
-  { category: "putting", lie: "green", distanceStartYd: 11, distanceEndYd: 30, expectedStrokes: 2.0 },
-  { category: "putting", lie: "green", distanceStartYd: 31, distanceEndYd: 80, expectedStrokes: 2.5 },
+  {
+    category: "putting",
+    lie: "green",
+    distanceStartYd: 4,
+    distanceEndYd: 10,
+    expectedStrokes: 1.6,
+  },
+  {
+    category: "putting",
+    lie: "green",
+    distanceStartYd: 11,
+    distanceEndYd: 30,
+    expectedStrokes: 2.0,
+  },
+  {
+    category: "putting",
+    lie: "green",
+    distanceStartYd: 31,
+    distanceEndYd: 80,
+    expectedStrokes: 2.5,
+  },
   { category: "putting", lie: "holed", distanceStartYd: 0, distanceEndYd: 0, expectedStrokes: 0 },
 ];
 
@@ -104,9 +230,9 @@ export function summarizeStrokesGained(values: Array<number | null>) {
   };
 }
 
-export function summarizeStrokesGainedByCategory<T extends { category: string; strokesGained: number | null }>(
-  events: T[],
-) {
+export function summarizeStrokesGainedByCategory<
+  T extends { category: string; strokesGained: number | null },
+>(events: T[]) {
   const grouped = new Map<string, Array<number | null>>();
 
   for (const event of events) {
@@ -154,11 +280,15 @@ export function buildStrokesGainedEventsFromCourseShots({
   const shotsByHole = groupCourseShotsByHole(courseShots);
 
   return courseShots.map((courseShot) => {
-    const startDistanceYd = roundOne(Math.max(0, courseShot.holeYards - courseShot.progressBeforeYd));
+    const startDistanceYd = roundOne(
+      Math.max(0, courseShot.holeYards - courseShot.progressBeforeYd),
+    );
     const endDistanceYd = roundOne(Math.max(0, courseShot.distanceRemainingYd));
     const holeShots = shotsByHole.get(courseShot.holeNumber) ?? [];
     const isFinalTrackedShot = holeShots.at(-1) === courseShot;
-    const holeScoringRow = isFinalTrackedShot ? scoringByHole.get(courseShot.holeNumber) ?? null : null;
+    const holeScoringRow = isFinalTrackedShot
+      ? (scoringByHole.get(courseShot.holeNumber) ?? null)
+      : null;
     const inferredPutts = inferPuttsAfterTrackedShots(holeScoringRow, holeShots.length);
     const endPosition = endPositionForCourseShot(courseShot, endDistanceYd, inferredPutts);
     const category = strokesGainedCategory(courseShot, startDistanceYd);
@@ -227,7 +357,11 @@ function strokesGainedCategory(courseShot: InferredCourseShot, startDistanceYd: 
     return "tee";
   }
 
-  if (courseShot.shotCategory === "chip" || courseShot.shotCategory === "pitch" || startDistanceYd <= 100) {
+  if (
+    courseShot.shotCategory === "chip" ||
+    courseShot.shotCategory === "pitch" ||
+    startDistanceYd <= 100
+  ) {
     return "short_game";
   }
 

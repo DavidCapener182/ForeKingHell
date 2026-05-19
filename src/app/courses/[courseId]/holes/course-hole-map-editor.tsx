@@ -63,8 +63,13 @@ export function CourseHoleMapEditor({
   const [placementTarget, setPlacementTarget] = useState<"tee" | "green">("tee");
   const placementTargetRef = useRef<"tee" | "green">("tee");
   const selectedHole = holes.find((hole) => hole.holeNumber === selectedHoleNumber) ?? null;
-  const [draft, setDraft] = useState<DraftHole>(() => draftFromHole(selectedHoleNumber, selectedHole));
-  const holeNumbers = useMemo(() => Array.from({ length: holeCount }, (_, index) => index + 1), [holeCount]);
+  const [draft, setDraft] = useState<DraftHole>(() =>
+    draftFromHole(selectedHoleNumber, selectedHole),
+  );
+  const holeNumbers = useMemo(
+    () => Array.from({ length: holeCount }, (_, index) => index + 1),
+    [holeCount],
+  );
   const setMapContainerRef = useCallback((node: HTMLDivElement | null) => {
     setMapContainerNode(node);
   }, []);
@@ -237,12 +242,17 @@ export function CourseHoleMapEditor({
 
     const draftTee = parseLatLng(draft.teeLat, draft.teeLng);
     const draftGreen = parseLatLng(draft.greenLat, draft.greenLng);
-    const boundsPoints = [draftTee, draftGreen].filter((point): point is [number, number] => Boolean(point));
+    const boundsPoints = [draftTee, draftGreen].filter((point): point is [number, number] =>
+      Boolean(point),
+    );
 
     if (boundsPoints.length === 1) {
       mapRef.current.setView(boundsPoints[0], 18);
     } else if (boundsPoints.length === 2) {
-      mapRef.current.fitBounds(leaflet.latLngBounds(boundsPoints), { padding: [60, 60], maxZoom: 18 });
+      mapRef.current.fitBounds(leaflet.latLngBounds(boundsPoints), {
+        padding: [60, 60],
+        maxZoom: 18,
+      });
     }
   }
 
@@ -251,10 +261,13 @@ export function CourseHoleMapEditor({
       <div className="apple-panel p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{teeSetName}</Badge>
+            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+              {teeSetName}
+            </Badge>
             <h3 className="mt-3 text-2xl font-semibold tracking-normal">Click-to-place editor</h3>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Pick a hole, choose tee or green, then click the satellite map. Save when both points look right.
+              Pick a hole, choose tee or green, then click the satellite map. Save when both points
+              look right.
             </p>
           </div>
           <MapPinned className="size-5 text-sky-600" />
@@ -266,7 +279,10 @@ export function CourseHoleMapEditor({
               key={holeNumber}
               type="button"
               variant={selectedHoleNumber === holeNumber ? "default" : "outline"}
-              className={cn("h-10 rounded-lg", selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-white")}
+              className={cn(
+                "h-10 rounded-lg",
+                selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-white",
+              )}
               onClick={() => {
                 const nextHole = holes.find((hole) => hole.holeNumber === holeNumber) ?? null;
                 setSelectedHoleNumber(holeNumber);
@@ -304,20 +320,81 @@ export function CourseHoleMapEditor({
           <input type="hidden" name="holeNumber" value={selectedHoleNumber} />
 
           <div className="grid grid-cols-3 gap-2">
-            <Field label="Par" name="par" value={draft.par} onChange={setDraftValue("par")} type="number" min={1} required />
-            <Field label="Yards" name="yards" value={draft.yards} onChange={setDraftValue("yards")} type="number" min={1} required />
-            <Field label="SI" name="strokeIndex" value={draft.strokeIndex} onChange={setDraftValue("strokeIndex")} type="number" min={1} max={18} />
+            <Field
+              label="Par"
+              name="par"
+              value={draft.par}
+              onChange={setDraftValue("par")}
+              type="number"
+              min={1}
+              required
+            />
+            <Field
+              label="Yards"
+              name="yards"
+              value={draft.yards}
+              onChange={setDraftValue("yards")}
+              type="number"
+              min={1}
+              required
+            />
+            <Field
+              label="SI"
+              name="strokeIndex"
+              value={draft.strokeIndex}
+              onChange={setDraftValue("strokeIndex")}
+              type="number"
+              min={1}
+              max={18}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Tee lat" name="teeLat" value={draft.teeLat} onChange={setDraftValue("teeLat")} type="number" step="0.000001" required />
-            <Field label="Tee lng" name="teeLng" value={draft.teeLng} onChange={setDraftValue("teeLng")} type="number" step="0.000001" required />
-            <Field label="Green lat" name="greenLat" value={draft.greenLat} onChange={setDraftValue("greenLat")} type="number" step="0.000001" required />
-            <Field label="Green lng" name="greenLng" value={draft.greenLng} onChange={setDraftValue("greenLng")} type="number" step="0.000001" required />
+            <Field
+              label="Tee lat"
+              name="teeLat"
+              value={draft.teeLat}
+              onChange={setDraftValue("teeLat")}
+              type="number"
+              step="0.000001"
+              required
+            />
+            <Field
+              label="Tee lng"
+              name="teeLng"
+              value={draft.teeLng}
+              onChange={setDraftValue("teeLng")}
+              type="number"
+              step="0.000001"
+              required
+            />
+            <Field
+              label="Green lat"
+              name="greenLat"
+              value={draft.greenLat}
+              onChange={setDraftValue("greenLat")}
+              type="number"
+              step="0.000001"
+              required
+            />
+            <Field
+              label="Green lng"
+              name="greenLng"
+              value={draft.greenLng}
+              onChange={setDraftValue("greenLng")}
+              type="number"
+              step="0.000001"
+              required
+            />
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="outline" className="flex-1 bg-white" onClick={focusSelectedHole}>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 bg-white"
+              onClick={focusSelectedHole}
+            >
               <Crosshair className="size-4" />
               Focus hole
             </Button>
@@ -335,7 +412,10 @@ export function CourseHoleMapEditor({
       </div>
 
       <div className="map-frame relative">
-        <div ref={setMapContainerRef} className="h-[68vh] min-h-[360px] w-full lg:h-[620px] lg:min-h-[460px]" />
+        <div
+          ref={setMapContainerRef}
+          className="h-[68vh] min-h-[360px] w-full lg:h-[620px] lg:min-h-[460px]"
+        />
         <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/92 px-3 py-2 text-sm font-semibold shadow-sm">
           Hole {selectedHoleNumber} - click {placementTarget}
         </div>

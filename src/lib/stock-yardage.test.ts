@@ -42,7 +42,12 @@ describe("calculateStockYardage", () => {
       [
         { ...shot(82, 86, 2), clubType: "sw", courseHoleNumber: 4, shotCategory: "approach" },
         { ...shot(36, 38, 1), clubType: "sw", courseHoleNumber: 5, shotCategory: "chip" },
-        { ...shot(92, 96, -3), clubType: "sw", courseHoleNumber: null, sessionType: "simulated_course" },
+        {
+          ...shot(92, 96, -3),
+          clubType: "sw",
+          courseHoleNumber: null,
+          sessionType: "simulated_course",
+        },
       ],
       50,
       { clubType: "sw" },

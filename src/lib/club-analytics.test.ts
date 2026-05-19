@@ -60,8 +60,22 @@ describe("calculateClubAnalytics", () => {
     const analytics = calculateClubAnalytics({
       clubType: "sw",
       shots: [
-        shot({ id: "touch-1", clubType: "sw", carryYd: 20, sideCarryYd: 1, courseHoleNumber: 1, sessionType: "simulated_course" }),
-        shot({ id: "touch-2", clubType: "sw", carryYd: 35, sideCarryYd: -2, courseHoleNumber: 2, sessionType: "simulated_course" }),
+        shot({
+          id: "touch-1",
+          clubType: "sw",
+          carryYd: 20,
+          sideCarryYd: 1,
+          courseHoleNumber: 1,
+          sessionType: "simulated_course",
+        }),
+        shot({
+          id: "touch-2",
+          clubType: "sw",
+          carryYd: 35,
+          sideCarryYd: -2,
+          courseHoleNumber: 2,
+          sessionType: "simulated_course",
+        }),
       ],
     });
 
@@ -107,11 +121,15 @@ describe("likelyMishitTags", () => {
           ballSpeedMph: 102,
         }),
       }),
-    ).toEqual(expect.arrayContaining(["mishit floor", "low bullet", "dead strike", "speed leakage"]));
+    ).toEqual(
+      expect.arrayContaining(["mishit floor", "low bullet", "dead strike", "speed leakage"]),
+    );
   });
 });
 
-function shot(overrides: Partial<Parameters<typeof calculateClubAnalytics>[0]["shots"][number]> = {}) {
+function shot(
+  overrides: Partial<Parameters<typeof calculateClubAnalytics>[0]["shots"][number]> = {},
+) {
   return {
     id: "shot",
     sessionId: "session",

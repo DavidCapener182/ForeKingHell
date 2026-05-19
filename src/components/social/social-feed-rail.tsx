@@ -211,18 +211,25 @@ function SocialFeedRailContent() {
     setStatus("loading");
   }
 
-  function updateItem(itemId: string, updater: (item: SocialFeedPreviewItem) => SocialFeedPreviewItem) {
+  function updateItem(
+    itemId: string,
+    updater: (item: SocialFeedPreviewItem) => SocialFeedPreviewItem,
+  ) {
     setItems((current) => current.map((item) => (item.id === itemId ? updater(item) : item)));
   }
 
   function updateComment(
     itemId: string,
     commentId: string,
-    updater: (comment: SocialFeedPreviewItem["comments"][number]) => SocialFeedPreviewItem["comments"][number],
+    updater: (
+      comment: SocialFeedPreviewItem["comments"][number],
+    ) => SocialFeedPreviewItem["comments"][number],
   ) {
     updateItem(itemId, (item) => ({
       ...item,
-      comments: item.comments.map((comment) => (comment.id === commentId ? updater(comment) : comment)),
+      comments: item.comments.map((comment) =>
+        comment.id === commentId ? updater(comment) : comment,
+      ),
     }));
   }
 
@@ -292,7 +299,10 @@ function SocialFeedRailContent() {
     }
   }
 
-  async function toggleCommentReaction(itemId: string, comment: SocialFeedPreviewItem["comments"][number]) {
+  async function toggleCommentReaction(
+    itemId: string,
+    comment: SocialFeedPreviewItem["comments"][number],
+  ) {
     const nextLiked = !comment.viewerLiked;
     const likeDelta = nextLiked ? 1 : -1;
 
@@ -344,7 +354,9 @@ function SocialFeedRailContent() {
       updateItem(itemId, (item) => ({
         ...item,
         commentCount: item.commentCount + 1,
-        comments: [...item.comments, comment].sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt)),
+        comments: [...item.comments, comment].sort(
+          (left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt),
+        ),
       }));
     } finally {
       setBusyCommentId(null);
@@ -403,9 +415,7 @@ function SocialFeedRailContent() {
                     <Radio className="size-4 text-emerald-600" />
                     Social feed
                   </DrawerTitle>
-                  <DrawerDescription>
-                    Daily digests match the full feed.
-                  </DrawerDescription>
+                  <DrawerDescription>Daily digests match the full feed.</DrawerDescription>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -415,7 +425,11 @@ function SocialFeedRailContent() {
                     onClick={refreshFeed}
                     aria-label="Refresh social feed"
                   >
-                    {status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                    {status === "loading" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3.5" />
+                    )}
                   </Button>
                   <DrawerClose asChild>
                     <Button type="button" variant="ghost" size="sm">
@@ -425,9 +439,7 @@ function SocialFeedRailContent() {
                 </div>
               </div>
             </DrawerHeader>
-            <ScrollArea className="min-h-0 flex-1 px-3">
-              {feedContent}
-            </ScrollArea>
+            <ScrollArea className="min-h-0 flex-1 px-3">{feedContent}</ScrollArea>
             <DrawerFooter>
               <Button asChild className="w-full">
                 <Link href="/feed" prefetch={false}>
@@ -453,9 +465,7 @@ function SocialFeedRailContent() {
                     <Radio className="size-4 text-emerald-600" />
                     Social feed
                   </SheetTitle>
-                  <SheetDescription>
-                    Daily digests match the full feed.
-                  </SheetDescription>
+                  <SheetDescription>Daily digests match the full feed.</SheetDescription>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -465,7 +475,11 @@ function SocialFeedRailContent() {
                     onClick={refreshFeed}
                     aria-label="Refresh social feed"
                   >
-                    {status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                    {status === "loading" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3.5" />
+                    )}
                   </Button>
                   <SheetClose asChild>
                     <Button type="button" variant="ghost" size="sm">
@@ -475,9 +489,7 @@ function SocialFeedRailContent() {
                 </div>
               </div>
             </SheetHeader>
-            <ScrollArea className="min-h-0 flex-1 px-3 py-3">
-              {feedContent}
-            </ScrollArea>
+            <ScrollArea className="min-h-0 flex-1 px-3 py-3">{feedContent}</ScrollArea>
             <SheetFooter className="border-t border-slate-100 p-3">
               <Button asChild className="w-full">
                 <Link href="/feed" prefetch={false}>
@@ -515,7 +527,10 @@ function SocialFeedPreviewContent({
   status: FeedStatus;
   onCommentDraftChange: (itemId: string, value: string) => void;
   onCommentDelete: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
-  onCommentReactionToggle: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentReactionToggle: (
+    itemId: string,
+    comment: SocialFeedPreviewItem["comments"][number],
+  ) => void;
   onCommentToggle: (itemId: string) => void;
   onReactionToggle: (item: SocialFeedPreviewItem) => void;
   onSubmitComment: (event: FormEvent<HTMLFormElement>, itemId: string) => void;
@@ -588,15 +603,22 @@ function RailDayDigest({
   group: RailDayGroup;
   onCommentDraftChange: (itemId: string, value: string) => void;
   onCommentDelete: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
-  onCommentReactionToggle: (itemId: string, comment: SocialFeedPreviewItem["comments"][number]) => void;
+  onCommentReactionToggle: (
+    itemId: string,
+    comment: SocialFeedPreviewItem["comments"][number],
+  ) => void;
   onCommentToggle: (itemId: string) => void;
   onReactionToggle: (item: SocialFeedPreviewItem) => void;
   onSubmitComment: (event: FormEvent<HTMLFormElement>, itemId: string) => void;
 }) {
   const firstItem = group.items[0];
   const achievements = group.items.filter((item) => item.itemType === "achievement_unlock");
-  const nonAchievementHighlights = group.items.filter((item) => item.itemType !== "achievement_unlock");
-  const highlights = (nonAchievementHighlights.length > 0 ? nonAchievementHighlights : achievements).slice(0, 4);
+  const nonAchievementHighlights = group.items.filter(
+    (item) => item.itemType !== "achievement_unlock",
+  );
+  const highlights = (
+    nonAchievementHighlights.length > 0 ? nonAchievementHighlights : achievements
+  ).slice(0, 4);
 
   if (!firstItem) {
     return null;
@@ -620,15 +642,16 @@ function RailDayDigest({
             </Link>
             <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
           </div>
-          <p className="mt-2 font-semibold leading-5">{digestHeadline(group, achievements.length)}</p>
+          <p className="mt-2 font-semibold leading-5">
+            {digestHeadline(group, achievements.length)}
+          </p>
         </div>
       </header>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
         {group.xpGained > 0 ? (
           <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-800">
-            <Zap className="size-3" />
-            +{numberFormatter.format(group.xpGained)} XP
+            <Zap className="size-3" />+{numberFormatter.format(group.xpGained)} XP
           </Badge>
         ) : null}
         {group.typeSummaries.map((summary) => (
@@ -691,8 +714,12 @@ function RailActivityItem({
     <div className="rounded-xl border bg-slate-50/70 p-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="line-clamp-2 text-sm font-medium leading-5">{isStatusUpdate ? "Status update" : item.headline}</p>
-          <p className="mt-1 text-xs text-muted-foreground">{itemDateFormatter.format(new Date(item.createdAt))}</p>
+          <p className="line-clamp-2 text-sm font-medium leading-5">
+            {isStatusUpdate ? "Status update" : item.headline}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {itemDateFormatter.format(new Date(item.createdAt))}
+          </p>
         </div>
       </div>
 
@@ -702,7 +729,9 @@ function RailActivityItem({
           {item.metricLabel ? ` · ${item.metricLabel}` : ""}
         </p>
       ) : null}
-      {item.context ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.context}</p> : null}
+      {item.context ? (
+        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.context}</p>
+      ) : null}
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <Badge variant="secondary" className="gap-1">
@@ -734,7 +763,11 @@ function RailActivityItem({
             <div className="grid gap-1.5">
               {item.comments.map((comment) => (
                 <div key={comment.id} className="rounded-lg bg-white px-2 py-1.5 text-xs">
-                  <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-medium hover:underline">
+                  <Link
+                    href={`/profile/${comment.profile.username}`}
+                    prefetch={false}
+                    className="font-medium hover:underline"
+                  >
                     {comment.profile.displayName}
                   </Link>
                   <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
@@ -773,7 +806,12 @@ function RailActivityItem({
               placeholder="Write a comment"
               className="h-8 rounded-lg bg-white text-xs"
             />
-            <Button type="submit" size="icon" disabled={busy || !commentDraft.trim()} aria-label="Post comment">
+            <Button
+              type="submit"
+              size="icon"
+              disabled={busy || !commentDraft.trim()}
+              aria-label="Post comment"
+            >
               {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
             </Button>
           </form>
@@ -793,7 +831,9 @@ function groupItemsByDayAndUser(items: SocialFeedPreviewItem[]): RailDayGroup[] 
 
   return [...grouped.entries()]
     .map(([key, groupItems]) => {
-      const sortedItems = [...groupItems].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+      const sortedItems = [...groupItems].sort(
+        (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
+      );
       const firstItem = sortedItems[0];
 
       return {
@@ -892,7 +932,10 @@ function countNewItems(items: SocialFeedPreviewItem[]) {
 }
 
 function markItemsSeen(items: SocialFeedPreviewItem[]) {
-  const latest = Math.max(0, ...items.map((item) => Date.parse(item.createdAt)).filter(Number.isFinite));
+  const latest = Math.max(
+    0,
+    ...items.map((item) => Date.parse(item.createdAt)).filter(Number.isFinite),
+  );
 
   if (!latest) {
     return;
@@ -914,5 +957,7 @@ function readSeenAt() {
 
 function isHiddenRoute(pathname: string) {
   const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
-  return hiddenRoutePrefixes.some((prefix) => normalizedPathname === prefix || normalizedPathname.startsWith(`${prefix}/`));
+  return hiddenRoutePrefixes.some(
+    (prefix) => normalizedPathname === prefix || normalizedPathname.startsWith(`${prefix}/`),
+  );
 }

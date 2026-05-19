@@ -17,13 +17,8 @@ import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   CompactReadoutGrid,
   DataPair,
@@ -71,10 +66,7 @@ import {
   type ClubDecisionLabel,
   type CourseDecisionAdvice,
 } from "@/lib/course-decision-advice";
-import {
-  buildPersonalGappingTargets,
-  type GappingTargetTone,
-} from "@/lib/gapping-targets";
+import { buildPersonalGappingTargets, type GappingTargetTone } from "@/lib/gapping-targets";
 import {
   clubAccent,
   clubSortValue,
@@ -119,17 +111,13 @@ export default async function BagPage() {
         (row): row is GappingRow & { workOnYd: number } =>
           row.workOnYd !== null && row.targetPriorityYd > 0,
       )
-      .sort(
-        (left, right) => right.targetPriorityYd - left.targetPriorityYd,
-      )[0] ?? null;
+      .sort((left, right) => right.targetPriorityYd - left.targetPriorityYd)[0] ?? null;
   const averageConfidence =
     stockConfidenceClubs.length === 0
       ? 0
       : Math.round(
-          stockConfidenceClubs.reduce(
-            (total, club) => total + club.stock.confidenceScore,
-            0,
-          ) / stockConfidenceClubs.length,
+          stockConfidenceClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
+            stockConfidenceClubs.length,
         );
   const maxGappingCarry = maxCarryYd(gappingRows);
 
@@ -151,10 +139,16 @@ export default async function BagPage() {
         <MobileStatusAction
           label="Gapping ladder"
           value={bestClub ? formatClubType(bestClub.type) : "--"}
-          detail={weakestGap ? `Problem gap: ${formatClubType(weakestGap.clubType)} · ${workOnText(weakestGap)}` : `${bag.length} clubs · ${totalShots} shots`}
+          detail={
+            weakestGap
+              ? `Problem gap: ${formatClubType(weakestGap.clubType)} · ${workOnText(weakestGap)}`
+              : `${bag.length} clubs · ${totalShots} shots`
+          }
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Link href="/import" prefetch={false}>Import</Link>
+              <Link href="/import" prefetch={false}>
+                Import
+              </Link>
             </Button>
           }
         />
@@ -172,9 +166,7 @@ export default async function BagPage() {
                   prefetch={false}
                   className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
                 >
-                  <span className="font-semibold">
-                    {formatClubType(row.clubType)}
-                  </span>
+                  <span className="font-semibold">{formatClubType(row.clubType)}</span>
                   <span className="h-2 rounded-full bg-[#E5E7EB]">
                     <span
                       className="block h-2 rounded-full bg-[#0B7A3B]"
@@ -183,22 +175,34 @@ export default async function BagPage() {
                       }}
                     />
                   </span>
-                  <span className="font-semibold">
-                    {formatMetric(row.carryYd)} yd
-                  </span>
+                  <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
                 </Link>
               ))}
             </div>
           </ProgressCard>
           <div className="grid grid-cols-2 gap-2">
-            <PBCard title="Best club" value={bestClub ? formatClubType(bestClub.type) : "--"} detail="Highest trust" />
-            <PBCard title="Weakest gap" value={weakestGap ? formatClubType(weakestGap.clubType) : "--"} detail={weakestGap ? workOnText(weakestGap) : "Need samples"} />
+            <PBCard
+              title="Best club"
+              value={bestClub ? formatClubType(bestClub.type) : "--"}
+              detail="Highest trust"
+            />
+            <PBCard
+              title="Weakest gap"
+              value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
+              detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
+            />
           </div>
         </NativeListSection>
+        <TargetDistanceSelector rows={gappingRows} targetYd={150} />
         <NativeListSection title="Club rail">
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
             {bag.map((club) => (
-              <Link key={club.id} href={`/bag/${club.id}`} prefetch={false} className="grid min-w-36 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3">
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="grid min-w-36 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3"
+              >
                 <ClubArtwork
                   clubType={club.type}
                   brand={club.brand}
@@ -208,7 +212,9 @@ export default async function BagPage() {
                   sizes="144px"
                 />
                 <span className="font-semibold">{formatClubType(club.type)}</span>
-                <span className="text-sm text-[#6B7280]">{formatMetric(club.stock.carryMedianYd)} yd</span>
+                <span className="text-sm text-[#6B7280]">
+                  {formatMetric(club.stock.carryMedianYd)} yd
+                </span>
               </Link>
             ))}
           </div>
@@ -232,314 +238,299 @@ export default async function BagPage() {
       </div>
 
       <div className="hidden sm:contents">
-      <PageHeader
-        eyebrow={<StatusPill>Bag map</StatusPill>}
-        title="Stock yardages"
-        description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
-        visual={
-          <PageArtwork
-            variant="stockYardages"
-            alt=""
-            className="h-full min-h-44"
-          />
-        }
-        actions={
-          <>
-            <Button asChild variant="outline">
-              <Link href="/bag/longest">
-                <Trophy className="size-4" />
-                Longest shots
-              </Link>
+        <PageHeader
+          eyebrow={<StatusPill>Bag map</StatusPill>}
+          title="Stock yardages"
+          description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
+          visual={<PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" />}
+          actions={
+            <>
+              <Button asChild variant="outline">
+                <Link href="/bag/longest">
+                  <Trophy className="size-4" />
+                  Longest shots
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/achievements">
+                  <Award className="size-4" />
+                  Achievements
+                </Link>
+              </Button>
+            </>
+          }
+          metrics={[
+            {
+              label: "Clubs",
+              value: bag.length.toString(),
+              detail: "Tracked active clubs",
+            },
+            {
+              label: "Shots",
+              value: totalShots.toString(),
+              detail: "Saved launch monitor rows",
+            },
+            {
+              label: "Confidence",
+              value: `${averageConfidence}%`,
+              detail: "Average stock confidence",
+            },
+          ]}
+        />
+
+        <MobileSectionChips
+          items={[
+            { label: "Gapping", href: "#gapping" },
+            { label: "Levels", href: "#levels" },
+            { label: "Decisions", href: "#decisions" },
+            { label: "Clubs", href: "#clubs" },
+          ]}
+        />
+
+        <MobileSummaryHero
+          eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
+          title="Trust the number, then check the gap."
+          description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
+          metricLabel="Best club"
+          metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
+          visual={
+            <ClubArtwork
+              clubType={bestClub?.type ?? "driver"}
+              brand={bestClub?.brand}
+              model={bestClub?.model}
+              alt=""
+              className="h-20 w-20 rounded-xl"
+              sizes="80px"
+            />
+          }
+          action={
+            <Button
+              asChild
+              size="sm"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
+              <Link href="#clubs">Clubs</Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/achievements">
-                <Award className="size-4" />
-                Achievements
-              </Link>
-            </Button>
-          </>
-        }
-        metrics={[
-          {
-            label: "Clubs",
-            value: bag.length.toString(),
-            detail: "Tracked active clubs",
-          },
-          {
-            label: "Shots",
-            value: totalShots.toString(),
-            detail: "Saved launch monitor rows",
-          },
-          {
-            label: "Confidence",
-            value: `${averageConfidence}%`,
-            detail: "Average stock confidence",
-          },
-        ]}
-      />
+          }
+        />
 
-      <MobileSectionChips
-        items={[
-          { label: "Gapping", href: "#gapping" },
-          { label: "Levels", href: "#levels" },
-          { label: "Decisions", href: "#decisions" },
-          { label: "Clubs", href: "#clubs" },
-        ]}
-      />
+        <MobileMetricStrip
+          items={[
+            {
+              label: "Clubs",
+              value: bag.length.toString(),
+              detail: "Active",
+              tone: "green",
+            },
+            {
+              label: "Confidence",
+              value: `${averageConfidence}%`,
+              detail: "Average",
+              tone: "sky",
+            },
+            {
+              label: "Weakest gap",
+              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
+              detail: weakestGap ? workOnText(weakestGap) : "Need carry samples",
+              tone: weakestGap?.targetTone ?? "amber",
+            },
+          ]}
+        />
 
-      <MobileSummaryHero
-        eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
-        title="Trust the number, then check the gap."
-        description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
-        metricLabel="Best club"
-        metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
-        visual={
-          <ClubArtwork
-            clubType={bestClub?.type ?? "driver"}
-            brand={bestClub?.brand}
-            model={bestClub?.model}
-            alt=""
-            className="h-20 w-20 rounded-xl"
-            sizes="80px"
-          />
-        }
-        action={
-          <Button
-            asChild
-            size="sm"
-            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-          >
-            <Link href="#clubs">Clubs</Link>
-          </Button>
-        }
-      />
+        <BagFeaturePanel data={featureData} />
 
-      <MobileMetricStrip
-        items={[
-          {
-            label: "Clubs",
-            value: bag.length.toString(),
-            detail: "Active",
-            tone: "green",
-          },
-          {
-            label: "Confidence",
-            value: `${averageConfidence}%`,
-            detail: "Average",
-            tone: "sky",
-          },
-          {
-            label: "Weakest gap",
-            value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
-            detail: weakestGap
-              ? workOnText(weakestGap)
-              : "Need carry samples",
-            tone: weakestGap?.targetTone ?? "amber",
-          },
-        ]}
-      />
+        <TargetDistanceSelector rows={gappingRows} targetYd={150} />
 
-      <BagFeaturePanel data={featureData} />
+        {gappingRows.length > 0 ? (
+          <section id="gapping" className="scroll-mt-28">
+            <CarryGappingTable rows={gappingRows} />
+          </section>
+        ) : null}
 
-      {gappingRows.length > 0 ? (
-        <section id="gapping" className="scroll-mt-28">
-          <CarryGappingTable rows={gappingRows} />
+        {benchmarkRows.length > 0 ? (
+          <section id="levels" className="scroll-mt-28">
+            <DistanceBenchmarkPanel rows={benchmarkRows} />
+          </section>
+        ) : null}
+
+        <section id="decisions" className="scroll-mt-28">
+          <CourseDecisionPanel advice={courseAdvice} />
         </section>
-      ) : null}
 
-      {benchmarkRows.length > 0 ? (
-        <section id="levels" className="scroll-mt-28">
-          <DistanceBenchmarkPanel rows={benchmarkRows} />
-        </section>
-      ) : null}
-
-      <section id="decisions" className="scroll-mt-28">
-        <CourseDecisionPanel advice={courseAdvice} />
-      </section>
-
-      <section
-        id="clubs"
-        className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
-      >
-        {bag.map((club) => (
-          <Link
-            key={club.id}
-            href={`/bag/${club.id}`}
-            className="group block min-w-[82vw] md:min-w-0"
-          >
-            <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
-              <CardHeader className="p-4 sm:p-6">
-                <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
-                  <ClubArtwork
-                    clubType={club.type}
-                    brand={club.brand}
-                    model={club.model}
-                    alt=""
-                    className="h-16 w-full shrink-0 rounded-xl sm:h-20"
-                    sizes="112px"
-                  />
-                  <div className="min-w-0 space-y-1 text-right">
-                    <CardDescription className="truncate">{club.brandModel}</CardDescription>
-                    <CardTitle className="text-2xl tracking-normal sm:text-3xl">
-                      {formatClubType(club.type)}
-                    </CardTitle>
-                    <div className="flex justify-end">
-                      <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
-                        {club.decisionLabel}
-                      </StatusPill>
+        <section
+          id="clubs"
+          className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
+        >
+          {bag.map((club) => (
+            <Link
+              key={club.id}
+              href={`/bag/${club.id}`}
+              className="group block min-w-[82vw] md:min-w-0"
+            >
+              <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
+                <CardHeader className="p-4 sm:p-6">
+                  <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                    <ClubArtwork
+                      clubType={club.type}
+                      brand={club.brand}
+                      model={club.model}
+                      alt=""
+                      className="h-16 w-full shrink-0 rounded-xl sm:h-20"
+                      sizes="112px"
+                    />
+                    <div className="min-w-0 space-y-1 text-right">
+                      <CardDescription className="truncate">{club.brandModel}</CardDescription>
+                      <CardTitle className="text-2xl tracking-normal sm:text-3xl">
+                        {formatClubType(club.type)}
+                      </CardTitle>
+                      <div className="flex justify-end">
+                        <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
+                          {club.decisionLabel}
+                        </StatusPill>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
-                <div className="grid grid-cols-[1fr_auto] items-end gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {club.isShortGameTouch ? "Touch median" : "Stock carry"}
-                    </p>
-                    <p className="text-4xl font-semibold tracking-normal sm:text-5xl">
-                      {formatMetric(
-                        club.isShortGameTouch
-                          ? club.touch.carryMedianYd
-                          : club.stock.carryMedianYd,
+                </CardHeader>
+                <CardContent className="space-y-3 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
+                  <div className="grid grid-cols-[1fr_auto] items-end gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {club.isShortGameTouch ? "Touch median" : "Stock carry"}
+                      </p>
+                      <p className="text-4xl font-semibold tracking-normal sm:text-5xl">
+                        {formatMetric(
+                          club.isShortGameTouch
+                            ? club.touch.carryMedianYd
+                            : club.stock.carryMedianYd,
+                        )}
+                        <span className="ml-1 text-lg text-muted-foreground">yd</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">
+                        {club.isShortGameTouch ? "Full stock" : "Play"}
+                      </p>
+                      <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
+                        {formatMetric(
+                          club.isShortGameTouch ? null : club.stock.recommendedPlayNumberYd,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="hidden sm:block">
+                    <MiniDispersion
+                      shots={club.shots}
+                      accent={club.accent}
+                      carryMedianYd={
+                        club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd
+                      }
+                    />
+                  </div>
+
+                  <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
+                    <Metric
+                      label={club.isShortGameTouch ? "Touch sample" : "Sample"}
+                      value={(club.isShortGameTouch
+                        ? club.touch.sampleSize
+                        : club.stock.sampleSize
+                      ).toString()}
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Upper touch" : "Good carry"}
+                      value={formatMetric(
+                        club.isShortGameTouch ? club.touch.carryP75Yd : club.stock.carryP75Yd,
                       )}
-                      <span className="ml-1 text-lg text-muted-foreground">
-                        yd
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Longest touch" : "Total"}
+                      value={formatMetric(
+                        club.isShortGameTouch
+                          ? club.touch.longestCarryYd
+                          : club.stock.totalMedianYd,
+                      )}
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
+                      value={formatMetric(
+                        club.isShortGameTouch
+                          ? club.touch.carryP25Yd
+                          : club.stock.averageBallSpeedMph,
+                      )}
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Under 30" : "Launch"}
+                      value={
+                        club.isShortGameTouch
+                          ? club.touch.under30YdCount.toString()
+                          : `${formatMetric(club.stock.averageLaunchAngleDeg)} deg`
+                      }
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Type" : "Side"}
+                      value={
+                        club.isShortGameTouch
+                          ? "Touch"
+                          : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
+                              club.stock.dispersionRightYd,
+                            )}R`
+                      }
+                    />
+                  </div>
+
+                  {club.isShortGameTouch ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                      Round chips and pitches are shown as touch data, not full-swing stock yardage.
+                    </p>
+                  ) : null}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{club.decisionLabel}</span>
+                      <span className="text-muted-foreground">
+                        {club.isShortGameTouch
+                          ? `${club.touch.sampleSize} shots`
+                          : `${club.stock.confidenceScore}%`}
                       </span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">
-                      {club.isShortGameTouch ? "Full stock" : "Play"}
-                    </p>
-                    <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
-                      {formatMetric(
+                    </div>
+                    <Progress
+                      value={
                         club.isShortGameTouch
-                          ? null
-                          : club.stock.recommendedPlayNumberYd,
-                      )}
-                    </p>
+                          ? Math.min(100, (club.touch.sampleSize / 50) * 100)
+                          : club.stock.confidenceScore
+                      }
+                    />
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </section>
 
-                <div className="hidden sm:block">
-                  <MiniDispersion
-                    shots={club.shots}
-                    accent={club.accent}
-                    carryMedianYd={
-                      club.isShortGameTouch
-                        ? club.touch.carryMedianYd
-                        : club.stock.carryMedianYd
-                    }
-                  />
-                </div>
+        {bag.length === 0 ? (
+          <Card className="premium-card">
+            <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+              <Target className="size-8 text-emerald-500" />
+              <div>
+                <p className="text-lg font-medium">No clubs imported yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Import Rapsodo CSVs to build the bag map.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
-                <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
-                  <Metric
-                    label={club.isShortGameTouch ? "Touch sample" : "Sample"}
-                    value={(club.isShortGameTouch
-                      ? club.touch.sampleSize
-                      : club.stock.sampleSize
-                    ).toString()}
-                  />
-                  <Metric
-                    label={club.isShortGameTouch ? "Upper touch" : "Good carry"}
-                    value={formatMetric(
-                      club.isShortGameTouch
-                        ? club.touch.carryP75Yd
-                        : club.stock.carryP75Yd,
-                    )}
-                  />
-                  <Metric
-                    label={club.isShortGameTouch ? "Longest touch" : "Total"}
-                    value={formatMetric(
-                      club.isShortGameTouch
-                        ? club.touch.longestCarryYd
-                        : club.stock.totalMedianYd,
-                    )}
-                  />
-                  <Metric
-                    label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
-                    value={formatMetric(
-                      club.isShortGameTouch
-                        ? club.touch.carryP25Yd
-                        : club.stock.averageBallSpeedMph,
-                    )}
-                  />
-                  <Metric
-                    label={club.isShortGameTouch ? "Under 30" : "Launch"}
-                    value={
-                      club.isShortGameTouch
-                        ? club.touch.under30YdCount.toString()
-                        : `${formatMetric(club.stock.averageLaunchAngleDeg)} deg`
-                    }
-                  />
-                  <Metric
-                    label={club.isShortGameTouch ? "Type" : "Side"}
-                    value={
-                      club.isShortGameTouch
-                        ? "Touch"
-                        : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
-                            club.stock.dispersionRightYd,
-                          )}R`
-                    }
-                  />
-                </div>
-
-                {club.isShortGameTouch ? (
-                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                    Round chips and pitches are shown as touch data, not
-                    full-swing stock yardage.
-                  </p>
-                ) : null}
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{club.decisionLabel}</span>
-                    <span className="text-muted-foreground">
-                      {club.isShortGameTouch
-                        ? `${club.touch.sampleSize} shots`
-                        : `${club.stock.confidenceScore}%`}
-                    </span>
-                  </div>
-                  <Progress
-                    value={
-                      club.isShortGameTouch
-                        ? Math.min(100, (club.touch.sampleSize / 50) * 100)
-                        : club.stock.confidenceScore
-                    }
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </section>
-
-      {bag.length === 0 ? (
-        <Card className="premium-card">
-          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-            <Target className="size-8 text-emerald-500" />
-            <div>
-              <p className="text-lg font-medium">No clubs imported yet</p>
-              <p className="text-sm text-muted-foreground">
-                Import Rapsodo CSVs to build the bag map.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <BagSocialComparison
-        bestClub={bestClub}
-        leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-        challenges={challengeData.active}
-      />
-      <StickyMobileAction>
-        <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-          <Link href="#clubs">Find club</Link>
-        </Button>
-      </StickyMobileAction>
+        <BagSocialComparison
+          bestClub={bestClub}
+          leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+          challenges={challengeData.active}
+        />
+        <StickyMobileAction>
+          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Link href="#clubs">Find club</Link>
+          </Button>
+        </StickyMobileAction>
       </div>
     </PageShell>
   );
@@ -589,11 +580,7 @@ async function getBag() {
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
           .where(
-            and(
-              eq(shots.userId, userId),
-              eq(sessions.userId, userId),
-              eq(shots.clubId, club.id),
-            ),
+            and(eq(shots.userId, userId), eq(sessions.userId, userId), eq(shots.clubId, club.id)),
           )
           .orderBy(desc(shots.shotAt))
           .limit(RECENT_SHOTS_PER_CLUB),
@@ -615,15 +602,11 @@ async function getBag() {
     .filter(({ club }) => isTrackedClubType(club.type))
     .map(({ club, recentShots, rawShotCount }) => {
       const accent = clubAccent(club.type);
-      const brandModel =
-        [club.brand, club.model].filter(Boolean).join(" ") ||
-        "Unspecified model";
+      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
-      const touch = calculateShortGameTouchSummary(
-        recentShots,
-        RECENT_SHOTS_PER_CLUB,
-        { clubType: club.type },
-      );
+      const touch = calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, {
+        clubType: club.type,
+      });
       const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, {
         clubType: club.type,
       });
@@ -644,9 +627,7 @@ async function getBag() {
         stock,
       };
     })
-    .sort(
-      (left, right) => clubSortValue(left.type) - clubSortValue(right.type),
-    );
+    .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
 }
 
 type BagClub = Awaited<ReturnType<typeof getBag>>[number];
@@ -707,8 +688,7 @@ function buildGappingRows(
       brandModel: club.brandModel,
       carryYd: club.stock.carryMedianYd,
       playNumberYd: club.stock.recommendedPlayNumberYd,
-      gapToNextYd:
-        gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
+      gapToNextYd: gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
       targetCarryYd: null,
       targetPlayNumberYd: null,
       workOnYd: null,
@@ -752,6 +732,104 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
   );
 }
 
+function TargetDistanceSelector({ rows, targetYd }: { rows: GappingRow[]; targetYd: number }) {
+  const candidates = rows
+    .filter(
+      (
+        row,
+      ): row is GappingRow & {
+        carryYd: number;
+        playNumberYd: number;
+      } => row.carryYd !== null && row.playNumberYd !== null,
+    )
+    .sort(
+      (left, right) =>
+        Math.abs(left.playNumberYd - targetYd) - Math.abs(right.playNumberYd - targetYd) ||
+        right.confidenceScore - left.confidenceScore,
+    );
+  const recommended = candidates[0] ?? null;
+  const alternatives = candidates.slice(1, 4);
+  const missYd = recommended ? Math.round((recommended.playNumberYd - targetYd) * 10) / 10 : null;
+  const risk =
+    missYd === null
+      ? "Need stock carry samples"
+      : Math.abs(missYd) <= 4
+        ? "Matched window"
+        : missYd > 0
+          ? `${formatMetric(missYd)} yd long`
+          : `${formatMetric(Math.abs(missYd))} yd short`;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Target distance selector"
+        description={`I need ${targetYd} yd: pick the club with the closest play number and enough trust to use on course.`}
+        action={<Target className="size-5 text-emerald-600" />}
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <div className="rounded-lg border bg-[#F5F6F4] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Target
+          </p>
+          <p className="mt-1 text-4xl font-semibold tracking-normal">{targetYd} yd</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[120, 150, 175, 200].map((distance) => (
+              <Badge key={distance} variant={distance === targetYd ? "default" : "outline"}>
+                {distance} yd
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3">
+          <div className="rounded-lg border bg-white p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Recommended</p>
+                <p className="mt-1 text-2xl font-semibold tracking-normal">
+                  {recommended ? formatClubType(recommended.clubType) : "--"}
+                </p>
+              </div>
+              <StatusPill
+                tone={recommended && recommended.confidenceScore >= 70 ? "green" : "amber"}
+              >
+                {recommended ? `${recommended.confidenceScore}% trust` : "Needs data"}
+              </StatusPill>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <DataPair
+                label="Play number"
+                value={recommended ? `${formatMetric(recommended.playNumberYd)} yd` : "--"}
+              />
+              <DataPair label="Risk" value={risk} />
+              <DataPair
+                label="Sample"
+                value={recommended ? `${recommended.sampleSize} shots` : "--"}
+              />
+            </div>
+          </div>
+          {alternatives.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-3">
+              {alternatives.map((row) => (
+                <Link
+                  key={row.id}
+                  href={`/bag/${row.id}`}
+                  prefetch={false}
+                  className="rounded-lg border bg-white p-3 text-sm hover:border-emerald-300"
+                >
+                  <p className="font-semibold">{formatClubType(row.clubType)}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {formatMetric(row.playNumberYd)} yd · {row.confidenceScore}% trust
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
 function BagSocialComparison({
   bestClub,
   leaderboardOptedIn,
@@ -777,7 +855,10 @@ function BagSocialComparison({
             : "Leaderboard comparison is off in your profile, so this page is keeping the bag readout private."}
         </div>
         <Button asChild variant="outline" className="w-fit">
-          <Link href={leaderboardOptedIn && challenge ? `/challenges/${challenge.id}` : "/profile"} prefetch={false}>
+          <Link
+            href={leaderboardOptedIn && challenge ? `/challenges/${challenge.id}` : "/profile"}
+            prefetch={false}
+          >
             <Users className="size-4" />
             {leaderboardOptedIn && challenge ? "Open challenge" : "Privacy settings"}
           </Link>
@@ -793,22 +874,27 @@ function DistanceBenchmarkPanel({ rows }: { rows: ClubBenchmarkRow[] }) {
     rowsWithData.length === 0
       ? null
       : Math.round(
-          rowsWithData.reduce((total, row) => total + (row.comparison.levelIndex ?? 0), 0) / rowsWithData.length,
+          rowsWithData.reduce((total, row) => total + (row.comparison.levelIndex ?? 0), 0) /
+            rowsWithData.length,
         );
-  const strongest = [...rowsWithData].sort(
-    (left, right) =>
-      (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
-      right.comparison.progressPercent - left.comparison.progressPercent,
-  )[0] ?? null;
-  const closestNext = [...rows]
-    .filter(
-      (
-        row,
-      ): row is ClubBenchmarkRow & {
-        comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
-      } => row.comparison.yardsToNextLevel !== null,
-    )
-    .sort((left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel)[0] ?? null;
+  const strongest =
+    [...rowsWithData].sort(
+      (left, right) =>
+        (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
+        right.comparison.progressPercent - left.comparison.progressPercent,
+    )[0] ?? null;
+  const closestNext =
+    [...rows]
+      .filter(
+        (
+          row,
+        ): row is ClubBenchmarkRow & {
+          comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
+        } => row.comparison.yardsToNextLevel !== null,
+      )
+      .sort(
+        (left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel,
+      )[0] ?? null;
 
   return (
     <DataPanel>
@@ -828,7 +914,9 @@ function DistanceBenchmarkPanel({ rows }: { rows: ClubBenchmarkRow[] }) {
                 rowsWithData.length === 0
                   ? "Need stock carry samples"
                   : `${rowsWithData.length} club${rowsWithData.length === 1 ? "" : "s"} compared`,
-              tone: benchmarkTone(averageLevel === null ? "no-data" : benchmarkLevelKeyFromIndex(averageLevel)),
+              tone: benchmarkTone(
+                averageLevel === null ? "no-data" : benchmarkLevelKeyFromIndex(averageLevel),
+              ),
             },
             {
               label: "Strongest match",
@@ -1035,18 +1123,14 @@ function benchmarkBadgeClass(levelKey: ClubBenchmarkRow["comparison"]["levelKey"
 }
 
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
-  const targetGapYd =
-    rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
+  const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
   return (
     <Card className="premium-card">
       <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-xl tracking-normal sm:text-2xl">
-          Carry gapping
-        </CardTitle>
+        <CardTitle className="text-xl tracking-normal sm:text-2xl">Carry gapping</CardTitle>
         <CardDescription className="hidden sm:block">
-          Stock carry by club, with realistic next-step targets from the
-          current bag data.
+          Stock carry by club, with realistic next-step targets from the current bag data.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -1057,11 +1141,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
               description="Target gap and priorities."
               count={`${rows.length} clubs`}
             >
-              <GappingRecommendations
-                rows={rows}
-                targetGapYd={targetGapYd}
-                compact
-              />
+              <GappingRecommendations rows={rows} targetGapYd={targetGapYd} compact />
             </MobileAccordionSection>
             <div className="hidden sm:block">
               <GappingRecommendations rows={rows} targetGapYd={targetGapYd} />
@@ -1069,10 +1149,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
           </>
         ) : null}
         <CarryGappingBars rows={rows} />
-        <MobileAccordionSection
-          title="Full gapping table"
-          count={`${rows.length} clubs`}
-        >
+        <MobileAccordionSection title="Full gapping table" count={`${rows.length} clubs`}>
           <MobileDataList>
             {rows.map((row) => (
               <MobileDataCard
@@ -1094,14 +1171,8 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                   label="Target"
                   value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`}
                 />
-                <DataPair
-                  label="Work on"
-                  value={<WorkOnBadge row={row} />}
-                />
-                <DataPair
-                  label="Decision"
-                  value={`${row.confidenceScore}% ${row.decisionLabel}`}
-                />
+                <DataPair label="Work on" value={<WorkOnBadge row={row} />} />
+                <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
               </MobileDataCard>
             ))}
           </MobileDataList>
@@ -1161,16 +1232,10 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                     <TableCell className="text-right">
                       <WorkOnBadge row={row} />
                     </TableCell>
+                    <TableCell className="text-right">{row.sampleSize}</TableCell>
                     <TableCell className="text-right">
-                      {row.sampleSize}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">
-                        {row.confidenceScore}%
-                      </span>
-                      <span className="ml-2 text-muted-foreground">
-                        {row.decisionLabel}
-                      </span>
+                      <span className="font-medium">{row.confidenceScore}%</span>
+                      <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1203,11 +1268,7 @@ function GappingRecommendations({
 
   return (
     <div
-      className={
-        compact
-          ? "grid gap-3"
-          : "apple-panel grid gap-3 p-4 lg:grid-cols-[0.7fr_1.3fr]"
-      }
+      className={compact ? "grid gap-3" : "apple-panel grid gap-3 p-4 lg:grid-cols-[0.7fr_1.3fr]"}
     >
       <div className="apple-panel-strong p-3 sm:p-4">
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
@@ -1217,8 +1278,8 @@ function GappingRecommendations({
           {numberFormatter.format(targetGapYd)} yd
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Personal gap from your current reliable carries. Progress targets are
-          capped by club type, confidence, and handicap band.
+          Personal gap from your current reliable carries. Progress targets are capped by club type,
+          confidence, and handicap band.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -1239,8 +1300,8 @@ function GappingRecommendations({
           <div className="apple-panel-strong p-4 md:col-span-3">
             <p className="font-semibold">Distances are in a healthy window</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              No club needs a distance chase from the current bag data. Keep
-              prioritising strike consistency and predictable carry.
+              No club needs a distance chase from the current bag data. Keep prioritising strike
+              consistency and predictable carry.
             </p>
           </div>
         )}
@@ -1268,19 +1329,13 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
             className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/80"
           >
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold">
-                {formatClubType(row.clubType)}
-              </span>
+              <span className="font-semibold">{formatClubType(row.clubType)}</span>
               <span className="text-muted-foreground">
-                {formatMetric(row.carryYd)} yd carry ·{" "}
-                {formatMetric(row.playNumberYd)} yd play
+                {formatMetric(row.carryYd)} yd carry · {formatMetric(row.playNumberYd)} yd play
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-white">
-              <div
-                className="h-full rounded-full bg-emerald-600"
-                style={{ width: `${width}%` }}
-              />
+              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${width}%` }} />
             </div>
           </Link>
         );
@@ -1328,9 +1383,7 @@ function WorkOnBadge({
   }
 
   const label =
-    row.workOnYd > 0
-      ? `Potential +${numberFormatter.format(row.workOnYd)} yd`
-      : row.targetMessage;
+    row.workOnYd > 0 ? `Potential +${numberFormatter.format(row.workOnYd)} yd` : row.targetMessage;
 
   return (
     <span
@@ -1372,23 +1425,12 @@ function MiniDispersion({
   accent: string;
   carryMedianYd: number | null;
 }) {
-  const visibleShots = shots
-    .filter((shot) => shot.carryYd !== null)
-    .slice(0, 40);
-  const maxCarry = Math.max(
-    240,
-    ...visibleShots.map((shot) => shot.carryYd ?? 0),
-  );
-  const maxSide = Math.max(
-    45,
-    ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)),
-  );
+  const visibleShots = shots.filter((shot) => shot.carryYd !== null).slice(0, 40);
+  const maxCarry = Math.max(240, ...visibleShots.map((shot) => shot.carryYd ?? 0));
+  const maxSide = Math.max(45, ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)));
 
   return (
-    <svg
-      viewBox="0 0 360 150"
-      className="h-36 w-full rounded-xl border bg-white/80"
-    >
+    <svg viewBox="0 0 360 150" className="h-36 w-full rounded-xl border bg-white/80">
       <rect x="0" y="0" width="360" height="150" fill="#f9fafb" />
       {[60, 120, 180, 240].map((yard) => {
         const y = 140 - (yard / maxCarry) * 120;
@@ -1416,16 +1458,7 @@ function MiniDispersion({
       {visibleShots.map((shot, index) => {
         const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
         const y = 140 - ((shot.carryYd ?? 0) / maxCarry) * 120;
-        return (
-          <circle
-            key={index}
-            cx={x}
-            cy={y}
-            r="4"
-            fill={accent}
-            opacity="0.75"
-          />
-        );
+        return <circle key={index} cx={x} cy={y} r="4" fill={accent} opacity="0.75" />;
       })}
     </svg>
   );

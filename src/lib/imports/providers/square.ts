@@ -1,5 +1,12 @@
-import type { LaunchMonitorProvider, NormalizedMetric, ProviderInput } from "@/lib/imports/providers/types";
-import { detectGenericLaunchMonitorCsv, parseGenericLaunchMonitorCsv } from "@/lib/imports/providers/generic-csv";
+import type {
+  LaunchMonitorProvider,
+  NormalizedMetric,
+  ProviderInput,
+} from "@/lib/imports/providers/types";
+import {
+  detectGenericLaunchMonitorCsv,
+  parseGenericLaunchMonitorCsv,
+} from "@/lib/imports/providers/generic-csv";
 
 const metricAliases: Record<string, NormalizedMetric> = {
   carry: "carry_yards",
@@ -23,7 +30,11 @@ export const squareProvider: LaunchMonitorProvider = {
   status: "beta",
   async detect(input: ProviderInput) {
     const providerMarker = `${input.fileName ?? ""}\n${input.text.slice(0, 500)}`.toLowerCase();
-    if (!providerMarker.includes("square") || providerMarker.includes("trackman") || providerMarker.includes("track man")) {
+    if (
+      !providerMarker.includes("square") ||
+      providerMarker.includes("trackman") ||
+      providerMarker.includes("track man")
+    ) {
       return false;
     }
 

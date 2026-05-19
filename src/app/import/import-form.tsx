@@ -27,22 +27,16 @@ import { SaveChecklistCard } from "@/app/import/save-checklist-card";
 import { ScorecardExtractionPanel } from "@/app/import/scorecard-extraction-panel";
 import { SessionSettings } from "@/app/import/session-settings";
 import { ShotPreview } from "@/app/import/shot-preview";
-import type { HoleReviewState, ScorecardExtractState, SessionType } from "@/app/import/import-types";
+import type {
+  HoleReviewState,
+  ScorecardExtractState,
+  SessionType,
+} from "@/app/import/import-types";
 import { UploadDropzone } from "@/app/import/upload-dropzone";
 import { useImportFiles } from "@/app/import/use-import-files";
 import { MobileCompactPageHeader, StickyMobileAction } from "@/components/premium";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  achievementUnlockHref,
-  clubHref,
-  shotRowsHref,
-} from "@/lib/alert-links";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { achievementUnlockHref, clubHref, shotRowsHref } from "@/lib/alert-links";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { queueOfflineAction } from "@/lib/offline-queue";
 import {
@@ -51,8 +45,15 @@ import {
   parseScorecardText,
 } from "@/lib/course-scorecard";
 import { ColumnMappingPanel } from "@/app/import/column-mapping-panel";
-import { type DistanceUnit, type RapsodoColumnMapping, parseRapsodoCsv } from "@/lib/rapsodo/parser";
-import type { LongestShotNotification, SaveRapsodoImportInput } from "@/lib/imports/save-rapsodo-import";
+import {
+  type DistanceUnit,
+  type RapsodoColumnMapping,
+  parseRapsodoCsv,
+} from "@/lib/rapsodo/parser";
+import type {
+  LongestShotNotification,
+  SaveRapsodoImportInput,
+} from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
@@ -96,7 +97,11 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceUnit?: DistanceUnit }) {
+export function ImportForm({
+  defaultDistanceUnit = "yards",
+}: {
+  defaultDistanceUnit?: DistanceUnit;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scorecardImageInputRef = useRef<HTMLInputElement>(null);
@@ -127,21 +132,22 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   const [isOnline, setIsOnline] = useState(true);
   const isCourseUpload = sessionType === "simulated_course";
   const mobileImportSteps = useMemo(
-    () =>
-      [
-        { id: "type" as const, label: "Type" },
-        { id: "upload" as const, label: "Upload" },
-        { id: "columns" as const, label: "Columns" },
-        ...(isCourseUpload ? [{ id: "course" as const, label: "Course" }] : []),
-        { id: "preview" as const, label: "Preview" },
-        { id: "save" as const, label: "Save" },
-      ],
+    () => [
+      { id: "type" as const, label: "Type" },
+      { id: "upload" as const, label: "Upload" },
+      { id: "columns" as const, label: "Columns" },
+      ...(isCourseUpload ? [{ id: "course" as const, label: "Course" }] : []),
+      { id: "preview" as const, label: "Preview" },
+      { id: "save" as const, label: "Save" },
+    ],
     [isCourseUpload],
   );
   const visibleMobileStep = mobileImportSteps.some((step) => step.id === mobileStep)
     ? mobileStep
     : "preview";
-  const activeMobileStepIndex = mobileImportSteps.findIndex((step) => step.id === visibleMobileStep);
+  const activeMobileStepIndex = mobileImportSteps.findIndex(
+    (step) => step.id === visibleMobileStep,
+  );
 
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => setIsHydrated(true), 0);
@@ -173,7 +179,8 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
 
     return scorecard.holes.map((hole) => {
       const autoShotCount =
-        autoCourseInference?.holes.find((autoHole) => autoHole.holeNumber === hole.holeNumber)?.shots.length ?? 0;
+        autoCourseInference?.holes.find((autoHole) => autoHole.holeNumber === hole.holeNumber)
+          ?.shots.length ?? 0;
       const manualShotCount = holeReview[hole.holeNumber]?.shotCount;
 
       return {
@@ -223,7 +230,10 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
       };
     });
   }, [courseInference, holeReview]);
-  const courseAssignedShotCount = courseHoleShotCounts.reduce((total, hole) => total + hole.shotCount, 0);
+  const courseAssignedShotCount = courseHoleShotCounts.reduce(
+    (total, hole) => total + hole.shotCount,
+    0,
+  );
 
   const aggregate = useMemo(() => {
     const uniqueClubs = new Set<string>();
@@ -239,7 +249,9 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
     warnings.push(...buildDeterministicImportWarnings(parsedFiles));
 
     if (isCourseUpload && uploadedFiles.length > 1) {
-      warnings.push("Simulated course import currently supports one CSV per save so hole inference stays deterministic.");
+      warnings.push(
+        "Simulated course import currently supports one CSV per save so hole inference stays deterministic.",
+      );
     }
 
     if (isCourseUpload && uploadedFiles.length > 0 && scorecard.holes.length === 0) {
@@ -337,7 +349,11 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
     }
 
     if (!file.type.startsWith("image/")) {
-      setScorecardExtractState({ status: "error", fileName: file.name, message: "Choose a scorecard image file." });
+      setScorecardExtractState({
+        status: "error",
+        fileName: file.name,
+        message: "Choose a scorecard image file.",
+      });
       return;
     }
 
@@ -505,7 +521,10 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
     return uploadedFiles
       .map((file) => ({
         ...file,
-        parsed: parseRapsodoCsv(file.rawCsvText, { fallbackDistanceUnit: distanceUnit, columnMapping }),
+        parsed: parseRapsodoCsv(file.rawCsvText, {
+          fallbackDistanceUnit: distanceUnit,
+          columnMapping,
+        }),
       }))
       .map((file) => ({
         rawCsvText: file.rawCsvText,
@@ -547,7 +566,10 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
   }
 
   return (
-    <section className="px-4 py-6 sm:px-6 lg:px-8" data-import-ready={isHydrated ? "true" : "false"}>
+    <section
+      className="px-4 py-6 sm:px-6 lg:px-8"
+      data-import-ready={isHydrated ? "true" : "false"}
+    >
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
@@ -566,9 +588,19 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           description="Upload CSVs, confirm columns, preview rows, then save."
           metricLabel="Shots"
           metricValue={aggregate.shotCount.toString()}
-          metricDetail={uploadedFiles.length > 0 ? `${uploadedFiles.length} file${uploadedFiles.length === 1 ? "" : "s"}` : "No files"}
+          metricDetail={
+            uploadedFiles.length > 0
+              ? `${uploadedFiles.length} file${uploadedFiles.length === 1 ? "" : "s"}`
+              : "No files"
+          }
           action={
-            <Button type="button" size="sm" disabled={!canSave} onClick={saveImportBatch} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canSave}
+              onClick={saveImportBatch}
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Upload className="size-4" />
               Save
             </Button>
@@ -577,10 +609,25 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
 
         <MobileMetricStrip
           items={[
-            { label: "Files", value: aggregate.fileCount.toString(), detail: "Selected", tone: "green" },
+            {
+              label: "Files",
+              value: aggregate.fileCount.toString(),
+              detail: "Selected",
+              tone: "green",
+            },
             { label: "Rows", value: aggregate.rowCount.toString(), detail: "Parsed", tone: "sky" },
-            { label: "Shots", value: aggregate.shotCount.toString(), detail: "Preview", tone: "amber" },
-            { label: "Warnings", value: aggregate.warnings.length.toString(), detail: "Review", tone: aggregate.warnings.length > 0 ? "pink" : "slate" },
+            {
+              label: "Shots",
+              value: aggregate.shotCount.toString(),
+              detail: "Preview",
+              tone: "amber",
+            },
+            {
+              label: "Warnings",
+              value: aggregate.warnings.length.toString(),
+              detail: "Review",
+              tone: aggregate.warnings.length > 0 ? "pink" : "slate",
+            },
           ]}
         />
 
@@ -591,9 +638,8 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                 Import launch monitor shots
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Upload one or more launch-monitor CSVs, review the normalized
-                shot rows, then save each file as its own session with raw data
-                preserved.
+                Upload one or more launch-monitor CSVs, review the normalized shot rows, then save
+                each file as its own session with raw data preserved.
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -617,15 +663,21 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           </div>
         </header>
 
-
-        <MobileImportStepper steps={mobileImportSteps} step={visibleMobileStep} onStepChange={setMobileStep} />
+        <MobileImportStepper
+          steps={mobileImportSteps}
+          step={visibleMobileStep}
+          onStepChange={setMobileStep}
+        />
 
         <div className="hidden sm:block">
           <ImportStepper
             isCourseUpload={isCourseUpload}
             hasFiles={uploadedFiles.length > 0}
             hasShots={aggregate.shotCount > 0}
-            hasCourseMapping={!isCourseUpload || (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)}
+            hasCourseMapping={
+              !isCourseUpload ||
+              (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)
+            }
             hasWarnings={aggregate.warnings.length > 0}
             canSave={canSave}
           />
@@ -648,15 +700,19 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                 : saveState.achievementUnlockNotifications.length > 0
                   ? "Achievements unlocked"
                   : saveState.longestShotNotifications.length > 0
-                  ? "New longest shot"
-                  : "Import saved"}
+                    ? "New longest shot"
+                    : "Import saved"}
             </AlertTitle>
             <AlertDescription>
               <p>{saveState.message}</p>
               {saveState.status === "success" ? (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {saveState.savedSessionId ? (
-                    <Button asChild size="sm" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                    <Button
+                      asChild
+                      size="sm"
+                      className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                    >
                       <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
                         <GitCompareArrows className="size-4" />
                         Compare this session
@@ -695,7 +751,9 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                           {formatMetric(notification.shotDistanceYd)} yd {notification.distanceType}
                           {" beat "}
                           {formatMetric(notification.previousDistanceYd)} yd
-                          {notification.shotNumber === null ? "" : ` on shot ${notification.shotNumber}`}
+                          {notification.shotNumber === null
+                            ? ""
+                            : ` on shot ${notification.shotNumber}`}
                           {"."}
                         </span>
                         <span className="flex shrink-0 flex-wrap gap-2">
@@ -719,7 +777,8 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                   </ul>
                 </div>
               ) : null}
-              {saveState.status === "success" && saveState.achievementUnlockNotifications.length > 0 ? (
+              {saveState.status === "success" &&
+              saveState.achievementUnlockNotifications.length > 0 ? (
                 <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-foreground">
                   <p className="text-sm font-medium">
                     {saveState.achievementUnlockNotifications.length === 1
@@ -735,7 +794,10 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
                         >
                           <span>
                             <span className="font-medium">{achievement.name}</span>
-                            <span className="text-muted-foreground"> - {achievement.description}</span>
+                            <span className="text-muted-foreground">
+                              {" "}
+                              - {achievement.description}
+                            </span>
                           </span>
                           <span className="flex shrink-0 items-center gap-2">
                             <Badge className="w-fit bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -756,12 +818,16 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           <Card
             className={cn(
               "premium-card",
-              ["type", "upload", "columns", "course"].includes(visibleMobileStep) ? "flex" : "hidden sm:flex",
+              ["type", "upload", "columns", "course"].includes(visibleMobileStep)
+                ? "flex"
+                : "hidden sm:flex",
             )}
           >
             <CardHeader>
               <CardTitle>{mobileImportCardTitle(visibleMobileStep)}</CardTitle>
-              <CardDescription>Drag in one or more launch-monitor files. Obvious parse issues appear before save.</CardDescription>
+              <CardDescription>
+                Drag in one or more launch-monitor files. Obvious parse issues appear before save.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className={visibleMobileStep === "upload" ? "block" : "hidden sm:block"}>
@@ -822,9 +888,21 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
               value={aggregate.fileCount.toString()}
               detail={uploadedFiles.length > 0 ? "Ready for batch import" : "No files selected"}
             />
-            <MetricCard label="Rows" value={aggregate.rowCount.toString()} detail="All non-empty CSV rows" />
-            <MetricCard label="Shots" value={aggregate.shotCount.toString()} detail="Parsed preview rows" />
-            <MetricCard label="Clubs" value={aggregate.clubCount.toString()} detail="Detected across files" />
+            <MetricCard
+              label="Rows"
+              value={aggregate.rowCount.toString()}
+              detail="All non-empty CSV rows"
+            />
+            <MetricCard
+              label="Shots"
+              value={aggregate.shotCount.toString()}
+              detail="Parsed preview rows"
+            />
+            <MetricCard
+              label="Clubs"
+              value={aggregate.clubCount.toString()}
+              detail="Detected across files"
+            />
           </div>
         </section>
 
@@ -837,7 +915,12 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
         ) : null}
 
         {isCourseUpload ? (
-          <Card className={cn("premium-card", visibleMobileStep === "course" ? "flex" : "hidden sm:flex")}>
+          <Card
+            className={cn(
+              "premium-card",
+              visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
+            )}
+          >
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -866,7 +949,9 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
           <SaveChecklistCard
             hasFiles={uploadedFiles.length > 0}
             hasShots={aggregate.shotCount > 0}
-            hasCompleteCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
+            hasCompleteCourseMapping={
+              !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
+            }
             hasNoWarnings={aggregate.warnings.length === 0}
             isOnline={isOnline}
             isPending={isPending}
@@ -886,12 +971,19 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
               variant="outline"
               className="rounded-xl"
               disabled={activeMobileStepIndex <= 0}
-              onClick={() => setMobileStep(mobileImportSteps[Math.max(0, activeMobileStepIndex - 1)].id)}
+              onClick={() =>
+                setMobileStep(mobileImportSteps[Math.max(0, activeMobileStepIndex - 1)].id)
+              }
             >
               Back
             </Button>
             {visibleMobileStep === "save" ? (
-              <Button type="button" disabled={!canSave} onClick={saveImportBatch} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Button
+                type="button"
+                disabled={!canSave}
+                onClick={saveImportBatch}
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
                 <Upload className="size-4" />
                 {isPending ? "Saving..." : "Save batch"}
               </Button>
@@ -899,7 +991,13 @@ export function ImportForm({ defaultDistanceUnit = "yards" }: { defaultDistanceU
               <Button
                 type="button"
                 className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                onClick={() => setMobileStep(mobileImportSteps[Math.min(mobileImportSteps.length - 1, activeMobileStepIndex + 1)].id)}
+                onClick={() =>
+                  setMobileStep(
+                    mobileImportSteps[
+                      Math.min(mobileImportSteps.length - 1, activeMobileStepIndex + 1)
+                    ].id,
+                  )
+                }
               >
                 Next
               </Button>
@@ -921,7 +1019,10 @@ function MobileImportStepper({
   onStepChange: (step: MobileImportStep) => void;
 }) {
   return (
-    <nav aria-label="Import steps" className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden">
+    <nav
+      aria-label="Import steps"
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
+    >
       {steps.map((item) => (
         <button
           key={item.id}
@@ -991,16 +1092,26 @@ function buildDeterministicImportWarnings(
   }>,
 ) {
   const warnings: string[] = [];
-  const units = [...new Set(files.map((file) => file.parsed.detectedDistanceUnit).filter((unit) => unit !== "unknown"))];
+  const units = [
+    ...new Set(
+      files.map((file) => file.parsed.detectedDistanceUnit).filter((unit) => unit !== "unknown"),
+    ),
+  ];
 
   if (units.length > 1) {
-    warnings.push(`Detected mixed distance units across files (${units.join(", ")}). Confirm the fallback unit before saving.`);
+    warnings.push(
+      `Detected mixed distance units across files (${units.join(", ")}). Confirm the fallback unit before saving.`,
+    );
   }
 
   for (const file of files) {
     const duplicateRows = countDuplicateShotRows(file.parsed.shots);
     const impossibleCarryRows = file.parsed.shots
-      .filter((shot) => (shot.carryYd !== null && (shot.carryYd < 0 || shot.carryYd > 430)) || (shot.totalYd !== null && (shot.totalYd < 0 || shot.totalYd > 500)))
+      .filter(
+        (shot) =>
+          (shot.carryYd !== null && (shot.carryYd < 0 || shot.carryYd > 430)) ||
+          (shot.totalYd !== null && (shot.totalYd < 0 || shot.totalYd > 500)),
+      )
       .slice(0, 3);
     const missingLaunchCount = file.parsed.shots.filter(
       (shot) => shot.ballSpeedMph === null || shot.launchAngleDeg === null,
@@ -1008,7 +1119,9 @@ function buildDeterministicImportWarnings(
     const unknownClubCount = file.parsed.shots.filter((shot) => shot.clubType === "unknown").length;
 
     if (duplicateRows > 0) {
-      warnings.push(`${file.fileName}: ${duplicateRows} duplicate-looking shot row${duplicateRows === 1 ? "" : "s"} detected before save.`);
+      warnings.push(
+        `${file.fileName}: ${duplicateRows} duplicate-looking shot row${duplicateRows === 1 ? "" : "s"} detected before save.`,
+      );
     }
 
     if (impossibleCarryRows.length > 0) {
@@ -1018,11 +1131,15 @@ function buildDeterministicImportWarnings(
     }
 
     if (missingLaunchCount > 0) {
-      warnings.push(`${file.fileName}: ${missingLaunchCount} shot${missingLaunchCount === 1 ? "" : "s"} are missing ball speed or launch angle.`);
+      warnings.push(
+        `${file.fileName}: ${missingLaunchCount} shot${missingLaunchCount === 1 ? "" : "s"} are missing ball speed or launch angle.`,
+      );
     }
 
     if (unknownClubCount > 0) {
-      warnings.push(`${file.fileName}: ${unknownClubCount} shot${unknownClubCount === 1 ? "" : "s"} have club names that need mapping.`);
+      warnings.push(
+        `${file.fileName}: ${unknownClubCount} shot${unknownClubCount === 1 ? "" : "s"} have club names that need mapping.`,
+      );
     }
   }
 

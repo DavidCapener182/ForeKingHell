@@ -14,11 +14,7 @@ type ConnectionStatus = {
   profile: Record<string, unknown> | null;
 };
 
-export function MobileRapsodoConnect({
-  initialStatus,
-}: {
-  initialStatus: ConnectionStatus;
-}) {
+export function MobileRapsodoConnect({ initialStatus }: { initialStatus: ConnectionStatus }) {
   const [status, setStatus] = useState(initialStatus);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +50,8 @@ export function MobileRapsodoConnect({
             {status.connected ? "Provider connected" : "Connect Rapsodo"}
           </h2>
           <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-            Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into the shared ForeKingHell history.
+            Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into
+            the shared ForeKingHell history.
           </p>
         </div>
         <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
@@ -67,11 +64,15 @@ export function MobileRapsodoConnect({
           <div className="rounded-lg bg-[#F5F6F4] p-3 text-sm text-[#050505]">
             <p className="font-semibold">Token saved</p>
             <p className="mt-1 text-[#6B7280]">
-              {status.expiresAt ? `Expires ${new Date(status.expiresAt).toLocaleString("en-GB")}.` : "Ready to load R-Cloud sessions."}
+              {status.expiresAt
+                ? `Expires ${new Date(status.expiresAt).toLocaleString("en-GB")}.`
+                : "Ready to load R-Cloud sessions."}
             </p>
           </div>
           <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href="/rapsodo" prefetch={false}>Open provider sessions</Link>
+            <Link href="/rapsodo" prefetch={false}>
+              Open provider sessions
+            </Link>
           </Button>
         </div>
       ) : (
@@ -99,7 +100,11 @@ export function MobileRapsodoConnect({
             className="h-11 rounded-lg bg-white"
           />
           {message ? <p className="text-sm text-[#DC2626]">{message}</p> : null}
-          <Button type="submit" disabled={isPending} className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
             {isPending ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
             Sign in to Rapsodo
           </Button>

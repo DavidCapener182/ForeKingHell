@@ -18,7 +18,9 @@ export async function createChallengeAction(formData: FormData) {
     visibility: parseVisibility(formData.get("visibility"), "friends"),
     startsAt: dateFromForm(formData, "startsAt"),
     endsAt: dateFromForm(formData, "endsAt"),
-    inviteeUserIds: formData.getAll("inviteeUserIds").filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+    inviteeUserIds: formData
+      .getAll("inviteeUserIds")
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
   });
 
   redirect(`/challenges/${challengeId}`);

@@ -18,13 +18,7 @@ type EmptyStateProps = {
   className?: string;
 };
 
-export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-  className,
-}: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
     <Empty className={cn("border border-dashed border-border bg-muted/30", className)}>
       <EmptyHeader>

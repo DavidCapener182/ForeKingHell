@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity, BarChart3, CalendarDays, ChevronDown, Gauge, Target, type LucideIcon } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  Gauge,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { clubAccent } from "@/lib/club-format";
@@ -58,10 +66,13 @@ export function ClubAnalysisTabs({
   const [openDateKeys, setOpenDateKeys] = useState<string[] | null>(null);
   const visibleSelectedShotId = shots.some((shot) => shot.id === selectedShotId)
     ? selectedShotId
-    : shots[0]?.id ?? "";
+    : (shots[0]?.id ?? "");
   const selectedShot = shots.find((shot) => shot.id === visibleSelectedShotId) ?? null;
   const sortedShots = useMemo(
-    () => [...shots].sort((left, right) => Number(left.shotNumber ?? 0) - Number(right.shotNumber ?? 0)),
+    () =>
+      [...shots].sort(
+        (left, right) => Number(left.shotNumber ?? 0) - Number(right.shotNumber ?? 0),
+      ),
     [shots],
   );
   const shotDateGroups = useMemo(() => groupShotsByDate(shots), [shots]);
@@ -104,7 +115,10 @@ export function ClubAnalysisTabs({
     <div className="space-y-5">
       <div className="premium-card p-3">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-full text-sm font-semibold text-white" style={{ background: accent }}>
+          <div
+            className="grid size-10 place-items-center rounded-full text-sm font-semibold text-white"
+            style={{ background: accent }}
+          >
             {clubTypeLabel.slice(0, 2)}
           </div>
           <div>
@@ -173,7 +187,11 @@ export function ClubAnalysisTabs({
       ) : null}
 
       {activeTab === "trajectory" ? (
-        <TrajectoryPanel shots={sortedShots} selectedShotId={selectedShot?.id ?? ""} accent={accent} />
+        <TrajectoryPanel
+          shots={sortedShots}
+          selectedShotId={selectedShot?.id ?? ""}
+          accent={accent}
+        />
       ) : null}
 
       {activeTab === "club" ? (
@@ -207,9 +225,12 @@ export function ClubAnalysisTabs({
                   <CalendarDays className="size-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate font-semibold text-foreground">{group.label}</span>
+                  <span className="block truncate font-semibold text-foreground">
+                    {group.label}
+                  </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} - best carry {formatMetric(group.bestCarryYd)} yd
+                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} - best carry{" "}
+                    {formatMetric(group.bestCarryYd)} yd
                   </span>
                 </span>
                 <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
@@ -230,9 +251,13 @@ export function ClubAnalysisTabs({
                       {shot.shotNumber ?? "-"}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-foreground">{clubModelName}</span>
+                      <span className="block truncate font-medium text-foreground">
+                        {clubModelName}
+                      </span>
                       {clubModelName !== clubTypeLabel ? (
-                        <span className="block truncate text-xs text-muted-foreground">{clubTypeLabel}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {clubTypeLabel}
+                        </span>
                       ) : null}
                     </span>
                     <span className="min-w-20 text-right font-medium text-foreground">
@@ -299,7 +324,10 @@ function DispersionPanel({
       distance: distanceFor(shot, distanceView),
       side: shot.sideCarryYd ?? 0,
     }))
-    .filter((item): item is { shot: AnalysisShot; distance: number; side: number } => item.distance !== null);
+    .filter(
+      (item): item is { shot: AnalysisShot; distance: number; side: number } =>
+        item.distance !== null,
+    );
   const distanceValues = plottedShots.map((item) => item.distance);
   const sideValues = plottedShots.map((item) => item.side);
   const holeYardage = 350;
@@ -318,7 +346,9 @@ function DispersionPanel({
   const stockShotIds = new Set(
     selectStockYardageShots(shots, shots.length, { clubType }).filteredShots.map((shot) => shot.id),
   );
-  const ellipse = buildDispersionEllipse(plottedPoints.filter((point) => stockShotIds.has(point.id)));
+  const ellipse = buildDispersionEllipse(
+    plottedPoints.filter((point) => stockShotIds.has(point.id)),
+  );
   const yardMarkers = [50, 100, 150, 200, 250, 300, 350].filter((yard) => yard <= maxDistance);
   const coneTopY = yFor(Math.min(holeYardage, maxDistance));
   const coneLeftX = xFor(-maxSide);
@@ -336,7 +366,14 @@ function DispersionPanel({
             </feMerge>
           </filter>
         </defs>
-        <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+        <image
+          href="/assets/hole-350-aerial.jpg"
+          x="0"
+          y="0"
+          width="644"
+          height="1024"
+          preserveAspectRatio="xMidYMid slice"
+        />
         <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.10" />
 
         <path
@@ -348,8 +385,24 @@ function DispersionPanel({
           strokeOpacity="0.72"
           strokeLinejoin="round"
         />
-        <line x1={tee.x} x2={tee.x} y1={coneTopY} y2={tee.y} stroke="#ffffff" strokeOpacity="0.86" strokeWidth="2.5" />
-        <line x1={tee.x} x2={tee.x} y1={coneTopY} y2={tee.y} stroke="#111827" strokeOpacity="0.16" strokeWidth="6" />
+        <line
+          x1={tee.x}
+          x2={tee.x}
+          y1={coneTopY}
+          y2={tee.y}
+          stroke="#ffffff"
+          strokeOpacity="0.86"
+          strokeWidth="2.5"
+        />
+        <line
+          x1={tee.x}
+          x2={tee.x}
+          y1={coneTopY}
+          y2={tee.y}
+          stroke="#111827"
+          strokeOpacity="0.16"
+          strokeWidth="6"
+        />
 
         {yardMarkers.map((yard) => {
           const y = yFor(yard);
@@ -364,7 +417,13 @@ function DispersionPanel({
                 strokeWidth="2.5"
                 strokeDasharray="10 10"
               />
-              <text x={Math.min(592, tee.x + arcWidth + 12)} y={y + 12} fill="#ffffff" fontSize="20" fontWeight="700">
+              <text
+                x={Math.min(592, tee.x + arcWidth + 12)}
+                y={y + 12}
+                fill="#ffffff"
+                fontSize="20"
+                fontWeight="700"
+              >
                 {yard}
               </text>
             </g>
@@ -419,17 +478,39 @@ function DispersionPanel({
         })}
 
         <circle cx={tee.x} cy={tee.y} r="8" fill="#f8fafc" stroke="#111827" strokeWidth="3" />
-        <text x={tee.x} y={tee.y + 34} fill="#ffffff" fontSize="18" fontWeight="700" textAnchor="middle">
+        <text
+          x={tee.x}
+          y={tee.y + 34}
+          fill="#ffffff"
+          fontSize="18"
+          fontWeight="700"
+          textAnchor="middle"
+        >
           Tee
         </text>
 
         <g>
           {[-40, -20, 0, 20, 40].map((side) => (
-            <text key={side} x={xFor(side)} y="1000" fill="#e5e7eb" fontSize="17" fontWeight="700" textAnchor="middle">
+            <text
+              key={side}
+              x={xFor(side)}
+              y="1000"
+              fill="#e5e7eb"
+              fontSize="17"
+              fontWeight="700"
+              textAnchor="middle"
+            >
               {side === 0 ? "0" : `${Math.abs(side)}${side < 0 ? "L" : "R"}`}
             </text>
           ))}
-          <text x="28" y="935" fill="#e5e7eb" fontSize="17" fontWeight="700" transform="rotate(-90 28 935)">
+          <text
+            x="28"
+            y="935"
+            fill="#e5e7eb"
+            fontSize="17"
+            fontWeight="700"
+            transform="rotate(-90 28 935)"
+          >
             {distanceView === "carry" ? "Carry yd" : "Total yd"}
           </text>
         </g>
@@ -447,7 +528,8 @@ function TrajectoryPanel({
   selectedShotId: string;
   accent: string;
 }) {
-  const maxDistance = Math.max(240, ...shots.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.05;
+  const maxDistance =
+    Math.max(240, ...shots.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.05;
   const maxApex = Math.max(130, ...shots.map((shot) => shot.apexFt ?? 0)) * 1.05;
   const xFor = (distance: number | null) => 55 + ((distance ?? 0) / maxDistance) * 790;
   const yForApex = (apex: number | null) => 300 - ((apex ?? 0) / maxApex) * 245;
@@ -456,8 +538,16 @@ function TrajectoryPanel({
     <div className="apple-panel p-3 shadow-sm">
       <svg viewBox="0 0 900 330" className="h-[320px] w-full">
         <rect x="0" y="0" width="900" height="330" fill="#f7f8fb" />
-        <path d="M40 260 C250 225 520 230 860 250 L860 300 L40 300 Z" fill="#22c55e" opacity="0.38" />
-        <path d="M40 210 C250 180 560 185 860 205 L860 250 C520 230 250 225 40 260 Z" fill="#d1d5db" opacity="0.35" />
+        <path
+          d="M40 260 C250 225 520 230 860 250 L860 300 L40 300 Z"
+          fill="#22c55e"
+          opacity="0.38"
+        />
+        <path
+          d="M40 210 C250 180 560 185 860 205 L860 250 C520 230 250 225 40 260 Z"
+          fill="#d1d5db"
+          opacity="0.35"
+        />
         {[50, 100, 150, 200, 250].map((yard) => (
           <g key={yard}>
             <line x1={xFor(yard)} x2={xFor(yard)} y1="25" y2="300" stroke="#d1d5db" />
@@ -682,7 +772,10 @@ function LoftGraphic({
         transform={`rotate(${loftRotation + 58} ${impact.x} ${impact.y})`}
       />
 
-      <g transform={`rotate(${clubRotation} ${impact.x} ${impact.y})`} filter="url(#clubAssetShadow)">
+      <g
+        transform={`rotate(${clubRotation} ${impact.x} ${impact.y})`}
+        filter="url(#clubAssetShadow)"
+      >
         <SideClub clubType={clubType} impactX={impact.x} impactY={impact.y} accent={accent} />
       </g>
       <GolfBall cx={impact.x + 116} cy={impact.y - 1} r={27} />
@@ -758,7 +851,10 @@ function PathGraphic({
         strokeLinecap="round"
       />
 
-      <g transform={`rotate(${clubRotation} ${center.x} ${center.y})`} filter="url(#topClubAssetShadow)">
+      <g
+        transform={`rotate(${clubRotation} ${center.x} ${center.y})`}
+        filter="url(#topClubAssetShadow)"
+      >
         <TopClub clubType={clubType} centerX={center.x} centerY={center.y} accent={accent} />
       </g>
       <GolfBall cx={392} cy={center.y + 4} r={27} />
@@ -1077,12 +1173,15 @@ function ShotMetricStrip({ shot, accent }: { shot: AnalysisShot | null; accent: 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm font-medium" style={{ color: accent }}>
-        <BarChart3 className="size-4" />
-        #{shot?.shotNumber ?? "-"}
+        <BarChart3 className="size-4" />#{shot?.shotNumber ?? "-"}
       </div>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {metrics.map(([label, value, unit]) => (
-          <div key={label} className="rounded-lg bg-white/90 p-3 text-center ring-1 ring-slate-200/80" style={{ borderColor: accent }}>
+          <div
+            key={label}
+            className="rounded-lg bg-white/90 p-3 text-center ring-1 ring-slate-200/80"
+            style={{ borderColor: accent }}
+          >
             <p className="border-b pb-2 text-sm font-medium" style={{ color: accent }}>
               {label}
             </p>
@@ -1096,7 +1195,7 @@ function ShotMetricStrip({ shot, accent }: { shot: AnalysisShot | null; accent: 
 }
 
 function distanceFor(shot: AnalysisShot, distanceView: DistanceView) {
-  return distanceView === "carry" ? shot.carryYd : shot.totalYd ?? shot.carryYd;
+  return distanceView === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd);
 }
 
 function buildDispersionEllipse(points: Array<{ x: number; y: number }>) {

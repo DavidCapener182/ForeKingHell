@@ -14,6 +14,7 @@ import {
 } from "@/components/mobile-sports";
 import { CourseRecordFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell, StatusPill } from "@/components/premium";
+import { DataFirstFlowPanel, ProofChecklistPanel } from "@/components/product-polish";
 import { CourseLogoArtwork } from "@/components/visuals/course-logo-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,36 @@ export default async function CourseRecordsPage() {
   const [data, featureData] = await Promise.all([getCourseRecordsHubData(), getFeatureIdeasData()]);
   const logoLookupEnabled = isGoogleImageSearchConfigured() || isGooglePlacesConfigured();
   const featured = data.courses.find((course) => course.champion) ?? data.courses[0] ?? null;
+  const proofItems = [
+    {
+      label: "Rapsodo import",
+      detail: "Gold tier when the board can trace shots back to the imported session.",
+      status: "ready" as const,
+      href: "/import",
+    },
+    {
+      label: "Scorecard proof",
+      detail: "Silver or bronze tier when a round card backs up the score.",
+      status: "needed" as const,
+      href: "/rounds",
+    },
+    {
+      label: "Course match",
+      detail: "Course and provider alias must point at the same honours board.",
+      status: "ready" as const,
+      href: "/courses",
+    },
+    {
+      label: "Date and tee",
+      detail: "Attempt date, tee set and record scope stay visible before submission.",
+      status: "needed" as const,
+    },
+    {
+      label: "Manual review",
+      detail: "Manual attempts stay separate until proof is checked.",
+      status: "optional" as const,
+    },
+  ];
 
   return (
     <PageShell size="7xl">
@@ -57,7 +88,9 @@ export default async function CourseRecordsPage() {
           action={
             featured ? (
               <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <Link href={`/courses/${featured.id}/records`} prefetch={false}>Open</Link>
+                <Link href={`/courses/${featured.id}/records`} prefetch={false}>
+                  Open
+                </Link>
               </Button>
             ) : null
           }
@@ -73,7 +106,11 @@ export default async function CourseRecordsPage() {
             }
             href={`/courses/${featured.id}/records`}
             actionLabel="Challenge"
-            meta={<span>{featured.recordCount} boards · {featured.liveAttemptCount} live attempts</span>}
+            meta={
+              <span>
+                {featured.recordCount} boards · {featured.liveAttemptCount} live attempts
+              </span>
+            }
             media={
               <CourseLogoArtwork
                 courseName={featured.name}
@@ -87,6 +124,50 @@ export default async function CourseRecordsPage() {
             }
           />
         ) : null}
+        <ProofChecklistPanel
+          title="Record proof tiers"
+          description="Gold, Silver, Bronze and Manual proof stay visible before any course-record attempt."
+          items={proofItems}
+          actionHref="/rounds"
+          actionLabel="Review proof"
+        />
+        <DataFirstFlowPanel
+          title="Set record goal"
+          description="Turn the honours board into a target, notification and friend benchmark."
+          actionHref={featured ? `/courses/${featured.id}/records` : "/courses"}
+          actionLabel="Set goal"
+          steps={[
+            {
+              title: "Goal score",
+              detail: featured?.champion
+                ? `Beat ${featured.champion.scoreLabel}.`
+                : "Set the first score.",
+              status: "ready",
+            },
+            {
+              title: "Notify me",
+              detail: "Alert when the board is beaten.",
+              status: "optional",
+            },
+            {
+              title: "Friend target",
+              detail: "Pick a friend score to chase.",
+              status: "optional",
+            },
+            {
+              title: "Submit attempt",
+              detail: "Use proof before the score counts.",
+              href: "/rounds",
+              status: "ready",
+            },
+            {
+              title: "Review board",
+              detail: "Keep manual and verified scores separate.",
+              href: featured ? `/courses/${featured.id}/records` : "/course-records",
+              status: "ready",
+            },
+          ]}
+        />
         <NativeListSection title="Honours boards">
           {data.courses.map((course) => (
             <CourseRecordCard
@@ -124,97 +205,158 @@ export default async function CourseRecordsPage() {
       </div>
 
       <div className="hidden sm:contents">
-      <header className="premium-hero overflow-hidden">
-        <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-          <div>
-            <StatusPill tone="amber">Course records</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">Become the Course Champion</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Set the record, defend it, and keep verified boards separate from manual scorecards.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Badge variant="secondary">{integerFormatter.format(data.totalRecords)} boards</Badge>
-              <Badge variant="outline">{integerFormatter.format(data.verifiedChampions)} verified champions</Badge>
-              <Badge variant="outline">Gold · Silver · Bronze proof</Badge>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-[#F5F6F4] p-3">
-            <p className="text-sm font-semibold">Today’s board</p>
-            {featured ? (
-              <Link href={`/courses/${featured.id}/records`} prefetch={false} className="mt-3 block">
-                <CourseLogoArtwork
-                  courseName={featured.name}
-                  country={featured.country}
-                  alt=""
-                  logoLookupEnabled={logoLookupEnabled}
-                  className="mb-3 block h-24 min-h-0 rounded-lg"
-                  sizes="(min-width: 1024px) 320px, 100vw"
-                />
-                <p className="font-semibold tracking-normal">{featured.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {featured.champion
-                    ? `${featured.champion.displayName} leads with ${featured.champion.scoreLabel}`
-                    : "No champion yet. Set the first verified mark."}
-                </p>
-              </Link>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Add or seed a course to open record boards.</p>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <CourseRecordFeaturePanel data={featureData} />
-
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {data.courses.map((course) => (
-          <Link
-            key={course.id}
-            href={`/courses/${course.id}/records`}
-            prefetch={false}
-            className="premium-card p-4 transition hover:border-emerald-300"
-          >
-            <CourseLogoArtwork
-              courseName={course.name}
-              country={course.country}
-              alt=""
-              logoLookupEnabled={logoLookupEnabled}
-              className="mb-3 block h-24 min-h-0 rounded-lg"
-              sizes="(min-width: 1024px) 33vw, 90vw"
-            />
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold tracking-normal">{course.name}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{course.country ?? "Course board"}</p>
+        <header className="premium-hero overflow-hidden">
+          <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+            <div>
+              <StatusPill tone="amber">Course records</StatusPill>
+              <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">
+                Become the Course Champion
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Set the record, defend it, and keep verified boards separate from manual scorecards.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  {integerFormatter.format(data.totalRecords)} boards
+                </Badge>
+                <Badge variant="outline">
+                  {integerFormatter.format(data.verifiedChampions)} verified champions
+                </Badge>
+                <Badge variant="outline">Gold · Silver · Bronze proof</Badge>
               </div>
-              <Badge variant="outline">{course.recordCount}</Badge>
             </div>
-            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-3 text-sm">
-              {course.champion ? (
-                <>
-                  <p className="flex items-center gap-2 font-medium">
-                    <Medal className="size-4 text-amber-600" />
-                    {course.champion.displayName}
+            <div className="rounded-lg border bg-[#F5F6F4] p-3">
+              <p className="text-sm font-semibold">Today’s board</p>
+              {featured ? (
+                <Link
+                  href={`/courses/${featured.id}/records`}
+                  prefetch={false}
+                  className="mt-3 block"
+                >
+                  <CourseLogoArtwork
+                    courseName={featured.name}
+                    country={featured.country}
+                    alt=""
+                    logoLookupEnabled={logoLookupEnabled}
+                    className="mb-3 block h-24 min-h-0 rounded-lg"
+                    sizes="(min-width: 1024px) 320px, 100vw"
+                  />
+                  <p className="font-semibold tracking-normal">{featured.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {featured.champion
+                      ? `${featured.champion.displayName} leads with ${featured.champion.scoreLabel}`
+                      : "No champion yet. Set the first verified mark."}
                   </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {course.champion.scoreLabel} · {verificationTierLabel(course.champion.verificationTier)}
-                  </p>
-                </>
+                </Link>
               ) : (
-                <p className="flex items-center gap-2 text-muted-foreground">
-                  <ShieldCheck className="size-4" />
-                  No verified champion yet
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Add or seed a course to open record boards.
                 </p>
               )}
             </div>
-          </Link>
-        ))}
-        {data.courses.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-white p-6 text-sm text-muted-foreground">
-            No courses are available yet. Seed known courses from the Courses page.
           </div>
-        ) : null}
-      </section>
+        </header>
+
+        <ProofChecklistPanel
+          title="Record proof tiers"
+          description="Gold, Silver, Bronze and Manual proof stay visible before any course-record attempt."
+          items={proofItems}
+          actionHref="/rounds"
+          actionLabel="Review proof"
+        />
+
+        <DataFirstFlowPanel
+          title="Set record goal"
+          description="Turn the honours board into a target, notification and friend benchmark."
+          actionHref={featured ? `/courses/${featured.id}/records` : "/courses"}
+          actionLabel="Set goal"
+          steps={[
+            {
+              title: "Goal score",
+              detail: featured?.champion
+                ? `Beat ${featured.champion.scoreLabel}.`
+                : "Set the first score.",
+              status: "ready",
+            },
+            {
+              title: "Notify me",
+              detail: "Alert when the board is beaten.",
+              status: "optional",
+            },
+            {
+              title: "Friend target",
+              detail: "Pick a friend score to chase.",
+              status: "optional",
+            },
+            {
+              title: "Submit attempt",
+              detail: "Use proof before the score counts.",
+              href: "/rounds",
+              status: "ready",
+            },
+            {
+              title: "Review board",
+              detail: "Keep manual and verified scores separate.",
+              href: featured ? `/courses/${featured.id}/records` : "/course-records",
+              status: "ready",
+            },
+          ]}
+        />
+
+        <CourseRecordFeaturePanel data={featureData} />
+
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {data.courses.map((course) => (
+            <Link
+              key={course.id}
+              href={`/courses/${course.id}/records`}
+              prefetch={false}
+              className="premium-card p-4 transition hover:border-emerald-300"
+            >
+              <CourseLogoArtwork
+                courseName={course.name}
+                country={course.country}
+                alt=""
+                logoLookupEnabled={logoLookupEnabled}
+                className="mb-3 block h-24 min-h-0 rounded-lg"
+                sizes="(min-width: 1024px) 33vw, 90vw"
+              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold tracking-normal">{course.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {course.country ?? "Course board"}
+                  </p>
+                </div>
+                <Badge variant="outline">{course.recordCount}</Badge>
+              </div>
+              <div className="mt-3 rounded-lg bg-[#F5F6F4] p-3 text-sm">
+                {course.champion ? (
+                  <>
+                    <p className="flex items-center gap-2 font-medium">
+                      <Medal className="size-4 text-amber-600" />
+                      {course.champion.displayName}
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      {course.champion.scoreLabel} ·{" "}
+                      {verificationTierLabel(course.champion.verificationTier)}
+                    </p>
+                  </>
+                ) : (
+                  <p className="flex items-center gap-2 text-muted-foreground">
+                    <ShieldCheck className="size-4" />
+                    No verified champion yet
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+          {data.courses.length === 0 ? (
+            <div className="rounded-xl border border-dashed bg-white p-6 text-sm text-muted-foreground">
+              No courses are available yet. Seed known courses from the Courses page.
+            </div>
+          ) : null}
+        </section>
       </div>
     </PageShell>
   );

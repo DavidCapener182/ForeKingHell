@@ -25,7 +25,11 @@ export async function reportSocialTargetAction(formData: FormData) {
 }
 
 function parseSummaryType(value: string | null) {
-  if (value === "friend_comparison" || value === "challenge_coach" || value === "tournament_recap") {
+  if (
+    value === "friend_comparison" ||
+    value === "challenge_coach" ||
+    value === "tournament_recap"
+  ) {
     return value;
   }
 

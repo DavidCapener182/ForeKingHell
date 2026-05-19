@@ -8,7 +8,12 @@ describe("calculateShortGameTouchSummary", () => {
       [
         { carryYd: 18, courseHoleNumber: 1, shotCategory: "chip" },
         { carryYd: 42, courseHoleNumber: 2, shotCategory: "pitch" },
-        { carryYd: 86, courseHoleNumber: null, sessionType: "simulated_course", shotCategory: "full" },
+        {
+          carryYd: 86,
+          courseHoleNumber: null,
+          sessionType: "simulated_course",
+          shotCategory: "full",
+        },
         { carryYd: 118, courseHoleNumber: 4, shotCategory: "approach" },
         { carryYd: 94, courseHoleNumber: null, shotCategory: "full" },
       ],

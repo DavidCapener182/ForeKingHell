@@ -1,7 +1,12 @@
 import { formatClubType, isShortGameTouchClubType } from "@/lib/club-format";
 import type { StockYardage } from "@/lib/stock-yardage";
 
-export type ClubDecisionLabel = "Trust" | "Developing" | "Needs calibration" | "Do not trust yet" | "Touch shots only";
+export type ClubDecisionLabel =
+  | "Trust"
+  | "Developing"
+  | "Needs calibration"
+  | "Do not trust yet"
+  | "Touch shots only";
 export type CourseDecisionTone = "green" | "sky" | "pink" | "amber" | "slate";
 
 export type CourseDecisionClub = {
@@ -9,7 +14,10 @@ export type CourseDecisionClub = {
   type: string;
   brandModel?: string | null;
   isShortGameTouch?: boolean;
-  stock: Pick<StockYardage, "carryMedianYd" | "recommendedPlayNumberYd" | "confidenceScore" | "label">;
+  stock: Pick<
+    StockYardage,
+    "carryMedianYd" | "recommendedPlayNumberYd" | "confidenceScore" | "label"
+  >;
   touch?: {
     sampleSize: number;
     carryMedianYd: number | null;
@@ -112,7 +120,8 @@ function buildTwoHundredOutAdvice(clubs: TrustedClub[]): CourseDecisionAdvice {
       key: "200-out",
       label: "200 yd out",
       value: "No trusted non-driver",
-      detail: "Build a fairway wood, hybrid, or long-iron sample before making this a pressure number.",
+      detail:
+        "Build a fairway wood, hybrid, or long-iron sample before making this a pressure number.",
       tone: "amber",
     };
   }
@@ -165,7 +174,9 @@ function buildOneFiftyApproachAdvice(clubs: TrustedClub[]): CourseDecisionAdvice
   }
 
   const saferLongerClub = irons
-    .filter((candidate) => candidate.playNumberYd > club.playNumberYd && candidate.playNumberYd <= 175)
+    .filter(
+      (candidate) => candidate.playNumberYd > club.playNumberYd && candidate.playNumberYd <= 175,
+    )
     .sort((left, right) => left.playNumberYd - right.playNumberYd)[0];
   const dangerDetail =
     club.playNumberYd < 147 && saferLongerClub
@@ -182,10 +193,18 @@ function buildOneFiftyApproachAdvice(clubs: TrustedClub[]): CourseDecisionAdvice
   };
 }
 
-function buildInsideHundredAdvice(clubs: CourseDecisionClub[], trustedStockClubs: TrustedClub[]): CourseDecisionAdvice {
+function buildInsideHundredAdvice(
+  clubs: CourseDecisionClub[],
+  trustedStockClubs: TrustedClub[],
+): CourseDecisionAdvice {
   const fullWedge = trustedStockClubs
-    .filter((club) => isWedgeType(club.type) && !isShortGameTouchClubType(club.type) && club.playNumberYd <= 115)
-    .sort((left, right) => Math.abs(left.playNumberYd - 100) - Math.abs(right.playNumberYd - 100))[0];
+    .filter(
+      (club) =>
+        isWedgeType(club.type) && !isShortGameTouchClubType(club.type) && club.playNumberYd <= 115,
+    )
+    .sort(
+      (left, right) => Math.abs(left.playNumberYd - 100) - Math.abs(right.playNumberYd - 100),
+    )[0];
 
   if (fullWedge) {
     return {
@@ -223,7 +242,9 @@ function nearestClub(clubs: TrustedClub[], targetYd: number, maxGapYd: number) {
   return clubs
     .map((club) => ({ club, gap: Math.abs(club.playNumberYd - targetYd) }))
     .filter((entry) => entry.gap <= maxGapYd)
-    .sort((left, right) => left.gap - right.gap || right.club.playNumberYd - left.club.playNumberYd)[0]?.club;
+    .sort(
+      (left, right) => left.gap - right.gap || right.club.playNumberYd - left.club.playNumberYd,
+    )[0]?.club;
 }
 
 function isPositionClub(club: TrustedClub) {

@@ -51,12 +51,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function RoundShotMap({
-  holes,
-  shots,
-  courseName,
-  shotMode = "actual",
-}: RoundShotMapProps) {
+export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: RoundShotMapProps) {
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
@@ -68,7 +63,8 @@ export function RoundShotMap({
   const [showAllHoleShots, setShowAllHoleShots] = useState(false);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(() => holes[0]?.holeNumber ?? 1);
-  const selectedHole = holes.find((hole) => hole.holeNumber === selectedHoleNumber) ?? holes[0] ?? null;
+  const selectedHole =
+    holes.find((hole) => hole.holeNumber === selectedHoleNumber) ?? holes[0] ?? null;
   const selectedHoleIndex = holes.findIndex((hole) => hole.holeNumber === selectedHole?.holeNumber);
   const shotsByHole = useMemo(() => groupShotsByHole(shots), [shots]);
   const selectedShots = useMemo(() => {
@@ -287,7 +283,9 @@ export function RoundShotMap({
 
       const selectedBounds = L.latLngBounds([
         ...(showAllHoleShots ? holes.flatMap((hole) => hole.geometry) : selectedHole.geometry),
-        ...(showAllHoleShots ? allProjectedShots : projectedSelectedShots).map((projected) => projected.end),
+        ...(showAllHoleShots ? allProjectedShots : projectedSelectedShots).map(
+          (projected) => projected.end,
+        ),
       ]);
       mapRef.current.invalidateSize();
       mapRef.current.fitBounds(selectedBounds.pad(showAllHoleShots ? 0.12 : 0.45), {
@@ -384,7 +382,10 @@ export function RoundShotMap({
             </div>
             <div className="grid grid-cols-3 gap-2">
               <MapMetric label="Par" value={selectedHole.par.toString()} />
-              <MapMetric label={isEstimated ? "Est shots" : "Shots"} value={selectedShots.length.toString()} />
+              <MapMetric
+                label={isEstimated ? "Est shots" : "Shots"}
+                value={selectedShots.length.toString()}
+              />
               <MapMetric label="Yards" value={selectedHole.yards.toString()} />
               <MapMetric label="Score" value={selectedHole.score?.toString() ?? "--"} />
               <MapMetric label="Putts" value={selectedHole.putts?.toString() ?? "--"} />
@@ -425,10 +426,12 @@ export function RoundShotMap({
               >
                 <div>
                   <p className="text-sm font-medium">
-                    {shot.holeShotNumber ? `#${shot.holeShotNumber}` : "Shot"} {formatClubType(shot.clubType)}
+                    {shot.holeShotNumber ? `#${shot.holeShotNumber}` : "Shot"}{" "}
+                    {formatClubType(shot.clubType)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {isEstimated ? "Estimated" : "Carry"} {formatMetric(shot.carryYd)} yd - Total {formatMetric(shot.totalYd)} yd
+                    {isEstimated ? "Estimated" : "Carry"} {formatMetric(shot.carryYd)} yd - Total{" "}
+                    {formatMetric(shot.totalYd)} yd
                   </p>
                 </div>
                 <span className="text-sm font-semibold">{formatSide(shot.sideCarryYd)}</span>
@@ -473,7 +476,9 @@ export function RoundShotMap({
           />
           <div className="absolute left-3 right-3 top-3 z-20 flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
             <div className="w-fit rounded-lg bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
-              {selectedHole ? `Hole ${selectedHole.holeNumber} - ${selectedHole.yards} yd` : "Hole map"}
+              {selectedHole
+                ? `Hole ${selectedHole.holeNumber} - ${selectedHole.yards} yd`
+                : "Hole map"}
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
@@ -481,7 +486,10 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={distanceMode === "total" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", distanceMode === "total" && "bg-[#0B7A3B] text-white")}
+                  className={cn(
+                    "h-8 rounded-[6px]",
+                    distanceMode === "total" && "bg-[#0B7A3B] text-white",
+                  )}
                   onClick={() => setDistanceMode("total")}
                 >
                   Total
@@ -490,7 +498,10 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={distanceMode === "carry" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", distanceMode === "carry" && "bg-[#0B7A3B] text-white")}
+                  className={cn(
+                    "h-8 rounded-[6px]",
+                    distanceMode === "carry" && "bg-[#0B7A3B] text-white",
+                  )}
                   onClick={() => setDistanceMode("carry")}
                 >
                   Carry
@@ -525,7 +536,10 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={mapMode === "course" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", mapMode === "course" && "bg-[#0B7A3B] text-white")}
+                  className={cn(
+                    "h-8 rounded-[6px]",
+                    mapMode === "course" && "bg-[#0B7A3B] text-white",
+                  )}
                   onClick={() => setMapMode("course")}
                 >
                   Course
@@ -534,7 +548,10 @@ export function RoundShotMap({
                   type="button"
                   size="sm"
                   variant={mapMode === "satellite" ? "default" : "ghost"}
-                  className={cn("h-8 rounded-[6px]", mapMode === "satellite" && "bg-[#0B7A3B] text-white")}
+                  className={cn(
+                    "h-8 rounded-[6px]",
+                    mapMode === "satellite" && "bg-[#0B7A3B] text-white",
+                  )}
                   onClick={() => setMapMode("satellite")}
                 >
                   Satellite
@@ -547,9 +564,12 @@ export function RoundShotMap({
           <div className="apple-panel-strong p-3 text-[#111827]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Selected shot</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Selected shot
+                </p>
                 <p className="mt-1 text-base font-semibold">
-                  #{selectedShot.holeShotNumber ?? selectedShot.shotNumber ?? "--"} {formatClubType(selectedShot.clubType)}
+                  #{selectedShot.holeShotNumber ?? selectedShot.shotNumber ?? "--"}{" "}
+                  {formatClubType(selectedShot.clubType)}
                 </p>
               </div>
               <Badge variant="secondary">Hole {selectedShot.holeNumber ?? "--"}</Badge>
@@ -560,7 +580,10 @@ export function RoundShotMap({
               <MapMetric label="Side" value={formatSide(selectedShot.sideCarryYd)} />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              <MapMetric label="Remaining" value={`${formatMetric(selectedShot.distanceRemainingYd)} yd`} />
+              <MapMetric
+                label="Remaining"
+                value={`${formatMetric(selectedShot.distanceRemainingYd)} yd`}
+              />
               <MapMetric label="View" value={distanceMode === "carry" ? "Carry" : "Total"} />
             </div>
           </div>
@@ -600,10 +623,23 @@ function HoleVectorFallback({
   const centerline = hole.geometry.map((point) => toSvgPoint(point, bounds));
 
   return (
-    <div className={cn("absolute inset-0 z-0 bg-[#101827] transition-opacity duration-300", className)}>
-      <svg viewBox="0 0 800 520" className="h-full w-full" role="img" aria-label={`Hole ${hole.holeNumber} shot overlay`}>
+    <div
+      className={cn("absolute inset-0 z-0 bg-[#101827] transition-opacity duration-300", className)}
+    >
+      <svg
+        viewBox="0 0 800 520"
+        className="h-full w-full"
+        role="img"
+        aria-label={`Hole ${hole.holeNumber} shot overlay`}
+      >
         <defs>
-          <pattern id={`mow-${hole.holeNumber}`} patternUnits="userSpaceOnUse" width="28" height="28" patternTransform="rotate(28)">
+          <pattern
+            id={`mow-${hole.holeNumber}`}
+            patternUnits="userSpaceOnUse"
+            width="28"
+            height="28"
+            patternTransform="rotate(28)"
+          >
             <rect width="28" height="28" fill="#214f34" />
             <rect width="14" height="28" fill="#2d6843" opacity="0.72" />
           </pattern>
@@ -617,7 +653,9 @@ function HoleVectorFallback({
         </defs>
         <rect width="800" height="520" fill="#101827" />
         {renderedHoles.map((renderedHole) => {
-          const renderedCenterline = renderedHole.geometry.map((point) => toSvgPoint(point, bounds));
+          const renderedCenterline = renderedHole.geometry.map((point) =>
+            toSvgPoint(point, bounds),
+          );
           const isSelectedHole = renderedHole.holeNumber === hole.holeNumber;
 
           return (
@@ -664,7 +702,14 @@ function HoleVectorFallback({
         })}
         {yardageRings(centerline).map((ring, index) => (
           <g key={`${ring.x}-${ring.y}`}>
-            <line x1={ring.x - 50} x2={ring.x + 50} y1={ring.y} y2={ring.y} stroke="#f8fafc" strokeOpacity="0.45" />
+            <line
+              x1={ring.x - 50}
+              x2={ring.x + 50}
+              y1={ring.y}
+              y2={ring.y}
+              stroke="#f8fafc"
+              strokeOpacity="0.45"
+            />
             <text x={ring.x + 58} y={ring.y + 4} fill="#e5e7eb" fontSize="14" fontWeight="600">
               {Math.round(((index + 1) / 4) * hole.yards)}
             </text>
@@ -723,7 +768,14 @@ function HoleVectorFallback({
           );
         })}
         {centerline[0] ? (
-          <circle cx={centerline[0].x} cy={centerline[0].y} r="12" fill="#f8fafc" stroke="#111827" strokeWidth="4" />
+          <circle
+            cx={centerline[0].x}
+            cy={centerline[0].y}
+            r="12"
+            fill="#f8fafc"
+            stroke="#111827"
+            strokeWidth="4"
+          />
         ) : null}
         {centerline.at(-1) ? (
           <circle
@@ -833,7 +885,11 @@ function groupShotsByHole(shots: RoundMapShot[]) {
   return shotsByHole;
 }
 
-function projectHoleShots(hole: RoundMapHole, shots: RoundMapShot[], distanceMode: DistanceMode = "total") {
+function projectHoleShots(
+  hole: RoundMapHole,
+  shots: RoundMapShot[],
+  distanceMode: DistanceMode = "total",
+) {
   const projectedShots: ProjectedShot[] = [];
   let previousEnd = hole.geometry[0];
   let fallbackProgressYd = 0;
@@ -905,11 +961,12 @@ function geometryLengthMeters(geometry: Array<[number, number]>) {
   return total;
 }
 
-function interpolatePoint(start: [number, number], end: [number, number], ratio: number): [number, number] {
-  return [
-    start[0] + (end[0] - start[0]) * ratio,
-    start[1] + (end[1] - start[1]) * ratio,
-  ];
+function interpolatePoint(
+  start: [number, number],
+  end: [number, number],
+  ratio: number,
+): [number, number] {
+  return [start[0] + (end[0] - start[0]) * ratio, start[1] + (end[1] - start[1]) * ratio];
 }
 
 function distanceMeters(start: [number, number], end: [number, number]) {
@@ -936,7 +993,11 @@ function bearingDegrees(start: [number, number], end: [number, number]) {
   return (toDegrees(Math.atan2(y, x)) + 360) % 360;
 }
 
-function destinationPoint(start: [number, number], bearingDeg: number, distanceM: number): [number, number] {
+function destinationPoint(
+  start: [number, number],
+  bearingDeg: number,
+  distanceM: number,
+): [number, number] {
   const angularDistance = distanceM / EARTH_RADIUS_METERS;
   const bearing = toRadians(bearingDeg);
   const startLat = toRadians(start[0]);

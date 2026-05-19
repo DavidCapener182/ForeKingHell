@@ -20,21 +20,26 @@ describe("achievement notification cookie helpers", () => {
       },
     ];
 
-    expect(decodeAchievementUnlockNotifications(encodeAchievementUnlockNotifications(notifications))).toEqual(
-      notifications,
-    );
+    expect(
+      decodeAchievementUnlockNotifications(encodeAchievementUnlockNotifications(notifications)),
+    ).toEqual(notifications);
   });
 
   it("drops malformed and excess notifications", () => {
-    const notifications = Array.from({ length: MAX_FLASH_ACHIEVEMENT_NOTIFICATIONS + 2 }, (_, index) => ({
-      achievementId: `achievement_${index}`,
-      name: `Achievement ${index}`,
-      description: "Unlocked from test data.",
-      tier: "silver",
-      xpAwarded: 100,
-      unlockedAt: `2026-05-11T10:${String(index).padStart(2, "0")}:00.000Z`,
-    }));
-    const encoded = encodeURIComponent(JSON.stringify([...notifications, { achievementId: "bad" }]));
+    const notifications = Array.from(
+      { length: MAX_FLASH_ACHIEVEMENT_NOTIFICATIONS + 2 },
+      (_, index) => ({
+        achievementId: `achievement_${index}`,
+        name: `Achievement ${index}`,
+        description: "Unlocked from test data.",
+        tier: "silver",
+        xpAwarded: 100,
+        unlockedAt: `2026-05-11T10:${String(index).padStart(2, "0")}:00.000Z`,
+      }),
+    );
+    const encoded = encodeURIComponent(
+      JSON.stringify([...notifications, { achievementId: "bad" }]),
+    );
 
     const decoded = decodeAchievementUnlockNotifications(encoded);
 

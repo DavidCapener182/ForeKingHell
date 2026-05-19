@@ -19,7 +19,11 @@ import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import { evaluateCoachDrillAchievementsForUser } from "@/lib/coach-drill-awards";
 import { isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
-import { canonicalKnownCourseNameForSession, ensureCourseForSession, type CourseSessionLink } from "@/lib/courses";
+import {
+  canonicalKnownCourseNameForSession,
+  ensureCourseForSession,
+  type CourseSessionLink,
+} from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordImportFeedItems } from "@/lib/social";
 import {
@@ -153,9 +157,13 @@ export async function saveRapsodoImport(
       };
     }
 
-    const importedShots = applyRapsodoShotOverridesForImport(parsed.shots, validatedInput.shotOverrides);
+    const importedShots = applyRapsodoShotOverridesForImport(
+      parsed.shots,
+      validatedInput.shotOverrides,
+    );
     const coursePlan = buildCoursePlan(validatedInput, importedShots);
-    const courseName = canonicalKnownCourseNameForSession(validatedInput.courseName) ?? validatedInput.courseName;
+    const courseName =
+      canonicalKnownCourseNameForSession(validatedInput.courseName) ?? validatedInput.courseName;
     const courseLink =
       validatedInput.sessionType === "simulated_course"
         ? await ensureCourseForSession({
@@ -369,7 +377,9 @@ async function persistImport(
         teeSetId: input.courseLink.teeSetId,
         notes: input.notes?.trim() || null,
         courseName: input.courseName?.trim() || null,
-        scorecardJson: input.coursePlan ? buildScorecardSnapshot(input.coursePlan, input.courseHoleScoring) : null,
+        scorecardJson: input.coursePlan
+          ? buildScorecardSnapshot(input.coursePlan, input.courseHoleScoring)
+          : null,
         fileName: input.fileName,
         fileSizeBytes: input.fileSizeBytes,
         rawCsvHash,
@@ -487,12 +497,14 @@ async function persistImport(
           spinRate: shot.spinRate,
           spinAxis: shot.spinAxis,
           shotShape: shot.shotShape,
-          shotCategory: courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
+          shotCategory:
+            courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
           courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
           courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
           courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
           courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
-          distanceRemainingYd: courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
+          distanceRemainingYd:
+            courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
           qualityTag: shot.qualityTag,
           clubDataEstType: shot.clubDataEstType,
           sourceRawJson: shot.sourceRawJson,
@@ -526,7 +538,8 @@ async function persistImport(
         courseShots: input.coursePlan.shots,
         holeScoring: input.courseHoleScoring,
         shotIdByRowNumber,
-        baselineBuckets: baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+        baselineBuckets:
+          baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
       });
 
       if (strokesGainedEvents.length > 0) {
@@ -537,7 +550,10 @@ async function persistImport(
     for (const [clubKey, clubId] of clubIdByKey) {
       const firstShotForClub = input.shots.find((shot) => shot.clubKey === clubKey);
 
-      if (!isTrackedClubType(firstShotForClub?.clubType) || isShortGameTouchClubType(firstShotForClub?.clubType)) {
+      if (
+        !isTrackedClubType(firstShotForClub?.clubType) ||
+        isShortGameTouchClubType(firstShotForClub?.clubType)
+      ) {
         continue;
       }
 
@@ -582,7 +598,9 @@ async function persistImport(
     return {
       sessionId: session.id,
       shotCount: input.shots.length,
-      clubCount: new Set(input.shots.filter((shot) => isTrackedClubType(shot.clubType)).map((shot) => shot.clubKey)).size,
+      clubCount: new Set(
+        input.shots.filter((shot) => isTrackedClubType(shot.clubType)).map((shot) => shot.clubKey),
+      ).size,
       rawRowCount: input.rawRows.length,
       skipped: false,
       longestShotNotifications,
@@ -635,7 +653,11 @@ export function buildLongestShotNotifications({
 
       const previousDistance = previousLongestByClubId.get(clubId);
 
-      if (previousDistance === undefined || previousDistance === null || shotDistance <= previousDistance) {
+      if (
+        previousDistance === undefined ||
+        previousDistance === null ||
+        shotDistance <= previousDistance
+      ) {
         return null;
       }
 
@@ -644,7 +666,8 @@ export function buildLongestShotNotifications({
         clubId,
         clubType: shot.clubType,
         clubLabel: shot.clubLabel,
-        brandModel: [shot.clubBrand, shot.clubModel].filter(Boolean).join(" ") || "Unspecified model",
+        brandModel:
+          [shot.clubBrand, shot.clubModel].filter(Boolean).join(" ") || "Unspecified model",
         fileName,
         shotNumber: shot.shotNumber,
         shotDistanceYd: roundOne(shotDistance),
@@ -712,7 +735,9 @@ function buildCoursePlan(
   const scorecard = parseScorecardText(input.courseScorecardText);
 
   if (scorecard.holes.length === 0) {
-    throw new Error("Add a scorecard with hole, par, and yardage rows before saving a simulated course.");
+    throw new Error(
+      "Add a scorecard with hole, par, and yardage rows before saving a simulated course.",
+    );
   }
 
   const coursePlan =
@@ -731,7 +756,9 @@ function sanitizeColumnMapping(input: SaveRapsodoImportInput["columnMapping"]) {
 
   const sanitized: RapsodoColumnMapping = {};
 
-  for (const [field, header] of Object.entries(input) as Array<[keyof RapsodoColumnMapping, string | undefined]>) {
+  for (const [field, header] of Object.entries(input) as Array<
+    [keyof RapsodoColumnMapping, string | undefined]
+  >) {
     const value = header?.trim();
 
     if (value) {
@@ -941,7 +968,8 @@ function buildScorecardSnapshot(
     const csvShotCount = hole.shots.length;
     const penalties = review?.penalties ?? 0;
     const score = review?.score ?? null;
-    const putts = review?.putts ?? (score === null ? null : Math.max(0, score - csvShotCount - penalties));
+    const putts =
+      review?.putts ?? (score === null ? null : Math.max(0, score - csvShotCount - penalties));
 
     return {
       holeNumber: hole.holeNumber,

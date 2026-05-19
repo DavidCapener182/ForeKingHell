@@ -23,10 +23,7 @@ type InvitationPageProps = {
 
 export default async function InvitationPage({ params }: InvitationPageProps) {
   const { token } = await params;
-  const [invitation, currentUser] = await Promise.all([
-    getInvitation(token),
-    getCurrentUser(),
-  ]);
+  const [invitation, currentUser] = await Promise.all([getInvitation(token), getCurrentUser()]);
 
   if (!invitation || invitation.status !== "pending" || invitation.expiresAt <= new Date()) {
     notFound();
@@ -46,7 +43,9 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
         <Alert>
           <ShieldCheck className="size-4" />
           <AlertTitle>Sign in required</AlertTitle>
-          <AlertDescription>Sign in with {invitation.invitedEmail} before accepting this invite.</AlertDescription>
+          <AlertDescription>
+            Sign in with {invitation.invitedEmail} before accepting this invite.
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -55,7 +54,8 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
           <ShieldCheck className="size-4" />
           <AlertTitle>Wrong signed-in account</AlertTitle>
           <AlertDescription>
-            This invite is for {invitation.invitedEmail}; you are signed in as {currentUser.email ?? currentUser.id}.
+            This invite is for {invitation.invitedEmail}; you are signed in as{" "}
+            {currentUser.email ?? currentUser.id}.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -69,7 +69,11 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
           {currentUser ? (
             <form action={acceptInvitationAction} className="grid gap-4">
               <input type="hidden" name="token" value={token} />
-              <Button type="submit" disabled={!emailMatches} className="w-full rounded-xl bg-[#111827] text-white sm:w-fit">
+              <Button
+                type="submit"
+                disabled={!emailMatches}
+                className="w-full rounded-xl bg-[#111827] text-white sm:w-fit"
+              >
                 <Check className="size-4" />
                 Accept invite
               </Button>

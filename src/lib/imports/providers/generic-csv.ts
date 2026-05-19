@@ -21,9 +21,14 @@ export function detectGenericLaunchMonitorCsv(input: ProviderInput, config: Gene
   return config.headerHints.some((hint) => normalisedHeaders.includes(hint));
 }
 
-export function parseGenericLaunchMonitorCsv(input: ProviderInput, config: GenericProviderConfig): NormalizedSession {
+export function parseGenericLaunchMonitorCsv(
+  input: ProviderInput,
+  config: GenericProviderConfig,
+): NormalizedSession {
   const rows = parseDelimitedRows(input.text);
-  const headerIndex = rows.findIndex((row) => row.map(normalizeHeader).some((header) => config.metricAliases[header]));
+  const headerIndex = rows.findIndex((row) =>
+    row.map(normalizeHeader).some((header) => config.metricAliases[header]),
+  );
   const headers = headerIndex >= 0 ? rows[headerIndex] : [];
   const normalisedHeaders = headers.map(normalizeHeader);
   const dataRows = headerIndex >= 0 ? rows.slice(headerIndex + 1) : [];
@@ -36,7 +41,9 @@ export function parseGenericLaunchMonitorCsv(input: ProviderInput, config: Gener
   const shots = dataRows
     .filter((row) => row.some(Boolean))
     .map((row, index) => {
-      const raw = Object.fromEntries(headers.map((header, cellIndex) => [header, row[cellIndex] ?? ""]));
+      const raw = Object.fromEntries(
+        headers.map((header, cellIndex) => [header, row[cellIndex] ?? ""]),
+      );
       const metrics: NormalizedSession["shots"][number]["metrics"] = {};
 
       normalisedHeaders.forEach((header, cellIndex) => {
@@ -51,12 +58,15 @@ export function parseGenericLaunchMonitorCsv(input: ProviderInput, config: Gener
       const clubRaw = cellByHeader(row, normalisedHeaders, ["club", "clubtype", "clubname"]);
 
       return {
-        shotNumber: numberFromCell(cellByHeader(row, normalisedHeaders, ["shot", "shotnumber", "shotno"])) ?? index + 1,
+        shotNumber:
+          numberFromCell(cellByHeader(row, normalisedHeaders, ["shot", "shotnumber", "shotno"])) ??
+          index + 1,
         clubRaw,
         clubType: normaliseClub(clubRaw),
         metrics,
         raw,
-        warnings: Object.keys(metrics).length === 0 ? ["No mapped metrics found for this row."] : [],
+        warnings:
+          Object.keys(metrics).length === 0 ? ["No mapped metrics found for this row."] : [],
       };
     });
 
@@ -72,7 +82,7 @@ export function parseGenericLaunchMonitorCsv(input: ProviderInput, config: Gener
 
 function cellByHeader(row: string[], headers: string[], candidates: string[]) {
   const index = headers.findIndex((header) => candidates.includes(header));
-  return index >= 0 ? row[index] ?? null : null;
+  return index >= 0 ? (row[index] ?? null) : null;
 }
 
 function normaliseClub(value: string | null) {

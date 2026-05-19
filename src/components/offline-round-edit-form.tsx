@@ -73,13 +73,19 @@ export function OfflineRoundEditForm({
         </p>
       ) : null}
       {saveStatus === "saved" ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0B7A3B]" aria-live="polite">
+        <p
+          className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0B7A3B]"
+          aria-live="polite"
+        >
           <CheckCircle2 className="size-3.5" />
           Saved just now.
         </p>
       ) : null}
       {saveStatus === "error" ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700" aria-live="polite">
+        <p
+          className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700"
+          aria-live="polite"
+        >
           <AlertCircle className="size-3.5" />
           Save failed. Try again.
         </p>

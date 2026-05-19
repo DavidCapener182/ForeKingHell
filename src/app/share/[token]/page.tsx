@@ -6,9 +6,24 @@ import { ArrowLeft, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataPair, DataTableFrame, MobileDataCard, MobileDataList, PageHeader, PageShell, StatusPill } from "@/components/premium";
+import {
+  DataPair,
+  DataTableFrame,
+  MobileDataCard,
+  MobileDataList,
+  PageHeader,
+  PageShell,
+  StatusPill,
+} from "@/components/premium";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getDb } from "@/db/client";
 import { sessions, shareLinks, teeSets, users } from "@/db/schema";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
@@ -64,10 +79,30 @@ export default async function SharedRoundPage({ params }: PageProps) {
 
       <MobileMetricStrip
         items={[
-          { label: "Score", value: formatNullableInteger(round.totalScore), detail: "Gross", tone: "green" },
-          { label: "Par", value: formatNullableInteger(round.totalPar), detail: "Round par", tone: "sky" },
-          { label: "Putts", value: formatNullableInteger(round.totalPutts), detail: "Total", tone: "amber" },
-          { label: "Diff", value: formatHandicapValue(round.handicapDifferential), detail: "Estimate", tone: "slate" },
+          {
+            label: "Score",
+            value: formatNullableInteger(round.totalScore),
+            detail: "Gross",
+            tone: "green",
+          },
+          {
+            label: "Par",
+            value: formatNullableInteger(round.totalPar),
+            detail: "Round par",
+            tone: "sky",
+          },
+          {
+            label: "Putts",
+            value: formatNullableInteger(round.totalPutts),
+            detail: "Total",
+            tone: "amber",
+          },
+          {
+            label: "Diff",
+            value: formatHandicapValue(round.handicapDifferential),
+            detail: "Estimate",
+            tone: "slate",
+          },
         ]}
       />
 
@@ -76,7 +111,8 @@ export default async function SharedRoundPage({ params }: PageProps) {
           <CardHeader>
             <CardTitle>Scorecard</CardTitle>
             <CardDescription>
-              Hole-by-hole scoring from the shared round. Shot data and private account details are not exposed.
+              Hole-by-hole scoring from the shared round. Shot data and private account details are
+              not exposed.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -116,11 +152,21 @@ export default async function SharedRoundPage({ params }: PageProps) {
                   {round.holes.map((hole) => (
                     <TableRow key={hole.holeNumber}>
                       <TableCell className="font-medium">Hole {hole.holeNumber}</TableCell>
-                      <TableCell className="text-right">{integerFormatter.format(hole.par)}</TableCell>
-                      <TableCell className="text-right">{hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"}</TableCell>
-                      <TableCell className="text-right">{formatNullableInteger(hole.score)}</TableCell>
-                      <TableCell className="text-right">{formatNullableInteger(hole.putts)}</TableCell>
-                      <TableCell className="text-right">{formatNullableInteger(hole.penalties)}</TableCell>
+                      <TableCell className="text-right">
+                        {integerFormatter.format(hole.par)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(hole.score)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(hole.putts)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(hole.penalties)}
+                      </TableCell>
                       <TableCell className="text-right">{formatBoolean(hole.fairwayHit)}</TableCell>
                       <TableCell className="text-right">{formatBoolean(hole.gir)}</TableCell>
                     </TableRow>
@@ -138,14 +184,24 @@ export default async function SharedRoundPage({ params }: PageProps) {
           </CardHeader>
           <CardContent className="grid gap-3 text-sm">
             <SharedMetric label="Tee" value={round.session.teeName ?? "--"} />
-            <SharedMetric label="Rating / slope" value={formatRatingSlope(round.session.courseRating, round.session.slopeRating)} />
-            <SharedMetric label="Status" value={round.session.roundStatus === "in_progress" ? "In progress" : "Complete"} />
+            <SharedMetric
+              label="Rating / slope"
+              value={formatRatingSlope(round.session.courseRating, round.session.slopeRating)}
+            />
+            <SharedMetric
+              label="Status"
+              value={round.session.roundStatus === "in_progress" ? "In progress" : "Complete"}
+            />
             <SharedMetric label="Conditions" value={round.weather.conditions ?? "--"} />
             <SharedMetric label="Wind" value={round.weather.wind ?? "--"} />
             <SharedMetric label="Temperature" value={round.weather.temperature ?? "--"} />
-            {round.session.equipmentNotes ? <SharedMetric label="Equipment" value={round.session.equipmentNotes} /> : null}
+            {round.session.equipmentNotes ? (
+              <SharedMetric label="Equipment" value={round.session.equipmentNotes} />
+            ) : null}
             <div className="rounded-xl border border-dashed px-3 py-2 text-xs text-muted-foreground">
-              {round.link.expiresAt ? `Expires ${formatDateTime(round.link.expiresAt)}.` : "This link has no expiry date."}
+              {round.link.expiresAt
+                ? `Expires ${formatDateTime(round.link.expiresAt)}.`
+                : "This link has no expiry date."}
             </div>
           </CardContent>
         </Card>

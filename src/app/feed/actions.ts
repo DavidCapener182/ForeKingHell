@@ -69,7 +69,10 @@ export async function removeFeedCommentReactionAction(formData: FormData) {
 }
 
 export async function updateFeedItemVisibilityAction(formData: FormData) {
-  await updateFeedItemVisibility(requiredString(formData, "feedItemId"), parseVisibility(formData.get("visibility"), "private"));
+  await updateFeedItemVisibility(
+    requiredString(formData, "feedItemId"),
+    parseVisibility(formData.get("visibility"), "private"),
+  );
 }
 
 export async function deleteFeedItemAction(formData: FormData) {
@@ -85,7 +88,10 @@ export async function hideFeedItemTypeAction(formData: FormData) {
 }
 
 export async function reportFeedItemAction(formData: FormData) {
-  await reportFeedItem(requiredString(formData, "feedItemId"), optionalString(formData, "reason") ?? "feed_report");
+  await reportFeedItem(
+    requiredString(formData, "feedItemId"),
+    optionalString(formData, "reason") ?? "feed_report",
+  );
 }
 
 export async function muteFeedItemUserAction(formData: FormData) {

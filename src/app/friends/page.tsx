@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, Award, Ban, Check, Copy, QrCode, Search, Trophy, UserMinus, UserPlus, Users, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Award,
+  Ban,
+  Check,
+  Copy,
+  QrCode,
+  Search,
+  Trophy,
+  UserMinus,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
 
 import {
   acceptFriendRequestAction,
@@ -11,12 +24,7 @@ import {
   sendFriendRequestAction,
   unblockUserAction,
 } from "@/app/friends/actions";
-import {
-  DataPanel,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataPanel, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -64,7 +72,11 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
       <header className="premium-hero overflow-hidden p-3 sm:p-0">
         <div
           className="hidden h-24 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)] bg-cover bg-center sm:block"
-          style={data.profile.headerImageUrl ? { backgroundImage: profileHeaderBackground(data.profile.headerImageUrl) } : undefined}
+          style={
+            data.profile.headerImageUrl
+              ? { backgroundImage: profileHeaderBackground(data.profile.headerImageUrl) }
+              : undefined
+          }
         />
         <div className="grid gap-3 sm:gap-4 sm:p-5 sm:pt-0">
           <div className="flex items-start justify-between gap-3 sm:-mt-9 sm:items-end">
@@ -80,21 +92,37 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
                 <StatusPill tone="green">Social graph</StatusPill>
                 <h1 className="mt-2 text-xl font-semibold tracking-normal sm:text-3xl">Friends</h1>
                 <p className="line-clamp-1 max-w-2xl text-sm leading-5 text-muted-foreground sm:line-clamp-none sm:leading-6">
-                  Find golfers by username, approve requests, and keep friendships separate from coach/viewer/editor access. Friend scopes now power records, boards and private events.
+                  Find golfers by username, approve requests, and keep friendships separate from
+                  coach/viewer/editor access. Friend scopes now power records, boards and private
+                  events.
                 </p>
               </div>
             </div>
             <div data-primary-action className="shrink-0">
               <Button asChild size="sm" variant="outline" className="rounded-lg bg-white">
-                <Link href="/feed" prefetch={false}>Open feed</Link>
+                <Link href="/feed" prefetch={false}>
+                  Open feed
+                </Link>
               </Button>
             </div>
           </div>
           <div className="hidden gap-2 sm:grid sm:grid-cols-4">
             <SocialStat label="Friends" value={data.friends.length} detail="Connected golfers" />
-            <SocialStat label="Incoming" value={data.incomingRequests.length} detail="Pending approvals" />
-            <SocialStat label="Outgoing" value={data.outgoingRequests.length} detail="Sent requests" />
-            <SocialStat label="Search" value={query ? data.searchResults.length : "--"} detail="Username matches" />
+            <SocialStat
+              label="Incoming"
+              value={data.incomingRequests.length}
+              detail="Pending approvals"
+            />
+            <SocialStat
+              label="Outgoing"
+              value={data.outgoingRequests.length}
+              detail="Sent requests"
+            />
+            <SocialStat
+              label="Search"
+              value={query ? data.searchResults.length : "--"}
+              detail="Username matches"
+            />
           </div>
         </div>
       </header>
@@ -103,27 +131,38 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         <Alert>
           <Check className="size-4" />
           <AlertTitle>Social graph updated</AlertTitle>
-          <AlertDescription>Your friend list and visibility scopes have been refreshed.</AlertDescription>
+          <AlertDescription>
+            Your friend list and visibility scopes have been refreshed.
+          </AlertDescription>
         </Alert>
       ) : null}
 
       <section className="grid gap-4 lg:grid-cols-3">
         <DataPanel>
-          <SectionHeader title="Incoming requests" description="Approve only people you want in friend-scoped feed and leaderboard views." />
+          <SectionHeader
+            title="Incoming requests"
+            description="Approve only people you want in friend-scoped feed and leaderboard views."
+          />
           <CardContent>
             <RequestList rows={data.incomingRequests} direction="incoming" />
           </CardContent>
         </DataPanel>
 
         <DataPanel>
-          <SectionHeader title="Friends" description="Friends do not get account access unless you separately invite them from settings." />
+          <SectionHeader
+            title="Friends"
+            description="Friends do not get account access unless you separately invite them from settings."
+          />
           <CardContent>
             <ProfileList empty="No friends yet." profiles={data.friends} mode="friends" />
           </CardContent>
         </DataPanel>
 
         <DataPanel>
-          <SectionHeader title="Outgoing requests" description="Cancel requests that have not been accepted yet." />
+          <SectionHeader
+            title="Outgoing requests"
+            description="Cancel requests that have not been accepted yet."
+          />
           <CardContent>
             <RequestList rows={data.outgoingRequests} direction="outgoing" />
           </CardContent>
@@ -166,7 +205,11 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
             action={<Users className="size-5 text-sky-600" />}
           />
           <CardContent>
-            <ProfileList empty="No public suggestions yet." profiles={data.suggestedProfiles} mode="search" />
+            <ProfileList
+              empty="No public suggestions yet."
+              profiles={data.suggestedProfiles}
+              mode="search"
+            />
           </CardContent>
         </DataPanel>
       </section>
@@ -179,7 +222,12 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         />
         <CardContent className="grid gap-4">
           <form className="grid gap-2 sm:grid-cols-[1fr_auto]" action="/friends">
-            <Input name="q" defaultValue={query} placeholder="Search by username" className="h-10 rounded-lg bg-white" />
+            <Input
+              name="q"
+              defaultValue={query}
+              placeholder="Search by username"
+              className="h-10 rounded-lg bg-white"
+            />
             <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Search className="size-4" />
               Search
@@ -195,9 +243,15 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </CardContent>
       </DataPanel>
 
+      <CompareWithFriendPanel friendCount={data.friends.length} />
+
       <section className="grid gap-4 lg:grid-cols-2">
         <DataPanel>
-          <SectionHeader title="Active this week" description="Shortcuts for friend-scoped competition." action={<Trophy className="size-5 text-amber-600" />} />
+          <SectionHeader
+            title="Active this week"
+            description="Shortcuts for friend-scoped competition."
+            action={<Trophy className="size-5 text-amber-600" />}
+          />
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <Button asChild variant="outline">
               <Link href="/leaderboard?tab=friends" prefetch={false}>
@@ -227,13 +281,57 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
         </DataPanel>
 
         <DataPanel>
-          <SectionHeader title="Blocked users" description="Blocked users cannot see friend-scoped profile or feed activity." action={<Ban className="size-5 text-red-600" />} />
+          <SectionHeader
+            title="Blocked users"
+            description="Blocked users cannot see friend-scoped profile or feed activity."
+            action={<Ban className="size-5 text-red-600" />}
+          />
           <CardContent>
             <BlockedList profiles={data.blockedUsers} />
           </CardContent>
         </DataPanel>
       </section>
     </PageShell>
+  );
+}
+
+function CompareWithFriendPanel({ friendCount }: { friendCount: number }) {
+  const compareItems = [
+    { label: "Bag", href: "/compare?scope=bag", detail: "Stock yardages and gapping" },
+    { label: "PBs", href: "/leaderboard?tab=friends", detail: "Personal bests and XP" },
+    { label: "Handicap", href: "/compare?scope=handicap", detail: "Scoring trend and form" },
+    { label: "Records", href: "/course-records", detail: "Friend course-record boards" },
+  ];
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Compare with a friend"
+        description="Keep social secondary by turning friend activity into useful golf comparisons."
+        action={
+          <StatusPill tone={friendCount > 0 ? "green" : "slate"}>{friendCount} friends</StatusPill>
+        }
+      />
+      <CardContent className="grid gap-2 sm:grid-cols-4">
+        {compareItems.map((item) => (
+          <Button
+            key={item.label}
+            asChild
+            variant="outline"
+            className="h-auto justify-start rounded-lg p-3"
+          >
+            <Link href={item.href} prefetch={false}>
+              <span className="text-left">
+                <span className="block font-semibold">{item.label}</span>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  {item.detail}
+                </span>
+              </span>
+            </Link>
+          </Button>
+        ))}
+      </CardContent>
+    </DataPanel>
   );
 }
 
@@ -247,7 +345,9 @@ function ProfileList({
   mode: "search" | "friends";
 }) {
   if (profiles.length === 0) {
-    return <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{empty}</p>;
+    return (
+      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{empty}</p>
+    );
   }
 
   return (
@@ -266,7 +366,11 @@ function ProfileList({
               href={`/profile/${profile.username}`}
             />
             <div className="min-w-0">
-              <Link href={`/profile/${profile.username}`} prefetch={false} className="truncate text-sm font-semibold hover:underline">
+              <Link
+                href={`/profile/${profile.username}`}
+                prefetch={false}
+                className="truncate text-sm font-semibold hover:underline"
+              >
                 {profile.displayName}
               </Link>
               <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
@@ -326,20 +430,29 @@ function SearchResultAction({ profile }: { profile: SocialProfileSummary }) {
 
 function BlockedList({ profiles }: { profiles: SocialProfileSummary[] }) {
   if (profiles.length === 0) {
-    return <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No blocked users.</p>;
+    return (
+      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+        No blocked users.
+      </p>
+    );
   }
 
   return (
     <div className="grid gap-2">
       {profiles.map((profile) => (
-        <div key={profile.userId} className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm">
+        <div
+          key={profile.userId}
+          className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm"
+        >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{profile.displayName}</p>
             <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
           </div>
           <form action={unblockUserAction}>
             <input type="hidden" name="blockedUserId" value={profile.userId} />
-            <Button type="submit" variant="outline" size="sm">Unblock</Button>
+            <Button type="submit" variant="outline" size="sm">
+              Unblock
+            </Button>
           </form>
         </div>
       ))}
@@ -355,13 +468,20 @@ function RequestList({
   direction: "incoming" | "outgoing";
 }) {
   if (rows.length === 0) {
-    return <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No pending requests.</p>;
+    return (
+      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+        No pending requests.
+      </p>
+    );
   }
 
   return (
     <div className="grid gap-2">
       {rows.map((row) => (
-        <div key={row.request.id} className="grid gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm">
+        <div
+          key={row.request.id}
+          className="grid gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm"
+        >
           <div className="flex min-w-0 items-center gap-3">
             <SocialAvatar
               displayName={row.profile.displayName}
@@ -370,7 +490,11 @@ function RequestList({
               href={`/profile/${row.profile.username}`}
             />
             <div className="min-w-0">
-              <Link href={`/profile/${row.profile.username}`} prefetch={false} className="truncate text-sm font-semibold hover:underline">
+              <Link
+                href={`/profile/${row.profile.username}`}
+                prefetch={false}
+                className="truncate text-sm font-semibold hover:underline"
+              >
                 {row.profile.displayName}
               </Link>
               <p className="truncate text-xs text-muted-foreground">@{row.profile.username}</p>
@@ -408,7 +532,15 @@ function RequestList({
   );
 }
 
-function SocialStat({ label, value, detail }: { label: string; value: number | string; detail: string }) {
+function SocialStat({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: number | string;
+  detail: string;
+}) {
   return (
     <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
       <p className="text-xl font-semibold tracking-normal">{value}</p>
@@ -420,7 +552,8 @@ function SocialStat({ label, value, detail }: { label: string; value: number | s
 
 function getRequestOrigin(requestHeaders: Headers) {
   const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const host =
+    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
   return `${proto}://${host}`;
 }
 

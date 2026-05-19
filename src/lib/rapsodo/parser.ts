@@ -134,14 +134,27 @@ export const RAPSODO_COLUMN_FIELD_LABELS: Record<RapsodoColumnField, string> = {
   shotShape: "Shot shape",
 };
 
-const SHOT_METRIC_FIELDS: RapsodoColumnField[] = ["carryDistance", "totalDistance", "ballSpeed", "launchAngle"];
+const SHOT_METRIC_FIELDS: RapsodoColumnField[] = [
+  "carryDistance",
+  "totalDistance",
+  "ballSpeed",
+  "launchAngle",
+];
 
 const FIELD_HINTS: Record<RapsodoColumnField, string[]> = {
   shotNumber: ["shotnumber", "shotno", "shot"],
   clubType: ["clubtype", "clubused", "club", "stick"],
   clubBrand: ["clubbrand", "brand", "make"],
   clubModel: ["clubmodel", "model"],
-  carryDistance: ["carrydistance", "carry", "carrymetres", "carrymeters", "carryyards", "flightmetres", "flightmeters"],
+  carryDistance: [
+    "carrydistance",
+    "carry",
+    "carrymetres",
+    "carrymeters",
+    "carryyards",
+    "flightmetres",
+    "flightmeters",
+  ],
   totalDistance: ["totaldistance", "total", "totalmetres", "totalmeters", "totalyards"],
   ballSpeed: ["ballspeed", "ballvelocity"],
   launchAngle: ["launchangle", "launch"],
@@ -166,7 +179,10 @@ const DISTANCE_FIELDS = new Set<string>([
   ...FIELD_ALIASES.sideCarry,
 ]);
 
-export function parseRapsodoCsv(csvText: string, options: ParserOptions = {}): ParseRapsodoCsvResult {
+export function parseRapsodoCsv(
+  csvText: string,
+  options: ParserOptions = {},
+): ParseRapsodoCsvResult {
   const warnings: string[] = [];
   const columnMapping = sanitizeColumnMapping(options.columnMapping);
   if (hasMalformedQuotedCsv(csvText)) {
@@ -201,13 +217,17 @@ export function parseRapsodoCsv(csvText: string, options: ParserOptions = {}): P
   }
   const headers = rows[headerIndex].map((header) => header.trim());
   const dataRows = rows.slice(headerIndex + 1);
-  const rawRows = rows.map((row, index) => parseRawRow(row, index, headers, headerIndex, columnMapping));
+  const rawRows = rows.map((row, index) =>
+    parseRawRow(row, index, headers, headerIndex, columnMapping),
+  );
   const shotRows = dataRows
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => isShotDataRow(headers, row, columnMapping));
   const detectedDistanceUnit = detectDistanceUnit(headers);
   const appliedDistanceUnit =
-    detectedDistanceUnit === "unknown" ? options.fallbackDistanceUnit ?? "yards" : detectedDistanceUnit;
+    detectedDistanceUnit === "unknown"
+      ? (options.fallbackDistanceUnit ?? "yards")
+      : detectedDistanceUnit;
   const apexUnit = detectApexUnit(headers, appliedDistanceUnit);
 
   if (detectedDistanceUnit === "unknown" && !options.fallbackDistanceUnit) {
@@ -258,7 +278,11 @@ export function analyzeRapsodoCsvColumns(csvText: string, options: ParserOptions
   const defaultHeaderIndex = rows.findIndex((row) => isHeaderRow(row, {}));
   const mappedHeaderIndex = rows.findIndex((row) => isHeaderRow(row, columnMapping));
   const headerIndex =
-    mappedHeaderIndex !== -1 ? mappedHeaderIndex : defaultHeaderIndex !== -1 ? defaultHeaderIndex : findLikelyHeaderRow(rows);
+    mappedHeaderIndex !== -1
+      ? mappedHeaderIndex
+      : defaultHeaderIndex !== -1
+        ? defaultHeaderIndex
+        : findLikelyHeaderRow(rows);
 
   if (headerIndex === -1) {
     return {
@@ -498,7 +522,9 @@ function isHeaderRow(row: string[], columnMapping: RapsodoColumnMapping = {}) {
 }
 
 function isShotDataRow(headers: string[], row: string[], columnMapping: RapsodoColumnMapping) {
-  const clubTypeIndex = headers.findIndex((header) => headerMatchesField(header, "clubType", columnMapping));
+  const clubTypeIndex = headers.findIndex((header) =>
+    headerMatchesField(header, "clubType", columnMapping),
+  );
   const clubType = normalizeHeader(row[clubTypeIndex] ?? "");
 
   if (!clubType) {
@@ -509,7 +535,9 @@ function isShotDataRow(headers: string[], row: string[], columnMapping: RapsodoC
 }
 
 function isSummaryRow(headers: string[], row: string[], columnMapping: RapsodoColumnMapping) {
-  const clubTypeIndex = headers.findIndex((header) => headerMatchesField(header, "clubType", columnMapping));
+  const clubTypeIndex = headers.findIndex((header) =>
+    headerMatchesField(header, "clubType", columnMapping),
+  );
   return isNonShotClubType(normalizeHeader(row[clubTypeIndex] ?? ""));
 }
 
@@ -571,7 +599,9 @@ function parseRawRow(
 }
 
 function findSessionTitle(rows: string[][]) {
-  return nullableText(rows.flatMap((row) => row).find((cell) => /rapsodo mlm2pro/i.test(cell)) ?? null);
+  return nullableText(
+    rows.flatMap((row) => row).find((cell) => /rapsodo mlm2pro/i.test(cell)) ?? null,
+  );
 }
 
 function parseExportedAtIso(title: string | null) {
@@ -579,9 +609,7 @@ function parseExportedAtIso(title: string | null) {
     return null;
   }
 
-  const match = title.match(
-    /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i,
-  );
+  const match = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i);
 
   if (!match) {
     return null;
@@ -647,7 +675,9 @@ function valueForField(
   const mappedHeader = columnMapping[field];
 
   if (mappedHeader) {
-    const mappedEntry = Object.entries(raw).find(([header]) => normalizeHeader(header) === normalizeHeader(mappedHeader));
+    const mappedEntry = Object.entries(raw).find(
+      ([header]) => normalizeHeader(header) === normalizeHeader(mappedHeader),
+    );
 
     if (mappedEntry) {
       return mappedEntry[1];
@@ -698,7 +728,9 @@ function findLikelyHeaderRow(rows: string[][]) {
       return false;
     }
 
-    const textLikeCount = cells.filter((cell) => Number.isNaN(Number(cell.replace(/,/g, "")))).length;
+    const textLikeCount = cells.filter((cell) =>
+      Number.isNaN(Number(cell.replace(/,/g, ""))),
+    ).length;
     return textLikeCount >= Math.min(2, cells.length);
   });
 }
@@ -727,7 +759,9 @@ function suggestColumnMapping(headers: string[], currentMapping: RapsodoColumnMa
 function hasMinimumShotMapping(headers: string[], columnMapping: RapsodoColumnMapping) {
   return (
     headers.some((header) => headerMatchesField(header, "clubType", columnMapping)) &&
-    headers.some((header) => SHOT_METRIC_FIELDS.some((field) => headerMatchesField(header, field, columnMapping)))
+    headers.some((header) =>
+      SHOT_METRIC_FIELDS.some((field) => headerMatchesField(header, field, columnMapping)),
+    )
   );
 }
 
@@ -765,7 +799,10 @@ function detectDistanceUnit(headers: string[]): DetectedDistanceUnit {
   return "unknown";
 }
 
-function detectApexUnit(headers: string[], fallbackDistanceUnit: DistanceUnit): "meters" | "yards" | "feet" {
+function detectApexUnit(
+  headers: string[],
+  fallbackDistanceUnit: DistanceUnit,
+): "meters" | "yards" | "feet" {
   const apexHeader = headers.find((header) => {
     const normalized = normalizeHeader(header);
     return FIELD_ALIASES.apex.some((alias) => normalized === alias || normalized.startsWith(alias));
@@ -890,11 +927,11 @@ function hasMalformedQuotedCsv(csvText: string) {
     const char = csvText[index];
     const nextChar = csvText[index + 1];
 
-    if (char !== "\"") {
+    if (char !== '"') {
       continue;
     }
 
-    if (inQuotes && nextChar === "\"") {
+    if (inQuotes && nextChar === '"') {
       index += 1;
       continue;
     }

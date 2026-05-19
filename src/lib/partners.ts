@@ -13,8 +13,18 @@ export async function getPartnersPageData() {
   const userId = await requireCurrentUserId();
   const [sponsorRows, offerRows, clickRows] = await Promise.all([
     getDb().select().from(sponsors).orderBy(desc(sponsors.createdAt)).limit(40),
-    getDb().select().from(partnerOffers).where(eq(partnerOffers.active, true)).orderBy(desc(partnerOffers.createdAt)).limit(80),
-    getDb().select().from(offerClicks).where(eq(offerClicks.userId, userId)).orderBy(desc(offerClicks.createdAt)).limit(20),
+    getDb()
+      .select()
+      .from(partnerOffers)
+      .where(eq(partnerOffers.active, true))
+      .orderBy(desc(partnerOffers.createdAt))
+      .limit(80),
+    getDb()
+      .select()
+      .from(offerClicks)
+      .where(eq(offerClicks.userId, userId))
+      .orderBy(desc(offerClicks.createdAt))
+      .limit(20),
   ]);
 
   return {
@@ -63,34 +73,42 @@ export async function createPartnerOffer(input: {
 }) {
   await requireAdminUser();
   const userId = await requireCurrentUserId();
-  const [sponsor] = await getDb().select().from(sponsors).where(eq(sponsors.id, input.sponsorId)).limit(1);
+  const [sponsor] = await getDb()
+    .select()
+    .from(sponsors)
+    .where(eq(sponsors.id, input.sponsorId))
+    .limit(1);
 
   if (!sponsor || sponsor.ownerUserId !== userId) {
     throw new Error("Sponsor not found.");
   }
 
-  await getDb().insert(partnerOffers).values({
-    sponsorId: sponsor.id,
-    title: cleanRequired(input.title, "Partner offer").slice(0, 160),
-    description: nullableClean(input.description),
-    offerType: cleanRequired(input.offerType, "affiliate").slice(0, 40),
-    targetContext: nullableClean(input.targetContext)?.slice(0, 80) ?? null,
-    offerUrl: nullableClean(input.offerUrl),
-    couponCode: nullableClean(input.couponCode)?.slice(0, 80) ?? null,
-    active: true,
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(partnerOffers)
+    .values({
+      sponsorId: sponsor.id,
+      title: cleanRequired(input.title, "Partner offer").slice(0, 160),
+      description: nullableClean(input.description),
+      offerType: cleanRequired(input.offerType, "affiliate").slice(0, 40),
+      targetContext: nullableClean(input.targetContext)?.slice(0, 80) ?? null,
+      offerUrl: nullableClean(input.offerUrl),
+      couponCode: nullableClean(input.couponCode)?.slice(0, 80) ?? null,
+      active: true,
+      updatedAt: new Date(),
+    });
 
   revalidatePartners();
 }
 
 export async function recordOfferClick(offerId: string, source?: string | null) {
   const userId = await requireCurrentUserId();
-  await getDb().insert(offerClicks).values({
-    offerId,
-    userId,
-    source: nullableClean(source)?.slice(0, 80) ?? null,
-  });
+  await getDb()
+    .insert(offerClicks)
+    .values({
+      offerId,
+      userId,
+      source: nullableClean(source)?.slice(0, 80) ?? null,
+    });
   revalidatePartners();
 }
 
@@ -99,7 +117,11 @@ async function uniqueSponsorSlug(name: string) {
 
   for (let index = 0; index < 12; index += 1) {
     const slug = index === 0 ? base : `${base.slice(0, 68)}-${index}`;
-    const [existing] = await getDb().select({ id: sponsors.id }).from(sponsors).where(eq(sponsors.slug, slug)).limit(1);
+    const [existing] = await getDb()
+      .select({ id: sponsors.id })
+      .from(sponsors)
+      .where(eq(sponsors.slug, slug))
+      .limit(1);
 
     if (!existing) {
       return slug;

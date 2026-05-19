@@ -10,7 +10,10 @@ type RecordSubmitButtonProps = {
   label?: string;
 };
 
-export function RecordSubmitButton({ className, label = "Submit evidence" }: RecordSubmitButtonProps) {
+export function RecordSubmitButton({
+  className,
+  label = "Submit evidence",
+}: RecordSubmitButtonProps) {
   const { pending } = useFormStatus();
 
   return (

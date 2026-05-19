@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { buildPersonalGappingTargets, type PersonalGappingInput } from "@/lib/gapping-targets";
 
-function club(input: Partial<PersonalGappingInput> & Pick<PersonalGappingInput, "clubType" | "carryYd">): PersonalGappingInput {
+function club(
+  input: Partial<PersonalGappingInput> & Pick<PersonalGappingInput, "clubType" | "carryYd">,
+): PersonalGappingInput {
   return {
     sampleSize: 24,
     confidenceScore: 68,
@@ -77,7 +79,14 @@ describe("personal gapping targets", () => {
   it("uses launch and strike messaging instead of distance when the sample is not trusted", () => {
     const rows = buildPersonalGappingTargets([
       club({ clubType: "5i", carryYd: 160, averageLaunchAngleDeg: 7 }),
-      club({ clubType: "6i", carryYd: 151, averageLaunchAngleDeg: 8, sampleSize: 4, confidenceScore: 24, decisionLabel: "Do not trust yet" }),
+      club({
+        clubType: "6i",
+        carryYd: 151,
+        averageLaunchAngleDeg: 8,
+        sampleSize: 4,
+        confidenceScore: 24,
+        decisionLabel: "Do not trust yet",
+      }),
     ]);
 
     expect(rows[0].targetMessage).toBe("Launch window opportunity");

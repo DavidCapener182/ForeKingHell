@@ -13,8 +13,7 @@ export function findRelevantChallenge<TChallenge extends ChallengeLike>(
   return (
     challenges.find(
       (challenge) =>
-        (challenge.status ?? "open") === "open" &&
-        challengeMatchesClub(challenge, clubType),
+        (challenge.status ?? "open") === "open" && challengeMatchesClub(challenge, clubType),
     ) ?? null
   );
 }

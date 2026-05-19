@@ -2,7 +2,13 @@
 
 import { redirect } from "next/navigation";
 
-import { createGroup, createGroupPost, groupTypes, joinGroup, joinGroupByInviteCode } from "@/lib/groups";
+import {
+  createGroup,
+  createGroupPost,
+  groupTypes,
+  joinGroup,
+  joinGroupByInviteCode,
+} from "@/lib/groups";
 import { parseVisibility } from "@/lib/social";
 
 export async function createGroupAction(formData: FormData) {
@@ -29,12 +35,18 @@ export async function joinGroupByInviteCodeAction(formData: FormData) {
 
 export async function createGroupPostAction(formData: FormData) {
   const slug = requiredString(formData, "slug");
-  await createGroupPost(requiredString(formData, "groupId"), formString(formData, "title"), requiredString(formData, "body"));
+  await createGroupPost(
+    requiredString(formData, "groupId"),
+    formString(formData, "title"),
+    requiredString(formData, "body"),
+  );
   redirect(`/groups/${slug}?posted=1`);
 }
 
 function parseGroupType(value: string | null) {
-  return groupTypes.includes(value as (typeof groupTypes)[number]) ? (value as (typeof groupTypes)[number]) : "friends";
+  return groupTypes.includes(value as (typeof groupTypes)[number])
+    ? (value as (typeof groupTypes)[number])
+    : "friends";
 }
 
 function requiredString(formData: FormData, key: string) {

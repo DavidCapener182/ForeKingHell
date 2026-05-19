@@ -51,10 +51,7 @@ import {
   type CoachFocusArea,
   type CoachTrainingImpact,
 } from "@/lib/coach";
-import {
-  getCoachDrillAwardStatuses,
-  type CoachDrillAwardStatus,
-} from "@/lib/coach-drill-awards";
+import { getCoachDrillAwardStatuses, type CoachDrillAwardStatus } from "@/lib/coach-drill-awards";
 import { getProgressData } from "@/lib/progress-data";
 import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
@@ -85,8 +82,7 @@ export default async function CoachPage() {
   const drillStatuses = await getCoachDrillAwardStatuses(drillChallenges);
   const shouldSyncDrillAwards = Object.values(drillStatuses).some(
     (status) =>
-      (status.completed && !status.completedAwarded) ||
-      (status.won && !status.wonAwarded),
+      (status.completed && !status.completedAwarded) || (status.won && !status.wonAwarded),
   );
   const aiPayload = buildAiCoachPayload(coach);
   const canUseAiCoach = planAllowsAiCoach(activePlanKey);
@@ -102,8 +98,15 @@ export default async function CoachPage() {
           value={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
           detail={topClub?.drill ?? "Import enough clean shots for a prescription."}
           action={
-            <Button asChild data-primary-action className="h-10 rounded-full bg-[#0B7A3B] px-4 text-white hover:bg-[#064E3B]">
-              <Link href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"} prefetch={false}>
+            <Button
+              asChild
+              data-primary-action
+              className="h-10 rounded-full bg-[#0B7A3B] px-4 text-white hover:bg-[#064E3B]"
+            >
+              <Link
+                href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"}
+                prefetch={false}
+              >
                 {topClub ? "Open" : "Import"}
               </Link>
             </Button>
@@ -111,7 +114,9 @@ export default async function CoachPage() {
         />
         <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
           <p className="text-sm font-semibold text-[#0B7A3B]">Why</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal">{topClub?.reason ?? coach.headline}</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-normal">
+            {topClub?.reason ?? coach.headline}
+          </h2>
           <p className="mt-1 text-sm leading-5 text-[#6B7280]">
             {topClub ? `${topClub.trustIndex}% trust · ${targetForCard(topClub)}` : coach.subhead}
           </p>
@@ -132,8 +137,16 @@ export default async function CoachPage() {
             detail={coach.sessionPlan[0]?.detail ?? "Build a clean comparable sample."}
           />
           <div className="grid grid-cols-2 gap-2">
-            <PBCard title="Trust" value={`${coach.summary.totals.averageTrust}%`} detail={`${coach.summary.totals.clubs} clubs`} />
-            <PBCard title="Clean shots" value={coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")} detail="Tracked" />
+            <PBCard
+              title="Trust"
+              value={`${coach.summary.totals.averageTrust}%`}
+              detail={`${coach.summary.totals.clubs} clubs`}
+            />
+            <PBCard
+              title="Clean shots"
+              value={coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")}
+              detail="Tracked"
+            />
           </div>
         </NativeListSection>
         <CoachPracticeFeaturePanel data={featureData} />
@@ -167,10 +180,17 @@ export default async function CoachPage() {
             </div>
           )}
         </NativeListSection>
-        <NativeListSection id="evidence" title="Evidence" description="What changed in your latest baselines.">
+        <NativeListSection
+          id="evidence"
+          title="Evidence"
+          description="What changed in your latest baselines."
+        >
           <TrainingFeedback impacts={coach.trainingImpact.slice(0, 2)} />
         </NativeListSection>
-        <NativeListSection title="Club diagnosis" description="Every club-specific issue is visible on mobile again.">
+        <NativeListSection
+          title="Club diagnosis"
+          description="Every club-specific issue is visible on mobile again."
+        >
           {coach.clubCards.length > 0 ? (
             coach.clubCards.map((card) => <CoachClubDiagnosis key={card.clubId} card={card} />)
           ) : (
@@ -205,282 +225,271 @@ export default async function CoachPage() {
       </div>
 
       <div className="hidden sm:contents">
-      <PageHeader
-        eyebrow={
-          <StatusPill tone={toneForFocus(coach.focusArea)}>
-            Rule-based coach
-          </StatusPill>
-        }
-        title="Coach"
-        description={`${coach.headline} ${coach.subhead}`}
-        visual={
-          <PageArtwork variant="coach" alt="" className="h-full min-h-44" priority />
-        }
-        actions={
-          topClub ? (
-            <Button
-              asChild
-              size="lg"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href={`/bag/${topClub.clubId}/analytics`} prefetch={false}>
-                <Brain className="size-4" />
-                Open {topClub.clubName}
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              asChild
-              size="lg"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import first session
-              </Link>
-            </Button>
-          )
-        }
-        metrics={[
-          {
-            label: "Next focus",
-            value: topClub?.clubName ?? "--",
-            detail: topClub?.issueLabel ?? "Needs shot data",
-          },
-          {
-            label: "Bag trust",
-            value: `${coach.summary.totals.averageTrust}%`,
-            detail: `${coach.summary.totals.clubs} clubs tracked`,
-          },
-          {
-            label: "Clean shots",
-            value:
-              coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
-            detail: "Used for stock and trend checks",
-          },
-          {
-            label: "Playable rate",
-            value: formatRate(coach.summary.totals.averagePlayableRate),
-            detail: "Average across clubs with side data",
-          },
-        ]}
-      />
+        <PageHeader
+          eyebrow={<StatusPill tone={toneForFocus(coach.focusArea)}>Rule-based coach</StatusPill>}
+          title="Coach"
+          description={`${coach.headline} ${coach.subhead}`}
+          visual={<PageArtwork variant="coach" alt="" className="h-full min-h-44" priority />}
+          actions={
+            topClub ? (
+              <Button
+                asChild
+                size="lg"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                <Link href={`/bag/${topClub.clubId}/analytics`} prefetch={false}>
+                  <Brain className="size-4" />
+                  Open {topClub.clubName}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                size="lg"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                <Link href="/import" prefetch={false}>
+                  <Upload className="size-4" />
+                  Import first session
+                </Link>
+              </Button>
+            )
+          }
+          metrics={[
+            {
+              label: "Next focus",
+              value: topClub?.clubName ?? "--",
+              detail: topClub?.issueLabel ?? "Needs shot data",
+            },
+            {
+              label: "Bag trust",
+              value: `${coach.summary.totals.averageTrust}%`,
+              detail: `${coach.summary.totals.clubs} clubs tracked`,
+            },
+            {
+              label: "Clean shots",
+              value: coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
+              detail: "Used for stock and trend checks",
+            },
+            {
+              label: "Playable rate",
+              value: formatRate(coach.summary.totals.averagePlayableRate),
+              detail: "Average across clubs with side data",
+            },
+          ]}
+        />
 
-      <CoachPracticeFeaturePanel data={featureData} />
+        <CoachPracticeFeaturePanel data={featureData} />
 
-      {data.clubs.length === 0 ? (
-        <DataPanel>
-          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-            <Brain className="size-10 text-emerald-500" />
-            <div>
-              <p className="text-xl font-semibold">Coach is waiting for data</p>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                Import launch-monitor shots and ForeKingHell will turn club
-                data into distance, strike, launch, direction, and delivery
-                recommendations.
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import data
-              </Link>
-            </Button>
-          </CardContent>
-        </DataPanel>
-      ) : (
-        <>
-          <MobileBentoSummary
-            items={[
-              {
-                label: "Do this next",
-                value: topClub
-                  ? `${topClub.clubName}: ${topClub.issueLabel}`
-                  : "Build a baseline",
-                detail:
-                  topClub?.drill ??
-                  "Import enough clean shots for a recommendation.",
-                href: topClub ? `/bag/${topClub.clubId}/analytics` : "/import",
-                tone: topClub?.tone ?? "slate",
-              },
-              {
-                label: "Trust",
-                value: `${coach.summary.totals.averageTrust}%`,
-                detail: `${coach.summary.totals.clubs} clubs`,
-                tone: "green",
-              },
-              {
-                label: "Clean shots",
-                value:
-                  coach.summary.totals.trackedCleanShots.toLocaleString(
-                    "en-GB",
-                  ),
-                detail: "Tracked",
-                tone: "sky",
-              },
-              {
-                label: "Playable",
-                value: formatRate(coach.summary.totals.averagePlayableRate),
-                detail: "Average",
-                tone: "amber",
-              },
-            ]}
-          />
-          <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
-            <MetricCard
-              label="Practice priority"
-              value={topClub?.clubName ?? "--"}
-              detail={topClub?.reason ?? "Need more clean data"}
-              href={topClub ? `/bag/${topClub.clubId}/analytics` : undefined}
-              icon={Target}
-              tone={topClub?.tone ?? "slate"}
+        {data.clubs.length === 0 ? (
+          <DataPanel>
+            <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
+              <Brain className="size-10 text-emerald-500" />
+              <div>
+                <p className="text-xl font-semibold">Coach is waiting for data</p>
+                <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                  Import launch-monitor shots and ForeKingHell will turn club data into distance,
+                  strike, launch, direction, and delivery recommendations.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/import" prefetch={false}>
+                  <Upload className="size-4" />
+                  Import data
+                </Link>
+              </Button>
+            </CardContent>
+          </DataPanel>
+        ) : (
+          <>
+            <MobileBentoSummary
+              items={[
+                {
+                  label: "Do this next",
+                  value: topClub
+                    ? `${topClub.clubName}: ${topClub.issueLabel}`
+                    : "Build a baseline",
+                  detail: topClub?.drill ?? "Import enough clean shots for a recommendation.",
+                  href: topClub ? `/bag/${topClub.clubId}/analytics` : "/import",
+                  tone: topClub?.tone ?? "slate",
+                },
+                {
+                  label: "Trust",
+                  value: `${coach.summary.totals.averageTrust}%`,
+                  detail: `${coach.summary.totals.clubs} clubs`,
+                  tone: "green",
+                },
+                {
+                  label: "Clean shots",
+                  value: coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
+                  detail: "Tracked",
+                  tone: "sky",
+                },
+                {
+                  label: "Playable",
+                  value: formatRate(coach.summary.totals.averagePlayableRate),
+                  detail: "Average",
+                  tone: "amber",
+                },
+              ]}
             />
-            <MetricCard
-              label="Main issue"
-              value={topClub?.issueLabel ?? "--"}
-              detail={topClub?.drill ?? "Build comparable samples first"}
-              icon={Crosshair}
-              tone={toneForFocus(coach.focusArea)}
-            />
-            <MetricCard
-              label="Most trusted"
-              value={
-                coach.summary.rankings.mostTrusted
-                  ? formatClubType(coach.summary.rankings.mostTrusted.clubType)
-                  : "--"
-              }
-              detail={
-                coach.summary.rankings.mostTrusted
-                  ? `${coach.summary.rankings.mostTrusted.trustIndex}% trust`
-                  : "Need more clubs"
-              }
-              href={
-                coach.summary.rankings.mostTrusted
-                  ? `/bag/${coach.summary.rankings.mostTrusted.clubId}/analytics`
-                  : undefined
-              }
-              icon={Gauge}
-              tone="green"
-            />
-            <MetricCard
-              label="Readiness"
-              value={
-                coach.summary.totals.averageTrust >= 70
-                  ? "Playable"
-                  : "Building"
-              }
-              detail="Based on trust, sample size, direction, and strike stability."
-              icon={CheckCircle2}
-              tone={coach.summary.totals.averageTrust >= 70 ? "green" : "amber"}
-            />
-          </section>
-
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.85fr)] xl:items-start">
-            <DataPanel>
-              <SectionHeader
-                title="Practice plan"
-                description="Decision aid first: issue, evidence, drill sequence, and target."
-                action={<Clock className="size-5 text-emerald-500" />}
+            <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="Practice priority"
+                value={topClub?.clubName ?? "--"}
+                detail={topClub?.reason ?? "Need more clean data"}
+                href={topClub ? `/bag/${topClub.clubId}/analytics` : undefined}
+                icon={Target}
+                tone={topClub?.tone ?? "slate"}
               />
-              <CoachPracticePlan
-                topClub={topClub}
-                blocks={coach.sessionPlan}
-                impacts={coach.trainingImpact.slice(0, 2)}
-                drillChallenges={drillChallenges}
-                drillStatuses={drillStatuses}
+              <MetricCard
+                label="Main issue"
+                value={topClub?.issueLabel ?? "--"}
+                detail={topClub?.drill ?? "Build comparable samples first"}
+                icon={Crosshair}
+                tone={toneForFocus(coach.focusArea)}
               />
-            </DataPanel>
+              <MetricCard
+                label="Most trusted"
+                value={
+                  coach.summary.rankings.mostTrusted
+                    ? formatClubType(coach.summary.rankings.mostTrusted.clubType)
+                    : "--"
+                }
+                detail={
+                  coach.summary.rankings.mostTrusted
+                    ? `${coach.summary.rankings.mostTrusted.trustIndex}% trust`
+                    : "Need more clubs"
+                }
+                href={
+                  coach.summary.rankings.mostTrusted
+                    ? `/bag/${coach.summary.rankings.mostTrusted.clubId}/analytics`
+                    : undefined
+                }
+                icon={Gauge}
+                tone="green"
+              />
+              <MetricCard
+                label="Readiness"
+                value={coach.summary.totals.averageTrust >= 70 ? "Playable" : "Building"}
+                detail="Based on trust, sample size, direction, and strike stability."
+                icon={CheckCircle2}
+                tone={coach.summary.totals.averageTrust >= 70 ? "green" : "amber"}
+              />
+            </section>
 
-            <div className="grid gap-4 xl:sticky xl:top-24">
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.85fr)] xl:items-start">
               <DataPanel>
                 <SectionHeader
-                  title="What changed"
-                  description="The strongest movement signals in the current personal baseline."
-                  action={<LineChart className="size-5 text-sky-500" />}
+                  title="Practice plan"
+                  description="Decision aid first: issue, evidence, drill sequence, and target."
+                  action={<Clock className="size-5 text-emerald-500" />}
                 />
-                <CardContent>
-                  <CompactReadoutGrid
-                    columnsClassName="sm:grid-cols-2"
-                    items={coach.signals.map((signal) => ({
-                      label: signal.label,
-                      value: signal.value,
-                      detail: signal.detail,
-                      tone: signal.tone,
-                      href: signal.clubId
-                        ? `/bag/${signal.clubId}/analytics`
-                        : "/progress",
-                    }))}
+                <CoachPracticePlan
+                  topClub={topClub}
+                  blocks={coach.sessionPlan}
+                  impacts={coach.trainingImpact.slice(0, 2)}
+                  drillChallenges={drillChallenges}
+                  drillStatuses={drillStatuses}
+                />
+              </DataPanel>
+
+              <div className="grid gap-4 xl:sticky xl:top-24">
+                <DataPanel>
+                  <SectionHeader
+                    title="What changed"
+                    description="The strongest movement signals in the current personal baseline."
+                    action={<LineChart className="size-5 text-sky-500" />}
                   />
-                </CardContent>
-              </DataPanel>
+                  <CardContent>
+                    <CompactReadoutGrid
+                      columnsClassName="sm:grid-cols-2"
+                      items={coach.signals.map((signal) => ({
+                        label: signal.label,
+                        value: signal.value,
+                        detail: signal.detail,
+                        tone: signal.tone,
+                        href: signal.clubId ? `/bag/${signal.clubId}/analytics` : "/progress",
+                      }))}
+                    />
+                  </CardContent>
+                </DataPanel>
 
-              <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
+                <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
 
-              <DataPanel className="hidden sm:flex">
-                <SectionHeader
-                  title="AI coach note"
-                  description={canUseAiCoach ? "Optional AI layer for a sharper plain-English readout." : "AI coaching is a Pro entitlement."}
-                  action={<Sparkles className="size-5 text-sky-500" />}
-                />
-                {canUseAiCoach ? <AiCoachCard payload={aiPayload} /> : <UpgradeAiCoachCard />}
-              </DataPanel>
+                <DataPanel className="hidden sm:flex">
+                  <SectionHeader
+                    title="AI coach note"
+                    description={
+                      canUseAiCoach
+                        ? "Optional AI layer for a sharper plain-English readout."
+                        : "AI coaching is a Pro entitlement."
+                    }
+                    action={<Sparkles className="size-5 text-sky-500" />}
+                  />
+                  {canUseAiCoach ? <AiCoachCard payload={aiPayload} /> : <UpgradeAiCoachCard />}
+                </DataPanel>
 
-              <MobileAccordionSection
-                title="AI notes"
-                description="Optional AI readout and chat."
-                count="2 tools"
-              >
-                <div className="grid gap-3">
-                  {canUseAiCoach ? (
-                    <>
-                      <AiCoachCard payload={aiPayload} />
-                      <CoachChatCard questionId="coach-question-mobile" />
-                    </>
-                  ) : (
-                    <UpgradeAiCoachCard />
-                  )}
-                </div>
-              </MobileAccordionSection>
+                <MobileAccordionSection
+                  title="AI notes"
+                  description="Optional AI readout and chat."
+                  count="2 tools"
+                >
+                  <div className="grid gap-3">
+                    {canUseAiCoach ? (
+                      <>
+                        <AiCoachCard payload={aiPayload} />
+                        <CoachChatCard questionId="coach-question-mobile" />
+                      </>
+                    ) : (
+                      <UpgradeAiCoachCard />
+                    )}
+                  </div>
+                </MobileAccordionSection>
 
-              <DataPanel className="hidden sm:flex">
-                <SectionHeader
-                  title="AI coach chat"
-                  description={canUseAiCoach ? "Ask questions answered from cited SQL context in your personal shot database." : "Upgrade to Pro for AI coach chat."}
-                  action={<Sparkles className="size-5 text-emerald-500" />}
-                />
-                {canUseAiCoach ? <CoachChatCard /> : <UpgradeAiCoachCard />}
-              </DataPanel>
-            </div>
-          </section>
+                <DataPanel className="hidden sm:flex">
+                  <SectionHeader
+                    title="AI coach chat"
+                    description={
+                      canUseAiCoach
+                        ? "Ask questions answered from cited SQL context in your personal shot database."
+                        : "Upgrade to Pro for AI coach chat."
+                    }
+                    action={<Sparkles className="size-5 text-emerald-500" />}
+                  />
+                  {canUseAiCoach ? <CoachChatCard /> : <UpgradeAiCoachCard />}
+                </DataPanel>
+              </div>
+            </section>
 
-          <MobileAccordionSection
-            title="Club diagnosis"
-            description="All club-specific issues collapsed by default."
-            count={`${coach.clubCards.length} clubs`}
-          >
-            <div className="grid gap-3">
-              {coach.clubCards.map((card) => (
-                <CoachClubDiagnosis key={card.clubId} card={card} />
-              ))}
-            </div>
-          </MobileAccordionSection>
-
-          <DataPanel className="hidden sm:flex">
-            <SectionHeader
+            <MobileAccordionSection
               title="Club diagnosis"
-              description="For each club: what ForeKingHell thinks the issue is, why, and what to practise."
-              action={<Brain className="size-5 text-pink-500" />}
-            />
-            <CardContent>
-              <div className="grid gap-3 lg:grid-cols-2">
+              description="All club-specific issues collapsed by default."
+              count={`${coach.clubCards.length} clubs`}
+            >
+              <div className="grid gap-3">
                 {coach.clubCards.map((card) => (
                   <CoachClubDiagnosis key={card.clubId} card={card} />
                 ))}
               </div>
-            </CardContent>
-          </DataPanel>
-        </>
-      )}
+            </MobileAccordionSection>
+
+            <DataPanel className="hidden sm:flex">
+              <SectionHeader
+                title="Club diagnosis"
+                description="For each club: what ForeKingHell thinks the issue is, why, and what to practise."
+                action={<Brain className="size-5 text-pink-500" />}
+              />
+              <CardContent>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {coach.clubCards.map((card) => (
+                    <CoachClubDiagnosis key={card.clubId} card={card} />
+                  ))}
+                </div>
+              </CardContent>
+            </DataPanel>
+          </>
+        )}
       </div>
     </PageShell>
   );
@@ -539,7 +548,8 @@ function UpgradeAiCoachCard() {
       <div className="rounded-lg border border-dashed bg-[#F5F6F4] p-4 text-sm">
         <p className="font-semibold">AI coach is a Pro feature.</p>
         <p className="mt-1 leading-6 text-muted-foreground">
-          Rule-based coaching stays available. Upgrade when you want AI summaries and chat over your personal SQL context.
+          Rule-based coaching stays available. Upgrade when you want AI summaries and chat over your
+          personal SQL context.
         </p>
         <Button asChild variant="outline" className="mt-3">
           <Link href="/billing" prefetch={false}>
@@ -591,19 +601,11 @@ function CoachPracticePlan({
               </StatusPill>
             </div>
             <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <SmallMetric
-                label="Main issue"
-                value={topClub?.issueLabel ?? "No priority yet"}
-              />
-              <SmallMetric
-                label="Evidence"
-                value={topClub?.reason ?? "Import more clean shots"}
-              />
+              <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
+              <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
               <SmallMetric
                 label="Target"
-                value={
-                  topClub ? targetForCard(topClub) : "Create a 30-shot sample"
-                }
+                value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"}
               />
             </div>
           </div>
@@ -621,16 +623,13 @@ function CoachPracticePlan({
           <div>
             <p className="text-sm font-semibold">Today&apos;s coach drills</p>
             <p className="text-xs text-muted-foreground">
-              Progress is read from today&apos;s uploaded shots. XP unlocks
-              automatically when the data proves it.
+              Progress is read from today&apos;s uploaded shots. XP unlocks automatically when the
+              data proves it.
             </p>
           </div>
           <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:snap-none sm:px-0">
             {drillChallenges.map((challenge) => (
-              <div
-                key={challenge.id}
-                className="min-w-[82vw] shrink-0 snap-start sm:min-w-0"
-              >
+              <div key={challenge.id} className="min-w-[82vw] shrink-0 snap-start sm:min-w-0">
                 <CoachDrillChallengeCard
                   challenge={challenge}
                   status={
@@ -652,15 +651,11 @@ function CoachPracticePlan({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Badge variant="outline">Drill {index + 1}</Badge>
-                <h3 className="mt-2 text-lg font-semibold tracking-normal">
-                  {block.title}
-                </h3>
+                <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
               </div>
               <StatusPill tone={block.tone}>{block.duration}</StatusPill>
             </div>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {block.detail}
-            </p>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
           </div>
         ))}
         {blocks.length > 1 ? (
@@ -675,15 +670,11 @@ function CoachPracticePlan({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <Badge variant="outline">Drill {index + 2}</Badge>
-                      <h3 className="mt-2 text-lg font-semibold tracking-normal">
-                        {block.title}
-                      </h3>
+                      <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
                     </div>
                     <StatusPill tone={block.tone}>{block.duration}</StatusPill>
                   </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    {block.detail}
-                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
                 </div>
               ))}
             </div>
@@ -695,15 +686,11 @@ function CoachPracticePlan({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Badge variant="outline">Drill {index + 2}</Badge>
-                  <h3 className="mt-2 text-lg font-semibold tracking-normal">
-                    {block.title}
-                  </h3>
+                  <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
                 </div>
                 <StatusPill tone={block.tone}>{block.duration}</StatusPill>
               </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {block.detail}
-              </p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
             </div>
           ))}
         </div>
@@ -739,21 +726,13 @@ function CoachDrillChallengeCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{challenge.clubName}</Badge>
-            <StatusPill tone={challenge.tone}>
-              {challenge.issueLabel}
-            </StatusPill>
+            <StatusPill tone={challenge.tone}>{challenge.issueLabel}</StatusPill>
           </div>
-          <h3 className="mt-3 text-lg font-semibold tracking-normal">
-            {challenge.title}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {challenge.detail}
-          </p>
+          <h3 className="mt-3 text-lg font-semibold tracking-normal">{challenge.title}</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{challenge.detail}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <StatusPill
-            tone={status.won ? "amber" : status.completed ? "green" : "slate"}
-          >
+          <StatusPill tone={status.won ? "amber" : status.completed ? "green" : "slate"}>
             {status.won ? "Won" : status.completed ? "Complete" : "Waiting"}
           </StatusPill>
         </div>
@@ -847,18 +826,12 @@ function TrainingFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{impact.clubName}</p>
-                  <StatusPill tone={impact.tone}>
-                    {impact.issueLabel}
-                  </StatusPill>
+                  <StatusPill tone={impact.tone}>{impact.issueLabel}</StatusPill>
                 </div>
                 <p className="mt-2 text-sm font-medium">{impact.headline}</p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {impact.detail}
-                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{impact.detail}</p>
               </div>
-              <StatusPill tone={impact.tone}>
-                {impactLabel(impact.status)}
-              </StatusPill>
+              <StatusPill tone={impact.tone}>{impactLabel(impact.status)}</StatusPill>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-4">
               {impact.metrics.map((metric) => (
@@ -866,9 +839,7 @@ function TrainingFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
                   key={metric.label}
                   className="rounded-lg bg-white/85 px-3 py-2 ring-1 ring-slate-200/80"
                 >
-                  <p className="text-xs font-medium text-muted-foreground">
-                    {metric.label}
-                  </p>
+                  <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
                   <p className="mt-1 text-sm font-semibold">{metric.after}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {metric.before} {"->"} {metric.delta}
@@ -893,19 +864,13 @@ function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold tracking-normal">
-              {card.clubName}
-            </h2>
+            <h2 className="text-xl font-semibold tracking-normal">{card.clubName}</h2>
             <StatusPill tone={card.tone}>{card.issueLabel}</StatusPill>
           </div>
-          <p className="mt-1 truncate text-sm text-muted-foreground">
-            {card.brandModel}
-          </p>
+          <p className="mt-1 truncate text-sm text-muted-foreground">{card.brandModel}</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-semibold tracking-normal">
-            {card.trustIndex}%
-          </p>
+          <p className="text-2xl font-semibold tracking-normal">{card.trustIndex}%</p>
           <p className="text-xs text-muted-foreground">trust</p>
         </div>
       </div>
@@ -929,13 +894,7 @@ function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
   );
 }
 
-function SmallMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function SmallMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -961,10 +920,7 @@ function impactLabel(status: CoachTrainingImpact["status"] | undefined) {
 }
 
 function toneForFocus(focus: CoachFocusArea) {
-  const tones: Record<
-    CoachFocusArea,
-    "green" | "sky" | "pink" | "amber" | "slate"
-  > = {
+  const tones: Record<CoachFocusArea, "green" | "sky" | "pink" | "amber" | "slate"> = {
     distance: "sky",
     strike: "pink",
     launch: "amber",

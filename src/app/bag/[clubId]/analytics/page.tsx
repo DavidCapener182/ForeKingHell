@@ -95,7 +95,11 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
         title={`${clubName} analytics`}
         description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved launch-monitor data.`}
         actions={
-          <Button asChild size="lg" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button
+            asChild
+            size="lg"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
             <Link href={`/bag/${club.id}`} prefetch={false}>
               <Target className="size-4" />
               Standard club view
@@ -169,10 +173,22 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
             action={<Gauge className="size-5" style={{ color: accent }} />}
           />
           <CardContent className="space-y-4">
-            <ScoreBar label="Distance reliability" value={analytics.consistency.carryConsistencyScore} />
-            <ScoreBar label="Direction stability" value={analytics.consistency.directionConsistencyScore} />
-            <ScoreBar label="Strike stability" value={analytics.consistency.strikeConsistencyScore} />
-            <ScoreBar label="Flight stability" value={analytics.consistency.flightConsistencyScore} />
+            <ScoreBar
+              label="Distance reliability"
+              value={analytics.consistency.carryConsistencyScore}
+            />
+            <ScoreBar
+              label="Direction stability"
+              value={analytics.consistency.directionConsistencyScore}
+            />
+            <ScoreBar
+              label="Strike stability"
+              value={analytics.consistency.strikeConsistencyScore}
+            />
+            <ScoreBar
+              label="Flight stability"
+              value={analytics.consistency.flightConsistencyScore}
+            />
             <div className="apple-panel-strong p-4">
               <p className="text-sm text-muted-foreground">Confidence label</p>
               <p className="mt-1 text-3xl font-semibold tracking-normal">
@@ -241,14 +257,20 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
 
         <div className="grid gap-4">
           <DataPanel>
-            <SectionHeader title="Distance profile" description="Stock, safe, aggressive, best, and mishit floor." />
+            <SectionHeader
+              title="Distance profile"
+              description="Stock, safe, aggressive, best, and mishit floor."
+            />
             <CardContent>
               <DistanceDistribution analytics={analytics} accent={accent} />
             </CardContent>
           </DataPanel>
 
           <DataPanel>
-            <SectionHeader title="Launch window" description="How often clean shots launch inside the club target." />
+            <SectionHeader
+              title="Launch window"
+              description="How often clean shots launch inside the club target."
+            />
             <CardContent>
               <LaunchWindowChart analytics={analytics} accent={accent} />
             </CardContent>
@@ -322,9 +344,19 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           icon={Gauge}
           metrics={[
             ["Status", analytics.gapping.status],
-            ["Prev club", analytics.gapping.previousClubType ? formatClubType(analytics.gapping.previousClubType) : "--"],
+            [
+              "Prev club",
+              analytics.gapping.previousClubType
+                ? formatClubType(analytics.gapping.previousClubType)
+                : "--",
+            ],
             ["Prev gap", formatYards(analytics.gapping.previousGapYd)],
-            ["Next club", analytics.gapping.nextClubType ? formatClubType(analytics.gapping.nextClubType) : "--"],
+            [
+              "Next club",
+              analytics.gapping.nextClubType
+                ? formatClubType(analytics.gapping.nextClubType)
+                : "--",
+            ],
             ["Next gap", formatYards(analytics.gapping.nextGapYd)],
             ["Play number", formatYards(analytics.distance.stockPlayNumberYd)],
           ]}
@@ -339,7 +371,10 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           />
           <CardContent className="space-y-3">
             <DeltaPanel title="Latest 30 vs first 30" delta={analytics.progress.baselineDelta} />
-            <DeltaPanel title="Last session vs previous" delta={analytics.progress.lastSessionDelta} />
+            <DeltaPanel
+              title="Last session vs previous"
+              delta={analytics.progress.lastSessionDelta}
+            />
             <DeltaPanel title="This month vs last month" delta={analytics.progress.monthlyDelta} />
           </CardContent>
         </DataPanel>
@@ -366,7 +401,15 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge variant="outline">{shapeLabel(shape)}</Badge>
-                    {tags.length > 0 ? tags.map((tag) => <Badge key={tag} variant="secondary">{tag}</Badge>) : <Badge variant="secondary">normal</Badge>}
+                    {tags.length > 0 ? (
+                      tags.map((tag) => (
+                        <Badge key={tag} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="secondary">normal</Badge>
+                    )}
                   </div>
                 </div>
               );
@@ -542,8 +585,7 @@ function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics;
       <div
         className="border-b px-5 py-4 text-white"
         style={{
-          background:
-            "linear-gradient(135deg, #111827 0%, #172033 52%, rgba(17,24,39,0.92) 100%)",
+          background: "linear-gradient(135deg, #111827 0%, #172033 52%, rgba(17,24,39,0.92) 100%)",
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -569,9 +611,18 @@ function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics;
       <CardContent className="space-y-4 pt-5">
         <div className="grid gap-3 sm:grid-cols-4">
           <SmallDecisionMetric label="Role" value={analytics.decision.role} />
-          <SmallDecisionMetric label="Play number" value={formatYards(analytics.decision.playNumberYd)} />
-          <SmallDecisionMetric label="Max number" value={formatYards(analytics.decision.maxNumberYd)} />
-          <SmallDecisionMetric label="Do not force" value={formatYards(analytics.decision.doNotForceOverYd)} />
+          <SmallDecisionMetric
+            label="Play number"
+            value={formatYards(analytics.decision.playNumberYd)}
+          />
+          <SmallDecisionMetric
+            label="Max number"
+            value={formatYards(analytics.decision.maxNumberYd)}
+          />
+          <SmallDecisionMetric
+            label="Do not force"
+            value={formatYards(analytics.decision.doNotForceOverYd)}
+          />
         </div>
         <div className="apple-panel-strong p-4">
           <div className="flex items-center gap-2">
@@ -603,7 +654,11 @@ function DiagnosisPanel({ analytics }: { analytics: ClubAnalytics }) {
         action={<StatusPill tone={tone}>{analytics.diagnosis.severity}</StatusPill>}
       />
       <CardContent className="space-y-3">
-        <InsightBlock label={analytics.diagnosis.title} value={analytics.diagnosis.likelyCause} tone={tone} />
+        <InsightBlock
+          label={analytics.diagnosis.title}
+          value={analytics.diagnosis.likelyCause}
+          tone={tone}
+        />
         <div className="grid gap-3 sm:grid-cols-2">
           <SmallDecisionMetric label="Evidence" value={analytics.diagnosis.evidence} />
           <SmallDecisionMetric label="Practice focus" value={analytics.diagnosis.practiceFocus} />
@@ -614,7 +669,10 @@ function DiagnosisPanel({ analytics }: { analytics: ClubAnalytics }) {
 }
 
 function ShapeMixPanel({ analytics, accent }: { analytics: ClubAnalytics; accent: string }) {
-  const total = Object.values(analytics.accuracy.shapeCounts).reduce((sum, value) => sum + value, 0);
+  const total = Object.values(analytics.accuracy.shapeCounts).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
   const shapes = Object.entries(analytics.accuracy.shapeCounts)
     .filter(([, count]) => count > 0)
     .sort((left, right) => right[1] - left[1])
@@ -622,7 +680,10 @@ function ShapeMixPanel({ analytics, accent }: { analytics: ClubAnalytics; accent
 
   return (
     <DataPanel>
-      <SectionHeader title="Shot shape mix" description="Start line plus side carry classification." />
+      <SectionHeader
+        title="Shot shape mix"
+        description="Start line plus side carry classification."
+      />
       <CardContent className="space-y-3">
         {shapes.length > 0 ? (
           shapes.map(([shape, count]) => (
@@ -638,7 +699,9 @@ function ShapeMixPanel({ analytics, accent }: { analytics: ClubAnalytics; accent
             </div>
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">Need launch direction and side carry before shape mix is useful.</p>
+          <p className="text-sm text-muted-foreground">
+            Need launch direction and side carry before shape mix is useful.
+          </p>
         )}
       </CardContent>
     </DataPanel>
@@ -648,7 +711,9 @@ function ShapeMixPanel({ analytics, accent }: { analytics: ClubAnalytics; accent
 function SmallDecisionMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border bg-white px-3 py-3">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-2 text-sm font-semibold leading-5">{value}</p>
     </div>
   );
@@ -668,7 +733,10 @@ function ProfileCard({
       <SectionHeader title={title} action={<Icon className="size-5 text-muted-foreground" />} />
       <CardContent className="grid gap-2">
         {metrics.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
+          <div
+            key={label}
+            className="flex items-center justify-between rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80"
+          >
             <span className="text-sm text-muted-foreground">{label}</span>
             <span className="text-right font-semibold">{value}</span>
           </div>
@@ -701,7 +769,8 @@ function ShotCloud({
 }) {
   const plotted = shots.filter((shot) => shot.carryYd !== null);
   const holeYardage = 350;
-  const maxDistance = Math.max(holeYardage, ...plotted.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.02;
+  const maxDistance =
+    Math.max(holeYardage, ...plotted.map((shot) => shot.totalYd ?? shot.carryYd ?? 0)) * 1.02;
   const maxSide = Math.max(55, ...plotted.map((shot) => Math.abs(shot.sideCarryYd ?? 0))) * 1.15;
   const tee = { x: 322, y: 936 };
   const playHeight = 830;
@@ -711,7 +780,10 @@ function ShotCloud({
   const stockY = yFor(analytics.distance.stockCarryYd);
   const coneCenterX = xFor(analytics.accuracy.averageSideCarryYd);
   const coneCenterY = yFor(analytics.distance.stockCarryYd);
-  const coneRadiusX = Math.max(34, ((analytics.accuracy.shotConeWidthYd ?? 0) / maxSide) * sideScale);
+  const coneRadiusX = Math.max(
+    34,
+    ((analytics.accuracy.shotConeWidthYd ?? 0) / maxSide) * sideScale,
+  );
   const coneRadiusY = Math.max(30, ((analytics.distance.carrySpreadYd ?? 0) / maxDistance) * 280);
   const yardMarkers = [100, 150, 200, 250].filter((yard) => yard <= maxDistance);
 
@@ -733,7 +805,14 @@ function ShotCloud({
             </feMerge>
           </filter>
         </defs>
-        <image href="/assets/hole-350-aerial.jpg" x="0" y="0" width="644" height="1024" preserveAspectRatio="xMidYMid slice" />
+        <image
+          href="/assets/hole-350-aerial.jpg"
+          x="0"
+          y="0"
+          width="644"
+          height="1024"
+          preserveAspectRatio="xMidYMid slice"
+        />
         <rect x="0" y="0" width="644" height="1024" fill="#020617" opacity="0.14" />
 
         {yardMarkers.map((yard) => {
@@ -749,7 +828,13 @@ function ShotCloud({
                 strokeWidth="2.5"
                 strokeDasharray="10 10"
               />
-              <text x={Math.min(592, tee.x + arcWidth + 12)} y={y + 12} fill="#f8fafc" fontSize="18" fontWeight="700">
+              <text
+                x={Math.min(592, tee.x + arcWidth + 12)}
+                y={y + 12}
+                fill="#f8fafc"
+                fontSize="18"
+                fontWeight="700"
+              >
                 {yard}
               </text>
             </g>
@@ -769,11 +854,33 @@ function ShotCloud({
             strokeWidth="2"
           />
         ))}
-        <line x1={tee.x} x2={tee.x} y1={290} y2={770} stroke="#ffffff" strokeOpacity="0.72" strokeWidth="2.5" />
-        <text x={xFor(-40)} y="318" fill="#e5e7eb" fontSize="18" fontWeight="700" textAnchor="middle">
+        <line
+          x1={tee.x}
+          x2={tee.x}
+          y1={290}
+          y2={770}
+          stroke="#ffffff"
+          strokeOpacity="0.72"
+          strokeWidth="2.5"
+        />
+        <text
+          x={xFor(-40)}
+          y="318"
+          fill="#e5e7eb"
+          fontSize="18"
+          fontWeight="700"
+          textAnchor="middle"
+        >
           Left
         </text>
-        <text x={xFor(40)} y="318" fill="#e5e7eb" fontSize="18" fontWeight="700" textAnchor="middle">
+        <text
+          x={xFor(40)}
+          y="318"
+          fill="#e5e7eb"
+          fontSize="18"
+          fontWeight="700"
+          textAnchor="middle"
+        >
           Right
         </text>
 
@@ -790,12 +897,24 @@ function ShotCloud({
               strokeWidth="3"
               filter="url(#analyticsGlow)"
             />
-            <line x1="92" x2="552" y1={stockY} y2={stockY} stroke={accent} strokeWidth="3" strokeDasharray="8 8" />
+            <line
+              x1="92"
+              x2="552"
+              y1={stockY}
+              y2={stockY}
+              stroke={accent}
+              strokeWidth="3"
+              strokeDasharray="8 8"
+            />
           </>
         ) : null}
         {plotted.map((shot) => {
           const shape = classifyShotShape(shot);
-          const missTags = likelyMishitTags({ clubType: analytics.clubType, shot, stockCarryYd: analytics.distance.stockCarryYd });
+          const missTags = likelyMishitTags({
+            clubType: analytics.clubType,
+            shot,
+            stockCarryYd: analytics.distance.stockCarryYd,
+          });
           return (
             <circle
               key={shot.id}
@@ -833,7 +952,10 @@ function DistanceDistribution({ analytics, accent }: { analytics: ClubAnalytics;
           <div className="h-3 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full"
-              style={{ width: `${((value ?? 0) / maxValue) * 100}%`, background: label === "Stock" ? "#111827" : accent }}
+              style={{
+                width: `${((value ?? 0) / maxValue) * 100}%`,
+                background: label === "Stock" ? "#111827" : accent,
+              }}
             />
           </div>
           <span className="text-right text-sm font-semibold">{formatYards(value)}</span>
@@ -867,14 +989,22 @@ function LaunchWindowChart({ analytics, accent }: { analytics: ClubAnalytics; ac
       </div>
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>{domainLow} deg</span>
-        <span>Window {low}-{high} deg</span>
+        <span>
+          Window {low}-{high} deg
+        </span>
         <span>{domainHigh} deg</span>
       </div>
     </div>
   );
 }
 
-function DeltaPanel({ title, delta }: { title: string; delta: ClubAnalytics["progress"]["baselineDelta"] }) {
+function DeltaPanel({
+  title,
+  delta,
+}: {
+  title: string;
+  delta: ClubAnalytics["progress"]["baselineDelta"];
+}) {
   return (
     <div className="apple-panel-strong p-4">
       <div className="flex items-center justify-between gap-3">
@@ -884,12 +1014,29 @@ function DeltaPanel({ title, delta }: { title: string; delta: ClubAnalytics["pro
       {delta ? (
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <DeltaMetric label="Carry" value={delta.carryDeltaYd} suffix="yd" goodWhen="positive" />
-          <DeltaMetric label="Ball speed" value={delta.ballSpeedDeltaMph} suffix="mph" goodWhen="positive" />
-          <DeltaMetric label="Offline" value={delta.offlineDeltaYd} suffix="yd" goodWhen="negative" />
-          <DeltaMetric label="Club path" value={delta.clubPathDeltaDeg} suffix="deg" goodWhen="neutral" />
+          <DeltaMetric
+            label="Ball speed"
+            value={delta.ballSpeedDeltaMph}
+            suffix="mph"
+            goodWhen="positive"
+          />
+          <DeltaMetric
+            label="Offline"
+            value={delta.offlineDeltaYd}
+            suffix="yd"
+            goodWhen="negative"
+          />
+          <DeltaMetric
+            label="Club path"
+            value={delta.clubPathDeltaDeg}
+            suffix="deg"
+            goodWhen="neutral"
+          />
         </div>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Need at least two comparable clean shot groups.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Need at least two comparable clean shot groups.
+        </p>
       )}
     </div>
   );
@@ -908,12 +1055,22 @@ function DeltaMetric({
 }) {
   const isGood =
     value !== null &&
-    (goodWhen === "positive" ? value >= 0 : goodWhen === "negative" ? value <= 0 : Math.abs(value) <= 2);
+    (goodWhen === "positive"
+      ? value >= 0
+      : goodWhen === "negative"
+        ? value <= 0
+        : Math.abs(value) <= 2);
   return (
     <div className="rounded-lg border bg-white p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={isGood ? "mt-1 font-semibold text-emerald-700" : "mt-1 font-semibold text-amber-700"}>
-        {value === null ? "--" : `${value > 0 ? "+" : ""}${numberFormatter.format(value)} ${suffix}`}
+      <p
+        className={
+          isGood ? "mt-1 font-semibold text-emerald-700" : "mt-1 font-semibold text-amber-700"
+        }
+      >
+        {value === null
+          ? "--"
+          : `${value > 0 ? "+" : ""}${numberFormatter.format(value)} ${suffix}`}
       </p>
     </div>
   );

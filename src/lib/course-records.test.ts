@@ -78,8 +78,22 @@ describe("course record ranking", () => {
   it("keeps manual-only attempts out of verified champion boards", () => {
     const ranked = rankRecordAttempts(
       [
-        attempt("manual", "user-a", 63, "manual_only", "manual", new Date("2026-05-01T09:00:00.000Z")),
-        attempt("verified", "user-b", 74, "verified", "silver", new Date("2026-05-01T10:00:00.000Z")),
+        attempt(
+          "manual",
+          "user-a",
+          63,
+          "manual_only",
+          "manual",
+          new Date("2026-05-01T09:00:00.000Z"),
+        ),
+        attempt(
+          "verified",
+          "user-b",
+          74,
+          "verified",
+          "silver",
+          new Date("2026-05-01T10:00:00.000Z"),
+        ),
       ],
       "asc",
     );
@@ -133,11 +147,31 @@ describe("course record shot metrics", () => {
   it("derives longest drive from mapped driver tee shots", () => {
     expect(
       longestDriveYardsFromShots([
-        courseShot({ clubType: "driver", totalYd: 286.42, courseHoleNumber: 1, courseHoleShotNumber: 1 }),
-        courseShot({ clubType: "driver", totalYd: 301.64, courseHoleNumber: 5, courseHoleShotNumber: 1 }),
-        courseShot({ clubType: "driver", totalYd: 318, courseHoleNumber: 5, courseHoleShotNumber: 2 }),
+        courseShot({
+          clubType: "driver",
+          totalYd: 286.42,
+          courseHoleNumber: 1,
+          courseHoleShotNumber: 1,
+        }),
+        courseShot({
+          clubType: "driver",
+          totalYd: 301.64,
+          courseHoleNumber: 5,
+          courseHoleShotNumber: 1,
+        }),
+        courseShot({
+          clubType: "driver",
+          totalYd: 318,
+          courseHoleNumber: 5,
+          courseHoleShotNumber: 2,
+        }),
         courseShot({ clubType: "3w", totalYd: 322, courseHoleNumber: 7, courseHoleShotNumber: 1 }),
-        courseShot({ clubType: "driver", totalYd: 330, courseHoleNumber: null, courseHoleShotNumber: null }),
+        courseShot({
+          clubType: "driver",
+          totalYd: 330,
+          courseHoleNumber: null,
+          courseHoleShotNumber: null,
+        }),
       ]),
     ).toBe(301.6);
   });
@@ -145,7 +179,13 @@ describe("course record shot metrics", () => {
   it("falls back to carry and ignores bad-quality drive shots", () => {
     expect(
       longestDriveYardsFromShots([
-        courseShot({ clubType: "driver", carryYd: 270.25, totalYd: null, courseHoleNumber: 1, courseHoleShotNumber: 1 }),
+        courseShot({
+          clubType: "driver",
+          carryYd: 270.25,
+          totalYd: null,
+          courseHoleNumber: 1,
+          courseHoleShotNumber: 1,
+        }),
         courseShot({
           clubType: "driver",
           totalYd: 345,

@@ -23,15 +23,15 @@ export function decodeAchievementUnlockNotifications(value: string | undefined) 
       return [];
     }
 
-    return parsed.filter(isAchievementUnlockNotification).slice(0, MAX_FLASH_ACHIEVEMENT_NOTIFICATIONS);
+    return parsed
+      .filter(isAchievementUnlockNotification)
+      .slice(0, MAX_FLASH_ACHIEVEMENT_NOTIFICATIONS);
   } catch {
     return [];
   }
 }
 
-function isAchievementUnlockNotification(
-  value: unknown,
-): value is AchievementUnlockNotification {
+function isAchievementUnlockNotification(value: unknown): value is AchievementUnlockNotification {
   if (!value || typeof value !== "object") {
     return false;
   }

@@ -242,9 +242,10 @@ function tourCoverSvg(index, hue) {
 function clubSvg({ type, view, source }) {
   const accent = source === "generated-v2" ? "#0B7A3B" : "#111827";
   const loft = type.includes("w") || type === "driver" ? 0 : clubTypes.indexOf(type) * 2;
-  const head = view === "top"
-    ? `<ellipse cx="482" cy="178" rx="${type === "driver" ? 92 : 58}" ry="${type === "driver" ? 48 : 34}" fill="${accent}"/><ellipse cx="480" cy="176" rx="${type === "driver" ? 58 : 34}" ry="${type === "driver" ? 23 : 14}" fill="#ffffff" opacity="0.18"/>`
-    : `<path d="M442 144 C514 130 578 162 594 212 C548 238 484 226 420 200 Z" fill="${accent}"/><path d="M462 164 C512 156 552 172 568 200" stroke="#ffffff" stroke-opacity="0.24" stroke-width="12" fill="none" stroke-linecap="round"/>`;
+  const head =
+    view === "top"
+      ? `<ellipse cx="482" cy="178" rx="${type === "driver" ? 92 : 58}" ry="${type === "driver" ? 48 : 34}" fill="${accent}"/><ellipse cx="480" cy="176" rx="${type === "driver" ? 58 : 34}" ry="${type === "driver" ? 23 : 14}" fill="#ffffff" opacity="0.18"/>`
+      : `<path d="M442 144 C514 130 578 162 594 212 C548 238 484 226 420 200 Z" fill="${accent}"/><path d="M462 164 C512 156 552 172 568 200" stroke="#ffffff" stroke-opacity="0.24" stroke-width="12" fill="none" stroke-linecap="round"/>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
   <rect width="640" height="360" fill="none"/>
@@ -325,11 +326,17 @@ function hsl(h, s, l) {
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l / 100 - c / 2;
   const [r, g, b] =
-    h < 60 ? [c, x, 0] :
-    h < 120 ? [x, c, 0] :
-    h < 180 ? [0, c, x] :
-    h < 240 ? [0, x, c] :
-    h < 300 ? [x, 0, c] : [c, 0, x];
+    h < 60
+      ? [c, x, 0]
+      : h < 120
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x];
   return rgbToHex([r, g, b].map((part) => Math.round((part + m) * 255)));
 }
 

@@ -63,11 +63,7 @@ test.describe("layout audit", () => {
   });
 });
 
-async function expectLayoutBounds(
-  page: Page,
-  route: string,
-  viewport: (typeof viewports)[number],
-) {
+async function expectLayoutBounds(page: Page, route: string, viewport: (typeof viewports)[number]) {
   const metrics = await page.evaluate(() => {
     return {
       path: location.pathname,

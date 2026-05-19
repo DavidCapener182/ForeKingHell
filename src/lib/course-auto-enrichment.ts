@@ -12,7 +12,14 @@ import {
 import { getOsmHoleGeometry, type OsmHoleGeometry } from "@/lib/osm-course-search";
 
 const GEOMETRY_RETRY_INTERVAL_MS = 12 * 60 * 60 * 1000;
-const AUTO_GOOGLE_PROVIDERS = new Set(["espn-pga", "google-places", "osm", "schedule", "seed", "tour-seed"]);
+const AUTO_GOOGLE_PROVIDERS = new Set([
+  "espn-pga",
+  "google-places",
+  "osm",
+  "schedule",
+  "seed",
+  "tour-seed",
+]);
 
 type CourseRow = typeof courses.$inferSelect;
 type TeeSetRow = typeof teeSets.$inferSelect;
@@ -52,11 +59,18 @@ export async function ensureCourseAutoImport(course: CourseRow, currentHoleCount
     return { changed: Boolean(details), status: "no_coordinates" } satisfies CourseAutoImportResult;
   }
 
-  const importedHoles = selectPrimaryHoleSet(await safelyGetOsmHoleGeometry(latitude, longitude), latitude, longitude);
+  const importedHoles = selectPrimaryHoleSet(
+    await safelyGetOsmHoleGeometry(latitude, longitude),
+    latitude,
+    longitude,
+  );
   await updateAutoImportMetadata(course.id, enrichedMetadata, now, importedHoles.length);
 
   if (importedHoles.length === 0) {
-    return { changed: Boolean(details), status: "no_geometry_found" } satisfies CourseAutoImportResult;
+    return {
+      changed: Boolean(details),
+      status: "no_geometry_found",
+    } satisfies CourseAutoImportResult;
   }
 
   await saveImportedHoleGeometry(course.id, importedHoles, now);
@@ -134,15 +148,25 @@ async function safelyGetOsmHoleGeometry(latitude: number, longitude: number) {
   }
 }
 
-function selectPrimaryHoleSet(importedHoles: OsmHoleGeometry[], latitude: number, longitude: number) {
-  const standardCourseHoles = importedHoles.filter((hole) => hole.holeNumber >= 1 && hole.holeNumber <= 18);
+function selectPrimaryHoleSet(
+  importedHoles: OsmHoleGeometry[],
+  latitude: number,
+  longitude: number,
+) {
+  const standardCourseHoles = importedHoles.filter(
+    (hole) => hole.holeNumber >= 1 && hole.holeNumber <= 18,
+  );
   const candidates = standardCourseHoles.length > 0 ? standardCourseHoles : importedHoles;
   const nearestByHoleNumber = new Map<number, OsmHoleGeometry>();
 
   for (const hole of candidates) {
     const existingHole = nearestByHoleNumber.get(hole.holeNumber);
 
-    if (!existingHole || holeDistanceFromCenter(hole, latitude, longitude) < holeDistanceFromCenter(existingHole, latitude, longitude)) {
+    if (
+      !existingHole ||
+      holeDistanceFromCenter(hole, latitude, longitude) <
+        holeDistanceFromCenter(existingHole, latitude, longitude)
+    ) {
       nearestByHoleNumber.set(hole.holeNumber, hole);
     }
   }
@@ -179,7 +203,11 @@ async function updateAutoImportMetadata(
     .where(eq(courses.id, courseId));
 }
 
-async function saveImportedHoleGeometry(courseId: string, importedHoles: OsmHoleGeometry[], now: Date) {
+async function saveImportedHoleGeometry(
+  courseId: string,
+  importedHoles: OsmHoleGeometry[],
+  now: Date,
+) {
   const db = getDb();
   const teeSet = await primaryTeeSet(courseId, importedHoles, now);
 
@@ -271,13 +299,16 @@ async function primaryTeeSet(courseId: string, importedHoles: OsmHoleGeometry[],
 }
 
 function recentAutoImportAttempt(metadata: Record<string, unknown>, now: Date) {
-  const attemptedAt = typeof metadata.geometryAutoImportAttemptedAt === "string"
-    ? Date.parse(metadata.geometryAutoImportAttemptedAt)
-    : Number.NaN;
+  const attemptedAt =
+    typeof metadata.geometryAutoImportAttemptedAt === "string"
+      ? Date.parse(metadata.geometryAutoImportAttemptedAt)
+      : Number.NaN;
 
   return Number.isFinite(attemptedAt) && now.getTime() - attemptedAt < GEOMETRY_RETRY_INTERVAL_MS;
 }
 
 function metadataRecord(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }

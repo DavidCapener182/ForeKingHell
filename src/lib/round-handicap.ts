@@ -70,7 +70,8 @@ export function calculateRoundDifferential({
     holesPlayed,
   });
   const rating = typeof input.courseRating === "number" ? input.courseRating : input.totalPar;
-  const slope = typeof input.slopeRating === "number" && input.slopeRating > 0 ? input.slopeRating : 113;
+  const slope =
+    typeof input.slopeRating === "number" && input.slopeRating > 0 ? input.slopeRating : 113;
 
   if (typeof input.totalScore !== "number" || typeof rating !== "number") {
     return null;
@@ -79,7 +80,9 @@ export function calculateRoundDifferential({
   return (((input.totalScore - rating) * 113) / slope) * differentialHolesFactor(input.holesPlayed);
 }
 
-export function normaliseHandicapRoundInput(input: HandicapRoundInput): NormalisedHandicapRoundInput {
+export function normaliseHandicapRoundInput(
+  input: HandicapRoundInput,
+): NormalisedHandicapRoundInput {
   const holesPlayed =
     typeof input.holesPlayed === "number" && Number.isFinite(input.holesPlayed)
       ? input.holesPlayed
@@ -106,7 +109,9 @@ export function normaliseHandicapRoundInput(input: HandicapRoundInput): Normalis
 
 export function averageRoundDifferential(values: Array<number | null>) {
   const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) / present.length : null;
+  return present.length > 0
+    ? present.reduce((total, value) => total + value, 0) / present.length
+    : null;
 }
 
 export function calculateHandicapSummary(valuesNewestFirst: Array<number | null>): HandicapSummary {
@@ -136,7 +141,10 @@ export function calculatePlayingHandicapSummary(
 ): PlayingHandicapSummary {
   const adjustedRounds = roundsNewestFirst
     .map((round) => {
-      if (typeof round.handicapDifferential !== "number" || !Number.isFinite(round.handicapDifferential)) {
+      if (
+        typeof round.handicapDifferential !== "number" ||
+        !Number.isFinite(round.handicapDifferential)
+      ) {
         return null;
       }
 
@@ -205,7 +213,12 @@ export function calculateWhsStyleIndex(valuesNewestFirst: number[]) {
 }
 
 function differentialHolesFactor(holesPlayed: number | null | undefined) {
-  if (typeof holesPlayed !== "number" || !Number.isFinite(holesPlayed) || holesPlayed <= 0 || holesPlayed >= 18) {
+  if (
+    typeof holesPlayed !== "number" ||
+    !Number.isFinite(holesPlayed) ||
+    holesPlayed <= 0 ||
+    holesPlayed >= 18
+  ) {
     return 1;
   }
 

@@ -54,14 +54,17 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
         targetPlayNumberYd: null,
         workOnYd: null,
         targetGapYd,
-        targetMessage: isFiniteNumber(row.carryYd) ? "Need another club for gapping" : "Need carry samples",
+        targetMessage: isFiniteNumber(row.carryYd)
+          ? "Need another club for gapping"
+          : "Need carry samples",
         targetTone: "slate",
         targetPriorityYd: 0,
       };
     }
 
     const next = findNextCarry(rowsWithCarry, index);
-    const previousGapYd = previousTargetCarryYd === null ? null : roundOne(previousTargetCarryYd - row.carryYd);
+    const previousGapYd =
+      previousTargetCarryYd === null ? null : roundOne(previousTargetCarryYd - row.carryYd);
     const nextGapYd = next ? roundOne(row.carryYd - next.carryYd) : null;
     const ladderOpportunityYd =
       firstCarry && index > firstCarry.index
@@ -72,10 +75,15 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
       previousGapYd !== null && previousGapYd > targetGapYd + GAP_TOLERANCE_YD
         ? previousGapYd - targetGapYd
         : 0,
-      nextGapYd !== null && nextGapYd < targetGapYd - GAP_TOLERANCE_YD ? targetGapYd - nextGapYd : 0,
+      nextGapYd !== null && nextGapYd < targetGapYd - GAP_TOLERANCE_YD
+        ? targetGapYd - nextGapYd
+        : 0,
     );
     const progressionCapYd = progressionCap(row, options.handicapBand ?? null);
-    const previousGapRoomYd = previousGapYd === null ? Number.POSITIVE_INFINITY : Math.max(0, previousGapYd - HEALTHY_GAP_MIN_YD);
+    const previousGapRoomYd =
+      previousGapYd === null
+        ? Number.POSITIVE_INFINITY
+        : Math.max(0, previousGapYd - HEALTHY_GAP_MIN_YD);
     const rawIncreaseYd = Math.min(gapOpportunityYd, progressionCapYd, previousGapRoomYd);
     const targetIncreaseYd = rawIncreaseYd >= MIN_TARGET_INCREASE_YD ? roundOne(rawIncreaseYd) : 0;
     const targetCarryYd = roundOne(row.carryYd + targetIncreaseYd);
@@ -112,7 +120,10 @@ function targetRecommendation(
   }
 
   if (input.targetIncreaseYd > 0) {
-    return { message: `Potential +${formatYards(input.targetIncreaseYd)} yd available`, tone: "amber" };
+    return {
+      message: `Potential +${formatYards(input.targetIncreaseYd)} yd available`,
+      tone: "amber",
+    };
   }
 
   if (
@@ -150,7 +161,10 @@ function personalTargetGap<T extends PersonalGappingInput>(rowsWithCarry: Array<
   return roundOne(clamp(median(positiveGaps), PERSONAL_GAP_MIN_YD, PERSONAL_GAP_MAX_YD));
 }
 
-function findNextCarry<T extends PersonalGappingInput>(entries: Array<CarryEntry<T>>, rowIndex: number) {
+function findNextCarry<T extends PersonalGappingInput>(
+  entries: Array<CarryEntry<T>>,
+  rowIndex: number,
+) {
   return entries.find((entry) => entry.index > rowIndex) ?? null;
 }
 
@@ -214,7 +228,11 @@ function handicapProgressionFactor(handicapBand: string | null) {
     return 0.8;
   }
 
-  if (normalized.includes("beginner") || normalized.includes("new") || normalized.includes("high")) {
+  if (
+    normalized.includes("beginner") ||
+    normalized.includes("new") ||
+    normalized.includes("high")
+  ) {
     return 0.6;
   }
 
@@ -222,7 +240,11 @@ function handicapProgressionFactor(handicapBand: string | null) {
     return 1;
   }
 
-  const values = normalized.match(/-?\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite) ?? [];
+  const values =
+    normalized
+      .match(/-?\d+(?:\.\d+)?/g)
+      ?.map(Number)
+      .filter(Number.isFinite) ?? [];
 
   if (values.length === 0) {
     return 0.8;
@@ -256,7 +278,10 @@ function hasLaunchWindowOpportunity(row: PersonalGappingInput) {
 
   const window = launchWindowFor(row.clubType);
 
-  return window !== null && (row.averageLaunchAngleDeg < window.low || row.averageLaunchAngleDeg > window.high);
+  return (
+    window !== null &&
+    (row.averageLaunchAngleDeg < window.low || row.averageLaunchAngleDeg > window.high)
+  );
 }
 
 function launchWindowFor(clubType: string) {

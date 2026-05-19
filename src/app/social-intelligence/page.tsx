@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { Brain, Flag, MessageSquareWarning, ShieldAlert, Sparkles } from "lucide-react";
 
-import { generateSocialSummaryAction, reportSocialTargetAction } from "@/app/social-intelligence/actions";
+import {
+  generateSocialSummaryAction,
+  reportSocialTargetAction,
+} from "@/app/social-intelligence/actions";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +33,8 @@ export default async function SocialIntelligencePage() {
         <StatusPill tone="sky">Recaps and safety</StatusPill>
         <h1 className="mt-3 text-3xl font-semibold tracking-normal">Recaps & Safety</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Generate weekly and challenge recaps while keeping suspicious attempts, reported comments and moderation records visible early.
+          Generate weekly and challenge recaps while keeping suspicious attempts, reported comments
+          and moderation records visible early.
         </p>
       </header>
 
@@ -48,9 +52,15 @@ export default async function SocialIntelligencePage() {
                 <option value="challenge_coach">Challenge coach</option>
                 <option value="tournament_recap">Tournament recap</option>
               </select>
-              <select name="visibility" defaultValue="private" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+              <select
+                name="visibility"
+                defaultValue="private"
+                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
+              >
                 {socialVisibilityOptions.map((option) => (
-                  <option key={option} value={option}>{label(option)}</option>
+                  <option key={option} value={option}>
+                    {label(option)}
+                  </option>
                 ))}
               </select>
               <Button type="submit" className="rounded-xl bg-[#111827] text-white">
@@ -74,9 +84,24 @@ export default async function SocialIntelligencePage() {
                 <option value="tournament_submission">Tournament submission</option>
                 <option value="profile">Profile</option>
               </select>
-              <Input name="targetId" placeholder="Target id" className="h-9 rounded-xl bg-slate-50" required />
-              <Input name="reason" placeholder="Spam, abuse, suspicious result..." className="h-9 rounded-xl bg-slate-50" required />
-              <textarea name="details" rows={3} className="rounded-xl border bg-slate-50 px-3 py-2 text-sm" placeholder="Optional details" />
+              <Input
+                name="targetId"
+                placeholder="Target id"
+                className="h-9 rounded-xl bg-slate-50"
+                required
+              />
+              <Input
+                name="reason"
+                placeholder="Spam, abuse, suspicious result..."
+                className="h-9 rounded-xl bg-slate-50"
+                required
+              />
+              <textarea
+                name="details"
+                rows={3}
+                className="rounded-xl border bg-slate-50 px-3 py-2 text-sm"
+                placeholder="Optional details"
+              />
               <Button type="submit" variant="destructive">
                 <MessageSquareWarning className="size-4" />
                 Report
@@ -87,16 +112,30 @@ export default async function SocialIntelligencePage() {
 
         <main className="grid gap-4">
           <section className="grid gap-3 md:grid-cols-3">
-            <Metric icon={<Sparkles className="size-4 text-emerald-600" />} label="Summaries" value={data.summaries.length} />
-            <Metric icon={<ShieldAlert className="size-4 text-red-600" />} label="Reports" value={data.reports.length} />
-            <Metric icon={<Flag className="size-4 text-amber-600" />} label="Moderation events" value={data.moderation.length} />
+            <Metric
+              icon={<Sparkles className="size-4 text-emerald-600" />}
+              label="Summaries"
+              value={data.summaries.length}
+            />
+            <Metric
+              icon={<ShieldAlert className="size-4 text-red-600" />}
+              label="Reports"
+              value={data.reports.length}
+            />
+            <Metric
+              icon={<Flag className="size-4 text-amber-600" />}
+              label="Moderation events"
+              value={data.moderation.length}
+            />
           </section>
 
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Weekly and challenge recaps</p>
             <div className="mt-4 grid gap-3">
               {data.summaries.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No summaries generated yet.</p>
+                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                  No summaries generated yet.
+                </p>
               ) : (
                 data.summaries.map((summary) => (
                   <article key={summary.id} className="rounded-xl border bg-slate-50 p-4">
@@ -106,7 +145,9 @@ export default async function SocialIntelligencePage() {
                     </div>
                     <h2 className="mt-3 font-semibold">{summary.headline}</h2>
                     <p className="mt-2 text-sm leading-6 text-muted-foreground">{summary.body}</p>
-                    <p className="mt-3 text-xs text-muted-foreground">{summary.model} · {dateFormatter.format(summary.createdAt)}</p>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {summary.model} · {dateFormatter.format(summary.createdAt)}
+                    </p>
                   </article>
                 ))
               )}
@@ -120,36 +161,65 @@ export default async function SocialIntelligencePage() {
                 data.moderation.map((event) => (
                   <article key={event.id} className="rounded-xl border bg-slate-50 p-4 text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Badge variant={event.severity === "high" ? "destructive" : "secondary"}>{label(event.eventType)}</Badge>
+                      <Badge variant={event.severity === "high" ? "destructive" : "secondary"}>
+                        {label(event.eventType)}
+                      </Badge>
                       <Badge variant="outline">{event.status}</Badge>
                     </div>
-                    <p className="mt-3 font-medium">{event.reason ?? "Verification review needed"}</p>
+                    <p className="mt-3 font-medium">
+                      {event.reason ?? "Verification review needed"}
+                    </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      <ReviewMetric label="Imported" value={metadataValue(event.metadataJson, "imported")} />
-                      <ReviewMetric label="Screenshot" value={metadataValue(event.metadataJson, "screenshot")} />
-                      <ReviewMetric label="Context" value={metadataValue(event.metadataJson, "course") ?? metadataValue(event.metadataJson, "tournament")} />
+                      <ReviewMetric
+                        label="Imported"
+                        value={metadataValue(event.metadataJson, "imported")}
+                      />
+                      <ReviewMetric
+                        label="Screenshot"
+                        value={metadataValue(event.metadataJson, "screenshot")}
+                      />
+                      <ReviewMetric
+                        label="Context"
+                        value={
+                          metadataValue(event.metadataJson, "course") ??
+                          metadataValue(event.metadataJson, "tournament")
+                        }
+                      />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline">Approve</Button>
-                      <Button type="button" size="sm" variant="outline">Reject</Button>
-                      <Button type="button" size="sm" variant="outline">Request more evidence</Button>
+                      <Button type="button" size="sm" variant="outline">
+                        Approve
+                      </Button>
+                      <Button type="button" size="sm" variant="outline">
+                        Reject
+                      </Button>
+                      <Button type="button" size="sm" variant="outline">
+                        Request more evidence
+                      </Button>
                     </div>
                     <p className="mt-3 text-xs text-muted-foreground">
-                      {event.targetType} / {event.targetId} · {dateFormatter.format(event.createdAt)}
+                      {event.targetType} / {event.targetId} ·{" "}
+                      {dateFormatter.format(event.createdAt)}
                     </p>
                   </article>
                 ))
               ) : data.reports.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No verification events or reports created by this account.</p>
+                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                  No verification events or reports created by this account.
+                </p>
               ) : null}
-              {data.reports.length > 0 ? (
-                data.reports.map((report) => (
-                  <div key={report.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
-                    <p className="font-medium">{label(report.reason)} · {report.status}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{report.targetType} / {report.targetId}</p>
-                  </div>
-                ))
-              ) : null}
+              {data.reports.length > 0
+                ? data.reports.map((report) => (
+                    <div key={report.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                      <p className="font-medium">
+                        {label(report.reason)} · {report.status}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {report.targetType} / {report.targetId}
+                      </p>
+                    </div>
+                  ))
+                : null}
             </div>
           </section>
         </main>
@@ -158,10 +228,21 @@ export default async function SocialIntelligencePage() {
   );
 }
 
-function Metric({ icon, label: metricLabel, value }: { icon: ReactNode; label: string; value: number }) {
+function Metric({
+  icon,
+  label: metricLabel,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">{icon}{metricLabel}</p>
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        {icon}
+        {metricLabel}
+      </p>
       <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
     </div>
   );

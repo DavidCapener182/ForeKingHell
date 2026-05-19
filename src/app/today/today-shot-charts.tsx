@@ -4,12 +4,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Check, Eye } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartFrame } from "@/components/premium";
 import { cn } from "@/lib/utils";
 
@@ -122,21 +117,15 @@ export function TodayShotCharts({
 }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
   const statusByClub = useMemo(
-    () =>
-      new Map(
-        clubStatuses.map((status) => [status.clubType, status] as const),
-      ),
+    () => new Map(clubStatuses.map((status) => [status.clubType, status] as const)),
     [clubStatuses],
   );
   const [selectedClub, setSelectedClub] = useState("all");
-  const [trajectoryView, setTrajectoryView] =
-    useState<TrajectoryView>("shots");
+  const [trajectoryView, setTrajectoryView] = useState<TrajectoryView>("shots");
   const visibleShots = useMemo(
     () =>
       shots
-        .filter(
-          (shot) => selectedClub === "all" || shot.clubType === selectedClub,
-        )
+        .filter((shot) => selectedClub === "all" || shot.clubType === selectedClub)
         .map((shot) => ({
           ...shot,
           color: colorForClub(shot.clubType),
@@ -179,7 +168,14 @@ export function TodayShotCharts({
           >
             {selectedClub === "all" ? <Check className="size-3.5" /> : null}
             All clubs
-            <span className={cn("text-xs", selectedClub === "all" ? "text-white/75" : "text-muted-foreground")}>{shots.length}</span>
+            <span
+              className={cn(
+                "text-xs",
+                selectedClub === "all" ? "text-white/75" : "text-muted-foreground",
+              )}
+            >
+              {shots.length}
+            </span>
           </button>
           {clubGroups.map((club) => {
             const selected = selectedClub === club.clubType;
@@ -205,9 +201,18 @@ export function TodayShotCharts({
                   aria-hidden
                 />
                 <span>{club.clubLabel}</span>
-                <span className={cn("text-xs", selected ? "text-white/75" : "text-muted-foreground")}>{club.shotCount}</span>
+                <span
+                  className={cn("text-xs", selected ? "text-white/75" : "text-muted-foreground")}
+                >
+                  {club.shotCount}
+                </span>
                 {status ? (
-                  <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-semibold", selected ? "bg-white/15 text-white" : statusPillClass(status.verdict))}>
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                      selected ? "bg-white/15 text-white" : statusPillClass(status.verdict),
+                    )}
+                  >
                     {verdictLabel(status.verdict)}
                   </span>
                 ) : null}
@@ -311,9 +316,7 @@ function ChartPanel({
         </div>
       ) : (
         <div className="grid gap-3">
-          <ChartFrame>
-            {children}
-          </ChartFrame>
+          <ChartFrame>{children}</ChartFrame>
           {footer}
         </div>
       )}
@@ -342,10 +345,12 @@ function MarkerLegendItem({
 }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
-      <span className={cn(
-        "grid size-4 place-items-center rounded-full text-[10px] font-bold text-white",
-        tone === "green" ? "bg-emerald-600" : tone === "pink" ? "bg-pink-600" : "bg-slate-800",
-      )}>
+      <span
+        className={cn(
+          "grid size-4 place-items-center rounded-full text-[10px] font-bold text-white",
+          tone === "green" ? "bg-emerald-600" : tone === "pink" ? "bg-pink-600" : "bg-slate-800",
+        )}
+      >
         {marker}
       </span>
       {label}
@@ -361,15 +366,15 @@ function TrajectoryInsightCards({ shots }: { shots: ChartPoint[] }) {
   const highestApex = max(apexes);
   const longest = [...points]
     .filter((shot) => isNumber(shot.carryYd) || isNumber(shot.totalYd))
-    .sort((left, right) => (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0))[0];
+    .sort(
+      (left, right) => (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+    )[0];
   const penetrating = [...points]
     .filter((shot) => isNumber(shot.apexFt ?? fallbackApex(shot)))
     .sort(
       (left, right) =>
-        (left.apexFt ?? fallbackApex(left) ?? 999) -
-          (right.apexFt ?? fallbackApex(right) ?? 999) ||
-        (right.carryYd ?? right.totalYd ?? 0) -
-          (left.carryYd ?? left.totalYd ?? 0),
+        (left.apexFt ?? fallbackApex(left) ?? 999) - (right.apexFt ?? fallbackApex(right) ?? 999) ||
+        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
     )[0];
 
   if (points.length === 0) {
@@ -380,8 +385,14 @@ function TrajectoryInsightCards({ shots }: { shots: ChartPoint[] }) {
     <div className="grid grid-cols-2 gap-2 text-xs">
       <TrajectoryInsight label="Avg apex" value={formatFeet(averageApex)} />
       <TrajectoryInsight label="Highest" value={formatFeet(highestApex || null)} />
-      <TrajectoryInsight label="Longest carry" value={formatNullable(longest?.carryYd ?? longest?.totalYd ?? null)} />
-      <TrajectoryInsight label="Most penetrating" value={penetrating ? compactShotLabel(penetrating) : "--"} />
+      <TrajectoryInsight
+        label="Longest carry"
+        value={formatNullable(longest?.carryYd ?? longest?.totalYd ?? null)}
+      />
+      <TrajectoryInsight
+        label="Most penetrating"
+        value={penetrating ? compactShotLabel(penetrating) : "--"}
+      />
       {carries.length > 0 ? (
         <p className="col-span-2 text-[11px] text-muted-foreground">
           Axis max: {formatFeet(niceTrajectoryMax(highestApex || 0))}
@@ -424,7 +435,10 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
 function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const points = shots.filter(hasDispersionData);
   const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
-  const maxSide = Math.max(20, niceMax(max(points.map((shot) => Math.abs(shot.sideCarryYd ?? 0))), 10));
+  const maxSide = Math.max(
+    20,
+    niceMax(max(points.map((shot) => Math.abs(shot.sideCarryYd ?? 0))), 10),
+  );
   const centerZone = Math.min(10, maxSide);
   const yTicks = ticks(maxCarry, 4);
   const xTicks = [-maxSide, -maxSide / 2, 0, maxSide / 2, maxSide];
@@ -452,13 +466,28 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
         fill="#ecfdf5"
         opacity={0.72}
       />
-      <text x={xScale(-maxSide * 0.72)} y={padding.top + 16} textAnchor="middle" className="fill-slate-500 text-[11px]">
+      <text
+        x={xScale(-maxSide * 0.72)}
+        y={padding.top + 16}
+        textAnchor="middle"
+        className="fill-slate-500 text-[11px]"
+      >
         left miss
       </text>
-      <text x={xScale(maxSide * 0.72)} y={padding.top + 16} textAnchor="middle" className="fill-slate-500 text-[11px]">
+      <text
+        x={xScale(maxSide * 0.72)}
+        y={padding.top + 16}
+        textAnchor="middle"
+        className="fill-slate-500 text-[11px]"
+      >
         right miss
       </text>
-      <text x={xScale(0)} y={padding.top + 14} textAnchor="middle" className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]">
+      <text
+        x={xScale(0)}
+        y={padding.top + 14}
+        textAnchor="middle"
+        className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
+      >
         Target corridor
       </text>
       {yTicks.map((tick) => (
@@ -470,7 +499,12 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
             y2={yScale(tick)}
             stroke="#e5e7eb"
           />
-          <text x={padding.left - 10} y={yScale(tick) + 4} textAnchor="end" className="fill-slate-600 text-[12px]">
+          <text
+            x={padding.left - 10}
+            y={yScale(tick) + 4}
+            textAnchor="end"
+            className="fill-slate-600 text-[12px]"
+          >
             {tick}
           </text>
         </g>
@@ -486,7 +520,12 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
             strokeDasharray={tick === 0 ? undefined : "4 4"}
             opacity={tick === 0 ? 0.5 : 1}
           />
-          <text x={xScale(tick)} y={chartHeight - 18} textAnchor="middle" className="fill-slate-600 text-[12px]">
+          <text
+            x={xScale(tick)}
+            y={chartHeight - 18}
+            textAnchor="middle"
+            className="fill-slate-600 text-[12px]"
+          >
             {formatTick(tick)}
           </text>
         </g>
@@ -494,7 +533,12 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
       <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
         carry yd
       </text>
-      <text x={chartWidth / 2} y={chartHeight - 5} textAnchor="middle" className="fill-slate-600 text-[12px]">
+      <text
+        x={chartWidth / 2}
+        y={chartHeight - 5}
+        textAnchor="middle"
+        className="fill-slate-600 text-[12px]"
+      >
         left / right yd
       </text>
       {points.map((shot) => {
@@ -622,29 +666,10 @@ function DispersionMarker({
 
   return (
     <g data-dispersion-club={shot.clubType}>
-      <circle
-        cx={x}
-        cy={y}
-        r={10}
-        fill="none"
-        stroke={color}
-        strokeWidth={2.5}
-      />
+      <circle cx={x} cy={y} r={10} fill="none" stroke={color} strokeWidth={2.5} />
       <circle cx={x} cy={y} r={3.4} fill={color} />
-      <circle
-        cx={x + 14}
-        cy={y - 14}
-        r={9}
-        fill={color}
-        stroke="white"
-        strokeWidth={1.5}
-      />
-      <text
-        x={x + 14}
-        y={y - 10}
-        textAnchor="middle"
-        className="fill-white text-[10px] font-bold"
-      >
+      <circle cx={x + 14} cy={y - 14} r={9} fill={color} stroke="white" strokeWidth={1.5} />
+      <text x={x + 14} y={y - 10} textAnchor="middle" className="fill-white text-[10px] font-bold">
         {marker}
       </text>
       <title>{`${label}: ${shotTitle(shot)}`}</title>
@@ -652,16 +677,12 @@ function DispersionMarker({
   );
 }
 
-function TrajectoryChart({
-  shots,
-  view,
-}: {
-  shots: ChartPoint[];
-  view: TrajectoryView;
-}) {
+function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: TrajectoryView }) {
   const points = shots.filter(hasTrajectoryData);
   const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
-  const maxApex = niceTrajectoryMax(max(points.map((shot) => shot.apexFt ?? fallbackApex(shot) ?? 0)));
+  const maxApex = niceTrajectoryMax(
+    max(points.map((shot) => shot.apexFt ?? fallbackApex(shot) ?? 0)),
+  );
   const yTicks = ticks(maxApex, 4);
   const xTicks = ticks(maxCarry, 5);
   const xScale = (value: number) => padding.left + (value / maxCarry) * plotWidth;
@@ -685,7 +706,12 @@ function TrajectoryChart({
             y2={yScale(tick)}
             stroke="#e5e7eb"
           />
-          <text x={padding.left - 10} y={yScale(tick) + 4} textAnchor="end" className="fill-slate-600 text-[12px]">
+          <text
+            x={padding.left - 10}
+            y={yScale(tick) + 4}
+            textAnchor="end"
+            className="fill-slate-600 text-[12px]"
+          >
             {tick}
           </text>
         </g>
@@ -699,7 +725,12 @@ function TrajectoryChart({
             y2={chartHeight - padding.bottom}
             stroke="#eef2f7"
           />
-          <text x={xScale(tick)} y={chartHeight - 18} textAnchor="middle" className="fill-slate-600 text-[12px]">
+          <text
+            x={xScale(tick)}
+            y={chartHeight - 18}
+            textAnchor="middle"
+            className="fill-slate-600 text-[12px]"
+          >
             {tick}
           </text>
         </g>
@@ -715,7 +746,12 @@ function TrajectoryChart({
       <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
         apex ft
       </text>
-      <text x={chartWidth / 2} y={chartHeight - 5} textAnchor="middle" className="fill-slate-600 text-[12px]">
+      <text
+        x={chartWidth / 2}
+        y={chartHeight - 5}
+        textAnchor="middle"
+        className="fill-slate-600 text-[12px]"
+      >
         carry yd
       </text>
       {points.map((shot) => {
@@ -864,27 +900,27 @@ function averageTrajectoryPoints(points: ChartPoint[]): AverageTrajectory[] {
 }
 
 function bestDispersionShot(points: ChartPoint[]) {
-  return [...points]
-    .filter(hasDispersionData)
-    .sort(
-      (left, right) =>
-        Math.abs(left.sideCarryYd ?? 999) -
-          Math.abs(right.sideCarryYd ?? 999) ||
-        (right.carryYd ?? right.totalYd ?? 0) -
-          (left.carryYd ?? left.totalYd ?? 0),
-    )[0] ?? null;
+  return (
+    [...points]
+      .filter(hasDispersionData)
+      .sort(
+        (left, right) =>
+          Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999) ||
+          (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+      )[0] ?? null
+  );
 }
 
 function worstDispersionShot(points: ChartPoint[]) {
-  return [...points]
-    .filter(hasDispersionData)
-    .sort(
-      (left, right) =>
-        Math.abs(right.sideCarryYd ?? 0) -
-          Math.abs(left.sideCarryYd ?? 0) ||
-        (right.carryYd ?? right.totalYd ?? 0) -
-          (left.carryYd ?? left.totalYd ?? 0),
-    )[0] ?? null;
+  return (
+    [...points]
+      .filter(hasDispersionData)
+      .sort(
+        (left, right) =>
+          Math.abs(right.sideCarryYd ?? 0) - Math.abs(left.sideCarryYd ?? 0) ||
+          (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+      )[0] ?? null
+  );
 }
 
 function buildClubGroups(shots: TodayChartShot[]): ClubChartGroup[] {
@@ -901,11 +937,15 @@ function buildClubGroups(shots: TodayChartShot[]): ClubChartGroup[] {
     groups.set(shot.clubType, current);
   }
 
-  return [...groups.values()].sort((left, right) => sortClub(left.clubType) - sortClub(right.clubType));
+  return [...groups.values()].sort(
+    (left, right) => sortClub(left.clubType) - sortClub(right.clubType),
+  );
 }
 
 function colorForClub(clubType: string) {
-  return clubColors[clubType] ?? fallbackColors[Math.abs(hashText(clubType)) % fallbackColors.length];
+  return (
+    clubColors[clubType] ?? fallbackColors[Math.abs(hashText(clubType)) % fallbackColors.length]
+  );
 }
 
 function sortClub(clubType: string) {
@@ -936,7 +976,10 @@ function hasDispersionData(shot: TodayChartShot) {
 }
 
 function hasTrajectoryData(shot: TodayChartShot) {
-  return (isNumber(shot.carryYd) || isNumber(shot.totalYd)) && (isNumber(shot.apexFt) || isNumber(shot.launchAngleDeg));
+  return (
+    (isNumber(shot.carryYd) || isNumber(shot.totalYd)) &&
+    (isNumber(shot.apexFt) || isNumber(shot.launchAngleDeg))
+  );
 }
 
 function fallbackApex(shot: TodayChartShot) {

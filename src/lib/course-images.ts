@@ -114,7 +114,9 @@ export function scoreCourseLogoSearchCandidate(
     score += 10;
   }
 
-  const matchedTokens = tokens.filter((token) => haystack.includes(token) || compactHaystack.includes(token));
+  const matchedTokens = tokens.filter(
+    (token) => haystack.includes(token) || compactHaystack.includes(token),
+  );
   score += matchedTokens.length * 2;
 
   if (tokens.length > 0 && tokens.every((token) => compactKey(displayLink).includes(token))) {
@@ -129,7 +131,11 @@ export function scoreCourseLogoSearchCandidate(
     score += 4;
   }
 
-  if (candidate.mime === "image/png" || candidate.mime === "image/svg+xml" || candidate.mime === "image/webp") {
+  if (
+    candidate.mime === "image/png" ||
+    candidate.mime === "image/svg+xml" ||
+    candidate.mime === "image/webp"
+  ) {
     score += 2;
   }
 

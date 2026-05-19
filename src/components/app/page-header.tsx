@@ -62,13 +62,9 @@ export function AppPageHeader({
                 <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {metric.label}
                 </p>
-                <p className="mt-1 truncate text-2xl font-semibold">
-                  {metric.value}
-                </p>
+                <p className="mt-1 truncate text-2xl font-semibold">{metric.value}</p>
                 {metric.detail ? (
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {metric.detail}
-                  </p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p>
                 ) : null}
               </div>
             ))}

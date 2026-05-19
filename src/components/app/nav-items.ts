@@ -315,8 +315,7 @@ export function buildDesktopNavGroups(isAdmin: boolean) {
   return [...navGroups]
     .sort(
       (left, right) =>
-        (desktopNavOrder.get(left.label) ?? 99) -
-        (desktopNavOrder.get(right.label) ?? 99),
+        (desktopNavOrder.get(left.label) ?? 99) - (desktopNavOrder.get(right.label) ?? 99),
     )
     .map((group) => {
       if (group.label !== "Platform") {
@@ -325,9 +324,7 @@ export function buildDesktopNavGroups(isAdmin: boolean) {
 
       return {
         ...group,
-        items: isAdmin
-          ? [...group.items, partnerNavItem, adminNavItem]
-          : group.items,
+        items: isAdmin ? [...group.items, partnerNavItem, adminNavItem] : group.items,
       };
     });
 }

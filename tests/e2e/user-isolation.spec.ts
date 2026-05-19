@@ -19,7 +19,9 @@ type IsolationFixture = {
 
 const databaseUrl = process.env.DATABASE_URL ?? loadEnvFile().DATABASE_URL;
 const authUserId = authStorageState ? extractSupabaseUserId(authStorageState) : null;
-const canRunIsolation = Boolean(databaseUrl && authStorageState && existsSync(authStorageState) && authUserId);
+const canRunIsolation = Boolean(
+  databaseUrl && authStorageState && existsSync(authStorageState) && authUserId,
+);
 
 test.describe("cross-user isolation", () => {
   test.skip(
@@ -205,7 +207,9 @@ function extractSupabaseUserId(storageStatePath: string) {
   const state = JSON.parse(readFileSync(storageStatePath, "utf8")) as {
     cookies?: Array<{ name: string; value: string }>;
   };
-  const cookie = state.cookies?.find((item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"));
+  const cookie = state.cookies?.find(
+    (item) => item.name.startsWith("sb-") && item.name.endsWith("-auth-token"),
+  );
   if (!cookie) {
     return null;
   }
@@ -222,7 +226,9 @@ function extractSupabaseUserId(storageStatePath: string) {
     }
 
     const [, payload] = token.split(".");
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: string };
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+      sub?: string;
+    };
     return claims.sub ?? null;
   } catch {
     return null;
@@ -230,7 +236,10 @@ function extractSupabaseUserId(storageStatePath: string) {
 }
 
 function unquote(value: string) {
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 

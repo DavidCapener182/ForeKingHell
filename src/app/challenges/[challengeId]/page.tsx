@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, MessageCircle, Plus, Send, ShieldCheck, Trophy, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  MessageCircle,
+  Plus,
+  Send,
+  ShieldCheck,
+  Trophy,
+  Users,
+} from "lucide-react";
 
 import {
   addChallengeCommentAction,
@@ -27,7 +36,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getChallengeDetailData } from "@/lib/challenges";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +88,11 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <MobileStatusAction
           label="Imported result"
           value={viewerResult ? `#${viewerResult.result.rank}` : "No qualifying shots"}
-          detail={viewerResult ? `${viewerResult.result.scoreLabel} · ${viewerResult.verificationLabel}` : `${data.challenge.participantCount} players · ${verificationMode}`}
+          detail={
+            viewerResult
+              ? `${viewerResult.result.scoreLabel} · ${viewerResult.verificationLabel}`
+              : `${data.challenge.participantCount} players · ${verificationMode}`
+          }
           action={
             !data.challenge.viewerJoined ? (
               <form action={joinChallengeAction}>
@@ -84,7 +104,9 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               </form>
             ) : (
               <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
-                <Link href="/import" prefetch={false}>Import data</Link>
+                <Link href="/import" prefetch={false}>
+                  Import data
+                </Link>
               </Button>
             )
           }
@@ -106,25 +128,43 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         {activeTab === "rules" ? (
           <NativeListSection title="Rules" description={data.challenge.rulesSummary}>
             {data.challenge.rulesBullets.map((rule) => (
-              <div key={rule} className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#050505]">
+              <div
+                key={rule}
+                className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#050505]"
+              >
                 {rule}
               </div>
             ))}
           </NativeListSection>
         ) : activeTab === "shots" ? (
-          <NativeListSection title="Imported shots" description="This board is calculated from qualifying imported shots. New imports update it automatically.">
+          <NativeListSection
+            title="Imported shots"
+            description="This board is calculated from qualifying imported shots. New imports update it automatically."
+          >
             {data.attempts.slice(0, 8).map(({ attempt, profile }) => (
-              <div key={attempt.id} className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm">
-                <Link href={`/profile/${profile.username}`} prefetch={false} className="font-semibold hover:underline">
+              <div
+                key={attempt.id}
+                className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm"
+              >
+                <Link
+                  href={`/profile/${profile.username}`}
+                  prefetch={false}
+                  className="font-semibold hover:underline"
+                >
                   {profile.displayName}
                 </Link>
-                <p className="mt-1 text-[#6B7280]">{attemptScoreLabel(attempt)} · {attempt.verificationLabel}</p>
-                <p className="mt-1 text-xs text-[#6B7280]">{attemptMetadataLabel(attempt.metadataJson)}</p>
+                <p className="mt-1 text-[#6B7280]">
+                  {attemptScoreLabel(attempt)} · {attempt.verificationLabel}
+                </p>
+                <p className="mt-1 text-xs text-[#6B7280]">
+                  {attemptMetadataLabel(attempt.metadataJson)}
+                </p>
               </div>
             ))}
             {data.attempts.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-3 text-sm text-[#6B7280]">
-                No qualifying imported shots yet. Import shots during the challenge window and they will appear here automatically.
+                No qualifying imported shots yet. Import shots during the challenge window and they
+                will appear here automatically.
               </div>
             ) : null}
           </NativeListSection>
@@ -132,7 +172,11 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
           <NativeListSection title="Chat">
             {data.comments.map((comment) => (
               <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-semibold hover:underline">
+                <Link
+                  href={`/profile/${comment.profile.username}`}
+                  prefetch={false}
+                  className="font-semibold hover:underline"
+                >
                   {comment.profile.displayName}
                 </Link>
                 <p className="mt-1 text-[#6B7280]">{comment.body}</p>
@@ -141,13 +185,19 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             <form action={addChallengeCommentAction} className="grid gap-2">
               <input type="hidden" name="challengeId" value={data.challenge.id} />
               <Input name="body" placeholder="Add a comment" className="h-11 rounded-lg bg-white" />
-              <Button type="submit" variant="outline" className="rounded-full">Comment</Button>
+              <Button type="submit" variant="outline" className="rounded-full">
+                Comment
+              </Button>
             </form>
           </NativeListSection>
         ) : (
           <NativeListSection title="Podium">
             <CompactLeaderboard
-              current={viewerResult ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}` : "No qualifying imported shots yet"}
+              current={
+                viewerResult
+                  ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
+                  : "No qualifying imported shots yet"
+              }
               items={podium.map((row) => ({
                 rank: row.result.rank,
                 name: row.profile.displayName,
@@ -172,275 +222,349 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
       </div>
 
       <div className="hidden sm:contents">
-      <PageHeader
-        eyebrow={<StatusPill tone="amber">Challenge</StatusPill>}
-        title={data.challenge.title}
-        description={data.challenge.description ?? data.challenge.coachNote}
-        metrics={[
-          { label: "Participants", value: data.challenge.participantCount, detail: "Joined entries" },
-          { label: "Visibility", value: titleCase(data.challenge.visibility), detail: "Private friend-safe scope" },
-          { label: "Your rank", value: data.challenge.viewerRank ? `#${data.challenge.viewerRank}` : "--", detail: "From imported shots" },
-          { label: "Scoring", value: data.challenge.scoringDirection === "desc" ? "High wins" : "Low wins", detail: "Automatic from imports" },
-        ]}
-      />
+        <PageHeader
+          eyebrow={<StatusPill tone="amber">Challenge</StatusPill>}
+          title={data.challenge.title}
+          description={data.challenge.description ?? data.challenge.coachNote}
+          metrics={[
+            {
+              label: "Participants",
+              value: data.challenge.participantCount,
+              detail: "Joined entries",
+            },
+            {
+              label: "Visibility",
+              value: titleCase(data.challenge.visibility),
+              detail: "Private friend-safe scope",
+            },
+            {
+              label: "Your rank",
+              value: data.challenge.viewerRank ? `#${data.challenge.viewerRank}` : "--",
+              detail: "From imported shots",
+            },
+            {
+              label: "Scoring",
+              value: data.challenge.scoringDirection === "desc" ? "High wins" : "Low wins",
+              detail: "Automatic from imports",
+            },
+          ]}
+        />
 
-      {query?.invite ? (
-        <Badge variant="secondary" className="w-fit">Invite sent</Badge>
-      ) : null}
-
-      <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
-        <Anchor href="#board" label="Board" />
-        <Anchor href="#rules" label="Rules" />
-        <Anchor href="#imported-shots" label="Imported shots" />
-        <Anchor href="#chat" label="Chat" />
-        {data.challenge.creatorUserId === data.viewerUserId ? (
-          <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl">
-            <Link href={`/tournaments?fromChallenge=${data.challenge.id}`} prefetch={false}>
-              Convert to tournament
-            </Link>
-          </Button>
+        {query?.invite ? (
+          <Badge variant="secondary" className="w-fit">
+            Invite sent
+          </Badge>
         ) : null}
-      </nav>
 
-      <section id="board" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="premium-card p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <StatusPill tone="green">Event board</StatusPill>
-              <h2 className="mt-3 text-2xl font-semibold tracking-normal">Podium</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Imported shots inside the challenge window decide this board. Full rankings stay below for dense review.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="size-3" />
-                {verificationMode}
-              </Badge>
-              {data.challenge.endsAt ? (
-                <Badge variant="outline" className="gap-1">
-                  <CalendarDays className="size-3" />
-                  Ends {formatDate(data.challenge.endsAt)}
-                </Badge>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {podium.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">
-                No qualifying imported shots yet. New imports during the active window will update this board automatically.
-              </p>
-            ) : (
-              podium.map((row) => <PodiumCard key={row.result.id} row={row} />)
-            )}
-          </div>
-        </article>
-
-        <article className="premium-card p-4">
-          <p className="text-sm font-semibold">Your imported result</p>
-          {viewerResult ? (
-            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
-              <Badge variant="secondary">Rank #{viewerResult.result.rank}</Badge>
-              <p className="mt-3 text-2xl font-semibold tracking-normal">{viewerResult.result.scoreLabel}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{viewerResult.verificationLabel}</p>
-            </div>
-          ) : (
-            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              {data.challenge.viewerJoined
-                ? "No qualifying imported shots yet. Import shots during the active window and the board will update automatically."
-                : "Join the challenge to have your qualifying imports counted on this board."}
-            </p>
-          )}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {!data.challenge.viewerJoined ? (
-              <form action={joinChallengeAction}>
-                <input type="hidden" name="challengeId" value={data.challenge.id} />
-                <Button type="submit">
-                  <Plus className="size-4" />
-                  Join
-                </Button>
-              </form>
-            ) : null}
-            <Button asChild variant="outline">
-              <Link href="/import" prefetch={false}>Import data</Link>
+        <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
+          <Anchor href="#board" label="Board" />
+          <Anchor href="#rules" label="Rules" />
+          <Anchor href="#imported-shots" label="Imported shots" />
+          <Anchor href="#chat" label="Chat" />
+          {data.challenge.creatorUserId === data.viewerUserId ? (
+            <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl">
+              <Link href={`/tournaments?fromChallenge=${data.challenge.id}`} prefetch={false}>
+                Convert to tournament
+              </Link>
             </Button>
-          </div>
-        </article>
-      </section>
+          ) : null}
+        </nav>
 
-      <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
-        <div className="grid gap-4">
-          <DataPanel id="imported-shots">
-            <SectionHeader
-              title="Imported shot status"
-              description="Challenge results are calculated from qualifying imports only."
-              action={<ShieldCheck className="size-5 text-emerald-600" />}
-            />
-            <CardContent className="grid gap-3 text-sm">
-              <p className="rounded-lg border bg-[#F5F6F4] p-3 text-muted-foreground">
-                {data.challenge.rulesSummary}
+        <section id="board" className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <article className="premium-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <StatusPill tone="green">Event board</StatusPill>
+                <h2 className="mt-3 text-2xl font-semibold tracking-normal">Podium</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Imported shots inside the challenge window decide this board. Full rankings stay
+                  below for dense review.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  <ShieldCheck className="size-3" />
+                  {verificationMode}
+                </Badge>
+                {data.challenge.endsAt ? (
+                  <Badge variant="outline" className="gap-1">
+                    <CalendarDays className="size-3" />
+                    Ends {formatDate(data.challenge.endsAt)}
+                  </Badge>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {podium.length === 0 ? (
+                <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">
+                  No qualifying imported shots yet. New imports during the active window will update
+                  this board automatically.
+                </p>
+              ) : (
+                podium.map((row) => <PodiumCard key={row.result.id} row={row} />)
+              )}
+            </div>
+          </article>
+
+          <article className="premium-card p-4">
+            <p className="text-sm font-semibold">Your imported result</p>
+            {viewerResult ? (
+              <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
+                <Badge variant="secondary">Rank #{viewerResult.result.rank}</Badge>
+                <p className="mt-3 text-2xl font-semibold tracking-normal">
+                  {viewerResult.result.scoreLabel}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {viewerResult.verificationLabel}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                {data.challenge.viewerJoined
+                  ? "No qualifying imported shots yet. Import shots during the active window and the board will update automatically."
+                  : "Join the challenge to have your qualifying imports counted on this board."}
               </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
               {!data.challenge.viewerJoined ? (
                 <form action={joinChallengeAction}>
                   <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                  <Button type="submit">
                     <Plus className="size-4" />
-                    Join challenge
+                    Join
                   </Button>
                 </form>
-              ) : (
-                <Button asChild variant="outline" className="rounded-xl">
-                  <Link href="/import" prefetch={false}>Open import</Link>
-                </Button>
-              )}
-            </CardContent>
-          </DataPanel>
+              ) : null}
+              <Button asChild variant="outline">
+                <Link href="/import" prefetch={false}>
+                  Import data
+                </Link>
+              </Button>
+            </div>
+          </article>
+        </section>
 
-          <DataPanel id="rules">
-            <SectionHeader
-              title="Rules"
-              description="Plain-language scoring requirements for this challenge."
-              action={<ShieldCheck className="size-5 text-emerald-600" />}
-            />
-            <CardContent className="grid gap-2">
-              {data.challenge.rulesBullets.map((rule) => (
-                <div key={rule} className="rounded-lg border bg-white px-3 py-2 text-sm leading-5">
-                  {rule}
-                </div>
-              ))}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Badge variant="outline">Imported shots only</Badge>
-                <Badge variant="outline">Active window only</Badge>
-                <Badge variant="outline">Auto-scored board</Badge>
-              </div>
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="Invite friends"
-              description="Invite links keep friend challenges scoped without granting account access."
-              action={<Users className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              {data.friendOptions.length > 0 ? (
-                <form action={inviteFriendToChallengeAction} className="grid gap-3">
-                  <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <select name="inviteeUserId" className="h-10 rounded-xl border bg-white px-3 text-sm">
-                    {data.friendOptions.map((friend) => (
-                      <option key={friend.userId} value={friend.userId}>
-                        {friend.displayName} (@{friend.username})
-                      </option>
-                    ))}
-                  </select>
-                  <Button type="submit" variant="outline">
-                    <Send className="size-4" />
-                    Invite
+        <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
+          <div className="grid gap-4">
+            <DataPanel id="imported-shots">
+              <SectionHeader
+                title="Imported shot status"
+                description="Challenge results are calculated from qualifying imports only."
+                action={<ShieldCheck className="size-5 text-emerald-600" />}
+              />
+              <CardContent className="grid gap-3 text-sm">
+                <p className="rounded-lg border bg-[#F5F6F4] p-3 text-muted-foreground">
+                  {data.challenge.rulesSummary}
+                </p>
+                {!data.challenge.viewerJoined ? (
+                  <form action={joinChallengeAction}>
+                    <input type="hidden" name="challengeId" value={data.challenge.id} />
+                    <Button
+                      type="submit"
+                      className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                    >
+                      <Plus className="size-4" />
+                      Join challenge
+                    </Button>
+                  </form>
+                ) : (
+                  <Button asChild variant="outline" className="rounded-xl">
+                    <Link href="/import" prefetch={false}>
+                      Open import
+                    </Link>
                   </Button>
-                </form>
-              ) : (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Add friends before sending challenge invites.</p>
-              )}
-            </CardContent>
-          </DataPanel>
-        </div>
+                )}
+              </CardContent>
+            </DataPanel>
 
-        <div className="grid gap-4">
-          <DataPanel>
-            <SectionHeader
-              title="Full leaderboard"
-              description="Expanded ranking uses the template scoring direction and best imported result per player."
-              action={<Trophy className="size-5 text-amber-600" />}
-            />
-            <CardContent>
-              <details className="rounded-lg border bg-[#F5F6F4]">
-                <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                  View full leaderboard
-                </summary>
-                <div className="border-t bg-white p-3">
-                  <DataTableFrame>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Rank</TableHead>
-                          <TableHead>Player</TableHead>
-                          <TableHead className="text-right">Score</TableHead>
-                          <TableHead className="text-right">Verification</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.results.map(({ result, profile, verificationLabel }) => (
-                          <TableRow key={result.id}>
-                            <TableCell><Badge variant={result.rank === 1 ? "default" : "outline"}>{result.rank ?? "--"}</Badge></TableCell>
-                            <TableCell>
-                              <Link href={`/profile/${profile.username}`} prefetch={false} className="font-medium hover:underline">
-                                {profile.displayName}
-                              </Link>
-                            </TableCell>
-                            <TableCell className="text-right">{result.scoreLabel}</TableCell>
-                            <TableCell className="text-right">{verificationLabel}</TableCell>
-                          </TableRow>
-                        ))}
-                        {data.results.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">No qualifying imported shots yet.</TableCell>
-                          </TableRow>
-                        ) : null}
-                      </TableBody>
-                    </Table>
-                  </DataTableFrame>
-                </div>
-              </details>
-            </CardContent>
-          </DataPanel>
-
-          <section className="grid gap-4 md:grid-cols-2">
-            <Card id="chat" className="premium-card scroll-mt-28">
-              <CardHeader>
-                <CardTitle>Recent imported results</CardTitle>
-                <CardDescription>Latest qualifying import-derived entries for this challenge.</CardDescription>
-              </CardHeader>
+            <DataPanel id="rules">
+              <SectionHeader
+                title="Rules"
+                description="Plain-language scoring requirements for this challenge."
+                action={<ShieldCheck className="size-5 text-emerald-600" />}
+              />
               <CardContent className="grid gap-2">
-                {data.attempts.slice(0, 6).map(({ attempt, profile }) => (
-                  <div key={attempt.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-                    <Link href={`/profile/${profile.username}`} prefetch={false} className="font-medium hover:underline">
-                      {profile.displayName}
-                    </Link>
-                    <p className="text-muted-foreground">{attemptScoreLabel(attempt)} · {attempt.verificationLabel}</p>
-                    <p className="text-xs text-muted-foreground">{attemptMetadataLabel(attempt.metadataJson)}</p>
+                {data.challenge.rulesBullets.map((rule) => (
+                  <div
+                    key={rule}
+                    className="rounded-lg border bg-white px-3 py-2 text-sm leading-5"
+                  >
+                    {rule}
                   </div>
                 ))}
-                {data.attempts.length === 0 ? <p className="text-sm text-muted-foreground">No qualifying imported shots yet.</p> : null}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Badge variant="outline">Imported shots only</Badge>
+                  <Badge variant="outline">Active window only</Badge>
+                  <Badge variant="outline">Auto-scored board</Badge>
+                </div>
               </CardContent>
-            </Card>
+            </DataPanel>
 
-            <Card className="premium-card">
-              <CardHeader>
-                <CardTitle>Comments</CardTitle>
-                <CardDescription>Keep challenge talk attached to the challenge.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                {data.comments.map((comment) => (
-                  <div key={comment.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-                    <Link href={`/profile/${comment.profile.username}`} prefetch={false} className="font-medium hover:underline">
-                      {comment.profile.displayName}
-                    </Link>
-                    <p className="text-muted-foreground">{comment.body}</p>
-                  </div>
-                ))}
-                <form action={addChallengeCommentAction} className="grid gap-2">
-                  <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <Input name="body" placeholder="Add a comment" className="h-9 rounded-xl bg-white" />
-                  <Button type="submit" variant="outline">
-                    <MessageCircle className="size-4" />
-                    Comment
-                  </Button>
-                </form>
+            <DataPanel>
+              <SectionHeader
+                title="Invite friends"
+                description="Invite links keep friend challenges scoped without granting account access."
+                action={<Users className="size-5 text-sky-600" />}
+              />
+              <CardContent>
+                {data.friendOptions.length > 0 ? (
+                  <form action={inviteFriendToChallengeAction} className="grid gap-3">
+                    <input type="hidden" name="challengeId" value={data.challenge.id} />
+                    <select
+                      name="inviteeUserId"
+                      className="h-10 rounded-xl border bg-white px-3 text-sm"
+                    >
+                      {data.friendOptions.map((friend) => (
+                        <option key={friend.userId} value={friend.userId}>
+                          {friend.displayName} (@{friend.username})
+                        </option>
+                      ))}
+                    </select>
+                    <Button type="submit" variant="outline">
+                      <Send className="size-4" />
+                      Invite
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                    Add friends before sending challenge invites.
+                  </p>
+                )}
               </CardContent>
-            </Card>
-          </section>
-        </div>
-      </section>
+            </DataPanel>
+          </div>
+
+          <div className="grid gap-4">
+            <DataPanel>
+              <SectionHeader
+                title="Full leaderboard"
+                description="Expanded ranking uses the template scoring direction and best imported result per player."
+                action={<Trophy className="size-5 text-amber-600" />}
+              />
+              <CardContent>
+                <details className="rounded-lg border bg-[#F5F6F4]">
+                  <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    View full leaderboard
+                  </summary>
+                  <div className="border-t bg-white p-3">
+                    <DataTableFrame>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Rank</TableHead>
+                            <TableHead>Player</TableHead>
+                            <TableHead className="text-right">Score</TableHead>
+                            <TableHead className="text-right">Verification</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {data.results.map(({ result, profile, verificationLabel }) => (
+                            <TableRow key={result.id}>
+                              <TableCell>
+                                <Badge variant={result.rank === 1 ? "default" : "outline"}>
+                                  {result.rank ?? "--"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Link
+                                  href={`/profile/${profile.username}`}
+                                  prefetch={false}
+                                  className="font-medium hover:underline"
+                                >
+                                  {profile.displayName}
+                                </Link>
+                              </TableCell>
+                              <TableCell className="text-right">{result.scoreLabel}</TableCell>
+                              <TableCell className="text-right">{verificationLabel}</TableCell>
+                            </TableRow>
+                          ))}
+                          {data.results.length === 0 ? (
+                            <TableRow>
+                              <TableCell
+                                colSpan={4}
+                                className="h-24 text-center text-muted-foreground"
+                              >
+                                No qualifying imported shots yet.
+                              </TableCell>
+                            </TableRow>
+                          ) : null}
+                        </TableBody>
+                      </Table>
+                    </DataTableFrame>
+                  </div>
+                </details>
+              </CardContent>
+            </DataPanel>
+
+            <section className="grid gap-4 md:grid-cols-2">
+              <Card id="chat" className="premium-card scroll-mt-28">
+                <CardHeader>
+                  <CardTitle>Recent imported results</CardTitle>
+                  <CardDescription>
+                    Latest qualifying import-derived entries for this challenge.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  {data.attempts.slice(0, 6).map(({ attempt, profile }) => (
+                    <div key={attempt.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
+                      <Link
+                        href={`/profile/${profile.username}`}
+                        prefetch={false}
+                        className="font-medium hover:underline"
+                      >
+                        {profile.displayName}
+                      </Link>
+                      <p className="text-muted-foreground">
+                        {attemptScoreLabel(attempt)} · {attempt.verificationLabel}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {attemptMetadataLabel(attempt.metadataJson)}
+                      </p>
+                    </div>
+                  ))}
+                  {data.attempts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No qualifying imported shots yet.
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
+
+              <Card className="premium-card">
+                <CardHeader>
+                  <CardTitle>Comments</CardTitle>
+                  <CardDescription>Keep challenge talk attached to the challenge.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  {data.comments.map((comment) => (
+                    <div key={comment.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
+                      <Link
+                        href={`/profile/${comment.profile.username}`}
+                        prefetch={false}
+                        className="font-medium hover:underline"
+                      >
+                        {comment.profile.displayName}
+                      </Link>
+                      <p className="text-muted-foreground">{comment.body}</p>
+                    </div>
+                  ))}
+                  <form action={addChallengeCommentAction} className="grid gap-2">
+                    <input type="hidden" name="challengeId" value={data.challenge.id} />
+                    <Input
+                      name="body"
+                      placeholder="Add a comment"
+                      className="h-9 rounded-xl bg-white"
+                    />
+                    <Button type="submit" variant="outline">
+                      <MessageCircle className="size-4" />
+                      Comment
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </section>
+          </div>
+        </section>
       </div>
     </PageShell>
   );
@@ -452,9 +576,19 @@ function PodiumCard({ row }: { row: PodiumRow }) {
   const rank = row.result.rank ?? 0;
 
   return (
-    <article className={rank === 1 ? "rounded-lg border border-amber-200 bg-amber-50 p-4" : "rounded-lg border bg-[#F5F6F4] p-4"}>
+    <article
+      className={
+        rank === 1
+          ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
+          : "rounded-lg border bg-[#F5F6F4] p-4"
+      }
+    >
       <Badge variant={rank === 1 ? "default" : "outline"}>#{rank || "--"}</Badge>
-      <Link href={`/profile/${row.profile.username}`} prefetch={false} className="mt-3 block text-lg font-semibold tracking-normal hover:underline">
+      <Link
+        href={`/profile/${row.profile.username}`}
+        prefetch={false}
+        className="mt-3 block text-lg font-semibold tracking-normal hover:underline"
+      >
         {row.profile.displayName}
       </Link>
       <p className="mt-1 text-2xl font-semibold tracking-normal">{row.result.scoreLabel}</p>
@@ -518,7 +652,10 @@ function attemptMetadataLabel(metadata: Record<string, unknown>) {
 
 function Anchor({ href, label }: { href: string; label: string }) {
   return (
-    <a href={href} className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-white px-3 text-sm font-semibold">
+    <a
+      href={href}
+      className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-white px-3 text-sm font-semibold"
+    >
       {label}
     </a>
   );

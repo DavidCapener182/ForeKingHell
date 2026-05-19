@@ -66,7 +66,7 @@ export function clubArtworkPath(
   source: ClubArtworkSource = "panel",
 ) {
   const normalized = (clubType ?? "").trim().toLowerCase();
-  const artType = knownClubArt.has(normalized) ? normalized : clubArtAliases[normalized] ?? "7i";
+  const artType = knownClubArt.has(normalized) ? normalized : (clubArtAliases[normalized] ?? "7i");
 
   return `/assets/clubs/${source}/${artType}-${view}.png`;
 }
@@ -95,8 +95,9 @@ export function clubImageRoutePath({
 }
 
 export function buildClubProductImageSearchQuery({ type, brand, model }: ClubImageInput) {
-  const parts = [normalizePart(brand), normalizePart(model), formatSearchClubType(type)]
-    .filter((part): part is string => Boolean(part));
+  const parts = [normalizePart(brand), normalizePart(model), formatSearchClubType(type)].filter(
+    (part): part is string => Boolean(part),
+  );
 
   if (parts.length < 2) {
     return null;
@@ -197,11 +198,13 @@ function normalizePart(value: string | null | undefined) {
 }
 
 function normalizeBrandKey(value: string | null | undefined) {
-  return normalizePart(value)
-    ?.toLowerCase()
-    .replace(/golf\b/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim() ?? null;
+  return (
+    normalizePart(value)
+      ?.toLowerCase()
+      .replace(/golf\b/g, "")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim() ?? null
+  );
 }
 
 function compactBrandKey(value: string) {

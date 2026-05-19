@@ -100,10 +100,17 @@ const STATUS_UPDATE_MAX_IMAGE_DATA_URL_LENGTH = 650_000;
 
 export async function ensureSocialProfileForUser(userId: string) {
   const db = getDb();
-  const [existing] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const [existing] = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
 
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  const displayName = safeSocialDisplayName(user?.name) || safeSocialDisplayName(user?.email?.split("@")[0]) || "ForeKingHell Player";
+  const displayName =
+    safeSocialDisplayName(user?.name) ||
+    safeSocialDisplayName(user?.email?.split("@")[0]) ||
+    "ForeKingHell Player";
 
   if (existing) {
     const needsDisplayRepair = !safeSocialDisplayName(existing.displayName);
@@ -117,7 +124,9 @@ export async function ensureSocialProfileForUser(userId: string) {
       .update(userProfiles)
       .set({
         ...(needsDisplayRepair ? { displayName } : {}),
-        ...(needsUsernameRepair ? { username: await uniqueUsername(defaultUsername(displayName, userId)) } : {}),
+        ...(needsUsernameRepair
+          ? { username: await uniqueUsername(defaultUsername(displayName, userId)) }
+          : {}),
         updatedAt: new Date(),
       })
       .where(eq(userProfiles.userId, userId))
@@ -175,7 +184,12 @@ export async function isFollowing(followerUserId: string, followedUserId: string
   const [row] = await getDb()
     .select({ id: userFollows.id })
     .from(userFollows)
-    .where(and(eq(userFollows.followerUserId, followerUserId), eq(userFollows.followedUserId, followedUserId)))
+    .where(
+      and(
+        eq(userFollows.followerUserId, followerUserId),
+        eq(userFollows.followedUserId, followedUserId),
+      ),
+    )
     .limit(1);
 
   return Boolean(row);
@@ -224,7 +238,9 @@ export async function getBlockedUserIds(userId: string) {
     .from(userBlocks)
     .where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId)));
 
-  return new Set(rows.map((row) => (row.blockerUserId === userId ? row.blockedUserId : row.blockerUserId)));
+  return new Set(
+    rows.map((row) => (row.blockerUserId === userId ? row.blockedUserId : row.blockerUserId)),
+  );
 }
 
 export async function getFriendsPageData(searchQuery: string | null) {
@@ -248,7 +264,8 @@ export async function getFriendsPageData(searchQuery: string | null) {
     .from(userBlocks)
     .where(eq(userBlocks.blockerUserId, userId));
   const blockedUserIds = blockedRows.map((row) => row.blockedUserId);
-  const relatedProfiles = relatedIds.size > 0 ? await profilesByUserId([...relatedIds]) : new Map<string, ProfileRow>();
+  const relatedProfiles =
+    relatedIds.size > 0 ? await profilesByUserId([...relatedIds]) : new Map<string, ProfileRow>();
   const searchResults = await searchDiscoverableProfiles({
     viewerUserId: userId,
     query: searchQuery,
@@ -264,7 +281,10 @@ export async function getFriendsPageData(searchQuery: string | null) {
     blockedIds,
     pendingRequests,
   });
-  const blockedProfiles = blockedUserIds.length > 0 ? await profilesByUserId(blockedUserIds) : new Map<string, ProfileRow>();
+  const blockedProfiles =
+    blockedUserIds.length > 0
+      ? await profilesByUserId(blockedUserIds)
+      : new Map<string, ProfileRow>();
 
   return {
     profile: profileSummary(profile, "self"),
@@ -313,7 +333,10 @@ export async function getProfilePageData(username: string) {
   }
 
   const [relationship, isFollowingProfile] = viewerUserId
-    ? await Promise.all([getRelationship(viewerUserId, profile.userId), isFollowing(viewerUserId, profile.userId)])
+    ? await Promise.all([
+        getRelationship(viewerUserId, profile.userId),
+        isFollowing(viewerUserId, profile.userId),
+      ])
     : ["none" as const, false];
   const recentFeed = viewerUserId
     ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
@@ -347,7 +370,9 @@ export async function updateCurrentSocialProfile(input: {
   const username = normalizeUsername(input.username);
 
   if (!isValidUsername(username)) {
-    throw new Error("Username must be 3-40 characters and use letters, numbers, hyphens or underscores.");
+    throw new Error(
+      "Username must be 3-40 characters and use letters, numbers, hyphens or underscores.",
+    );
   }
 
   if (isSharedDatabaseArtifact(username) || isSharedDatabaseArtifact(input.displayName)) {
@@ -478,7 +503,12 @@ export async function unfollowUser(followedUserId: string) {
   const followerUserId = await requireCurrentUserId();
   await getDb()
     .delete(userFollows)
-    .where(and(eq(userFollows.followerUserId, followerUserId), eq(userFollows.followedUserId, followedUserId)));
+    .where(
+      and(
+        eq(userFollows.followerUserId, followerUserId),
+        eq(userFollows.followedUserId, followedUserId),
+      ),
+    );
 
   revalidateSocialPaths();
 }
@@ -490,15 +520,28 @@ export async function acceptFriendRequest(requestId: string) {
   const [request] = await db
     .select()
     .from(friendRequests)
-    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.recipientUserId, userId), eq(friendRequests.status, "pending")))
+    .where(
+      and(
+        eq(friendRequests.id, requestId),
+        eq(friendRequests.recipientUserId, userId),
+        eq(friendRequests.status, "pending"),
+      ),
+    )
     .limit(1);
 
   if (!request || (await isBlockedBetween(request.requesterUserId, request.recipientUserId))) {
     throw new Error("Friend request not found.");
   }
 
-  const requestProfiles = await profilesByUserId([request.requesterUserId, request.recipientUserId]);
-  if ([request.requesterUserId, request.recipientUserId].some((id) => !canReceiveFriendRequests(requestProfiles.get(id)))) {
+  const requestProfiles = await profilesByUserId([
+    request.requesterUserId,
+    request.recipientUserId,
+  ]);
+  if (
+    [request.requesterUserId, request.recipientUserId].some(
+      (id) => !canReceiveFriendRequests(requestProfiles.get(id)),
+    )
+  ) {
     throw new Error("This player profile can be followed but not added as a friend.");
   }
 
@@ -588,16 +631,28 @@ export async function blockUser(blockedUserId: string) {
       .delete(friendRequests)
       .where(
         or(
-          and(eq(friendRequests.requesterUserId, blockerUserId), eq(friendRequests.recipientUserId, blockedUserId)),
-          and(eq(friendRequests.requesterUserId, blockedUserId), eq(friendRequests.recipientUserId, blockerUserId)),
+          and(
+            eq(friendRequests.requesterUserId, blockerUserId),
+            eq(friendRequests.recipientUserId, blockedUserId),
+          ),
+          and(
+            eq(friendRequests.requesterUserId, blockedUserId),
+            eq(friendRequests.recipientUserId, blockerUserId),
+          ),
         ),
       );
     await tx
       .delete(userFollows)
       .where(
         or(
-          and(eq(userFollows.followerUserId, blockerUserId), eq(userFollows.followedUserId, blockedUserId)),
-          and(eq(userFollows.followerUserId, blockedUserId), eq(userFollows.followedUserId, blockerUserId)),
+          and(
+            eq(userFollows.followerUserId, blockerUserId),
+            eq(userFollows.followedUserId, blockedUserId),
+          ),
+          and(
+            eq(userFollows.followerUserId, blockedUserId),
+            eq(userFollows.followedUserId, blockerUserId),
+          ),
         ),
       );
   });
@@ -609,7 +664,9 @@ export async function unblockUser(blockedUserId: string) {
   const blockerUserId = await requireCurrentUserId();
   await getDb()
     .delete(userBlocks)
-    .where(and(eq(userBlocks.blockerUserId, blockerUserId), eq(userBlocks.blockedUserId, blockedUserId)));
+    .where(
+      and(eq(userBlocks.blockerUserId, blockerUserId), eq(userBlocks.blockedUserId, blockedUserId)),
+    );
   revalidateSocialPaths();
 }
 
@@ -683,7 +740,13 @@ export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 
   const rows = await getDb()
     .select()
     .from(feedItems)
-    .where(and(eq(feedItems.userId, ownerUserId), eq(feedItems.visibility, "public"), ne(feedItems.itemType, "import_summary")))
+    .where(
+      and(
+        eq(feedItems.userId, ownerUserId),
+        eq(feedItems.visibility, "public"),
+        ne(feedItems.itemType, "import_summary"),
+      ),
+    )
     .orderBy(desc(feedItems.createdAt))
     .limit(Math.min(Math.max(limit, 1), 20));
 
@@ -742,12 +805,14 @@ export async function addFeedComment(feedItemId: string, body: string) {
     throw new Error("Comment cannot be empty.");
   }
 
-  await getDb().insert(feedComments).values({
-    feedItemId,
-    userId,
-    body: cleanBody.slice(0, 1200),
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(feedComments)
+    .values({
+      feedItemId,
+      userId,
+      body: cleanBody.slice(0, 1200),
+      updatedAt: new Date(),
+    });
 
   revalidatePath("/feed");
   revalidatePath("/dashboard");
@@ -758,7 +823,13 @@ export async function deleteFeedComment(commentId: string) {
   const [comment] = await getDb()
     .select()
     .from(feedComments)
-    .where(and(eq(feedComments.id, commentId), eq(feedComments.userId, userId), sql`${feedComments.deletedAt} IS NULL`))
+    .where(
+      and(
+        eq(feedComments.id, commentId),
+        eq(feedComments.userId, userId),
+        sql`${feedComments.deletedAt} IS NULL`,
+      ),
+    )
     .limit(1);
 
   if (!comment) {
@@ -793,7 +864,11 @@ export async function addFeedCommentReaction(commentId: string) {
       reactionType: "like",
     })
     .onConflictDoNothing({
-      target: [feedCommentReactions.feedCommentId, feedCommentReactions.userId, feedCommentReactions.reactionType],
+      target: [
+        feedCommentReactions.feedCommentId,
+        feedCommentReactions.userId,
+        feedCommentReactions.reactionType,
+      ],
     });
 
   revalidatePath("/feed");
@@ -853,7 +928,9 @@ export async function deleteFeedItem(feedItemId: string) {
     throw new Error("Feed item not found.");
   }
 
-  await getDb().delete(feedItems).where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
+  await getDb()
+    .delete(feedItems)
+    .where(and(eq(feedItems.id, feedItemId), eq(feedItems.userId, userId)));
 
   revalidatePath("/feed");
   revalidatePath("/dashboard");
@@ -894,9 +971,15 @@ export async function hideFeedItemType(feedItemId: string) {
     throw new Error("Feed item not found.");
   }
 
-  const [profile] = await getDb().select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  const [profile] = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1);
   const settings = profile?.visibilitySettingsJson ?? {};
-  const hiddenFeedTypes = new Set(Array.isArray(settings.hiddenFeedTypes) ? settings.hiddenFeedTypes : []);
+  const hiddenFeedTypes = new Set(
+    Array.isArray(settings.hiddenFeedTypes) ? settings.hiddenFeedTypes : [],
+  );
   hiddenFeedTypes.add(item.itemType);
 
   await getDb()
@@ -983,7 +1066,10 @@ export async function createStatusUpdate(input: {
     proofUrl: imageDataUrl,
     sourceType: "status_update",
     sourceId: randomUUID(),
-    visibility: parseVisibility(input.visibility, parseVisibility(profile.feedVisibilityDefault, "private")),
+    visibility: parseVisibility(
+      input.visibility,
+      parseVisibility(profile.feedVisibilityDefault, "private"),
+    ),
     verificationLabel: "Player post",
     metadataJson: {
       kind: "status_update",
@@ -1161,8 +1247,13 @@ export async function recordRoundCompletedFeedItem(input: {
   });
 }
 
-export function parseVisibility(value: unknown, fallback: SocialVisibility = "private"): SocialVisibility {
-  return socialVisibilityOptions.includes(value as SocialVisibility) ? (value as SocialVisibility) : fallback;
+export function parseVisibility(
+  value: unknown,
+  fallback: SocialVisibility = "private",
+): SocialVisibility {
+  return socialVisibilityOptions.includes(value as SocialVisibility)
+    ? (value as SocialVisibility)
+    : fallback;
 }
 
 export function normalizeUsername(value: string) {
@@ -1222,7 +1313,11 @@ async function recordLevelUpFeedItem(userId: string, visibility: SocialVisibilit
 }
 
 async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
-  const [item] = await getDb().select().from(feedItems).where(eq(feedItems.id, feedItemId)).limit(1);
+  const [item] = await getDb()
+    .select()
+    .from(feedItems)
+    .where(eq(feedItems.id, feedItemId))
+    .limit(1);
 
   if (!item) {
     return null;
@@ -1234,7 +1329,9 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes)) ? item : null;
+  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+    ? item
+    : null;
 }
 
 async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
@@ -1258,10 +1355,15 @@ async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes)) ? row.comment : null;
+  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+    ? row.comment
+    : null;
 }
 
-async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Promise<FeedItemView[]> {
+async function hydrateFeedItems(
+  items: FeedItemRow[],
+  viewerUserId: string,
+): Promise<FeedItemView[]> {
   if (items.length === 0) {
     return [];
   }
@@ -1281,19 +1383,32 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
       ? await getDb()
           .select()
           .from(feedCommentReactions)
-          .where(inArray(feedCommentReactions.feedCommentId, commentRows.map((comment) => comment.id)))
+          .where(
+            inArray(
+              feedCommentReactions.feedCommentId,
+              commentRows.map((comment) => comment.id),
+            ),
+          )
       : [];
-  const commentProfileMap = await profilesByUserId([...new Set(commentRows.map((comment) => comment.userId))]);
+  const commentProfileMap = await profilesByUserId([
+    ...new Set(commentRows.map((comment) => comment.userId)),
+  ]);
   const reactionsByItem = new Map<string, typeof reactionRows>();
   const commentsByItem = new Map<string, typeof commentRows>();
   const commentReactionsByComment = new Map<string, typeof commentReactionRows>();
 
   for (const reaction of reactionRows) {
-    reactionsByItem.set(reaction.feedItemId, [...(reactionsByItem.get(reaction.feedItemId) ?? []), reaction]);
+    reactionsByItem.set(reaction.feedItemId, [
+      ...(reactionsByItem.get(reaction.feedItemId) ?? []),
+      reaction,
+    ]);
   }
 
   for (const comment of commentRows) {
-    commentsByItem.set(comment.feedItemId, [...(commentsByItem.get(comment.feedItemId) ?? []), comment]);
+    commentsByItem.set(comment.feedItemId, [
+      ...(commentsByItem.get(comment.feedItemId) ?? []),
+      comment,
+    ]);
   }
 
   for (const reaction of commentReactionRows) {
@@ -1344,9 +1459,10 @@ async function hydrateFeedItems(items: FeedItemRow[], viewerUserId: string): Pro
               body: comment.body,
               createdAt: comment.createdAt,
               likeCount: commentReactionsByComment.get(comment.id)?.length ?? 0,
-              viewerLiked: commentReactionsByComment
-                .get(comment.id)
-                ?.some((reaction) => reaction.userId === viewerUserId) ?? false,
+              viewerLiked:
+                commentReactionsByComment
+                  .get(comment.id)
+                  ?.some((reaction) => reaction.userId === viewerUserId) ?? false,
               viewerCanDelete: comment.userId === viewerUserId,
               profile: {
                 userId: commentProfile.userId,
@@ -1405,7 +1521,10 @@ async function canViewProfile(viewerUserId: string | null, profile: ProfileRow) 
     return false;
   }
 
-  return profile.publicProfile || (profile.friendProfile && (await areFriends(viewerUserId, profile.userId)));
+  return (
+    profile.publicProfile ||
+    (profile.friendProfile && (await areFriends(viewerUserId, profile.userId)))
+  );
 }
 
 async function searchDiscoverableProfiles(input: {
@@ -1425,7 +1544,9 @@ async function searchDiscoverableProfiles(input: {
   const rows = await getDb()
     .select()
     .from(userProfiles)
-    .where(or(ilike(userProfiles.username, `${query}%`), ilike(userProfiles.displayName, `%${query}%`)))
+    .where(
+      or(ilike(userProfiles.username, `${query}%`), ilike(userProfiles.displayName, `%${query}%`)),
+    )
     .limit(20);
   const friendIdSet = new Set(input.friendIds);
 
@@ -1434,9 +1555,13 @@ async function searchDiscoverableProfiles(input: {
     .filter((row) => !input.blockedIds.has(row.userId))
     .filter((row) => row.publicProfile || (row.friendProfile && friendIdSet.has(row.userId)))
     .map((row) =>
-      profileSummary(row, relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests), {
-        isFollowing: input.followedIds.has(row.userId),
-      }),
+      profileSummary(
+        row,
+        relationshipFromContext(row.userId, input.viewerUserId, friendIdSet, input.pendingRequests),
+        {
+          isFollowing: input.followedIds.has(row.userId),
+        },
+      ),
     )
     .filter((profile) => profile.relationship !== "blocked");
 }
@@ -1457,7 +1582,9 @@ async function suggestDiscoverableProfiles(input: {
   const friendIdSet = new Set(input.friendIds);
   const pendingIds = new Set(
     input.pendingRequests.map((request) =>
-      request.requesterUserId === input.viewerUserId ? request.recipientUserId : request.requesterUserId,
+      request.requesterUserId === input.viewerUserId
+        ? request.recipientUserId
+        : request.requesterUserId,
     ),
   );
 
@@ -1483,7 +1610,10 @@ async function getPendingFriendRequestsForUser(userId: string) {
     .orderBy(desc(friendRequests.createdAt));
 }
 
-async function getRelationship(viewerUserId: string, subjectUserId: string): Promise<SocialProfileSummary["relationship"]> {
+async function getRelationship(
+  viewerUserId: string,
+  subjectUserId: string,
+): Promise<SocialProfileSummary["relationship"]> {
   if (viewerUserId === subjectUserId) {
     return "self";
   }
@@ -1503,8 +1633,14 @@ async function getRelationship(viewerUserId: string, subjectUserId: string): Pro
       and(
         eq(friendRequests.status, "pending"),
         or(
-          and(eq(friendRequests.requesterUserId, viewerUserId), eq(friendRequests.recipientUserId, subjectUserId)),
-          and(eq(friendRequests.requesterUserId, subjectUserId), eq(friendRequests.recipientUserId, viewerUserId)),
+          and(
+            eq(friendRequests.requesterUserId, viewerUserId),
+            eq(friendRequests.recipientUserId, subjectUserId),
+          ),
+          and(
+            eq(friendRequests.requesterUserId, subjectUserId),
+            eq(friendRequests.recipientUserId, viewerUserId),
+          ),
         ),
       ),
     )
@@ -1531,7 +1667,12 @@ async function getProfileStats(
       ? getDb()
           .select({ value: sql<number>`count(*)::int` })
           .from(sessions)
-          .where(and(eq(sessions.userId, userId), or(eq(sessions.type, "real_round"), eq(sessions.type, "round"))))
+          .where(
+            and(
+              eq(sessions.userId, userId),
+              or(eq(sessions.type, "real_round"), eq(sessions.type, "round")),
+            ),
+          )
           .then((rows) => rows[0]?.value ?? 0)
       : Promise.resolve(null),
     canSeeBag
@@ -1572,7 +1713,9 @@ async function getProfileStats(
               .map((row) => ({
                 clubId: row.clubId,
                 clubType: row.clubType,
-                label: [formatClubType(row.clubType), row.brand, row.model].filter(Boolean).join(" - "),
+                label: [formatClubType(row.clubType), row.brand, row.model]
+                  .filter(Boolean)
+                  .join(" - "),
                 carryMedianYd: row.carryMedianYd,
                 totalMedianYd: row.totalMedianYd,
                 sampleSize: row.sampleSize,
@@ -1596,7 +1739,10 @@ async function profilesByUserId(userIds: string[]) {
     return new Map<string, ProfileRow>();
   }
 
-  const rows = await getDb().select().from(userProfiles).where(inArray(userProfiles.userId, userIds));
+  const rows = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(inArray(userProfiles.userId, userIds));
   return new Map(rows.map((row) => [row.userId, row]));
 }
 
@@ -1610,7 +1756,11 @@ async function uniqueUsername(base: string) {
 
   for (let index = 0; index < 10; index += 1) {
     const username = index === 0 ? candidate : `${candidate.slice(0, 33)}-${index}`;
-    const [existing] = await db.select({ userId: userProfiles.userId }).from(userProfiles).where(eq(userProfiles.username, username)).limit(1);
+    const [existing] = await db
+      .select({ userId: userProfiles.userId })
+      .from(userProfiles)
+      .where(eq(userProfiles.username, username))
+      .limit(1);
 
     if (!existing) {
       return username;
@@ -1654,7 +1804,11 @@ function profileSummary(
 
 function isTourPlayerProfile(profile: ProfileRow | undefined) {
   const settings = profile?.visibilitySettingsJson;
-  return Boolean(settings?.tourPlayer || settings?.profileKind === "tour-player" || profile?.username.startsWith("tour-"));
+  return Boolean(
+    settings?.tourPlayer ||
+    settings?.profileKind === "tour-player" ||
+    profile?.username.startsWith("tour-"),
+  );
 }
 
 function canReceiveFriendRequests(profile: ProfileRow | undefined) {
@@ -1679,7 +1833,9 @@ async function getHiddenFeedTypes(userId: string) {
     .limit(1);
 
   const hidden = profile?.visibilitySettingsJson.hiddenFeedTypes;
-  return Array.isArray(hidden) ? hidden.filter((value): value is string => typeof value === "string") : [];
+  return Array.isArray(hidden)
+    ? hidden.filter((value): value is string => typeof value === "string")
+    : [];
 }
 
 function relationshipFromContext(
@@ -1710,7 +1866,7 @@ function relationshipFromContext(
 }
 
 function sortedUserPair(userAId: string, userBId: string) {
-  return userAId < userBId ? [userAId, userBId] as const : [userBId, userAId] as const;
+  return userAId < userBId ? ([userAId, userBId] as const) : ([userBId, userAId] as const);
 }
 
 function defaultUsername(displayName: string, userId: string) {
@@ -1757,7 +1913,10 @@ function cleanStatusUpdateImage(value: string | null | undefined) {
 }
 
 function statusUpdateHeadline(body: string, hasImage: boolean) {
-  const firstLine = body.split("\n").find((line) => line.trim())?.trim();
+  const firstLine = body
+    .split("\n")
+    .find((line) => line.trim())
+    ?.trim();
 
   if (firstLine) {
     return firstLine.length > 140 ? `${firstLine.slice(0, 137).trimEnd()}...` : firstLine;

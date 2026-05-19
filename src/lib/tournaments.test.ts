@@ -73,7 +73,9 @@ describe("tour event sync helpers", () => {
       new Date("2026-05-21T12:00:00.000Z"),
     );
 
-    expect(selections.map((selection) => [selection.kind, selection.event.id, selection.scheduledKey])).toEqual([
+    expect(
+      selections.map((selection) => [selection.kind, selection.event.id, selection.scheduledKey]),
+    ).toEqual([
       ["monthly", "major", "monthly-major-2026-05"],
       ["weekly", "weekly", "weekly-open-2026-05-18"],
     ]);

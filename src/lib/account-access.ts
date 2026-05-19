@@ -18,7 +18,11 @@ export type AccountMembershipAccess = {
   role: string;
 };
 
-export function canReadAccount(currentUserId: string, targetUserId: string, memberships: AccountMembershipAccess[]) {
+export function canReadAccount(
+  currentUserId: string,
+  targetUserId: string,
+  memberships: AccountMembershipAccess[],
+) {
   if (currentUserId === targetUserId) {
     return true;
   }
@@ -31,7 +35,11 @@ export function canReadAccount(currentUserId: string, targetUserId: string, memb
   );
 }
 
-export function canEditAccount(currentUserId: string, targetUserId: string, memberships: AccountMembershipAccess[]) {
+export function canEditAccount(
+  currentUserId: string,
+  targetUserId: string,
+  memberships: AccountMembershipAccess[],
+) {
   if (currentUserId === targetUserId) {
     return true;
   }
@@ -58,7 +66,12 @@ export async function requireReadableAccountUserId(targetUserId: string) {
       role: accountMemberships.role,
     })
     .from(accountMemberships)
-    .where(and(eq(accountMemberships.ownerUserId, targetUserId), eq(accountMemberships.memberUserId, currentUserId)))
+    .where(
+      and(
+        eq(accountMemberships.ownerUserId, targetUserId),
+        eq(accountMemberships.memberUserId, currentUserId),
+      ),
+    )
     .limit(1);
 
   if (!membership || !canReadAccount(currentUserId, targetUserId, [membership])) {

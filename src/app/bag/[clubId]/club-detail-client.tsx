@@ -2,24 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  BarChart3,
-  Brain,
-  Database,
-  Gauge,
-  Target,
-  type LucideIcon,
-} from "lucide-react";
+import { BarChart3, Brain, Database, Gauge, Target, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { MobileCompactPageHeader } from "@/components/premium";
@@ -37,12 +24,37 @@ import { ClubAnalysisTabs, type AnalysisShot } from "./club-analysis-tabs";
 
 type ShotRange = "all" | "month3" | "month2" | "month1" | "thisMonth" | "week" | "today";
 
-const RANGE_OPTIONS: Array<{ value: ShotRange; label: string; compactLabel: string; description: string }> = [
+const RANGE_OPTIONS: Array<{
+  value: ShotRange;
+  label: string;
+  compactLabel: string;
+  description: string;
+}> = [
   { value: "all", label: "All time", compactLabel: "All", description: "all full shots" },
-  { value: "month3", label: "Last 3 months", compactLabel: "3 mo", description: "shots from the last 3 months" },
-  { value: "month2", label: "Last 2 months", compactLabel: "2 mo", description: "shots from the last 2 months" },
-  { value: "month1", label: "Last month", compactLabel: "1 mo", description: "shots from the last month" },
-  { value: "thisMonth", label: "This month", compactLabel: "Month", description: "shots from this month" },
+  {
+    value: "month3",
+    label: "Last 3 months",
+    compactLabel: "3 mo",
+    description: "shots from the last 3 months",
+  },
+  {
+    value: "month2",
+    label: "Last 2 months",
+    compactLabel: "2 mo",
+    description: "shots from the last 2 months",
+  },
+  {
+    value: "month1",
+    label: "Last month",
+    compactLabel: "1 mo",
+    description: "shots from the last month",
+  },
+  {
+    value: "thisMonth",
+    label: "This month",
+    compactLabel: "Month",
+    description: "shots from this month",
+  },
   { value: "week", label: "This week", compactLabel: "Week", description: "shots from this week" },
   { value: "today", label: "Today", compactLabel: "Today", description: "shots from today" },
 ];
@@ -65,7 +77,8 @@ export function ClubDetailClient({
   const clubModelName = formatClubModelName(club);
   const clubTypeLabel = formatClubType(club.type);
   const [shotRange, setShotRange] = useState<ShotRange>("thisMonth");
-  const selectedRange = RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
+  const selectedRange =
+    RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
     () =>
       [...club.shots].sort((left, right) => {
@@ -88,23 +101,32 @@ export function ClubDetailClient({
     [club.type, selectedShots],
   );
   const touch = useMemo(
-    () => calculateShortGameTouchSummary(selectedShots, selectedShots.length, { clubType: club.type }),
+    () =>
+      calculateShortGameTouchSummary(selectedShots, selectedShots.length, { clubType: club.type }),
     [club.type, selectedShots],
   );
   const isShortGameTouch = isShortGameTouchClubType(club.type);
   const latestShotDate = selectedShots[0]?.shotAt ? formatDate(selectedShots[0].shotAt) : "--";
-  const shotCount = shotRange !== "all"
-    ? `${selectedShots.length}/${orderedShots.length}`
-    : selectedShots.length.toString();
+  const shotCount =
+    shotRange !== "all"
+      ? `${selectedShots.length}/${orderedShots.length}`
+      : selectedShots.length.toString();
 
   return (
     <>
       <MobileCompactPageHeader
-        eyebrow={<Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>Club analysis</Badge>}
+        eyebrow={
+          <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
+            Club analysis
+          </Badge>
+        }
         title={clubModelName}
         description={clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
         metricLabel={isShortGameTouch ? "Touch median" : "Stock carry"}
-        metricValue={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
+        metricValue={formatMetric(
+          isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+          " yd",
+        )}
         metricDetail={`${selectedShots.length} in ${selectedRange.compactLabel}`}
         visual={
           <ClubArtwork
@@ -117,8 +139,14 @@ export function ClubDetailClient({
           />
         }
         action={
-          <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href={`/bag/${club.id}/analytics`} prefetch={false}>Coach</Link>
+          <Button
+            asChild
+            size="sm"
+            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          >
+            <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
+              Coach
+            </Link>
           </Button>
         }
       />
@@ -131,7 +159,10 @@ export function ClubDetailClient({
         items={[
           {
             label: isShortGameTouch ? "Touch" : "Carry",
-            value: formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd"),
+            value: formatMetric(
+              isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+              " yd",
+            ),
             detail: "Stock",
             tone: "green",
           },
@@ -183,18 +214,26 @@ export function ClubDetailClient({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px] xl:min-w-0">
                 <StatTile
                   label={isShortGameTouch ? "Touch median" : "Stock carry"}
-                  value={formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd, " yd")}
+                  value={formatMetric(
+                    isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+                    " yd",
+                  )}
                   icon={Target}
                 />
                 <StatTile
                   label={isShortGameTouch ? "Full stock" : "Play number"}
-                  value={formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd")}
+                  value={formatMetric(
+                    isShortGameTouch ? null : stock.recommendedPlayNumberYd,
+                    " yd",
+                  )}
                   icon={Gauge}
                 />
                 <StatTile label="Shots" value={shotCount} icon={Database} />
                 <StatTile
                   label={isShortGameTouch ? "Under 30" : "Confidence"}
-                  value={isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`}
+                  value={
+                    isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`
+                  }
                   icon={BarChart3}
                 />
               </div>
@@ -242,12 +281,19 @@ export function ClubDetailClient({
               />
               <SmallMetric
                 label={isShortGameTouch ? "Longest touch" : "Total"}
-                value={formatMetric(isShortGameTouch ? touch.longestCarryYd : stock.totalMedianYd, " yd")}
+                value={formatMetric(
+                  isShortGameTouch ? touch.longestCarryYd : stock.totalMedianYd,
+                  " yd",
+                )}
               />
               <SmallMetric label="Left miss" value={formatMetric(stock.dispersionLeftYd, " yd")} />
               <SmallMetric
                 label={isShortGameTouch ? "Under 30" : "Right miss"}
-                value={isShortGameTouch ? touch.under30YdCount.toString() : formatMetric(stock.dispersionRightYd, " yd")}
+                value={
+                  isShortGameTouch
+                    ? touch.under30YdCount.toString()
+                    : formatMetric(stock.dispersionRightYd, " yd")
+                }
               />
               <SmallMetric
                 label={isShortGameTouch ? "Full stock" : "Ball speed"}
@@ -257,18 +303,27 @@ export function ClubDetailClient({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{isShortGameTouch ? "Short-game touch" : stock.label}</span>
+                <span className="font-medium">
+                  {isShortGameTouch ? "Short-game touch" : stock.label}
+                </span>
                 <span className="text-muted-foreground">
                   {isShortGameTouch
                     ? `${touch.sampleSize} touch / ${stock.rawSampleSize} total`
                     : `${stock.sampleSize} clean / ${stock.rawSampleSize} total`}
                 </span>
               </div>
-              <Progress value={isShortGameTouch ? Math.min(100, (touch.sampleSize / 50) * 100) : stock.confidenceScore} />
+              <Progress
+                value={
+                  isShortGameTouch
+                    ? Math.min(100, (touch.sampleSize / 50) * 100)
+                    : stock.confidenceScore
+                }
+              />
             </div>
             {isShortGameTouch ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-                Full-stock SW only builds from non-round full swings. Round SW shots stay in touch analysis.
+                Full-stock SW only builds from non-round full swings. Round SW shots stay in touch
+                analysis.
               </div>
             ) : null}
           </CardContent>
@@ -341,10 +396,7 @@ function RangeToggle({
   onChange: (value: ShotRange) => void;
 }) {
   return (
-    <div
-      aria-label="Shot date range"
-      className="apple-panel w-full max-w-full p-1"
-    >
+    <div aria-label="Shot date range" className="apple-panel w-full max-w-full p-1">
       <div className="grid min-w-0 grid-cols-7 gap-1">
         {RANGE_OPTIONS.map((option) => (
           <Button

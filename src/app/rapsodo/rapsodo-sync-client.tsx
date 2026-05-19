@@ -34,13 +34,7 @@ import { notifyAchievementUnlocks } from "@/components/achievement-notifications
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataPair,
   MobileCompactPageHeader,
@@ -125,9 +119,12 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
   const [courseName, setCourseName] = useState("");
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
-  const [browserNotificationState, setBrowserNotificationState] = useState<BrowserNotificationState>(() =>
-    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported",
-  );
+  const [browserNotificationState, setBrowserNotificationState] =
+    useState<BrowserNotificationState>(() =>
+      typeof window !== "undefined" && "Notification" in window
+        ? Notification.permission
+        : "unsupported",
+    );
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const previewSectionRef = useRef<HTMLElement | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -180,7 +177,8 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
 
     return scorecard.holes.map((hole) => {
       const autoShotCount =
-        autoCourseInference?.holes.find((autoHole) => autoHole.holeNumber === hole.holeNumber)?.shots.length ?? 0;
+        autoCourseInference?.holes.find((autoHole) => autoHole.holeNumber === hole.holeNumber)
+          ?.shots.length ?? 0;
       const manualShotCount = holeReview[hole.holeNumber]?.shotCount;
 
       return {
@@ -200,7 +198,10 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       courseHoleShotCounts,
     );
   }, [courseHoleShotCounts, isCoursePreview, preview, scorecard.holes]);
-  const assignedCourseShots = courseHoleShotCounts.reduce((total, hole) => total + hole.shotCount, 0);
+  const assignedCourseShots = courseHoleShotCounts.reduce(
+    (total, hole) => total + hole.shotCount,
+    0,
+  );
   const courseShotOnlyImport = isCoursePreview && courseImportMode === "shot_only";
   const everyShotHasClub =
     preview?.shots.every((shot) => {
@@ -236,24 +237,27 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
 
     return {
       updates,
-      updatableCount: updates.filter((update) => update.rapsodoShotId && update.rapsodoClubId).length,
-      skippedCount: updates.filter((update) => !update.rapsodoShotId || !update.rapsodoClubId).length,
+      updatableCount: updates.filter((update) => update.rapsodoShotId && update.rapsodoClubId)
+        .length,
+      skippedCount: updates.filter((update) => !update.rapsodoShotId || !update.rapsodoClubId)
+        .length,
     };
   }, [choicesByKey, preview, selectedClubByRow]);
   const canSave = Boolean(preview && everyShotHasClub && courseReady && !isPending);
   const mobileSteps = useMemo(
-    () =>
-      [
-        { id: "connect" as const, label: "Connect" },
-        { id: "sessions" as const, label: "Sessions" },
-        { id: "preview" as const, label: "Preview" },
-        { id: "clubs" as const, label: "Clubs" },
-        ...(isCoursePreview ? [{ id: "course" as const, label: "Course" }] : []),
-        { id: "import" as const, label: "Import" },
-      ],
+    () => [
+      { id: "connect" as const, label: "Connect" },
+      { id: "sessions" as const, label: "Sessions" },
+      { id: "preview" as const, label: "Preview" },
+      { id: "clubs" as const, label: "Clubs" },
+      ...(isCoursePreview ? [{ id: "course" as const, label: "Course" }] : []),
+      { id: "import" as const, label: "Import" },
+    ],
     [isCoursePreview],
   );
-  const visibleMobileStep = mobileSteps.some((step) => step.id === mobileStep) ? mobileStep : "preview";
+  const visibleMobileStep = mobileSteps.some((step) => step.id === mobileStep)
+    ? mobileStep
+    : "preview";
   const activeMobileStepIndex = mobileSteps.findIndex((step) => step.id === visibleMobileStep);
 
   const loadSessions = useCallback(
@@ -338,8 +342,16 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       }
 
       setPassword("");
-      setStatus({ connected: result.data.connected, expiresAt: null, profile: result.data.profile });
-      setNotice({ kind: "success", title: "R-Cloud connected", message: "Token saved for this browser session." });
+      setStatus({
+        connected: result.data.connected,
+        expiresAt: null,
+        profile: result.data.profile,
+      });
+      setNotice({
+        kind: "success",
+        title: "R-Cloud connected",
+        message: "Token saved for this browser session.",
+      });
       await loadSessions();
     });
   }
@@ -363,7 +375,11 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       setSessions([]);
       setPreview(null);
       setLoadingLabel(null);
-      setNotice({ kind: "success", title: "R-Cloud disconnected", message: "Saved token cleared." });
+      setNotice({
+        kind: "success",
+        title: "R-Cloud disconnected",
+        message: "Saved token cleared.",
+      });
     });
   }
 
@@ -452,7 +468,8 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             {
               kind: "error",
               title: "Rapsodo update unavailable",
-              message: "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with ForeKingHell recommendations or update Rapsodo manually first.",
+              message:
+                "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with ForeKingHell recommendations or update Rapsodo manually first.",
             },
             { scroll: true },
           );
@@ -491,7 +508,8 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
           distanceUnit: preview.distanceUnit,
           courseName: isCoursePreview && !courseShotOnlyImport ? courseName : undefined,
           courseScorecardText: isCoursePreview && !courseShotOnlyImport ? scorecardText : undefined,
-          courseHoleShotCounts: isCoursePreview && !courseShotOnlyImport ? courseHoleShotCounts : undefined,
+          courseHoleShotCounts:
+            isCoursePreview && !courseShotOnlyImport ? courseHoleShotCounts : undefined,
           courseHoleScoring,
           shotOverrides,
           notes: courseShotOnlyImport
@@ -502,12 +520,18 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
       setLoadingLabel(null);
 
       if (!result.ok) {
-        showNotice({ kind: "error", title: "Import failed", message: result.message }, { scroll: true });
+        showNotice(
+          { kind: "error", title: "Import failed", message: result.message },
+          { scroll: true },
+        );
         return;
       }
 
       if (!result.data.ok) {
-        showNotice({ kind: "error", title: "Import failed", message: result.data.message }, { scroll: true });
+        showNotice(
+          { kind: "error", title: "Import failed", message: result.data.message },
+          { scroll: true },
+        );
         return;
       }
 
@@ -523,10 +547,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             }${writebackMessage}`,
         sessionId: result.data.sessionId,
       };
-      showNotice(
-        saveNotice,
-        { scroll: true },
-      );
+      showNotice(saveNotice, { scroll: true });
       setSaveConfirmation({
         id: `${Date.now()}-${result.data.sessionId}`,
         title: saveNotice.title,
@@ -571,7 +592,11 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         </div>
 
         <MobileCompactPageHeader
-          eyebrow={<Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">R-Cloud</Badge>}
+          eyebrow={
+            <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+              R-Cloud
+            </Badge>
+          }
           title="Rapsodo cloud sync"
           description="Connect, choose sessions, preview shots, map clubs and import."
           metricLabel="Available"
@@ -593,10 +618,30 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
 
         <MobileMetricStrip
           items={[
-            { label: "Connection", value: status.connected ? "On" : "Off", detail: "R-Cloud", tone: status.connected ? "green" : "slate" },
-            { label: "Available", value: availableSessions.length.toString(), detail: "Sessions", tone: "sky" },
-            { label: "New", value: newSessionCount.toString(), detail: "Since last sync", tone: newSessionCount > 0 ? "amber" : "slate" },
-            { label: "Preview", value: preview ? preview.shotCount.toString() : "--", detail: "Shots", tone: "pink" },
+            {
+              label: "Connection",
+              value: status.connected ? "On" : "Off",
+              detail: "R-Cloud",
+              tone: status.connected ? "green" : "slate",
+            },
+            {
+              label: "Available",
+              value: availableSessions.length.toString(),
+              detail: "Sessions",
+              tone: "sky",
+            },
+            {
+              label: "New",
+              value: newSessionCount.toString(),
+              detail: "Since last sync",
+              tone: newSessionCount > 0 ? "amber" : "slate",
+            },
+            {
+              label: "Preview",
+              value: preview ? preview.shotCount.toString() : "--",
+              detail: "Shots",
+              tone: "pink",
+            },
           ]}
         />
 
@@ -610,11 +655,15 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                 Rapsodo cloud sync
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Pull R-Cloud CSV exports, review club matches, and save confirmed shots into ForeKingHell.
+                Pull R-Cloud CSV exports, review club matches, and save confirmed shots into
+                ForeKingHell.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-4 lg:min-w-[640px]">
-              <StatusTile label="Connection" value={status.connected ? "Connected" : "Signed out"} />
+              <StatusTile
+                label="Connection"
+                value={status.connected ? "Connected" : "Signed out"}
+              />
               <StatusTile label="Available" value={availableSessions.length.toString()} />
               <StatusTile label="New" value={newSessionCount.toString()} />
               <StatusTile label="Preview" value={preview ? preview.shotCount.toString() : "--"} />
@@ -622,12 +671,20 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
           </div>
         </header>
 
-        <RapsodoMobileStepper steps={mobileSteps} step={visibleMobileStep} onStepChange={setMobileStep} />
+        <RapsodoMobileStepper
+          steps={mobileSteps}
+          step={visibleMobileStep}
+          onStepChange={setMobileStep}
+        />
 
         {notice.kind !== "idle" ? (
           <div ref={noticeRef} className="scroll-mt-4">
             <Alert variant={notice.kind === "error" ? "destructive" : "default"}>
-              {notice.kind === "error" ? <AlertCircle className="size-4" /> : <CheckCircle2 className="size-4" />}
+              {notice.kind === "error" ? (
+                <AlertCircle className="size-4" />
+              ) : (
+                <CheckCircle2 className="size-4" />
+              )}
               <AlertTitle>{notice.title}</AlertTitle>
               <AlertDescription>
                 <span>{notice.message}</span>
@@ -652,10 +709,17 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className={cn("premium-card", visibleMobileStep === "connect" ? "flex" : "hidden sm:flex")}>
+          <Card
+            className={cn(
+              "premium-card",
+              visibleMobileStep === "connect" ? "flex" : "hidden sm:flex",
+            )}
+          >
             <CardHeader>
               <CardTitle>Connection</CardTitle>
-              <CardDescription>Rapsodo password is exchanged for a protected server cookie token.</CardDescription>
+              <CardDescription>
+                Rapsodo password is exchanged for a protected server cookie token.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {status.connected ? (
@@ -666,7 +730,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                       Token saved
                     </div>
                     <p className="mt-1 text-emerald-800">
-                      {status.expiresAt ? `Expires ${formatDateTime(status.expiresAt)}.` : "Expires automatically."}
+                      {status.expiresAt
+                        ? `Expires ${formatDateTime(status.expiresAt)}.`
+                        : "Expires automatically."}
                     </p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -689,7 +755,12 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                         Notifications
                       </Button>
                     ) : null}
-                    <Button type="button" variant="outline" onClick={disconnect} disabled={isPending}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={disconnect}
+                      disabled={isPending}
+                    >
                       <LogOut className="size-4" />
                       Disconnect
                     </Button>
@@ -717,8 +788,16 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                   />
-                  <Button type="submit" className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]" disabled={isPending}>
-                    {loadingLabel === "Signing in" ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                    disabled={isPending}
+                  >
+                    {loadingLabel === "Signing in" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Cloud className="size-4" />
+                    )}
                     Sign in to R-Cloud
                   </Button>
                 </form>
@@ -728,23 +807,34 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                 <Input
                   type="date"
                   value={dateFilter.startDate}
-                  onChange={(event) => setDateFilter((current) => ({ ...current, startDate: event.target.value }))}
+                  onChange={(event) =>
+                    setDateFilter((current) => ({ ...current, startDate: event.target.value }))
+                  }
                 />
                 <Input
                   type="date"
                   value={dateFilter.endDate}
-                  onChange={(event) => setDateFilter((current) => ({ ...current, endDate: event.target.value }))}
+                  onChange={(event) =>
+                    setDateFilter((current) => ({ ...current, endDate: event.target.value }))
+                  }
                 />
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cn("premium-card", visibleMobileStep === "sessions" ? "flex" : "hidden sm:flex")}>
+          <Card
+            className={cn(
+              "premium-card",
+              visibleMobileStep === "sessions" ? "flex" : "hidden sm:flex",
+            )}
+          >
             <CardHeader>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <CardTitle>Remote sessions</CardTitle>
-                  <CardDescription>Choose a session, export its CSV, then review before saving.</CardDescription>
+                  <CardDescription>
+                    Choose a session, export its CSV, then review before saving.
+                  </CardDescription>
                 </div>
                 <select
                   className="h-9 rounded-md border bg-background px-3 text-sm"
@@ -765,10 +855,17 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                       key={`${session.providerKind}-${session.providerSessionId}`}
                       title={session.title}
                       subtitle={session.dateIso ? formatDate(session.dateIso) : "No date"}
-                      action={session.isNew && !session.importedSessionId ? <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge> : null}
+                      action={
+                        session.isNew && !session.importedSessionId ? (
+                          <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
+                        ) : null
+                      }
                     >
                       <DataPair label="Type" value={formatSessionKind(session)} />
-                      <DataPair label="Shots" value={session.shotCount === null ? "--" : session.shotCount} />
+                      <DataPair
+                        label="Shots"
+                        value={session.shotCount === null ? "--" : session.shotCount}
+                      />
                       <Button
                         type="button"
                         variant="outline"
@@ -782,7 +879,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   ))
                 ) : (
                   <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                    {status.connected ? "No unimported R-Cloud sessions found for these dates." : "Sign in to load sessions."}
+                    {status.connected
+                      ? "No unimported R-Cloud sessions found for these dates."
+                      : "Sign in to load sessions."}
                   </div>
                 )}
               </MobileDataList>
@@ -804,7 +903,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="font-medium">{session.title}</span>
                             {session.isNew && !session.importedSessionId ? (
-                              <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
+                              <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
+                                New
+                              </Badge>
                             ) : null}
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -817,12 +918,16 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                               </Link>
                             ) : null}
                             {session.firstSeenAt ? (
-                              <span className="text-muted-foreground">Seen {formatDate(session.firstSeenAt)}</span>
+                              <span className="text-muted-foreground">
+                                Seen {formatDate(session.firstSeenAt)}
+                              </span>
                             ) : null}
                           </div>
                         </TableCell>
                         <TableCell>{formatSessionKind(session)}</TableCell>
-                        <TableCell>{session.dateIso ? formatDate(session.dateIso) : "--"}</TableCell>
+                        <TableCell>
+                          {session.dateIso ? formatDate(session.dateIso) : "--"}
+                        </TableCell>
                         <TableCell className="text-right">
                           {session.shotCount === null ? "--" : session.shotCount}
                         </TableCell>
@@ -860,7 +965,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             ref={previewSectionRef}
             className={cn(
               "space-y-4 scroll-mt-4",
-              ["preview", "clubs", "course", "import"].includes(visibleMobileStep) ? "block" : "hidden sm:block",
+              ["preview", "clubs", "course", "import"].includes(visibleMobileStep)
+                ? "block"
+                : "hidden sm:block",
             )}
           >
             <Card className="premium-card">
@@ -869,11 +976,21 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   <div>
                     <CardTitle>{preview.session.title}</CardTitle>
                     <CardDescription>
-                      {preview.shotCount} shots, {preview.rawRowCount} raw rows, {preview.distanceUnit}
+                      {preview.shotCount} shots, {preview.rawRowCount} raw rows,{" "}
+                      {preview.distanceUnit}
                     </CardDescription>
                   </div>
-                  <Button type="button" onClick={savePreview} disabled={!canSave} className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                    {loadingLabel === "Saving shots" ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                  <Button
+                    type="button"
+                    onClick={savePreview}
+                    disabled={!canSave}
+                    className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                  >
+                    {loadingLabel === "Saving shots" ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
                     Save confirmed shots
                   </Button>
                 </div>
@@ -888,7 +1005,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   <Button
                     type="button"
                     variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
-                    className={clubSelectionMode === "recommendations" ? "bg-[#0B7A3B] text-white" : ""}
+                    className={
+                      clubSelectionMode === "recommendations" ? "bg-[#0B7A3B] text-white" : ""
+                    }
                     onClick={() => applyClubSelectionMode("recommendations")}
                     disabled={isPending}
                   >
@@ -923,15 +1042,25 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                         Update Rapsodo first
                       </span>
                       <span className="block text-xs text-muted-foreground">
-                        {rapsodoWritebackRows.updatableCount}/{preview.shotCount} shots can be matched back to R-Cloud.
+                        {rapsodoWritebackRows.updatableCount}/{preview.shotCount} shots can be
+                        matched back to R-Cloud.
                       </span>
                     </span>
                   </label>
                 </div>
-                <div className={cn("grid gap-2 sm:grid-cols-4", visibleMobileStep === "preview" || visibleMobileStep === "import" ? "grid" : "hidden sm:grid")}>
+                <div
+                  className={cn(
+                    "grid gap-2 sm:grid-cols-4",
+                    visibleMobileStep === "preview" || visibleMobileStep === "import"
+                      ? "grid"
+                      : "hidden sm:grid",
+                  )}
+                >
                   <CompactSummaryTile
                     label="Type"
-                    value={courseShotOnlyImport ? "Shot-only" : formatPreviewType(preview.sessionType)}
+                    value={
+                      courseShotOnlyImport ? "Shot-only" : formatPreviewType(preview.sessionType)
+                    }
                   />
                   <CompactSummaryTile label="Date" value={formatDate(preview.sessionDate)} />
                   <CompactSummaryTile
@@ -959,7 +1088,15 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                           key={shot.rowNumber}
                           title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
                           subtitle={shot.reportedClubLabel}
-                          action={<Badge variant={shot.suggestion.confidence === "low" ? "secondary" : "default"}>{shot.suggestion.confidenceScore}%</Badge>}
+                          action={
+                            <Badge
+                              variant={
+                                shot.suggestion.confidence === "low" ? "secondary" : "default"
+                              }
+                            >
+                              {shot.suggestion.confidenceScore}%
+                            </Badge>
+                          }
                         >
                           <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
                           <DataPair label="Total" value={formatMetric(shot.totalYd)} />
@@ -978,7 +1115,10 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                             >
                               <option value="">Choose club</option>
                               {preview.clubChoices.map((choice) => (
-                                <option key={`${shot.rowNumber}-${choice.clubKey}`} value={choice.clubKey}>
+                                <option
+                                  key={`${shot.rowNumber}-${choice.clubKey}`}
+                                  value={choice.clubKey}
+                                >
                                   {choice.clubLabel}
                                 </option>
                               ))}
@@ -1004,7 +1144,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     <TableBody>
                       {preview.shots.map((shot) => (
                         <TableRow key={shot.rowNumber}>
-                          <TableCell className="px-3 py-1.5">{shot.shotNumber ?? shot.rowNumber}</TableCell>
+                          <TableCell className="px-3 py-1.5">
+                            {shot.shotNumber ?? shot.rowNumber}
+                          </TableCell>
                           <TableCell className="px-2 py-1.5">
                             <div className="flex items-center gap-1.5">
                               <span>{shot.reportedClubLabel}</span>
@@ -1014,19 +1156,20 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                             <select
                               className="h-8 w-56 rounded-md border bg-background px-2 text-xs"
                               value={selectedClubByRow[shot.rowNumber] ?? ""}
-                              onChange={(event) =>
-                                {
-                                  setClubSelectionMode("custom");
-                                  setSelectedClubByRow((current) => ({
-                                    ...current,
-                                    [shot.rowNumber]: event.target.value,
-                                  }));
-                                }
-                              }
+                              onChange={(event) => {
+                                setClubSelectionMode("custom");
+                                setSelectedClubByRow((current) => ({
+                                  ...current,
+                                  [shot.rowNumber]: event.target.value,
+                                }));
+                              }}
                             >
                               <option value="">Choose club</option>
                               {preview.clubChoices.map((choice) => (
-                                <option key={`${shot.rowNumber}-${choice.clubKey}`} value={choice.clubKey}>
+                                <option
+                                  key={`${shot.rowNumber}-${choice.clubKey}`}
+                                  value={choice.clubKey}
+                                >
                                   {choice.clubLabel}
                                   {choice.clubBrand || choice.clubModel
                                     ? ` - ${[choice.clubBrand, choice.clubModel].filter(Boolean).join(" ")}`
@@ -1036,12 +1179,18 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                               ))}
                             </select>
                           </TableCell>
-                          <TableCell className="px-2 py-1.5 text-right">{formatMetric(shot.carryYd)}</TableCell>
-                          <TableCell className="px-2 py-1.5 text-right">{formatMetric(shot.totalYd)}</TableCell>
+                          <TableCell className="px-2 py-1.5 text-right">
+                            {formatMetric(shot.carryYd)}
+                          </TableCell>
+                          <TableCell className="px-2 py-1.5 text-right">
+                            {formatMetric(shot.totalYd)}
+                          </TableCell>
                           <TableCell className="min-w-[360px] px-2 py-1.5">
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Badge
-                                variant={shot.suggestion.confidence === "low" ? "secondary" : "default"}
+                                variant={
+                                  shot.suggestion.confidence === "low" ? "secondary" : "default"
+                                }
                                 className="shrink-0"
                               >
                                 {shot.suggestion.confidenceScore}%
@@ -1058,10 +1207,17 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             </Card>
 
             {isCoursePreview ? (
-              <Card className={cn("premium-card", visibleMobileStep === "course" ? "flex" : "hidden sm:flex")}>
+              <Card
+                className={cn(
+                  "premium-card",
+                  visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
+                )}
+              >
                 <CardHeader>
                   <CardTitle>Course import</CardTitle>
-                  <CardDescription>Save club data only, or add scorecard detail when it should become a round.</CardDescription>
+                  <CardDescription>
+                    Save club data only, or add scorecard detail when it should become a round.
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2 sm:grid-cols-2">
@@ -1078,7 +1234,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                     <Button
                       type="button"
                       variant={courseImportMode === "scored_round" ? "default" : "outline"}
-                      className={courseImportMode === "scored_round" ? "bg-[#0B7A3B] text-white" : ""}
+                      className={
+                        courseImportMode === "scored_round" ? "bg-[#0B7A3B] text-white" : ""
+                      }
                       onClick={() => setCourseImportMode("scored_round")}
                       disabled={isPending}
                     >
@@ -1088,7 +1246,8 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   </div>
                   {courseImportMode === "shot_only" ? (
                     <div className="rounded-[8px] border bg-[#f9fafb] p-3 text-sm text-muted-foreground">
-                      These shots will save into the shot database and stay out of the saved rounds list.
+                      These shots will save into the shot database and stay out of the saved rounds
+                      list.
                     </div>
                   ) : (
                     <>
@@ -1107,10 +1266,13 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                       </div>
                       <div className="rounded-[8px] border bg-[#f9fafb] p-3 text-sm">
                         {scorecard.holes.length === 0 ? (
-                          <p className="text-muted-foreground">Add scorecard rows before saving this course session.</p>
+                          <p className="text-muted-foreground">
+                            Add scorecard rows before saving this course session.
+                          </p>
                         ) : (
                           <p>
-                            {assignedCourseShots}/{preview.shotCount} shots assigned across {scorecard.holes.length} holes.
+                            {assignedCourseShots}/{preview.shotCount} shots assigned across{" "}
+                            {scorecard.holes.length} holes.
                           </p>
                         )}
                         {scorecard.warnings.length > 0 ? (
@@ -1134,8 +1296,9 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                         <TableBody>
                           {scorecard.holes.map((hole) => {
                             const autoShotCount =
-                              autoCourseInference?.holes.find((autoHole) => autoHole.holeNumber === hole.holeNumber)
-                                ?.shots.length ?? 0;
+                              autoCourseInference?.holes.find(
+                                (autoHole) => autoHole.holeNumber === hole.holeNumber,
+                              )?.shots.length ?? 0;
                             const review = holeReview[hole.holeNumber] ?? {};
 
                             return (
@@ -1149,25 +1312,33 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                                 <TableCell className="px-2 py-1.5">
                                   <NumberInput
                                     value={review.shotCount ?? autoShotCount}
-                                    onChange={(value) => updateHoleReview(hole.holeNumber, { shotCount: value })}
+                                    onChange={(value) =>
+                                      updateHoleReview(hole.holeNumber, { shotCount: value })
+                                    }
                                   />
                                 </TableCell>
                                 <TableCell className="px-2 py-1.5">
                                   <NumberInput
                                     value={review.score ?? null}
-                                    onChange={(value) => updateHoleReview(hole.holeNumber, { score: value })}
+                                    onChange={(value) =>
+                                      updateHoleReview(hole.holeNumber, { score: value })
+                                    }
                                   />
                                 </TableCell>
                                 <TableCell className="px-2 py-1.5">
                                   <NumberInput
                                     value={review.putts ?? null}
-                                    onChange={(value) => updateHoleReview(hole.holeNumber, { putts: value })}
+                                    onChange={(value) =>
+                                      updateHoleReview(hole.holeNumber, { putts: value })
+                                    }
                                   />
                                 </TableCell>
                                 <TableCell className="px-2 py-1.5">
                                   <NumberInput
                                     value={review.penalties ?? null}
-                                    onChange={(value) => updateHoleReview(hole.holeNumber, { penalties: value })}
+                                    onChange={(value) =>
+                                      updateHoleReview(hole.holeNumber, { penalties: value })
+                                    }
                                   />
                                 </TableCell>
                               </TableRow>
@@ -1195,7 +1366,12 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               Back
             </Button>
             {visibleMobileStep === "import" ? (
-              <Button type="button" disabled={!canSave} onClick={savePreview} className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Button
+                type="button"
+                disabled={!canSave}
+                onClick={savePreview}
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
                 <Upload className="size-4" />
                 Import selected sessions
               </Button>
@@ -1203,7 +1379,11 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               <Button
                 type="button"
                 className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                onClick={() => setMobileStep(mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id)}
+                onClick={() =>
+                  setMobileStep(
+                    mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
+                  )
+                }
               >
                 Next
               </Button>
@@ -1328,7 +1508,10 @@ function RapsodoMobileStepper({
   onStepChange: (step: RapsodoMobileStep) => void;
 }) {
   return (
-    <nav aria-label="Rapsodo steps" className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden">
+    <nav
+      aria-label="Rapsodo steps"
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
+    >
       {steps.map((item) => (
         <button
           key={item.id}
@@ -1366,14 +1549,22 @@ function CompactSummaryTile({ label, value }: { label: string; value: string }) 
   );
 }
 
-function NumberInput({ value, onChange }: { value: number | null; onChange: (value: number | null) => void }) {
+function NumberInput({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (value: number | null) => void;
+}) {
   return (
     <Input
       type="number"
       min={0}
       className="ml-auto h-8 w-16 text-right"
       value={value ?? ""}
-      onChange={(event) => onChange(event.target.value === "" ? null : Math.max(0, Number(event.target.value)))}
+      onChange={(event) =>
+        onChange(event.target.value === "" ? null : Math.max(0, Number(event.target.value)))
+      }
     />
   );
 }
@@ -1412,7 +1603,10 @@ function previewShotsForCourse(preview: RapsodoSessionPreview): InferredCourseSh
 }
 
 function isCourseSession(session: RapsodoSessionListItem) {
-  return [session.providerSessionMode, session.providerSessionType, session.title].join(" ").toLowerCase().includes("course");
+  return [session.providerSessionMode, session.providerSessionType, session.title]
+    .join(" ")
+    .toLowerCase()
+    .includes("course");
 }
 
 function formatSessionKind(session: RapsodoSessionListItem) {
@@ -1438,7 +1632,9 @@ function formatDate(value: string) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "--"
-    : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+    : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(
+        date,
+      );
 }
 
 function formatDateTime(value: string) {
@@ -1457,11 +1653,17 @@ function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
-function confirmedClubCount(preview: RapsodoSessionPreview, selectedClubByRow: Record<number, string>) {
+function confirmedClubCount(
+  preview: RapsodoSessionPreview,
+  selectedClubByRow: Record<number, string>,
+) {
   return preview.shots.filter((shot) => selectedClubByRow[shot.rowNumber]).length;
 }
 
-function selectionByMode(preview: RapsodoSessionPreview, mode: ClubSelectionMode): Record<number, string> {
+function selectionByMode(
+  preview: RapsodoSessionPreview,
+  mode: ClubSelectionMode,
+): Record<number, string> {
   return Object.fromEntries(
     preview.shots.map((shot) => {
       const choice =
@@ -1479,7 +1681,11 @@ function isUsableChoice(choice: RapsodoClubChoice | null | undefined): choice is
 }
 
 function notifyNewRapsodoSessions(count: number) {
-  if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") {
+  if (
+    typeof window === "undefined" ||
+    !("Notification" in window) ||
+    Notification.permission !== "granted"
+  ) {
     return;
   }
 

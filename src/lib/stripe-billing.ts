@@ -24,7 +24,11 @@ export type StripeWebhookEvent = {
 
 export type BillingWebhookStore = {
   findUserIdByCustomerId(customerId: string): Promise<string | null>;
-  upsertBillingCustomer(input: { userId: string; stripeCustomerId: string | null; email: string | null }): Promise<string | null>;
+  upsertBillingCustomer(input: {
+    userId: string;
+    stripeCustomerId: string | null;
+    email: string | null;
+  }): Promise<string | null>;
   upsertSubscription(input: {
     userId: string;
     billingCustomerId: string | null;
@@ -36,8 +40,17 @@ export type BillingWebhookStore = {
     cancelAtPeriodEnd: boolean;
     metadataJson: Record<string, unknown>;
   }): Promise<void>;
-  applyPlanEntitlements(input: { userId: string; planKey: PlanKey; expiresAt: Date | null; sourceEvent: string }): Promise<void>;
-  expirePlanEntitlements(input: { userId: string; sourceEvent: string; expiresAt: Date }): Promise<void>;
+  applyPlanEntitlements(input: {
+    userId: string;
+    planKey: PlanKey;
+    expiresAt: Date | null;
+    sourceEvent: string;
+  }): Promise<void>;
+  expirePlanEntitlements(input: {
+    userId: string;
+    sourceEvent: string;
+    expiresAt: Date;
+  }): Promise<void>;
 };
 
 export type ProcessStripeWebhookResult = {
@@ -80,9 +93,18 @@ export function parseStripeWebhookEvent(payload: string): StripeWebhookEvent {
   return parsed as StripeWebhookEvent;
 }
 
-export async function processStripeWebhookEvent(event: StripeWebhookEvent, store: BillingWebhookStore): Promise<ProcessStripeWebhookResult> {
+export async function processStripeWebhookEvent(
+  event: StripeWebhookEvent,
+  store: BillingWebhookStore,
+): Promise<ProcessStripeWebhookResult> {
   if (!isHandledStripeEventType(event.type)) {
-    return { handled: false, eventType: event.type, userId: null, planKey: null, subscriptionStatus: null };
+    return {
+      handled: false,
+      eventType: event.type,
+      userId: null,
+      planKey: null,
+      subscriptionStatus: null,
+    };
   }
 
   const object = event.data?.object;
@@ -102,7 +124,10 @@ export async function processStripeWebhookEvent(event: StripeWebhookEvent, store
 }
 
 export function entitlementValuesForPlan(planKey: PlanKey) {
-  const planEntitlements: Record<Exclude<PlanKey, "free">, Array<readonly [string, Record<string, unknown>]>> = {
+  const planEntitlements: Record<
+    Exclude<PlanKey, "free">,
+    Array<readonly [string, Record<string, unknown>]>
+  > = {
     plus: [
       ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
       ["max_friend_groups", { value: 8 }],
@@ -188,7 +213,11 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
       }
 
       const now = new Date();
-      const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1);
+      const [user] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
       const [customer] = await db
         .insert(billingCustomers)
         .values({
@@ -277,23 +306,44 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
           updatedAt: input.expiresAt,
           valueJson: { value: false, sourceEvent: input.sourceEvent },
         })
-        .where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, "plan"), ne(entitlements.entitlementKey, "lifetime_full")));
+        .where(
+          and(
+            eq(entitlements.userId, input.userId),
+            eq(entitlements.source, "plan"),
+            ne(entitlements.entitlementKey, "lifetime_full"),
+          ),
+        );
     },
   };
 }
 
-async function processCheckoutCompleted(eventType: StripeWebhookEventType, object: Record<string, unknown>, store: BillingWebhookStore) {
+async function processCheckoutCompleted(
+  eventType: StripeWebhookEventType,
+  object: Record<string, unknown>,
+  store: BillingWebhookStore,
+) {
   const customerId = readId(object.customer);
   const subscriptionId = readId(object.subscription);
-  const userId = readStringPath(object, ["metadata", "user_id"]) ?? readString(object.client_reference_id) ?? (customerId ? await store.findUserIdByCustomerId(customerId) : null);
-  const planKey = parsePlanKey(readStringPath(object, ["metadata", "plan_key"]) ?? planKeyFromStripePriceId(readSessionPriceId(object)) ?? undefined);
+  const userId =
+    readStringPath(object, ["metadata", "user_id"]) ??
+    readString(object.client_reference_id) ??
+    (customerId ? await store.findUserIdByCustomerId(customerId) : null);
+  const planKey = parsePlanKey(
+    readStringPath(object, ["metadata", "plan_key"]) ??
+      planKeyFromStripePriceId(readSessionPriceId(object)) ??
+      undefined,
+  );
 
   if (!userId) {
     throw new Error("Stripe checkout session did not include a ForeKingHell user id.");
   }
 
   const billingCustomerId = customerId
-    ? await store.upsertBillingCustomer({ userId, stripeCustomerId: customerId, email: readStringPath(object, ["customer_details", "email"]) })
+    ? await store.upsertBillingCustomer({
+        userId,
+        stripeCustomerId: customerId,
+        email: readStringPath(object, ["customer_details", "email"]),
+      })
     : null;
 
   await store.upsertSubscription({
@@ -301,7 +351,7 @@ async function processCheckoutCompleted(eventType: StripeWebhookEventType, objec
     billingCustomerId,
     stripeSubscriptionId: subscriptionId,
     planKey,
-    status: subscriptionId ? "active" : readString(object.payment_status) ?? "checkout_completed",
+    status: subscriptionId ? "active" : (readString(object.payment_status) ?? "checkout_completed"),
     currentPeriodStart: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
@@ -312,19 +362,32 @@ async function processCheckoutCompleted(eventType: StripeWebhookEventType, objec
   return { handled: true, eventType, userId, planKey, subscriptionStatus: "active" };
 }
 
-async function processSubscriptionEvent(eventType: StripeWebhookEventType, object: Record<string, unknown>, store: BillingWebhookStore) {
+async function processSubscriptionEvent(
+  eventType: StripeWebhookEventType,
+  object: Record<string, unknown>,
+  store: BillingWebhookStore,
+) {
   const customerId = readId(object.customer);
-  const userId = readStringPath(object, ["metadata", "user_id"]) ?? (customerId ? await store.findUserIdByCustomerId(customerId) : null);
+  const userId =
+    readStringPath(object, ["metadata", "user_id"]) ??
+    (customerId ? await store.findUserIdByCustomerId(customerId) : null);
   if (!userId) {
     throw new Error("Stripe subscription event could not be matched to a ForeKingHell user.");
   }
 
-  const planKey = parsePlanKey(readStringPath(object, ["metadata", "plan_key"]) ?? planKeyFromStripePriceId(readSubscriptionPriceId(object)) ?? undefined);
+  const planKey = parsePlanKey(
+    readStringPath(object, ["metadata", "plan_key"]) ??
+      planKeyFromStripePriceId(readSubscriptionPriceId(object)) ??
+      undefined,
+  );
   const currentPeriodEnd = dateFromStripeSeconds(readNumber(object.current_period_end));
   const billingCustomerId = customerId
     ? await store.upsertBillingCustomer({ userId, stripeCustomerId: customerId, email: null })
     : null;
-  const status = eventType === "customer.subscription.deleted" ? "canceled" : readString(object.status) ?? "active";
+  const status =
+    eventType === "customer.subscription.deleted"
+      ? "canceled"
+      : (readString(object.status) ?? "active");
 
   await store.upsertSubscription({
     userId,
@@ -339,7 +402,12 @@ async function processSubscriptionEvent(eventType: StripeWebhookEventType, objec
   });
 
   if (isEntitledSubscriptionStatus(status)) {
-    await store.applyPlanEntitlements({ userId, planKey, expiresAt: currentPeriodEnd, sourceEvent: eventType });
+    await store.applyPlanEntitlements({
+      userId,
+      planKey,
+      expiresAt: currentPeriodEnd,
+      sourceEvent: eventType,
+    });
   } else {
     await store.expirePlanEntitlements({ userId, sourceEvent: eventType, expiresAt: new Date() });
   }
@@ -347,10 +415,19 @@ async function processSubscriptionEvent(eventType: StripeWebhookEventType, objec
   return { handled: true, eventType, userId, planKey, subscriptionStatus: status };
 }
 
-async function processInvoiceEvent(eventType: StripeWebhookEventType, object: Record<string, unknown>, store: BillingWebhookStore) {
+async function processInvoiceEvent(
+  eventType: StripeWebhookEventType,
+  object: Record<string, unknown>,
+  store: BillingWebhookStore,
+) {
   const customerId = readId(object.customer);
-  const subscriptionId = readId(object.subscription) ?? readStringPath(object, ["parent", "subscription_details", "subscription"]);
-  const userId = readStringPath(object, ["metadata", "user_id"]) ?? readStringPath(object, ["subscription_details", "metadata", "user_id"]) ?? (customerId ? await store.findUserIdByCustomerId(customerId) : null);
+  const subscriptionId =
+    readId(object.subscription) ??
+    readStringPath(object, ["parent", "subscription_details", "subscription"]);
+  const userId =
+    readStringPath(object, ["metadata", "user_id"]) ??
+    readStringPath(object, ["subscription_details", "metadata", "user_id"]) ??
+    (customerId ? await store.findUserIdByCustomerId(customerId) : null);
   if (!userId) {
     throw new Error("Stripe invoice event could not be matched to a ForeKingHell user.");
   }
@@ -362,7 +439,11 @@ async function processInvoiceEvent(eventType: StripeWebhookEventType, object: Re
       undefined,
   );
   const billingCustomerId = customerId
-    ? await store.upsertBillingCustomer({ userId, stripeCustomerId: customerId, email: readString(object.customer_email) })
+    ? await store.upsertBillingCustomer({
+        userId,
+        stripeCustomerId: customerId,
+        email: readString(object.customer_email),
+      })
     : null;
   const status = eventType === "invoice.paid" ? "active" : "past_due";
   const periodEnd = dateFromStripeSeconds(readInvoicePeriodEnd(object));
@@ -376,11 +457,20 @@ async function processInvoiceEvent(eventType: StripeWebhookEventType, object: Re
     currentPeriodStart: dateFromStripeSeconds(readInvoicePeriodStart(object)),
     currentPeriodEnd: periodEnd,
     cancelAtPeriodEnd: false,
-    metadataJson: { stripeEvent: eventType, invoiceId: readString(object.id), priceId: readInvoicePriceId(object) },
+    metadataJson: {
+      stripeEvent: eventType,
+      invoiceId: readString(object.id),
+      priceId: readInvoicePriceId(object),
+    },
   });
 
   if (eventType === "invoice.paid") {
-    await store.applyPlanEntitlements({ userId, planKey, expiresAt: periodEnd, sourceEvent: eventType });
+    await store.applyPlanEntitlements({
+      userId,
+      planKey,
+      expiresAt: periodEnd,
+      sourceEvent: eventType,
+    });
   } else {
     await store.expirePlanEntitlements({ userId, sourceEvent: eventType, expiresAt: new Date() });
   }
@@ -429,7 +519,9 @@ function isEntitledSubscriptionStatus(status: string) {
 }
 
 function parsePlanKey(value: string | null | undefined): PlanKey {
-  return value === "plus" || value === "pro" || value === "coach" || value === "full" ? value : "free";
+  return value === "plus" || value === "pro" || value === "coach" || value === "full"
+    ? value
+    : "free";
 }
 
 function readSessionPriceId(object: Record<string, unknown>) {

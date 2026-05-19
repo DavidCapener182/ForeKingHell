@@ -15,11 +15,7 @@ type CoachChatResponse = {
   generatedAt: string;
 };
 
-export function CoachChatCard({
-  questionId = "coach-question",
-}: {
-  questionId?: string;
-}) {
+export function CoachChatCard({ questionId = "coach-question" }: { questionId?: string }) {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<CoachChatResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +43,9 @@ export function CoachChatCard({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message }),
       });
-      const payload = (await result.json().catch(() => null)) as (CoachChatResponse & { message?: string }) | null;
+      const payload = (await result.json().catch(() => null)) as
+        | (CoachChatResponse & { message?: string })
+        | null;
 
       if (!result.ok || !payload?.answer) {
         setError(payload?.message ?? "Could not answer that coach question.");
@@ -81,8 +79,17 @@ export function CoachChatCard({
             disabled={!isReady}
           />
         </label>
-        <Button type="button" onClick={askCoach} disabled={!isReady || isPending || !question.trim()} className="w-fit">
-          {isPending ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />}
+        <Button
+          type="button"
+          onClick={askCoach}
+          disabled={!isReady || isPending || !question.trim()}
+          className="w-fit"
+        >
+          {isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <MessageCircle className="size-4" />
+          )}
           Ask coach
         </Button>
       </div>
@@ -98,7 +105,9 @@ export function CoachChatCard({
           <p className="text-sm leading-6">{response.answer}</p>
           {response.citations.length > 0 ? (
             <div className="mt-4 border-t pt-3">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Cited data</p>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Cited data
+              </p>
               <div className="mt-2 grid gap-2">
                 {response.citations.slice(0, 5).map((citation) =>
                   citation.href ? (

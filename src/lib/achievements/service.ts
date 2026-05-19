@@ -13,7 +13,12 @@ import {
   xpLedger,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { clubSortValue, formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import {
+  clubSortValue,
+  formatClubType,
+  isShortGameTouchClubType,
+  isTrackedClubType,
+} from "@/lib/club-format";
 import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
 import { ACHIEVEMENT_REGISTRY_VERSION, ACHIEVEMENTS, getAchievement } from "./registry";
 import { evaluateAllAchievementCandidates } from "./evaluator";
@@ -245,7 +250,15 @@ export async function evaluateRoundAchievementsForSession(sessionId: string) {
 export async function getAchievementPageData(userId?: string): Promise<AchievementPageData> {
   userId ??= await requireCurrentUserId();
   const db = getDb();
-  const [[shotCount], [sessionCount], unlockRows, progressRows, ledgerRows, clubTypeRows, [syncState]] = await Promise.all([
+  const [
+    [shotCount],
+    [sessionCount],
+    unlockRows,
+    progressRows,
+    ledgerRows,
+    clubTypeRows,
+    [syncState],
+  ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
     db
@@ -300,7 +313,9 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
     sourceRowsForView
       .map((unlock) => {
         const achievement = achievementForUnlockRow(unlock);
-        const source = achievement ? buildAchievementSourceView(achievement, unlock, sourceMaps) : null;
+        const source = achievement
+          ? buildAchievementSourceView(achievement, unlock, sourceMaps)
+          : null;
         return source ? ([unlock.achievementId, source] as const) : null;
       })
       .filter((entry): entry is readonly [string, AchievementSourceView] => Boolean(entry)),
@@ -330,9 +345,18 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
     const progress = progressByAchievementId.get(achievement.id);
     const unlocked = Boolean(unlock);
     const progressPercent = progress
-      ? Math.min(100, Math.round((progress.progressValue / Math.max(1, progress.targetValue)) * 100))
+      ? Math.min(
+          100,
+          Math.round((progress.progressValue / Math.max(1, progress.targetValue)) * 100),
+        )
       : null;
-    const progressLabel = progress ? progressLabelFromMetadata(progress.metadataJson, progress.progressValue, progress.targetValue) : null;
+    const progressLabel = progress
+      ? progressLabelFromMetadata(
+          progress.metadataJson,
+          progress.progressValue,
+          progress.targetValue,
+        )
+      : null;
 
     return {
       ...achievement,
@@ -345,21 +369,26 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
       progressPercent,
       progressLabel,
       displayName: achievement.hidden && !unlocked ? "Hidden achievement" : achievement.name,
-      displayDescription: achievement.hidden && !unlocked ? "Unlock from your Rapsodo or round data." : achievement.description,
+      displayDescription:
+        achievement.hidden && !unlocked
+          ? "Unlock from your Rapsodo or round data."
+          : achievement.description,
       source: unlock ? (sourceByAchievementId.get(achievement.id) ?? null) : null,
     };
   });
-  const categorySummaries = [...new Set(visibleAchievements.map((achievement) => achievement.category))].map(
-    (category) => {
-      const categoryAchievements = achievementViews.filter((achievement) => achievement.category === category);
+  const categorySummaries = [
+    ...new Set(visibleAchievements.map((achievement) => achievement.category)),
+  ].map((category) => {
+    const categoryAchievements = achievementViews.filter(
+      (achievement) => achievement.category === category,
+    );
 
-      return {
-        category,
-        total: categoryAchievements.length,
-        unlocked: categoryAchievements.filter((achievement) => achievement.unlocked).length,
-      };
-    },
-  );
+    return {
+      category,
+      total: categoryAchievements.length,
+      unlocked: categoryAchievements.filter((achievement) => achievement.unlocked).length,
+    };
+  });
 
   const sortedUnlockedAchievements = achievementViews
     .filter((achievement) => achievement.unlocked)
@@ -592,11 +621,21 @@ function buildAchievementSourceView(
   }
 
   if (metadataStats.length > 0) {
-    const kind = achievement.triggerType === "progress" ? "progress" : achievement.triggerType === "stockYardage" ? "stock" : "unknown";
+    const kind =
+      achievement.triggerType === "progress"
+        ? "progress"
+        : achievement.triggerType === "stockYardage"
+          ? "stock"
+          : "unknown";
 
     return {
       kind,
-      title: kind === "progress" ? "Progress milestone" : kind === "stock" ? "Bag data" : "Recorded data",
+      title:
+        kind === "progress"
+          ? "Progress milestone"
+          : kind === "stock"
+            ? "Bag data"
+            : "Recorded data",
       detail: "Unlocked from stored Rapsodo or round metrics.",
       occurredAt: unlock.lastUnlockedAt.toISOString(),
       href: null,
@@ -646,13 +685,14 @@ function buildSessionSourceView(
   metadataStats: AchievementSourceStat[],
 ): AchievementSourceView {
   const isRound = isRoundSessionType(session.type);
-  const sourceName = session.courseName ?? session.fileName ?? session.location ?? (isRound ? "Round scorecard" : "Rapsodo session");
+  const sourceName =
+    session.courseName ??
+    session.fileName ??
+    session.location ??
+    (isRound ? "Round scorecard" : "Rapsodo session");
   const roundStats = isRound ? statsFromScorecard(session.scorecardJson) : [];
   const holeNumber = numberFromMetadata(unlock.metadataJson, "holeNumber");
-  const title =
-    isRound && holeNumber
-      ? `${sourceName} · Hole ${holeNumber}`
-      : sourceName;
+  const title = isRound && holeNumber ? `${sourceName} · Hole ${holeNumber}` : sourceName;
 
   return {
     kind: isRound ? "round" : "session",
@@ -665,7 +705,10 @@ function buildSessionSourceView(
 }
 
 function statsFromScorecard(scorecardJson: AchievementSession["scorecardJson"]) {
-  const holes = scorecardJson?.filter((hole) => typeof hole.score === "number" && typeof hole.par === "number") ?? [];
+  const holes =
+    scorecardJson?.filter(
+      (hole) => typeof hole.score === "number" && typeof hole.par === "number",
+    ) ?? [];
 
   if (holes.length === 0) {
     return [];
@@ -673,7 +716,10 @@ function statsFromScorecard(scorecardJson: AchievementSession["scorecardJson"]) 
 
   const score = holes.reduce((total, hole) => total + (hole.score ?? 0), 0);
   const par = holes.reduce((total, hole) => total + hole.par, 0);
-  const putts = holes.reduce((total, hole) => total + (typeof hole.putts === "number" ? hole.putts : 0), 0);
+  const putts = holes.reduce(
+    (total, hole) => total + (typeof hole.putts === "number" ? hole.putts : 0),
+    0,
+  );
   const puttHoles = holes.filter((hole) => typeof hole.putts === "number").length;
 
   return [
@@ -767,7 +813,12 @@ function uniqueStrings(values: Array<string | null | undefined>) {
 }
 
 function isRoundSessionType(value: string) {
-  return value === "round" || value === "simulator" || value === "simulated_course" || value === "real_round";
+  return (
+    value === "round" ||
+    value === "simulator" ||
+    value === "simulated_course" ||
+    value === "real_round"
+  );
 }
 
 function formatSessionType(value: string) {
@@ -1140,7 +1191,9 @@ async function awardAchievements(
 
     return insertedAchievements
       .map((row) => notificationsByAchievementId.get(row.achievementId))
-      .filter((notification): notification is AchievementUnlockNotification => Boolean(notification));
+      .filter((notification): notification is AchievementUnlockNotification =>
+        Boolean(notification),
+      );
   }
 
   return [];

@@ -22,11 +22,26 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { evaluateVerification, verificationTierLabel, type VerificationDecision } from "@/lib/course-records";
-import { areFriends, createFeedItem, ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
+import {
+  evaluateVerification,
+  verificationTierLabel,
+  type VerificationDecision,
+} from "@/lib/course-records";
+import {
+  areFriends,
+  createFeedItem,
+  ensureSocialProfileForUser,
+  getFriendIds,
+  parseVisibility,
+} from "@/lib/social";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
-import { dailyTournamentCourseCount, getScheduledTournamentSet, type ScheduledTournament, type ScheduledTournamentKind } from "@/lib/tournament-calendar";
+import {
+  dailyTournamentCourseCount,
+  getScheduledTournamentSet,
+  type ScheduledTournament,
+  type ScheduledTournamentKind,
+} from "@/lib/tournament-calendar";
 
 export const tournamentFormats = [
   "four_round_major",
@@ -65,7 +80,9 @@ type TournamentRoundSummary = {
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
-export function rankTournamentStandings(rows: RankableTournamentStanding[]): RankedTournamentStanding[] {
+export function rankTournamentStandings(
+  rows: RankableTournamentStanding[],
+): RankedTournamentStanding[] {
   return [...rows]
     .sort((left, right) => {
       const completedDiff = right.roundsCompleted - left.roundsCompleted;
@@ -105,7 +122,12 @@ export async function getTournamentsPageData() {
   const tournamentRows = await db
     .select()
     .from(tournaments)
-    .where(or(eq(tournaments.visibility, "public"), inArray(tournaments.createdByUserId, visibleCreatorIds)))
+    .where(
+      or(
+        eq(tournaments.visibility, "public"),
+        inArray(tournaments.createdByUserId, visibleCreatorIds),
+      ),
+    )
     .orderBy(desc(tournaments.startsAt))
     .limit(80);
 
@@ -126,26 +148,44 @@ export async function getTournamentsPageData() {
   }
 
   const tournamentIds = tournamentRows.map((tournament) => tournament.id);
-  const courseIds = tournamentRows.map((tournament) => tournament.courseId).filter((id): id is string => Boolean(id));
-  const teeSetIds = tournamentRows.map((tournament) => tournament.teeSetId).filter((id): id is string => Boolean(id));
+  const courseIds = tournamentRows
+    .map((tournament) => tournament.courseId)
+    .filter((id): id is string => Boolean(id));
+  const teeSetIds = tournamentRows
+    .map((tournament) => tournament.teeSetId)
+    .filter((id): id is string => Boolean(id));
   const [entryRows, standingsRows, courseRows, teeRows] = await Promise.all([
-    db.select().from(tournamentEntries).where(inArray(tournamentEntries.tournamentId, tournamentIds)),
-    db.select().from(tournamentStandings).where(inArray(tournamentStandings.tournamentId, tournamentIds)),
-    courseIds.length > 0 ? db.select().from(courses).where(inArray(courses.id, courseIds)) : Promise.resolve([]),
-    teeSetIds.length > 0 ? db.select().from(teeSets).where(inArray(teeSets.id, teeSetIds)) : Promise.resolve([]),
+    db
+      .select()
+      .from(tournamentEntries)
+      .where(inArray(tournamentEntries.tournamentId, tournamentIds)),
+    db
+      .select()
+      .from(tournamentStandings)
+      .where(inArray(tournamentStandings.tournamentId, tournamentIds)),
+    courseIds.length > 0
+      ? db.select().from(courses).where(inArray(courses.id, courseIds))
+      : Promise.resolve([]),
+    teeSetIds.length > 0
+      ? db.select().from(teeSets).where(inArray(teeSets.id, teeSetIds))
+      : Promise.resolve([]),
   ]);
   const courseById = new Map(courseRows.map((course) => [course.id, course]));
   const teeById = new Map(teeRows.map((teeSet) => [teeSet.id, teeSet]));
-  const profiles = await profilesByUserId([...new Set(standingsRows.map((standing) => standing.userId))]);
-  const items = tournamentRows.map((tournament) => hydrateTournamentListItem({
-    tournament,
-    entries: entryRows.filter((entry) => entry.tournamentId === tournament.id),
-    standings: standingsRows.filter((standing) => standing.tournamentId === tournament.id),
-    course: tournament.courseId ? courseById.get(tournament.courseId) ?? null : null,
-    teeSet: tournament.teeSetId ? teeById.get(tournament.teeSetId) ?? null : null,
-    profiles,
-    viewerUserId,
-  }));
+  const profiles = await profilesByUserId([
+    ...new Set(standingsRows.map((standing) => standing.userId)),
+  ]);
+  const items = tournamentRows.map((tournament) =>
+    hydrateTournamentListItem({
+      tournament,
+      entries: entryRows.filter((entry) => entry.tournamentId === tournament.id),
+      standings: standingsRows.filter((standing) => standing.tournamentId === tournament.id),
+      course: tournament.courseId ? (courseById.get(tournament.courseId) ?? null) : null,
+      teeSet: tournament.teeSetId ? (teeById.get(tournament.teeSetId) ?? null) : null,
+      profiles,
+      viewerUserId,
+    }),
+  );
 
   return {
     tournaments: items,
@@ -167,24 +207,62 @@ export async function getTournamentDetailData(tournamentId: string) {
   await ensureSocialProfileForUser(viewerUserId);
   await ensureScheduledTournaments(viewerUserId, getScheduledTournamentSet());
   const db = getDb();
-  const [tournament] = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
+  const [tournament] = await db
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, tournamentId))
+    .limit(1);
 
   if (!tournament || !(await canViewTournament(viewerUserId, tournament))) {
     return null;
   }
 
-  const [roundRows, entryRows, submissionRows, standingRows, commentRows, courseRows, teeRows, matchingRoundRows] = await Promise.all([
-    db.select().from(tournamentRounds).where(eq(tournamentRounds.tournamentId, tournament.id)).orderBy(asc(tournamentRounds.roundNumber)),
-    db.select().from(tournamentEntries).where(eq(tournamentEntries.tournamentId, tournament.id)).orderBy(asc(tournamentEntries.joinedAt)),
-    db.select().from(tournamentSubmissions).where(eq(tournamentSubmissions.tournamentId, tournament.id)).orderBy(desc(tournamentSubmissions.submittedAt)),
-    db.select().from(tournamentStandings).where(eq(tournamentStandings.tournamentId, tournament.id)).orderBy(asc(tournamentStandings.rank)),
+  const [
+    roundRows,
+    entryRows,
+    submissionRows,
+    standingRows,
+    commentRows,
+    courseRows,
+    teeRows,
+    matchingRoundRows,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(tournamentRounds)
+      .where(eq(tournamentRounds.tournamentId, tournament.id))
+      .orderBy(asc(tournamentRounds.roundNumber)),
+    db
+      .select()
+      .from(tournamentEntries)
+      .where(eq(tournamentEntries.tournamentId, tournament.id))
+      .orderBy(asc(tournamentEntries.joinedAt)),
+    db
+      .select()
+      .from(tournamentSubmissions)
+      .where(eq(tournamentSubmissions.tournamentId, tournament.id))
+      .orderBy(desc(tournamentSubmissions.submittedAt)),
+    db
+      .select()
+      .from(tournamentStandings)
+      .where(eq(tournamentStandings.tournamentId, tournament.id))
+      .orderBy(asc(tournamentStandings.rank)),
     db
       .select()
       .from(tournamentComments)
-      .where(and(eq(tournamentComments.tournamentId, tournament.id), isNull(tournamentComments.deletedAt)))
+      .where(
+        and(
+          eq(tournamentComments.tournamentId, tournament.id),
+          isNull(tournamentComments.deletedAt),
+        ),
+      )
       .orderBy(asc(tournamentComments.createdAt)),
-    tournament.courseId ? db.select().from(courses).where(eq(courses.id, tournament.courseId)).limit(1) : Promise.resolve([]),
-    tournament.teeSetId ? db.select().from(teeSets).where(eq(teeSets.id, tournament.teeSetId)).limit(1) : Promise.resolve([]),
+    tournament.courseId
+      ? db.select().from(courses).where(eq(courses.id, tournament.courseId)).limit(1)
+      : Promise.resolve([]),
+    tournament.teeSetId
+      ? db.select().from(teeSets).where(eq(teeSets.id, tournament.teeSetId)).limit(1)
+      : Promise.resolve([]),
     tournament.courseId
       ? db
           .select({
@@ -204,7 +282,13 @@ export async function getTournamentDetailData(tournamentId: string) {
           )
           .orderBy(desc(sessions.date))
           .limit(12)
-      : Promise.resolve([] as Array<{ session: SessionRow; teeSet: TeeSetRow | null; sync: RapsodoSyncRow | null }>),
+      : Promise.resolve(
+          [] as Array<{
+            session: SessionRow;
+            teeSet: TeeSetRow | null;
+            sync: RapsodoSyncRow | null;
+          }>,
+        ),
   ]);
   const userIds = [
     ...new Set([
@@ -217,8 +301,12 @@ export async function getTournamentDetailData(tournamentId: string) {
   ];
   const profiles = await profilesByUserId(userIds);
   const viewerEntry = entryRows.find((entry) => entry.userId === viewerUserId) ?? null;
-  const viewerSubmissions = submissionRows.filter((submission) => submission.userId === viewerUserId);
-  const submittedSessionIds = new Set(viewerSubmissions.map((submission) => submission.sessionId).filter(Boolean));
+  const viewerSubmissions = submissionRows.filter(
+    (submission) => submission.userId === viewerUserId,
+  );
+  const submittedSessionIds = new Set(
+    viewerSubmissions.map((submission) => submission.sessionId).filter(Boolean),
+  );
   const matchingRounds = matchingRoundRows
     .filter(({ session, sync }) =>
       isRoundHistorySession({
@@ -256,9 +344,18 @@ export async function getTournamentDetailData(tournamentId: string) {
     teeSet: teeRows[0] ?? null,
     rounds: roundRows,
     entries: entryRows.map((entry) => ({ entry, profile: profiles.get(entry.userId) ?? null })),
-    submissions: submissionRows.map((submission) => ({ submission, profile: profiles.get(submission.userId) ?? null })),
-    standings: standingRows.map((standing) => ({ standing, profile: profiles.get(standing.userId) ?? null })),
-    comments: commentRows.map((comment) => ({ comment, profile: profiles.get(comment.userId) ?? null })),
+    submissions: submissionRows.map((submission) => ({
+      submission,
+      profile: profiles.get(submission.userId) ?? null,
+    })),
+    standings: standingRows.map((standing) => ({
+      standing,
+      profile: profiles.get(standing.userId) ?? null,
+    })),
+    comments: commentRows.map((comment) => ({
+      comment,
+      profile: profiles.get(comment.userId) ?? null,
+    })),
     viewerEntry,
     viewerSubmissions,
     matchingRounds,
@@ -308,7 +405,11 @@ export async function createTournament(input: {
             : {},
         playoffRuleJson:
           format === "four_round_major"
-            ? { type: "sudden_death", holes: [18, 10], netTieBreakers: ["back_nine", "last_six", "earliest_submission"] }
+            ? {
+                type: "sudden_death",
+                holes: [18, 10],
+                netTieBreakers: ["back_nine", "last_six", "earliest_submission"],
+              }
             : { tieBreakers: ["net_total", "final_round", "earliest_submission"] },
         createdByUserId: userId,
         metadataJson: {
@@ -446,12 +547,15 @@ export async function submitTournamentRound(input: {
     : null;
   const grossScore = roundSubmission?.summary.totalScore ?? input.grossScore;
   const netScore = roundSubmission?.summary.totalNetScore ?? input.netScore ?? null;
-  const stablefordPoints = roundSubmission?.summary.stablefordPoints ?? input.stablefordPoints ?? null;
+  const stablefordPoints =
+    roundSubmission?.summary.stablefordPoints ?? input.stablefordPoints ?? null;
   const csvHash = input.csvHash ?? roundSubmission?.csvHash ?? null;
   const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
   const scorecardScreenshotPath =
-    input.scorecardScreenshotPath ?? (roundSubmission ? `saved-round:${roundSubmission.session.id}` : null);
-  const extractedScorecardTotal = input.extractedScorecardTotal ?? roundSubmission?.summary.totalScore ?? null;
+    input.scorecardScreenshotPath ??
+    (roundSubmission ? `saved-round:${roundSubmission.session.id}` : null);
+  const extractedScorecardTotal =
+    input.extractedScorecardTotal ?? roundSubmission?.summary.totalScore ?? null;
   const hasRapsodoDirect = Boolean(rapsodoSyncSessionId) || Boolean(input.hasRapsodoDirect);
   const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
   const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
@@ -480,7 +584,9 @@ export async function submitTournamentRound(input: {
   const [entry] = await db
     .select()
     .from(tournamentEntries)
-    .where(and(eq(tournamentEntries.tournamentId, tournament.id), eq(tournamentEntries.userId, userId)))
+    .where(
+      and(eq(tournamentEntries.tournamentId, tournament.id), eq(tournamentEntries.userId, userId)),
+    )
     .limit(1);
 
   if (!entry || entry.status !== "entered") {
@@ -576,11 +682,16 @@ export async function submitTournamentRound(input: {
 
   await createFeedItem({
     userId,
-    itemType: verification.status === "verified" ? "tournament_round_submitted" : "tournament_round_pending",
+    itemType:
+      verification.status === "verified"
+        ? "tournament_round_submitted"
+        : "tournament_round_pending",
     headline: `${profile.displayName} submitted round ${roundNumber} for ${tournament.title}`,
     metricLabel: "Gross",
     metricValue: integerFormatter.format(grossScore),
-    context: standing?.rank ? `Current standing #${standing.rank}` : verification.reasons.join("; "),
+    context: standing?.rank
+      ? `Current standing #${standing.rank}`
+      : verification.reasons.join("; "),
     proofUrl: `/tournaments/${tournament.id}`,
     sourceType: "tournament_submission",
     sourceId: submission.id,
@@ -602,20 +713,29 @@ export async function addTournamentComment(tournamentId: string, body: string) {
     throw new Error("Comment cannot be empty.");
   }
 
-  await getDb().insert(tournamentComments).values({
-    tournamentId,
-    userId,
-    body: cleanBody.slice(0, 1200),
-    updatedAt: new Date(),
-  });
+  await getDb()
+    .insert(tournamentComments)
+    .values({
+      tournamentId,
+      userId,
+      body: cleanBody.slice(0, 1200),
+      updatedAt: new Date(),
+    });
 
   revalidateTournamentPaths(tournamentId);
 }
 
 export async function recalculateTournamentStandings(tournamentId: string) {
   const db = getDb();
-  const submissions = await db.select().from(tournamentSubmissions).where(eq(tournamentSubmissions.tournamentId, tournamentId));
-  const accepted = submissions.filter((submission) => submission.verificationStatus === "verified" || submission.verificationStatus === "manual_only");
+  const submissions = await db
+    .select()
+    .from(tournamentSubmissions)
+    .where(eq(tournamentSubmissions.tournamentId, tournamentId));
+  const accepted = submissions.filter(
+    (submission) =>
+      submission.verificationStatus === "verified" ||
+      submission.verificationStatus === "manual_only",
+  );
   const byEntry = new Map<string, typeof accepted>();
 
   for (const submission of accepted) {
@@ -706,13 +826,17 @@ export async function getEligibleTournamentsForSession(sessionId: string) {
     .where(
       and(
         eq(tournaments.status, "open"),
-        session.courseId ? or(eq(tournaments.courseId, session.courseId), isNull(tournaments.courseId)) : isNull(tournaments.courseId),
+        session.courseId
+          ? or(eq(tournaments.courseId, session.courseId), isNull(tournaments.courseId))
+          : isNull(tournaments.courseId),
       ),
     )
     .orderBy(asc(tournaments.endsAt))
     .limit(8);
 
-  return rows.filter((row) => row.tournament.visibility === "public" || row.tournament.createdByUserId === userId);
+  return rows.filter(
+    (row) => row.tournament.visibility === "public" || row.tournament.createdByUserId === userId,
+  );
 }
 
 async function getTournamentRoundSubmissionContext({
@@ -762,7 +886,8 @@ async function getTournamentRoundSubmissionContext({
     csvHash: row.session.rawCsvHash ?? row.sync?.exportRawCsvHash ?? null,
     rapsodoSyncSessionId: row.sync?.id ?? null,
     courseMatches: tournament.courseId ? row.session.courseId === tournament.courseId : true,
-    teeMatches: !tournament.teeSetId || !row.session.teeSetId || row.session.teeSetId === tournament.teeSetId,
+    teeMatches:
+      !tournament.teeSetId || !row.session.teeSetId || row.session.teeSetId === tournament.teeSetId,
   };
 }
 
@@ -792,7 +917,8 @@ function proofLabelForTournamentRound(session: SessionRow, sync: RapsodoSyncRow 
 }
 
 function normaliseUuid(value: string | null | undefined) {
-  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  return value &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
     ? value
     : null;
 }
@@ -807,7 +933,9 @@ function sumNullable(values: Array<number | null | undefined>) {
 }
 
 function stablefordPoints(holes: ScorecardHole[]) {
-  const scored = holes.filter((hole) => typeof (hole.netScore ?? hole.score) === "number" && typeof hole.par === "number");
+  const scored = holes.filter(
+    (hole) => typeof (hole.netScore ?? hole.score) === "number" && typeof hole.par === "number",
+  );
 
   if (scored.length === 0) {
     return null;
@@ -894,24 +1022,31 @@ async function createTournamentModerationEvent(input: {
   extractedScore: number | null;
   reasons: string[];
 }) {
-  await getDb().insert(moderationEvents).values({
-    targetType: "tournament_submission",
-    targetId: input.submissionId,
-    actorUserId: input.userId,
-    eventType: "tournament_score_mismatch",
-    severity: "medium",
-    status: "open",
-    reason: input.reasons.join("; ").slice(0, 1000),
-    metadataJson: {
-      tournament: input.tournamentTitle,
-      imported: input.importedScore,
-      screenshot: input.extractedScore,
-      reasons: input.reasons,
-    },
-  });
+  await getDb()
+    .insert(moderationEvents)
+    .values({
+      targetType: "tournament_submission",
+      targetId: input.submissionId,
+      actorUserId: input.userId,
+      eventType: "tournament_score_mismatch",
+      severity: "medium",
+      status: "open",
+      reason: input.reasons.join("; ").slice(0, 1000),
+      metadataJson: {
+        tournament: input.tournamentTitle,
+        imported: input.importedScore,
+        screenshot: input.extractedScore,
+        reasons: input.reasons,
+      },
+    });
 }
 
-async function awardTournamentAchievement(userId: string, achievementId: string, sourceId: string, xp: number) {
+async function awardTournamentAchievement(
+  userId: string,
+  achievementId: string,
+  sourceId: string,
+  xp: number,
+) {
   const now = new Date();
   await getDb()
     .insert(userAchievements)
@@ -956,7 +1091,11 @@ async function awardTournamentAchievement(userId: string, achievementId: string,
 }
 
 async function requireVisibleTournament(viewerUserId: string, tournamentId: string) {
-  const [tournament] = await getDb().select().from(tournaments).where(eq(tournaments.id, tournamentId)).limit(1);
+  const [tournament] = await getDb()
+    .select()
+    .from(tournaments)
+    .where(eq(tournaments.id, tournamentId))
+    .limit(1);
 
   if (!tournament || !(await canViewTournament(viewerUserId, tournament))) {
     throw new Error("Tournament not found.");
@@ -965,19 +1104,30 @@ async function requireVisibleTournament(viewerUserId: string, tournamentId: stri
   return tournament;
 }
 
-async function canViewTournament(viewerUserId: string, tournament: typeof tournaments.$inferSelect) {
+async function canViewTournament(
+  viewerUserId: string,
+  tournament: typeof tournaments.$inferSelect,
+) {
   if (tournament.visibility === "public" || tournament.createdByUserId === viewerUserId) {
     return true;
   }
 
-  if (tournament.visibility === "friends" && (await areFriends(viewerUserId, tournament.createdByUserId))) {
+  if (
+    tournament.visibility === "friends" &&
+    (await areFriends(viewerUserId, tournament.createdByUserId))
+  ) {
     return true;
   }
 
   const [entry] = await getDb()
     .select({ id: tournamentEntries.id })
     .from(tournamentEntries)
-    .where(and(eq(tournamentEntries.tournamentId, tournament.id), eq(tournamentEntries.userId, viewerUserId)))
+    .where(
+      and(
+        eq(tournamentEntries.tournamentId, tournament.id),
+        eq(tournamentEntries.userId, viewerUserId),
+      ),
+    )
     .limit(1);
 
   return Boolean(entry);
@@ -988,7 +1138,10 @@ async function profilesByUserId(userIds: string[]) {
     return new Map<string, typeof userProfiles.$inferSelect>();
   }
 
-  const rows = await getDb().select().from(userProfiles).where(inArray(userProfiles.userId, userIds));
+  const rows = await getDb()
+    .select()
+    .from(userProfiles)
+    .where(inArray(userProfiles.userId, userIds));
   return new Map(rows.map((profile) => [profile.userId, profile]));
 }
 
@@ -1010,7 +1163,10 @@ async function getCourseOptions() {
   return courseRows;
 }
 
-export async function ensureScheduledTournaments(userId: string, scheduledSet: ScheduledTournament[]) {
+export async function ensureScheduledTournaments(
+  userId: string,
+  scheduledSet: ScheduledTournament[],
+) {
   for (const scheduled of scheduledSet) {
     const existing = await findScheduledTournament(scheduled.key);
 
@@ -1038,9 +1194,7 @@ export async function ensureScheduledTournaments(userId: string, scheduledSet: S
         screenshotRequired: true,
         directRapsodoRequired: scheduled.verificationPolicy === "gold",
         cutRuleJson:
-          scheduled.kind === "monthly"
-            ? { enabled: true, afterRound: 2, topAndTies: 50 }
-            : {},
+          scheduled.kind === "monthly" ? { enabled: true, afterRound: 2, topAndTies: 50 } : {},
         playoffRuleJson:
           scheduled.kind === "monthly"
             ? { type: "sudden_death", holes: [18, 10] }
@@ -1051,17 +1205,19 @@ export async function ensureScheduledTournaments(userId: string, scheduledSet: S
       })
       .returning();
 
-    await getDb().insert(tournamentRounds).values(
-      Array.from({ length: scheduled.roundCount }, (_, index) => ({
-        tournamentId: tournament.id,
-        roundNumber: index + 1,
-        title: scheduled.roundCount === 1 ? "Daily round" : `Round ${index + 1}`,
-        startsAt: scheduled.startsAt,
-        endsAt: scheduled.endsAt,
-        status: index === 0 ? "open" : "scheduled",
-        updatedAt: now,
-      })),
-    );
+    await getDb()
+      .insert(tournamentRounds)
+      .values(
+        Array.from({ length: scheduled.roundCount }, (_, index) => ({
+          tournamentId: tournament.id,
+          roundNumber: index + 1,
+          title: scheduled.roundCount === 1 ? "Daily round" : `Round ${index + 1}`,
+          startsAt: scheduled.startsAt,
+          endsAt: scheduled.endsAt,
+          status: index === 0 ? "open" : "scheduled",
+          updatedAt: now,
+        })),
+      );
   }
 }
 
@@ -1179,7 +1335,10 @@ async function findScheduledTournament(scheduledKey: string) {
   return existing ?? null;
 }
 
-async function ensureScheduledCourse(userId: string, scheduledCourse: ScheduledTournament["course"]) {
+async function ensureScheduledCourse(
+  userId: string,
+  scheduledCourse: ScheduledTournament["course"],
+) {
   const now = new Date();
   const externalId = `scheduled-${slugify(scheduledCourse.name)}`;
   const [course] = await getDb()
@@ -1234,17 +1393,21 @@ function hydrateTournamentListItem(input: {
   viewerUserId: string;
 }) {
   const leader = input.standings.find((standing) => standing.rank === 1) ?? null;
-  const leaderProfile = leader ? input.profiles.get(leader.userId) ?? null : null;
-  const viewerStanding = input.standings.find((standing) => standing.userId === input.viewerUserId) ?? null;
-  const scheduleKind = typeof input.tournament.metadataJson.scheduledKind === "string"
-    ? (input.tournament.metadataJson.scheduledKind as ScheduledTournamentKind)
-    : null;
-  const scheduledKey = typeof input.tournament.metadataJson.scheduledKey === "string"
-    ? input.tournament.metadataJson.scheduledKey
-    : null;
-  const scheduleEyebrow = typeof input.tournament.metadataJson.scheduleEyebrow === "string"
-    ? input.tournament.metadataJson.scheduleEyebrow
-    : null;
+  const leaderProfile = leader ? (input.profiles.get(leader.userId) ?? null) : null;
+  const viewerStanding =
+    input.standings.find((standing) => standing.userId === input.viewerUserId) ?? null;
+  const scheduleKind =
+    typeof input.tournament.metadataJson.scheduledKind === "string"
+      ? (input.tournament.metadataJson.scheduledKind as ScheduledTournamentKind)
+      : null;
+  const scheduledKey =
+    typeof input.tournament.metadataJson.scheduledKey === "string"
+      ? input.tournament.metadataJson.scheduledKey
+      : null;
+  const scheduleEyebrow =
+    typeof input.tournament.metadataJson.scheduleEyebrow === "string"
+      ? input.tournament.metadataJson.scheduleEyebrow
+      : null;
   const actualTourEvent = input.tournament.metadataJson.actualTourEvent === true;
 
   return {
@@ -1287,7 +1450,8 @@ function tournamentTemplates() {
       title: "Spring Major Week",
       format: "four_round_major" as const,
       roundCount: 4,
-      description: "Four rounds, one course, one tee set, gross and net standings, optional cut after round two.",
+      description:
+        "Four rounds, one course, one tee set, gross and net standings, optional cut after round two.",
       directRapsodoRequired: true,
       screenshotRequired: true,
     },
@@ -1312,7 +1476,10 @@ function tournamentTemplates() {
   ];
 }
 
-function nextRoundNumber(roundCount: number, submissions: Array<typeof tournamentSubmissions.$inferSelect>) {
+function nextRoundNumber(
+  roundCount: number,
+  submissions: Array<typeof tournamentSubmissions.$inferSelect>,
+) {
   const submitted = new Set(submissions.map((submission) => submission.roundNumber));
 
   for (let round = 1; round <= roundCount; round += 1) {

@@ -22,7 +22,9 @@ type BillingPageProps = {
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams;
   const data = await getBillingPageData();
-  const visiblePlans = data.plans.filter((plan) => !plan.internal || plan.key === data.activePlanKey);
+  const visiblePlans = data.plans.filter(
+    (plan) => !plan.internal || plan.key === data.activePlanKey,
+  );
 
   return (
     <PageShell size="7xl">
@@ -32,9 +34,12 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <StatusPill tone="sky">Pricing</StatusPill>
-            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">Choose the plan for your golf network</h1>
+            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">
+              Choose the plan for your golf network
+            </h1>
             <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
-              Social basics stay free. Upgrade when you need deeper analytics, AI coaching, private leagues, provider adapters or coach/club tools.
+              Social basics stay free. Upgrade when you need deeper analytics, AI coaching, private
+              leagues, provider adapters or coach/club tools.
             </p>
           </div>
           <div className="grid shrink-0 gap-2">
@@ -45,7 +50,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               </Badge>
             ) : (
               <Badge variant="outline" className="hidden gap-1 sm:inline-flex">
-              <CreditCard className="size-3" />
+                <CreditCard className="size-3" />
                 Free plan
               </Badge>
             )}
@@ -83,7 +88,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Current plan</p>
             <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
-              <p className="text-2xl font-semibold tracking-normal">{planLabel(data.plans, data.activePlanKey)}</p>
+              <p className="text-2xl font-semibold tracking-normal">
+                {planLabel(data.plans, data.activePlanKey)}
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {data.activePlanKey === "full"
                   ? "Lifetime full access."
@@ -108,23 +115,37 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Upgrade prompts</p>
             <div className="mt-3 grid gap-2">
-              <Prompt icon={<Trophy className="size-4 text-amber-600" />} text="Plus unlocks private course records and friend tournaments." />
-              <Prompt icon={<Sparkles className="size-4 text-emerald-600" />} text="Pro adds AI tournament prep, record strategy and verification analytics." />
-              <Prompt icon={<CreditCard className="size-4 text-sky-600" />} text="Coach / Club can host leagues, majors and evidence review queues." />
+              <Prompt
+                icon={<Trophy className="size-4 text-amber-600" />}
+                text="Plus unlocks private course records and friend tournaments."
+              />
+              <Prompt
+                icon={<Sparkles className="size-4 text-emerald-600" />}
+                text="Pro adds AI tournament prep, record strategy and verification analytics."
+              />
+              <Prompt
+                icon={<CreditCard className="size-4 text-sky-600" />}
+                text="Coach / Club can host leagues, majors and evidence review queues."
+              />
             </div>
           </section>
 
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Manage access</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Plan changes update access automatically. Social privacy stays controlled from your profile.
+              Plan changes update access automatically. Social privacy stays controlled from your
+              profile.
             </p>
             <div className="mt-3 grid gap-2">
               <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>Profile privacy</Link>
+                <Link href="/profile" prefetch={false}>
+                  Profile privacy
+                </Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/providers" prefetch={false}>Provider adapters</Link>
+                <Link href="/providers" prefetch={false}>
+                  Provider adapters
+                </Link>
               </Button>
             </div>
           </section>
@@ -149,11 +170,17 @@ function PlanCard({
     <article className="premium-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <Badge variant={active ? "secondary" : "outline"}>{active ? "Current" : plan.audience}</Badge>
+          <Badge variant={active ? "secondary" : "outline"}>
+            {active ? "Current" : plan.audience}
+          </Badge>
           <h2 className="mt-3 text-2xl font-semibold tracking-normal">{plan.name}</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{plan.description}</p>
         </div>
-        {plan.key === "pro" ? <Sparkles className="size-5 text-emerald-600" /> : <Zap className="size-5 text-slate-500" />}
+        {plan.key === "pro" ? (
+          <Sparkles className="size-5 text-emerald-600" />
+        ) : (
+          <Zap className="size-5 text-slate-500" />
+        )}
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
         <Price label="Monthly" value={plan.monthlyPrice} />
@@ -172,19 +199,30 @@ function PlanCard({
           <p className="text-xs font-semibold uppercase text-muted-foreground">Usage limits</p>
           {limits.map((limit) => (
             <p key={limit.id} className="text-sm">
-              {label(limit.limitKey)}: <span className="font-medium">{limitValue(limit.limitValueJson)}</span>
+              {label(limit.limitKey)}:{" "}
+              <span className="font-medium">{limitValue(limit.limitValueJson)}</span>
             </p>
           ))}
         </div>
       ) : null}
       <form action={createCheckoutAction} className="mt-5 grid gap-2 sm:grid-cols-[1fr_auto]">
         <input type="hidden" name="planKey" value={plan.key} />
-        <select name="interval" className="h-9 rounded-lg border bg-white px-3 text-sm" disabled={plan.key === "free"}>
+        <select
+          name="interval"
+          className="h-9 rounded-lg border bg-white px-3 text-sm"
+          disabled={plan.key === "free"}
+        >
           <option value="monthly">Monthly</option>
           <option value="yearly">Yearly</option>
         </select>
         <Button type="submit" disabled={active || (plan.key !== "free" && !stripeConfigured)}>
-          {active ? "Active" : plan.internal ? "Included" : plan.key === "free" ? "Use free" : "Checkout"}
+          {active
+            ? "Active"
+            : plan.internal
+              ? "Included"
+              : plan.key === "free"
+                ? "Use free"
+                : "Checkout"}
         </Button>
       </form>
     </article>

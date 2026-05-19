@@ -1,7 +1,15 @@
 import { Flag, MessageSquareWarning, ShieldCheck } from "lucide-react";
 
 import { resolveModerationEventAction, resolveSocialReportAction } from "@/app/admin/actions";
-import { AdminMetric, AdminNav, AdminNotice, AdminSection, formatDateTime, label, StatusBadge } from "@/app/admin/admin-components";
+import {
+  AdminMetric,
+  AdminNav,
+  AdminNotice,
+  AdminSection,
+  formatDateTime,
+  label,
+  StatusBadge,
+} from "@/app/admin/admin-components";
 import { PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getAdminModerationData } from "@/lib/admin";
@@ -35,26 +43,52 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
       </header>
 
       <section className="grid gap-3 md:grid-cols-3">
-        <AdminMetric icon={MessageSquareWarning} label="Reports" value={data.reports.length} detail={`${openReports.length} open`} />
-        <AdminMetric icon={Flag} label="Events" value={data.events.length} detail={`${openEvents.length} open`} />
-        <AdminMetric icon={ShieldCheck} label="Resolved" value={data.reports.length + data.events.length - openReports.length - openEvents.length} detail="Closed safety records" />
+        <AdminMetric
+          icon={MessageSquareWarning}
+          label="Reports"
+          value={data.reports.length}
+          detail={`${openReports.length} open`}
+        />
+        <AdminMetric
+          icon={Flag}
+          label="Events"
+          value={data.events.length}
+          detail={`${openEvents.length} open`}
+        />
+        <AdminMetric
+          icon={ShieldCheck}
+          label="Resolved"
+          value={data.reports.length + data.events.length - openReports.length - openEvents.length}
+          detail="Closed safety records"
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <AdminSection title="User reports" description="Reports created from the Recaps & Safety reporting flow.">
+        <AdminSection
+          title="User reports"
+          description="Reports created from the Recaps & Safety reporting flow."
+        >
           <div className="grid gap-3">
             {data.reports.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No reports yet.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No reports yet.
+              </p>
             ) : (
               data.reports.map((report) => (
                 <article key={report.id} className="rounded-xl border bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <StatusBadge status={report.status} />
-                    <span className="text-xs text-muted-foreground">{formatDateTime(report.createdAt)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(report.createdAt)}
+                    </span>
                   </div>
                   <h2 className="mt-3 font-semibold">{label(report.reason)}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{report.targetType} · {report.targetId}</p>
-                  {report.details ? <p className="mt-3 text-sm leading-6">{report.details}</p> : null}
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {report.targetType} · {report.targetId}
+                  </p>
+                  {report.details ? (
+                    <p className="mt-3 text-sm leading-6">{report.details}</p>
+                  ) : null}
                   {report.status === "open" ? (
                     <form action={resolveSocialReportAction} className="mt-4">
                       <input type="hidden" name="reportId" value={report.id} />
@@ -69,19 +103,30 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
           </div>
         </AdminSection>
 
-        <AdminSection title="Moderation events" description="Automated or operator-created safety records.">
+        <AdminSection
+          title="Moderation events"
+          description="Automated or operator-created safety records."
+        >
           <div className="grid gap-3">
             {data.events.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">No moderation events yet.</p>
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No moderation events yet.
+              </p>
             ) : (
               data.events.map((event) => (
                 <article key={event.id} className="rounded-xl border bg-slate-50 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <StatusBadge status={event.status} />
-                    <span className="text-xs text-muted-foreground">{formatDateTime(event.createdAt)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateTime(event.createdAt)}
+                    </span>
                   </div>
-                  <h2 className="mt-3 font-semibold">{label(event.eventType)} · {label(event.severity)}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">{event.targetType} · {event.targetId}</p>
+                  <h2 className="mt-3 font-semibold">
+                    {label(event.eventType)} · {label(event.severity)}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {event.targetType} · {event.targetId}
+                  </p>
                   {event.reason ? <p className="mt-3 text-sm leading-6">{event.reason}</p> : null}
                   {event.status === "open" ? (
                     <form action={resolveModerationEventAction} className="mt-4">

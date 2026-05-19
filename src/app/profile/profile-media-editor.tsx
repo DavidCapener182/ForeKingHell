@@ -37,7 +37,10 @@ export function ProfileMediaEditor({
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
 
-  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>, target: "avatar" | "header") {
+  async function handlePhotoChange(
+    event: ChangeEvent<HTMLInputElement>,
+    target: "avatar" | "header",
+  ) {
     const file = event.target.files?.[0];
 
     if (!file) {
@@ -72,14 +75,28 @@ export function ProfileMediaEditor({
 
   return (
     <div className="relative overflow-hidden">
-      <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhotoChange(event, "avatar")} />
-      <input ref={headerInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhotoChange(event, "header")} />
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => handlePhotoChange(event, "avatar")}
+      />
+      <input
+        ref={headerInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => handlePhotoChange(event, "header")}
+      />
       <input form={formId} type="hidden" name="avatarUrl" value={avatarUrl} readOnly />
       <input form={formId} type="hidden" name="headerImageUrl" value={headerImageUrl} readOnly />
 
       <div
         className="relative h-36 bg-cover bg-center"
-        style={{ backgroundImage: profileHeaderBackground(profileHeaderImageUrl(headerImageUrl, username)) }}
+        style={{
+          backgroundImage: profileHeaderBackground(profileHeaderImageUrl(headerImageUrl, username)),
+        }}
       >
         <div className="absolute right-4 top-4 flex items-center gap-2">
           <Button
@@ -136,7 +153,12 @@ export function ProfileMediaEditor({
             <h2 className="truncate text-2xl font-semibold tracking-normal">{displayName}</h2>
             <p className="text-sm text-muted-foreground">@{username}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => avatarInputRef.current?.click()}
+              >
                 <Camera className="size-4" />
                 {avatarUrl ? "Change avatar" : "Add avatar"}
               </Button>
@@ -159,7 +181,9 @@ export function ProfileMediaEditor({
         </div>
 
         <Button asChild variant="outline" className="mb-1 bg-white">
-          <Link href={publicHref} prefetch={false}>Preview public page</Link>
+          <Link href={publicHref} prefetch={false}>
+            Preview public page
+          </Link>
         </Button>
       </div>
 

@@ -23,10 +23,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
     signInWithPasswordAction,
     initialState,
   );
-  const [magicState, magicAction, magicPending] = useActionState(
-    sendMagicLinkAction,
-    initialState,
-  );
+  const [magicState, magicAction, magicPending] = useActionState(sendMagicLinkAction, initialState);
 
   const passwordMessage = error ?? passwordState.message;
   const passwordIsError = Boolean(error) || passwordState.status === "error";
@@ -111,7 +108,9 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
         <div>
-          <p className="text-sm font-semibold text-slate-900">Create an account or skip the password</p>
+          <p className="text-sm font-semibold text-slate-900">
+            Create an account or skip the password
+          </p>
           <p className="mt-1 text-sm leading-5 text-slate-600">
             We will email a secure link. If you are new, that link starts your account.
           </p>
