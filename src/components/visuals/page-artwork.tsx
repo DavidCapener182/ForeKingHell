@@ -220,27 +220,17 @@ function hashKey(key: string | number) {
 
 export function ShotTraceMotif({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 180 86" className={className} aria-hidden="true">
-      <path
-        d="M10 70 C48 34 92 22 160 18"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeDasharray="7 8"
-        opacity="0.75"
+    <span
+      className={cn("relative inline-block min-h-0 overflow-hidden rounded-md", className)}
+      aria-hidden="true"
+    >
+      <Image
+        src="/assets/page-shots-shot-trace.svg"
+        alt=""
+        fill
+        sizes="120px"
+        className="object-contain"
       />
-      <path
-        d="M20 72 C56 56 104 54 170 66"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="9"
-        strokeLinecap="round"
-        opacity="0.12"
-      />
-      <circle cx="162" cy="18" r="5" fill="currentColor" opacity="0.9" />
-      <circle cx="124" cy="26" r="3" fill="currentColor" opacity="0.45" />
-      <circle cx="84" cy="39" r="2.5" fill="currentColor" opacity="0.32" />
-    </svg>
+    </span>
   );
 }

@@ -101,6 +101,22 @@ describe("production readiness gate", () => {
     expect(coursesPageSource).toContain('heroArtworkVariant === "courseMap" ? undefined');
   });
 
+  it("keeps the documented shot trace asset wired into dashboard and shots motifs", () => {
+    const artworkSource = readFileSync(
+      join(root, "src/components/visuals/page-artwork.tsx"),
+      "utf8",
+    );
+    const dashboardSource = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
+    const shotsSource = readFileSync(join(root, "src/app/shots/page.tsx"), "utf8");
+
+    expect(existsSync(join(root, "public/assets/page-shots-shot-trace.svg"))).toBe(true);
+    expect(artworkSource).toContain('src="/assets/page-shots-shot-trace.svg"');
+    expect(artworkSource).toContain("export function ShotTraceMotif");
+    expect(artworkSource).not.toContain("<svg viewBox");
+    expect(dashboardSource).toContain("ShotTraceMotif");
+    expect(shotsSource).toContain("ShotTraceMotif");
+  });
+
   it("keeps authenticated E2E state capture documented and ignored", () => {
     const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
       scripts: Record<string, string>;
