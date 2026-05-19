@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -64,5 +64,25 @@ describe("production readiness gate", () => {
     expect(source).toContain("data.stats.shotCount === 0");
     expect(source).toContain("First-run Rapsodo path");
     expect(source).toContain("Turn Rapsodo data into stock yardages");
+  });
+
+  it("keeps the documented PB feed asset wired into fixed-ratio feed cards", () => {
+    const artworkSource = readFileSync(
+      join(root, "src/components/visuals/page-artwork.tsx"),
+      "utf8",
+    );
+    const feedPageSource = readFileSync(join(root, "src/app/feed/page.tsx"), "utf8");
+    const feedCardSource = readFileSync(
+      join(root, "src/components/social/feed-card-list.tsx"),
+      "utf8",
+    );
+
+    expect(existsSync(join(root, "public/assets/feed-pb-card-bg.webp"))).toBe(true);
+    expect(artworkSource).toContain('feedPb: "/assets/feed-pb-card-bg.webp"');
+    expect(feedPageSource).toContain('return "feedPb" as const');
+    expect(feedPageSource).toContain('artworkVariant === "feedPb" ? undefined : "random"');
+    expect(feedCardSource).toContain('variant="feedPb"');
+    expect(feedCardSource).toContain("isPbFeedType");
+    expect(feedCardSource).toContain("h-24 min-h-0 md:h-28");
   });
 });

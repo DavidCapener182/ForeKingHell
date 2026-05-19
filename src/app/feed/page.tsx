@@ -157,41 +157,45 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         />
         {filteredItems[0] ? (
           <NativeListSection title="Latest activity">
-            {filteredItems.slice(0, 8).map((item) => (
-              <ActivityCard
-                key={item.id}
-                avatar={
-                  <SocialAvatar
-                    displayName={item.profile.displayName}
-                    username={item.profile.username}
-                    avatarUrl={feedItemAvatarUrl(item, data)}
-                    href={`/profile/${item.profile.username}`}
-                    size="sm"
-                  />
-                }
-                actor={item.profile.displayName}
-                meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
-                title={item.headline}
-                description={item.context}
-                metric={
-                  item.metricValue
-                    ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}`
-                    : feedTypeLabel(item.itemType)
-                }
-                reactionCount={item.reactionCount}
-                commentCount={item.commentCount}
-                media={
-                  <PageArtwork
-                    variant={artworkForFeedType(item.itemType)}
-                    alt=""
-                    crop="random"
-                    cropKey={item.id}
-                    className="block h-40 min-h-0"
-                    sizes="100vw"
-                  />
-                }
-              />
-            ))}
+            {filteredItems.slice(0, 8).map((item) => {
+              const artworkVariant = artworkForFeedType(item.itemType);
+
+              return (
+                <ActivityCard
+                  key={item.id}
+                  avatar={
+                    <SocialAvatar
+                      displayName={item.profile.displayName}
+                      username={item.profile.username}
+                      avatarUrl={feedItemAvatarUrl(item, data)}
+                      href={`/profile/${item.profile.username}`}
+                      size="sm"
+                    />
+                  }
+                  actor={item.profile.displayName}
+                  meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
+                  title={item.headline}
+                  description={item.context}
+                  metric={
+                    item.metricValue
+                      ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}`
+                      : feedTypeLabel(item.itemType)
+                  }
+                  reactionCount={item.reactionCount}
+                  commentCount={item.commentCount}
+                  media={
+                    <PageArtwork
+                      variant={artworkVariant}
+                      alt=""
+                      crop={artworkVariant === "feedPb" ? undefined : "random"}
+                      cropKey={item.id}
+                      className="block h-40 min-h-0"
+                      sizes="100vw"
+                    />
+                  }
+                />
+              );
+            })}
           </NativeListSection>
         ) : (
           <EventHeroCard
@@ -606,7 +610,7 @@ function artworkForFeedType(type: string) {
   }
 
   if (type.includes("pb") || type.includes("drive")) {
-    return "stockYardages" as const;
+    return "feedPb" as const;
   }
 
   return "fairway" as const;

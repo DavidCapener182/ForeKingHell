@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
 import { SocialAvatar } from "@/components/social/social-avatar";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { socialVisibilityOptions, type FeedItemView } from "@/lib/social";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -305,6 +306,14 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
                 {item.metricValue}
               </p>
             </div>
+          ) : null}
+          {!compact && isPbFeedType(item.itemType) ? (
+            <PageArtwork
+              variant="feedPb"
+              alt=""
+              className="block h-24 min-h-0 md:h-28"
+              sizes="(min-width: 768px) 680px, 100vw"
+            />
           ) : null}
           {item.context ? (
             <p className="text-sm leading-6 text-muted-foreground">{item.context}</p>
@@ -681,6 +690,10 @@ function feedTypeLabel(value: string) {
     .split("_")
     .map((part) => titleCase(part))
     .join(" ");
+}
+
+function isPbFeedType(type: string) {
+  return type === "new_pb" || type === "longest_drive";
 }
 
 type FeedDayGroup = {

@@ -15,6 +15,7 @@ export type PageArtworkVariant =
   | "handicap"
   | "courseRecords"
   | "feedEmpty"
+  | "feedPb"
   | "profileTrophy"
   | "providerRapsodo"
   | "providerSquare"
@@ -40,6 +41,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   handicap: "/assets/page-handicap-scorecard.webp",
   courseRecords: "/assets/page-course-records-honours.webp",
   feedEmpty: "/assets/feed-empty-state.webp",
+  feedPb: "/assets/feed-pb-card-bg.webp",
   profileTrophy: "/assets/profile-trophy-shelf.webp",
   providerRapsodo: "/assets/provider-rapsodo-device.webp",
   providerSquare: "/assets/provider-square-device.webp",
@@ -77,6 +79,7 @@ const overlayByVariant: Record<PageArtworkVariant, string> = {
   handicap: "from-white/72 via-amber-50/20 to-emerald-50/20",
   courseRecords: "from-white/58 via-amber-50/18 to-emerald-950/12",
   feedEmpty: "from-white/78 via-sky-50/22 to-emerald-50/20",
+  feedPb: "from-black/10 via-transparent to-emerald-950/25",
   profileTrophy: "from-white/68 via-amber-50/24 to-emerald-50/20",
   providerRapsodo: "from-white/74 via-white/25 to-red-50/24",
   providerSquare: "from-white/74 via-slate-50/28 to-sky-50/18",
