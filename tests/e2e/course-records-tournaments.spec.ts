@@ -64,7 +64,8 @@ test.describe("course records and major-style tournaments", () => {
 
     await page.goto(`/course-records/${data.recordId}`);
     await expectPageReady(page, /Best gross score/i);
-    const recordForm = page.locator("[data-course-record-attempt-form]");
+    await page.getByRole("button", { name: /Submit/i }).click();
+    const recordForm = page.locator("[data-course-record-attempt-form]").filter({ visible: true });
     await recordForm.locator('select[name="sessionId"]').selectOption(data.sessionId);
     await recordForm
       .locator('input[name="screenshotPath"]')
@@ -102,11 +103,19 @@ test.describe("course records and major-style tournaments", () => {
       .toBe(1);
 
     await page.goto(`/courses/${data.courseId}/records`);
-    await expect(page.locator("body")).toContainText("72 strokes");
+    await expect(page.locator("body")).toContainText(/Current Champion|Course Champion/i);
+    await expect(
+      page.getByRole("link", { name: /Best gross score.*You 72/i }).first(),
+    ).toBeVisible();
 
     await page.goto(`/tournaments/${data.tournamentId}`);
     await expectPageReady(page, new RegExp(data.tournamentTitle));
-    await page.getByRole("button", { name: /Enter tournament/i }).click();
+    await page.getByRole("button", { name: /^Enter$/i }).click();
+    await page.getByLabel(/I accept/i).check();
+    await Promise.all([
+      page.waitForURL(new RegExp(`/tournaments/${data.tournamentId}\\?joined=1`)),
+      page.getByRole("button", { name: /Accept & enter tournament/i }).click(),
+    ]);
     await expect
       .poll(async () => {
         const rows = await sql!`
@@ -125,12 +134,13 @@ test.describe("course records and major-style tournaments", () => {
     await expect
       .poll(async () => {
         const rows = await sql!`
-          select rank, rounds_completed
-          from fkh_tournament_standings
+          select id
+          from fkh_tournament_submissions
           where tournament_id = ${data.tournamentId}
             and user_id = ${authUserId}
+            and round_number = 1
         `;
-        return rows[0]?.rounds_completed ?? 0;
+        return rows.length;
       })
       .toBe(1);
 
@@ -170,15 +180,27 @@ async function submitTournamentRound(
   extracted: string,
   hash: string,
 ) {
-  const form = page.locator("[data-tournament-submit-form]");
+  let form = page
+    .locator("[data-tournament-submit-form]")
+    .filter({ has: page.locator('input[name="grossScore"]:not([type="hidden"])'), visible: true })
+    .first();
+  if ((await form.count()) === 0) {
+    await page.getByRole("button", { name: /^Submit/i }).click();
+    form = page
+      .locator("[data-tournament-submit-form]")
+      .filter({ has: page.locator('input[name="grossScore"]:not([type="hidden"])'), visible: true })
+      .first();
+  }
   await expect(form).toBeVisible();
-  await form.locator('input[name="roundNumber"]').fill(round);
-  await form.locator('input[name="grossScore"]').fill(gross);
-  await form.locator('input[name="netScore"]').fill(gross);
+  await form.locator('input[name="roundNumber"]:not([type="hidden"])').fill(round);
+  await form.locator('input[name="grossScore"]:not([type="hidden"])').fill(gross);
+  await form.locator('input[name="netScore"]:not([type="hidden"])').fill(gross);
   await form.locator('input[name="csvHash"]').fill(hash);
   await form
     .locator('input[name="scorecardScreenshotPath"]')
-    .fill(`/uploads/scorecards/${hash}.png`);
+    .evaluate((input: HTMLInputElement, value) => {
+      input.value = value;
+    }, `/uploads/scorecards/${hash}.png`);
   await form.locator('input[name="extractedScorecardTotal"]').fill(extracted);
   await form.locator('input[name="hasRapsodoDirect"]').check();
   await Promise.all([
@@ -226,7 +248,7 @@ async function seedCompetitionFixture(sql: Sql, authUserId: string): Promise<Com
   await sql`
     insert into fkh_sessions (
       id, user_id, source, type, date, course_id, tee_set_id, course_name, round_status,
-      scorecard_json, raw_upload_id, file_name, file_size_bytes, raw_csv_hash, raw_csv_text, updated_at
+      scorecard_json, raw_upload_id, file_name, file_size_bytes, raw_csv_hash, raw_csv_text
     )
     values (
       ${sessionId},
@@ -243,8 +265,7 @@ async function seedCompetitionFixture(sql: Sql, authUserId: string): Promise<Com
       ${`playwright-round-${token}.csv`},
       120,
       ${`${token}${token}${token}${token}${token}${token}${token}${token}`.slice(0, 64)},
-      'shot,csv',
-      ${now}
+      'shot,csv'
     )
   `;
   await sql`

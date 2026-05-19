@@ -6,6 +6,44 @@ const axePath = path.join(process.cwd(), "node_modules", "axe-core", "axe.min.js
 
 export const authStorageState = process.env.PLAYWRIGHT_AUTH_STATE;
 
+test.beforeEach(async ({ page }) => {
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    const headers = request.headers();
+    const isPrefetch =
+      headers["next-router-prefetch"] === "1" ||
+      headers.purpose === "prefetch" ||
+      headers["sec-purpose"]?.includes("prefetch");
+
+    if (isPrefetch) {
+      await route.abort();
+      return;
+    }
+
+    await route.continue();
+  });
+});
+
+test.afterEach(async ({ page }, testInfo) => {
+  if (!authStorageState || !existsSync(authStorageState)) {
+    return;
+  }
+  if (testInfo.status === "skipped" || page.isClosed()) {
+    return;
+  }
+  if (/\/login(?:\?|$)/.test(page.url())) {
+    return;
+  }
+  const authCookies = await page.context().cookies();
+  const hasSupabaseAuthCookie = authCookies.some((cookie) => /^sb-.+-auth-token/.test(cookie.name));
+
+  if (!hasSupabaseAuthCookie) {
+    return;
+  }
+
+  await page.context().storageState({ path: authStorageState });
+});
+
 export function skipWhenNoAuth() {
   test.skip(
     !authStorageState || !existsSync(authStorageState),

@@ -197,6 +197,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
       <MobileSectionChips
         items={[
+          { label: "Import", href: "/import" },
           { label: "Filters", href: "#filters" },
           { label: "Sessions", href: "#sessions" },
           { label: "Shots", href: "#shots" },
@@ -586,7 +587,7 @@ function ShotFilterFields({
       <Field>
         <FieldLabel>Club</FieldLabel>
         <Select name="club" defaultValue={filters.club || "__all"}>
-          <SelectTrigger className="h-10 w-full bg-white/90">
+          <SelectTrigger aria-label="Club filter" className="h-10 w-full bg-white/90">
             <SelectValue placeholder="All clubs" />
           </SelectTrigger>
           <SelectContent>
@@ -602,7 +603,7 @@ function ShotFilterFields({
       <Field>
         <FieldLabel>Session</FieldLabel>
         <Select name="sessionId" defaultValue={filters.sessionId || "__all"}>
-          <SelectTrigger className="h-10 w-full bg-white/90">
+          <SelectTrigger aria-label="Session filter" className="h-10 w-full bg-white/90">
             <SelectValue placeholder="All sessions" />
           </SelectTrigger>
           <SelectContent>
@@ -618,7 +619,7 @@ function ShotFilterFields({
       <Field>
         <FieldLabel>Category</FieldLabel>
         <Select name="category" defaultValue={filters.category || "__all"}>
-          <SelectTrigger className="h-10 w-full bg-white/90">
+          <SelectTrigger aria-label="Category filter" className="h-10 w-full bg-white/90">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
