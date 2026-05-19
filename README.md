@@ -46,12 +46,13 @@ npm run test
 npm run lint
 npm run build
 npm run test:e2e
+npm run test:e2e:capture-auth
 npm run test:lighthouse
 npm run db:generate
 npm run db:migrate
 ```
 
-Authenticated Playwright coverage is opt-in because Supabase sessions are cookie backed. Capture a logged-in storage state and run with `PLAYWRIGHT_AUTH_STATE=/absolute/path/to/state.json npm run test:e2e` to exercise import, mobile density, user isolation, social graph/feed, challenge, billing and coach checks. Without that env var, the public auth and login accessibility checks still run.
+Authenticated Playwright coverage is opt-in because Supabase sessions are cookie backed. Start the app, run `npm run test:e2e:capture-auth`, sign in with a tester account in the opened browser, then run with `PLAYWRIGHT_AUTH_STATE=.playwright/auth/forekinghell-state.json npm run test:e2e` to exercise import, mobile density, user isolation, social graph/feed, challenge, billing and coach checks. Set `PLAYWRIGHT_BASE_URL=https://your-preview-url` when capturing against a deployed environment. Without that env var, the public auth and login accessibility checks still run.
 
 `npm run production:check` is the public-tester gate. It runs format check, lint, TypeScript, unit tests, build, E2E, Lighthouse and `git diff --check`. If `PLAYWRIGHT_AUTH_STATE` is missing it prints `Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.` and fails the gate because authenticated flows were not fully verified.
 

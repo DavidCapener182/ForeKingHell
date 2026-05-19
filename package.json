@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:capture-auth": "node scripts/capture-auth-state.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:lighthouse": "node scripts/lighthouse-audit.mjs",
     "db:generate": "drizzle-kit generate",

@@ -85,4 +85,27 @@ describe("production readiness gate", () => {
     expect(feedCardSource).toContain("isPbFeedType");
     expect(feedCardSource).toContain("h-24 min-h-0 md:h-28");
   });
+
+  it("keeps authenticated E2E state capture documented and ignored", () => {
+    const packageJson = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+    };
+    const captureScript = readFileSync(join(root, "scripts/capture-auth-state.mjs"), "utf8");
+    const readme = readFileSync(join(root, "README.md"), "utf8");
+    const productionDocs = readFileSync(join(root, "docs/PRODUCTION_READINESS.md"), "utf8");
+    const onboardingDocs = readFileSync(join(root, "docs/TESTER_ONBOARDING.md"), "utf8");
+    const gitignore = readFileSync(join(root, ".gitignore"), "utf8");
+
+    expect(packageJson.scripts["test:e2e:capture-auth"]).toBe(
+      "node scripts/capture-auth-state.mjs",
+    );
+    expect(captureScript).toContain("PLAYWRIGHT_AUTH_STATE");
+    expect(captureScript).toContain(".playwright/auth/forekinghell-state.json");
+    expect(captureScript).toContain("storageState");
+    expect(captureScript).toContain("No Supabase/auth cookies or local storage entries");
+    expect(readme).toContain("npm run test:e2e:capture-auth");
+    expect(productionDocs).toContain("PLAYWRIGHT_BASE_URL=https://your-preview-url");
+    expect(onboardingDocs).toContain(".playwright/auth/forekinghell-state.json");
+    expect(gitignore).toContain(".playwright/auth/");
+  });
 });

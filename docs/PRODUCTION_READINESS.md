@@ -26,8 +26,11 @@ The gate runs:
 Authenticated E2E coverage requires a real Supabase session storage state:
 
 ```bash
+npm run test:e2e:capture-auth
 PLAYWRIGHT_AUTH_STATE=/absolute/path/to/state.json npm run production:check
 ```
+
+By default the capture command opens `/login`, waits for a manual tester sign-in, verifies `/dashboard`, and writes `.playwright/auth/forekinghell-state.json`. Use `PLAYWRIGHT_BASE_URL=https://your-preview-url npm run test:e2e:capture-auth` to capture against a deployed preview instead of local dev.
 
 If `PLAYWRIGHT_AUTH_STATE` is missing, the script prints:
 

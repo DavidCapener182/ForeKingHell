@@ -2,7 +2,7 @@
 
 These are launch constraints, not hidden failures.
 
-- Authenticated Playwright coverage requires `PLAYWRIGHT_AUTH_STATE`; without it the public/login tests run but the app is not fully production-verified.
+- Authenticated Playwright coverage requires `PLAYWRIGHT_AUTH_STATE`; without it the public/login tests run but the app is not fully production-verified. Use `npm run test:e2e:capture-auth` to capture `.playwright/auth/forekinghell-state.json` before running the production gate.
 - Rapsodo CSV import is live. Rapsodo cloud sync depends on `RAPSODO_TOKEN_SECRET` and `RAPSODO_API_BASE_URL` being configured and tested against real accounts.
 - Square and TrackMan are beta/coming-soon provider tiles unless their adapters are enabled for the tester cohort.
 - Google course enrichment depends on Maps/Places keys, quotas and provider response quality.

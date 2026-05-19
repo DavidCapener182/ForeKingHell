@@ -49,3 +49,14 @@ ForeKingHell is a data-first golf performance app. It should answer:
 - Did the first coach action feel specific enough?
 - Was anything visible that felt private or surprising?
 - Did any mobile page feel cramped, blank, duplicated or table-heavy?
+
+## Capturing Authenticated Test State
+
+Before declaring a tester build ready, capture a logged-in browser state and run the production gate with it:
+
+```bash
+npm run test:e2e:capture-auth
+PLAYWRIGHT_AUTH_STATE=.playwright/auth/forekinghell-state.json npm run production:check
+```
+
+The capture helper opens `/login`, lets the tester account sign in, verifies the session can reach `/dashboard`, and stores the cookie-backed Supabase session in the ignored `.playwright/auth/` folder.
