@@ -71,7 +71,6 @@ test.describe("authenticated app flows", () => {
     await page.getByRole("button", { name: /queue offline/i }).click();
     await expect(page.getByText(/queued 1 csv file/i)).toBeVisible();
     await expect(page.getByText(/pending offline action/i)).toBeVisible();
-    await context.setOffline(false);
   });
 
   test("shot explorer keeps a mobile-friendly review surface", async ({ page }) => {
