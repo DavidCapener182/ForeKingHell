@@ -9,7 +9,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
@@ -556,8 +556,31 @@ async function getBag() {
     .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
     .orderBy(asc(clubs.type));
 
+  const clubsByType = new Map<string, typeof clubRows>();
+
+  for (const club of clubRows) {
+    const existing = clubsByType.get(club.type) ?? [];
+    existing.push(club);
+    clubsByType.set(club.type, existing);
+  }
+
+  const mergedClubRows = [...clubsByType.values()].map((clubGroup) => {
+    const primary = clubGroup.find((club) => club.brand || club.model) ?? clubGroup[0];
+    const preferredBrand = clubGroup.find((club) => club.brand)?.brand ?? primary.brand;
+    const preferredModel = clubGroup.find((club) => club.model)?.model ?? primary.model;
+
+    return {
+      id: primary.id,
+      userId: primary.userId,
+      type: primary.type,
+      brand: preferredBrand,
+      model: preferredModel,
+      memberIds: clubGroup.map((club) => club.id),
+    };
+  });
+
   const clubData = await Promise.all(
-    clubRows.map(async (club) => {
+    mergedClubRows.map(async (club) => {
       const [recentShots, [shotCount]] = await Promise.all([
         db
           .select({
@@ -584,14 +607,18 @@ async function getBag() {
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
           .where(
-            and(eq(shots.userId, userId), eq(sessions.userId, userId), eq(shots.clubId, club.id)),
+            and(
+              eq(shots.userId, userId),
+              eq(sessions.userId, userId),
+              inArray(shots.clubId, club.memberIds),
+            ),
           )
           .orderBy(desc(shots.shotAt))
           .limit(RECENT_SHOTS_PER_CLUB),
         db
           .select({ value: count() })
           .from(shots)
-          .where(and(eq(shots.userId, userId), eq(shots.clubId, club.id))),
+          .where(and(eq(shots.userId, userId), inArray(shots.clubId, club.memberIds))),
       ]);
 
       return {

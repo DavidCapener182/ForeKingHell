@@ -26,36 +26,41 @@ export async function GET(request: Request) {
   const model = requestUrl.searchParams.get("model");
   const fallback =
     safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
-  const hasBrand = Boolean(brand?.trim());
 
-  if (hasBrand) {
-    for (const logoIconUrl of brandLogoIconUrls(brand)) {
-      const response = await imageResponseFromUrl(logoIconUrl, "brand-logo");
+  try {
+    const hasBrand = Boolean(brand?.trim());
+
+    if (hasBrand) {
+      for (const logoIconUrl of brandLogoIconUrls(brand)) {
+        const response = await imageResponseFromUrl(logoIconUrl, "brand-logo");
+
+        if (response) {
+          return response;
+        }
+      }
+
+      const brandLogoQuery = buildBrandLogoSearchQuery(brand);
+
+      if (brandLogoQuery) {
+        const response = await imageResponseFromSearch(brandLogoQuery, "brand-logo");
+
+        if (response) {
+          return response;
+        }
+      }
+    }
+
+    const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
+
+    if (productQuery) {
+      const response = await imageResponseFromSearch(productQuery, "product");
 
       if (response) {
         return response;
       }
     }
-
-    const brandLogoQuery = buildBrandLogoSearchQuery(brand);
-
-    if (brandLogoQuery) {
-      const response = await imageResponseFromSearch(brandLogoQuery, "brand-logo");
-
-      if (response) {
-        return response;
-      }
-    }
-  }
-
-  const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
-
-  if (productQuery) {
-    const response = await imageResponseFromSearch(productQuery, "product");
-
-    if (response) {
-      return response;
-    }
+  } catch {
+    return redirectToFallback(requestUrl, fallback);
   }
 
   return redirectToFallback(requestUrl, fallback);
