@@ -18,7 +18,6 @@ import { PageArtwork } from "@/components/visuals/page-artwork";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   CompactReadoutGrid,
   DataPair,
@@ -78,6 +77,7 @@ import { ensureCurrentSocialProfile } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
+import { TargetDistanceSelector } from "./target-distance-selector";
 
 export const dynamic = "force-dynamic";
 
@@ -193,7 +193,7 @@ export default async function BagPage() {
             />
           </div>
         </NativeListSection>
-        <TargetDistanceSelector rows={gappingRows} targetYd={150} />
+        <TargetDistanceSelector rows={gappingRows} initialTargetYd={150} />
         <NativeListSection title="Club rail">
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
             {bag.map((club, index) => (
@@ -343,7 +343,7 @@ export default async function BagPage() {
 
         <BagFeaturePanel data={featureData} />
 
-        <TargetDistanceSelector rows={gappingRows} targetYd={150} />
+        <TargetDistanceSelector rows={gappingRows} initialTargetYd={150} />
 
         {gappingRows.length > 0 ? (
           <section id="gapping" className="scroll-mt-28">
@@ -758,102 +758,6 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
             href: item.clubId ? `/bag/${item.clubId}` : undefined,
           }))}
         />
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function TargetDistanceSelector({ rows, targetYd }: { rows: GappingRow[]; targetYd: number }) {
-  const candidates = rows
-    .filter(
-      (
-        row,
-      ): row is GappingRow & {
-        carryYd: number;
-        playNumberYd: number;
-      } => row.carryYd !== null && row.playNumberYd !== null,
-    )
-    .sort(
-      (left, right) =>
-        Math.abs(left.playNumberYd - targetYd) - Math.abs(right.playNumberYd - targetYd) ||
-        right.confidenceScore - left.confidenceScore,
-    );
-  const recommended = candidates[0] ?? null;
-  const alternatives = candidates.slice(1, 4);
-  const missYd = recommended ? Math.round((recommended.playNumberYd - targetYd) * 10) / 10 : null;
-  const risk =
-    missYd === null
-      ? "Need stock carry samples"
-      : Math.abs(missYd) <= 4
-        ? "Matched window"
-        : missYd > 0
-          ? `${formatMetric(missYd)} yd long`
-          : `${formatMetric(Math.abs(missYd))} yd short`;
-
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Target distance selector"
-        description={`I need ${targetYd} yd: pick the club with the closest play number and enough trust to use on course.`}
-        action={<Target className="size-5 text-emerald-600" />}
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <div className="rounded-lg border bg-[#F5F6F4] p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">Target</p>
-          <p className="mt-1 text-4xl font-semibold tracking-normal">{targetYd} yd</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[120, 150, 175, 200].map((distance) => (
-              <Badge key={distance} variant={distance === targetYd ? "default" : "outline"}>
-                {distance} yd
-              </Badge>
-            ))}
-          </div>
-        </div>
-        <div className="grid gap-3">
-          <div className="rounded-lg border bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Recommended</p>
-                <p className="mt-1 text-2xl font-semibold tracking-normal">
-                  {recommended ? formatClubType(recommended.clubType) : "--"}
-                </p>
-              </div>
-              <StatusPill
-                tone={recommended && recommended.confidenceScore >= 70 ? "green" : "amber"}
-              >
-                {recommended ? `${recommended.confidenceScore}% trust` : "Needs data"}
-              </StatusPill>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <DataPair
-                label="Play number"
-                value={recommended ? `${formatMetric(recommended.playNumberYd)} yd` : "--"}
-              />
-              <DataPair label="Risk" value={risk} />
-              <DataPair
-                label="Sample"
-                value={recommended ? `${recommended.sampleSize} shots` : "--"}
-              />
-            </div>
-          </div>
-          {alternatives.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-3">
-              {alternatives.map((row) => (
-                <Link
-                  key={row.id}
-                  href={`/bag/${row.id}`}
-                  prefetch={false}
-                  className="rounded-lg border bg-white p-3 text-sm hover:border-emerald-300"
-                >
-                  <p className="font-semibold">{formatClubType(row.clubType)}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    {formatMetric(row.playNumberYd)} yd · {row.confidenceScore}% trust
-                  </p>
-                </Link>
-              ))}
-            </div>
-          ) : null}
-        </div>
       </CardContent>
     </DataPanel>
   );
