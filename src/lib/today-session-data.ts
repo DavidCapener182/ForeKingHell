@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -189,10 +189,12 @@ export async function getTodayPracticeData(
   let allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
 
   if (!hasExplicitDate && !filters.sessionId && allTodayRows.length === 0) {
-    const latestSession = await findLatestImportedSession(db, userId, filters.club);
+    const latestDateKey =
+      (await findLatestPracticeDateKey(db, userId, filters.club, MIN_TODAY_SHOTS_FOR_VERDICT)) ??
+      (await findLatestPracticeDateKey(db, userId, filters.club, 1));
 
-    if (latestSession) {
-      dateKey = localDateKey(latestSession.date);
+    if (latestDateKey) {
+      dateKey = latestDateKey;
       bounds = dayBounds(dateKey);
       allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
     }
@@ -281,36 +283,37 @@ async function findSessionDateKey(db: ReturnType<typeof getDb>, userId: string, 
   return session ? localDateKey(session.date) : null;
 }
 
-async function findLatestImportedSession(
+async function findLatestPracticeDateKey(
   db: ReturnType<typeof getDb>,
   userId: string,
   clubFilter: string | undefined,
+  minimumShotCount: number,
 ) {
   const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId), eq(clubs.userId, userId)];
   const club = clubFilter && isTrackedClubType(clubFilter) ? clubFilter : "";
+  const practiceDateKey = sql<string>`to_char(${shots.shotAt} at time zone 'Europe/London', 'YYYY-MM-DD')`;
+  const latestShotAt = sql<Date>`max(${shots.shotAt})`;
 
   if (club) {
     clauses.push(eq(shots.clubType, club));
   }
 
-  const [session] = await db
+  const [practiceDay] = await db
     .select({
-      id: sessions.id,
-      date: sessions.date,
+      dateKey: practiceDateKey,
+      latestShotAt,
+      shotCount: sql<number>`count(${shots.id})::int`,
     })
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
     .where(and(...clauses))
-    .orderBy(
-      desc(sessions.date),
-      desc(shots.shotAt),
-      desc(sessions.createdAt),
-      desc(shots.shotNumber),
-    )
+    .groupBy(practiceDateKey)
+    .having(sql`count(${shots.id}) >= ${minimumShotCount}`)
+    .orderBy(desc(latestShotAt))
     .limit(1);
 
-  return session ?? null;
+  return practiceDay?.dateKey ?? null;
 }
 
 function buildTodayPracticeData({

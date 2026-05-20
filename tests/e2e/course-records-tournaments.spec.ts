@@ -230,7 +230,6 @@ async function seedCompetitionFixture(sql: Sql, authUserId: string): Promise<Com
     insert into fkh_user_profiles (user_id, username, display_name, public_profile, friend_profile, feed_visibility_default, leaderboard_visibility, updated_at)
     values (${authUserId}, ${`competition-${token}`}, 'Playwright competition user', true, true, 'friends', 'friends', ${now})
     on conflict (user_id) do update set
-      display_name = excluded.display_name,
       public_profile = true,
       friend_profile = true,
       feed_visibility_default = 'friends',
