@@ -80,6 +80,7 @@ type PageHeaderProps = {
   actions?: ReactNode;
   metrics?: PageHeaderMetric[];
   visual?: ReactNode;
+  visualSize?: "compact" | "wide";
   className?: string;
 };
 
@@ -90,9 +91,11 @@ export function PageHeader({
   actions,
   metrics,
   visual,
+  visualSize = "compact",
   className,
 }: PageHeaderProps) {
   const primaryMetric = metrics?.[0];
+  const hasWideVisual = Boolean(visual) && visualSize === "wide";
 
   return (
     <>
@@ -145,7 +148,10 @@ export function PageHeader({
         <div
           className={cn(
             "grid gap-4",
-            visual ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center" : "",
+            visual && !hasWideVisual ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center" : "",
+            hasWideVisual
+              ? "lg:grid-cols-[minmax(0,0.72fr)_minmax(420px,0.58fr)] lg:items-center"
+              : "",
           )}
         >
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -167,7 +173,13 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="hidden h-28 overflow-hidden rounded-lg lg:block" data-compact-media>
+            <div
+              className={cn(
+                "hidden overflow-hidden rounded-lg lg:block",
+                hasWideVisual ? "h-44" : "h-28",
+              )}
+              data-compact-media
+            >
               {visual}
             </div>
           ) : null}

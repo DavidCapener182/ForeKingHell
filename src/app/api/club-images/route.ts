@@ -28,6 +28,16 @@ export async function GET(request: Request) {
     safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
 
   try {
+    const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
+
+    if (productQuery) {
+      const response = await imageResponseFromSearch(productQuery, "product");
+
+      if (response) {
+        return response;
+      }
+    }
+
     const hasBrand = Boolean(brand?.trim());
 
     if (hasBrand) {
@@ -47,16 +57,6 @@ export async function GET(request: Request) {
         if (response) {
           return response;
         }
-      }
-    }
-
-    const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
-
-    if (productQuery) {
-      const response = await imageResponseFromSearch(productQuery, "product");
-
-      if (response) {
-        return response;
       }
     }
   } catch {

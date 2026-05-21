@@ -32,7 +32,6 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { DataFirstFlowPanel } from "@/components/product-polish";
 import {
   MobileAppShell,
   MobileRouteTabs,
@@ -57,6 +56,7 @@ import {
   type TodayChartClubStatus,
   type TodayChartShot,
 } from "@/app/today/today-shot-charts";
+import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
@@ -94,7 +94,10 @@ type ClubSort = "bag" | "best" | "worst";
 type ClubHighlight = {
   id: string;
   kind: HighlightKind;
+  clubType: string;
   clubLabel: string;
+  clubBrand: string | null;
+  clubModel: string | null;
   metricLabel: string;
   value: string;
   detail: string;
@@ -367,7 +370,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </section>
 
           <section id="pbs" className="scroll-mt-28">
-            <TodayHighlightsPanel stats={data.clubStats} shots={data.bestStraightShots} />
+            <TodayHighlightsPanel
+              stats={data.clubStats}
+              shots={data.shots}
+              bestStraightShots={data.bestStraightShots}
+            />
           </section>
 
           <TodaySocialLine data={data} challenges={challengeData.active} />
@@ -535,6 +542,27 @@ function TodayPrescriptionCard({
   );
 }
 
+type PracticeCardStatus = "ready" | "needed" | "optional";
+type PracticeCardTone = "green" | "sky" | "pink" | "amber" | "slate";
+type PracticeIllustrationKind =
+  | "target"
+  | "golfer"
+  | "clipboard"
+  | "progress"
+  | "flag"
+  | "share"
+  | "alert"
+  | "aim"
+  | "club";
+
+type PracticeFlowStep = {
+  title: string;
+  detail: string;
+  href?: string;
+  status: PracticeCardStatus;
+  icon: PracticeIllustrationKind;
+};
+
 function TodayPracticeModePanel({
   data,
   shotDatabaseHref,
@@ -543,48 +571,313 @@ function TodayPracticeModePanel({
   shotDatabaseHref: string;
 }) {
   const hasShots = data.shots.length > 0;
+  const steps: PracticeFlowStep[] = [
+    {
+      title: hasShots ? "Start drill" : "Upload CSV",
+      detail: hasShots ? "Use the current focus as the first drill." : "Bring in a Rapsodo CSV.",
+      href: hasShots ? "/coach" : "/import",
+      status: "ready",
+      icon: hasShots ? "golfer" : "clipboard",
+    },
+    {
+      title: "Record/import shots",
+      detail: "Add the next batch against the same club scope.",
+      href: "/import",
+      status: hasShots ? "ready" : "needed",
+      icon: "clipboard",
+    },
+    {
+      title: "Review result",
+      detail: "Open filtered shots and compare the new pattern.",
+      href: shotDatabaseHref,
+      status: hasShots ? "ready" : "needed",
+      icon: "progress",
+    },
+    {
+      title: "Mark complete",
+      detail: "Treat the session as done once the signal improves.",
+      status: "optional",
+      icon: "flag",
+    },
+    {
+      title: "Share optional",
+      detail: "Only post PBs, records or challenge results after proof is clear.",
+      href: "/feed",
+      status: "optional",
+      icon: "share",
+    },
+  ];
 
   return (
-    <DataFirstFlowPanel
-      title="Practice mode"
-      description="Turn the latest review into a short loop: do the drill, capture the next shots, then compare the result before sharing anything."
-      actionHref={hasShots ? "/coach" : "/import"}
-      actionLabel={hasShots ? "Start drill" : "Import shots"}
-      steps={[
-        {
-          title: hasShots ? "Start drill" : "Upload CSV",
-          detail: hasShots
-            ? "Use the current focus as the first drill."
-            : "Bring in a Rapsodo CSV.",
-          href: hasShots ? "/coach" : "/import",
-          status: "ready",
-        },
-        {
-          title: "Record/import shots",
-          detail: "Add the next batch against the same club scope.",
-          href: "/import",
-          status: hasShots ? "ready" : "needed",
-        },
-        {
-          title: "Review result",
-          detail: "Open filtered shots and compare the new pattern.",
-          href: shotDatabaseHref,
-          status: hasShots ? "ready" : "needed",
-        },
-        {
-          title: "Mark complete",
-          detail: "Treat the session as done once the signal improves.",
-          status: "optional",
-        },
-        {
-          title: "Share optional",
-          detail: "Only post PBs, records or challenge results after proof is clear.",
-          href: "/feed",
-          status: "optional",
-        },
-      ]}
+    <DataPanel className="border-[#d9ded8] bg-white shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:px-5 lg:py-5">
+        <div className="flex min-w-0 gap-3">
+          <PracticeCardIllustration kind="target" tone="green" size="sm" />
+          <div className="min-w-0">
+            <h2 className="text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+              Practice mode
+            </h2>
+            <p className="mt-1 max-w-5xl text-sm font-medium leading-5 text-slate-600 sm:text-base">
+              Turn the latest review into a short loop: do the drill, capture the next shots, then
+              compare the result before sharing anything.
+            </p>
+          </div>
+        </div>
+        <Button
+          asChild
+          className="h-11 rounded-lg bg-[#0B7A3B] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(11,122,59,0.22)] hover:bg-[#064E3B]"
+        >
+          <Link href={hasShots ? "/coach" : "/import"} prefetch={false}>
+            {hasShots ? "Start drill" : "Import shots"}
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </div>
+      <div className="grid gap-2.5 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-5 lg:px-5 lg:pb-5">
+        {steps.map((step, index) => {
+          const card = <PracticeStepCard step={step} index={index} />;
+
+          return step.href ? (
+            <Link key={step.title} href={step.href} prefetch={false} className="block h-full">
+              {card}
+            </Link>
+          ) : (
+            <div key={step.title} className="h-full">
+              {card}
+            </div>
+          );
+        })}
+      </div>
+    </DataPanel>
+  );
+}
+
+function PracticeStepCard({ step, index }: { step: PracticeFlowStep; index: number }) {
+  const visualTone =
+    step.status === "ready" ? "green" : step.status === "needed" ? "amber" : "slate";
+
+  return (
+    <article
+      className={`grid h-full min-h-32 content-start gap-3 rounded-lg border bg-white p-3 text-sm transition-colors hover:border-emerald-200 ${practiceStepCardClass(
+        step.status,
+      )}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className={practiceStepNumberClass(step.status)}>{index + 1}</span>
+        <PracticeStepStatus status={step.status} />
+      </div>
+      <div className="flex items-center gap-3">
+        <PracticeCardIllustration kind={step.icon} tone={visualTone} size="sm" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold leading-5 text-slate-950">{step.title}</p>
+          <p className="mt-1 leading-5 text-slate-600">{step.detail}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PracticeStepStatus({ status }: { status: PracticeCardStatus }) {
+  if (status === "ready") {
+    return (
+      <span className="grid size-5 place-items-center rounded-full bg-[#0B7A3B] text-white">
+        <svg viewBox="0 0 20 20" aria-hidden="true" className="size-3.5" fill="none">
+          <path
+            d="M5.2 10.2 8.4 13.4 14.8 6.6"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.2"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`size-5 rounded-full border-2 border-dashed ${
+        status === "needed" ? "border-amber-600/70" : "border-slate-500/70"
+      }`}
+      aria-hidden="true"
     />
   );
+}
+
+function PracticeCardIllustration({
+  kind,
+  tone,
+  size = "md",
+}: {
+  kind: PracticeIllustrationKind;
+  tone: PracticeCardTone;
+  size?: "sm" | "md" | "lg";
+}) {
+  const shellSize = size === "sm" ? "size-12" : "size-16";
+  const svgSize = size === "sm" ? "size-8" : size === "lg" ? "size-11" : "size-10";
+
+  return (
+    <span
+      className={`grid shrink-0 place-items-center rounded-full ${shellSize} ${practiceIllustrationClass(
+        tone,
+      )}`}
+    >
+      <svg viewBox="0 0 48 48" aria-hidden="true" className={svgSize} fill="none">
+        {practiceIllustrationPaths(kind)}
+      </svg>
+    </span>
+  );
+}
+
+function practiceIllustrationPaths(kind: PracticeIllustrationKind) {
+  switch (kind) {
+    case "target":
+      return (
+        <>
+          <circle cx="22" cy="25" r="13" stroke="currentColor" strokeWidth="3" />
+          <circle cx="22" cy="25" r="7" stroke="currentColor" strokeWidth="3" />
+          <circle cx="22" cy="25" r="2.5" fill="currentColor" />
+          <path
+            d="m27.5 19.5 8.8-8.8M33.5 10.5h4v4M30.8 13.2h3.8v3.8"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+        </>
+      );
+    case "golfer":
+      return (
+        <>
+          <circle cx="24" cy="9" r="4" fill="currentColor" />
+          <path
+            d="M22 15.5 25.5 24M25.5 24 19 38M25.5 24 32 38M15 18.5l8 4 8-4M31 18.5 40 9.5M40 9.5l2.5 3.5M18 38h-5M32 38h5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <path
+            d="M10 40h25M12 33.5c3.8 1.2 7.8 1.4 12 .5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <circle cx="40" cy="39" r="2" fill="currentColor" />
+        </>
+      );
+    case "clipboard":
+      return (
+        <>
+          <path
+            d="M15 11h18a3 3 0 0 1 3 3v24a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V14a3 3 0 0 1 3-3Z"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <path
+            d="M19 8h10v6H19zM18 22h12M18 29h8M18 36h6"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <circle cx="34" cy="34" r="7" fill="currentColor" />
+          <path d="M34 30.5v7M30.5 34h7" stroke="white" strokeLinecap="round" strokeWidth="2.4" />
+        </>
+      );
+    case "progress":
+      return (
+        <>
+          <path
+            d="M10 37h28M13 31v6M21 25v12M29 19v18M37 13v24"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="3"
+          />
+          <path
+            d="m11 25 9-2 7-7 5 2 7-7"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <circle cx="20" cy="23" r="2" fill="currentColor" />
+          <circle cx="32" cy="18" r="2" fill="currentColor" />
+        </>
+      );
+    case "flag":
+      return (
+        <>
+          <path d="M17 40V10" stroke="currentColor" strokeLinecap="round" strokeWidth="3" />
+          <path
+            d="M18 12h18l-5 6 5 6H18"
+            stroke="currentColor"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <path d="M12 40h14" stroke="currentColor" strokeLinecap="round" strokeWidth="3" />
+        </>
+      );
+    case "share":
+      return (
+        <>
+          <path
+            d="M14 19v19h20V27"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <path
+            d="M25 23 37 11M29 11h8v8"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+        </>
+      );
+    case "alert":
+      return (
+        <>
+          <circle cx="24" cy="24" r="16" stroke="currentColor" strokeWidth="3" />
+          <path
+            d="M24 14v14M24 34h.1"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="4"
+          />
+        </>
+      );
+    case "aim":
+      return (
+        <>
+          <circle cx="24" cy="24" r="13" stroke="currentColor" strokeWidth="3" />
+          <circle cx="24" cy="24" r="6" stroke="currentColor" strokeWidth="3" />
+          <path
+            d="M24 7v8M24 33v8M7 24h8M33 24h8"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="3"
+          />
+        </>
+      );
+    case "club":
+      return (
+        <>
+          <path
+            d="M31 8 21 35M18 35c-3.8 0-6.5 1.6-6.5 3.8 0 2 2.4 3.2 6.6 3.2h7.4c3.9 0 6.9-2.5 7.7-6.2l.4-1.8H18Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="3"
+          />
+          <path d="M14 36c4.8 1.7 10.2 1.7 16.4 0" stroke="currentColor" strokeWidth="3" />
+        </>
+      );
+  }
 }
 
 function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] }) {
@@ -1126,40 +1419,53 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
   const focus = practiceFocus(data);
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Latest practice prescription"
-        description="A simple drill target from the session pattern."
-        action={
+    <DataPanel className="border-[#d9ded8] bg-white shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:px-5 lg:py-5">
+        <div className="flex min-w-0 gap-3">
+          <PracticeCardIllustration kind="target" tone="green" size="sm" />
+          <div className="min-w-0">
+            <h2 className="text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+              Latest practice prescription
+            </h2>
+            <p className="mt-1 text-sm font-medium leading-5 text-slate-600 sm:text-base">
+              A simple drill target from the session pattern.
+            </p>
+          </div>
+        </div>
+        <div className="sm:pt-1">
           <Button
             asChild
             size="sm"
-            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            variant="outline"
+            className="h-10 rounded-lg border-[#0B7A3B] bg-white px-4 text-sm font-semibold text-[#0B7A3B] shadow-sm hover:bg-emerald-50 hover:text-[#064E3B]"
           >
             <Link href="/coach" prefetch={false}>
               <Dumbbell className="size-4" />
               Start drill
             </Link>
           </Button>
-        }
-      />
-      <CardContent>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_repeat(3,minmax(0,1fr))]">
-          <PrescriptionBlock label="Problem" value={focus.problem} tone="pink" />
+        </div>
+      </div>
+      <CardContent className="pt-0">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <PrescriptionBlock label="Problem" value={focus.problem} tone="pink" icon="alert" />
           <PrescriptionBlock
             label="Cause to check"
             value="Start line / face control"
             tone="amber"
+            icon="aim"
           />
           <PrescriptionBlock
             label="Drill"
             value={`20-ball gate drill with ${focus.clubText}`}
             tone="sky"
+            icon="club"
           />
           <PrescriptionBlock
             label="Target"
             value={`12 of 20 inside ±10 yd. Beat this review’s ${formatYards(data.overall.today.offlineAverageYd)} offline average.`}
             tone="green"
+            icon="flag"
           />
         </div>
       </CardContent>
@@ -1171,15 +1477,24 @@ function PrescriptionBlock({
   label,
   value,
   tone,
+  icon,
 }: {
   label: string;
   value: string;
   tone: "green" | "sky" | "pink" | "amber";
+  icon: PracticeIllustrationKind;
 }) {
   return (
-    <div className={`rounded-lg border px-3 py-3 ${prescriptionToneClass(tone)}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.08em]">{label}</p>
-      <p className="mt-2 text-sm font-medium leading-5 text-slate-900">{value}</p>
+    <div
+      className={`flex min-h-32 items-center gap-3 rounded-lg border px-3.5 py-4 shadow-[0_8px_22px_rgba(15,23,42,0.035)] ${prescriptionToneClass(
+        tone,
+      )}`}
+    >
+      <PracticeCardIllustration kind={icon} tone={tone} size="lg" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-[0.08em]">{label}</p>
+        <p className="mt-2 text-sm font-medium leading-5 text-slate-950">{value}</p>
+      </div>
     </div>
   );
 }
@@ -1554,15 +1869,17 @@ function TodaySocialLine({
 function TodayHighlightsPanel({
   stats,
   shots,
+  bestStraightShots,
 }: {
   stats: ClubMainStats[];
   shots: TodayPracticeShot[];
+  bestStraightShots: TodayPracticeShot[];
 }) {
-  const highlights = buildClubHighlights(stats);
+  const highlights = buildClubHighlights(stats, buildClubEquipmentMap(shots));
   const records = highlights.filter((highlight) => highlight.kind !== "close");
   const closeCalls = highlights.filter((highlight) => highlight.kind === "close").slice(0, 6);
   const bestNearMiss = closeCalls[0] ?? null;
-  const bestShot = shots[0] ?? null;
+  const bestShot = bestStraightShots[0] ?? null;
 
   return (
     <DataPanel>
@@ -1668,58 +1985,107 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
 function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
   const close = highlight.kind === "close";
   const statusLabel = highlight.kind === "tie" ? "Tied PB" : close ? "Close" : "New PB";
+  const imageAlt = clubImageAlt(highlight);
 
   if (close) {
     return (
-      <div className="rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="border-amber-200 bg-white/70 text-amber-800">
-            {highlight.clubLabel}
-          </Badge>
-          <span className="text-xs font-medium text-amber-800">{statusLabel}</span>
-        </div>
-        <div className="mt-2 flex items-end justify-between gap-3">
-          <p className="text-xs font-medium text-muted-foreground">{highlight.metricLabel}</p>
-          <p className="shrink-0 text-lg font-semibold tracking-normal text-slate-950">
-            {highlight.value}
+      <div className="flex min-h-28 items-center gap-3 rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="border-amber-200 bg-white/70 text-amber-800">
+              {highlight.clubLabel}
+            </Badge>
+            <span className="text-xs font-medium text-amber-800">{statusLabel}</span>
+          </div>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <p className="text-xs font-medium text-muted-foreground">{highlight.metricLabel}</p>
+            <p className="shrink-0 text-lg font-semibold tracking-normal text-slate-950">
+              {highlight.value}
+            </p>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-700">
+            {highlight.detail}
+            {highlight.target ? (
+              <span className="text-muted-foreground"> · {highlight.target}</span>
+            ) : null}
           </p>
         </div>
-        <p className="mt-1 text-xs leading-5 text-slate-700">
-          {highlight.detail}
-          {highlight.target ? (
-            <span className="text-muted-foreground"> · {highlight.target}</span>
-          ) : null}
-        </p>
+        <ClubArtwork
+          clubType={highlight.clubType}
+          brand={highlight.clubBrand}
+          model={highlight.clubModel}
+          alt={imageAlt}
+          className="h-20 min-h-0 w-24 shrink-0 border-0 bg-transparent"
+          imageClassName="px-1 py-1"
+          sizes="88px"
+        />
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <Badge variant="outline" className="border-emerald-200 bg-white/70 text-emerald-700">
-          {highlight.clubLabel}
-        </Badge>
-        <span className="text-xs font-medium text-emerald-700">{statusLabel}</span>
+    <div className="flex min-h-32 items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3">
+          <Badge variant="outline" className="border-emerald-200 bg-white/70 text-emerald-700">
+            {highlight.clubLabel}
+          </Badge>
+          <span className="text-xs font-medium text-emerald-700">{statusLabel}</span>
+        </div>
+        <p className="mt-3 text-sm font-medium text-muted-foreground">{highlight.metricLabel}</p>
+        <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+          {highlight.value}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-slate-700">{highlight.detail}</p>
+        {highlight.target ? (
+          <p className="mt-1 text-xs font-medium text-muted-foreground">{highlight.target}</p>
+        ) : null}
       </div>
-      <p className="mt-3 text-sm font-medium text-muted-foreground">{highlight.metricLabel}</p>
-      <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">{highlight.value}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-700">{highlight.detail}</p>
-      {highlight.target ? (
-        <p className="mt-1 text-xs font-medium text-muted-foreground">{highlight.target}</p>
-      ) : null}
+      <ClubArtwork
+        clubType={highlight.clubType}
+        brand={highlight.clubBrand}
+        model={highlight.clubModel}
+        alt={imageAlt}
+        className="h-24 min-h-0 w-28 shrink-0 border-0 bg-transparent sm:w-32"
+        imageClassName="px-1 py-1"
+        sizes="120px"
+      />
     </div>
   );
 }
 
-function buildClubHighlights(stats: ClubMainStats[]) {
+function clubImageAlt(highlight: ClubHighlight) {
+  return [highlight.clubBrand, highlight.clubModel, highlight.clubLabel].filter(Boolean).join(" ");
+}
+
+function buildClubHighlights(
+  stats: ClubMainStats[],
+  equipmentByClub: Map<string, { brand: string | null; model: string | null }>,
+) {
   return stats
     .flatMap((stat) =>
       statHighlightDescriptors(stat).flatMap((descriptor) =>
-        buildMetricHighlights(stat, descriptor),
+        buildMetricHighlights(stat, descriptor, equipmentByClub.get(stat.clubType)),
       ),
     )
     .sort((left, right) => left.priority - right.priority || left.closeness - right.closeness);
+}
+
+function buildClubEquipmentMap(shots: TodayPracticeShot[]) {
+  const equipmentByClub = new Map<string, { brand: string | null; model: string | null }>();
+
+  for (const shot of shots) {
+    const current = equipmentByClub.get(shot.clubType);
+
+    if (!current || (!current.brand && !current.model)) {
+      equipmentByClub.set(shot.clubType, {
+        brand: shot.clubBrand,
+        model: shot.clubModel,
+      });
+    }
+  }
+
+  return equipmentByClub;
 }
 
 function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[] {
@@ -1784,6 +2150,7 @@ function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[
 function buildMetricHighlights(
   stat: ClubMainStats,
   descriptor: ClubHighlightDescriptor,
+  equipment: { brand: string | null; model: string | null } | undefined,
 ): ClubHighlight[] {
   const { metric, direction, unit } = descriptor;
   if (metric.bestStatus === "new" || metric.bestStatus === "tied") {
@@ -1791,7 +2158,10 @@ function buildMetricHighlights(
       {
         id: `${stat.clubType}-${descriptor.key}-${metric.bestStatus}`,
         kind: metric.bestStatus === "new" ? "record" : "tie",
+        clubType: stat.clubType,
         clubLabel: stat.clubLabel,
+        clubBrand: equipment?.brand ?? null,
+        clubModel: equipment?.model ?? null,
         metricLabel: descriptor.label,
         value: formatMetricValue(metric.todayBest, unit),
         detail: recordDetail(metric, direction, unit),
@@ -1814,7 +2184,10 @@ function buildMetricHighlights(
     {
       id: `${stat.clubType}-${descriptor.key}-close`,
       kind: "close",
+      clubType: stat.clubType,
       clubLabel: stat.clubLabel,
+      clubBrand: equipment?.brand ?? null,
+      clubModel: equipment?.model ?? null,
       metricLabel: descriptor.label,
       value: formatMetricValue(metric.todayBest, unit),
       detail: `${formatMetricValue(gap, unit)} ${direction === "higher" ? "short of" : "away from"} your PB.`,
@@ -2397,11 +2770,52 @@ function reviewStatusClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
   return "bg-slate-100 text-slate-600";
 }
 
+function practiceStepCardClass(status: PracticeCardStatus) {
+  if (status === "ready") {
+    return "border-[#dbe4de] border-b-[#0B7A3B] shadow-[0_10px_24px_rgba(15,23,42,0.055),inset_0_-1px_0_#0B7A3B]";
+  }
+
+  if (status === "needed") {
+    return "border-amber-200 border-b-amber-500 shadow-[0_8px_20px_rgba(146,64,14,0.06)]";
+  }
+
+  return "border-[#d9ded8] border-b-slate-400 shadow-[0_8px_20px_rgba(15,23,42,0.045)]";
+}
+
+function practiceStepNumberClass(status: PracticeCardStatus) {
+  if (status === "ready") {
+    return "grid size-8 place-items-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-800";
+  }
+
+  if (status === "needed") {
+    return "grid size-8 place-items-center rounded-full bg-amber-50 text-sm font-semibold text-amber-800";
+  }
+
+  return "grid size-8 place-items-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700";
+}
+
+function practiceIllustrationClass(tone: PracticeCardTone) {
+  if (tone === "green") return "bg-emerald-50 text-emerald-700";
+  if (tone === "pink") return "bg-pink-50 text-pink-700";
+  if (tone === "amber") return "bg-amber-50 text-amber-800";
+  if (tone === "sky") return "bg-sky-50 text-sky-700";
+  return "bg-slate-100 text-slate-500";
+}
+
 function prescriptionToneClass(tone: "green" | "sky" | "pink" | "amber") {
-  if (tone === "green") return "border-emerald-100 bg-emerald-50/55 text-emerald-800";
-  if (tone === "pink") return "border-pink-100 bg-pink-50/45 text-pink-800";
-  if (tone === "amber") return "border-amber-100 bg-amber-50/45 text-amber-900";
-  return "border-sky-100 bg-sky-50/45 text-sky-800";
+  if (tone === "green") {
+    return "border-emerald-100 bg-[linear-gradient(135deg,#f6fbf7_0%,#ffffff_100%)] text-emerald-800";
+  }
+
+  if (tone === "pink") {
+    return "border-pink-100 bg-[linear-gradient(135deg,#fff5f8_0%,#ffffff_100%)] text-pink-800";
+  }
+
+  if (tone === "amber") {
+    return "border-amber-100 bg-[linear-gradient(135deg,#fff9ed_0%,#ffffff_100%)] text-amber-900";
+  }
+
+  return "border-sky-100 bg-[linear-gradient(135deg,#f2f8ff_0%,#ffffff_100%)] text-sky-800";
 }
 
 function summaryIconClass(tone: "green" | "pink" | "sky") {

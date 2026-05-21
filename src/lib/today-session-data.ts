@@ -26,6 +26,8 @@ export type TodayPracticeShot = {
   shotAt: Date;
   shotNumber: number | null;
   clubType: string;
+  clubBrand: string | null;
+  clubModel: string | null;
   shotCategory: string | null;
   carryYd: number | null;
   totalYd: number | null;
@@ -151,6 +153,8 @@ const practiceShotSelect = {
   shotAt: shots.shotAt,
   shotNumber: shots.shotNumber,
   clubType: shots.clubType,
+  clubBrand: clubs.brand,
+  clubModel: clubs.model,
   shotCategory: shots.shotCategory,
   carryYd: shots.carryYd,
   totalYd: shots.totalYd,
@@ -229,10 +233,12 @@ export async function getTodayPracticeData(
           .select(practiceShotSelect)
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+          .innerJoin(clubs, eq(shots.clubId, clubs.id))
           .where(
             and(
               eq(shots.userId, userId),
               eq(sessions.userId, userId),
+              eq(clubs.userId, userId),
               lt(shots.shotAt, bounds.start),
               inArray(shots.clubType, comparisonClubTypes),
             ),

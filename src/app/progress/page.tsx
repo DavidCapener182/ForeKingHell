@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import type { ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -8,27 +10,24 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Gauge,
+  HelpCircle,
   LineChart,
   ListChecks,
+  Bookmark,
+  MessageSquare,
+  ShieldCheck,
   Sparkles,
   Table2,
   Target,
   TrendingDown,
   TrendingUp,
+  Trophy,
   Upload,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 
-import {
-  DataPair,
-  DataPanel,
-  MetricCard,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataPair, DataPanel, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader, MobileTabBar } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -115,64 +114,7 @@ export default async function ProgressPage() {
         </div>
       </div>
 
-      <PageHeader
-        eyebrow={
-          <div className="flex flex-wrap gap-2">
-            <StatusPill tone="sky">Personal baseline</StatusPill>
-            <StatusPill tone="amber">Progress verdict: Improving, but uneven</StatusPill>
-          </div>
-        }
-        title="Bag progress"
-        description={heroVerdict(summary)}
-        visual={<PageArtwork variant="progress" alt="" className="h-full min-h-44" />}
-        actions={
-          mostImproved ? (
-            <Button
-              asChild
-              size="lg"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href={`/bag/${mostImproved.clubId}/analytics`} prefetch={false}>
-                <Brain className="size-4" />
-                View supporting shots
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              asChild
-              size="lg"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import first CSV
-              </Link>
-            </Button>
-          )
-        }
-        metrics={[
-          {
-            label: "Clean stock shots",
-            value: integerFormatter.format(summary.totals.trackedCleanShots),
-            detail: "Used for progress checks",
-          },
-          {
-            label: "Tracked clubs",
-            value: integerFormatter.format(summary.totals.clubs),
-            detail: `${integerFormatter.format(summary.totals.shots)} launch monitor rows`,
-          },
-          {
-            label: "Average trust",
-            value: `${summary.totals.averageTrust}%`,
-            detail: "Distance, direction, strike and sample depth",
-          },
-          {
-            label: "Playable rate",
-            value: formatRate(summary.totals.averagePlayableRate),
-            detail: "Across clubs with enough direction data",
-          },
-        ]}
-      />
+      <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
 
       {data.clubs.length === 0 ? (
         <>
@@ -249,20 +191,7 @@ export default async function ProgressPage() {
           <ComparisonBar summary={summary} />
           <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
 
-          <DataPanel id="trends">
-            <SectionHeader
-              title="Progress trends"
-              description="Movement from the first clean baseline to the latest clean baseline."
-              action={<LineChart className="size-5 text-sky-500" />}
-            />
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {summary.trends.map((trend) => (
-                  <TrendCard key={trend.label} trend={trend} summary={summary} />
-                ))}
-              </div>
-            </CardContent>
-          </DataPanel>
+          <ProgressTrendsPanel summary={summary} />
 
           <PracticePlanPanel priorities={summary.practicePlan} />
           <CoachReadoutPanel
@@ -285,6 +214,130 @@ export default async function ProgressPage() {
   );
 }
 
+function ProgressHeroPanel({
+  summary,
+  mostImproved,
+}: {
+  summary: ProgressSummary;
+  mostImproved: ProgressClubRow | null;
+}) {
+  const metrics = [
+    {
+      label: "Clean stock shots",
+      value: integerFormatter.format(summary.totals.trackedCleanShots),
+      detail: "Used for progress checks",
+      icon: Sparkles,
+    },
+    {
+      label: "Tracked clubs",
+      value: integerFormatter.format(summary.totals.clubs),
+      detail: `${integerFormatter.format(summary.totals.shots)} launch monitor rows`,
+      icon: Target,
+    },
+    {
+      label: "Average trust",
+      value: `${summary.totals.averageTrust}%`,
+      detail: "Distance, direction, strike and sample depth",
+      icon: ShieldCheck,
+    },
+    {
+      label: "Playable rate",
+      value: formatRate(summary.totals.averagePlayableRate),
+      detail: "Across clubs with enough direction data",
+      icon: BarChart3,
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]">
+      <div className="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:px-7">
+        <div className="min-w-0">
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">
+              Personal baseline
+            </span>
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
+              Progress verdict: Improving, but uneven
+            </span>
+          </div>
+          <h1 className="mt-4 text-[26px] font-bold leading-8 tracking-normal text-[#111827] sm:text-3xl sm:leading-10">
+            Bag progress
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-[#667085]">
+            {heroVerdict(summary)}
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_240px] lg:grid-cols-1">
+          <div className="flex items-center justify-start lg:justify-end">
+            <Button
+              asChild
+              variant="outline"
+              className="h-11 rounded-lg border-[#087A3D] bg-white px-5 text-sm font-semibold text-[#087A3D] shadow-sm hover:bg-emerald-50 hover:text-[#065F32]"
+            >
+              <Link
+                href={mostImproved ? `/bag/${mostImproved.clubId}/analytics` : "/import"}
+                prefetch={false}
+              >
+                {mostImproved ? <Brain className="size-4" /> : <Upload className="size-4" />}
+                {mostImproved ? "View supporting shots" : "Import first CSV"}
+              </Link>
+            </Button>
+          </div>
+          <div className="hidden h-28 overflow-hidden rounded-lg sm:block">
+            <PageArtwork variant="progress" alt="" className="h-full min-h-28" />
+          </div>
+        </div>
+      </div>
+      <div className="grid border-t border-[#EDF1ED] px-5 py-4 sm:grid-cols-2 lg:grid-cols-4 lg:px-7">
+        {metrics.map((metric, index) => (
+          <ProgressHeroMetric
+            key={metric.label}
+            metric={metric}
+            className={index > 0 ? "border-t sm:border-l sm:border-t-0" : ""}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProgressHeroMetric({
+  metric,
+  className,
+}: {
+  metric: {
+    label: string;
+    value: string;
+    detail: string;
+    icon: LucideIcon;
+  };
+  className?: string;
+}) {
+  const Icon = metric.icon;
+
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-[#DFE7DF] px-3 py-3",
+        className,
+      )}
+    >
+      <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+        <Icon className="size-6" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#667085]">
+          {metric.label}
+        </p>
+        <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+          {metric.value}
+        </p>
+        <p className="mt-1 text-sm leading-5 text-[#667085]">{metric.detail}</p>
+      </div>
+    </div>
+  );
+}
+
 function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: ProgressSummary }) {
   const bestClub = summary.rankings.mostTrusted ?? summary.rankings.mostImproved;
   const weakestSignal = summary.rankings.needsWork;
@@ -293,98 +346,136 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
   const weeklyRead = weeklyReadout(summary);
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Weekly recap"
-        description={`${data.weeklyRecap.metric} · ${sessionsLabel} · Personal baseline comparison`}
-        action={<StatusPill tone={data.weeklyRecap.tone as Tone}>How recap works</StatusPill>}
-      />
-      <CardContent className="grid gap-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="min-w-0">
-            <p className="text-sm leading-6 text-muted-foreground">
-              {`${sessionsLabel} in this week's sample. Keep the next goal tight and measurable.`}
-            </p>
-            <p className="mt-2 text-sm font-medium leading-6">
-              <span className="font-semibold">This week&apos;s read: </span>
-              {weeklyRead}
-            </p>
-          </div>
+    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+            Weekly recap
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[#667085]">
+            {data.weeklyRecap.metric} · {sessionsLabel} · Personal baseline comparison
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 lg:justify-end">
+          <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#CFE7D6] bg-[#F8FCF9] px-4 text-sm font-semibold text-[#087A3D]">
+            <HelpCircle className="size-4" />
+            How recap works
+          </span>
           <form action={saveCurrentWeeklyRecapAction}>
-            <Button type="submit" variant="outline" className="w-full sm:w-auto">
-              <ClipboardCheck className="size-4" />
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-10 rounded-lg border-[#DFE7DF] bg-white px-4 text-sm font-semibold"
+            >
+              <Bookmark className="size-4" />
               Save weekly recap
             </Button>
           </form>
         </div>
+      </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <WeeklyRecapCard
-            label="Best club"
-            value={bestClub ? formatClubType(bestClub.clubType) : data.weeklyRecap.bestClub}
-            detail={
-              bestClub
-                ? bestClubDetail(bestClub, summary)
-                : "Keep building clean stock-shot samples"
-            }
-            href={bestClub ? `/bag/${bestClub.clubId}/analytics` : undefined}
-            tone="green"
-          />
-          <WeeklyRecapCard
-            label="Weakest signal"
-            value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
-            detail={
-              weakestSignal
-                ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
-                : "Review the next clean baseline"
-            }
-            href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
-            tone="amber"
-          />
-          <WeeklyRecapCard
-            label="New PBs"
-            value="View PBs & achievements"
-            detail="PB details live in the achievements shelf."
-            href="/achievements"
-            tone="sky"
-          />
-          <WeeklyRecapCard
-            label="Next goal"
-            value={topPriority?.title ?? "Build next baseline"}
-            detail={nextGoalDetail(topPriority)}
-            href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
-            tone={topPriority?.tone ?? "slate"}
-          />
+      <div className="mt-5 grid gap-3">
+        <WeeklyRecapNotice
+          icon={TrendingUp}
+          text={`${sessionsLabel} in this week's sample. Keep the next goal tight and measurable.`}
+        />
+        <WeeklyRecapNotice
+          icon={Sparkles}
+          text={
+            <>
+              <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
+              {weeklyRead}
+            </>
+          }
+        />
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <WeeklyRecapCard
+          label="Best club"
+          value={bestClub ? formatClubType(bestClub.clubType) : data.weeklyRecap.bestClub}
+          detail={
+            bestClub ? bestClubDetail(bestClub, summary) : "Keep building clean stock-shot samples"
+          }
+          href={bestClub ? `/bag/${bestClub.clubId}/analytics` : undefined}
+          tone="green"
+          icon={Trophy}
+        />
+        <WeeklyRecapCard
+          label="Weakest signal"
+          value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
+          detail={
+            weakestSignal
+              ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
+              : "Review the next clean baseline"
+          }
+          href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
+          tone="amber"
+          icon={TrendingDown}
+        />
+        <WeeklyRecapCard
+          label="New PBs & achievements"
+          value="View PBs & achievements"
+          detail="PB details live in the achievements shelf."
+          href="/achievements"
+          tone="sky"
+          icon={ShieldCheck}
+        />
+        <WeeklyRecapCard
+          label="Next goal"
+          value={topPriority?.title ?? "Build next baseline"}
+          detail={nextGoalDetail(topPriority)}
+          href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
+          tone={topPriority?.tone ?? "slate"}
+          icon={Target}
+        />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-[#DFE7DF] bg-white p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[#111827]">Practice plan calendar</p>
+          <span className="rounded-full border border-[#E5E7EB] bg-slate-50 px-3 py-1 text-sm font-semibold text-[#475467]">
+            {data.practiceCalendar.length} planned
+          </span>
         </div>
-
-        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Practice plan calendar</p>
-            <StatusPill tone="slate">{data.practiceCalendar.length} planned</StatusPill>
-          </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {data.practiceCalendar.slice(0, 4).map((item, index) => (
-              <div
-                key={`${item.title}-${item.date.toISOString()}`}
-                className="flex min-w-0 shrink-0 items-center gap-2"
-              >
-                <div className="min-w-44 rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+          {data.practiceCalendar.slice(0, 4).map((item, index) => (
+            <div
+              key={`${item.title}-${item.date.toISOString()}`}
+              className="flex min-w-0 shrink-0 items-center gap-3"
+            >
+              <div className="grid min-w-64 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3">
+                <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+                  <CalendarDays className="size-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">
                     {shortDateFormatter.format(item.date)}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-semibold">
+                  </span>
+                  <span className="mt-1 block truncate text-sm font-semibold text-[#111827]">
                     {compactPracticeTitle(item.title)}
-                  </p>
-                </div>
-                {index < Math.min(data.practiceCalendar.length, 4) - 1 ? (
-                  <ArrowRight className="size-4 shrink-0 text-slate-400" />
-                ) : null}
+                  </span>
+                </span>
               </div>
-            ))}
-          </div>
+              {index < Math.min(data.practiceCalendar.length, 4) - 1 ? (
+                <ArrowRight className="size-5 shrink-0 text-slate-400" />
+              ) : null}
+            </div>
+          ))}
         </div>
-      </CardContent>
-    </DataPanel>
+      </div>
+    </section>
+  );
+}
+
+function WeeklyRecapNotice({ icon: Icon, text }: { icon: LucideIcon; text: ReactNode }) {
+  return (
+    <div className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-lg border border-[#CFE7D6] bg-[#F8FCF9] px-3 py-2 text-sm leading-6 text-[#475467]">
+      <span className="grid size-8 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+        <Icon className="size-4" />
+      </span>
+      <p>{text}</p>
+    </div>
   );
 }
 
@@ -394,36 +485,84 @@ function WeeklyRecapCard({
   detail,
   href,
   tone,
+  icon: Icon,
 }: {
   label: string;
   value: string;
   detail: string;
   href?: string;
   tone: Tone;
+  icon: LucideIcon;
 }) {
   const content = (
-    <div className="h-full rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-300">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </p>
-        <span
-          className={cn("mt-0.5 size-2 rounded-full", compactToneClasses[tone].split(" ")[0])}
-        />
+    <div
+      className={cn(
+        "grid h-full min-h-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border p-4 transition-colors hover:border-emerald-300",
+        weeklyRecapToneStyles[tone].card,
+      )}
+    >
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p
+            className={cn(
+              "text-xs font-bold uppercase tracking-[0.12em]",
+              weeklyRecapToneStyles[tone].label,
+            )}
+          >
+            {label}
+          </p>
+          <span className={cn("size-2 rounded-full", compactToneClasses[tone].split(" ")[0])} />
+        </div>
+        <p className="mt-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">{value}</p>
+        <p className="mt-2 text-sm leading-5 text-[#475467]">{detail}</p>
       </div>
-      <p className="mt-2 text-base font-semibold leading-6 tracking-normal">{value}</p>
-      <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
+      <span
+        className={cn(
+          "grid size-12 shrink-0 place-items-center rounded-full",
+          weeklyRecapToneStyles[tone].icon,
+        )}
+      >
+        <Icon className="size-6" />
+      </span>
     </div>
   );
 
   return href ? (
-    <Link href={href} prefetch={false} className="block">
+    <Link href={href} prefetch={false} className="block h-full">
       {content}
     </Link>
   ) : (
     content
   );
 }
+
+const weeklyRecapToneStyles: Record<Tone, { card: string; label: string; icon: string }> = {
+  green: {
+    card: "border-emerald-200 bg-[#F8FCF9]",
+    label: "text-emerald-800",
+    icon: "bg-emerald-50 text-emerald-700",
+  },
+  sky: {
+    card: "border-sky-200 bg-[#F8FBFF]",
+    label: "text-sky-800",
+    icon: "bg-sky-50 text-sky-700",
+  },
+  pink: {
+    card: "border-pink-200 bg-pink-50/35",
+    label: "text-pink-800",
+    icon: "bg-pink-50 text-pink-700",
+  },
+  amber: {
+    card: "border-amber-200 bg-[#FFFBF4]",
+    label: "text-amber-800",
+    icon: "bg-amber-50 text-amber-800",
+  },
+  slate: {
+    card: "border-slate-200 bg-slate-50/60",
+    label: "text-slate-700",
+    icon: "bg-slate-100 text-slate-600",
+  },
+};
 
 function MobileProgressFirstCard({ summary }: { summary: ProgressSummary }) {
   const mostImproved = summary.rankings.mostImproved;
@@ -524,86 +663,124 @@ function ProgressSignalsPanel({
   const mostVolatile = summary.rankings.mostVolatile;
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+      <ProgressSectionHeader
+        icon={TrendingUp}
         title="Progress signals"
         description="The clearest gains, risks and priorities from the current comparison."
-        action={<TrendingUp className="size-5 text-emerald-600" />}
+        tone="green"
       />
-      <CardContent className="grid gap-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <LargeSignalCard
-            icon={TrendingUp}
-            label="Best movement"
-            value={bestMovement ? formatClubType(bestMovement.clubType) : "--"}
-            detail={bestMovement ? bestMovementDetail(bestMovement) : "Need comparable baselines"}
-            note={bestMovement ? offlineMovementNote(bestMovement) : undefined}
-            href={bestMovement ? `/bag/${bestMovement.clubId}/analytics` : undefined}
-            tone="green"
-          />
-          <LargeSignalCard
-            icon={AlertTriangle}
-            label="Main concern"
-            value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
-            detail={
-              mainConcern
-                ? `${mainConcern.trustIndex}% trust · lowest trust club with usable data`
-                : "No weak signal has separated yet"
-            }
-            href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
-            tone="amber"
-          />
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <LargeSignalCard
+          icon={TrendingUp}
+          label="Best movement"
+          value={bestMovement ? formatClubType(bestMovement.clubType) : "--"}
+          detail={bestMovement ? bestMovementDetail(bestMovement) : "Need comparable baselines"}
+          note={bestMovement ? offlineMovementNote(bestMovement) : undefined}
+          href={bestMovement ? `/bag/${bestMovement.clubId}/analytics` : undefined}
+          tone="green"
+        />
+        <LargeSignalCard
+          icon={AlertTriangle}
+          label="Main concern"
+          value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
+          detail={
+            mainConcern
+              ? `${mainConcern.trustIndex}% trust · lowest trust club with usable data`
+              : "No weak signal has separated yet"
+          }
+          href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
+          tone="amber"
+        />
+      </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SignalSummaryCard
+          label="Most reliable"
+          value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
+          detail={
+            mostReliable
+              ? `${mostReliable.trustIndex}% trust · ${mostReliable.sampleSize} clean shots`
+              : "Need more shots"
+          }
+          href={mostReliable ? `/bag/${mostReliable.clubId}/analytics` : undefined}
+          icon={Gauge}
+          tone="sky"
+        />
+        <SignalSummaryCard
+          label="Strongest improvement"
+          value={strongestImprovement ? formatClubType(strongestImprovement.clubType) : "--"}
+          detail={
+            strongestImprovement
+              ? strongestImprovementDetail(strongestImprovement)
+              : "Need comparable baselines"
+          }
+          href={strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined}
+          icon={TrendingUp}
+          tone="green"
+        />
+        <SignalSummaryCard
+          label="Needs attention"
+          value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
+          detail={mainConcern ? "Lowest trust club with usable data" : "No weak signal yet"}
+          href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
+          icon={ListChecks}
+          tone="amber"
+        />
+        <SignalSummaryCard
+          label="Most volatile"
+          value={mostVolatile ? formatClubType(mostVolatile.clubType) : "--"}
+          detail={
+            mostVolatile
+              ? `${formatRate(findAnalytics(clubs, mostVolatile.clubId)?.accuracy.bigMissRate ?? null)} big miss rate`
+              : "Need side-carry data"
+          }
+          href={mostVolatile ? `/bag/${mostVolatile.clubId}/analytics` : undefined}
+          icon={TrendingDown}
+          tone="pink"
+        />
+      </div>
+    </section>
+  );
+}
+
+function ProgressSectionHeader({
+  icon: Icon,
+  title,
+  description,
+  tone,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  tone: Tone;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-4">
+        <span
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-xl border",
+            progressIconToneStyles[tone],
+          )}
+        >
+          <Icon className="size-6" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[#667085]">{description}</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Most reliable"
-            value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
-            detail={
-              mostReliable
-                ? `${mostReliable.trustIndex}% trust · ${mostReliable.sampleSize} clean shots`
-                : "Need more shots"
-            }
-            href={mostReliable ? `/bag/${mostReliable.clubId}/analytics` : undefined}
-            icon={Gauge}
-            tone="sky"
-          />
-          <MetricCard
-            label="Strongest improvement"
-            value={strongestImprovement ? formatClubType(strongestImprovement.clubType) : "--"}
-            detail={
-              strongestImprovement
-                ? strongestImprovementDetail(strongestImprovement)
-                : "Need comparable baselines"
-            }
-            href={
-              strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined
-            }
-            icon={TrendingUp}
-            tone="green"
-          />
-          <MetricCard
-            label="Needs attention"
-            value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
-            detail={mainConcern ? "Lowest trust club with usable data" : "No weak signal yet"}
-            href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
-            icon={ListChecks}
-            tone="amber"
-          />
-          <MetricCard
-            label="Most volatile"
-            value={mostVolatile ? formatClubType(mostVolatile.clubType) : "--"}
-            detail={
-              mostVolatile
-                ? `${formatRate(findAnalytics(clubs, mostVolatile.clubId)?.accuracy.bigMissRate ?? null)} big miss rate`
-                : "Need side-carry data"
-            }
-            href={mostVolatile ? `/bag/${mostVolatile.clubId}/analytics` : undefined}
-            icon={TrendingDown}
-            tone="amber"
-          />
-        </div>
-      </CardContent>
-    </DataPanel>
+      </div>
+      <span
+        className={cn(
+          "hidden size-10 shrink-0 place-items-center rounded-xl border sm:grid",
+          progressIconToneStyles[tone],
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+    </div>
   );
 }
 
@@ -625,17 +802,34 @@ function LargeSignalCard({
   tone: Tone;
 }) {
   const content = (
-    <div className="grid h-full grid-cols-[auto_1fr] gap-3 rounded-lg border border-[#D9DED8] bg-white p-4 transition-colors hover:border-emerald-300">
-      <div className={cn("grid size-9 place-items-center rounded-md ring-1", toneClasses[tone])}>
+    <div
+      className={cn(
+        "grid h-full min-h-32 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-4 transition-colors hover:border-emerald-300",
+        progressSignalToneStyles[tone].card,
+      )}
+    >
+      <span
+        className={cn(
+          "grid size-10 place-items-center rounded-xl",
+          progressSignalToneStyles[tone].icon,
+        )}
+      >
         <Icon className="size-5" />
-      </div>
+      </span>
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <p
+          className={cn(
+            "text-[11px] font-bold uppercase tracking-[0.14em]",
+            progressSignalToneStyles[tone].label,
+          )}
+        >
           {label}
         </p>
-        <p className="mt-1 text-2xl font-semibold leading-tight tracking-normal">{value}</p>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
-        {note ? <p className="mt-1 text-xs leading-4 text-muted-foreground">{note}</p> : null}
+        <p className="mt-1.5 text-xl font-bold leading-7 tracking-normal text-[#111827]">{value}</p>
+        <p className="mt-3 text-sm leading-5 text-[#475467]">
+          <EmphasizedLead text={detail} tone={tone} />
+        </p>
+        {note ? <p className="mt-1.5 text-xs leading-5 text-[#667085]">{note}</p> : null}
       </div>
     </div>
   );
@@ -649,31 +843,109 @@ function LargeSignalCard({
   );
 }
 
+function SignalSummaryCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  href,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail: string;
+  href?: string;
+  tone: Tone;
+}) {
+  const content = (
+    <div className="grid h-full min-h-28 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-emerald-300">
+      <span
+        className={cn(
+          "grid size-10 place-items-center rounded-xl",
+          progressSignalToneStyles[tone].icon,
+        )}
+      >
+        <Icon className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm leading-5 text-[#667085]">{label}</p>
+        <p className="mt-1 text-lg font-bold leading-6 tracking-normal text-[#111827]">{value}</p>
+        <p className="mt-2 text-sm leading-5 text-[#475467]">{detail}</p>
+      </div>
+    </div>
+  );
+
+  return href ? (
+    <Link href={href} prefetch={false} className="block h-full">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function EmphasizedLead({ text, tone }: { text: string; tone: Tone }) {
+  const match = text.match(/^([+-]?\d+(?:\.\d+)?%?|[+-]?\d+(?:\.\d+)?\s?yd)(.*)$/i);
+
+  if (!match) {
+    return text;
+  }
+
+  return (
+    <>
+      <span className={cn("font-bold", progressSignalToneStyles[tone].emphasis)}>{match[1]}</span>
+      {match[2]}
+    </>
+  );
+}
+
+function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
+  return (
+    <section
+      id="trends"
+      className="scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6"
+    >
+      <ProgressSectionHeader
+        icon={LineChart}
+        title="Progress trends"
+        description="Movement from the first clean baseline to the latest clean baseline."
+        tone="sky"
+      />
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {summary.trends.map((trend) => (
+          <TrendCard key={trend.label} trend={trend} summary={summary} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: ProgressSummary }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="flex min-h-48 flex-col rounded-xl border border-[#DFE7DF] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="truncate text-[11px] font-bold uppercase tracking-[0.16em] text-[#667085]">
             {trend.label}
           </p>
-          <p className="mt-1 text-2xl font-semibold tracking-normal">{trend.value}</p>
+          <p className="mt-1 text-xl font-bold leading-7 tracking-normal text-[#111827]">
+            {trend.value}
+          </p>
         </div>
         <div
           className={cn(
-            "grid size-8 shrink-0 place-items-center rounded-md ring-1",
-            toneClasses[trend.tone],
+            "grid size-9 shrink-0 place-items-center rounded-lg border",
+            progressIconToneStyles[trend.tone],
           )}
         >
           <BarChart3 className="size-4" />
         </div>
       </div>
       <Sparkline points={trend.points} tone={trend.tone} />
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{trendVerdict(trend, summary)}</p>
+      <p className="mt-3 text-sm leading-5 text-[#475467]">{trendVerdict(trend, summary)}</p>
       {trendFootnote(trend, summary) ? (
-        <p className="mt-1 text-xs leading-4 text-muted-foreground">
-          {trendFootnote(trend, summary)}
-        </p>
+        <p className="mt-1 text-xs leading-5 text-[#667085]">{trendFootnote(trend, summary)}</p>
       ) : null}
     </div>
   );
@@ -682,7 +954,7 @@ function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: Progress
 function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
   if (points.length < 2) {
     return (
-      <div className="mt-4 grid h-14 place-items-center rounded-md bg-slate-50 text-xs text-muted-foreground">
+      <div className="mt-3 grid h-16 place-items-center rounded-lg bg-slate-50 text-xs text-muted-foreground">
         More data needed
       </div>
     );
@@ -691,8 +963,8 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
-  const width = 140;
-  const height = 52;
+  const width = 180;
+  const height = 64;
   const coordinates = points.map((point, index) => {
     const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
     const y = height - ((point - min) / range) * (height - 10) - 5;
@@ -705,23 +977,50 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
   ];
 
   return (
-    <svg
-      className="mt-4 h-14 w-full overflow-visible"
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label="Trend line"
-    >
-      <line x1="0" x2={width} y1={height - 5} y2={height - 5} stroke="#E5E7EB" strokeWidth="1" />
-      <polyline
-        fill="none"
-        points={coordinates.join(" ")}
-        stroke={strokeForTone(tone)}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="3"
-      />
-      <circle cx={lastPoint[0]} cy={lastPoint[1]} r="4" fill={strokeForTone(tone)} />
-    </svg>
+    <div className="mt-3 rounded-lg bg-white px-2 py-1">
+      <svg
+        className="h-16 w-full overflow-visible"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Trend line"
+        preserveAspectRatio="none"
+      >
+        <line
+          x1="0"
+          x2={width}
+          y1={height * 0.35}
+          y2={height * 0.35}
+          stroke="#D9E1E7"
+          strokeDasharray="4 7"
+          strokeWidth="1"
+        />
+        <line
+          x1="0"
+          x2={width}
+          y1={height * 0.72}
+          y2={height * 0.72}
+          stroke="#D9E1E7"
+          strokeDasharray="4 7"
+          strokeWidth="1"
+        />
+        <polyline
+          fill="none"
+          points={coordinates.join(" ")}
+          stroke={strokeForTone(tone)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+          vectorEffect="non-scaling-stroke"
+        />
+        <circle
+          cx={lastPoint[0]}
+          cy={lastPoint[1]}
+          r="4"
+          fill={strokeForTone(tone)}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -729,77 +1028,195 @@ function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
   const [topPriority, ...secondaryPriorities] = priorities;
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Practice plan"
-        description="The next actions ranked by trust gap, big misses, launch window, and strike quality."
-        action={<Brain className="size-5 text-emerald-600" />}
-      />
-      <CardContent>
-        {topPriority ? (
-          <div className="grid items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-            <PracticePriorityFeatureCard priority={topPriority} />
-            <div className="grid gap-3">
-              {secondaryPriorities.map((priority, index) => (
-                <PracticePriorityCompactCard
-                  key={priority.clubId}
-                  priority={priority}
-                  index={index + 2}
-                />
-              ))}
-            </div>
+    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+      {topPriority ? (
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
+          <PracticePriorityFeatureCard priority={topPriority} />
+          <div className="grid gap-3">
+            {secondaryPriorities.map((priority, index) => (
+              <PracticePriorityCompactCard
+                key={priority.clubId}
+                priority={priority}
+                index={index + 2}
+              />
+            ))}
           </div>
-        ) : (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-muted-foreground">
-            Import clean stock shots to unlock a ranked practice plan.
-          </div>
-        )}
-      </CardContent>
-    </DataPanel>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-muted-foreground">
+          Import clean stock shots to unlock a ranked practice plan.
+        </div>
+      )}
+    </section>
   );
 }
 
 function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority }) {
   return (
-    <Link
-      href={`/bag/${priority.clubId}/analytics`}
-      prefetch={false}
-      className="block rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 transition-colors hover:border-emerald-400"
-    >
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-xl border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <Badge variant="outline" className="bg-white">
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">
             Priority 1
           </Badge>
-          <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-normal">
+          <h2 className="mt-3 text-2xl font-bold leading-tight tracking-normal text-[#111827]">
             {priority.title}
           </h2>
         </div>
-        <StatusPill tone={priority.tone}>{priority.priorityLabel}</StatusPill>
-      </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <div className="rounded-md bg-white p-3 ring-1 ring-emerald-100">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Why
-          </p>
-          <p className="mt-1 text-sm leading-6">{practiceReasonCopy(priority)}</p>
-        </div>
-        <div className="rounded-md bg-white p-3 ring-1 ring-emerald-100">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Task
-          </p>
-          <p className="mt-1 text-sm leading-6">{priority.drill}</p>
-        </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <StatusPill tone="slate">Coach score {priority.score}</StatusPill>
-        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-          <Target className="size-4" />
-          {practiceCtaLabel(priority)}
+        <span
+          className={cn(
+            "rounded-full border px-3 py-1 text-sm font-semibold",
+            priorityLabelClass(priority.tone),
+          )}
+        >
+          {priority.priorityLabel}
         </span>
       </div>
-    </Link>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1fr)]">
+        <PracticeHeroArtwork />
+        <div className="grid gap-3">
+          <PracticeInfoBlock icon={HelpCircle} label="Why" text={practiceReasonCopy(priority)} />
+          <PracticeInfoBlock icon={ClipboardCheck} label="Task" text={priority.drill} />
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#111827]">
+          Coach score
+          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-semibold">
+            {priority.score}
+          </span>
+        </span>
+        <Button
+          asChild
+          className="h-10 rounded-lg bg-[#087A3D] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
+        >
+          <Link href={`/bag/${priority.clubId}/analytics`} prefetch={false}>
+            <Target className="size-4" />
+            {practiceCtaLabel(priority)}
+          </Link>
+        </Button>
+      </div>
+    </div>
   );
+}
+
+function PracticeHeroArtwork() {
+  return (
+    <div className="relative min-h-48 overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50">
+      <Image
+        src="/assets/generated/progress-practice-green.png"
+        alt=""
+        fill
+        sizes="(min-width: 1280px) 320px, 90vw"
+        className="scale-[1.03] object-cover"
+        priority={false}
+      />
+      <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/5 via-transparent to-white/5" />
+    </div>
+  );
+}
+
+function PracticeInfoBlock({
+  icon: Icon,
+  label,
+  text,
+}: {
+  icon: LucideIcon;
+  label: string;
+  text: string;
+}) {
+  return (
+    <div className="grid min-h-24 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-[#DFE7DF] bg-white p-4">
+      <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-bold uppercase tracking-[0.12em] text-emerald-800">{label}</p>
+        <p className="mt-2 text-sm font-medium leading-6 text-[#111827]">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function priorityLabelClass(tone: Tone) {
+  if (tone === "amber") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  if (tone === "sky") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  return "border-emerald-200 bg-emerald-50 text-emerald-800";
+}
+
+function PracticePriorityThumb({ priority, index }: { priority: PracticePriority; index: number }) {
+  const variant = index === 2 ? "course" : index === 3 ? "target" : "club";
+  const isStrikeImage = priority.title.toLowerCase().includes("strike");
+
+  return (
+    <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
+      {variant === "course" ? (
+        <>
+          <Image
+            src="/assets/generated/progress-practice-green.png"
+            alt=""
+            fill
+            sizes="80px"
+            className="object-cover"
+          />
+          <span className="absolute inset-0 bg-emerald-950/5" />
+        </>
+      ) : null}
+      {variant === "target" ? <TargetGridArtwork /> : null}
+      {variant === "club" ? (
+        <Image
+          src={
+            isStrikeImage
+              ? "/assets/generated/progress-9i-face-strike.png"
+              : practiceClubImagePath(priority.clubType)
+          }
+          alt=""
+          fill
+          sizes="80px"
+          className={cn(isStrikeImage ? "object-cover" : "object-contain p-1")}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+function TargetGridArtwork() {
+  return (
+    <svg viewBox="0 0 80 80" className="size-full" aria-hidden="true">
+      <rect width="80" height="80" fill="#F8F3E9" />
+      <path d="M40 0v80M0 40h80" stroke="#64748B" strokeDasharray="3 4" strokeWidth="1" />
+      <path d="M20 0v80M60 0v80M0 20h80M0 60h80" stroke="#D6D3CA" strokeWidth="1" />
+      <circle cx="40" cy="40" r="4" fill="#087A3D" />
+      <circle cx="26" cy="42" r="3" fill="#8ACB75" />
+      <circle cx="54" cy="28" r="3" fill="#8ACB75" />
+      <circle cx="57" cy="50" r="3" fill="#8ACB75" />
+      <circle cx="34" cy="26" r="3" fill="#8ACB75" />
+    </svg>
+  );
+}
+
+function practiceClubImagePath(clubType: string) {
+  const normalized = clubType.toLowerCase();
+  const known = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
+  const aliases: Record<string, string> = {
+    "3w": "5w",
+    "7w": "5w",
+    "3h": "5i",
+    "4h": "5i",
+    "4i": "5i",
+    gw: "pw",
+    aw: "pw",
+    lw: "sw",
+  };
+  const assetType = known.has(normalized) ? normalized : (aliases[normalized] ?? "7i");
+
+  return `/assets/clubs/panel/${assetType}-side.png`;
 }
 
 function PracticePriorityCompactCard({
@@ -813,22 +1230,32 @@ function PracticePriorityCompactCard({
     <Link
       href={`/bag/${priority.clubId}/analytics`}
       prefetch={false}
-      className="block rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-300"
+      className="grid min-h-36 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-emerald-300"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Badge variant="outline">Priority {index}</Badge>
-          <h2 className="mt-2 text-base font-semibold leading-6 tracking-normal">
-            {priority.title}
-          </h2>
+      <PracticePriorityThumb priority={priority} index={index} />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <Badge variant="outline" className="bg-white">
+            Priority {index}
+          </Badge>
+          <span
+            className={cn(
+              "rounded-full border px-3 py-1 text-sm font-semibold",
+              priorityLabelClass(priority.tone),
+            )}
+          >
+            {priority.priorityLabel}
+          </span>
         </div>
-        <StatusPill tone={priority.tone}>{priority.priorityLabel}</StatusPill>
+        <h2 className="mt-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">
+          {priority.title}
+        </h2>
+        <p className="mt-2 text-sm leading-5 text-[#667085]">{practiceReasonCopy(priority)}</p>
+        <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
+          <Target className="size-4" />
+          Open
+        </p>
       </div>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{practiceReasonCopy(priority)}</p>
-      <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-        <Target className="size-4" />
-        Open
-      </p>
     </Link>
   );
 }
@@ -843,13 +1270,25 @@ function CoachReadoutPanel({
   gaps: DataGap[];
 }) {
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Coach readout"
-        description="A plain-English readout of what is improving, what needs attention and what to practise next."
-        action={<CheckCircle2 className="size-5 text-emerald-600" />}
-      />
-      <CardContent className="grid gap-4">
+    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+            <MessageSquare className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+              Coach readout
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-[#667085]">
+              A plain-English readout of what is improving, what needs attention and what to
+              practise next.
+            </p>
+          </div>
+        </div>
+        <CheckCircle2 className="mt-1 size-5 shrink-0 text-emerald-600" />
+      </div>
+      <div className="mt-5 grid gap-4">
         {signal ? (
           <BestSignalBanner signal={signal} />
         ) : (
@@ -871,13 +1310,16 @@ function CoachReadoutPanel({
                   ? gaps.slice(0, 2).map((gap) => <DataGapRichCard key={gap.clubId} gap={gap} />)
                   : group.items.map((item, index) => {
                       const content = (
-                        <div className="rounded-md border border-slate-200 bg-white p-3">
-                          <p className="text-sm font-medium leading-5">{item.label}</p>
-                          {item.detail ? (
-                            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                              {item.detail}
-                            </p>
-                          ) : null}
+                        <div className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+                          <span className="min-w-0">
+                            <p className="text-sm font-medium leading-5">{item.label}</p>
+                            {item.detail ? (
+                              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                                {item.detail}
+                              </p>
+                            ) : null}
+                          </span>
+                          <CoachItemIcon tone={group.tone} />
                         </div>
                       );
 
@@ -898,9 +1340,21 @@ function CoachReadoutPanel({
             </div>
           ))}
         </div>
-      </CardContent>
-    </DataPanel>
+      </div>
+    </section>
   );
+}
+
+function CoachItemIcon({ tone }: { tone: Tone }) {
+  if (tone === "green") {
+    return <CheckCircle2 className="size-5 text-emerald-600" />;
+  }
+
+  if (tone === "amber" || tone === "pink") {
+    return <AlertTriangle className="size-5 text-amber-600" />;
+  }
+
+  return <Gauge className="size-5 text-slate-500" />;
 }
 
 function DataGapRichCard({ gap }: { gap: DataGap }) {
@@ -908,33 +1362,58 @@ function DataGapRichCard({ gap }: { gap: DataGap }) {
     <Link
       href={`/bag/${gap.clubId}/analytics`}
       prefetch={false}
-      className="block rounded-md border border-slate-200 bg-white p-3 hover:border-emerald-300"
+      className="block rounded-lg border border-slate-200 bg-white p-3 hover:border-emerald-300"
     >
       <p className="text-sm font-medium leading-5">
         {formatClubType(gap.clubType)} needs more clean stock shots
       </p>
-      <div className="mt-3 grid gap-2 text-sm">
-        <DataPair label="Baseline" value={`${gap.cleanShots} clean baseline shots`} />
-        <DataPair label="Target" value="10 full stock shots" />
-        <DataPair label="Next action" value={`Build ${formatClubType(gap.clubType)} baseline`} />
+      <div className="mt-3 overflow-hidden rounded-lg border border-slate-100 text-sm">
+        <CoachDataRow label="Baseline" value={`${gap.cleanShots} clean baseline shots`} />
+        <CoachDataRow label="Target" value="10 full stock shots" />
+        <CoachDataRow
+          label="Next action"
+          value={`Build ${formatClubType(gap.clubType)} baseline`}
+          highlight
+        />
       </div>
     </Link>
   );
 }
 
+function CoachDataRow({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">
+      <span className="text-[#667085]">{label}</span>
+      <span className={cn("font-semibold text-[#111827]", highlight ? "text-emerald-700" : "")}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function BestSignalBanner({ signal }: { signal: BestSignal }) {
   const content = (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 transition-colors hover:border-emerald-400">
-      <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
-        <Zap className="size-4" />
-        Best signal
+    <div className="grid min-h-28 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-lg border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-4 transition-colors hover:border-emerald-400">
+      <span className="grid size-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+        <Zap className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-emerald-800">Best signal</p>
+        <p className="mt-2 text-lg font-bold leading-7 text-[#111827]">{signal.value}</p>
+        <p className="mt-2 text-sm leading-6 text-[#111827]">
+          <span className="font-semibold">Why it matters: </span>
+          {signal.why}
+        </p>
+        <p className="mt-1 text-sm leading-5 text-[#667085]">{signal.detail}</p>
       </div>
-      <p className="mt-2 text-lg font-semibold leading-7">{signal.value}</p>
-      <p className="mt-1 text-sm leading-6 text-emerald-950/80">
-        <span className="font-semibold">Why it matters: </span>
-        {signal.why}
-      </p>
-      <p className="mt-1 text-sm leading-5 text-muted-foreground">{signal.detail}</p>
     </div>
   );
 
@@ -1376,12 +1855,48 @@ function roundForSvg(value: number) {
   return Math.round(value * 10) / 10;
 }
 
-const toneClasses: Record<Tone, string> = {
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  sky: "bg-sky-50 text-sky-700 ring-sky-200",
-  pink: "bg-pink-50 text-pink-700 ring-pink-200",
-  amber: "bg-amber-50 text-amber-800 ring-amber-200",
-  slate: "bg-slate-50 text-slate-700 ring-slate-200",
+const progressIconToneStyles: Record<Tone, string> = {
+  green: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  sky: "border-sky-200 bg-sky-50 text-sky-700",
+  pink: "border-rose-200 bg-rose-50 text-rose-700",
+  amber: "border-amber-200 bg-amber-50 text-amber-800",
+  slate: "border-slate-200 bg-slate-50 text-slate-700",
+};
+
+const progressSignalToneStyles: Record<
+  Tone,
+  { card: string; icon: string; label: string; emphasis: string }
+> = {
+  green: {
+    card: "border-emerald-200 bg-[linear-gradient(135deg,#f8fcf9_0%,#ffffff_100%)]",
+    icon: "bg-emerald-50 text-emerald-700",
+    label: "text-emerald-800",
+    emphasis: "text-[#087A3D]",
+  },
+  sky: {
+    card: "border-sky-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)]",
+    icon: "bg-sky-50 text-sky-700",
+    label: "text-sky-800",
+    emphasis: "text-[#2563EB]",
+  },
+  pink: {
+    card: "border-rose-200 bg-[linear-gradient(135deg,#fff6f5_0%,#ffffff_100%)]",
+    icon: "bg-rose-50 text-rose-700",
+    label: "text-rose-800",
+    emphasis: "text-[#D92D20]",
+  },
+  amber: {
+    card: "border-amber-200 bg-[linear-gradient(135deg,#fffbf4_0%,#ffffff_100%)]",
+    icon: "bg-amber-50 text-amber-800",
+    label: "text-amber-800",
+    emphasis: "text-[#C25500]",
+  },
+  slate: {
+    card: "border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_100%)]",
+    icon: "bg-slate-100 text-slate-600",
+    label: "text-slate-700",
+    emphasis: "text-[#475467]",
+  },
 };
 
 const compactToneClasses: Record<Tone, string> = {

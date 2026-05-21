@@ -23,6 +23,7 @@ export type PageArtworkVariant =
   | "providerTrackman"
   | "tourCover"
   | "progress"
+  | "strokesGained"
   | "rounds"
   | "stockYardages";
 
@@ -50,6 +51,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   providerTrackman: "/assets/provider-trackman-radar.webp",
   tourCover: "/assets/tour-covers/tour-cover-01.webp",
   progress: "/assets/page-progress.png",
+  strokesGained: "/assets/generated/strokes-gained-hole-tracers.png",
   rounds: "/assets/page-rounds.png",
   stockYardages: "/assets/page-stock-yardages.png",
 };
@@ -89,6 +91,7 @@ const overlayByVariant: Record<PageArtworkVariant, string> = {
   providerTrackman: "from-white/74 via-orange-50/20 to-emerald-50/18",
   tourCover: "from-black/8 via-transparent to-black/30",
   progress: "from-white/70 via-emerald-50/25 to-sky-50/25",
+  strokesGained: "from-white/55 via-sky-50/15 to-emerald-950/10",
   rounds: "from-white/60 via-white/20 to-sky-50/20",
   stockYardages: "from-white/70 via-white/35 to-emerald-50/25",
 };

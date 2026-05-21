@@ -9,11 +9,13 @@ import {
   CheckCircle2,
   Crosshair,
   Database,
+  Eye,
   Flag,
   GitCompareArrows,
   LineChart,
   MapPinned,
   Radio,
+  Star,
   Target,
   Trophy,
   Upload,
@@ -1694,52 +1696,71 @@ function PracticeRecommendationCard({
     <section
       id="practice"
       className={cn(
-        "scroll-mt-28 rounded-[22px] border border-[#CFE7D6] bg-white p-5 shadow-[0_12px_30px_rgba(8,122,61,0.08)] sm:p-6",
+        "scroll-mt-28 rounded-[22px] border border-[#DCE7DE] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] lg:p-6",
         className,
       )}
     >
       {coachPreview ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px] xl:items-start">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[15px] font-semibold leading-6 text-[#111827]">Next practice</p>
-              <StatusPill tone={normalizeDashboardTone(coachPreview.tone)}>
-                {coachPreview.trustIndex}% trust
-              </StatusPill>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="grid size-11 place-items-center rounded-xl bg-[#E8F7EE] text-[#087A3D] shadow-[inset_0_0_0_1px_rgba(8,122,61,0.06)]">
+                <Target className="size-6" strokeWidth={2.4} />
+              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-[15px] font-bold leading-6 tracking-normal text-[#111827]">
+                  Next practice
+                </p>
+                <span className="rounded-full border border-[#F8D9A4] bg-[#FFF8ED] px-3 py-1 text-sm font-semibold leading-5 text-[#A94B00]">
+                  {coachPreview.trustIndex}% trust
+                </span>
+              </div>
             </div>
-            <h2 className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
+            <h2 className="mt-5 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
               {coachPreview.clubName} delivery window
             </h2>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <StatusPill tone={normalizeDashboardTone(coachPreview.tone)}>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#F8D9A4] bg-[#FFF8ED] px-3 py-1.5 text-sm font-semibold leading-5 text-[#B45309]">
+                <Crosshair className="size-3.5" />
                 {coachPreview.issueLabel}
-              </StatusPill>
+              </span>
               <span className="text-sm leading-6 text-[#667085]">
                 Goal: path inside +/-5 degrees with a predictable start line.
               </span>
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#111827]">{coachPreview.reason}</p>
+            <PracticeReasonText reason={coachPreview.reason} />
             <TargetLaneVisual coachPreview={coachPreview} />
           </div>
 
-          <div className="self-start rounded-2xl border border-[#EDF1ED] bg-[#F8FAF8] p-4">
-            <div className="flex items-center gap-2 text-[#8A4B00]">
-              <Crosshair className="size-5" />
-              <p className="text-sm font-semibold">Practice task</p>
+          <aside className="rounded-2xl border border-[#DFE7DF] bg-[#FBFDFB] p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+                <Crosshair className="size-5" strokeWidth={2.3} />
+              </span>
+              <p className="text-sm font-bold leading-5 tracking-normal text-[#087A3D]">
+                Practice task
+              </p>
             </div>
-            <p className="mt-2 text-sm leading-6 text-[#111827]">{taskCopy}</p>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <Button asChild className="h-9 rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]">
+            <div className="mt-5 space-y-3 text-sm leading-6 text-[#111827]">
+              {practiceTaskParagraphs(taskCopy).map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+            <div className="mt-6 grid gap-3">
+              <Button
+                asChild
+                className="h-11 rounded-lg bg-[#087A3D] px-4 text-sm font-bold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
+              >
                 <Link href={href} prefetch={false}>
                   Open drill
                   <ArrowRight className="size-4" />
                 </Link>
               </Button>
-              <span className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm font-semibold text-[#667085]">
+              <span className="grid h-11 place-items-center rounded-lg border border-[#D9E1D9] bg-white text-sm font-bold text-[#667085] shadow-sm">
                 0 / 10 balls
               </span>
             </div>
-          </div>
+          </aside>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -1761,6 +1782,28 @@ function PracticeRecommendationCard({
       )}
     </section>
   );
+}
+
+function PracticeReasonText({ reason }: { reason: string }) {
+  const match = reason.match(/^(\d+(?:\.\d+)?%)(.*)$/);
+
+  if (!match) {
+    return <p className="mt-5 max-w-3xl text-base leading-7 text-[#111827]">{reason}</p>;
+  }
+
+  return (
+    <p className="mt-5 max-w-3xl text-base leading-7 text-[#111827]">
+      <span className="font-bold text-[#087A3D]">{match[1]}</span>
+      {match[2]}
+    </p>
+  );
+}
+
+function practiceTaskParagraphs(taskCopy: string) {
+  return taskCopy
+    .split(/(?<=\.)\s+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
 }
 
 type PracticeMissSide = "left" | "right" | "neutral";
@@ -1787,35 +1830,35 @@ function TargetLaneVisual({
         : "border-[#087A3D] bg-[#087A3D]";
 
   return (
-    <div className="mt-5 rounded-2xl border border-[#DFE7DF] bg-[#F8FAF8] p-4">
-      <div className="mb-3 grid grid-cols-[22%_50%_28%] text-xs font-semibold uppercase tracking-[0.12em] text-[#667085]">
+    <div className="mt-8 rounded-2xl border border-[#DFE7DF] bg-white/80 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]">
+      <div className="mb-3 grid grid-cols-[24%_50%_26%] px-1 text-sm font-bold uppercase tracking-[0.12em] text-[#667085]">
         <span>Left miss</span>
         <span className="text-center">Playable window</span>
         <span className="text-right">Right miss</span>
       </div>
-      <div className="relative h-24 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
-        <div className="absolute inset-y-0 left-0 w-[22%] bg-[#FFF4DB]" />
-        <div className="absolute inset-y-0 left-[22%] w-[50%] bg-[#E8F7EE]" />
-        <div className="absolute inset-y-0 right-0 w-[28%] bg-[#EAF1FF]" />
-        <div className="absolute left-[22%] top-0 h-full border-l border-dashed border-[#8A4B00]" />
-        <div className="absolute left-[72%] top-0 h-full border-l border-dashed border-[#2563EB]" />
-        <div className="absolute left-1/2 top-0 h-full border-l-2 border-[#087A3D]" />
-        <span className="absolute left-1/2 top-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#087A3D] shadow-sm">
+      <div className="relative h-32 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
+        <div className="absolute inset-y-0 left-0 w-[24%] bg-[linear-gradient(135deg,#FFF2D8_0%,#FFF8E8_100%)]" />
+        <div className="absolute inset-y-0 left-[24%] w-[50%] bg-[linear-gradient(135deg,#E7F6EF_0%,#F3FBF7_100%)]" />
+        <div className="absolute inset-y-0 right-0 w-[26%] bg-[linear-gradient(135deg,#EAF1FF_0%,#F4F7FF_100%)]" />
+        <div className="absolute left-[24%] top-0 h-full border-l-2 border-dashed border-[#EA6A00]" />
+        <div className="absolute left-[74%] top-0 h-full border-l-2 border-dashed border-[#2563EB]" />
+        <div className="absolute left-1/2 top-0 h-full border-l-[3px] border-[#087A3D]" />
+        <span className="absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[#087A3D] shadow-[0_8px_18px_rgba(15,23,42,0.1)]">
           Target
         </span>
         <div
           className={cn(
-            "absolute bottom-4 flex -translate-x-1/2 flex-col items-center",
+            "absolute bottom-5 flex -translate-x-1/2 flex-col items-center",
             markerPosition,
           )}
         >
-          <span className="whitespace-nowrap rounded-full border border-[#DFE7DF] bg-white px-2 py-1 text-[11px] font-semibold text-[#111827] shadow-sm">
+          <span className="whitespace-nowrap rounded-full border border-[#DFE7DF] bg-white px-3 py-1.5 text-xs font-semibold text-[#111827] shadow-[0_8px_18px_rgba(15,23,42,0.1)]">
             {markerLabel}
           </span>
-          <span className={cn("h-3 w-px", markerTone)} />
+          <span className={cn("h-5 w-px", markerTone)} />
           <span
             className={cn(
-              "size-3 rounded-full border-2 border-white shadow-[0_0_0_5px_rgba(17,24,39,0.10)]",
+              "size-4 rounded-full border-[3px] border-white shadow-[0_0_0_7px_rgba(17,24,39,0.10)]",
               markerTone,
             )}
           />
@@ -1851,12 +1894,31 @@ function PerformanceSnapshot({
   className?: string;
 }) {
   return (
-    <DashboardPanel
-      title="Performance snapshot"
-      description="What the headline numbers mean and where to act on them."
-      className={className}
+    <section
+      className={cn(
+        "scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]",
+        className,
+      )}
     >
-      <div className={cn("grid gap-3", paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4")}>
+      <div className="flex items-start gap-4 px-5 py-5">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+          <BarChart3 className="size-6" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+            Performance snapshot
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[#667085]">
+            What the headline numbers mean and where to act on them.
+          </p>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "grid gap-4 px-5 pb-5",
+          paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4",
+        )}
+      >
         {metrics.map((metric) => {
           const Icon = metric.icon;
 
@@ -1866,8 +1928,8 @@ function PerformanceSnapshot({
               href={metric.href}
               prefetch={false}
               className={cn(
-                "group min-w-0 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
-                paired ? "min-h-[148px]" : "min-h-[178px]",
+                "group flex min-w-0 flex-col rounded-2xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
+                paired ? "min-h-[190px]" : "min-h-[220px]",
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -1884,7 +1946,7 @@ function PerformanceSnapshot({
                 </div>
                 <span
                   className={cn(
-                    "grid size-9 shrink-0 place-items-center rounded-lg",
+                    "grid size-10 shrink-0 place-items-center rounded-xl",
                     toneSoftClass(metric.tone),
                   )}
                 >
@@ -1894,10 +1956,10 @@ function PerformanceSnapshot({
               <p className={cn("mt-2 text-sm text-[#667085]", paired ? "leading-5" : "leading-6")}>
                 {metric.detail}
               </p>
-              <div className="mt-4 line-clamp-2 rounded-lg border border-[#EDF1ED] bg-[#F8FAF8] px-3 py-2 text-sm leading-5 text-[#111827]">
+              <div className="mt-4 line-clamp-3 rounded-xl border border-[#EDF1ED] bg-[#F8FAF8] px-3 py-3 text-sm leading-5 text-[#111827]">
                 {metric.insight ?? metric.detail}
               </div>
-              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
+              <span className="mt-auto inline-flex items-center gap-2 pt-4 text-sm font-semibold text-[#087A3D]">
                 {metric.actionLabel ?? "Open"}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>
@@ -1905,7 +1967,7 @@ function PerformanceSnapshot({
           );
         })}
       </div>
-    </DashboardPanel>
+    </section>
   );
 }
 
@@ -2084,26 +2146,48 @@ function LatestRoundPanel({
   const holeHighlights = latestRound ? getRoundHoleHighlights(latestRound) : null;
 
   return (
-    <DashboardPanel
-      title="Latest round"
-      description="Newest scorecard or simulated-course round."
-      className={className}
-      action={<Flag className="size-5 text-[#2563EB]" />}
+    <section
+      className={cn(
+        "scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]",
+        className,
+      )}
     >
+      <div className="flex items-start justify-between gap-4 border-b border-[#EDF1ED] px-5 py-5">
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+            <Flag className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+              Latest round
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-[#667085]">
+              Newest scorecard or simulated-course round.
+            </p>
+          </div>
+        </div>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#DFE7DF] bg-white text-[#2563EB]">
+          <Flag className="size-5" />
+        </span>
+      </div>
       {latestRound ? (
-        <div>
-          <p className="text-[15px] font-semibold leading-6 text-[#111827]">
-            {formatDate(latestRound.date)} · {formatSessionType(latestRound.type)}
-          </p>
-          <h3 className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+        <div className="px-5 py-5">
+          <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold leading-6 text-[#111827]">
+            <CalendarDays className="size-4 text-[#111827]" />
+            <span>{formatDate(latestRound.date)}</span>
+            <span className="text-[#667085]">·</span>
+            <span className="rounded-full bg-[#E8F7EE] px-2.5 py-1 text-sm font-semibold leading-5 text-[#087A3D]">
+              {formatSessionType(latestRound.type)}
+            </span>
+          </div>
+          <h3 className="mt-3 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">
             {latestRound.courseName ?? latestRound.fileName ?? "Untitled round"}
           </h3>
-          <p className="mt-3 text-[32px] font-bold leading-9 tracking-normal text-[#111827]">
-            {formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)}
-          </p>
+          <RoundScoreDisplay score={latestRound.totalScore} par={latestRound.totalPar} />
           <HoleResultStrip latestRound={latestRound} />
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-3">
             <RoundSignalPill
+              icon={Flag}
               label="Putts"
               value={
                 typeof latestRound.totalPutts === "number"
@@ -2112,28 +2196,23 @@ function LatestRoundPanel({
               }
             />
             <RoundSignalPill
+              icon={BarChart3}
               label="Differential"
               value={formatHandicapValue(latestRound.handicapDifferential)}
             />
           </div>
           {holeHighlights ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <p className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm text-[#667085]">
-                <span className="font-semibold text-[#111827]">Best hole:</span>{" "}
-                {holeHighlights.best}
-              </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <RoundInsightTile icon={Star} label="Best hole" value={holeHighlights.best} />
               {holeHighlights.watch ? (
-                <p className="rounded-lg border border-[#DFE7DF] bg-white px-3 py-2 text-sm text-[#667085]">
-                  <span className="font-semibold text-[#111827]">Watch:</span>{" "}
-                  {holeHighlights.watch}
-                </p>
+                <RoundInsightTile icon={Eye} label="Watch" value={holeHighlights.watch} />
               ) : null}
             </div>
           ) : null}
           <div className="mt-5">
             <Button
               asChild
-              className="w-full rounded-lg bg-[#087A3D] text-white hover:bg-[#065F32]"
+              className="h-11 w-full rounded-lg bg-[#087A3D] text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
             >
               <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
                 <Flag className="size-4" />
@@ -2143,7 +2222,7 @@ function LatestRoundPanel({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
           <p className="max-w-md text-sm leading-6 text-[#667085]">
             Save a round CSV to unlock scorecards, hole review, and round shot maps.
           </p>
@@ -2155,16 +2234,74 @@ function LatestRoundPanel({
           </Button>
         </div>
       )}
-    </DashboardPanel>
+    </section>
   );
 }
 
-function RoundSignalPill({ label, value }: { label: string; value: ReactNode }) {
+function RoundScoreDisplay({ score, par }: { score: number | null; par: number | null }) {
+  if (typeof score !== "number") {
+    return (
+      <p className="mt-4 text-[36px] font-bold leading-10 tracking-normal text-[#111827]">--</p>
+    );
+  }
+
+  if (typeof par !== "number") {
+    return (
+      <p className="mt-4 text-[36px] font-bold leading-10 tracking-normal text-[#111827]">
+        {integerFormatter.format(score)}
+      </p>
+    );
+  }
+
+  const versusPar = score - par;
+
   return (
-    <span className="inline-flex items-center gap-2 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2 text-sm">
-      <span className="font-medium text-[#667085]">{label}</span>
-      <span className="font-semibold text-[#111827]">{value}</span>
+    <p className="mt-4 text-[36px] font-bold leading-10 tracking-normal text-[#111827]">
+      {integerFormatter.format(score)}{" "}
+      <span className="text-2xl text-[#0B57D0]">
+        ({versusPar >= 0 ? "+" : ""}
+        {integerFormatter.format(versusPar)})
+      </span>
+    </p>
+  );
+}
+
+function RoundSignalPill({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <span className="inline-flex min-h-14 items-center gap-3 rounded-xl border border-[#DFE7DF] bg-white px-4 py-2 text-sm shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <Icon className="size-5 text-[#087A3D]" />
+      <span>
+        <span className="block font-medium leading-5 text-[#667085]">{label}</span>
+        <span className="block text-xl font-semibold leading-6 text-[#111827]">{value}</span>
+      </span>
     </span>
+  );
+}
+
+function RoundInsightTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <p className="flex min-h-12 items-center gap-3 rounded-xl border border-[#DFE7DF] bg-white px-4 py-3 text-sm text-[#667085]">
+      <Icon className="size-5 shrink-0 text-[#087A3D]" />
+      <span>
+        <span className="font-semibold text-[#111827]">{label}:</span> {value}
+      </span>
+    </p>
   );
 }
 

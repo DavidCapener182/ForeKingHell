@@ -10,6 +10,7 @@ type ClubImageInput = {
 };
 
 const knownClubArt = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
+const CLUB_IMAGE_ROUTE_VERSION = "3";
 
 const clubArtAliases: Record<string, string> = {
   "3w": "5w",
@@ -90,6 +91,7 @@ export function clubImageRoutePath({
   addSearchParam(params, "brand", brand);
   addSearchParam(params, "model", model);
   params.set("fallback", fallback);
+  params.set("v", CLUB_IMAGE_ROUTE_VERSION);
 
   return `/api/club-images?${params.toString()}`;
 }
@@ -180,7 +182,34 @@ function formatSearchClubType(value: string | null | undefined) {
     return null;
   }
 
-  return formatClubType(normalized).toLowerCase();
+  if (normalized === "driver") {
+    return "driver";
+  }
+
+  const wood = normalized.match(/^([1-9])w$/);
+  if (wood) {
+    return `${wood[1]} wood`;
+  }
+
+  const hybrid = normalized.match(/^([1-9])h$/);
+  if (hybrid) {
+    return `${hybrid[1]} hybrid`;
+  }
+
+  const iron = normalized.match(/^([1-9])i$/);
+  if (iron) {
+    return `${iron[1]} iron`;
+  }
+
+  const wedges: Record<string, string> = {
+    pw: "pitching wedge",
+    gw: "gap wedge",
+    aw: "approach wedge",
+    sw: "sand wedge",
+    lw: "lob wedge",
+  };
+
+  return wedges[normalized] ?? formatClubType(normalized).toLowerCase();
 }
 
 function addSearchParam(params: URLSearchParams, key: string, value: string | null | undefined) {

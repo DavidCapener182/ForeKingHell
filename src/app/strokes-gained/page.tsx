@@ -1,16 +1,25 @@
 import Link from "next/link";
+import Image from "next/image";
 import { desc, eq } from "drizzle-orm";
 import {
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   BarChart3,
   Brain,
   ChevronDown,
+  CheckCircle2,
+  Clock3,
+  Equal,
   Flag,
   ListFilter,
+  Sigma,
+  Sprout,
   Target,
   TrendingDown,
   TrendingUp,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 
 import {
@@ -27,6 +36,7 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -173,6 +183,16 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
         title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
         description={heroDescription(analysis, activeCategory)}
         metrics={heroMetrics(analysis, data.events.length, activeCategory)}
+        visualSize="wide"
+        visual={
+          <PageArtwork
+            variant="strokesGained"
+            alt=""
+            className="h-full min-h-44 w-full aspect-auto"
+            imageClassName="scale-[1.05] object-[52%_62%] opacity-90 saturate-[1.04]"
+            priority
+          />
+        }
       />
 
       <MobileBentoSummary items={mobileHeroMetrics(analysis, data.events.length, activeCategory)} />
@@ -587,31 +607,58 @@ function CategoryBreakdown({
 
   return (
     <DataPanel>
-      <SectionHeader
-        title="Category breakdown"
-        description="Where the mapped shot events are gaining and losing value against the expected-strokes baseline."
-        action={<BarChart3 className="size-5 text-emerald-700" />}
-      />
-      <CardContent className="grid gap-4">
-        <div className="flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+      <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
+            <BarChart3 className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
+              Category breakdown
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[#667085]">
+              Where the mapped shot events are gaining and losing value against the expected-strokes
+              baseline.
+            </p>
+          </div>
+        </div>
+        <span className="hidden size-11 shrink-0 place-items-center rounded-lg border border-emerald-100 bg-white text-emerald-700 sm:grid">
+          <BarChart3 className="size-5" />
+        </span>
+      </div>
+      <CardContent className="grid gap-4 p-5">
+        <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">
           <span>← Losing strokes</span>
-          <span className="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-700">
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[#475467] shadow-sm">
             0 baseline
           </span>
           <span>Gaining strokes →</span>
         </div>
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           {categories.map((category) => (
             <CategoryBarRow key={category.category} category={category} maxAbsTotal={maxAbsTotal} />
           ))}
         </div>
-        <div className="grid gap-2 border-t border-slate-200 pt-3 text-sm text-muted-foreground sm:grid-cols-3">
-          <DataPair
+        <div className="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
+          <CategorySummaryTile
+            icon={CheckCircle2}
+            tone="green"
             label="Calculated"
             value={`${integerFormatter.format(categories.reduce((sum, category) => sum + category.sampleSize, 0))}`}
           />
-          <DataPair label="Pending / unmapped" value={integerFormatter.format(pendingCount)} />
-          <DataPair label="Total category SG" value={categorySumLabel} />
+          <CategorySummaryTile
+            icon={Clock3}
+            tone="amber"
+            label="Pending / unmapped"
+            value={integerFormatter.format(pendingCount)}
+          />
+          <CategorySummaryTile
+            icon={Sigma}
+            tone="green"
+            label="Total category SG"
+            value={categorySumLabel}
+            valueClassName={sgTextClassName(total)}
+          />
         </div>
       </CardContent>
     </DataPanel>
@@ -628,37 +675,99 @@ function CategoryBarRow({
   const total = category.total;
   const width =
     total === null ? 0 : Math.max(4, Math.min(100, (Math.abs(total) / maxAbsTotal) * 100));
+  const visual = categoryVisual(category.category);
 
   return (
-    <div className="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)_5rem] sm:items-center">
+    <div className="grid gap-3 sm:grid-cols-[3.25rem_12rem_minmax(0,1fr)_5rem] sm:items-center">
+      <span
+        className={cn(
+          "grid size-11 place-items-center rounded-lg border",
+          visual.iconTileClassName,
+        )}
+      >
+        <Target className="size-5" />
+      </span>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-slate-950">{category.label}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="truncate text-base font-bold leading-6 text-[#111827]">{category.label}</p>
+        <p className="text-sm leading-5 text-[#667085]">
           {category.sampleSize > 0
             ? `${integerFormatter.format(category.sampleSize)} calculated · ${integerFormatter.format(category.pendingCount)} pending`
             : "No calculated events"}
         </p>
         {hasHighPendingCount(category) ? (
-          <p className="text-xs font-medium text-amber-800">High pending count</p>
+          <p className="text-sm font-semibold leading-5 text-amber-800">High pending count</p>
         ) : null}
       </div>
-      <div className="grid h-8 grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
-        <div className="flex items-center justify-end border-r-2 border-slate-500">
+      <div className="grid h-9 grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50 shadow-inner">
+        <div className="flex items-center justify-end border-r-2 border-[#667085]">
           {total !== null && total < 0 ? (
-            <span className="h-full rounded-l-md bg-[#B42318]" style={{ width: `${width}%` }} />
+            <span
+              className="h-full rounded-l-md bg-[linear-gradient(90deg,#E5483F,#B42318)]"
+              style={{ width: `${width}%` }}
+            />
           ) : null}
         </div>
         <div className="flex items-center justify-start">
           {total !== null && total >= 0 ? (
-            <span className="h-full rounded-r-md bg-[#087A3D]" style={{ width: `${width}%` }} />
+            <span
+              className="h-full rounded-r-md bg-[linear-gradient(90deg,#087A3D,#0B8F4A)]"
+              style={{ width: `${width}%` }}
+            />
           ) : null}
         </div>
       </div>
-      <p className={cn("text-right text-sm font-semibold tabular-nums", sgTextClassName(total))}>
+      <p className={cn("text-right text-base font-bold tabular-nums", sgTextClassName(total))}>
         {formatSg(total, "No data")}
       </p>
     </div>
   );
+}
+
+function CategorySummaryTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  valueClassName,
+}: {
+  icon: LucideIcon;
+  tone: "green" | "amber" | "slate";
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  const toneClassName =
+    tone === "green"
+      ? "bg-emerald-50 text-emerald-700"
+      : tone === "amber"
+        ? "bg-amber-50 text-amber-700"
+        : "bg-slate-100 text-slate-600";
+
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <span className={cn("grid size-8 place-items-center rounded-full", toneClassName)}>
+        <Icon className="size-4" />
+      </span>
+      <p className="truncate text-sm font-medium text-[#344054]">{label}</p>
+      <p className={cn("text-lg font-bold tabular-nums text-[#111827]", valueClassName)}>{value}</p>
+    </div>
+  );
+}
+
+function categoryVisual(category: string) {
+  if (category === "tee") {
+    return { iconTileClassName: "border-red-100 bg-red-50 text-[#B42318]" };
+  }
+
+  if (category === "approach") {
+    return { iconTileClassName: "border-emerald-100 bg-emerald-50 text-emerald-700" };
+  }
+
+  if (category === "short_game") {
+    return { iconTileClassName: "border-amber-100 bg-amber-50 text-amber-700" };
+  }
+
+  return { iconTileClassName: "border-slate-200 bg-slate-100 text-slate-600" };
 }
 
 function MainScoringLeak({
@@ -687,118 +796,234 @@ function MainScoringLeak({
   const sectionDescription = focusCategory
     ? "The selected category translated into the next scoring decision."
     : "The weakest category translated into practice priority.";
+  const artwork = summary ? scoringLeakArtwork(summary.category) : null;
 
   return (
     <DataPanel>
-      <SectionHeader
-        title={sectionTitle}
-        description={sectionDescription}
-        action={
-          <AlertTriangle
+      <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <span
             className={cn(
-              "size-5",
-              hasLeak ? "text-[#B42318]" : hasGain ? "text-emerald-700" : "text-amber-700",
+              "grid size-12 shrink-0 place-items-center rounded-xl border",
+              hasLeak
+                ? "border-red-100 bg-red-50 text-[#B42318]"
+                : hasGain
+                  ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                  : "border-amber-100 bg-amber-50 text-amber-700",
             )}
-          />
-        }
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="soft-panel p-4">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Verdict
-          </p>
-          <p className="mt-2 text-xl font-semibold tracking-normal text-slate-950">
-            {summary && summary.sampleSize === 0
-              ? `${summary.label} cannot be judged yet.`
-              : hasLeak && summary
-                ? `${summary.label} shots are costing ${formatSg(summary.total)}.`
-                : hasGain && summary
-                  ? `${summary.label} is gaining ${formatSg(summary.total)} strokes.`
-                  : "No negative category has separated yet."}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {hasData && summary
-              ? `${integerFormatter.format(summary.eventCount)} ${summary.label.toLowerCase()} events were analysed. ${integerFormatter.format(lossCount)} calculated shots lost value and ${integerFormatter.format(gainCount)} gained value.`
-              : summary?.category === "putting"
-                ? "Add putt distances to mapped rounds before judging putting strokes gained."
-                : "Keep mapping complete rounds so the next scoring leak is based on enough calculated events."}
-          </p>
+          >
+            <AlertTriangle className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
+              {sectionTitle}
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-[#667085]">{sectionDescription}</p>
+          </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-md border border-slate-200 bg-white p-3">
-            <p className="text-sm font-semibold text-slate-950">Likely causes</p>
-            <div className="mt-2">
-              {summary && hasData ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <CauseStat
-                    value={summary.eventCount}
-                    label={`${summary.label.toLowerCase()} events`}
-                  />
-                  <CauseStat value={lossCount} label="losing shots" tone="pink" />
-                  <CauseStat value={gainCount} label="gaining shots" tone="green" />
-                  <CauseStat value={neutralCount} label="neutral shots" />
-                  {roughCount > 0 ? (
-                    <CauseStat value={roughCount} label="rough finishes" tone="amber" />
-                  ) : null}
-                  {penaltyCount > 0 ? (
-                    <CauseStat value={penaltyCount} label="penalties" tone="pink" />
-                  ) : null}
-                  {summary.pendingCount > 0 ? (
-                    <CauseStat value={summary.pendingCount} label="pending" tone="amber" />
-                  ) : null}
-                </div>
-              ) : summary?.category === "putting" ? (
-                <div className="grid gap-2 text-sm leading-5 text-muted-foreground">
-                  <p>No mapped putting events have calculated SG yet.</p>
-                  <p>Add first-putt and finish distances for each green.</p>
-                </div>
-              ) : (
-                <p className="text-sm leading-5 text-muted-foreground">
-                  Add mapped shot events to identify the category causing damage.
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="rounded-md border border-slate-200 bg-white p-3">
-            <p className="text-sm font-semibold text-slate-950">Recommended practice</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {practiceRecommendation(summary?.category)}
+        <span
+          className={cn(
+            "hidden size-11 shrink-0 place-items-center rounded-lg border sm:grid",
+            hasLeak
+              ? "border-red-100 bg-red-50 text-[#B42318]"
+              : hasGain
+                ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+                : "border-amber-100 bg-amber-50 text-amber-700",
+          )}
+        >
+          <AlertTriangle className="size-5" />
+        </span>
+      </div>
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.8fr)_minmax(320px,0.66fr)]">
+        <div className="overflow-hidden rounded-lg border border-red-100 bg-[linear-gradient(135deg,#FFF5F5_0%,#FFFFFF_58%,#FFF8F8_100%)]">
+          <div className="p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#B42318]">Verdict</p>
+            <p className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+              {summary && summary.sampleSize === 0
+                ? `${summary.label} cannot be judged yet.`
+                : hasLeak && summary
+                  ? `${summary.label} shots are costing `
+                  : hasGain && summary
+                    ? `${summary.label} is gaining `
+                    : "No negative category has separated yet."}
+              {hasLeak && summary ? (
+                <span className="text-[#B42318]">{formatSg(summary.total)}</span>
+              ) : null}
+              {hasGain && summary ? (
+                <span className="text-emerald-700">{formatSg(summary.total)} strokes</span>
+              ) : null}
+              {summary && (hasLeak || hasGain) ? "." : null}
             </p>
-            <Button asChild className="mt-3" size="sm">
-              <Link href="/coach#more-drills" prefetch={false}>
-                {summary?.category === "tee" ? "Start tee-shot drill" : "Create practice task"}
-              </Link>
-            </Button>
+            <p className="mt-3 text-sm leading-6 text-[#667085]">
+              {hasData && summary
+                ? `${integerFormatter.format(summary.eventCount)} ${summary.label.toLowerCase()} events were analysed. ${integerFormatter.format(lossCount)} calculated shots lost value and ${integerFormatter.format(gainCount)} gained value.`
+                : summary?.category === "putting"
+                  ? "Add putt distances to mapped rounds before judging putting strokes gained."
+                  : "Keep mapping complete rounds so the next scoring leak is based on enough calculated events."}
+            </p>
           </div>
+          {artwork ? (
+            <div className="relative h-40 overflow-hidden border-t border-red-100 bg-slate-100 sm:h-48">
+              <Image
+                src={artwork.src}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 42vw, 100vw"
+                className={cn("object-cover", artwork.className)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/8 via-transparent to-white/10" />
+            </div>
+          ) : null}
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <p className="text-base font-bold leading-6 text-[#111827]">Likely causes</p>
+          <div className="mt-3">
+            {summary && hasData ? (
+              <div className="grid grid-cols-2 gap-3">
+                <CauseStat
+                  icon={Users}
+                  value={summary.eventCount}
+                  label={`${summary.label.toLowerCase()} events`}
+                />
+                <CauseStat icon={TrendingDown} value={lossCount} label="losing shots" tone="pink" />
+                <CauseStat icon={TrendingUp} value={gainCount} label="gaining shots" tone="green" />
+                <CauseStat icon={Equal} value={neutralCount} label="neutral shots" />
+                {roughCount > 0 ? (
+                  <CauseStat icon={Sprout} value={roughCount} label="rough finishes" tone="amber" />
+                ) : null}
+                {penaltyCount > 0 ? (
+                  <CauseStat
+                    icon={AlertTriangle}
+                    value={penaltyCount}
+                    label="penalties"
+                    tone="pink"
+                  />
+                ) : null}
+                {summary.pendingCount > 0 ? (
+                  <CauseStat
+                    icon={Clock3}
+                    value={summary.pendingCount}
+                    label="pending"
+                    tone="amber"
+                  />
+                ) : null}
+              </div>
+            ) : summary?.category === "putting" ? (
+              <div className="grid gap-2 text-sm leading-5 text-[#667085]">
+                <p>No mapped putting events have calculated SG yet.</p>
+                <p>Add first-putt and finish distances for each green.</p>
+              </div>
+            ) : (
+              <p className="text-sm leading-5 text-[#667085]">
+                Add mapped shot events to identify the category causing damage.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white p-5">
+          <p className="text-base font-bold leading-6 text-[#111827]">Recommended practice</p>
+          <p className="mt-3 text-sm leading-6 text-[#667085]">
+            {practiceRecommendation(summary?.category)}
+          </p>
+          <Button
+            asChild
+            className="mt-6 h-10 rounded-lg bg-[#087A3D] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
+            size="sm"
+          >
+            <Link href="/coach#more-drills" prefetch={false}>
+              <Target className="size-4" />
+              {scoringLeakCtaLabel(summary?.category)}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </DataPanel>
   );
 }
 
+function scoringLeakArtwork(category: string) {
+  if (category === "approach") {
+    return {
+      src: "/assets/generated/strokes-leak-approach-v3.png",
+      className: "object-[50%_56%]",
+    };
+  }
+
+  if (category === "short_game") {
+    return {
+      src: "/assets/generated/strokes-leak-short-game-v3.png",
+      className: "object-[50%_56%]",
+    };
+  }
+
+  if (category === "putting") {
+    return {
+      src: "/assets/generated/strokes-leak-putting-v3.png",
+      className: "object-[50%_56%]",
+    };
+  }
+
+  return {
+    src: "/assets/generated/strokes-leak-tee-v3.png",
+    className: "object-[50%_58%]",
+  };
+}
+
+function scoringLeakCtaLabel(category: string | undefined) {
+  if (category === "tee") {
+    return "Start tee-shot drill";
+  }
+
+  if (category === "approach") {
+    return "Start approach ladder";
+  }
+
+  if (category === "short_game") {
+    return "Start short-game drill";
+  }
+
+  if (category === "putting") {
+    return "Start putting gates";
+  }
+
+  return "Create practice task";
+}
+
 function CauseStat({
+  icon: Icon,
   value,
   label,
   tone = "slate",
 }: {
+  icon: LucideIcon;
   value: number;
   label: string;
   tone?: "green" | "pink" | "amber" | "slate";
 }) {
+  const toneClassName =
+    tone === "green"
+      ? "border-emerald-100 bg-emerald-50/70 text-emerald-700"
+      : tone === "pink"
+        ? "border-red-100 bg-red-50/70 text-[#B42318]"
+        : tone === "amber"
+          ? "border-amber-100 bg-amber-50/80 text-amber-700"
+          : "border-slate-200 bg-slate-50 text-slate-600";
+
   return (
     <div
       className={cn(
-        "rounded-md border px-2.5 py-2",
-        tone === "green" ? "border-emerald-100 bg-emerald-50/50" : "",
-        tone === "pink" ? "border-red-100 bg-red-50/50" : "",
-        tone === "amber" ? "border-amber-100 bg-amber-50/60" : "",
-        tone === "slate" ? "border-slate-200 bg-slate-50" : "",
+        "grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-4 py-3",
+        toneClassName,
       )}
     >
-      <p className="text-lg font-semibold leading-none tracking-normal tabular-nums text-slate-950">
-        {integerFormatter.format(value)}
-      </p>
-      <p className="mt-1 text-xs leading-4 text-muted-foreground">{label}</p>
+      <div className="min-w-0">
+        <p className="text-xl font-bold leading-none tracking-normal tabular-nums text-[#111827]">
+          {integerFormatter.format(value)}
+        </p>
+        <p className="mt-1 truncate text-xs leading-4 text-[#667085]">{label}</p>
+      </div>
+      <Icon className="size-5" />
     </div>
   );
 }

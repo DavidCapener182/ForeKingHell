@@ -77,7 +77,7 @@ import { ensureCurrentSocialProfile } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
-import { TargetDistanceSelector } from "./target-distance-selector";
+import { TargetDistanceSelector, type TargetDistanceRow } from "./target-distance-selector";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +97,7 @@ export default async function BagPage() {
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
   });
+  const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
   const benchmarkRows = buildBenchmarkRows(bag);
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
@@ -193,7 +194,7 @@ export default async function BagPage() {
             />
           </div>
         </NativeListSection>
-        <TargetDistanceSelector rows={gappingRows} initialTargetYd={150} />
+        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
         <NativeListSection title="Club rail">
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
             {bag.map((club, index) => (
@@ -343,7 +344,7 @@ export default async function BagPage() {
 
         <BagFeaturePanel data={featureData} />
 
-        <TargetDistanceSelector rows={gappingRows} initialTargetYd={150} />
+        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
 
         {gappingRows.length > 0 ? (
           <section id="gapping" className="scroll-mt-28">
@@ -737,6 +738,47 @@ function buildGappingRows(
   return buildPersonalGappingTargets(baseRows, {
     handicapBand: options.handicapBand,
   });
+}
+
+function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): TargetDistanceRow[] {
+  const stockRows: TargetDistanceRow[] = gappingRows.map((row) => ({
+    id: row.id,
+    clubType: row.clubType,
+    carryYd: row.carryYd,
+    playNumberYd: row.playNumberYd,
+    sampleSize: row.sampleSize,
+    confidenceScore: row.confidenceScore,
+    shotRole: "stock",
+  }));
+  const stockIds = new Set(stockRows.map((row) => row.id));
+  const touchRows: TargetDistanceRow[] = bag
+    .filter((club) => club.isShortGameTouch && !stockIds.has(club.id) && club.touch.sampleSize > 0)
+    .flatMap((club) => {
+      const touchPlayNumberYd =
+        club.touch.carryMedianYd ?? club.touch.carryP75Yd ?? club.touch.longestCarryYd;
+      const touchMaxYd = club.touch.longestCarryYd ?? club.touch.carryP75Yd ?? touchPlayNumberYd;
+
+      if (touchPlayNumberYd === null || touchMaxYd === null) {
+        return [];
+      }
+
+      return [
+        {
+          id: club.id,
+          clubType: club.type,
+          carryYd: touchPlayNumberYd,
+          playNumberYd: touchPlayNumberYd,
+          sampleSize: club.touch.sampleSize,
+          confidenceScore: Math.min(90, Math.round((club.touch.sampleSize / 50) * 100)),
+          shotRole: "touch",
+          touchMinYd: club.touch.carryP25Yd,
+          touchMedianYd: club.touch.carryMedianYd,
+          touchMaxYd,
+        } satisfies TargetDistanceRow,
+      ];
+    });
+
+  return [...stockRows, ...touchRows];
 }
 
 function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
