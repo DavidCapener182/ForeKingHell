@@ -397,6 +397,18 @@
     box-shadow: var(--surface-shadow-soft);
   }
 
+  @media (max-width: 640px) {
+    .shot-pattern-mobile-map {
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .shot-pattern-mobile-map .leaflet-bottom {
+      bottom: calc(5.95rem + env(safe-area-inset-bottom));
+    }
+  }
+
   .leaflet-container {
     font-family: inherit;
   }

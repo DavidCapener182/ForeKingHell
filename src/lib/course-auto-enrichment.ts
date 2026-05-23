@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { courses, holes, teeSets } from "@/db/schema";
+import { ensureCourseFeatures } from "@/lib/course-feature-enrichment";
 import {
   getGoogleCourseDetails,
   searchGoogleCourses,
@@ -74,6 +75,7 @@ export async function ensureCourseAutoImport(course: CourseRow, currentHoleCount
   }
 
   await saveImportedHoleGeometry(course.id, importedHoles, now);
+  await ensureCourseFeatures({ courseId: course.id, force: true });
 
   return { changed: true, status: "imported" } satisfies CourseAutoImportResult;
 }

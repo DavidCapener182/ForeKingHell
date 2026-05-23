@@ -193,6 +193,8 @@ export function OsmCourseImporter() {
             <input type="hidden" name="country" value={selected.country ?? ""} />
             <input type="hidden" name="osmType" value={selected.osmType} />
             <input type="hidden" name="osmId" value={selected.osmId} />
+            <input type="hidden" name="lat" value={selected.lat} />
+            <input type="hidden" name="lon" value={selected.lon} />
             <input type="hidden" name="holesJson" value={JSON.stringify(holes)} />
             <label className="grid gap-2 text-sm font-medium">
               <span>Tee set name</span>

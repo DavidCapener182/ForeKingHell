@@ -1206,6 +1206,27 @@ export const holes = pgTable(
   ],
 );
 
+export const courseFeatures = pgTable(
+  "fkh_course_features",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    holeNumber: integer("hole_number"),
+    featureType: varchar("feature_type", { length: 32 }).notNull(),
+    geometryJson: jsonb("geometry_json").notNull(),
+    source: varchar("source", { length: 32 }).notNull().default("osm"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_features_course_idx").on(table.courseId),
+    index("fkh_course_features_course_hole_idx").on(table.courseId, table.holeNumber),
+    index("fkh_course_features_type_idx").on(table.featureType),
+  ],
+);
+
 export const sessions = pgTable(
   "fkh_sessions",
   {

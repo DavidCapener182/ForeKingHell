@@ -67,6 +67,7 @@ import { getDb } from "@/db/client";
 import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
   const mappedCourses = data.courses.filter((course) => course.holeCount > 0);
   const roundLinkedCourses = data.courses.filter((course) => course.roundCount > 0);
   const heroArtworkVariant = mappedCourses.length > 0 ? "fairway" : "courseMap";
+  const shotPatternEnabled = isShotPatternFeatureEnabled();
 
   return (
     <PageShell>
@@ -540,6 +542,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                             Manage
                           </Link>
                         </Button>
+                        {shotPatternEnabled && course.holeCount > 0 ? (
+                          <Button asChild size="sm" className="mt-1 w-full">
+                            <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
+                              <MapPinned className="size-4" />
+                              Pattern
+                            </Link>
+                          </Button>
+                        ) : null}
                       </MobileDataCard>
                     ))
                   ) : (
@@ -626,6 +636,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                               Manage
                             </Link>
                           </Button>
+                          {shotPatternEnabled && course.holeCount > 0 ? (
+                            <Button asChild size="sm">
+                              <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
+                                <MapPinned className="size-4" />
+                                Pattern
+                              </Link>
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>

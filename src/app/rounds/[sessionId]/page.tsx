@@ -54,6 +54,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
+import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { RoundShotMap, type RoundMapHole, type RoundMapShot } from "./round-shot-map";
 
@@ -105,6 +106,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
   const isRealRound = round.session.type === "real_round";
   const hasClubData = round.shots.length > 0;
   const hasMap = round.mapHoles.length > 0;
+  const shotPatternEnabled = isShotPatternFeatureEnabled();
   const currentHole = round.holes.find((hole) => hole.score === null) ?? round.holes[0] ?? null;
   const proofItems = [
     {
@@ -213,6 +215,16 @@ export default async function RoundDetailPage({ params }: PageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {round.session.courseId && shotPatternEnabled ? (
+                <div className="mb-3 flex justify-end">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/courses/${round.session.courseId}/shot-pattern`} prefetch={false}>
+                      <MapPinned className="size-4" />
+                      Open shot pattern
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
               <RoundShotMap
                 holes={round.mapHoles}
                 shots={round.mapShots}

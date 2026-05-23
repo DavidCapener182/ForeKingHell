@@ -12,6 +12,7 @@ import {
   ensureMountainParkCourse,
   ensureTpcSawgrassStadiumCourse,
 } from "@/lib/courses";
+import { ensureCourseFeatures } from "@/lib/course-feature-enrichment";
 import { normalisedCourseName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getGoogleCourseDetails, type GoogleCourseDetails } from "@/lib/google-course-enrichment";
@@ -155,6 +156,7 @@ export async function createGoogleCourseAction(formData: FormData) {
     .returning({ id: teeSets.id });
 
   await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
+  await ensureCourseFeatures({ courseId: course.id, force: true });
   if (importedHoles.length > 0) {
     await deleteLegacyGoogleOsmTeeSet(course.id);
   }
@@ -319,6 +321,8 @@ export async function createOsmCourseAction(formData: FormData) {
   const country = nullableString(formData, "country");
   const osmType = requiredString(formData, "osmType");
   const osmId = requiredString(formData, "osmId");
+  const latitude = decimalFromForm(formData, "lat");
+  const longitude = decimalFromForm(formData, "lon");
   const teeName = nullableString(formData, "teeName") ?? "OpenStreetMap";
   const importedHoles = parseOsmHoles(formData);
   const now = new Date();
@@ -334,6 +338,8 @@ export async function createOsmCourseAction(formData: FormData) {
       country,
       provider: "osm",
       externalId: `osm-${osmType}-${osmId}-${userId}`,
+      latitude,
+      longitude,
       visibility: "private",
       createdByUserId: userId,
       updatedAt: now,
@@ -353,6 +359,7 @@ export async function createOsmCourseAction(formData: FormData) {
     .returning({ id: teeSets.id });
 
   await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
+  await ensureCourseFeatures({ courseId: course.id, force: true });
 
   revalidateCourses(course.id);
   redirect(`/courses/${course.id}/holes`);

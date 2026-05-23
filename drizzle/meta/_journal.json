@@ -169,6 +169,13 @@
       "when": 1779140400000,
       "tag": "0023_google_course_enrichment",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779303600000,
+      "tag": "0024_shot_pattern_features",
+      "breakpoints": true
     }
   ]
 }

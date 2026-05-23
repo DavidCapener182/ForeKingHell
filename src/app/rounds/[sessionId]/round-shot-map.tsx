@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatClubType } from "@/lib/rapsodo/parser";
+import {
+  YARDS_TO_METERS,
+  destinationPoint,
+  forwardDistanceYd,
+  pointAlongGeometry,
+} from "@/lib/geo/yard-projection";
 
 export type RoundMapHole = {
   holeNumber: number;
@@ -45,8 +51,6 @@ type RoundShotMapProps = {
 
 type DistanceMode = "total" | "carry";
 
-const YARDS_TO_METERS = 0.9144;
-const EARTH_RADIUS_METERS = 6371008.8;
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
@@ -923,114 +927,6 @@ function shotDistanceForMode(shot: RoundMapShot, distanceMode: DistanceMode) {
   return distanceMode === "carry" ? (shot.carryYd ?? shot.totalYd) : (shot.totalYd ?? shot.carryYd);
 }
 
-function pointAlongGeometry(geometry: Array<[number, number]>, ratio: number) {
-  const targetDistance = geometryLengthMeters(geometry) * Math.max(0, Math.min(1, ratio));
-  let travelled = 0;
-
-  for (let index = 1; index < geometry.length; index += 1) {
-    const start = geometry[index - 1];
-    const end = geometry[index];
-    const segmentLength = distanceMeters(start, end);
-
-    if (travelled + segmentLength >= targetDistance) {
-      const segmentRatio = segmentLength === 0 ? 0 : (targetDistance - travelled) / segmentLength;
-      return {
-        point: interpolatePoint(start, end, segmentRatio),
-        bearingDeg: bearingDegrees(start, end),
-      };
-    }
-
-    travelled += segmentLength;
-  }
-
-  const lastStart = geometry[Math.max(0, geometry.length - 2)];
-  const lastEnd = geometry[geometry.length - 1];
-  return {
-    point: lastEnd,
-    bearingDeg: bearingDegrees(lastStart, lastEnd),
-  };
-}
-
-function geometryLengthMeters(geometry: Array<[number, number]>) {
-  let total = 0;
-
-  for (let index = 1; index < geometry.length; index += 1) {
-    total += distanceMeters(geometry[index - 1], geometry[index]);
-  }
-
-  return total;
-}
-
-function interpolatePoint(
-  start: [number, number],
-  end: [number, number],
-  ratio: number,
-): [number, number] {
-  return [start[0] + (end[0] - start[0]) * ratio, start[1] + (end[1] - start[1]) * ratio];
-}
-
-function distanceMeters(start: [number, number], end: [number, number]) {
-  const startLat = toRadians(start[0]);
-  const endLat = toRadians(end[0]);
-  const deltaLat = toRadians(end[0] - start[0]);
-  const deltaLng = toRadians(end[1] - start[1]);
-  const a =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(startLat) * Math.cos(endLat) * Math.sin(deltaLng / 2) ** 2;
-
-  return EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function bearingDegrees(start: [number, number], end: [number, number]) {
-  const startLat = toRadians(start[0]);
-  const endLat = toRadians(end[0]);
-  const deltaLng = toRadians(end[1] - start[1]);
-  const y = Math.sin(deltaLng) * Math.cos(endLat);
-  const x =
-    Math.cos(startLat) * Math.sin(endLat) -
-    Math.sin(startLat) * Math.cos(endLat) * Math.cos(deltaLng);
-
-  return (toDegrees(Math.atan2(y, x)) + 360) % 360;
-}
-
-function destinationPoint(
-  start: [number, number],
-  bearingDeg: number,
-  distanceM: number,
-): [number, number] {
-  const angularDistance = distanceM / EARTH_RADIUS_METERS;
-  const bearing = toRadians(bearingDeg);
-  const startLat = toRadians(start[0]);
-  const startLng = toRadians(start[1]);
-  const endLat = Math.asin(
-    Math.sin(startLat) * Math.cos(angularDistance) +
-      Math.cos(startLat) * Math.sin(angularDistance) * Math.cos(bearing),
-  );
-  const endLng =
-    startLng +
-    Math.atan2(
-      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(startLat),
-      Math.cos(angularDistance) - Math.sin(startLat) * Math.sin(endLat),
-    );
-
-  return [toDegrees(endLat), toDegrees(endLng)];
-}
-
-function forwardDistanceYd(distanceYd: number | null, sideYd: number | null) {
-  if (distanceYd === null) {
-    return null;
-  }
-
-  const sideDistance = sideYd ?? 0;
-  const forwardSquared = distanceYd ** 2 - sideDistance ** 2;
-
-  if (forwardSquared <= 0) {
-    return Math.max(0, distanceYd);
-  }
-
-  return Math.sqrt(forwardSquared);
-}
-
 function shotPopup(shot: RoundMapShot, distanceMode: DistanceMode = "total") {
   return [
     `<strong>Shot ${shot.holeShotNumber ?? shot.shotNumber ?? ""}</strong>`,
@@ -1058,12 +954,4 @@ function formatSide(value: number | null) {
   }
 
   return `${numberFormatter.format(Math.abs(value))}${value > 0 ? "R" : "L"}`;
-}
-
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function toDegrees(value: number) {
-  return (value * 180) / Math.PI;
 }

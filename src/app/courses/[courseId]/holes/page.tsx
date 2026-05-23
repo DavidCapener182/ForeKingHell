@@ -25,6 +25,7 @@ import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
+import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import { CourseHoleMapEditor } from "./course-hole-map-editor";
 import { GoogleCourseContextPanel } from "./google-course-context-panel";
 
@@ -66,6 +67,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const usesAutomaticCourseData = usesAutomaticImportData(data.course);
   const allowManualHoleEditing = data.isEditable && (hasMappedGeometry || !usesAutomaticCourseData);
   const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
+  const shotPatternEnabled = isShotPatternFeatureEnabled();
   const holeSlots = createHoleSlots(primaryTeeSet?.par ?? 72, holesForPrimaryTeeSet.length);
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
   const mapStatus =
@@ -90,6 +92,14 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             Rounds
           </Link>
         </Button>
+        {shotPatternEnabled ? (
+          <Button asChild>
+            <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
+              <MapPinned className="size-4" />
+              Shot pattern
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <PageHeader
