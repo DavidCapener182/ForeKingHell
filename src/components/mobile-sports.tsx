@@ -578,6 +578,7 @@ export function CourseCard({
   stats,
   href,
   media,
+  actions,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
@@ -585,13 +586,10 @@ export function CourseCard({
   stats?: ReactNode;
   href: string;
   media?: ReactNode;
+  actions?: ReactNode;
 }) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
-    >
+  const content = (
+    <>
       {media ? (
         <div
           data-media-container
@@ -613,6 +611,27 @@ export function CourseCard({
         <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">{champion}</div>
       ) : null}
       {stats ? <div className="flex flex-wrap gap-2 text-xs text-[#6B7280]">{stats}</div> : null}
+    </>
+  );
+
+  if (actions) {
+    return (
+      <article className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4">
+        <Link href={href} prefetch={false} className="grid gap-3">
+          {content}
+        </Link>
+        {actions}
+      </article>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      prefetch={false}
+      className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
+    >
+      {content}
     </Link>
   );
 }

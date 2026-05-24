@@ -30,6 +30,21 @@ export type CourseFeature = {
   source?: string | null;
 };
 
+type ParsedCourseFeature = {
+  id: string;
+  featureType: CourseFeatureType;
+  geometry: CourseFeatureGeometry;
+  source?: string | null;
+  bounds: FeatureBounds;
+};
+
+type FeatureBounds = {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+};
+
 export type LandingClassification = {
   pointId: string;
   lie: CourseFeatureType;
@@ -78,15 +93,14 @@ export function classifyLandingPoint(
   point: LatLngPoint,
   features: CourseFeature[],
 ): CourseFeatureType {
-  const parsed = features
-    .map((feature) => ({
-      id: feature.id,
-      featureType: normalizeFeatureType(feature.featureType),
-      geometry: parseFeatureGeometry(feature.geometryJson),
-      source: feature.source,
-    }))
-    .filter((feature) => feature.geometry !== null);
-  const matching = parsed.filter((feature) => pointInFeature(point, feature.geometry));
+  return classifyLandingPointFromParsed(point, parseCourseFeatures(features));
+}
+
+function classifyLandingPointFromParsed(
+  point: LatLngPoint,
+  parsed: ParsedCourseFeature[],
+): CourseFeatureType {
+  const matching = parsed.filter((feature) => pointInParsedFeature(point, feature));
 
   if (matching.length === 0) {
     return "unknown";
@@ -110,6 +124,7 @@ export function classifyLandingPoint(
       mappedFeatures.some(
         (feature) =>
           feature.featureType === featureType &&
+          pointWithinBounds(point, feature.bounds, TROUBLE_BUFFER_METERS[featureType] ?? 0) &&
           distanceMetersToFeature(point, feature.geometry) <=
             (TROUBLE_BUFFER_METERS[featureType] ?? 0),
       ),
@@ -176,11 +191,12 @@ export function classifyProjectedPatternPoints(
   classifications: LandingClassification[];
   summary: LandingClassificationSummary;
 } {
+  const parsed = parseCourseFeatures(features);
   const classifications = points
     .filter((point) => point.included)
     .map((point) => ({
       pointId: point.id,
-      lie: classifyLandingPoint(point.latLng, features),
+      lie: classifyLandingPointFromParsed(point.latLng, parsed),
     }));
   const counts = emptyCounts();
 
@@ -209,6 +225,31 @@ export function classifyProjectedPatternPoints(
   };
 }
 
+function parseCourseFeatures(features: CourseFeature[]): ParsedCourseFeature[] {
+  return features
+    .map((feature): ParsedCourseFeature | null => {
+      const geometry = parseFeatureGeometry(feature.geometryJson);
+      const bounds = geometry ? featureGeometryBounds(geometry) : null;
+
+      if (!geometry || !bounds) {
+        return null;
+      }
+
+      return {
+        id: feature.id,
+        featureType: normalizeFeatureType(feature.featureType),
+        geometry,
+        source: feature.source,
+        bounds,
+      };
+    })
+    .filter((feature): feature is ParsedCourseFeature => feature !== null);
+}
+
+function pointInParsedFeature(point: LatLngPoint, feature: ParsedCourseFeature) {
+  return pointWithinBounds(point, feature.bounds, 0) && pointInFeature(point, feature.geometry);
+}
+
 function pointInFeature(point: LatLngPoint, geometry: CourseFeatureGeometry | null) {
   if (!geometry) {
     return false;
@@ -219,6 +260,48 @@ function pointInFeature(point: LatLngPoint, geometry: CourseFeatureGeometry | nu
   }
 
   return geometry.coordinates.some((polygon) => pointInPolygonGeometry(point, polygon));
+}
+
+function featureGeometryBounds(geometry: CourseFeatureGeometry): FeatureBounds | null {
+  const bounds: FeatureBounds = {
+    minLat: Number.POSITIVE_INFINITY,
+    maxLat: Number.NEGATIVE_INFINITY,
+    minLng: Number.POSITIVE_INFINITY,
+    maxLng: Number.NEGATIVE_INFINITY,
+  };
+  const polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+
+  for (const polygon of polygons) {
+    for (const ring of polygon) {
+      for (const coordinate of ring) {
+        if (!isLngLat(coordinate)) {
+          continue;
+        }
+
+        bounds.minLng = Math.min(bounds.minLng, coordinate[0]);
+        bounds.maxLng = Math.max(bounds.maxLng, coordinate[0]);
+        bounds.minLat = Math.min(bounds.minLat, coordinate[1]);
+        bounds.maxLat = Math.max(bounds.maxLat, coordinate[1]);
+      }
+    }
+  }
+
+  return Number.isFinite(bounds.minLat) ? bounds : null;
+}
+
+function pointWithinBounds(point: LatLngPoint, bounds: FeatureBounds, bufferMeters: number) {
+  const [lat, lng] = point;
+  const metersPerDegreeLat = 111_320;
+  const metersPerDegreeLng = metersPerDegreeLat * Math.cos((lat * Math.PI) / 180);
+  const latBuffer = bufferMeters / metersPerDegreeLat;
+  const lngBuffer = metersPerDegreeLng > 0 ? bufferMeters / metersPerDegreeLng : 0;
+
+  return (
+    lat >= bounds.minLat - latBuffer &&
+    lat <= bounds.maxLat + latBuffer &&
+    lng >= bounds.minLng - lngBuffer &&
+    lng <= bounds.maxLng + lngBuffer
+  );
 }
 
 function distanceMetersToFeature(point: LatLngPoint, geometry: CourseFeatureGeometry | null) {

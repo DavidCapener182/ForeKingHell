@@ -27,7 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { DataPanel, DataPair, SectionHeader, StatusPill, type Tone } from "@/components/premium";
-import type { FeatureIdeasData, FeatureInsight } from "@/lib/feature-ideas";
+import type {
+  CourseFollowFeatureData,
+  FeatureIdeasData,
+  FeatureInsight,
+} from "@/lib/feature-ideas";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -580,7 +584,7 @@ export function CourseFollowFeaturePanel({
   data,
   courseId,
 }: {
-  data: FeatureIdeasData;
+  data: CourseFollowFeatureData;
   courseId?: string | null;
 }) {
   return (

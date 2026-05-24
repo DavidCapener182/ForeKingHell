@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: ["172.20.10.3", "Davids-MacBook-Pro-3.local"],
 };
 
 export default nextConfig;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   ArrowLeft,
   Filter,
@@ -66,20 +67,29 @@ import {
 import { getDb } from "@/db/client";
 import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getCourseFollowFeatureData } from "@/lib/feature-ideas";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 
 export const dynamic = "force-dynamic";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+type CourseSearchParams = { [key: string]: string | string[] | undefined };
+type SearchParams = Promise<CourseSearchParams>;
 
 export default async function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
+  return (
+    <Suspense fallback={<CoursesPageLoading />}>
+      <CoursesPageContent params={params} />
+    </Suspense>
+  );
+}
+
+async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
   const query = first(params.q).trim().slice(0, 80);
   const activeTab = parseCourseTab(first(params.tab));
-  const [data, featureData] = await Promise.all([getCoursesData(), getFeatureIdeasData()]);
+  const [data, featureData] = await Promise.all([getCoursesData(), getCourseFollowFeatureData()]);
   const displayedCourses = query
     ? data.courses.filter((course) =>
         [course.name, course.country, course.provider].some((value) =>
@@ -87,10 +97,21 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
         ),
       )
     : data.courses;
+  const shotPatternEnabled = isShotPatternFeatureEnabled();
   const mappedCourses = data.courses.filter((course) => course.holeCount > 0);
+  const patternCourses = shotPatternEnabled
+    ? displayedCourses.filter((course) => course.holeCount > 0)
+    : [];
   const roundLinkedCourses = data.courses.filter((course) => course.roundCount > 0);
   const heroArtworkVariant = mappedCourses.length > 0 ? "fairway" : "courseMap";
-  const shotPatternEnabled = isShotPatternFeatureEnabled();
+  const mobileCourses =
+    activeTab === "played"
+      ? displayedCourses.filter((course) => course.roundCount > 0)
+      : activeTab === "patterns"
+        ? patternCourses
+        : displayedCourses;
+  const mobileCourseLimit =
+    activeTab === "patterns" ? patternCourses.length : activeTab === "records" ? 12 : 8;
 
   return (
     <PageShell>
@@ -139,19 +160,35 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
           className="-mt-4"
           tabs={[
             { key: "records", label: "Records", href: "/courses" },
+            { key: "patterns", label: "Patterns", href: "/courses?tab=patterns" },
             { key: "played", label: "Played", href: "/courses?tab=played" },
             { key: "favourites", label: "Favourites", href: "/courses?tab=favourites" },
             { key: "manage", label: "Manage", href: "/courses?tab=manage" },
           ]}
         />
         <MobileStatusAction
-          label="Course records"
-          value={`${integerFormatter.format(data.recordCount)} boards`}
-          detail={`${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`}
+          label={activeTab === "patterns" ? "Course patterns" : "Course records"}
+          value={
+            activeTab === "patterns"
+              ? `${integerFormatter.format(patternCourses.length)} ready`
+              : `${integerFormatter.format(data.recordCount)} boards`
+          }
+          detail={
+            activeTab === "patterns"
+              ? "Mapped courses with shot-pattern overlays ready to open."
+              : `${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`
+          }
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Link href="/course-records" prefetch={false}>
-                Records
+              <Link
+                href={
+                  activeTab === "patterns" && patternCourses[0]
+                    ? `/courses/${patternCourses[0].id}/shot-pattern`
+                    : "/course-records"
+                }
+                prefetch={false}
+              >
+                {activeTab === "patterns" ? "Open" : "Records"}
               </Link>
             </Button>
           }
@@ -198,23 +235,30 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
             title={
               activeTab === "played"
                 ? "Played courses"
+                : activeTab === "patterns"
+                  ? "Course patterns"
                 : activeTab === "favourites"
                   ? "Favourite courses"
                   : "Record boards"
             }
             description={
-              activeTab === "records" ? "Champions and live record boards first." : undefined
+              activeTab === "patterns"
+                ? "Mapped courses with enough saved hole geometry for dispersion overlays."
+                : activeTab === "records"
+                  ? "Champions and live record boards first."
+                  : undefined
             }
           >
-            {(activeTab === "played"
-              ? displayedCourses.filter((course) => course.roundCount > 0)
-              : displayedCourses
-            )
-              .slice(0, activeTab === "records" ? 12 : 8)
+            {mobileCourses
+              .slice(0, mobileCourseLimit)
               .map((course, index) => (
                 <CourseCard
                   key={course.id}
-                  href={`/courses/${course.id}/records`}
+                  href={
+                    activeTab === "patterns"
+                      ? `/courses/${course.id}/shot-pattern`
+                      : `/courses/${course.id}/records`
+                  }
                   title={course.name}
                   subtitle={course.country ?? "Course board"}
                   media={
@@ -244,10 +288,56 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
                       <span>{course.recordCount} record boards</span>
                       <span>{course.roundCount} played rounds</span>
                       <span>{course.teeSetCount} tee sets</span>
+                      <span>{course.holeCount} mapped holes</span>
                     </>
+                  }
+                  actions={
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
+                      >
+                        <Link href={`/courses/${course.id}/records`} prefetch={false}>
+                          <Trophy className="size-4" />
+                          Records
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
+                      >
+                        <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+                          <Settings className="size-4" />
+                          Map
+                        </Link>
+                      </Button>
+                      {shotPatternEnabled && course.holeCount > 0 ? (
+                        <Button
+                          asChild
+                          size="sm"
+                          className="col-span-2 min-h-10 rounded-full bg-[#0B7A3B] px-3 text-white hover:bg-[#064E3B]"
+                        >
+                          <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
+                            <MapPinned className="size-4" />
+                            Shot pattern
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
                   }
                 />
               ))}
+            {mobileCourses.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#D7DEE2] bg-white p-4 text-sm leading-5 text-[#6B7280]">
+                {activeTab === "patterns"
+                  ? "No mapped course patterns yet. Open Manage to map course holes first."
+                  : "No courses match this view yet."}
+              </div>
+            ) : null}
           </NativeListSection>
         )}
         <CourseDataQualityPanel courses={displayedCourses} />
@@ -665,6 +755,30 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
   );
 }
 
+function CoursesPageLoading() {
+  return (
+    <PageShell>
+      <MobileAppShell>
+        <MobileTopBar title="Courses" />
+        <MobileRouteTabs group="play" activeKey="courses" />
+        <div className="grid gap-3 p-4">
+          <div className="h-24 animate-pulse rounded-lg bg-[#E5E7EB]" />
+          <div className="h-48 animate-pulse rounded-lg bg-[#E5E7EB]" />
+          <div className="h-48 animate-pulse rounded-lg bg-[#E5E7EB]" />
+        </div>
+      </MobileAppShell>
+      <div className="hidden gap-4 sm:grid">
+        <div className="h-48 animate-pulse rounded-lg bg-muted" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="h-32 animate-pulse rounded-lg bg-muted" />
+          <div className="h-32 animate-pulse rounded-lg bg-muted" />
+          <div className="h-32 animate-pulse rounded-lg bg-muted" />
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
 function CourseDataQualityPanel({
   courses,
 }: {
@@ -752,7 +866,7 @@ async function getCoursesData() {
     .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
     .orderBy(asc(courses.name));
   const visibleCourseIds = courseRows.map((course) => course.id);
-  const [teeSetRows, holeRows, roundRows, recordRows, championRows, aliasRows] = await Promise.all([
+  const [teeSetRows, holeRows, roundRows, recordRows, aliasRows] = await Promise.all([
     visibleCourseIds.length > 0
       ? db
           .select()
@@ -769,7 +883,6 @@ async function getCoursesData() {
     db
       .select({
         courseId: sessions.courseId,
-        id: sessions.id,
       })
       .from(sessions)
       .where(
@@ -779,21 +892,21 @@ async function getCoursesData() {
         ),
       ),
     visibleCourseIds.length > 0
-      ? db.select().from(courseRecords).where(inArray(courseRecords.courseId, visibleCourseIds))
-      : [],
-    visibleCourseIds.length > 0
       ? db
-          .select({
-            record: courseRecords,
-            result: courseRecordResults,
-            profile: userProfiles,
-          })
-          .from(courseRecordResults)
-          .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
-          .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-          .where(
-            and(inArray(courseRecords.courseId, visibleCourseIds), eq(courseRecordResults.rank, 1)),
-          )
+        .select({
+          id: courseRecords.id,
+          courseId: courseRecords.courseId,
+          bestResultId: courseRecords.bestResultId,
+          championVerificationStatus: courseRecordResults.verificationStatus,
+          championProfileUserId: userProfiles.userId,
+          championProfileDisplayName: userProfiles.displayName,
+          championProfileUsername: userProfiles.username,
+          championProfileAvatarUrl: userProfiles.avatarUrl,
+        })
+        .from(courseRecords)
+        .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
+        .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+        .where(inArray(courseRecords.courseId, visibleCourseIds))
       : [],
     visibleCourseIds.length > 0
       ? db
@@ -814,11 +927,11 @@ async function getCoursesData() {
   );
   const recordsByCourse = countBy(recordRows.map((record) => record.courseId));
   const aliasesByCourse = countBy(aliasRows.map((alias) => alias.courseId));
-  const championByCourse = new Map<string, (typeof championRows)[number]>();
+  const championByCourse = new Map<string, (typeof recordRows)[number]>();
 
-  for (const champion of championRows) {
-    if (!championByCourse.has(champion.record.courseId)) {
-      championByCourse.set(champion.record.courseId, champion);
+  for (const record of recordRows) {
+    if (record.championProfileUserId && !championByCourse.has(record.courseId)) {
+      championByCourse.set(record.courseId, record);
     }
   }
 
@@ -838,8 +951,16 @@ async function getCoursesData() {
         course.googlePlaceId,
         aliasesByCourse.get(course.id) ?? 0,
       ),
-      champion: championRow?.profile ?? null,
-      championVerificationStatus: championRow?.result.verificationStatus ?? null,
+      champion: championRow?.championProfileUserId
+        ? {
+            userId: championRow.championProfileUserId,
+            displayName:
+              championRow.championProfileDisplayName ?? championRow.championProfileUsername,
+            username: championRow.championProfileUsername,
+            avatarUrl: championRow.championProfileAvatarUrl,
+          }
+        : null,
+      championVerificationStatus: championRow?.championVerificationStatus ?? null,
     };
   });
   const dedupedCourses = dedupeCoursesByName(allCourses, courseLibraryPreference);
@@ -988,7 +1109,12 @@ function first(value: string | string[] | undefined) {
 }
 
 function parseCourseTab(value: string) {
-  if (value === "played" || value === "favourites" || value === "manage") {
+  if (
+    value === "played" ||
+    value === "patterns" ||
+    value === "favourites" ||
+    value === "manage"
+  ) {
     return value;
   }
 

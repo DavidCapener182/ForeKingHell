@@ -68,9 +68,41 @@ export type FeatureInsight = {
 };
 
 export type FeatureIdeasData = Awaited<ReturnType<typeof buildFeatureIdeasDataForUser>>;
+export type CourseFollowFeatureData = Pick<FeatureIdeasData, "courseFollows">;
 
 export async function getFeatureIdeasData() {
   return buildFeatureIdeasDataForUser(await requireCurrentUserId());
+}
+
+export async function getCourseFollowFeatureData(): Promise<CourseFollowFeatureData> {
+  const userId = await requireCurrentUserId();
+  const db = getDb();
+  const courseFollowRows = await optionalFeatureRows(
+    db
+      .select()
+      .from(courseFollows)
+      .where(eq(courseFollows.userId, userId))
+      .orderBy(desc(courseFollows.updatedAt))
+      .limit(30),
+  );
+  const followedCourseIds = courseFollowRows.map((follow) => follow.courseId);
+  const [followedCourses, followedAliases] = await Promise.all([
+    followedCourseIds.length
+      ? db.select().from(courses).where(inArray(courses.id, followedCourseIds))
+      : Promise.resolve([]),
+    followedCourseIds.length
+      ? optionalFeatureRows(
+          db
+            .select()
+            .from(courseProviderAliases)
+            .where(inArray(courseProviderAliases.courseId, followedCourseIds)),
+        )
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    courseFollows: buildCourseFollows(courseFollowRows, followedCourses, followedAliases),
+  };
 }
 
 export async function buildFeatureIdeasDataForUser(userId: string) {

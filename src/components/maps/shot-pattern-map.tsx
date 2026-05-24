@@ -65,6 +65,7 @@ type ShotPatternMapProps = {
   holes: ShotPatternHoleOption[];
   holesByTeeSet: Record<string, ShotPatternHoleOption[]>;
   clubOptions: ShotPatternClubOption[];
+  initialData?: ShotPatternApiData | null;
   defaultControls: {
     teeSetId: string | null;
     holeNumber: number | null;
@@ -92,6 +93,7 @@ export function ShotPatternMap({
   holes,
   holesByTeeSet,
   clubOptions,
+  initialData = null,
   defaultControls,
 }: ShotPatternMapProps) {
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
@@ -100,6 +102,7 @@ export function ShotPatternMap({
   const fitBoundsKeyRef = useRef<string | null>(null);
   const [leaflet, setLeaflet] = useState<typeof Leaflet | null>(null);
   const [tileReady, setTileReady] = useState(false);
+  const [loadedSatelliteImageUrl, setLoadedSatelliteImageUrl] = useState<string | null>(null);
   const [mapMode, setMapMode] = useState<"course" | "satellite">("satellite");
   const [showDots, setShowDots] = useState(true);
   const [showEnvelope, setShowEnvelope] = useState(true);
@@ -134,8 +137,8 @@ export function ShotPatternMap({
     data: ShotPatternApiData | null;
     error: string | null;
   }>({
-    key: "",
-    data: null,
+    key: initialData ? requestKey : "",
+    data: initialData,
     error: null,
   });
   const data = response.data;
@@ -277,6 +280,26 @@ export function ShotPatternMap({
     () => renderedClubOptions.find((option) => clubSelectionMatchesOption(clubSelection, option)),
     [clubSelection, renderedClubOptions],
   );
+  const satelliteImageUrl = useMemo(() => {
+    if (!selectedHole) {
+      return null;
+    }
+
+    const boundsPoints = [
+      ...selectedHole.geometry,
+      ...displayProjection.points.map((point) => point.latLng),
+      ...(targetLine
+        ? [
+            targetLine.centerlinePoint,
+            targetLine.center,
+            targetLine.leftEndpoint,
+            targetLine.rightEndpoint,
+          ]
+        : []),
+    ];
+
+    return esriSatelliteExportUrl(localBounds(boundsPoints));
+  }, [displayProjection.points, selectedHole, targetLine]);
   const fullShotYd = useMemo(
     () =>
       fullShotDistanceForMode({
@@ -326,10 +349,10 @@ export function ShotPatternMap({
               "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
           },
         );
-        tileLayer.on("load", () => {
-          if (isMounted) setTileReady(true);
+        tileLayer.on("loading", () => {
+          if (isMounted) setTileReady(false);
         });
-        tileLayer.on("tileload", () => {
+        tileLayer.on("load", () => {
           if (isMounted) setTileReady(true);
         });
         tileLayer.addTo(map);
@@ -380,6 +403,10 @@ export function ShotPatternMap({
   }, [mapContainerNode, leaflet]);
 
   useEffect(() => {
+    if (response.key === requestKey && response.data && !response.error) {
+      return;
+    }
+
     const abortController = new AbortController();
     const params = new URLSearchParams({
       courseId,
@@ -427,7 +454,18 @@ export function ShotPatternMap({
     return () => {
       abortController.abort();
     };
-  }, [courseId, requestKey, teeSetId, selectedHoleNumber, mode, outlierMode, clubSelection]);
+  }, [
+    courseId,
+    requestKey,
+    response.data,
+    response.error,
+    response.key,
+    teeSetId,
+    selectedHoleNumber,
+    mode,
+    outlierMode,
+    clubSelection,
+  ]);
 
   useEffect(() => {
     if (!leaflet || !mapRef.current || !layerRef.current || !selectedHole) {
@@ -707,6 +745,14 @@ export function ShotPatternMap({
     (bestTargetClub.clubId
       ? clubSelection.clubId === bestTargetClub.clubId
       : !clubSelection.clubId && clubSelection.clubType === bestTargetClub.clubType);
+  const showStaticSatellite =
+    mapMode === "satellite" && Boolean(satelliteImageUrl) && !tileReady;
+  const staticSatelliteReady =
+    satelliteImageUrl !== null && loadedSatelliteImageUrl === satelliteImageUrl;
+  const showStaticSatelliteOverlay = showStaticSatellite && staticSatelliteReady;
+  const showVectorMap =
+    mapMode === "course" || !tileReady || (mapMode === "satellite" && !staticSatelliteReady);
+  const showSatelliteMap = mapMode === "satellite";
 
   return (
     <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 sm:grid sm:h-auto sm:min-h-0 sm:gap-4 sm:overflow-visible sm:bg-transparent xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,1fr)]">
@@ -973,21 +1019,40 @@ export function ShotPatternMap({
 
       <div className="min-h-0 space-y-3">
         <div className="map-frame shot-pattern-mobile-map relative h-[100svh] min-h-[100svh] overflow-hidden sm:h-[72vh] sm:min-h-[420px] lg:min-h-[620px]">
+          {showStaticSatellite && satelliteImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={satelliteImageUrl}
+              alt=""
+              className={cn(
+                "absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-300",
+                staticSatelliteReady ? "opacity-100" : "opacity-0",
+              )}
+              onLoad={() => setLoadedSatelliteImageUrl(satelliteImageUrl)}
+              onError={() => setLoadedSatelliteImageUrl(null)}
+            />
+          ) : null}
           <HoleVectorFallback
             hole={selectedHole}
             playingHoleYards={playingHoleYards}
             projectedPoints={displayProjection.points}
             medianLatLng={displayProjection.summary.medianLatLng}
             targetLine={targetLine}
-            className={mapMode === "satellite" ? "opacity-0" : "opacity-100"}
-            showSatelliteHint={mapMode === "satellite" && !tileReady}
+            variant={showStaticSatelliteOverlay ? "overlay" : "course"}
+            className={cn(
+              showVectorMap || showStaticSatelliteOverlay ? "opacity-100" : "opacity-0",
+              showStaticSatelliteOverlay && "pointer-events-none z-[12] bg-transparent",
+            )}
+            isLoading={isLoading}
+            showSatelliteHint={mapMode === "satellite" && !tileReady && !staticSatelliteReady}
           />
           <div
             ref={setMapContainerRef}
             className={cn(
-              "absolute inset-0 z-10 h-full w-full bg-[#101827] transition-opacity duration-300",
-              mapMode === "satellite" ? "opacity-100" : "pointer-events-none opacity-0",
+              "absolute inset-0 z-10 h-full w-full transition-opacity duration-300",
+              showSatelliteMap ? "opacity-100" : "pointer-events-none opacity-0",
             )}
+            style={{ backgroundColor: "transparent" }}
           />
           <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-start justify-between gap-2 sm:top-3">
             <div className="rounded-lg bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
@@ -1107,7 +1172,9 @@ function HoleVectorFallback({
   projectedPoints,
   medianLatLng,
   targetLine,
+  variant = "course",
   className,
+  isLoading,
   showSatelliteHint,
 }: {
   hole: ShotPatternApiData["hole"];
@@ -1115,14 +1182,18 @@ function HoleVectorFallback({
   projectedPoints: ProjectedShotPatternPoint[];
   medianLatLng: LatLngPoint | null;
   targetLine: ShotPatternTargetLine | null;
+  variant?: "course" | "overlay";
   className?: string;
+  isLoading: boolean;
   showSatelliteHint: boolean;
 }) {
   if (!hole) {
     return (
       <div className={cn("absolute inset-0 z-0 grid place-items-center bg-[#101827]", className)}>
         <p className="max-w-sm text-center text-sm text-slate-300">
-          This course needs mapped hole geometry before shot patterns can be shown.
+          {isLoading
+            ? "Loading mapped hole and shot pattern data."
+            : "This course needs mapped hole geometry before shot patterns can be shown."}
         </p>
       </div>
     );
@@ -1142,10 +1213,15 @@ function HoleVectorFallback({
   ];
   const bounds = localBounds(allPoints);
   const centerline = hole.geometry.map((point) => toSvgPoint(point, bounds));
+  const isOverlay = variant === "overlay";
 
   return (
     <div
-      className={cn("absolute inset-0 z-0 bg-[#101827] transition-opacity duration-300", className)}
+      className={cn(
+        "absolute inset-0 z-0 transition-opacity duration-300",
+        isOverlay ? "bg-transparent" : "bg-[#101827]",
+        className,
+      )}
     >
       <svg
         viewBox="0 0 900 560"
@@ -1153,30 +1229,35 @@ function HoleVectorFallback({
         role="img"
         aria-label="Shot pattern course view"
       >
-        <rect width="900" height="560" fill="#101827" />
-        <polyline
-          points={pointsAttr(centerline)}
-          fill="none"
-          stroke="#17331f"
-          strokeWidth="96"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <polyline
-          points={pointsAttr(centerline)}
-          fill="none"
-          stroke="#2d6843"
-          strokeWidth="76"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        {isOverlay ? null : <rect width="900" height="560" fill="#101827" />}
+        {isOverlay ? null : (
+          <>
+            <polyline
+              points={pointsAttr(centerline)}
+              fill="none"
+              stroke="#17331f"
+              strokeWidth="96"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <polyline
+              points={pointsAttr(centerline)}
+              fill="none"
+              stroke="#2d6843"
+              strokeWidth="76"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </>
+        )}
         <polyline
           points={pointsAttr(centerline)}
           fill="none"
           stroke="#f8fafc"
-          strokeWidth="2"
+          strokeWidth={isOverlay ? "4" : "2"}
           strokeDasharray="10 12"
           strokeLinecap="round"
+          opacity={isOverlay ? "0.82" : "1"}
         />
         {targetLine?.aimOffsetYd && hole.geometry[0] ? (
           <g>
@@ -1365,12 +1446,17 @@ function HoleVectorFallback({
             strokeWidth="5"
           />
         ) : null}
-        <text x="30" y="44" fill="#f8fafc" fontSize="24" fontWeight="800">
-          Hole {hole.holeNumber}
-        </text>
-        <text x="30" y="74" fill="#cbd5e1" fontSize="15">
-          Par {hole.par} · {playingHoleYards} yd playing · {projectedPoints.length} pattern shots
-        </text>
+        {isOverlay ? null : (
+          <>
+            <text x="30" y="44" fill="#f8fafc" fontSize="24" fontWeight="800">
+              Hole {hole.holeNumber}
+            </text>
+            <text x="30" y="74" fill="#cbd5e1" fontSize="15">
+              Par {hole.par} · {playingHoleYards} yd playing · {projectedPoints.length} pattern
+              shots
+            </text>
+          </>
+        )}
       </svg>
       {showSatelliteHint ? (
         <div className="absolute bottom-3 left-3 rounded-lg bg-black/55 px-3 py-2 text-xs text-white">
@@ -1397,6 +1483,19 @@ function localBounds(points: LatLngPoint[]) {
     minLng: minLng - lngPadding,
     maxLng: maxLng + lngPadding,
   };
+}
+
+function esriSatelliteExportUrl(bounds: ReturnType<typeof localBounds>) {
+  const params = new URLSearchParams({
+    bbox: [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat].join(","),
+    bboxSR: "4326",
+    imageSR: "4326",
+    size: "900,560",
+    format: "jpg",
+    f: "image",
+  });
+
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?${params.toString()}`;
 }
 
 function toSvgPoint(point: LatLngPoint, bounds: ReturnType<typeof localBounds>) {
