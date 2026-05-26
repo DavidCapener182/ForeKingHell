@@ -146,72 +146,72 @@ const TOUR_REFERENCES: Record<string, TourReference> = {
   driver: {
     pgaLabel: "Driver",
     lpgaLabel: "Driver",
-    pga: tourValues(113, -1.3, 167, 1.48, 10.9, 2686, 32, 38, 275),
-    lpga: tourValues(94, 3.0, 140, 1.48, 13.2, 2611, 25, 37, 218),
+    pga: tourValues(113, 167, 1.48, 2686, 32, 38, 275),
+    lpga: tourValues(94, 140, 1.48, 2611, 25, 37, 218),
   },
   "3w": {
     pgaLabel: "3-wood",
     lpgaLabel: "3-wood",
-    pga: tourValues(107, -2.9, 158, 1.48, 9.2, 3655, 30, 43, 243),
-    lpga: tourValues(90, -0.9, 132, 1.48, 11.2, 2704, 23, 39, 195),
+    pga: tourValues(107, 158, 1.48, 3655, 30, 43, 243),
+    lpga: tourValues(90, 132, 1.48, 2704, 23, 39, 195),
   },
   "5w": {
     pgaLabel: "5-wood",
     lpgaLabel: "5-wood",
-    pga: tourValues(103, -3.3, 152, 1.47, 9.4, 4350, 31, 47, 230),
-    lpga: tourValues(88, -1.8, 128, 1.47, 12.1, 4501, 26, 43, 185),
+    pga: tourValues(103, 152, 1.47, 4350, 31, 47, 230),
+    lpga: tourValues(88, 128, 1.47, 4501, 26, 43, 185),
   },
   hybrid: {
     pgaLabel: "Hybrid 15-18",
     lpgaLabel: "7-wood",
-    pga: tourValues(100, -3.5, 146, 1.46, 10.2, 4437, 29, 47, 225),
-    lpga: tourValues(85, -3.0, 123, 1.46, 12.7, 4693, 25, 46, 174),
+    pga: tourValues(100, 146, 1.46, 4437, 29, 47, 225),
+    lpga: tourValues(85, 123, 1.46, 4693, 25, 46, 174),
   },
   "3i": {
     pgaLabel: "3 iron",
-    pga: tourValues(98, -3.1, 142, 1.45, 10.4, 4630, 27, 46, 212),
+    pga: tourValues(98, 142, 1.45, 4630, 27, 46, 212),
   },
   "4i": {
     pgaLabel: "4 iron",
     lpgaLabel: "4 iron",
-    pga: tourValues(96, -3.4, 137, 1.43, 11.0, 4836, 28, 48, 203),
-    lpga: tourValues(80, -1.7, 116, 1.45, 14.3, 4801, 24, 43, 169),
+    pga: tourValues(96, 137, 1.43, 4836, 28, 48, 203),
+    lpga: tourValues(80, 116, 1.45, 4801, 24, 43, 169),
   },
   "5i": {
     pgaLabel: "5 iron",
     lpgaLabel: "5 iron",
-    pga: tourValues(94, -3.7, 132, 1.41, 12.1, 5361, 31, 49, 194),
-    lpga: tourValues(79, -1.9, 112, 1.43, 14.8, 5081, 23, 45, 161),
+    pga: tourValues(94, 132, 1.41, 5361, 31, 49, 194),
+    lpga: tourValues(79, 112, 1.43, 5081, 23, 45, 161),
   },
   "6i": {
     pgaLabel: "6 iron",
     lpgaLabel: "6 iron",
-    pga: tourValues(92, -4.1, 127, 1.38, 14.1, 6231, 30, 50, 183),
-    lpga: tourValues(78, -2.3, 109, 1.41, 17.1, 5943, 25, 46, 152),
+    pga: tourValues(92, 127, 1.38, 6231, 30, 50, 183),
+    lpga: tourValues(78, 109, 1.41, 5943, 25, 46, 152),
   },
   "7i": {
     pgaLabel: "7 iron",
     lpgaLabel: "7 iron",
-    pga: tourValues(90, -4.3, 120, 1.33, 16.3, 7097, 32, 50, 172),
-    lpga: tourValues(76, -2.3, 104, 1.38, 19.0, 6699, 26, 47, 141),
+    pga: tourValues(90, 120, 1.33, 7097, 32, 50, 172),
+    lpga: tourValues(76, 104, 1.38, 6699, 26, 47, 141),
   },
   "8i": {
     pgaLabel: "8 iron",
     lpgaLabel: "8 iron",
-    pga: tourValues(87, -4.5, 115, 1.32, 18.1, 7998, 31, 50, 160),
-    lpga: tourValues(74, -3.1, 100, 1.33, 20.8, 7494, 25, 47, 130),
+    pga: tourValues(87, 115, 1.32, 7998, 31, 50, 160),
+    lpga: tourValues(74, 100, 1.33, 7494, 25, 47, 130),
   },
   "9i": {
     pgaLabel: "9 iron",
     lpgaLabel: "9 iron",
-    pga: tourValues(85, -4.7, 109, 1.28, 20.4, 8647, 30, 51, 148),
-    lpga: tourValues(72, -3.1, 93, 1.32, 23.9, 7589, 26, 47, 119),
+    pga: tourValues(85, 109, 1.28, 8647, 30, 51, 148),
+    lpga: tourValues(72, 93, 1.32, 7589, 26, 47, 119),
   },
   pw: {
     pgaLabel: "PW",
     lpgaLabel: "PW",
-    pga: tourValues(83, -5.0, 102, 1.23, 24.2, 9304, 29, 52, 136),
-    lpga: tourValues(70, -2.8, 86, 1.28, 25.7, 8403, 23, 48, 107),
+    pga: tourValues(83, 102, 1.23, 9304, 29, 52, 136),
+    lpga: tourValues(70, 86, 1.28, 8403, 23, 48, 107),
   },
 };
 
@@ -226,6 +226,7 @@ const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "landAngleDeg",
 ];
 const METRIC_BY_KEY = new Map(METRICS.map((metric) => [metric.key, metric]));
+const FLIGHT_METRIC_KEYS = new Set<ClubBenchmarkMetricKey>(["maxHeightYd", "landAngleDeg"]);
 
 export function DistanceBenchmarkPanel({
   rows,
@@ -238,10 +239,11 @@ export function DistanceBenchmarkPanel({
     <DataPanel>
       <SectionHeader
         title="Distance benchmarks"
-        description="Tabbed carry, speed and flight levels. Tour is anchored to the pro PDF; the lower bands are estimated from the carry ladder."
-        action={<BarChart3 className="size-5 text-emerald-500" />}
+        description="Carry, speed and flight benchmarks, with peer context when visibility allows."
+        action={<BarChart3 className="size-5 text-emerald-500" aria-hidden="true" />}
       />
-      <CardContent>
+      <CardContent className="space-y-4">
+        <BenchmarkOverview rows={rows} peerSummary={peerSummary} />
         <Tabs defaultValue="carryYd" className="gap-4">
           <div className="-mx-1 overflow-x-auto px-1">
             <TabsList className="h-auto w-max justify-start rounded-lg border bg-white p-1 shadow-sm">
@@ -279,6 +281,92 @@ export function DistanceBenchmarkPanel({
         </Tabs>
       </CardContent>
     </DataPanel>
+  );
+}
+
+function BenchmarkOverview({
+  rows,
+  peerSummary,
+}: {
+  rows: ClubBenchmarkRow[];
+  peerSummary: ClubBenchmarkPeerSummary;
+}) {
+  const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
+  const strongestCarry =
+    [...rowsWithData].sort(
+      (left, right) =>
+        (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
+        right.comparison.progressPercent - left.comparison.progressPercent,
+    )[0] ?? null;
+  const closestCarry =
+    [...rows]
+      .filter(
+        (
+          row,
+        ): row is ClubBenchmarkRow & {
+          comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
+        } => row.comparison.yardsToNextLevel !== null,
+      )
+      .sort(
+        (left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel,
+      )[0] ?? null;
+  const strongestFlight = strongestMetricBenchmark(rows, FLIGHT_METRIC_KEYS);
+  const peerChase = closestTopQuartilePeerRow(buildPeerDisplayRows(rows, peerSummary));
+
+  return (
+    <CompactReadoutGrid
+      columnsClassName="md:grid-cols-2 xl:grid-cols-4"
+      items={[
+        {
+          label: "Benchmark lead",
+          value: strongestCarry ? formatClubType(strongestCarry.clubType) : "--",
+          detail: strongestCarry
+            ? `${strongestCarry.comparison.levelLabel} carry benchmark`
+            : "Need stock carry samples",
+          tone: benchmarkTone(strongestCarry?.comparison.levelKey ?? "no-data"),
+          href: strongestCarry ? `/bag/${strongestCarry.clubId}` : undefined,
+        },
+        {
+          label: "Carry step",
+          value: closestCarry ? formatClubType(closestCarry.clubType) : "--",
+          detail: closestCarry
+            ? `${formatMetric(closestCarry.comparison.yardsToNextLevel)} yd to ${closestCarry.comparison.nextLevel?.label}`
+            : "No carry chase yet",
+          tone: closestCarry ? "amber" : "slate",
+          href: closestCarry ? `/bag/${closestCarry.clubId}` : undefined,
+        },
+        {
+          label: "Flight benchmark",
+          value: strongestFlight
+            ? `${formatClubType(strongestFlight.comparison.row.clubType)} · ${
+                strongestFlight.metric.shortLabel
+              }`
+            : "--",
+          detail: strongestFlight
+            ? `${strongestFlight.comparison.levelLabel} at ${formatMetricValue(
+                strongestFlight.comparison.actual,
+                strongestFlight.metric,
+              )}`
+            : "Need flight data",
+          tone: benchmarkTone(strongestFlight?.comparison.levelKey ?? "no-data"),
+          href: strongestFlight ? `/bag/${strongestFlight.comparison.row.clubId}` : undefined,
+        },
+        {
+          label: "Peer chase",
+          value: peerChase
+            ? `${formatClubType(peerChase.row.clubType)} · ${peerChase.metric.shortLabel}`
+            : "--",
+          detail: peerChase
+            ? `${formatMetricValue(
+                peerChase.peer.topQuartile - peerChase.actual,
+                peerChase.metric,
+              )} to top-25%`
+            : "No visible peer chase yet",
+          tone: peerChase ? "amber" : "slate",
+          href: peerChase ? `/bag/${peerChase.row.clubId}` : undefined,
+        },
+      ]}
+    />
   );
 }
 
@@ -488,10 +576,13 @@ function LevelMetricContent({
               href={`/bag/${comparison.row.clubId}`}
               title={formatClubType(comparison.row.clubType)}
               subtitle={comparison.row.brandModel}
-              action={<MetricLevelBadge comparison={comparison} />}
+              action={<MetricLevelBadge comparison={comparison} metric={metric} />}
             >
               <DataPair label="You" value={formatMetricValue(comparison.actual, metric)} />
-              <DataPair label={metricLevelLabel()} value={comparison.levelLabel} />
+              <DataPair
+                label={metricLevelLabel(metric)}
+                value={metricBadgeLabel(comparison, metric)}
+              />
               <DataPair
                 label={metricTargetLabel(metric)}
                 value={metricNextText(comparison, metric)}
@@ -512,9 +603,9 @@ function LevelMetricContent({
                 <TableHead>Club</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead className="text-right">Your {metric.shortLabel.toLowerCase()}</TableHead>
-                <TableHead>{metricLevelLabel()}</TableHead>
+                <TableHead>{metricLevelLabel(metric)}</TableHead>
                 <TableHead>{metricTargetLabel(metric)}</TableHead>
-                <TableHead className="min-w-[280px]">Benchmark band</TableHead>
+                <TableHead className="min-w-[280px]">{metricBandLabel(metric)}</TableHead>
                 <TableHead>Tour anchor</TableHead>
                 <TableHead className="text-right">Sample</TableHead>
               </TableRow>
@@ -537,7 +628,7 @@ function LevelMetricContent({
                     {formatMetricValue(comparison.actual, metric)}
                   </TableCell>
                   <TableCell>
-                    <MetricLevelBadge comparison={comparison} />
+                    <MetricLevelBadge comparison={comparison} metric={metric} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {metricNextText(comparison, metric)}
@@ -573,29 +664,9 @@ function PeerComparisonContent({
 }) {
   const peerRows = buildPeerDisplayRows(rows, peerSummary);
   const rowsWithRank = peerRows.filter((row) => row.peer?.percentile !== null);
-  const bestRank =
-    [...rowsWithRank].sort(
-      (left, right) => (right.peer?.percentile ?? -1) - (left.peer?.percentile ?? -1),
-    )[0] ?? null;
+  const bestRank = bestPeerRankRow(rowsWithRank);
   const bestRankPercentile = bestRank?.peer?.percentile ?? null;
-  const closestTopQuartile =
-    [...peerRows]
-      .filter(
-        (
-          row,
-        ): row is PeerComparisonDisplayRow & {
-          actual: number;
-          peer: ClubBenchmarkPeerComparison & { topQuartile: number };
-        } =>
-          row.actual !== null &&
-          row.peer !== null &&
-          row.peer.topQuartile !== null &&
-          row.peer.topQuartile > row.actual,
-      )
-      .sort(
-        (left, right) =>
-          left.peer.topQuartile - left.actual - (right.peer.topQuartile - right.actual),
-      )[0] ?? null;
+  const closestTopQuartile = closestTopQuartilePeerRow(peerRows);
 
   return (
     <>
@@ -772,14 +843,20 @@ function BenchmarkBadge({ row }: { row: ClubBenchmarkRow }) {
   );
 }
 
-function MetricLevelBadge({ comparison }: { comparison: MetricLevelComparison }) {
+function MetricLevelBadge({
+  comparison,
+  metric,
+}: {
+  comparison: MetricLevelComparison;
+  metric: MetricDefinition;
+}) {
   return (
     <span
       className={`inline-flex min-w-24 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-xs font-semibold ${benchmarkBadgeClass(
         comparison.levelKey,
       )}`}
     >
-      {comparison.levelLabel}
+      {metricBadgeLabel(comparison, metric)}
     </span>
   );
 }
@@ -856,6 +933,36 @@ function buildPeerDisplayRows(
         peer: peerComparisonFor(row, metricKey, peerSummary),
       };
     }).filter((item): item is PeerComparisonDisplayRow => item !== null),
+  );
+}
+
+function bestPeerRankRow(peerRows: PeerComparisonDisplayRow[]) {
+  return (
+    [...peerRows].sort(
+      (left, right) => (right.peer?.percentile ?? -1) - (left.peer?.percentile ?? -1),
+    )[0] ?? null
+  );
+}
+
+function closestTopQuartilePeerRow(peerRows: PeerComparisonDisplayRow[]) {
+  return (
+    [...peerRows]
+      .filter(
+        (
+          row,
+        ): row is PeerComparisonDisplayRow & {
+          actual: number;
+          peer: ClubBenchmarkPeerComparison & { topQuartile: number };
+        } =>
+          row.actual !== null &&
+          row.peer !== null &&
+          row.peer.topQuartile !== null &&
+          row.peer.topQuartile > row.actual,
+      )
+      .sort(
+        (left, right) =>
+          left.peer.topQuartile - left.actual - (right.peer.topQuartile - right.actual),
+      )[0] ?? null
   );
 }
 
@@ -1192,10 +1299,6 @@ function inferredMetricLevelValue(
       return roundTo(tourValue * Math.sqrt(ratio), metric.precision);
     case "smashFactor":
       return roundTo(1 + (tourValue - 1) * (0.55 + 0.45 * ratio), metric.precision);
-    case "attackAngleDeg":
-      return roundTo(tourValue + attackAngleOffset(clubType) * (1 - ratio), metric.precision);
-    case "launchAngleDeg":
-      return roundTo(tourValue + launchAngleOffset(clubType) * (1 - ratio), metric.precision);
     case "spinRate":
       return roundTo(tourValue * Math.pow(ratio, 0.5), metric.precision);
     case "maxHeightYd":
@@ -1204,46 +1307,6 @@ function inferredMetricLevelValue(
     default:
       return roundTo(tourValue, metric.precision);
   }
-}
-
-function attackAngleOffset(clubType: string) {
-  if (clubType === "driver") {
-    return 5;
-  }
-
-  if (clubType.endsWith("w")) {
-    return 3.5;
-  }
-
-  if (clubType === "hybrid") {
-    return 2.5;
-  }
-
-  if (clubType.endsWith("i")) {
-    return 2;
-  }
-
-  return 1.5;
-}
-
-function launchAngleOffset(clubType: string) {
-  if (clubType === "driver") {
-    return 3.5;
-  }
-
-  if (clubType.endsWith("w")) {
-    return 2.5;
-  }
-
-  if (clubType === "hybrid") {
-    return 2;
-  }
-
-  if (clubType.endsWith("i")) {
-    return 1.5;
-  }
-
-  return 1;
 }
 
 function metricDisplayProgressPercent(levels: InferredMetricLevel[], actual: number) {
@@ -1278,6 +1341,31 @@ function metricDisplayProgressPercent(levels: InferredMetricLevel[], actual: num
   return clamp((nextLevelIndex - 1 + segmentProgress) * segmentSize, 0, 100);
 }
 
+function strongestMetricBenchmark(
+  rows: ClubBenchmarkRow[],
+  metricKeys: Set<ClubBenchmarkMetricKey>,
+) {
+  return (
+    METRICS.filter((metric) => metricKeys.has(metric.key))
+      .flatMap((metric) =>
+        rows.flatMap((row) => {
+          const comparison = metricLevelComparison(row, metric);
+
+          if (comparison === null || comparison.actual === null || comparison.gapToNext === null) {
+            return [];
+          }
+
+          return [{ metric, comparison }];
+        }),
+      )
+      .sort(
+        (left, right) =>
+          metricLevelSortValue(right.comparison) - metricLevelSortValue(left.comparison) ||
+          right.comparison.progressPercent - left.comparison.progressPercent,
+      )[0] ?? null
+  );
+}
+
 function metricNextText(comparison: MetricLevelComparison, metric: MetricDefinition) {
   if (comparison.actual === null) {
     return `Needs ${metric.shortLabel.toLowerCase()} data`;
@@ -1288,22 +1376,50 @@ function metricNextText(comparison: MetricLevelComparison, metric: MetricDefinit
   }
 
   if (metric.comparisonMode === "closest") {
-    if (comparison.actual === comparison.nextLevel.value) {
-      return `${comparison.nextLevel.label} match`;
+    if (comparison.gapToNext !== null && comparison.gapToNext <= metricPrecisionTolerance(metric)) {
+      return `${comparison.nextLevel.label} window`;
     }
 
-    return `${formatMetricValue(comparison.gapToNext, metric)} from ${comparison.nextLevel.label}`;
+    const side = comparison.actual > comparison.nextLevel.value ? "above" : "below";
+
+    return `${formatMetricValue(comparison.gapToNext, metric)} ${side} ${comparison.nextLevel.label.toLowerCase()} window`;
   }
 
   return `${formatMetricValue(comparison.gapToNext, metric)} to ${comparison.nextLevel.label}`;
 }
 
-function metricLevelLabel() {
-  return "Level";
+function metricBadgeLabel(comparison: MetricLevelComparison, metric: MetricDefinition) {
+  if (comparison.actual === null) {
+    return "Needs data";
+  }
+
+  if (metric.comparisonMode !== "closest" || !comparison.nextLevel) {
+    return comparison.levelLabel;
+  }
+
+  if (comparison.gapToNext !== null && comparison.gapToNext <= metricPrecisionTolerance(metric)) {
+    return `${comparison.nextLevel.label} window`;
+  }
+
+  return comparison.actual > comparison.nextLevel.value
+    ? "Above target window"
+    : "Below target window";
+}
+
+function metricPrecisionTolerance(metric: MetricDefinition) {
+  return metric.precision === 2 ? 0.01 : 0.1;
+}
+
+function metricLevelLabel(metric: MetricDefinition) {
+  return metric.comparisonMode === "closest" ? "Window" : "Level";
 }
 
 function metricTargetLabel(metric: MetricDefinition) {
-  return metric.comparisonMode === "closest" ? "Level gap" : "Next";
+  return metric.comparisonMode === "closest" ? "Window gap" : "Next";
+}
+
+function metricBandLabel(metric: MetricDefinition) {
+  return metric.comparisonMode === "closest" ? "Target window" : "Benchmark band";
 }
 
 function metricReferenceText(comparison: MetricLevelComparison, metric: MetricDefinition) {
@@ -1358,10 +1474,8 @@ function actualMetricValue(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey
 
 function tourValues(
   clubSpeedMph: number,
-  attackAngleDeg: number,
   ballSpeedMph: number,
   smashFactor: number,
-  launchAngleDeg: number,
   spinRate: number,
   maxHeightYd: number,
   landAngleDeg: number,
@@ -1370,10 +1484,8 @@ function tourValues(
   return {
     carryYd,
     clubSpeedMph,
-    attackAngleDeg,
     ballSpeedMph,
     smashFactor,
-    launchAngleDeg,
     spinRate,
     maxHeightYd,
     landAngleDeg,

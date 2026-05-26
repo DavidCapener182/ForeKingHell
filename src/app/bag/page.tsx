@@ -769,10 +769,8 @@ function buildBenchmarkMetricValues(club: BagClub): ClubBenchmarkMetricValues {
   return {
     carryYd: club.stock.carryMedianYd,
     clubSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.clubSpeedMph),
-    attackAngleDeg: averageBenchmarkMetric(filteredShots, (shot) => shot.attackAngleDeg),
     ballSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.ballSpeedMph),
     smashFactor: averageBenchmarkMetric(filteredShots, (shot) => shot.smashFactor, 2),
-    launchAngleDeg: averageBenchmarkMetric(filteredShots, (shot) => shot.launchAngleDeg),
     maxHeightYd: averageBenchmarkMetric(
       filteredShots,
       (shot) => (shot.apexFt === null || shot.apexFt === undefined ? null : shot.apexFt / 3),
