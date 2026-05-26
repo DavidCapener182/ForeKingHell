@@ -21,7 +21,7 @@ Post to wider Facebook/Rapsodo groups only after:
 
 ## Tester Message
 
-ForeKingHell turns Rapsodo sessions into stock yardages, progress signals and practice priorities. Social, challenges and leaderboards are optional. Your profile is private by default, and you choose what appears publicly or to friends.
+LM World Tour turns Rapsodo sessions into stock yardages, progress signals and practice priorities. Social, challenges and leaderboards are optional. Your profile is private by default, and you choose what appears publicly or to friends.
 
 Ask testers to try:
 

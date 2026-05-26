@@ -673,7 +673,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
 
       return {
         userId: profile.id,
-        displayName: profile.displayName ?? profile.name ?? profile.email ?? "ForeKingHell player",
+        displayName: profile.displayName ?? profile.name ?? profile.email ?? "LM World Tour player",
         username: profile.username,
         isCurrentUser: profile.id === userId,
         relationship:

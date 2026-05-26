@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 
 const PUBLIC_FILE = /\.[\w-]+$/;
 const PUBLIC_PATH_PREFIXES = ["/_next/", "/icons/", "/assets/", "/auth/", "/share/", "/api/cron/"];
@@ -27,7 +26,7 @@ export async function middleware(request: NextRequest) {
       return new NextResponse("Authentication required.", {
         status: 401,
         headers: {
-          "www-authenticate": 'Basic realm="ForeKingHell", charset="UTF-8"',
+          "www-authenticate": 'Basic realm="LM World Tour", charset="UTF-8"',
         },
       });
     }
@@ -41,38 +40,13 @@ export const config = {
 };
 
 async function refreshSessionAndProtect(request: NextRequest) {
-  let response = NextResponse.next({ request });
   const { pathname } = request.nextUrl;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey =
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseKey || isPublicPath(pathname)) {
-    return response;
+  if (isPublicPath(pathname)) {
+    return NextResponse.next({ request });
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet, headers) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-        Object.entries(headers).forEach(([key, value]) => {
-          response.headers.set(key, value);
-        });
-      },
-    },
-  });
-
-  const { data, error } = await supabase.auth.getClaims();
-  const hasSession = Boolean(data?.claims?.sub && !error);
-
-  if (!hasSession) {
+  if (!hasSupabaseSessionCookie(request.cookies.getAll())) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ message: "Authentication required." }, { status: 401 });
     }
@@ -83,7 +57,7 @@ async function refreshSessionAndProtect(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return response;
+  return NextResponse.next({ request });
 }
 
 function isPublicPath(pathname: string) {
@@ -92,4 +66,65 @@ function isPublicPath(pathname: string) {
     PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
     PUBLIC_FILE.test(pathname)
   );
+}
+
+function hasSupabaseSessionCookie(cookies: { name: string; value: string }[]) {
+  return Boolean(accessTokenFromSupabaseCookie(supabaseAuthCookieValue(cookies)));
+}
+
+function supabaseAuthCookieValue(cookies: { name: string; value: string }[]) {
+  const authCookie = cookies.find((cookie) => /^sb-.+-auth-token$/.test(cookie.name));
+  if (authCookie) {
+    return authCookie.value;
+  }
+
+  const chunkedAuthCookie = cookies
+    .map((cookie) => {
+      const match = cookie.name.match(/^(sb-.+-auth-token)\.(\d+)$/);
+      return match ? { baseName: match[1], index: Number(match[2]), value: cookie.value } : null;
+    })
+    .filter((cookie): cookie is { baseName: string; index: number; value: string } =>
+      Boolean(cookie),
+    )
+    .sort((a, b) => a.index - b.index);
+
+  if (chunkedAuthCookie.length === 0 || chunkedAuthCookie[0].index !== 0) {
+    return null;
+  }
+
+  const baseName = chunkedAuthCookie[0].baseName;
+  const chunks = [];
+  for (const cookie of chunkedAuthCookie) {
+    if (cookie.baseName !== baseName || cookie.index !== chunks.length) {
+      break;
+    }
+    chunks.push(cookie.value);
+  }
+
+  return chunks.length > 0 ? chunks.join("") : null;
+}
+
+function accessTokenFromSupabaseCookie(value: string | undefined | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    let decoded = decodeURIComponent(value);
+    if (decoded.startsWith("base64-")) {
+      decoded = decodeBase64Url(decoded.slice("base64-".length));
+    }
+
+    const parsed = JSON.parse(decoded) as { access_token?: string } | [string];
+    const token = Array.isArray(parsed) ? parsed[0] : parsed.access_token;
+    return typeof token === "string" && token ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64Url(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  return atob(padded);
 }

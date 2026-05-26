@@ -643,7 +643,7 @@ function buildProfile(golfer, createdAt) {
 function buildCourse(createdAt) {
   return {
     id: courseId,
-    name: "ForeKingHell Tour Links",
+    name: "LM World Tour Links",
     country: "United Kingdom",
     provider: "tour-seed",
     externalId: "forekinghell-tour-links",
@@ -863,8 +863,8 @@ function buildSessions(golfer, startDate) {
       date: roundDate,
       courseId,
       teeSetId,
-      location: "ForeKingHell Tour Links",
-      courseName: "ForeKingHell Tour Links",
+      location: "LM World Tour Links",
+      courseName: "LM World Tour Links",
       roundStatus: "complete",
       weatherJson: {
         conditions: "Bright",
@@ -1183,7 +1183,7 @@ function buildGolferFeedItems(golfer, sessionsForGolfer, createdAt) {
       userId: golfer.userId,
       itemType: "round_completed",
       headline: `${golfer.name} completed a tour round`,
-      metricLabel: "ForeKingHell Tour Links",
+      metricLabel: "LM World Tour Links",
       metricValue: String(golfer.roundScore),
       context: "Scorecard posted with verified round details.",
       proofUrl: `/rounds/${roundSession.id}`,
@@ -1333,13 +1333,13 @@ function buildGroup(createdAt) {
     id: groupId,
     ownerUserId: golfers[1].userId,
     slug: "tour-forekinghell-tour",
-    name: "ForeKingHell Tour Players",
+    name: "LM World Tour Players",
     description:
       "Public tour-player group for posts, members, challenges, records and event links.",
     groupType: "rapsodo_league",
     visibility: "public",
     avatarUrl: null,
-    inviteCode: "FKH-TOUR",
+    inviteCode: "LMWT-TOUR",
     rules: `Tour-player group. Profiles include public player activity. ${SEED_MARKER}`,
     settingsJson: { demoSeed: SEED_MARKER, tourProfile: true },
     createdAt,
@@ -2020,7 +2020,7 @@ function buildCompetitionFeedItems(
         id: uuidFor(`feed:course-record:${result.id}`),
         userId: result.userId,
         itemType: "course_record_set",
-        headline: `${golfer.name} became Course Champion at ForeKingHell Tour Links`,
+        headline: `${golfer.name} became Course Champion at LM World Tour Links`,
         metricLabel: category.name,
         metricValue: result.scoreLabel,
         context: `${result.verificationTier === "gold" ? "Gold verified" : "Silver verified"} on the ${record.scope} board.`,
@@ -2061,7 +2061,7 @@ function buildCompetitionFeedItems(
     id: uuidFor("feed:group:created"),
     userId: golfers[1].userId,
     itemType: "group_created",
-    headline: `${golfers[1].name} created ForeKingHell Tour Players`,
+    headline: `${golfers[1].name} created LM World Tour Players`,
     metricLabel: "Group",
     metricValue: "Rapsodo League",
     context: "Public tour-player group for local multi-user testing.",
@@ -3354,7 +3354,7 @@ function buildGolferBio(profile) {
     ? `public scoring average ${profile.scoring.toFixed(2)}`
     : "tour scoring profile";
 
-  return `${rankLabel}. Tour profile uses ${scoringLabel}. ForeKingHell shows shots, stock yardages, scorecards, social activity and tournament evidence.`;
+  return `${rankLabel}. Tour profile uses ${scoringLabel}. LM World Tour shows shots, stock yardages, scorecards, social activity and tournament evidence.`;
 }
 
 function tourPlayerHeadshotUrl(profile) {

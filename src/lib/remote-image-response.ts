@@ -2,14 +2,15 @@ import "server-only";
 
 import { isIP } from "node:net";
 
+import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
+
 export const DEFAULT_REMOTE_IMAGE_CACHE_CONTROL =
   "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800";
 
 const DEFAULT_MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_FETCH_TIMEOUT_MS = 4500;
 const DEFAULT_MAX_REDIRECTS = 3;
-const DEFAULT_USER_AGENT =
-  "Mozilla/5.0 (compatible; ForeKingHell image resolver; +https://forekinghell.app)";
+const DEFAULT_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} image resolver; +${BRAND_PUBLIC_URL})`;
 
 type RemoteImageResponseOptions = {
   cacheControl?: string;

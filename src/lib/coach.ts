@@ -348,7 +348,7 @@ function buildHeadline(summary: ProgressSummary, topCard: CoachClubCard | null) 
 
 function buildSubhead(summary: ProgressSummary, topCard: CoachClubCard | null) {
   if (!topCard) {
-    return "ForeKingHell needs clean full-shot samples before it can separate distance, strike, launch, direction, and delivery issues.";
+    return "LM World Tour needs clean full-shot samples before it can separate distance, strike, launch, direction, and delivery issues.";
   }
 
   return `${topCard.issueLabel} is the main signal. Bag trust is ${summary.totals.averageTrust}% across ${summary.totals.clubs} tracked clubs.`;
@@ -427,7 +427,7 @@ function buildTrainingImpactCard(club: ProgressClub, card: CoachClubCard): Coach
       issueLabel: card.issueLabel,
       status: "needs-data",
       headline: "Needs one more comparable session",
-      detail: `${card.clubName} needs at least three clean shots in two sessions before ForeKingHell can judge whether training helped.`,
+      detail: `${card.clubName} needs at least three clean shots in two sessions before LM World Tour can judge whether training helped.`,
       tone: "slate",
       metrics: [
         {

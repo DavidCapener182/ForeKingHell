@@ -2,10 +2,12 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
-  BarChart3,
   MapPinned,
+  Minus,
   Trophy,
   Target,
+  TrendingDown,
+  TrendingUp,
   Upload,
   Users,
 } from "lucide-react";
@@ -52,10 +54,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clubs, sessions, shots } from "@/db/schema";
+import { clubs, sessions, shots, userProfiles } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
-import { buildClubBenchmarkRows, type ClubBenchmarkRow } from "@/lib/club-benchmarks";
+import {
+  buildClubBenchmarkRows,
+  type ClubBenchmarkMetricKey,
+  type ClubBenchmarkMetricValues,
+  type ClubBenchmarkPeerComparison,
+  type ClubBenchmarkPeerSummary,
+  type ClubBenchmarkRow,
+} from "@/lib/club-benchmarks";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
@@ -73,10 +82,17 @@ import {
   isShortGameTouchClubType,
   isTrackedClubType,
 } from "@/lib/club-format";
-import { ensureCurrentSocialProfile } from "@/lib/social";
+import { ensureCurrentSocialProfile, getBlockedUserIds, getFriendIds } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
-import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
+import {
+  calculateStockCarryTrend,
+  calculateStockYardage,
+  selectStockYardageShots,
+  type StockCarryTrend,
+  type StockShot,
+} from "@/lib/stock-yardage";
+import { DistanceBenchmarkPanel } from "./distance-benchmark-panel";
 import { TargetDistanceSelector, type TargetDistanceRow } from "./target-distance-selector";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +102,16 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 const RECENT_SHOTS_PER_CLUB = 200;
+const PEER_SHOT_QUERY_LIMIT = 12000;
+const PEER_MIN_STOCK_SHOTS = 3;
+const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
+  "carryYd",
+  "clubSpeedMph",
+  "ballSpeedMph",
+  "smashFactor",
+  "maxHeightYd",
+  "landAngleDeg",
+];
 
 export default async function BagPage() {
   const [bag, profile, challengeData, featureData] = await Promise.all([
@@ -99,6 +125,8 @@ export default async function BagPage() {
   });
   const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
   const benchmarkRows = buildBenchmarkRows(bag);
+  const peerBenchmarkSummary =
+    benchmarkRows.length > 0 ? await getPeerBenchmarkSummary(benchmarkRows) : emptyPeerSummary();
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
@@ -354,7 +382,7 @@ export default async function BagPage() {
 
         {benchmarkRows.length > 0 ? (
           <section id="levels" className="scroll-mt-28">
-            <DistanceBenchmarkPanel rows={benchmarkRows} />
+            <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
           </section>
         ) : null}
 
@@ -410,6 +438,7 @@ export default async function BagPage() {
                         )}
                         <span className="ml-1 text-lg text-muted-foreground">yd</span>
                       </p>
+                      {club.stockTrend ? <ShotTrendBadge trend={club.stockTrend} /> : null}
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">
@@ -417,7 +446,11 @@ export default async function BagPage() {
                       </p>
                       <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
                         {formatMetric(
-                          club.isShortGameTouch ? null : club.stock.recommendedPlayNumberYd,
+                          club.isShortGameTouch
+                            ? club.type === "sw"
+                              ? club.stock.carryMedianYd
+                              : null
+                            : club.stock.recommendedPlayNumberYd,
                         )}
                       </p>
                     </div>
@@ -475,7 +508,9 @@ export default async function BagPage() {
                       label={club.isShortGameTouch ? "Type" : "Side"}
                       value={
                         club.isShortGameTouch
-                          ? "Touch"
+                          ? club.type === "sw"
+                            ? "Touch + stock"
+                            : "Touch"
                           : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
                               club.stock.dispersionRightYd,
                             )}R`
@@ -493,14 +528,14 @@ export default async function BagPage() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{club.decisionLabel}</span>
                       <span className="text-muted-foreground">
-                        {club.isShortGameTouch
+                        {club.isShortGameTouch && club.type !== "sw"
                           ? `${club.touch.sampleSize} shots`
                           : `${club.stock.confidenceScore}%`}
                       </span>
                     </div>
                     <Progress
                       value={
-                        club.isShortGameTouch
+                        club.isShortGameTouch && club.type !== "sw"
                           ? Math.min(100, (club.touch.sampleSize / 50) * 100)
                           : club.stock.confidenceScore
                       }
@@ -598,7 +633,9 @@ async function getBag() {
             launchDirectionDeg: shots.launchDirectionDeg,
             apexFt: shots.apexFt,
             descentAngleDeg: shots.descentAngleDeg,
+            attackAngleDeg: shots.attackAngleDeg,
             spinRate: shots.spinRate,
+            smashFactor: shots.smashFactor,
             spinAxis: shots.spinAxis,
             courseHoleNumber: shots.courseHoleNumber,
             sessionType: sessions.type,
@@ -636,14 +673,20 @@ async function getBag() {
       const accent = clubAccent(club.type);
       const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
+      const isTouchOnlyClub = isShortGameTouch && club.type !== "sw";
       const touch = calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, {
         clubType: club.type,
       });
       const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, {
         clubType: club.type,
       });
+      const stockTrend = isTouchOnlyClub
+        ? null
+        : calculateStockCarryTrend(recentShots, RECENT_SHOTS_PER_CLUB, {
+            clubType: club.type,
+          });
       const decisionLabel = getClubDecisionLabel({
-        isShortGameTouch,
+        isShortGameTouch: isTouchOnlyClub,
         stockLabel: stock.label,
       });
 
@@ -657,12 +700,31 @@ async function getBag() {
         shots: recentShots,
         touch,
         stock,
+        stockTrend,
       };
     })
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
 }
 
 type BagClub = Awaited<ReturnType<typeof getBag>>[number];
+type PeerBenchmarkShot = StockShot & {
+  id: string;
+  userId: string;
+  clubId: string;
+  clubType: string;
+  shotAt: Date;
+  clubSpeedMph: number | null;
+  apexFt: number | null;
+  descentAngleDeg: number | null;
+  smashFactor: number | null;
+};
+type PeerProfileRow = {
+  userId: string;
+  visibilitySettingsJson: {
+    bag?: "private" | "friends" | "public";
+    allowCompare?: boolean;
+  };
+};
 
 type GappingRow = {
   id: string;
@@ -691,10 +753,341 @@ function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
       clubType: club.type,
       brandModel: club.brandModel,
       carryYd: club.stock.carryMedianYd,
+      bestSampleFloorYd: club.stock.bestSampleFloorYd,
       sampleSize: club.stock.sampleSize,
       confidenceScore: club.stock.confidenceScore,
+      metrics: buildBenchmarkMetricValues(club),
     })),
   );
+}
+
+function buildBenchmarkMetricValues(club: BagClub): ClubBenchmarkMetricValues {
+  const { filteredShots } = selectStockYardageShots(club.shots, RECENT_SHOTS_PER_CLUB, {
+    clubType: club.type,
+  });
+
+  return {
+    carryYd: club.stock.carryMedianYd,
+    clubSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.clubSpeedMph),
+    attackAngleDeg: averageBenchmarkMetric(filteredShots, (shot) => shot.attackAngleDeg),
+    ballSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.ballSpeedMph),
+    smashFactor: averageBenchmarkMetric(filteredShots, (shot) => shot.smashFactor, 2),
+    launchAngleDeg: averageBenchmarkMetric(filteredShots, (shot) => shot.launchAngleDeg),
+    maxHeightYd: averageBenchmarkMetric(
+      filteredShots,
+      (shot) => (shot.apexFt === null || shot.apexFt === undefined ? null : shot.apexFt / 3),
+      1,
+    ),
+    landAngleDeg: averageBenchmarkMetric(filteredShots, (shot) => shot.descentAngleDeg),
+  };
+}
+
+async function getPeerBenchmarkSummary(
+  rows: ClubBenchmarkRow[],
+): Promise<ClubBenchmarkPeerSummary> {
+  const db = getDb();
+  const viewerUserId = await requireCurrentUserId();
+  const targetClubTypes = new Set(rows.map((row) => row.comparison.benchmark.clubType));
+  const [profileRows, friendIds, blockedIds] = await Promise.all([
+    db
+      .select({
+        userId: userProfiles.userId,
+        visibilitySettingsJson: userProfiles.visibilitySettingsJson,
+      })
+      .from(userProfiles),
+    getFriendIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+  ]);
+  const friendIdSet = new Set(friendIds);
+  const eligibleUserIds = profileRows
+    .filter((profile) =>
+      canUseProfileForPeerBenchmarks(profile, {
+        viewerUserId,
+        friendIds: friendIdSet,
+        blockedIds,
+      }),
+    )
+    .map((profile) => profile.userId);
+
+  if (eligibleUserIds.length === 0 || targetClubTypes.size === 0) {
+    return emptyPeerSummary();
+  }
+
+  const peerShots = await db
+    .select({
+      id: shots.id,
+      userId: shots.userId,
+      clubId: shots.clubId,
+      clubType: shots.clubType,
+      shotAt: shots.shotAt,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: shots.sideCarryYd,
+      ballSpeedMph: shots.ballSpeedMph,
+      clubSpeedMph: shots.clubSpeedMph,
+      launchAngleDeg: shots.launchAngleDeg,
+      apexFt: shots.apexFt,
+      descentAngleDeg: shots.descentAngleDeg,
+      smashFactor: shots.smashFactor,
+      courseHoleNumber: shots.courseHoleNumber,
+      sessionType: sessions.type,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .innerJoin(clubs, eq(shots.clubId, clubs.id))
+    .where(and(inArray(shots.userId, eligibleUserIds), eq(clubs.active, true)))
+    .orderBy(desc(shots.shotAt))
+    .limit(PEER_SHOT_QUERY_LIMIT);
+
+  const targetedPeerShots = peerShots.filter((shot) =>
+    targetClubTypes.has(peerBenchmarkClubTypeFor(shot.clubType)),
+  );
+  const peerMetricValues = buildPeerMetricValues(targetedPeerShots, targetClubTypes);
+  const contributingUserIds = new Set<string>();
+
+  for (const values of peerMetricValues.values()) {
+    for (const value of values) {
+      contributingUserIds.add(value.userId);
+    }
+  }
+
+  return {
+    cohortLabel: "Public and friends",
+    peerUserCount: contributingUserIds.size,
+    peerShotCount: targetedPeerShots.length,
+    comparisons: rows.flatMap((row) =>
+      PEER_PERCENTILE_METRIC_KEYS.map((metricKey) =>
+        buildPeerComparison(row, metricKey, peerMetricValues),
+      ),
+    ),
+  };
+}
+
+function canUseProfileForPeerBenchmarks(
+  profile: PeerProfileRow,
+  context: {
+    viewerUserId: string;
+    friendIds: Set<string>;
+    blockedIds: Set<string>;
+  },
+) {
+  if (profile.userId === context.viewerUserId || context.blockedIds.has(profile.userId)) {
+    return false;
+  }
+
+  if (profile.visibilitySettingsJson?.allowCompare === false) {
+    return false;
+  }
+
+  if (context.friendIds.has(profile.userId)) {
+    return true;
+  }
+
+  return profile.visibilitySettingsJson?.bag === "public";
+}
+
+function buildPeerMetricValues(shotsForPeers: PeerBenchmarkShot[], targetClubTypes: Set<string>) {
+  const groupedShots = new Map<string, PeerBenchmarkShot[]>();
+
+  for (const shot of shotsForPeers) {
+    const clubType = peerBenchmarkClubTypeFor(shot.clubType);
+
+    if (!targetClubTypes.has(clubType)) {
+      continue;
+    }
+
+    const key = `${shot.userId}:${clubType}`;
+    groupedShots.set(key, [...(groupedShots.get(key) ?? []), shot]);
+  }
+
+  const metricValues = new Map<
+    string,
+    Array<{ userId: string; value: number; sampleSize: number }>
+  >();
+
+  for (const [key, clubShots] of groupedShots.entries()) {
+    const [userId, clubType] = key.split(":");
+    const { filteredShots } = selectStockYardageShots(clubShots, RECENT_SHOTS_PER_CLUB, {
+      clubType,
+    });
+
+    if (filteredShots.length < PEER_MIN_STOCK_SHOTS) {
+      continue;
+    }
+
+    const metrics = buildPeerBenchmarkMetricValues(filteredShots);
+
+    for (const metricKey of PEER_PERCENTILE_METRIC_KEYS) {
+      const value = metrics[metricKey];
+
+      if (!isFiniteMetric(value)) {
+        continue;
+      }
+
+      const metricKeyId = peerMetricMapKey(clubType, metricKey);
+      metricValues.set(metricKeyId, [
+        ...(metricValues.get(metricKeyId) ?? []),
+        {
+          userId,
+          value,
+          sampleSize: countMetricSamples(filteredShots, metricKey),
+        },
+      ]);
+    }
+  }
+
+  return metricValues;
+}
+
+function buildPeerComparison(
+  row: ClubBenchmarkRow,
+  metricKey: ClubBenchmarkMetricKey,
+  peerMetricValues: Map<string, Array<{ userId: string; value: number; sampleSize: number }>>,
+): ClubBenchmarkPeerComparison {
+  const values =
+    peerMetricValues.get(peerMetricMapKey(row.comparison.benchmark.clubType, metricKey)) ?? [];
+  const numbers = values.map((item) => item.value);
+  const actual = actualBenchmarkMetricValue(row, metricKey);
+
+  return {
+    clubType: row.comparison.benchmark.clubType,
+    metricKey,
+    peerCount: numbers.length,
+    sampleSize: values.reduce((total, item) => total + item.sampleSize, 0),
+    peerMedian: roundOne(percentile(numbers, 0.5)),
+    topQuartile: roundOne(percentile(numbers, 0.75)),
+    percentile: isFiniteMetric(actual) ? percentileRank(numbers, actual) : null,
+  };
+}
+
+function buildPeerBenchmarkMetricValues(
+  shotsForClub: PeerBenchmarkShot[],
+): ClubBenchmarkMetricValues {
+  return {
+    carryYd: roundOne(
+      percentile(shotsForClub.map((shot) => shot.carryYd).filter(isFiniteMetric), 0.5),
+    ),
+    clubSpeedMph: averageBenchmarkMetric(shotsForClub, (shot) => shot.clubSpeedMph),
+    ballSpeedMph: averageBenchmarkMetric(shotsForClub, (shot) => shot.ballSpeedMph),
+    smashFactor: averageBenchmarkMetric(shotsForClub, (shot) => shot.smashFactor, 2),
+    maxHeightYd: averageBenchmarkMetric(
+      shotsForClub,
+      (shot) => (shot.apexFt === null || shot.apexFt === undefined ? null : shot.apexFt / 3),
+      1,
+    ),
+    landAngleDeg: averageBenchmarkMetric(shotsForClub, (shot) => shot.descentAngleDeg),
+  };
+}
+
+function actualBenchmarkMetricValue(row: ClubBenchmarkRow, metricKey: ClubBenchmarkMetricKey) {
+  if (metricKey === "carryYd") {
+    return row.carryYd;
+  }
+
+  return row.metrics?.[metricKey] ?? null;
+}
+
+function countMetricSamples(shotsForClub: PeerBenchmarkShot[], metricKey: ClubBenchmarkMetricKey) {
+  if (metricKey === "carryYd") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.carryYd)).length;
+  }
+
+  if (metricKey === "clubSpeedMph") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.clubSpeedMph)).length;
+  }
+
+  if (metricKey === "ballSpeedMph") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.ballSpeedMph)).length;
+  }
+
+  if (metricKey === "smashFactor") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.smashFactor)).length;
+  }
+
+  if (metricKey === "maxHeightYd") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.apexFt)).length;
+  }
+
+  if (metricKey === "landAngleDeg") {
+    return shotsForClub.filter((shot) => isFiniteMetric(shot.descentAngleDeg)).length;
+  }
+
+  return 0;
+}
+
+function peerMetricMapKey(clubType: string, metricKey: ClubBenchmarkMetricKey) {
+  return `${clubType}:${metricKey}`;
+}
+
+function peerBenchmarkClubTypeFor(clubType: string) {
+  if (/^[1-9]h$/.test(clubType)) {
+    return "hybrid";
+  }
+
+  return clubType;
+}
+
+function emptyPeerSummary(): ClubBenchmarkPeerSummary {
+  return {
+    cohortLabel: "Public and friends",
+    peerUserCount: 0,
+    peerShotCount: 0,
+    comparisons: [],
+  };
+}
+
+function averageBenchmarkMetric<T>(
+  rows: T[],
+  selector: (row: T) => number | null | undefined,
+  precision = 1,
+) {
+  const values = rows.map(selector).filter(isFiniteMetric);
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  const average = values.reduce((total, value) => total + value, 0) / values.length;
+  const factor = 10 ** precision;
+
+  return Math.round(average * factor) / factor;
+}
+
+function isFiniteMetric(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function percentile(values: number[], percentileValue: number) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const sortedValues = [...values].sort((left, right) => left - right);
+  const index = (sortedValues.length - 1) * percentileValue;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+
+  if (lower === upper) {
+    return sortedValues[lower];
+  }
+
+  return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * (index - lower);
+}
+
+function percentileRank(values: number[], value: number) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const lowerOrEqual = values.filter((peerValue) => peerValue <= value).length;
+
+  return Math.round((lowerOrEqual / values.length) * 100);
+}
+
+function roundOne(value: number | null) {
+  return value === null ? null : Math.round(value * 10) / 10;
 }
 
 function buildGappingRows(
@@ -843,260 +1236,6 @@ function BagSocialComparison({
   );
 }
 
-function DistanceBenchmarkPanel({ rows }: { rows: ClubBenchmarkRow[] }) {
-  const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
-  const averageLevel =
-    rowsWithData.length === 0
-      ? null
-      : Math.round(
-          rowsWithData.reduce((total, row) => total + (row.comparison.levelIndex ?? 0), 0) /
-            rowsWithData.length,
-        );
-  const strongest =
-    [...rowsWithData].sort(
-      (left, right) =>
-        (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
-        right.comparison.progressPercent - left.comparison.progressPercent,
-    )[0] ?? null;
-  const closestNext =
-    [...rows]
-      .filter(
-        (
-          row,
-        ): row is ClubBenchmarkRow & {
-          comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
-        } => row.comparison.yardsToNextLevel !== null,
-      )
-      .sort(
-        (left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel,
-      )[0] ?? null;
-
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Distance benchmarks"
-        description="Your rolling stock carry against broad club-distance reference levels."
-        action={<BarChart3 className="size-5 text-emerald-500" />}
-      />
-      <CardContent className="space-y-4">
-        <CompactReadoutGrid
-          columnsClassName="md:grid-cols-3"
-          items={[
-            {
-              label: "Bag average",
-              value: averageLevel === null ? "--" : benchmarkLevelFromIndex(averageLevel),
-              detail:
-                rowsWithData.length === 0
-                  ? "Need stock carry samples"
-                  : `${rowsWithData.length} club${rowsWithData.length === 1 ? "" : "s"} compared`,
-              tone: benchmarkTone(
-                averageLevel === null ? "no-data" : benchmarkLevelKeyFromIndex(averageLevel),
-              ),
-            },
-            {
-              label: "Strongest match",
-              value: strongest ? formatClubType(strongest.clubType) : "--",
-              detail: strongest
-                ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd`
-                : "Need stock carry samples",
-              tone: benchmarkTone(strongest?.comparison.levelKey ?? "no-data"),
-              href: strongest ? `/bag/${strongest.clubId}` : undefined,
-            },
-            {
-              label: "Closest next level",
-              value: closestNext ? formatClubType(closestNext.clubType) : "--",
-              detail: closestNext
-                ? `${formatMetric(closestNext.comparison.yardsToNextLevel)} yd to ${closestNext.comparison.nextLevel?.label}`
-                : "No next target yet",
-              tone: closestNext ? "amber" : "slate",
-              href: closestNext ? `/bag/${closestNext.clubId}` : undefined,
-            },
-          ]}
-        />
-
-        <MobileAccordionSection title="Club level table" count={`${rows.length} clubs`}>
-          <MobileDataList>
-            {rows.map((row) => (
-              <MobileDataCard
-                key={row.clubId}
-                href={`/bag/${row.clubId}`}
-                title={formatClubType(row.clubType)}
-                subtitle={row.brandModel}
-                action={<BenchmarkBadge row={row} />}
-              >
-                <DataPair
-                  label="Carry"
-                  value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
-                />
-                <DataPair label="Sample" value={row.sampleSize.toString()} />
-                <DataPair label="Next" value={benchmarkNextText(row)} />
-                <DataPair label="Reference" value={benchmarkReferenceText(row)} />
-                <BenchmarkMeter row={row} />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        </MobileAccordionSection>
-
-        <div className="hidden sm:block">
-          <DataTableFrame>
-            <Table className="min-w-[980px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Club</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Your carry</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Next</TableHead>
-                  <TableHead className="min-w-[280px]">Benchmark band</TableHead>
-                  <TableHead className="text-right">Sample</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.clubId}>
-                    <TableCell>
-                      <Link
-                        href={`/bag/${row.clubId}`}
-                        className="font-semibold text-foreground underline-offset-4 hover:underline"
-                      >
-                        {formatClubType(row.clubType)}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
-                      {row.brandModel}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatMetric(row.carryYd)}
-                      {row.carryYd === null ? "" : " yd"}
-                    </TableCell>
-                    <TableCell>
-                      <BenchmarkBadge row={row} />
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {benchmarkNextText(row)}
-                    </TableCell>
-                    <TableCell>
-                      <BenchmarkMeter row={row} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">{row.sampleSize}</span>
-                      <span className="ml-2 text-muted-foreground">{row.confidenceScore}%</span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function BenchmarkMeter({ row }: { row: ClubBenchmarkRow }) {
-  const marker = row.comparison.carryYd === null ? null : row.comparison.progressPercent;
-
-  return (
-    <div className="min-w-0 space-y-2">
-      <div className="relative h-3 rounded-full bg-slate-100">
-        <div
-          className="h-full rounded-full bg-emerald-600"
-          style={{ width: `${row.comparison.progressPercent}%` }}
-        />
-        {marker === null ? null : (
-          <span
-            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-sm"
-            style={{ left: `calc(${marker}% - 0.5rem)` }}
-            aria-hidden
-          />
-        )}
-      </div>
-      <div className="grid grid-cols-5 gap-1 text-[10px] leading-4 text-muted-foreground">
-        {row.comparison.benchmark.levels.map((level) => (
-          <span key={level.key} className="truncate">
-            {level.shortLabel} {level.yards}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BenchmarkBadge({ row }: { row: ClubBenchmarkRow }) {
-  return (
-    <span
-      className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${benchmarkBadgeClass(
-        row.comparison.levelKey,
-      )}`}
-    >
-      {row.comparison.levelLabel}
-    </span>
-  );
-}
-
-function benchmarkNextText(row: ClubBenchmarkRow) {
-  if (row.comparison.carryYd === null) {
-    return "Needs full-swing stock data";
-  }
-
-  if (!row.comparison.nextLevel || row.comparison.yardsToNextLevel === null) {
-    return "Above top reference";
-  }
-
-  return `${formatMetric(row.comparison.yardsToNextLevel)} yd to ${row.comparison.nextLevel.label}`;
-}
-
-function benchmarkReferenceText(row: ClubBenchmarkRow) {
-  const first = row.comparison.benchmark.levels[0];
-  const last = row.comparison.benchmark.levels[row.comparison.benchmark.levels.length - 1];
-
-  return `${first.yards}-${last.yards} yd ${row.comparison.benchmark.label}`;
-}
-
-function benchmarkLevelFromIndex(index: number) {
-  return ["Beginner", "Average", "Good", "Advanced", "Tour"][index] ?? "--";
-}
-
-function benchmarkLevelKeyFromIndex(index: number) {
-  return (["beginner", "average", "good", "advanced", "tour"] as const)[index] ?? "no-data";
-}
-
-function benchmarkTone(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
-  if (levelKey === "tour" || levelKey === "tour-plus" || levelKey === "advanced") {
-    return "green";
-  }
-
-  if (levelKey === "good") {
-    return "sky";
-  }
-
-  if (levelKey === "average" || levelKey === "beginner" || levelKey === "building") {
-    return "amber";
-  }
-
-  return "slate";
-}
-
-function benchmarkBadgeClass(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
-  if (levelKey === "tour" || levelKey === "tour-plus") {
-    return "border-violet-200 bg-violet-50 text-violet-700";
-  }
-
-  if (levelKey === "advanced" || levelKey === "good") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-
-  if (levelKey === "average") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
-  }
-
-  if (levelKey === "beginner" || levelKey === "building") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
-  }
-
-  return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
 function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
   const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
@@ -1105,7 +1244,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
       <CardHeader className="p-4 sm:p-6">
         <CardTitle className="text-xl tracking-normal sm:text-2xl">Carry gapping</CardTitle>
         <CardDescription className="hidden sm:block">
-          Stock carry by club, with realistic next-step targets from the current bag data.
+          Best-20 stock carry by club, with realistic next-step targets from the current bag data.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -1448,6 +1587,89 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ShotTrendBadge({ trend }: { trend: StockCarryTrend }) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold ${stockTrendToneClass(
+          trend.status,
+        )}`}
+        title={stockTrendTitle(trend)}
+      >
+        <StockTrendIcon status={trend.status} />
+        {stockTrendLabel(trend.status)}
+      </span>
+      <span className="text-xs text-muted-foreground">{stockTrendDetail(trend)}</span>
+    </div>
+  );
+}
+
+function StockTrendIcon({ status }: { status: StockCarryTrend["status"] }) {
+  if (status === "better") {
+    return <TrendingUp className="size-3.5" />;
+  }
+
+  if (status === "worse") {
+    return <TrendingDown className="size-3.5" />;
+  }
+
+  return <Minus className="size-3.5" />;
+}
+
+function stockTrendLabel(status: StockCarryTrend["status"]) {
+  if (status === "better") {
+    return "Trending better";
+  }
+
+  if (status === "worse") {
+    return "Trending worse";
+  }
+
+  if (status === "steady") {
+    return "Holding steady";
+  }
+
+  return "Trend building";
+}
+
+function stockTrendDetail(trend: StockCarryTrend) {
+  if (trend.deltaYd === null) {
+    return "Need 6 clean stock shots";
+  }
+
+  return `${formatSignedYards(trend.deltaYd)} vs previous shots`;
+}
+
+function stockTrendTitle(trend: StockCarryTrend) {
+  if (trend.deltaYd === null) {
+    return `${trend.latestSampleSize + trend.previousSampleSize} clean stock shots available`;
+  }
+
+  return `Latest ${trend.latestSampleSize}: ${formatMetric(
+    trend.latestCarryMedianYd,
+  )} yd; previous ${trend.previousSampleSize}: ${formatMetric(trend.previousCarryMedianYd)} yd`;
+}
+
+function stockTrendToneClass(status: StockCarryTrend["status"]) {
+  if (status === "better") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "worse") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  if (status === "steady") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatSignedYards(value: number) {
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} yd`;
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
 import {
   brandLogoIconUrls,
   buildBrandLogoSearchQuery,
@@ -16,8 +17,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const IMAGE_CACHE_CONTROL = DEFAULT_REMOTE_IMAGE_CACHE_CONTROL;
-const CLUB_IMAGE_USER_AGENT =
-  "Mozilla/5.0 (compatible; ForeKingHell club image resolver; +https://forekinghell.app)";
+const CLUB_IMAGE_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} club image resolver; +${BRAND_PUBLIC_URL})`;
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);

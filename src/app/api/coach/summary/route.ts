@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
 import { buildCoachPrompt, parseAiCoachSummary, type AiCoachPayload } from "@/lib/ai-coach-summary";
+import { BRAND_NAME, LEGACY_BRAND_NAME } from "@/lib/brand";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 export const runtime = "nodejs";
@@ -86,7 +87,11 @@ export async function POST(request: NextRequest) {
 }
 
 function isAiCoachPayload(value: unknown): value is AiCoachPayload {
-  if (!isRecord(value) || value.productName !== "ForeKingHell" || !isRecord(value.totals)) {
+  if (
+    !isRecord(value) ||
+    (value.productName !== BRAND_NAME && value.productName !== LEGACY_BRAND_NAME) ||
+    !isRecord(value.totals)
+  ) {
     return false;
   }
 

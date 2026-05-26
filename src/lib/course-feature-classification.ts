@@ -317,7 +317,9 @@ function distanceMetersToFeature(point: LatLngPoint, geometry: CourseFeatureGeom
     return distanceMetersToPolygon(point, geometry.coordinates);
   }
 
-  return Math.min(...geometry.coordinates.map((polygon) => distanceMetersToPolygon(point, polygon)));
+  return Math.min(
+    ...geometry.coordinates.map((polygon) => distanceMetersToPolygon(point, polygon)),
+  );
 }
 
 function distanceMetersToPolygon(point: LatLngPoint, polygon: number[][][]) {

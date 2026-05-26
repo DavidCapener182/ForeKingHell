@@ -147,7 +147,7 @@ for (const source of ["panel", "generated-v2"]) {
 
 writeFileSync(path.join(outRoot, "page-shots-shot-trace.svg"), shotTraceSvg());
 
-console.log("Generated ForeKingHell UI assets.");
+console.log("Generated LM World Tour UI assets.");
 
 async function renderWebp(file, svg, width, height) {
   await sharp(Buffer.from(svg)).resize(width, height).webp({ quality: 86 }).toFile(file);

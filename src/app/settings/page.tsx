@@ -86,7 +86,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <PageHeader
         eyebrow={<StatusPill tone="sky">Account</StatusPill>}
         title="Settings"
-        description="Manage profile preferences, privacy defaults, and data portability for your ForeKingHell account."
+        description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
         actions={
           <Button
             asChild
@@ -467,7 +467,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <DataPanel>
             <SectionHeader
               title="Delete app data"
-              description="This removes ForeKingHell data for the signed-in account. It does not delete the Supabase Auth login itself."
+              description="This removes LM World Tour data for the signed-in account. It does not delete the Supabase Auth login itself."
               action={<Trash2 className="size-5 text-destructive" />}
             />
             <CardContent>

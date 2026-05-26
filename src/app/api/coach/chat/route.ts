@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "input_text",
-              text: "You are a direct golf coach. Answer in 90-150 words, cite concrete ForeKingHell facts, and avoid pretending data exists.",
+              text: "You are a direct golf coach. Answer in 90-150 words, cite concrete LM World Tour facts, and avoid pretending data exists.",
             },
           ],
         },

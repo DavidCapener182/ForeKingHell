@@ -22,6 +22,6 @@ test.describe("authentication", () => {
     await page.goto("/privacy");
 
     await expect(page).toHaveURL(/\/privacy/);
-    await expect(page.getByRole("heading", { name: "ForeKingHell data notice" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "LM World Tour data notice" })).toBeVisible();
   });
 });

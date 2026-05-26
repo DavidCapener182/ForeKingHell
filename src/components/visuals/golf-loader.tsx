@@ -1,9 +1,10 @@
 import Image from "next/image";
 
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export function GolfLoader({
-  label = "Loading ForeKingHell",
+  label = `Loading ${BRAND_NAME}`,
   className,
 }: {
   label?: string;

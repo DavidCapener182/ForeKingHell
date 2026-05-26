@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BRAND_SHORT_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export function SocialAvatar({
@@ -55,7 +56,7 @@ export function SocialAvatar({
 }
 
 export function initials(displayName: string, username?: string) {
-  const source = displayName.trim() || username?.trim() || "FKH";
+  const source = displayName.trim() || username?.trim() || BRAND_SHORT_NAME;
   const parts = source.split(/\s+/).filter(Boolean);
 
   if (parts.length >= 2) {

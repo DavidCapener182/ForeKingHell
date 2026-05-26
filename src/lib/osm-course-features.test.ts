@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildOverpassGolfFeatureQuery, parseOverpassGolfFeatures } from "@/lib/osm-course-features";
+import {
+  buildOverpassGolfFeatureQuery,
+  parseOverpassGolfFeatures,
+} from "@/lib/osm-course-features";
 
 describe("osm course features", () => {
   it("builds an Overpass query for golf surface polygons", () => {

@@ -1,3 +1,4 @@
+import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
 import { buildCourseLogoSearchQueries, rankCourseLogoSearchCandidates } from "@/lib/course-images";
 import { searchGoogleImages } from "@/lib/google-image-search";
 import { findGooglePlaceMedia, googlePlacePhotoResponseFromReference } from "@/lib/google-places";
@@ -13,8 +14,7 @@ export const runtime = "nodejs";
 const COURSE_LOGO_CACHE_CONTROL = DEFAULT_REMOTE_IMAGE_CACHE_CONTROL;
 const COURSE_PLACE_PHOTO_CACHE_CONTROL = "public, max-age=3600, s-maxage=3600";
 const COURSE_LOGO_MISS_CACHE_CONTROL = "public, max-age=300, s-maxage=900";
-const COURSE_LOGO_USER_AGENT =
-  "Mozilla/5.0 (compatible; ForeKingHell course logo resolver; +https://forekinghell.app)";
+const COURSE_LOGO_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} course logo resolver; +${BRAND_PUBLIC_URL})`;
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);

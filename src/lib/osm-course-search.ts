@@ -19,7 +19,7 @@ export type OsmHoleGeometry = {
   greenLng: number;
 };
 
-const OSM_USER_AGENT = "ForeKingHell golf analytics course importer";
+const OSM_USER_AGENT = "LM World Tour golf analytics course importer";
 
 type NominatimResult = {
   osm_type?: string;

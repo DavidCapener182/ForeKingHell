@@ -4,6 +4,7 @@ import { eq, sql } from "drizzle-orm";
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { userProfiles, users } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -27,7 +28,7 @@ const defaultPreferences: CurrentUserPreferences = {
   tableDensity: "comfortable",
 };
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   const playwrightUser = await getPlaywrightCookieUser();
   if (playwrightUser) {
     return playwrightUser;
@@ -48,7 +49,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   return normalizeAuthUser(user);
-}
+});
 
 export async function getOptionalCurrentUserId() {
   return (await getCurrentUser())?.id ?? null;
@@ -92,23 +93,31 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 }
 
 export async function ensureUserProfile(user: CurrentUser) {
+  return ensureUserProfileByIdentity(user.id, user.email, user.name);
+}
+
+const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIdentity(
+  userId: string,
+  email: string | null,
+  name: string | null,
+) {
   const db = getDb();
   const now = new Date();
   const fallbackName =
-    safeDisplayName(user.name) ?? displayNameFromEmail(user.email) ?? "ForeKingHell Player";
+    safeDisplayName(name) ?? displayNameFromEmail(email) ?? "LM World Tour Player";
 
   await db
     .insert(users)
     .values({
-      id: user.id,
-      email: user.email,
+      id: userId,
+      email,
       name: fallbackName,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: users.id,
       set: {
-        email: user.email,
+        email,
         name: sql`case when nullif(trim(${users.name}), '') is null or lower(${users.name}) like '%incert%' then ${fallbackName} else ${users.name} end`,
         updatedAt: now,
       },
@@ -120,12 +129,12 @@ export async function ensureUserProfile(user: CurrentUser) {
       name: users.name,
     })
     .from(users)
-    .where(eq(users.id, user.id))
+    .where(eq(users.id, userId))
     .limit(1);
   const canonicalDisplayName = safeDisplayName(appUser?.name) ?? fallbackName;
   const canonicalUsername = await uniqueDefaultUsernameForUser(
-    defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? user.email, user.id),
-    user.id,
+    defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
+    userId,
   );
   const [socialProfile] = await db
     .select({
@@ -134,12 +143,12 @@ export async function ensureUserProfile(user: CurrentUser) {
       displayName: userProfiles.displayName,
     })
     .from(userProfiles)
-    .where(eq(userProfiles.userId, user.id))
+    .where(eq(userProfiles.userId, userId))
     .limit(1);
 
   if (!socialProfile) {
     await db.insert(userProfiles).values({
-      userId: user.id,
+      userId,
       username: canonicalUsername,
       displayName: canonicalDisplayName,
       updatedAt: now,
@@ -158,9 +167,9 @@ export async function ensureUserProfile(user: CurrentUser) {
         ...(needsUsernameRepair ? { username: canonicalUsername } : {}),
         updatedAt: now,
       })
-      .where(eq(userProfiles.userId, user.id));
+      .where(eq(userProfiles.userId, userId));
   }
-}
+});
 
 function normalizeAuthUser(user: User): CurrentUser {
   const metadata = user.user_metadata ?? {};

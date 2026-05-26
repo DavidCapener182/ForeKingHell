@@ -1,6 +1,6 @@
-# ForeKingHell Production Readiness
+# LM World Tour Production Readiness
 
-ForeKingHell is ready for first public testers only when the product loop and the safety checks both pass:
+LM World Tour is ready for first public testers only when the product loop and the safety checks both pass:
 
 Sign up -> import or sync Rapsodo -> map clubs -> review stock yardages -> understand improvement -> follow one coach next action -> optionally share or compete.
 

@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { BRAND_NAME } from "@/lib/brand";
 import { ensureUserProfile } from "@/lib/current-user";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
 
@@ -49,7 +50,7 @@ export async function sendMagicLinkAction(
 
   return {
     status: "success",
-    message: "Check your email for the ForeKingHell sign-in link.",
+    message: `Check your email for the ${BRAND_NAME} sign-in link.`,
   };
 }
 

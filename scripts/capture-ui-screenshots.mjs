@@ -164,7 +164,7 @@ async function gotoAndVerify(routePath, expectedText) {
     .locator("body")
     .innerText({ timeout: 15_000 })
     .catch(() => "");
-  if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
+  if (/\/login(?:\?|$)/.test(page.url()) || /Sign in or join/i.test(bodyText)) {
     failures.push(`${routePath}: redirected to login`);
     return false;
   }

@@ -3,8 +3,9 @@ import { AlertTriangle, SearchX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DelayedGolfLoader } from "@/components/visuals/delayed-golf-loader";
+import { BRAND_NAME } from "@/lib/brand";
 
-export function RouteLoadingState({ label = "Loading ForeKingHell" }: { label?: string }) {
+export function RouteLoadingState({ label = `Loading ${BRAND_NAME}` }: { label?: string }) {
   return (
     <main className="min-h-[40vh] px-4 py-5 pb-24 sm:px-6 lg:px-8">
       <div className="mx-auto grid w-full max-w-7xl place-items-center pt-10 sm:pt-16">
@@ -51,7 +52,7 @@ export function RouteNotFoundState() {
         </div>
         <h1 className="mt-4 text-3xl font-semibold tracking-normal">Page not found</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          That route does not match a ForeKingHell screen.
+          That route does not match an {BRAND_NAME} screen.
         </p>
         <Button asChild className="mt-5">
           <Link href="/dashboard">Open dashboard</Link>

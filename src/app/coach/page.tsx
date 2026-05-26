@@ -288,7 +288,7 @@ export default async function CoachPage() {
               <div>
                 <p className="text-xl font-semibold">Coach is waiting for data</p>
                 <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Import launch-monitor shots and ForeKingHell will turn club data into distance,
+                  Import launch-monitor shots and LM World Tour will turn club data into distance,
                   strike, launch, direction, and delivery recommendations.
                 </p>
               </div>
@@ -477,7 +477,7 @@ export default async function CoachPage() {
             <DataPanel className="hidden sm:flex">
               <SectionHeader
                 title="Club diagnosis"
-                description="For each club: what ForeKingHell thinks the issue is, why, and what to practise."
+                description="For each club: what LM World Tour thinks the issue is, why, and what to practise."
                 action={<Brain className="size-5 text-pink-500" />}
               />
               <CardContent>

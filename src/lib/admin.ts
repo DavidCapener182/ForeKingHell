@@ -231,7 +231,7 @@ export async function getAdminUsers(
     displayName:
       safeAdminDisplayName(row.profileDisplayName) ??
       safeAdminDisplayName(row.name) ??
-      "ForeKingHell Player",
+      "LM World Tour Player",
     username: row.username && !isSharedDatabaseArtifact(row.username) ? row.username : null,
     adminRole: row.adminStatus === "active" ? row.adminRole : null,
     adminStatus: row.adminStatus,
@@ -293,14 +293,14 @@ export async function getAdminBillingData() {
       displayName:
         safeAdminDisplayName(row.profileDisplayName) ??
         safeAdminDisplayName(row.name) ??
-        "ForeKingHell Player",
+        "LM World Tour Player",
     })),
     entitlements: entitlementRows.map((row) => ({
       ...row,
       displayName:
         safeAdminDisplayName(row.profileDisplayName) ??
         safeAdminDisplayName(row.name) ??
-        "ForeKingHell Player",
+        "LM World Tour Player",
     })),
   };
 }
@@ -376,7 +376,7 @@ export async function getAdminChallengesData() {
         safeAdminDisplayName(row.creatorProfileName) ??
         safeAdminDisplayName(row.creatorName) ??
         row.creatorEmail ??
-        "ForeKingHell Player",
+        "LM World Tour Player",
       entryCount: entryMap.get(row.id) ?? 0,
       attemptCount: attemptMap.get(row.id) ?? 0,
       resultCount: resultMap.get(row.id) ?? 0,

@@ -7,7 +7,7 @@ describe("AI coach summary helpers", () => {
   it("builds a compact payload without raw shot rows", () => {
     const payload = buildAiCoachPayload(fakeCoachSummary());
 
-    expect(payload.productName).toBe("ForeKingHell");
+    expect(payload.productName).toBe("LM World Tour");
     expect(payload.focusClub?.clubName).toBe("Driver");
     expect(payload.totals.cleanShots).toBe(84);
     expect(JSON.stringify(payload)).not.toContain("sourceRawJson");
@@ -18,7 +18,7 @@ describe("AI coach summary helpers", () => {
 
     expect(buildCoachPrompt(payload)).toContain("Return strict JSON only");
     expect(buildCoachPrompt(payload)).toContain("Driver");
-    expect(buildCoachPrompt(payload)).toContain("ForeKingHell");
+    expect(buildCoachPrompt(payload)).toContain("LM World Tour");
   });
 
   it("parses strict JSON coach output", () => {

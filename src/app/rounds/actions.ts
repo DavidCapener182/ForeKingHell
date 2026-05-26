@@ -9,8 +9,13 @@ import { clubs, courses, holes, sessions, shareLinks, shots, teeSets, users } fr
 import { getDb } from "@/db/client";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { evaluateRoundAchievementsForSession } from "@/lib/achievements/service";
+import {
+  inferCourseShots,
+  inferCourseShotsFromHoleShotCounts,
+  type CourseScorecardHole,
+} from "@/lib/course-scorecard";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { buildClubKey, normalizeClubType } from "@/lib/rapsodo/parser";
+import { buildClubKey, normalizeClubType, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
 import { recordRoundCompletedFeedItem } from "@/lib/social";
 
@@ -396,6 +401,7 @@ export async function updateRoundHoleAction(formData: FormData) {
     .update(sessions)
     .set({ scorecardJson: holes })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  await recalculateRoundAssignments(sessionId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId);
   revalidateRound(sessionId);
 }
@@ -491,70 +497,170 @@ async function recalculateRoundAssignments(sessionId: string) {
     .from(shots)
     .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
+  const sortedScorecard = session.scorecardJson
+    .slice()
+    .sort((left, right) => left.holeNumber - right.holeNumber);
+  const inferredHoleByShotId =
+    sessionShots.length > 0 && sessionShots.every((shot) => !shot.courseHoleNumber)
+      ? inferUnmappedShotHoles(sortedScorecard, sessionShots)
+      : new Map<string, number>();
   const shotsByHole = new Map<number, typeof sessionShots>();
 
   for (const shot of sessionShots) {
-    if (!shot.courseHoleNumber) {
+    const courseHoleNumber = shot.courseHoleNumber ?? inferredHoleByShotId.get(shot.id) ?? null;
+
+    if (!courseHoleNumber) {
       continue;
     }
 
-    const existing = shotsByHole.get(shot.courseHoleNumber) ?? [];
-    existing.push(shot);
-    shotsByHole.set(shot.courseHoleNumber, existing);
+    const existing = shotsByHole.get(courseHoleNumber) ?? [];
+    existing.push({ ...shot, courseHoleNumber });
+    shotsByHole.set(courseHoleNumber, existing);
   }
 
   const nextScorecard = await Promise.all(
-    session.scorecardJson
-      .sort((left, right) => left.holeNumber - right.holeNumber)
-      .map(async (hole) => {
-        const holeShots = shotsByHole.get(hole.holeNumber) ?? [];
-        let progressYd = 0;
+    sortedScorecard.map(async (hole) => {
+      const holeShots = shotsByHole.get(hole.holeNumber) ?? [];
+      let progressYd = 0;
 
-        for (const [index, shot] of holeShots.entries()) {
-          progressYd += forwardDistanceYd(shot.totalYd ?? shot.carryYd, shot.sideCarryYd) ?? 0;
+      for (const [index, shot] of holeShots.entries()) {
+        progressYd += forwardDistanceYd(shot.totalYd ?? shot.carryYd, shot.sideCarryYd) ?? 0;
 
-          await db
-            .update(shots)
-            .set({
-              courseHoleShotNumber: index + 1,
-              courseHolePar: hole.par,
-              courseHoleYards: hole.yards,
-              distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
-              shotCategory: classifyCourseShot(
-                shot.clubType,
-                shot.totalYd ?? shot.carryYd,
-                index + 1,
-              ),
-            })
-            .where(
-              and(
-                eq(shots.id, shot.id),
-                eq(shots.sessionId, sessionId),
-                eq(shots.userId, session.userId),
-              ),
-            );
-        }
+        await db
+          .update(shots)
+          .set({
+            courseHoleNumber: hole.holeNumber,
+            courseHoleShotNumber: index + 1,
+            courseHolePar: hole.par,
+            courseHoleYards: hole.yards,
+            distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
+            shotCategory: classifyCourseShot(
+              shot.clubType,
+              shot.totalYd ?? shot.carryYd,
+              index + 1,
+            ),
+          })
+          .where(
+            and(
+              eq(shots.id, shot.id),
+              eq(shots.sessionId, sessionId),
+              eq(shots.userId, session.userId),
+            ),
+          );
+      }
 
-        return {
-          ...hole,
-          csvShotCount: holeShots.length,
-          progressYd: roundOne(progressYd),
-          distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
-          penalties:
-            hole.score === null ||
-            hole.score === undefined ||
-            hole.putts === null ||
-            hole.putts === undefined
-              ? (hole.penalties ?? 0)
-              : Math.max(0, hole.score - hole.putts - holeShots.length),
-        };
-      }),
+      const penalties = hole.penalties ?? 0;
+      const putts =
+        typeof hole.score === "number" && holeShots.length > 0
+          ? Math.max(0, hole.score - holeShots.length - penalties)
+          : (hole.putts ?? null);
+
+      return {
+        ...hole,
+        csvShotCount: holeShots.length,
+        progressYd: roundOne(progressYd),
+        distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
+        putts,
+        penalties,
+      };
+    }),
   );
 
   await db
     .update(sessions)
     .set({ scorecardJson: nextScorecard })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+}
+
+function inferUnmappedShotHoles(
+  scorecard: StoredScorecardHole[],
+  sessionShots: Array<{
+    id: string;
+    shotNumber: number | null;
+    carryYd: number | null;
+    totalYd: number | null;
+    sideCarryYd: number | null;
+    clubType: string;
+  }>,
+) {
+  const scorecardHoles = scorecard.map<CourseScorecardHole>((hole) => ({
+    holeNumber: hole.holeNumber,
+    par: hole.par,
+    yards: hole.yards,
+    name: hole.name,
+  }));
+  const parsedShots = sessionShots.map<ParsedRapsodoShot>((shot, index) => ({
+    rowNumber: index + 1,
+    shotNumber: shot.shotNumber,
+    clubTypeRaw: shot.clubType,
+    clubType: shot.clubType,
+    clubLabel: shot.clubType,
+    clubBrand: null,
+    clubModel: null,
+    clubKey: shot.clubType,
+    carryYd: shot.carryYd,
+    totalYd: shot.totalYd,
+    ballSpeedMph: null,
+    clubSpeedMph: null,
+    launchAngleDeg: null,
+    launchDirectionDeg: null,
+    apexFt: null,
+    sideCarryYd: shot.sideCarryYd,
+    attackAngleDeg: null,
+    clubPathDeg: null,
+    descentAngleDeg: null,
+    smashFactor: null,
+    spinRate: null,
+    spinAxis: null,
+    shotShape: null,
+    shotCategory: "full",
+    qualityTag: null,
+    clubDataEstType: null,
+    sourceRawJson: {},
+    warnings: [],
+  }));
+  const knownShotCounts = scorecardShotCountsFromStrokeAccounting(scorecard, sessionShots.length);
+  const inferred = knownShotCounts
+    ? inferCourseShotsFromHoleShotCounts(parsedShots, scorecardHoles, knownShotCounts)
+    : inferCourseShots(parsedShots, scorecardHoles);
+  const holeByShotId = new Map<string, number>();
+
+  for (const courseShot of inferred.shots) {
+    const shot = sessionShots[courseShot.absoluteShotNumber - 1];
+
+    if (shot) {
+      holeByShotId.set(shot.id, courseShot.holeNumber);
+    }
+  }
+
+  return holeByShotId;
+}
+
+function scorecardShotCountsFromStrokeAccounting(
+  scorecard: StoredScorecardHole[],
+  totalShotCount: number,
+) {
+  const shotCounts: Array<{ holeNumber: number; shotCount: number }> = [];
+  let accountedShots = 0;
+
+  for (const hole of scorecard) {
+    if (typeof hole.score !== "number" || typeof hole.putts !== "number") {
+      return null;
+    }
+
+    const penalties = hole.penalties ?? 0;
+    const shotCount = hole.score - hole.putts - penalties;
+
+    if (!Number.isFinite(shotCount) || shotCount < 0) {
+      return null;
+    }
+
+    const roundedShotCount = Math.floor(shotCount);
+    accountedShots += roundedShotCount;
+    shotCounts.push({ holeNumber: hole.holeNumber, shotCount: roundedShotCount });
+  }
+
+  return accountedShots === totalShotCount ? shotCounts : null;
 }
 
 function mergeScorecardForTee(

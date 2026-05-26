@@ -363,7 +363,7 @@ export async function GET() {
 
   return Response.json(payload, {
     headers: {
-      "Content-Disposition": `attachment; filename="forekinghell-export-${new Date().toISOString().slice(0, 10)}.json"`,
+      "Content-Disposition": `attachment; filename="lm-world-tour-export-${new Date().toISOString().slice(0, 10)}.json"`,
     },
   });
 }

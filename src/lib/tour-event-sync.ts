@@ -13,6 +13,7 @@ import {
   users,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 import { getScheduledTournamentSet } from "@/lib/tournament-calendar";
 import { ensureScheduledTournaments, recalculateTournamentStandings } from "@/lib/tournaments";
 
@@ -322,7 +323,7 @@ async function fetchEspnScoreboard(date?: Date): Promise<EspnScoreboard> {
     cache: "no-store",
     headers: {
       accept: "application/json",
-      "user-agent": "ForeKingHell/1.0",
+      "user-agent": `${BRAND_SHORT_NAME}/1.0`,
     },
   });
 
@@ -338,7 +339,7 @@ async function fetchEspnEventDetail(eventId: string): Promise<EspnEventDetail | 
     cache: "no-store",
     headers: {
       accept: "application/json",
-      "user-agent": "ForeKingHell/1.0",
+      "user-agent": `${BRAND_SHORT_NAME}/1.0`,
     },
   });
 
@@ -714,7 +715,7 @@ function toTourEventRecord(
 function tourEventDescription(event: TourEventRecord, kind: "weekly" | "monthly") {
   const scope = kind === "monthly" ? "Monthly major slot" : "Weekly tour event";
 
-  return `${scope} synced from the PGA Tour schedule. Tour player scores update from ESPN leaderboards, and ForeKingHell users can submit their own four daily rounds into the same combined board.`;
+  return `${scope} synced from the PGA Tour schedule. Tour player scores update from ESPN leaderboards, and ${BRAND_NAME} users can submit their own four daily rounds into the same combined board.`;
 }
 
 function formatEspnDate(date: Date) {

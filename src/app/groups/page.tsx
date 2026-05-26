@@ -101,7 +101,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                   <span>Name</span>
                   <Input
                     name="name"
-                    placeholder="ForeKingHell Launch Monitor League"
+                    placeholder="LM World Tour Launch Monitor League"
                     className="h-11 rounded-lg bg-white"
                     required
                   />
@@ -235,7 +235,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 <span>Name</span>
                 <Input
                   name="name"
-                  placeholder="ForeKingHell Launch Monitor League"
+                  placeholder="LM World Tour Launch Monitor League"
                   className="h-9 rounded-lg bg-white"
                   required
                 />

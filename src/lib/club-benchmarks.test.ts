@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  benchmarkDisplayProgressPercent,
+  benchmarkLevelProgressPercent,
   buildClubBenchmarkRows,
   compareClubCarryToBenchmark,
   getClubDistanceBenchmark,
@@ -52,5 +54,26 @@ describe("club distance benchmarks", () => {
 
     expect(rows.map((row) => row.clubType)).toEqual(["driver", "7i"]);
     expect(rows[1].comparison.levelLabel).toBe("Needs data");
+  });
+
+  it("positions uneven benchmark ticks on the same yard scale as the carry marker", () => {
+    const benchmark = getClubDistanceBenchmark("sw");
+    const comparison = compareClubCarryToBenchmark("sw", 90.3);
+
+    expect(benchmark).not.toBeNull();
+    expect(comparison?.levelLabel).toBe("Average");
+    expect(comparison?.yardsToNextLevel).toBe(4.7);
+
+    const goodTick = benchmarkLevelProgressPercent(benchmark!, 95);
+
+    expect(comparison?.progressPercent).toBeLessThan(goodTick);
+  });
+
+  it("keeps compact meter progress inside the current level band", () => {
+    const benchmark = getClubDistanceBenchmark("sw");
+    const displayProgress = benchmarkDisplayProgressPercent(benchmark!, 90.3);
+
+    expect(displayProgress).toBeGreaterThan(25);
+    expect(displayProgress).toBeLessThan(50);
   });
 });

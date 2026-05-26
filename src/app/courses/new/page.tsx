@@ -65,8 +65,8 @@ export default function NewCoursePage() {
           },
           {
             label: "Storage",
-            value: "FKH tables",
-            detail: "Stores course and tee data in the ForeKingHell tables.",
+            value: "LMWT tables",
+            detail: "Stores course and tee data in the LM World Tour tables.",
           },
         ]}
       />

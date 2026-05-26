@@ -45,7 +45,7 @@ export default async function ProvidersPage() {
               Launch monitor providers
             </h1>
             <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
-              ForeKingHell becomes your cross-device golf performance history. Rapsodo is live;
+              LM World Tour becomes your cross-device golf performance history. Rapsodo is live;
               Square and TrackMan are staged as beta provider tiles.
             </p>
           </div>

@@ -4,8 +4,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
-import { Flag, LogOut, Upload, UserRound, Zap } from "lucide-react";
+import { LogOut, Upload, UserRound, Zap } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { MobileNav, type MobileNavProfile, getProfileInitials } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +38,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { calculateUserLevel } from "@/lib/achievements/xp";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -64,12 +66,10 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 px-1 py-1">
             <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
-              <Link href="/dashboard" prefetch={false}>
-                <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
-                  <Flag className="size-4" aria-hidden />
-                </span>
+              <Link href="/dashboard">
+                <BrandMark className="size-9 rounded-md" sizes="36px" />
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
-                  <span className="truncate font-semibold">ForeKingHell</span>
+                  <span className="truncate font-semibold">{BRAND_NAME}</span>
                   <span className="truncate text-xs text-muted-foreground">Golf analytics</span>
                 </span>
               </Link>
@@ -99,11 +99,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
                               "bg-primary/8 font-medium text-primary hover:bg-primary/10 hover:text-primary",
                           )}
                         >
-                          <Link
-                            href={item.href}
-                            aria-current={active ? "page" : undefined}
-                            prefetch={false}
-                          >
+                          <Link href={item.href} aria-current={active ? "page" : undefined}>
                             <Icon className="size-4" aria-hidden />
                             <span>{item.label}</span>
                           </Link>
@@ -130,7 +126,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         <SidebarSeparator />
         <SidebarFooter className="border-t border-sidebar-border">
           <Button asChild className="w-full justify-start">
-            <Link href="/import" prefetch={false}>
+            <Link href="/import">
               <Upload className="size-4" />
               <span className="group-data-[collapsible=icon]:hidden">Import data</span>
             </Link>
@@ -210,13 +206,13 @@ function ProfileDropdown({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/profile" prefetch={false}>
+          <Link href="/profile">
             <UserRound className="size-4" />
             Profile
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/achievements" prefetch={false}>
+          <Link href="/achievements">
             <Zap className="size-4" />
             Achievements
             <Badge variant="secondary" className="ml-auto">
@@ -226,7 +222,7 @@ function ProfileDropdown({
         </DropdownMenuItem>
         {isAdmin ? (
           <DropdownMenuItem asChild>
-            <Link href="/admin" prefetch={false}>
+            <Link href="/admin">
               Admin
               <Badge className="ml-auto">Admin</Badge>
             </Link>

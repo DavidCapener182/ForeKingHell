@@ -117,7 +117,7 @@ export default async function HandicapPage() {
       <PageHeader
         eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
         title="Handicap"
-        description="Separate best-form differentials from a conservative playing estimate. ForeKingHell uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
+        description="Separate best-form differentials from a conservative playing estimate. LM World Tour uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
         visual={<PageArtwork variant="handicap" alt="" className="h-full min-h-44" />}
         actions={
           <Button

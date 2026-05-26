@@ -38,6 +38,7 @@ import {
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { roundSessionTypes } from "@/lib/round-sessions";
 import {
   areFriends,
   createFeedItem,
@@ -823,12 +824,7 @@ export async function createLatestRoundRecap() {
   const [round] = await db
     .select()
     .from(sessions)
-    .where(
-      and(
-        eq(sessions.userId, userId),
-        inArray(sessions.type, ["round", "course", "scorecard", "sim_round"]),
-      ),
-    )
+    .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
     .orderBy(desc(sessions.date))
     .limit(1);
 
@@ -1550,7 +1546,7 @@ async function generateWeeklyRecapCopy(input: {
   }
 
   const payload = {
-    productName: "ForeKingHell",
+    productName: "LM World Tour",
     weeklyRecap: input.weeklyRecap,
     coachConfidence: input.coachConfidence,
     importQuality: input.importQuality,
@@ -1598,7 +1594,7 @@ async function generateWeeklyRecapCopy(input: {
 }
 
 function buildWeeklyRecapPrompt(payload: unknown) {
-  return `You write ForeKingHell weekly golf recaps.
+  return `You write LM World Tour weekly golf recaps.
 
 Use only the supplied JSON. Do not invent scores, swing causes, handicap claims, or social facts.
 Return strict JSON only:
@@ -1634,7 +1630,7 @@ function parseWeeklyRecapResponse(text: string) {
     coachNote:
       typeof parsed.coachNote === "string" && parsed.coachNote.trim()
         ? parsed.coachNote.trim()
-        : "Review this week's ForeKingHell data, then keep the next practice block measurable.",
+        : "Review this week's LM World Tour data, then keep the next practice block measurable.",
     practicePlan: practicePlan.length
       ? practicePlan
       : [

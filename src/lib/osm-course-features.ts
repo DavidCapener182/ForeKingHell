@@ -26,7 +26,7 @@ type OverpassElement = {
   geometry?: Array<{ lat: number; lon: number }>;
 };
 
-const OSM_USER_AGENT = "ForeKingHell golf analytics course importer";
+const OSM_USER_AGENT = "LM World Tour golf analytics course importer";
 
 export async function getOsmCourseFeatures(
   lat: number,

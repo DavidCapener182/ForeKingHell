@@ -13,7 +13,7 @@ import {
   Trophy,
   UserRound,
 } from "lucide-react";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
@@ -48,6 +48,7 @@ import {
 } from "@/db/schema";
 import { getChallengesPageData } from "@/lib/challenges";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { buildProfileHonoursRecords } from "@/lib/profile-honours";
 import { getProgressData } from "@/lib/progress-data";
 import { buildProgressSummary } from "@/lib/progress-summary";
 import {
@@ -758,9 +759,15 @@ async function getProfileHonoursData(userId: string) {
       .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
       .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
       .innerJoin(courses, eq(courseRecords.courseId, courses.id))
-      .where(eq(courseRecordResults.userId, userId))
+      .where(
+        and(
+          eq(courseRecordResults.userId, userId),
+          eq(courseRecords.scope, "public"),
+          eq(courseRecords.period, "all_time"),
+        ),
+      )
       .orderBy(desc(courseRecordResults.calculatedAt))
-      .limit(6),
+      .limit(24),
     getDb()
       .select({
         standing: tournamentStandings,
@@ -773,16 +780,11 @@ async function getProfileHonoursData(userId: string) {
       .limit(6),
   ]);
 
+  const uniqueRecords = buildProfileHonoursRecords(records).slice(0, 6);
+
   return {
-    championCount: records.filter((row) => row.result.rank === 1).length,
-    records: records.map((row) => ({
-      id: row.result.id,
-      recordId: row.record.id,
-      courseName: row.course.name,
-      categoryName: row.category.name,
-      scoreLabel: row.result.scoreLabel,
-      rank: row.result.rank,
-    })),
+    championCount: uniqueRecords.filter((record) => record.rank === 1).length,
+    records: uniqueRecords,
     tournaments: tournamentRows.map((row) => ({
       id: row.standing.id,
       tournamentId: row.tournament.id,

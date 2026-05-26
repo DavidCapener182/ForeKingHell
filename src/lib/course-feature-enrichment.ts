@@ -37,9 +37,7 @@ export async function ensureCourseFeatures({
     })
     .from(courseFeatures)
     .where(eq(courseFeatures.courseId, courseId));
-  const hasEstimatedBackstop = existingRows.some(
-    (row) => row.source === "estimated_centerline",
-  );
+  const hasEstimatedBackstop = existingRows.some((row) => row.source === "estimated_centerline");
   const hasOsmFeatures = existingRows.some((row) => row.source === "osm");
 
   if (existingRows.length > 0 && hasEstimatedBackstop && hasOsmFeatures && !force) {
@@ -50,11 +48,7 @@ export async function ensureCourseFeatures({
     };
   }
 
-  const [course] = await db
-    .select()
-    .from(courses)
-    .where(eq(courses.id, courseId))
-    .limit(1);
+  const [course] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
 
   if (!course) {
     return { changed: false, status: "no_course", featureCount: 0 };
@@ -66,7 +60,8 @@ export async function ensureCourseFeatures({
     .where(eq(holes.courseId, courseId))
     .orderBy(asc(holes.teeSetId), asc(holes.holeNumber));
   const primaryHoles = primaryHoleSet(courseHoleRows);
-  const estimatedFeatures = primaryHoles.length > 0 ? buildEstimatedCourseFeatures(primaryHoles) : [];
+  const estimatedFeatures =
+    primaryHoles.length > 0 ? buildEstimatedCourseFeatures(primaryHoles) : [];
 
   if (existingRows.length > 0 && !force) {
     let changed = false;
@@ -161,13 +156,16 @@ export async function ensureCourseFeatures({
   };
 }
 
-async function safelyGetOsmFeatures({
-  lat,
-  lon,
-}: {
-  lat: number;
-  lon: number;
-}, timeoutMs: number): Promise<OsmCourseFeature[]> {
+async function safelyGetOsmFeatures(
+  {
+    lat,
+    lon,
+  }: {
+    lat: number;
+    lon: number;
+  },
+  timeoutMs: number,
+): Promise<OsmCourseFeature[]> {
   try {
     return await getOsmCourseFeatures(lat, lon, { timeoutMs });
   } catch {
@@ -184,7 +182,8 @@ function primaryHoleSet(holeRows: Array<typeof holes.$inferSelect>): EstimatedFe
 
   const primaryRows =
     Array.from(grouped.values()).sort(
-      (left, right) => right.length - left.length || left[0].teeSetId.localeCompare(right[0].teeSetId),
+      (left, right) =>
+        right.length - left.length || left[0].teeSetId.localeCompare(right[0].teeSetId),
     )[0] ?? [];
 
   return primaryRows

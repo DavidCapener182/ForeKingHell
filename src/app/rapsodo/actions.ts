@@ -147,7 +147,7 @@ export async function previewRapsodoSessionAction(
         ok: false,
         message:
           parsed.warnings[0] ??
-          "R-Cloud exported a CSV, but ForeKingHell could not find shot rows.",
+          "R-Cloud exported a CSV, but LM World Tour could not find shot rows.",
       };
     }
 
@@ -289,7 +289,7 @@ export async function syncRapsodoShotClubsAction(input: {
 
     return rapsodoActionError(
       error,
-      "R-Cloud could not update those clubs. Save with ForeKingHell recommendations or update the clubs in Rapsodo manually.",
+      "R-Cloud could not update those clubs. Save with LM World Tour recommendations or update the clubs in Rapsodo manually.",
     );
   }
 }

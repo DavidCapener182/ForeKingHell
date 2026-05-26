@@ -1,11 +1,11 @@
 import "server-only";
 
+import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
 import { fetchWithTimeout, safeRemoteResourceUrl } from "@/lib/remote-image-response";
 
 const WEBSITE_ICON_TIMEOUT_MS = 3500;
 const WEBSITE_ICON_MAX_HTML_BYTES = 1024 * 1024;
-const WEBSITE_ICON_USER_AGENT =
-  "Mozilla/5.0 (compatible; ForeKingHell website icon resolver; +https://forekinghell.app)";
+const WEBSITE_ICON_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} website icon resolver; +${BRAND_PUBLIC_URL})`;
 
 type WebsiteIconOptions = {
   includeGoogleFavicon?: boolean;

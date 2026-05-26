@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Flag, LockKeyhole, ShieldCheck, Trophy, Zap } from "lucide-react";
+import { LockKeyhole, ShieldCheck, Trophy, Zap } from "lucide-react";
 
 import { LoginForm } from "@/app/login/login-form";
+import { BrandMark } from "@/components/brand-mark";
 import { PageShell, StatusPill } from "@/components/premium";
+import { BRAND_NAME } from "@/lib/brand";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -38,10 +40,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
       <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8">
         <header className="order-2 grid gap-7 py-6 lg:order-1 lg:py-10">
           <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur">
-            <span className="grid size-8 place-items-center rounded-md bg-white text-emerald-800">
-              <Flag className="size-4" aria-hidden />
-            </span>
-            ForeKingHell
+            <BrandMark className="size-12 rounded-md" sizes="48px" priority />
+            {BRAND_NAME}
           </div>
 
           <div className="max-w-2xl">

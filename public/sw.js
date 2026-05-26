@@ -5,10 +5,10 @@ const PRECACHE_ASSETS = [
   "/icons/favicon-16x16.png",
   "/icons/favicon-32x32.png",
   "/icons/apple-touch-icon.png",
-  "/icons/fkh-icon-192.png",
-  "/icons/fkh-icon-512.png",
-  "/icons/fkh-icon-maskable-192.png",
-  "/icons/fkh-icon-maskable-512.png",
+  "/icons/lmwt-icon-192.png",
+  "/icons/lmwt-icon-512.png",
+  "/icons/lmwt-icon-maskable-192.png",
+  "/icons/lmwt-icon-maskable-512.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -118,7 +118,7 @@ async function networkFirstPage(request) {
     const cached = await cache.match(request);
     return (
       cached ||
-      new Response("ForeKingHell is offline and this page is not cached yet.", {
+      new Response("LM World Tour is offline and this page is not cached yet.", {
         status: 503,
         headers: { "content-type": "text/plain; charset=utf-8" },
       })

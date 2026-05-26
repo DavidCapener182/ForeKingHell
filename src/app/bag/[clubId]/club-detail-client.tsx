@@ -106,6 +106,7 @@ export function ClubDetailClient({
     [club.type, selectedShots],
   );
   const isShortGameTouch = isShortGameTouchClubType(club.type);
+  const isSandWedge = club.type === "sw";
   const latestShotDate = selectedShots[0]?.shotAt ? formatDate(selectedShots[0].shotAt) : "--";
   const shotCount =
     shotRange !== "all"
@@ -168,7 +169,10 @@ export function ClubDetailClient({
           },
           {
             label: "Play",
-            value: formatMetric(isShortGameTouch ? null : stock.recommendedPlayNumberYd, " yd"),
+            value: formatMetric(
+              isShortGameTouch && !isSandWedge ? null : stock.recommendedPlayNumberYd,
+              " yd",
+            ),
             detail: "Number",
             tone: "sky",
           },
@@ -223,7 +227,11 @@ export function ClubDetailClient({
                 <StatTile
                   label={isShortGameTouch ? "Full stock" : "Play number"}
                   value={formatMetric(
-                    isShortGameTouch ? null : stock.recommendedPlayNumberYd,
+                    isShortGameTouch
+                      ? isSandWedge
+                        ? stock.carryMedianYd
+                        : null
+                      : stock.recommendedPlayNumberYd,
                     " yd",
                   )}
                   icon={Gauge}
@@ -257,7 +265,9 @@ export function ClubDetailClient({
             <CardTitle className="text-2xl tracking-normal">Stock yardage</CardTitle>
             <CardDescription>
               {isShortGameTouch
-                ? "Round chips and pitches are separated from full-swing stock yardage."
+                ? isSandWedge
+                  ? "Touch shots stay separate from the full-stock SW carry."
+                  : "Round chips and pitches are separated from full-swing stock yardage."
                 : `Rolling median from ${selectedRange.description}, with MAD outlier filtering.`}
             </CardDescription>
           </CardHeader>
@@ -297,24 +307,36 @@ export function ClubDetailClient({
               />
               <SmallMetric
                 label={isShortGameTouch ? "Full stock" : "Ball speed"}
-                value={isShortGameTouch ? "--" : formatMetric(stock.averageBallSpeedMph, " mph")}
+                value={
+                  isShortGameTouch
+                    ? isSandWedge
+                      ? formatMetric(stock.carryMedianYd, " yd")
+                      : "--"
+                    : formatMetric(stock.averageBallSpeedMph, " mph")
+                }
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">
-                  {isShortGameTouch ? "Short-game touch" : stock.label}
+                  {isShortGameTouch
+                    ? isSandWedge
+                      ? "Touch + full stock"
+                      : "Short-game touch"
+                    : stock.label}
                 </span>
                 <span className="text-muted-foreground">
-                  {isShortGameTouch
+                  {isShortGameTouch && !isSandWedge
                     ? `${touch.sampleSize} touch / ${stock.rawSampleSize} total`
-                    : `${stock.sampleSize} clean / ${stock.rawSampleSize} total`}
+                    : isSandWedge
+                      ? `${touch.sampleSize} touch / ${stock.sampleSize} stock`
+                      : `${stock.sampleSize} clean / ${stock.rawSampleSize} total`}
                 </span>
               </div>
               <Progress
                 value={
-                  isShortGameTouch
+                  isShortGameTouch && !isSandWedge
                     ? Math.min(100, (touch.sampleSize / 50) * 100)
                     : stock.confidenceScore
                 }
@@ -322,8 +344,9 @@ export function ClubDetailClient({
             </div>
             {isShortGameTouch ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-                Full-stock SW only builds from non-round full swings. Round SW shots stay in touch
-                analysis.
+                {club.type === "sw"
+                  ? "SW stock ignores sub-40 yd chips. Shorter round shots stay in touch analysis."
+                  : "Round chips and pitches stay in touch analysis, not stock yardage."}
               </div>
             ) : null}
           </CardContent>
@@ -345,7 +368,11 @@ export function ClubDetailClient({
             />
             <HealthBlock
               label={isShortGameTouch ? "Full launch" : "Launch average"}
-              value={isShortGameTouch ? "--" : formatMetric(stock.averageLaunchAngleDeg, " deg")}
+              value={
+                isShortGameTouch && !isSandWedge
+                  ? "--"
+                  : formatMetric(stock.averageLaunchAngleDeg, " deg")
+              }
             />
             <HealthBlock
               label={isShortGameTouch ? "Touch range" : "Carry range"}

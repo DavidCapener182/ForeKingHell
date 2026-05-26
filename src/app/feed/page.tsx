@@ -651,7 +651,7 @@ function filterFeedItems(
     case "tournaments":
       return items.filter((item) => item.itemType.startsWith("tournament"));
     case "rounds":
-      return items.filter((item) => item.itemType === "round_completed");
+      return items.filter((item) => item.itemType.includes("round"));
     case "me":
       return items.filter((item) => item.userId === viewerUserId);
     default:

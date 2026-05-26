@@ -16,7 +16,7 @@ Use this path for first public testers from Rapsodo and Facebook groups.
 
 ## What To Tell Testers
 
-ForeKingHell is a data-first golf performance app. It should answer:
+LM World Tour is a data-first golf performance app. It should answer:
 
 - What are my stock yardages?
 - Can I trust this data?

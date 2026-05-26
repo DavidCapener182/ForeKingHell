@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { accountInvitations, users } from "@/db/schema";
+import { BRAND_NAME } from "@/lib/brand";
 import { getDb } from "@/db/client";
 import { getCurrentUser } from "@/lib/current-user";
 import { hashInvitationToken } from "@/lib/collaboration";
@@ -35,8 +36,8 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
     <PageShell size="6xl">
       <PageHeader
         eyebrow={<StatusPill tone="green">Invitation</StatusPill>}
-        title="Accept ForeKingHell access"
-        description={`${invitation.ownerName ?? invitation.ownerEmail ?? "A ForeKingHell user"} invited ${invitation.invitedEmail} as ${invitation.role}.`}
+        title={`Accept ${BRAND_NAME} access`}
+        description={`${invitation.ownerName ?? invitation.ownerEmail ?? `An ${BRAND_NAME} user`} invited ${invitation.invitedEmail} as ${invitation.role}.`}
       />
 
       {!currentUser ? (

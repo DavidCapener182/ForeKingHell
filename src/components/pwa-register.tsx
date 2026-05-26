@@ -12,6 +12,7 @@ import {
   removeOfflineAction,
 } from "@/lib/offline-queue";
 import { Button } from "@/components/ui/button";
+import { BRAND_NAME } from "@/lib/brand";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -229,8 +230,8 @@ export function PwaRegister() {
       : !isOnline
         ? "Offline mode is active. Previously loaded screens remain available."
         : updateReady
-          ? "A ForeKingHell update is ready."
-          : "Install ForeKingHell for faster access on this device.";
+          ? `A ${BRAND_NAME} update is ready.`
+          : `Install ${BRAND_NAME} for faster access on this device.`;
 
   return (
     <div className="fixed inset-x-3 bottom-20 z-50 sm:bottom-4 sm:left-auto sm:right-4 sm:w-[360px]">

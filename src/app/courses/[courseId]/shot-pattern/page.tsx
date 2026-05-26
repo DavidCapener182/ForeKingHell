@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
-import {
-  getShotPatternOverlayData,
-  getShotPatternSetup,
-} from "@/lib/shot-pattern-overlay-data";
+import { getShotPatternOverlayData, getShotPatternSetup } from "@/lib/shot-pattern-overlay-data";
 
 export const dynamic = "force-dynamic";
 

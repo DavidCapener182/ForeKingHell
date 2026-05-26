@@ -10,12 +10,13 @@ import {
 } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BRAND_NAME } from "@/lib/brand";
 
 const privacySections = [
   {
     title: "Data stored",
     icon: Database,
-    body: "ForeKingHell stores your profile, preferences, imported CSV files, raw CSV rows, normalized shots, sessions, rounds, courses you create, equipment history, achievements, and coaching outputs in the configured Supabase Postgres database.",
+    body: `${BRAND_NAME} stores your profile, preferences, imported CSV files, raw CSV rows, normalized shots, sessions, rounds, courses you create, equipment history, achievements, and coaching outputs in the configured Supabase Postgres database.`,
   },
   {
     title: "Account scope",
@@ -35,7 +36,7 @@ const privacySections = [
   {
     title: "Export and deletion",
     icon: Share2,
-    body: "The settings page includes app-data export and account-data deletion controls. Deleting app data removes ForeKingHell records for the signed-in account, but it does not delete the Supabase Auth identity itself.",
+    body: `The settings page includes app-data export and account-data deletion controls. Deleting app data removes ${BRAND_NAME} records for the signed-in account, but it does not delete the Supabase Auth identity itself.`,
   },
 ];
 
@@ -51,7 +52,7 @@ export default function PrivacyPage() {
 
       <PageHeader
         eyebrow={<StatusPill tone="green">Privacy</StatusPill>}
-        title="ForeKingHell data notice"
+        title={`${BRAND_NAME} data notice`}
         description="How the app stores golf data, uses AI context, records analytics events, and lets you export or delete account data."
       />
 

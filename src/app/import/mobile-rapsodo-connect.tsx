@@ -51,7 +51,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
           </h2>
           <p className="mt-1 text-sm leading-5 text-[#6B7280]">
             Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into
-            the shared ForeKingHell history.
+            the shared LM World Tour history.
           </p>
         </div>
         <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">

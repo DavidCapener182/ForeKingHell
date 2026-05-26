@@ -47,7 +47,7 @@ export default async function NewRoundPage() {
         metrics={[
           {
             label: "Course source",
-            value: "FKH courses",
+            value: "LMWT courses",
             detail: "Pick from saved course and tee-set records.",
           },
           {

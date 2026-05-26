@@ -58,7 +58,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
           </StatusPill>
         }
         title={profile.displayName}
-        description={profile.bio ?? "ForeKingHell golfer"}
+        description={profile.bio ?? "LM World Tour golfer"}
         actions={
           isSelf ? (
             <Button asChild variant="outline">

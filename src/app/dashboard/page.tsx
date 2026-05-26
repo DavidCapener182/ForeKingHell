@@ -1373,7 +1373,7 @@ function DashboardSummaryHero({
               ) : null}
             </div>
             <h1 className="mt-4 text-[34px] font-bold leading-10 tracking-normal text-[#111827]">
-              ForeKingHell
+              LM World Tour
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
               Your golf operating system: form, bag confidence, practice and rounds.

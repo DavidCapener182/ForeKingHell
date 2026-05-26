@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateStockYardage, selectStockYardageShots } from "@/lib/stock-yardage";
+import {
+  calculateStockCarryTrend,
+  calculateStockYardage,
+  selectStockYardageShots,
+} from "@/lib/stock-yardage";
 
 describe("calculateStockYardage", () => {
   it("uses median carry and removes extreme MAD outliers", () => {
@@ -37,35 +41,55 @@ describe("calculateStockYardage", () => {
     expect(result.carryMedianYd).toBe(141);
   });
 
-  it("does not treat sand wedge round touch shots as stock yardage", () => {
+  it("uses sand wedge shots at 40 yards and above while ignoring chip-distance shots", () => {
     const result = calculateStockYardage(
       [
-        { ...shot(82, 86, 2), clubType: "sw", courseHoleNumber: 4, shotCategory: "approach" },
+        { ...shot(48, 52, 2), clubType: "sw", courseHoleNumber: 4, shotCategory: "pitch" },
+        { ...shot(52, 56, -2), clubType: "sw", courseHoleNumber: 5, shotCategory: "approach" },
+        { ...shot(55, 59, 1), clubType: "sw", courseHoleNumber: null, shotCategory: "full" },
         { ...shot(36, 38, 1), clubType: "sw", courseHoleNumber: 5, shotCategory: "chip" },
-        {
-          ...shot(92, 96, -3),
-          clubType: "sw",
-          courseHoleNumber: null,
-          sessionType: "simulated_course",
-        },
       ],
       50,
       { clubType: "sw" },
     );
 
-    expect(result.sampleSize).toBe(0);
-    expect(result.carryMedianYd).toBeNull();
+    expect(result.sampleSize).toBe(3);
+    expect(result.carryMedianYd).toBe(52);
   });
 
-  it("keeps sand wedge out of stock yardage until a dedicated full-swing mode exists", () => {
+  it("uses the upper sand wedge cluster for full-stock carry when partial wedges dominate", () => {
     const result = calculateStockYardage(
       [
-        { ...shot(92, 96, 1), clubType: "sw", courseHoleNumber: null, sessionType: "range" },
-        { ...shot(94, 98, -1), clubType: "sw", courseHoleNumber: null, sessionType: "range" },
-        { ...shot(90, 94, 0), clubType: "sw", courseHoleNumber: null, sessionType: "range" },
+        { ...shot(22, 25, 1), clubType: "sw", shotCategory: "chip" },
+        { ...shot(42, 47, 1), clubType: "sw", shotCategory: "pitch" },
+        { ...shot(47, 52, 1), clubType: "sw", shotCategory: "pitch" },
+        { ...shot(52, 57, 1), clubType: "sw", shotCategory: "pitch" },
+        { ...shot(58, 63, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(62, 67, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(84, 88, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(88, 92, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(90, 94, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(92, 96, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(95, 99, 1), clubType: "sw", shotCategory: "full" },
+        { ...shot(96, 100, 1), clubType: "sw", shotCategory: "full" },
       ],
       50,
       { clubType: "sw" },
+    );
+
+    expect(result.sampleSize).toBe(6);
+    expect(result.carryMedianYd).toBe(91);
+  });
+
+  it("keeps lob wedge out of stock yardage", () => {
+    const result = calculateStockYardage(
+      [
+        { ...shot(62, 66, 1), clubType: "lw", courseHoleNumber: null, sessionType: "range" },
+        { ...shot(64, 68, -1), clubType: "lw", courseHoleNumber: null, sessionType: "range" },
+        { ...shot(60, 64, 0), clubType: "lw", courseHoleNumber: null, sessionType: "range" },
+      ],
+      50,
+      { clubType: "lw" },
     );
 
     expect(result.sampleSize).toBe(0);
@@ -96,15 +120,83 @@ describe("calculateStockYardage", () => {
 
     expect(result.sampleSize).toBe(4);
     expect(sample.filteredShots.map((sampleShot) => sampleShot.id)).toEqual([
-      "clean-left",
+      "clean-long",
       "clean-mid",
       "clean-right",
-      "clean-long",
+      "clean-left",
     ]);
+  });
+
+  it("uses the best 20 stock shots so stronger new shots replace weaker ones", () => {
+    const baseline = Array.from({ length: 25 }, (_, index) => ({
+      ...shot(130 + index, 140 + index, 0, dateForDay(index + 1)),
+      id: `baseline-${130 + index}`,
+    }));
+    const newBest = { ...shot(156, 166, 0, dateForDay(30)), id: "new-best" };
+    const result = calculateStockYardage([...baseline, newBest], 50);
+    const sample = selectStockYardageShots([...baseline, newBest], 50);
+    const sampleIds = sample.cleanShots.map((sampleShot) => sampleShot.id);
+
+    expect(result.sampleSize).toBe(20);
+    expect(result.carryMedianYd).toBe(145.5);
+    expect(result.bestSampleFloorYd).toBe(136);
+    expect(sampleIds).toContain("new-best");
+    expect(sampleIds).toContain("baseline-154");
+    expect(sampleIds).toContain("baseline-136");
+    expect(sampleIds).not.toContain("baseline-135");
+    expect(sampleIds).not.toContain("baseline-130");
+  });
+
+  it("reports when the latest clean carry window is trending better", () => {
+    const previous = Array.from({ length: 10 }, (_, index) =>
+      shot(150 + (index % 3), 160, 0, dateForDay(index + 1)),
+    );
+    const latest = Array.from({ length: 5 }, (_, index) =>
+      shot(158 + (index % 2), 168, 0, dateForDay(index + 20)),
+    );
+
+    const result = calculateStockCarryTrend([...previous, ...latest]);
+
+    expect(result.status).toBe("better");
+    expect(result.latestSampleSize).toBe(5);
+    expect(result.previousSampleSize).toBe(10);
+    expect(result.deltaYd).toBe(7);
+  });
+
+  it("reports when the latest clean carry window is trending worse", () => {
+    const previous = Array.from({ length: 8 }, (_, index) =>
+      shot(158 + (index % 2), 168, 0, dateForDay(index + 1)),
+    );
+    const latest = Array.from({ length: 5 }, (_, index) =>
+      shot(151 + (index % 2), 160, 0, dateForDay(index + 20)),
+    );
+
+    const result = calculateStockCarryTrend([...previous, ...latest]);
+
+    expect(result.status).toBe("worse");
+    expect(result.deltaYd).toBe(-7.5);
+  });
+
+  it("keeps the trend building until both windows have enough clean shots", () => {
+    const result = calculateStockCarryTrend([
+      shot(150, 160, 0, dateForDay(1)),
+      shot(151, 161, 0, dateForDay(2)),
+      shot(152, 162, 0, dateForDay(3)),
+      shot(153, 163, 0, dateForDay(4)),
+      shot(154, 164, 0, dateForDay(5)),
+    ]);
+
+    expect(result.status).toBe("building");
+    expect(result.deltaYd).toBeNull();
   });
 });
 
-function shot(carryYd: number, totalYd: number, sideCarryYd: number) {
+function shot(
+  carryYd: number,
+  totalYd: number,
+  sideCarryYd: number,
+  shotAt = "2026-05-08T12:00:00.000Z",
+) {
   return {
     carryYd,
     totalYd,
@@ -113,6 +205,10 @@ function shot(carryYd: number, totalYd: number, sideCarryYd: number) {
     launchAngleDeg: 14,
     shotCategory: "full",
     qualityTag: null,
-    shotAt: "2026-05-08T12:00:00.000Z",
+    shotAt,
   };
+}
+
+function dateForDay(day: number) {
+  return `2026-05-${day.toString().padStart(2, "0")}T12:00:00.000Z`;
 }

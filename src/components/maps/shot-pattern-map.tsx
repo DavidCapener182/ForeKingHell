@@ -152,9 +152,7 @@ export function ShotPatternMap({
   const targetPlacementKey = `${teeSetId}:${selectedHoleNumber}`;
   const scorecardHoleYards = selectedHole?.yards ?? visibleHoles[0]?.yards ?? 300;
   const playingHoleYards =
-    holeLengthOverride?.key === targetPlacementKey
-      ? holeLengthOverride.yards
-      : scorecardHoleYards;
+    holeLengthOverride?.key === targetPlacementKey ? holeLengthOverride.yards : scorecardHoleYards;
   const isCustomPlayingLength = selectedHole ? playingHoleYards !== selectedHole.yards : false;
   const defaultTargetDistanceYd = useMemo(() => {
     const summary = data?.pattern.summary;
@@ -163,10 +161,7 @@ export function ShotPatternMap({
         ? summary?.carryMedianYd
         : (summary?.totalMedianYd ?? summary?.carryMedianYd);
 
-    return clampTargetDistance(
-      playNumber ?? Math.round(playingHoleYards * 0.62),
-      playingHoleYards,
-    );
+    return clampTargetDistance(playNumber ?? Math.round(playingHoleYards * 0.62), playingHoleYards);
   }, [data?.pattern.summary, mode, playingHoleYards]);
   const targetDistanceYd = clampTargetDistance(
     targetPlacementOverride?.key === targetPlacementKey
@@ -247,7 +242,9 @@ export function ShotPatternMap({
   const courseFeatures = useMemo(() => data?.courseFeatures ?? [], [data?.courseFeatures]);
   const displayLandingSummary = useMemo(
     () =>
-      data ? classifyProjectedPatternPoints(displayProjection.points, courseFeatures).summary : null,
+      data
+        ? classifyProjectedPatternPoints(displayProjection.points, courseFeatures).summary
+        : null,
     [data, displayProjection.points, courseFeatures],
   );
   const projectedPointSurfaces = useMemo(() => {
@@ -726,10 +723,7 @@ export function ShotPatternMap({
   const clubSelectValue = clubSelection.clubId
     ? `club:${clubSelection.clubId}`
     : `type:${clubSelection.clubType}`;
-  const targetSliderMaxYd = Math.max(
-    80,
-    Math.round(playingHoleYards * 1.15),
-  );
+  const targetSliderMaxYd = Math.max(80, Math.round(playingHoleYards * 1.15));
   const targetLineIsPlayable =
     targetLine?.playablePercent !== null &&
     targetLine?.playablePercent !== undefined &&
@@ -745,8 +739,7 @@ export function ShotPatternMap({
     (bestTargetClub.clubId
       ? clubSelection.clubId === bestTargetClub.clubId
       : !clubSelection.clubId && clubSelection.clubType === bestTargetClub.clubType);
-  const showStaticSatellite =
-    mapMode === "satellite" && Boolean(satelliteImageUrl) && !tileReady;
+  const showStaticSatellite = mapMode === "satellite" && Boolean(satelliteImageUrl) && !tileReady;
   const staticSatelliteReady =
     satelliteImageUrl !== null && loadedSatelliteImageUrl === satelliteImageUrl;
   const showStaticSatelliteOverlay = showStaticSatellite && staticSatelliteReady;
@@ -1626,11 +1619,19 @@ function fullShotDistanceForMode({
       ? (summary?.carryMedianYd ?? summary?.distanceP50Yd)
       : (summary?.totalMedianYd ?? summary?.distanceP50Yd);
 
-  if (typeof patternDistance === "number" && Number.isFinite(patternDistance) && patternDistance > 0) {
+  if (
+    typeof patternDistance === "number" &&
+    Number.isFinite(patternDistance) &&
+    patternDistance > 0
+  ) {
     return Math.round(patternDistance);
   }
 
-  if (typeof stockPlayNumber === "number" && Number.isFinite(stockPlayNumber) && stockPlayNumber > 0) {
+  if (
+    typeof stockPlayNumber === "number" &&
+    Number.isFinite(stockPlayNumber) &&
+    stockPlayNumber > 0
+  ) {
     return Math.round(stockPlayNumber);
   }
 

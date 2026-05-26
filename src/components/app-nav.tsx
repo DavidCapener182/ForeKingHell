@@ -32,8 +32,10 @@ import {
   Zap,
 } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { calculateUserLevel } from "@/lib/achievements/xp";
+import { BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 
 const navGroups = [
   {
@@ -366,11 +368,9 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
             href="/dashboard"
             className="flex min-w-0 items-center gap-2 pr-4 text-sm font-semibold"
           >
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#050505] text-white">
-              <Flag className="size-3.5 sm:size-4" />
-            </span>
-            <span className="hidden truncate sm:inline">ForeKingHell</span>
-            <span className="truncate sm:hidden">FKH</span>
+            <BrandMark className="size-8 rounded-md" sizes="32px" />
+            <span className="hidden truncate sm:inline">{BRAND_NAME}</span>
+            <span className="truncate sm:hidden">{BRAND_SHORT_NAME}</span>
           </Link>
 
           <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-visible lg:flex">
@@ -500,10 +500,11 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
         </Link>
         <Link
           href="/dashboard"
-          aria-label="ForeKingHell dashboard"
-          className="pointer-events-auto absolute left-1/2 top-[calc(1.15rem+env(safe-area-inset-top))] max-w-[11rem] -translate-x-1/2 truncate px-3 text-center text-[1.05rem] font-semibold tracking-normal text-[#050505]"
+          aria-label={`${BRAND_NAME} dashboard`}
+          className="pointer-events-auto absolute left-1/2 top-[calc(0.75rem+env(safe-area-inset-top))] flex max-w-[12rem] -translate-x-1/2 items-center gap-2 truncate px-3 text-center text-[1.05rem] font-semibold tracking-normal text-[#050505]"
         >
-          ForeKingHell
+          <BrandMark className="size-10 rounded-md" sizes="40px" />
+          <span className="truncate">{BRAND_NAME}</span>
         </Link>
         <Link
           href="/achievements"

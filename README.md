@@ -1,4 +1,4 @@
-# ForeKingHell
+# LM World Tour
 
 Golf analytics and social competition web app for importing launch-monitor data, preserving every non-empty CSV row, and turning shots, rounds, bag gapping, progress, achievements, feed posts, friends, groups, challenges and coaching signals into a Postgres-backed improvement platform.
 
@@ -160,7 +160,7 @@ Before inviting Facebook/Rapsodo testers:
 
 ## Deployment Safety
 
-ForeKingHell now has the public-release auth foundation, but do not expose it broadly until Supabase Auth providers, RLS migrations, privacy controls, and role-scoped access are verified in the target project. The current hardening layer includes:
+LM World Tour now has the public-release auth foundation, but do not expose it broadly until Supabase Auth providers, RLS migrations, privacy controls, and role-scoped access are verified in the target project. The current hardening layer includes:
 
 - Supabase Auth-backed user identity for runtime reads and mutations.
 - Drizzle/RLS migration foundations for owner, coach, viewer, and editor access.

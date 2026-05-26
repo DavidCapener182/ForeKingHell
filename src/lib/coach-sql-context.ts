@@ -155,7 +155,7 @@ export async function buildCoachSqlContext(
     question,
     citations: dedupeCitations(citations).slice(0, 12),
     contextText: [
-      "ForeKingHell SQL context. Use only these cited personal-data facts. If the data is insufficient, say exactly what is missing.",
+      "LM World Tour SQL context. Use only these cited personal-data facts. If the data is insufficient, say exactly what is missing.",
       `Question: ${question}`,
       stockLines.length
         ? `Stock yardages:\n${stockLines.join("\n")}`

@@ -212,7 +212,7 @@ async function gotoRouteOrSkip(page: Page, path: string, skipOnLogin = true) {
       .locator("body")
       .innerText()
       .catch(() => "");
-    if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
+    if (/\/login(?:\?|$)/.test(page.url()) || /Sign in or join/i.test(bodyText)) {
       if (skipOnLogin) {
         test.skip(true, "Stored auth state redirected to login.");
       }
@@ -256,7 +256,7 @@ async function expectReadyOrSkip(page: Page, expectedText: RegExp | string, skip
     .locator("body")
     .innerText()
     .catch(() => "");
-  if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(initialBodyText)) {
+  if (/\/login(?:\?|$)/.test(page.url()) || /Sign in or join/i.test(initialBodyText)) {
     if (skipOnLogin) {
       test.skip(true, "Stored auth state redirected to login.");
     }
@@ -270,7 +270,7 @@ async function expectReadyOrSkip(page: Page, expectedText: RegExp | string, skip
       .locator("body")
       .innerText()
       .catch(() => "");
-    if (/\/login(?:\?|$)/.test(page.url()) || /Sign in to ForeKingHell/i.test(bodyText)) {
+    if (/\/login(?:\?|$)/.test(page.url()) || /Sign in or join/i.test(bodyText)) {
       if (skipOnLogin) {
         test.skip(true, "Stored auth state redirected to login.");
       }

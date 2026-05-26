@@ -110,7 +110,7 @@ export async function ensureSocialProfileForUser(userId: string) {
   const displayName =
     safeSocialDisplayName(user?.name) ||
     safeSocialDisplayName(user?.email?.split("@")[0]) ||
-    "ForeKingHell Player";
+    "LM World Tour Player";
 
   if (existing) {
     const needsDisplayRepair = !safeSocialDisplayName(existing.displayName);
@@ -376,7 +376,7 @@ export async function updateCurrentSocialProfile(input: {
   }
 
   if (isSharedDatabaseArtifact(username) || isSharedDatabaseArtifact(input.displayName)) {
-    throw new Error("Use your ForeKingHell profile name, not a shared workspace label.");
+    throw new Error("Use your LM World Tour profile name, not a shared workspace label.");
   }
 
   const [existing] = await getDb()

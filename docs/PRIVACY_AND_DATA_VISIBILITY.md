@@ -1,6 +1,6 @@
 # Privacy And Data Visibility
 
-ForeKingHell should be safe for first public testers because data visibility is explicit and conservative.
+LM World Tour should be safe for first public testers because data visibility is explicit and conservative.
 
 ## Defaults
 

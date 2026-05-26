@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { getDb } from "@/db/client";
 import { sessions, shareLinks, teeSets, users } from "@/db/schema";
+import { BRAND_NAME } from "@/lib/brand";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { hashShareToken } from "@/lib/share-links";
 
@@ -56,7 +57,7 @@ export default async function SharedRoundPage({ params }: PageProps) {
         <Button asChild variant="ghost" className="px-0">
           <Link href="/login">
             <ArrowLeft className="size-4" />
-            ForeKingHell
+            {BRAND_NAME}
           </Link>
         </Button>
         <Badge variant="secondary" className="gap-1.5 rounded-full">
@@ -68,7 +69,7 @@ export default async function SharedRoundPage({ params }: PageProps) {
       <PageHeader
         eyebrow={<StatusPill tone="green">Shared round</StatusPill>}
         title={round.session.courseName ?? round.link.title ?? "Shared scorecard"}
-        description={`${formatDate(round.session.date)} by ${round.ownerName ?? "ForeKingHell player"}`}
+        description={`${formatDate(round.session.date)} by ${round.ownerName ?? `${BRAND_NAME} player`}`}
         metrics={[
           { label: "Score", value: formatNullableInteger(round.totalScore) },
           { label: "Par", value: formatNullableInteger(round.totalPar) },

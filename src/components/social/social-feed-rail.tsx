@@ -139,8 +139,9 @@ export function SocialFeedRail() {
 function SocialFeedRailContent() {
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
+  const hasLoadedFeedRef = useRef(false);
   const isMobile = useIsMobile();
-  const [status, setStatus] = useState<FeedStatus>("loading");
+  const [status, setStatus] = useState<FeedStatus>("ready");
   const [items, setItems] = useState<SocialFeedPreviewItem[]>([]);
   const [newCount, setNewCount] = useState(0);
   const [commentingItemId, setCommentingItemId] = useState<string | null>(null);
@@ -172,6 +173,7 @@ function SocialFeedRailContent() {
           return;
         }
 
+        hasLoadedFeedRef.current = true;
         setItems(payload.items);
         if (expandedRef.current) {
           markItemsSeen(payload.items);
@@ -201,6 +203,9 @@ function SocialFeedRailContent() {
   function setRailOpen(open: boolean) {
     expandedRef.current = open;
     if (open) {
+      if (!hasLoadedFeedRef.current && status !== "loading") {
+        setStatus("loading");
+      }
       markItemsSeen(items);
       setNewCount(0);
     }

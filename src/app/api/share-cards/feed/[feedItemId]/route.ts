@@ -1,4 +1,5 @@
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { BRAND_NAME } from "@/lib/brand";
 import { getVisibleFeedItemsForViewer } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const svg = renderShareCardSvg({
     title: item.headline,
-    metricLabel: item.metricLabel ?? "ForeKingHell",
+    metricLabel: item.metricLabel ?? BRAND_NAME,
     metricValue: item.metricValue ?? item.verificationLabel,
     context: item.context ?? item.verificationLabel,
     footer: `${item.verificationLabel} · @${item.profile.username}`,
@@ -53,7 +54,7 @@ function renderShareCardSvg(input: {
   <rect x="48" y="48" width="1104" height="534" rx="26" fill="#ffffff" stroke="#dfe5ec" stroke-width="2"/>
   <circle cx="1012" cy="152" r="70" fill="#dcfce7"/>
   <circle cx="1084" cy="210" r="48" fill="#bae6fd"/>
-  <text x="96" y="128" font-family="Geist, Arial, sans-serif" font-size="30" font-weight="700" fill="#111827">ForeKingHell</text>
+  <text x="96" y="128" font-family="Geist, Arial, sans-serif" font-size="30" font-weight="700" fill="#111827">${escapeXml(BRAND_NAME)}</text>
   <text x="96" y="218" font-family="Geist, Arial, sans-serif" font-size="56" font-weight="800" fill="#111827">${escapeXml(input.title)}</text>
   <text x="96" y="316" font-family="Geist, Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="4" fill="#6b7280">${escapeXml(input.metricLabel.toUpperCase())}</text>
   <text x="96" y="400" font-family="Geist, Arial, sans-serif" font-size="74" font-weight="800" fill="#16a34a">${escapeXml(input.metricValue)}</text>

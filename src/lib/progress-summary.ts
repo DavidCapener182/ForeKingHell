@@ -673,7 +673,7 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
       clubType: clubs[0].clubType,
       dateLabel: journeyDate(clubs[0].analytics.sample.latestShotAt),
       title: "Baseline started",
-      detail: "ForeKingHell has enough data to begin building personal comparisons.",
+      detail: "LM World Tour has enough data to begin building personal comparisons.",
       tone: "slate",
     });
   }

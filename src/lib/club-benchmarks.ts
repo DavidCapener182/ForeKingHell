@@ -26,13 +26,45 @@ export type ClubDistanceComparison = {
   progressPercent: number;
 };
 
+export type ClubBenchmarkMetricKey =
+  | "carryYd"
+  | "clubSpeedMph"
+  | "attackAngleDeg"
+  | "ballSpeedMph"
+  | "smashFactor"
+  | "launchAngleDeg"
+  | "spinRate"
+  | "maxHeightYd"
+  | "landAngleDeg";
+
+export type ClubBenchmarkMetricValues = Partial<Record<ClubBenchmarkMetricKey, number | null>>;
+
+export type ClubBenchmarkPeerComparison = {
+  clubType: string;
+  metricKey: ClubBenchmarkMetricKey;
+  peerCount: number;
+  sampleSize: number;
+  peerMedian: number | null;
+  topQuartile: number | null;
+  percentile: number | null;
+};
+
+export type ClubBenchmarkPeerSummary = {
+  cohortLabel: string;
+  peerUserCount: number;
+  peerShotCount: number;
+  comparisons: ClubBenchmarkPeerComparison[];
+};
+
 type BenchmarkRowInput = {
   clubId: string;
   clubType: string;
   brandModel: string;
   carryYd: number | null;
+  bestSampleFloorYd?: number | null;
   sampleSize: number;
   confidenceScore: number;
+  metrics?: ClubBenchmarkMetricValues;
 };
 
 export type ClubBenchmarkRow = BenchmarkRowInput & {
@@ -114,13 +146,8 @@ export function compareClubCarryToBenchmark(
   const achievedLevel =
     [...benchmark.levels].reverse().find((level) => carryYd >= level.yards) ?? null;
   const nextLevel = benchmark.levels.find((level) => carryYd < level.yards) ?? null;
-  const firstLevel = benchmark.levels[0];
   const finalLevel = benchmark.levels[benchmark.levels.length - 1];
-  const progressPercent = clamp(
-    ((carryYd - firstLevel.yards) / (finalLevel.yards - firstLevel.yards)) * 100,
-    0,
-    100,
-  );
+  const progressPercent = benchmarkLevelProgressPercent(benchmark, carryYd);
 
   if (!nextLevel) {
     return {
@@ -169,6 +196,37 @@ export function buildClubBenchmarkRows(clubs: BenchmarkRowInput[]): ClubBenchmar
     })
     .filter((row): row is ClubBenchmarkRow => row !== null)
     .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+}
+
+export function benchmarkLevelProgressPercent(benchmark: ClubDistanceBenchmark, carryYd: number) {
+  const firstLevel = benchmark.levels[0];
+  const finalLevel = benchmark.levels[benchmark.levels.length - 1];
+
+  return clamp(
+    ((carryYd - firstLevel.yards) / (finalLevel.yards - firstLevel.yards)) * 100,
+    0,
+    100,
+  );
+}
+
+export function benchmarkDisplayProgressPercent(benchmark: ClubDistanceBenchmark, carryYd: number) {
+  const levels = benchmark.levels;
+  const segmentSize = 100 / (levels.length - 1);
+  const nextLevelIndex = levels.findIndex((level) => carryYd < level.yards);
+
+  if (nextLevelIndex === -1) {
+    return 100;
+  }
+
+  if (nextLevelIndex === 0) {
+    return 0;
+  }
+
+  const previousLevel = levels[nextLevelIndex - 1];
+  const nextLevel = levels[nextLevelIndex];
+  const segmentProgress = (carryYd - previousLevel.yards) / (nextLevel.yards - previousLevel.yards);
+
+  return clamp((nextLevelIndex - 1 + segmentProgress) * segmentSize, 0, 100);
 }
 
 function benchmarkClubTypeFor(clubType: string) {

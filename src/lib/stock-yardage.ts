@@ -22,6 +22,7 @@ export type StockYardage = {
   carryMeanYd: number | null;
   carryP75Yd: number | null;
   carryP25Yd: number | null;
+  bestSampleFloorYd: number | null;
   totalMedianYd: number | null;
   dispersionLeftYd: number | null;
   dispersionRightYd: number | null;
@@ -30,6 +31,15 @@ export type StockYardage = {
   confidenceScore: number;
   recommendedPlayNumberYd: number | null;
   label: "Reliable" | "Developing" | "Unstable" | "Do not trust yet";
+};
+
+export type StockCarryTrend = {
+  status: "better" | "worse" | "steady" | "building";
+  latestSampleSize: number;
+  previousSampleSize: number;
+  latestCarryMedianYd: number | null;
+  previousCarryMedianYd: number | null;
+  deltaYd: number | null;
 };
 
 export type StockYardageSample<T extends StockShot> = {
@@ -42,7 +52,16 @@ export type StockYardageOptions = {
 };
 
 const EXCLUDED_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
+const SAND_WEDGE_EXCLUDED_CATEGORIES = new Set(["recovery", "bunker"]);
 const EXCLUDED_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
+const SAND_WEDGE_STOCK_MIN_CARRY_YD = 40;
+const SAND_WEDGE_MIN_STOCK_CLUSTER_SHOTS = 5;
+const SAND_WEDGE_MIN_CLUSTER_GAP_YD = 7;
+const STOCK_AVERAGE_SAMPLE_SIZE = 20;
+const MIN_TREND_WINDOW_SHOTS = 3;
+const MAX_LATEST_TREND_SHOTS = 5;
+const MAX_PREVIOUS_TREND_SHOTS = 15;
+const STOCK_TREND_THRESHOLD_YD = 2;
 
 export function calculateStockYardage(
   shots: StockShot[],
@@ -87,6 +106,7 @@ export function calculateStockYardage(
     carryMeanYd: roundOne(mean(filteredCarry)),
     carryP75Yd: roundOne(percentile(filteredCarry, 0.75)),
     carryP25Yd: roundOne(percentile(filteredCarry, 0.25)),
+    bestSampleFloorYd: roundOne(Math.min(...filteredCarry)),
     totalMedianYd: filteredTotal.length > 0 ? roundOne(median(filteredTotal)) : null,
     dispersionLeftYd:
       filteredSide.length > 0 ? roundOne(Math.abs(Math.min(0, ...filteredSide))) : null,
@@ -104,10 +124,15 @@ export function selectStockYardageShots<T extends StockShot>(
   maxShots = 50,
   options: StockYardageOptions = {},
 ): StockYardageSample<T> {
-  const cleanShots = shots
-    .filter((shot) => isUsableFullShot(shot, options))
+  const selectionClubType = options.clubType ?? shots.find((shot) => shot.clubType)?.clubType;
+  const usableShots = shots.filter((shot) => isUsableFullShot(shot, options));
+  const stockCandidates = isSandWedgeClubType(selectionClubType)
+    ? selectSandWedgeStockCluster(usableShots)
+    : usableShots;
+  const recentCandidatePool = [...stockCandidates]
     .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
     .slice(0, maxShots);
+  const cleanShots = selectBestStockShots(recentCandidatePool, STOCK_AVERAGE_SAMPLE_SIZE);
   const carryValues = cleanShots.map((shot) => shot.carryYd).filter(isNumber);
 
   if (carryValues.length === 0) {
@@ -128,25 +153,136 @@ export function selectStockYardageShots<T extends StockShot>(
   return { cleanShots, filteredShots };
 }
 
+export function calculateStockCarryTrend(
+  shots: StockShot[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+): StockCarryTrend {
+  const { cleanShots } = selectStockYardageShots(shots, maxShots, options);
+  const trendShots = cleanShots
+    .filter((shot): shot is StockShot & { carryYd: number } => isNumber(shot.carryYd))
+    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt));
+  const latestSampleSize = Math.min(MAX_LATEST_TREND_SHOTS, Math.floor(trendShots.length / 2));
+  const previousSampleSize = Math.min(
+    MAX_PREVIOUS_TREND_SHOTS,
+    trendShots.length - latestSampleSize,
+  );
+
+  if (latestSampleSize < MIN_TREND_WINDOW_SHOTS || previousSampleSize < MIN_TREND_WINDOW_SHOTS) {
+    return {
+      status: "building",
+      latestSampleSize: Math.max(0, latestSampleSize),
+      previousSampleSize: Math.max(0, previousSampleSize),
+      latestCarryMedianYd: null,
+      previousCarryMedianYd: null,
+      deltaYd: null,
+    };
+  }
+
+  const latestShots = trendShots.slice(0, latestSampleSize);
+  const previousShots = trendShots.slice(latestSampleSize, latestSampleSize + previousSampleSize);
+  const latestCarryMedianYd = roundOne(median(latestShots.map((shot) => shot.carryYd)));
+  const previousCarryMedianYd = roundOne(median(previousShots.map((shot) => shot.carryYd)));
+  const deltaYd =
+    latestCarryMedianYd === null || previousCarryMedianYd === null
+      ? null
+      : roundOne(latestCarryMedianYd - previousCarryMedianYd);
+
+  if (deltaYd === null) {
+    return {
+      status: "building",
+      latestSampleSize,
+      previousSampleSize,
+      latestCarryMedianYd,
+      previousCarryMedianYd,
+      deltaYd,
+    };
+  }
+
+  const status =
+    deltaYd >= STOCK_TREND_THRESHOLD_YD
+      ? "better"
+      : deltaYd <= -STOCK_TREND_THRESHOLD_YD
+        ? "worse"
+        : "steady";
+
+  return {
+    status,
+    latestSampleSize,
+    previousSampleSize,
+    latestCarryMedianYd,
+    previousCarryMedianYd,
+    deltaYd,
+  };
+}
+
 function isUsableFullShot(shot: StockShot, options: StockYardageOptions) {
   if (!isNumber(shot.carryYd)) {
     return false;
   }
 
   const clubType = options.clubType ?? shot.clubType;
-  if (isShortGameTouchClubType(clubType)) {
-    return false;
-  }
-
-  if (shot.shotCategory && EXCLUDED_CATEGORIES.has(shot.shotCategory.toLowerCase())) {
-    return false;
-  }
+  const category = shot.shotCategory?.toLowerCase();
 
   if (shot.qualityTag && EXCLUDED_QUALITY_TAGS.has(shot.qualityTag.toLowerCase())) {
     return false;
   }
 
+  if (isSandWedgeClubType(clubType)) {
+    if (shot.carryYd < SAND_WEDGE_STOCK_MIN_CARRY_YD) {
+      return false;
+    }
+
+    return !category || !SAND_WEDGE_EXCLUDED_CATEGORIES.has(category);
+  }
+
+  if (isShortGameTouchClubType(clubType)) {
+    return false;
+  }
+
+  if (category && EXCLUDED_CATEGORIES.has(category)) {
+    return false;
+  }
+
   return true;
+}
+
+function selectSandWedgeStockCluster<T extends StockShot>(shots: T[]) {
+  if (shots.length < SAND_WEDGE_MIN_STOCK_CLUSTER_SHOTS * 2) {
+    return shots;
+  }
+
+  const sortedByCarry = [...shots]
+    .filter((shot): shot is T & { carryYd: number } => isNumber(shot.carryYd))
+    .sort((left, right) => left.carryYd - right.carryYd);
+
+  for (
+    let index = sortedByCarry.length - SAND_WEDGE_MIN_STOCK_CLUSTER_SHOTS;
+    index >= 1;
+    index -= 1
+  ) {
+    const gapYd = sortedByCarry[index].carryYd - sortedByCarry[index - 1].carryYd;
+
+    if (gapYd >= SAND_WEDGE_MIN_CLUSTER_GAP_YD) {
+      return sortedByCarry.slice(index);
+    }
+  }
+
+  return shots;
+}
+
+function selectBestStockShots<T extends StockShot>(shots: T[], sampleSize: number) {
+  return [...shots]
+    .filter((shot): shot is T & { carryYd: number } => isNumber(shot.carryYd))
+    .sort(
+      (left, right) =>
+        right.carryYd - left.carryYd || dateValue(right.shotAt) - dateValue(left.shotAt),
+    )
+    .slice(0, sampleSize);
+}
+
+function isSandWedgeClubType(value: string | null | undefined) {
+  return value?.trim().toLowerCase() === "sw";
 }
 
 function calculateConfidence(input: {
@@ -156,7 +292,7 @@ function calculateConfidence(input: {
   sideAbsP75: number | null;
   mostRecentShotAt: number | null;
 }) {
-  const sampleSizeScore = clamp(input.sampleSize / 30, 0, 1);
+  const sampleSizeScore = clamp(input.sampleSize / STOCK_AVERAGE_SAMPLE_SIZE, 0, 1);
   const distanceSpread = input.carryMedianYd === 0 ? 1 : input.distanceStdDev / input.carryMedianYd;
   const distanceConsistencyScore = clamp(1 - distanceSpread / 0.18, 0, 1);
   const dispersionScore = input.sideAbsP75 === null ? 0.5 : clamp(1 - input.sideAbsP75 / 55, 0, 1);
@@ -182,7 +318,7 @@ function stockLabel(
 ): StockYardage["label"] {
   const spread = carryMedianYd === 0 ? 1 : distanceStdDev / carryMedianYd;
 
-  if (sampleSize >= 30 && spread <= 0.1 && confidenceScore >= 75) {
+  if (sampleSize >= STOCK_AVERAGE_SAMPLE_SIZE && spread <= 0.1 && confidenceScore >= 75) {
     return "Reliable";
   }
 
@@ -206,6 +342,7 @@ function emptyStockYardage(rawSampleSize: number): StockYardage {
     carryMeanYd: null,
     carryP75Yd: null,
     carryP25Yd: null,
+    bestSampleFloorYd: null,
     totalMedianYd: null,
     dispersionLeftYd: null,
     dispersionRightYd: null,

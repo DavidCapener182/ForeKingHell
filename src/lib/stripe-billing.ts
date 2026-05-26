@@ -335,7 +335,7 @@ async function processCheckoutCompleted(
   );
 
   if (!userId) {
-    throw new Error("Stripe checkout session did not include a ForeKingHell user id.");
+    throw new Error("Stripe checkout session did not include a LM World Tour user id.");
   }
 
   const billingCustomerId = customerId
@@ -372,7 +372,7 @@ async function processSubscriptionEvent(
     readStringPath(object, ["metadata", "user_id"]) ??
     (customerId ? await store.findUserIdByCustomerId(customerId) : null);
   if (!userId) {
-    throw new Error("Stripe subscription event could not be matched to a ForeKingHell user.");
+    throw new Error("Stripe subscription event could not be matched to a LM World Tour user.");
   }
 
   const planKey = parsePlanKey(
@@ -429,7 +429,7 @@ async function processInvoiceEvent(
     readStringPath(object, ["subscription_details", "metadata", "user_id"]) ??
     (customerId ? await store.findUserIdByCustomerId(customerId) : null);
   if (!userId) {
-    throw new Error("Stripe invoice event could not be matched to a ForeKingHell user.");
+    throw new Error("Stripe invoice event could not be matched to a LM World Tour user.");
   }
 
   const planKey = parsePlanKey(

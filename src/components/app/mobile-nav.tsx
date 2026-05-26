@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { Menu, Upload, Zap } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import {
   buildDesktopNavGroups,
   mobilePrimaryItems,
   type AppNavGroup,
 } from "@/components/app/nav-items";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -22,6 +22,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { BRAND_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export type MobileNavProfile = {
@@ -50,7 +51,6 @@ export function MobileNav({
   isAdmin,
 }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
-  const profileInitials = getProfileInitials(profileLabel);
   const groups = buildDesktopNavGroups(isAdmin);
 
   return (
@@ -75,12 +75,9 @@ export function MobileNav({
             >
               <SheetHeader className="border-b border-border p-4 text-left">
                 <div className="flex items-center gap-3">
-                  <Avatar size="lg">
-                    {profile?.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt="" /> : null}
-                    <AvatarFallback>{profileInitials}</AvatarFallback>
-                  </Avatar>
+                  <BrandMark className="size-12 rounded-md" sizes="48px" />
                   <div className="min-w-0">
-                    <SheetTitle className="truncate">ForeKingHell</SheetTitle>
+                    <SheetTitle className="truncate">{BRAND_NAME}</SheetTitle>
                     <SheetDescription className="truncate">{profileLabel}</SheetDescription>
                   </div>
                 </div>
@@ -100,7 +97,7 @@ export function MobileNav({
               <div className="mt-auto grid gap-2 border-t border-border p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
                 <Button asChild className="justify-start">
                   <SheetClose asChild>
-                    <Link href="/import" prefetch={false}>
+                    <Link href="/import">
                       <Upload className="size-4" />
                       Import data
                     </Link>
@@ -117,10 +114,11 @@ export function MobileNav({
 
           <Link
             href="/dashboard"
-            aria-label="ForeKingHell dashboard"
-            className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1 items-center justify-center truncate text-center text-[1.02rem] font-semibold leading-none tracking-normal text-foreground"
+            aria-label={`${BRAND_NAME} dashboard`}
+            className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1 items-center justify-center gap-2 truncate text-center text-[1.02rem] font-semibold leading-none tracking-normal text-foreground"
           >
-            ForeKingHell
+            <BrandMark className="size-8 rounded-md" sizes="32px" />
+            <span className="truncate">{BRAND_NAME}</span>
           </Link>
 
           <Button
@@ -131,7 +129,6 @@ export function MobileNav({
             <Link
               href="/achievements"
               aria-label={`Level ${level}, ${xpFormatter.format(totalXp)} XP, ${xpFormatter.format(xpToNextLevel)} XP to next level`}
-              prefetch={false}
             >
               <Zap className="size-4 text-emerald-600" />
               <span>Lvl {level}</span>
@@ -151,7 +148,6 @@ export function MobileNav({
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                prefetch={false}
                 className={cn(
                   "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] transition-colors",
                   active
@@ -186,7 +182,6 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                prefetch={false}
                 className={cn(
                   "grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium transition-colors",
                   active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
@@ -218,5 +213,5 @@ export function getProfileInitials(label: string) {
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
-  return initials || "FK";
+  return initials || "LM";
 }

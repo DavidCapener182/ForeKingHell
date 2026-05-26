@@ -37,13 +37,19 @@ export function buildEstimatedCourseFeatures(
       {
         holeNumber: hole.holeNumber,
         featureType: "course_boundary" as const,
-        geometryJson: lineCorridorPolygon(hole.geometry, boundaryHalfWidthYd(hole) * YARDS_TO_METERS),
+        geometryJson: lineCorridorPolygon(
+          hole.geometry,
+          boundaryHalfWidthYd(hole) * YARDS_TO_METERS,
+        ),
         source: "estimated_centerline" as const,
       },
       {
         holeNumber: hole.holeNumber,
         featureType: "fairway" as const,
-        geometryJson: lineCorridorPolygon(hole.geometry, fairwayHalfWidthYd(hole) * YARDS_TO_METERS),
+        geometryJson: lineCorridorPolygon(
+          hole.geometry,
+          fairwayHalfWidthYd(hole) * YARDS_TO_METERS,
+        ),
         source: "estimated_centerline" as const,
       },
       {
@@ -56,7 +62,10 @@ export function buildEstimatedCourseFeatures(
   });
 }
 
-export function lineCorridorPolygon(geometry: LatLngPoint[], halfWidthMeters: number): GeoJsonPolygon {
+export function lineCorridorPolygon(
+  geometry: LatLngPoint[],
+  halfWidthMeters: number,
+): GeoJsonPolygon {
   const cleanGeometry = geometry.filter(isLatLngPoint);
 
   if (cleanGeometry.length < 2) {

@@ -237,9 +237,9 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                 ? "Played courses"
                 : activeTab === "patterns"
                   ? "Course patterns"
-                : activeTab === "favourites"
-                  ? "Favourite courses"
-                  : "Record boards"
+                  : activeTab === "favourites"
+                    ? "Favourite courses"
+                    : "Record boards"
             }
             description={
               activeTab === "patterns"
@@ -249,88 +249,85 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                   : undefined
             }
           >
-            {mobileCourses
-              .slice(0, mobileCourseLimit)
-              .map((course, index) => (
-                <CourseCard
-                  key={course.id}
-                  href={
-                    activeTab === "patterns"
-                      ? `/courses/${course.id}/shot-pattern`
-                      : `/courses/${course.id}/records`
-                  }
-                  title={course.name}
-                  subtitle={course.country ?? "Course board"}
-                  media={
-                    <PageArtwork
-                      variant={courseArtworkVariant(course)}
-                      alt=""
-                      crop={courseArtworkCrop(course)}
-                      cropKey={course.id}
-                      className="block h-36 min-h-0 rounded-lg"
-                      sizes="calc(100vw - 2rem)"
-                      priority={index === 0}
-                    />
-                  }
-                  champion={
-                    course.champion ? (
-                      <span>
-                        Champion:{" "}
-                        <span className="font-semibold">{course.champion.displayName}</span>
-                      </span>
-                    ) : (
-                      <span>No verified champion yet</span>
-                    )
-                  }
-                  stats={
-                    <>
-                      <span>{course.sourceLabel}</span>
-                      <span>{course.recordCount} record boards</span>
-                      <span>{course.roundCount} played rounds</span>
-                      <span>{course.teeSetCount} tee sets</span>
-                      <span>{course.holeCount} mapped holes</span>
-                    </>
-                  }
-                  actions={
-                    <div className="grid grid-cols-2 gap-2">
+            {mobileCourses.slice(0, mobileCourseLimit).map((course, index) => (
+              <CourseCard
+                key={course.id}
+                href={
+                  activeTab === "patterns"
+                    ? `/courses/${course.id}/shot-pattern`
+                    : `/courses/${course.id}/records`
+                }
+                title={course.name}
+                subtitle={course.country ?? "Course board"}
+                media={
+                  <PageArtwork
+                    variant={courseArtworkVariant(course)}
+                    alt=""
+                    crop={courseArtworkCrop(course)}
+                    cropKey={course.id}
+                    className="block h-36 min-h-0 rounded-lg"
+                    sizes="calc(100vw - 2rem)"
+                    priority={index === 0}
+                  />
+                }
+                champion={
+                  course.champion ? (
+                    <span>
+                      Champion: <span className="font-semibold">{course.champion.displayName}</span>
+                    </span>
+                  ) : (
+                    <span>No verified champion yet</span>
+                  )
+                }
+                stats={
+                  <>
+                    <span>{course.sourceLabel}</span>
+                    <span>{course.recordCount} record boards</span>
+                    <span>{course.roundCount} played rounds</span>
+                    <span>{course.teeSetCount} tee sets</span>
+                    <span>{course.holeCount} mapped holes</span>
+                  </>
+                }
+                actions={
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
+                    >
+                      <Link href={`/courses/${course.id}/records`} prefetch={false}>
+                        <Trophy className="size-4" />
+                        Records
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
+                    >
+                      <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+                        <Settings className="size-4" />
+                        Map
+                      </Link>
+                    </Button>
+                    {shotPatternEnabled && course.holeCount > 0 ? (
                       <Button
                         asChild
-                        variant="outline"
                         size="sm"
-                        className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
+                        className="col-span-2 min-h-10 rounded-full bg-[#0B7A3B] px-3 text-white hover:bg-[#064E3B]"
                       >
-                        <Link href={`/courses/${course.id}/records`} prefetch={false}>
-                          <Trophy className="size-4" />
-                          Records
+                        <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
+                          <MapPinned className="size-4" />
+                          Shot pattern
                         </Link>
                       </Button>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
-                      >
-                        <Link href={`/courses/${course.id}/holes`} prefetch={false}>
-                          <Settings className="size-4" />
-                          Map
-                        </Link>
-                      </Button>
-                      {shotPatternEnabled && course.holeCount > 0 ? (
-                        <Button
-                          asChild
-                          size="sm"
-                          className="col-span-2 min-h-10 rounded-full bg-[#0B7A3B] px-3 text-white hover:bg-[#064E3B]"
-                        >
-                          <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
-                            <MapPinned className="size-4" />
-                            Shot pattern
-                          </Link>
-                        </Button>
-                      ) : null}
-                    </div>
-                  }
-                />
-              ))}
+                    ) : null}
+                  </div>
+                }
+              />
+            ))}
             {mobileCourses.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#D7DEE2] bg-white p-4 text-sm leading-5 text-[#6B7280]">
                 {activeTab === "patterns"
@@ -893,20 +890,20 @@ async function getCoursesData() {
       ),
     visibleCourseIds.length > 0
       ? db
-        .select({
-          id: courseRecords.id,
-          courseId: courseRecords.courseId,
-          bestResultId: courseRecords.bestResultId,
-          championVerificationStatus: courseRecordResults.verificationStatus,
-          championProfileUserId: userProfiles.userId,
-          championProfileDisplayName: userProfiles.displayName,
-          championProfileUsername: userProfiles.username,
-          championProfileAvatarUrl: userProfiles.avatarUrl,
-        })
-        .from(courseRecords)
-        .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
-        .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-        .where(inArray(courseRecords.courseId, visibleCourseIds))
+          .select({
+            id: courseRecords.id,
+            courseId: courseRecords.courseId,
+            bestResultId: courseRecords.bestResultId,
+            championVerificationStatus: courseRecordResults.verificationStatus,
+            championProfileUserId: userProfiles.userId,
+            championProfileDisplayName: userProfiles.displayName,
+            championProfileUsername: userProfiles.username,
+            championProfileAvatarUrl: userProfiles.avatarUrl,
+          })
+          .from(courseRecords)
+          .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
+          .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+          .where(inArray(courseRecords.courseId, visibleCourseIds))
       : [],
     visibleCourseIds.length > 0
       ? db
@@ -1109,12 +1106,7 @@ function first(value: string | string[] | undefined) {
 }
 
 function parseCourseTab(value: string) {
-  if (
-    value === "played" ||
-    value === "patterns" ||
-    value === "favourites" ||
-    value === "manage"
-  ) {
+  if (value === "played" || value === "patterns" || value === "favourites" || value === "manage") {
     return value;
   }
 

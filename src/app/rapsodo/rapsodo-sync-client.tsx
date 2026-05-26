@@ -288,7 +288,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         setNotice({
           kind: "success",
           title: "New Rapsodo sessions available",
-          message: `${newSessions.length} new session${newSessions.length === 1 ? "" : "s"} found. Review them, then use Rapsodo clubs or ForeKingHell recommendations before saving.`,
+          message: `${newSessions.length} new session${newSessions.length === 1 ? "" : "s"} found. Review them, then use Rapsodo clubs or LM World Tour recommendations before saving.`,
         });
         notifyNewRapsodoSessions(newSessions.length);
         return;
@@ -469,7 +469,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
               kind: "error",
               title: "Rapsodo update unavailable",
               message:
-                "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with ForeKingHell recommendations or update Rapsodo manually first.",
+                "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with LM World Tour recommendations or update Rapsodo manually first.",
             },
             { scroll: true },
           );
@@ -493,9 +493,15 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         writebackMessage =
           writebackResult.data.updated > 0
             ? ` Updated ${writebackResult.data.updated} club${writebackResult.data.updated === 1 ? "" : "s"} in Rapsodo first.`
-            : " Rapsodo did not expose any updateable shot IDs, so only ForeKingHell was saved.";
+            : " Rapsodo did not expose any updateable shot IDs, so only LM World Tour was saved.";
       }
 
+      const resolvedCourseName = (
+        courseName.trim() ||
+        preview.courseName ||
+        preview.session.courseName ||
+        preview.session.title
+      ).trim();
       const result = await importRapsodoSessionAction({
         session: preview.session,
         importInput: {
@@ -503,17 +509,17 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
           fileName: preview.fileName,
           fileSizeBytes: preview.fileSizeBytes,
           source: "rapsodo",
-          sessionType: courseShotOnlyImport ? "range" : preview.sessionType,
+          sessionType: preview.sessionType,
           sessionDate: preview.sessionDate,
           distanceUnit: preview.distanceUnit,
-          courseName: isCoursePreview && !courseShotOnlyImport ? courseName : undefined,
+          courseName: isCoursePreview ? resolvedCourseName : undefined,
           courseScorecardText: isCoursePreview && !courseShotOnlyImport ? scorecardText : undefined,
           courseHoleShotCounts:
             isCoursePreview && !courseShotOnlyImport ? courseHoleShotCounts : undefined,
           courseHoleScoring,
           shotOverrides,
           notes: courseShotOnlyImport
-            ? `Shot-only Rapsodo course import from ${courseName.trim() || preview.session.title}. No scorecard was saved.`
+            ? `Shot-only Rapsodo course import from ${resolvedCourseName}. Scorecard detail was not saved yet.`
             : undefined,
         },
       });
@@ -541,9 +547,11 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
         kind: "success",
         title: result.data.skipped ? "Already imported" : "Rapsodo session saved",
         message: result.data.skipped
-          ? "This exported CSV already exists in ForeKingHell."
+          ? "This exported CSV already exists in LM World Tour."
           : `Saved ${result.data.shotCount} shot${result.data.shotCount === 1 ? "" : "s"}.${
-              courseShotOnlyImport ? " Saved as shot-only club data, not a round." : ""
+              courseShotOnlyImport
+                ? " Saved as a shot-linked course round without scorecard detail."
+                : ""
             }${writebackMessage}`,
         sessionId: result.data.sessionId,
       };
@@ -655,8 +663,8 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                 Rapsodo cloud sync
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Pull R-Cloud CSV exports, review club matches, and save confirmed shots into
-                ForeKingHell.
+                Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
+                World Tour.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-4 lg:min-w-[640px]">
@@ -1266,8 +1274,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
                   </div>
                   {courseImportMode === "shot_only" ? (
                     <div className="rounded-[8px] border bg-[#f9fafb] p-3 text-sm text-muted-foreground">
-                      These shots will save into the shot database and stay out of the saved rounds
-                      list.
+                      These shots will save as a shot-linked course round without scorecard detail.
                     </div>
                   ) : (
                     <>
@@ -1710,6 +1717,6 @@ function notifyNewRapsodoSessions(count: number) {
   }
 
   new Notification("New Rapsodo sessions available", {
-    body: `${count} new R-Cloud session${count === 1 ? "" : "s"} ready to review in ForeKingHell.`,
+    body: `${count} new R-Cloud session${count === 1 ? "" : "s"} ready to review in LM World Tour.`,
   });
 }

@@ -124,7 +124,7 @@ export default async function ProgressPage() {
               <div>
                 <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
                 <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-                  Import a Rapsodo CSV and ForeKingHell will build first-vs-latest club comparisons
+                  Import a Rapsodo CSV and LM World Tour will build first-vs-latest club comparisons
                   automatically.
                 </p>
               </div>

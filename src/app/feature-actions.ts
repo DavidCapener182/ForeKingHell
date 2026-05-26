@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+
 import {
   completePracticeDrill,
   createCoachSignalChallenge,
@@ -84,6 +86,7 @@ export async function saveCurrentWeeklyRecapAction() {
 
 export async function createLatestRoundRecapAction() {
   await createLatestRoundRecap();
+  redirect("/feed?filter=rounds");
 }
 
 export async function createCoachSignalChallengeAction(formData: FormData) {

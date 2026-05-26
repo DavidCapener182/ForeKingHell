@@ -1,4 +1,5 @@
 import type { CoachSummary } from "@/lib/coach";
+import { BRAND_NAME } from "@/lib/brand";
 
 export type AiCoachClubPayload = {
   clubName: string;
@@ -13,7 +14,7 @@ export type AiCoachClubPayload = {
 };
 
 export type AiCoachPayload = {
-  productName: "ForeKingHell";
+  productName: typeof BRAND_NAME;
   headline: string;
   subhead: string;
   totals: {
@@ -70,7 +71,7 @@ export function buildAiCoachPayload(coach: CoachSummary): AiCoachPayload {
   }));
 
   return {
-    productName: "ForeKingHell",
+    productName: BRAND_NAME,
     headline: coach.headline,
     subhead: coach.subhead,
     totals: {
@@ -102,7 +103,7 @@ export function buildAiCoachPayload(coach: CoachSummary): AiCoachPayload {
 }
 
 export function buildCoachPrompt(payload: AiCoachPayload) {
-  return `You are the ForeKingHell golf coach.
+  return `You are the ${BRAND_NAME} golf coach.
 
 Use only the metrics in the JSON. Do not invent swing facts, club specs, official handicap claims, or pro comparisons.
 Write like a direct personal coach: specific, practical, calm.
@@ -144,7 +145,7 @@ export function parseAiCoachSummary(text: string): AiCoachGeneratedSummary {
     evidence:
       typeof parsed.evidence === "string"
         ? parsed.evidence
-        : "Evidence was limited to the structured ForeKingHell metrics supplied to the AI coach.",
+        : `Evidence was limited to the structured ${BRAND_NAME} metrics supplied to the AI coach.`,
     coachNote: typeof parsed.coachNote === "string" ? parsed.coachNote : text,
     drill:
       typeof parsed.drill === "string"

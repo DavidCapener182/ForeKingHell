@@ -62,7 +62,7 @@ export default async function SharedAccountPage({ params }: PageProps) {
 
       <PageHeader
         eyebrow={<StatusPill tone="sky">Shared account</StatusPill>}
-        title={data.profile.name ?? data.profile.email ?? "ForeKingHell player"}
+        title={data.profile.name ?? data.profile.email ?? "LM World Tour player"}
         description="Read-only account overview for coach, viewer, and editor roles. Mutations still require owner/editor-scoped actions."
         metrics={[
           {
