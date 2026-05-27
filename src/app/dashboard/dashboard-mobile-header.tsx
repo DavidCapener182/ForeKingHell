@@ -59,8 +59,7 @@ export function DashboardMobileHeader({
   }, []);
 
   return (
-    <section className="sticky top-0 z-40 -mx-4 -mt-5 grid max-w-[100vw] gap-0 overflow-x-clip bg-[#FFFDF8] px-4 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden">
-      <div className="-mx-4 h-12 max-w-[100vw] px-4" aria-hidden="true" />
+    <section className="sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid max-w-[100vw] gap-0 overflow-x-clip bg-[#FFFDF8] px-4 shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden">
       <header className="-mx-4 grid h-12 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#DDE7DC] px-4">
         <span aria-hidden="true" />
         <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">

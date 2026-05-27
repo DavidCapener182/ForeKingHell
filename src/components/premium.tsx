@@ -216,6 +216,7 @@ export function MobileCompactPageHeader({
   description,
   metricLabel,
   metricValue,
+  metricDetail,
   action,
   visual,
   className,
@@ -261,6 +262,11 @@ export function MobileCompactPageHeader({
                 {metricLabel}
               </p>
               <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">{metricValue}</p>
+              {metricDetail ? (
+                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                  {metricDetail}
+                </p>
+              ) : null}
             </div>
           ) : (
             <span aria-hidden />

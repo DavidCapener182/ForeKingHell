@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   Archive,
+  ArrowLeft,
   Award,
   CheckCircle2,
   FileClock,
@@ -55,6 +56,12 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
+type ImportPageProps = {
+  searchParams?: Promise<{
+    source?: string;
+  }>;
+};
+
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -62,12 +69,14 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-export default async function ImportPage() {
-  const [library, rapsodoStatus, featureData] = await Promise.all([
+export default async function ImportPage({ searchParams }: ImportPageProps) {
+  const [params, library, rapsodoStatus, featureData] = await Promise.all([
+    searchParams,
     getImportLibrary(),
     getRapsodoConnectionStatusAction(),
     getFeatureIdeasData(),
   ]);
+  const mobileCsvMode = params?.source === "csv";
   const visibleFiles = library.files.filter((file) => file.status !== "archived");
   const duplicateFiles = visibleFiles.filter((file) => file.status === "duplicate").length;
   const eligibleSubmissionCards = buildEligibleSubmissionCards(visibleFiles);
@@ -82,140 +91,152 @@ export default async function ImportPage() {
   return (
     <>
       <PageShell>
-        <MobileAppShell>
-          <MobileTopBar title="Import" />
-          <MobileTabBar
-            activeKey="rapsodo"
-            className="sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
-            tabs={[
-              { key: "rapsodo", label: "Rapsodo", href: "#rapsodo-connect" },
-              { key: "csv", label: "CSV", href: "#csv-import" },
-              { key: "scorecard", label: "Scorecard", href: "/import#scorecard" },
-              { key: "manual", label: "Manual", href: "/rounds/new" },
-              { key: "proof", label: "Proof", href: "/import#proof" },
-            ]}
-          />
-          <MobileStatusAction
-            label="Rapsodo import"
-            value="Import verified session"
-            detail={`${integerFormatter.format(visibleFiles.length)} recent files · ${integerFormatter.format(duplicateFiles)} duplicates detected`}
-            action={
-              <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <a href="#rapsodo-connect">
-                  <Upload className="size-4" />
-                  Rapsodo
-                </a>
-              </Button>
-            }
-          />
-          <FirstRunRapsodoOnboarding
-            connected={connectionStatus.connected}
-            fileCount={visibleFiles.length}
-          />
-          <MobileRapsodoConnect initialStatus={connectionStatus} />
-          <ImportQualityFeaturePanel data={featureData} />
-          <NativeListSection id="import-sources" title="Other sources">
-            <div className="grid gap-2">
-              <Link
-                href="/rapsodo"
-                prefetch={false}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
-              >
-                <Upload className="size-5 text-[#0B7A3B]" />
-                <span className="min-w-0">
-                  <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
-                  <span className="block text-sm text-[#6B7280]">
-                    Load session list, preview shots and import verified data
-                  </span>
-                </span>
-                <ProofBadge tier="gold" />
-              </Link>
-              <BottomSheet
-                label={
-                  <span
-                    id="csv-import"
-                    className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 text-left"
-                  >
-                    <Upload className="size-5 text-[#0B7A3B]" />
-                    <span>
-                      <span className="block font-semibold">CSV files</span>
-                      <span className="block text-sm font-normal text-[#6B7280]">
-                        Fallback upload for exported Rapsodo CSVs
-                      </span>
-                    </span>
-                    <ProofBadge tier="silver" />
-                  </span>
-                }
-                title="Import CSV files"
-                triggerClassName="w-full rounded-lg bg-white p-3 text-[#050505] ring-1 ring-[#E5E7EB]"
-              >
-                <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
-              </BottomSheet>
-              <BottomSheet
-                label={
-                  <>
-                    <ShieldCheck className="size-4" /> Upload scorecard proof
-                  </>
-                }
-                title="Scorecard proof"
-                triggerClassName="w-full rounded-lg bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
-              >
-                <div className="grid gap-3 text-sm text-[#6B7280]">
-                  <p>
-                    Use proof upload after selecting an eligible record, tournament or challenge.
-                    Strong proof combines direct Rapsodo import, scorecard screenshot,
-                    course/date/tee match and duplicate checks.
-                  </p>
-                  <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
-                    <a href="#rapsodo-connect">Continue to Rapsodo</a>
-                  </Button>
-                </div>
-              </BottomSheet>
-              <Button asChild variant="outline" className="justify-start rounded-lg">
-                <Link href="/rounds/new" prefetch={false}>
-                  <Award className="size-4" />
-                  Manual round
-                </Link>
-              </Button>
+        {mobileCsvMode ? (
+          <MobileAppShell>
+            <MobileTopBar
+              title="CSV import"
+              leading={
+                <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
+                  <Link href="/import" prefetch={false} aria-label="Back to import sources">
+                    <ArrowLeft className="size-5" />
+                  </Link>
+                </Button>
+              }
+            />
+            <div id="csv-import" className="-mx-4">
+              <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
             </div>
-          </NativeListSection>
-          <NativeListSection
-            title="Eligible submissions"
-            description="Secondary suggestions after import quality checks pass."
-          >
-            {eligibleSubmissionCards.map((item) => (
-              <div
-                key={item.title}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold">{item.title}</p>
-                  <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
-                </div>
-                <Button asChild variant="outline" className="rounded-full">
-                  <Link href={item.href} prefetch={false}>
-                    {item.actionLabel}
+          </MobileAppShell>
+        ) : (
+          <MobileAppShell>
+            <MobileTopBar title="Import" />
+            <MobileTabBar
+              activeKey="rapsodo"
+              className="sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
+              tabs={[
+                { key: "rapsodo", label: "Rapsodo", href: "#rapsodo-connect" },
+                { key: "csv", label: "CSV", href: "/import?source=csv#csv-import" },
+                { key: "scorecard", label: "Scorecard", href: "/import#scorecard" },
+                { key: "manual", label: "Manual", href: "/rounds/new" },
+                { key: "proof", label: "Proof", href: "/import#proof" },
+              ]}
+            />
+            <MobileStatusAction
+              label="Rapsodo import"
+              value="Import verified session"
+              detail={`${integerFormatter.format(visibleFiles.length)} recent files · ${integerFormatter.format(duplicateFiles)} duplicates detected`}
+              action={
+                <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                  <a href="#rapsodo-connect">
+                    <Upload className="size-4" />
+                    Rapsodo
+                  </a>
+                </Button>
+              }
+            />
+            <FirstRunRapsodoOnboarding
+              connected={connectionStatus.connected}
+              fileCount={visibleFiles.length}
+            />
+            <MobileRapsodoConnect initialStatus={connectionStatus} />
+            <ImportQualityFeaturePanel data={featureData} />
+            <NativeListSection id="import-sources" title="Other sources">
+              <div className="grid gap-2">
+                <Link
+                  href="/rapsodo"
+                  prefetch={false}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+                >
+                  <Upload className="size-5 text-[#0B7A3B]" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
+                    <span className="block text-sm text-[#6B7280]">
+                      Load session list, preview shots and import verified data
+                    </span>
+                  </span>
+                  <ProofBadge tier="gold" />
+                </Link>
+                <Link
+                  id="csv-import"
+                  href="/import?source=csv#csv-import"
+                  prefetch={false}
+                  className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 text-left"
+                >
+                  <Upload className="size-5 text-[#0B7A3B]" />
+                  <span className="min-w-0">
+                    <span className="block font-semibold">CSV files</span>
+                    <span className="block text-sm font-normal text-[#6B7280]">
+                      Open the full import wizard for exported Rapsodo CSVs
+                    </span>
+                  </span>
+                  <ProofBadge tier="silver" />
+                </Link>
+                <BottomSheet
+                  label={
+                    <>
+                      <ShieldCheck className="size-4" /> Upload scorecard proof
+                    </>
+                  }
+                  title="Scorecard proof"
+                  triggerClassName="w-full rounded-lg bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+                >
+                  <div className="grid gap-3 text-sm text-[#6B7280]">
+                    <p>
+                      Use proof upload after selecting an eligible record, tournament or challenge.
+                      Strong proof combines direct Rapsodo import, scorecard screenshot,
+                      course/date/tee match and duplicate checks.
+                    </p>
+                    <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
+                      <a href="#rapsodo-connect">Continue to Rapsodo</a>
+                    </Button>
+                  </div>
+                </BottomSheet>
+                <Button asChild variant="outline" className="justify-start rounded-lg">
+                  <Link href="/rounds/new" prefetch={false}>
+                    <Award className="size-4" />
+                    Manual round
                   </Link>
                 </Button>
               </div>
-            ))}
-          </NativeListSection>
-          <EventHeroCard
-            eyebrow="Empty upload state"
-            title="Rapsodo CSVs unlock the app"
-            description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
-            href="#rapsodo-connect"
-            actionLabel="Connect Rapsodo"
-            media={
-              <PageArtwork
-                variant="import"
-                alt=""
-                className="block h-full min-h-0 rounded-none"
-                sizes="calc(100vw - 2rem)"
-              />
-            }
-          />
-        </MobileAppShell>
+            </NativeListSection>
+            <NativeListSection
+              title="Eligible submissions"
+              description="Secondary suggestions after import quality checks pass."
+            >
+              {eligibleSubmissionCards.map((item) => (
+                <div
+                  key={item.title}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{item.title}</p>
+                    <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
+                  </div>
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link href={item.href} prefetch={false}>
+                      {item.actionLabel}
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </NativeListSection>
+            <EventHeroCard
+              eyebrow="Empty upload state"
+              title="Rapsodo CSVs unlock the app"
+              description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
+              href="#rapsodo-connect"
+              actionLabel="Connect Rapsodo"
+              media={
+                <PageArtwork
+                  variant="import"
+                  alt=""
+                  className="block h-full min-h-0 rounded-none"
+                  sizes="calc(100vw - 2rem)"
+                />
+              }
+            />
+          </MobileAppShell>
+        )}
         <div className="hidden sm:contents">
           <PageHeader
             eyebrow={<StatusPill tone="green">Import</StatusPill>}

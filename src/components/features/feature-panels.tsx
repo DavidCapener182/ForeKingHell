@@ -119,8 +119,8 @@ export function DataHealthFeaturePanel({ data }: { data: FeatureIdeasData }) {
   return (
     <DataPanel>
       <SectionHeader
-        title="Data health score"
-        description="Shows whether the current golf data is trustworthy enough for stock yardages, progress signals, coaching and competition proof."
+        title="Can I trust this?"
+        description="Shows whether the current golf data is ready for stock yardages, progress signals, coaching and competition proof."
         action={
           <StatusPill tone={data.dataHealth.tone as Tone}>
             {data.dataHealth.status} · {data.dataHealth.metric}

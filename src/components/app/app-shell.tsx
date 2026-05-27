@@ -149,7 +149,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         <SidebarRail />
       </Sidebar>
 
-      <div className="relative flex min-w-0 flex-1 flex-col bg-background">
+      <div className="relative flex min-w-0 flex-1 flex-col bg-background pt-[calc(3.25rem+env(safe-area-inset-top))] sm:pt-0">
         <MobileNav
           pathname={pathname}
           totalXp={totalXp}

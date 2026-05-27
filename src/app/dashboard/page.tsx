@@ -276,16 +276,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-sky-700 bg-sky-50",
     },
     {
-      title: "Import CSV",
-      description: "Upload Rapsodo range or simulated-course files.",
+      title: "Import session",
+      description: "Bring in Rapsodo range or simulated-course data.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
       accent: "text-emerald-600 bg-emerald-50",
     },
     {
-      title: "Shot database",
-      description: "Inspect every normalized shot and preserved raw row.",
+      title: "Your shots",
+      description: "Review every saved shot and the file audit behind it.",
       href: "/shots",
       metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
       icon: Database,
@@ -321,16 +321,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-emerald-700 bg-emerald-50",
     },
     {
-      title: "Import CSV",
-      description: "Upload Rapsodo range or simulated-course files.",
+      title: "Import session",
+      description: "Bring in Rapsodo range or simulated-course data.",
       href: "/import",
       metric: `${integerFormatter.format(data.stats.sessionCount)} sessions`,
       icon: Upload,
       accent: "text-emerald-600 bg-emerald-50",
     },
     {
-      title: "Shot database",
-      description: "Inspect every normalized shot and preserved raw row.",
+      title: "Your shots",
+      description: "Review every saved shot and the file audit behind it.",
       href: "/shots",
       metric: `${integerFormatter.format(data.stats.shotCount)} shots`,
       icon: Database,
@@ -580,6 +580,66 @@ type DashboardMetric = {
   tone: DashboardTone;
 };
 
+function RapsodoMobileInbox({
+  inbox,
+  latestSession,
+}: {
+  inbox: DashboardData["rapsodoInbox"];
+  latestSession: DashboardData["recentSessions"][number] | null;
+}) {
+  const latest = inbox.latest;
+  const hasPending = inbox.pendingCount > 0 && Boolean(latest);
+  const shotLabel =
+    latest?.shotCount !== null && latest?.shotCount !== undefined
+      ? `${integerFormatter.format(latest.shotCount)} shots`
+      : "Preview shots";
+  const sessionTitle = latest?.title ?? latestSession?.fileName ?? "Rapsodo session";
+
+  return (
+    <section className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo inbox</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-normal text-[#050505]">
+            {hasPending
+              ? "New Rapsodo session found"
+              : latestSession
+                ? "No new Rapsodo sessions"
+                : "Start with Rapsodo"}
+          </h2>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
+            {hasPending
+              ? `${sessionTitle} is waiting. Confirm clubs, import it, then check the bag update.`
+              : latestSession
+                ? "Your latest session is already saved. Check Rapsodo when you finish hitting balls."
+                : "Connect Rapsodo so the next practice session is ready to review on your phone."}
+          </p>
+        </div>
+        <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href="/rapsodo" prefetch={false}>
+            {hasPending ? "Review & import" : "Check Rapsodo"}
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <MiniMetric
+          label={hasPending ? "Waiting" : "Latest"}
+          value={
+            hasPending
+              ? integerFormatter.format(inbox.pendingCount)
+              : latestSession
+                ? formatDate(latestSession.date)
+                : "Connect"
+          }
+        />
+        <MiniMetric label="Shots" value={hasPending ? shotLabel : "After sync"} />
+        <MiniMetric label="Clubs" value={hasPending ? "Confirm" : "Match next"} />
+      </div>
+    </section>
+  );
+}
+
 function DashboardMobileLayout({
   data,
   social,
@@ -608,6 +668,11 @@ function DashboardMobileLayout({
   return (
     <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
+
+      <RapsodoMobileInbox
+        inbox={data.rapsodoInbox}
+        latestSession={data.recentSessions[0] ?? null}
+      />
 
       <MobileStatusAction
         label="Latest signal"
@@ -790,7 +855,7 @@ function DashboardMobileLayout({
           })}
         </MobileHorizontalRail>
         <MobileAccordionSection
-          title="Command palette"
+          title="Find a tool"
           description="Search every route without turning Today into a directory."
           count={`${routeCards.length} pages`}
         >
@@ -822,9 +887,33 @@ function DashboardMobileLayout({
                 <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+                  <MiniMetric
+                    label="Play"
+                    value={formatYards(club.stock.recommendedPlayNumberYd)}
+                  />
                   <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
+                  <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
                 </div>
-                <Progress value={club.stock.confidenceScore} className="mt-4" />
+                <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-1",
+                      club.stock.confidenceScore < 35
+                        ? "bg-rose-50 text-rose-700"
+                        : club.stock.confidenceScore < 60
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-emerald-50 text-emerald-700",
+                    )}
+                  >
+                    {club.stock.label}
+                  </span>
+                  {club.stock.sampleSize < 20 ? (
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                      Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
+                    </span>
+                  ) : null}
+                </div>
+                <Progress value={club.stock.confidenceScore} className="mt-3" />
               </Link>
             ))}
           </MobileHorizontalRail>
@@ -1001,7 +1090,7 @@ function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasDat
     <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#050505]">Data health</p>
+          <p className="text-sm font-semibold text-[#050505]">Can I trust this?</p>
           <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
             Last import, club mapping and next useful data check.
           </p>
@@ -1241,11 +1330,30 @@ function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
   );
 }
 
+function formatStockMiss(stock: DashboardData["bagPreview"][number]["stock"]) {
+  const left = stock.dispersionLeftYd ?? 0;
+  const right = stock.dispersionRightYd ?? 0;
+
+  if (left === 0 && right === 0) {
+    return "--";
+  }
+
+  if (left > right + 2) {
+    return `L ${formatYards(left)}`;
+  }
+
+  if (right > left + 2) {
+    return `R ${formatYards(right)}`;
+  }
+
+  return "Balanced";
+}
+
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-lg font-semibold tracking-normal">{value}</p>
+      <p className="mt-0.5 truncate text-lg font-semibold tracking-normal">{value}</p>
     </div>
   );
 }
@@ -1377,7 +1485,7 @@ function DashboardSummaryHero({
             <Button asChild variant="outline" className="rounded-lg border-[#DFE7DF] bg-white">
               <Link href="/shots" prefetch={false}>
                 <Database className="size-4" />
-                Shot database
+                Your shots
               </Link>
             </Button>
           </div>
@@ -1534,7 +1642,11 @@ function TodayCommandBrief({
   latestRound: DashboardData["latestRound"];
 }) {
   const nextActionHref = coachPreview ? `/bag/${coachPreview.clubId}/analytics` : primaryAction;
-  const detailHref = bestClub ? `/bag/${bestClub.id}` : latestRound ? `/rounds/${latestRound.id}` : "/today";
+  const detailHref = bestClub
+    ? `/bag/${bestClub.id}`
+    : latestRound
+      ? `/rounds/${latestRound.id}`
+      : "/today";
   const items = [
     {
       question: "What should I do next?",
@@ -1551,7 +1663,8 @@ function TodayCommandBrief({
     },
     {
       question: "What changed since last time?",
-      answer: firstSignal?.value ?? (latestSession ? formatDate(latestSession.date) : "No signal yet"),
+      answer:
+        firstSignal?.value ?? (latestSession ? formatDate(latestSession.date) : "No signal yet"),
       detail:
         firstSignal?.detail ??
         (latestSession
@@ -1608,7 +1721,12 @@ function TodayCommandBrief({
           >
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-semibold leading-5 text-[#111827]">{item.question}</p>
-              <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", toneSoftClass(item.tone))}>
+              <span
+                className={cn(
+                  "grid size-9 shrink-0 place-items-center rounded-lg",
+                  toneSoftClass(item.tone),
+                )}
+              >
                 <Icon className="size-4" />
               </span>
             </div>
@@ -2718,7 +2836,7 @@ function QuickActions({
       {secondaryRoutes.length > 0 ? (
         <details className="mt-3 rounded-lg border border-[#DFE7DF] bg-white">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-[#111827] marker:hidden">
-            <span>Command palette</span>
+            <span>Find a tool</span>
             <span className="text-xs font-medium text-[#667085]">
               {secondaryRoutes.length} more
             </span>

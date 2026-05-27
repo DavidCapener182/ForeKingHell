@@ -743,7 +743,8 @@ export function RapsodoSyncClient({
             <CardHeader>
               <CardTitle>Connection</CardTitle>
               <CardDescription>
-                Rapsodo password is exchanged for a protected server cookie token.
+                We do not store your Rapsodo password. It is exchanged for a short-lived encrypted
+                token. You can disconnect at any time.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

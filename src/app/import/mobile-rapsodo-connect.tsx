@@ -45,7 +45,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
     <section id="rapsodo-connect" className="rounded-lg border border-[#E5E7EB] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#0B7A3B]">Provider sync · Rapsodo live</p>
+          <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo sync · Live</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal text-[#050505]">
             {status.connected ? "Provider connected" : "Connect Rapsodo"}
           </h2>
@@ -57,6 +57,11 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
         <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
           {status.connected ? <ShieldCheck className="size-5" /> : <Cloud className="size-5" />}
         </span>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-3 text-sm leading-5 text-emerald-950">
+        We do not store your Rapsodo password. It is exchanged for a short-lived encrypted token.
+        You can disconnect at any time.
       </div>
 
       {status.connected ? (
@@ -71,7 +76,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
           </div>
           <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
             <Link href="/rapsodo" prefetch={false}>
-              Open provider sessions
+              Open Rapsodo sessions
             </Link>
           </Button>
         </div>

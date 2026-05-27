@@ -11,7 +11,7 @@ test.describe("visual spacing audit", () => {
     { name: "today", path: "/today", text: /Latest Practice Review|Today/i },
     { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
     { name: "rapsodo", path: "/rapsodo", text: /Rapsodo|cloud sync/i },
-    { name: "shots", path: "/shots", text: /Shot database|Shot explorer/i },
+    { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
     { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
     { name: "coach", path: "/coach", text: /Coach/i },
     { name: "progress", path: "/progress", text: /Progress/i },

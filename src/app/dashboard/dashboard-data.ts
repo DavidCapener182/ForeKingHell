@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import {
   clubs,
@@ -47,6 +47,8 @@ export async function getDashboardData() {
     allClubRows,
     shotCountsByClub,
     recentStockShots,
+    [pendingRapsodoCount],
+    pendingRapsodoRows,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
@@ -124,6 +126,27 @@ export async function getDashboardData() {
       .where(eq(shots.userId, userId))
       .orderBy(desc(shots.shotAt))
       .limit(500),
+    db
+      .select({ value: count() })
+      .from(rapsodoSyncSessions)
+      .where(
+        and(eq(rapsodoSyncSessions.userId, userId), isNull(rapsodoSyncSessions.importedSessionId)),
+      ),
+    db
+      .select({
+        id: rapsodoSyncSessions.id,
+        title: rapsodoSyncSessions.title,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
+        sessionDate: rapsodoSyncSessions.sessionDate,
+        rawMetadataJson: rapsodoSyncSessions.rawMetadataJson,
+        lastSeenAt: rapsodoSyncSessions.lastSeenAt,
+      })
+      .from(rapsodoSyncSessions)
+      .where(
+        and(eq(rapsodoSyncSessions.userId, userId), isNull(rapsodoSyncSessions.importedSessionId)),
+      )
+      .orderBy(desc(rapsodoSyncSessions.lastSeenAt), desc(rapsodoSyncSessions.sessionDate))
+      .limit(5),
   ]);
   const clubRows = allClubRows.filter((club) => isTrackedClubType(club.type));
 
@@ -226,6 +249,17 @@ export async function getDashboardData() {
   });
   const coachData = await getProgressData();
   const coachCard = buildCoachSummary(coachData.clubs).clubCards[0] ?? null;
+  const pendingRapsodoSessions = pendingRapsodoRows.map((session) => ({
+    ...session,
+    title: session.title ?? "Rapsodo session",
+    shotCount: numberFromMetadata(session.rawMetadataJson, [
+      "shotCount",
+      "shotcount",
+      "shotsCount",
+      "totalShots",
+      "numberOfShots",
+    ]),
+  }));
 
   return {
     dashboardPins: normalizeDashboardPins(profile?.dashboardPins),
@@ -240,6 +274,10 @@ export async function getDashboardData() {
       combinedHandicap,
     },
     recentSessions,
+    rapsodoInbox: {
+      pendingCount: pendingRapsodoCount?.value ?? pendingRapsodoSessions.length,
+      latest: pendingRapsodoSessions[0] ?? null,
+    },
     latestRound,
     bagPreview,
     courseAdvice,
@@ -541,6 +579,20 @@ function averageNumber(values: number[]) {
   return values.length > 0
     ? values.reduce((total, value) => total + value, 0) / values.length
     : null;
+}
+
+function numberFromMetadata(metadata: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = metadata[key];
+    const parsed =
+      typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
 }
 
 function isNumber(value: number | null): value is number {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { and, count, eq, sql } from "drizzle-orm";
-import { CheckCircle2, Database, ShieldCheck, Target, Upload } from "lucide-react";
+import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/c
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +112,10 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
         </CardContent>
       </DataPanel>
 
+      {featureData.practicePlan[0] ? (
+        <PracticePrescriptionCard plan={featureData.practicePlan[0]} />
+      ) : null}
+
       <section className="grid gap-4 md:grid-cols-3">
         <ResultAction
           href="/bag"
@@ -133,6 +137,50 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
         />
       </section>
     </PageShell>
+  );
+}
+
+function PracticePrescriptionCard({ plan }: { plan: FeatureIdeasData["practicePlan"][number] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Next practice"
+        description="One measurable job to run after this import."
+        action={
+          <StatusPill tone={plan.status === "complete" ? "green" : "amber"}>
+            {plan.targetShots} balls
+          </StatusPill>
+        }
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+          <p className="text-sm font-semibold text-emerald-900">Prescription</p>
+          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">{plan.title}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.detail}</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <ResultMetric label="Target balls" value={plan.targetShots} detail="Count every shot" />
+            <div className="rounded-lg border bg-white p-4">
+              <p className="text-sm text-muted-foreground">Goal</p>
+              <p className="mt-2 text-lg font-semibold tracking-normal">Stock window</p>
+              <p className="mt-1 text-sm text-muted-foreground">Retest next session</p>
+            </div>
+            <div className="rounded-lg border bg-white p-4">
+              <p className="text-sm text-muted-foreground">Focus</p>
+              <p className="mt-2 text-lg font-semibold tracking-normal">
+                {plan.focusArea.replace(/-/g, " ")}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Keep it measurable</p>
+            </div>
+          </div>
+        </div>
+        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href={plan.clubId ? `/bag/${plan.clubId}/analytics` : "/coach"} prefetch={false}>
+            <Crosshair className="size-4" />
+            Open practice
+          </Link>
+        </Button>
+      </CardContent>
+    </DataPanel>
   );
 }
 

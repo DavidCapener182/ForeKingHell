@@ -128,7 +128,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             Explorer
           </Badge>
         }
-        title="Shot database"
+        title="Your shots"
         description="Filter the archive by club, session, date, shot category, or file name."
         metricLabel="Shots"
         metricValue={integerFormatter.format(stats.shotCount)}
@@ -165,9 +165,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             tone: "amber",
           },
           {
-            label: "Rows",
+            label: "Audit",
             value: integerFormatter.format(stats.rawRowCount),
-            detail: "Raw",
+            detail: "File rows",
             tone: "slate",
           },
         ]}
@@ -180,7 +180,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               Explorer
             </Badge>
             <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-              Shot database
+              Your shots
             </h1>
             <p className="text-base leading-7 text-muted-foreground">
               Filter the archive by club, session, date, shot category, or file name.
@@ -243,8 +243,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
       <section id="sessions" className="order-3 scroll-mt-28 sm:order-none">
         <MobileAccordionSection
-          title="Session and raw import detail"
-          description="Import metadata stays available without blocking the shot feed."
+          title="Session file audit"
+          description="Import details stay available without blocking the shot feed."
           count={`${integerFormatter.format(sessionSummaries.length)} sessions`}
         >
           <MobileDataList>
@@ -258,7 +258,10 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                   action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
                 >
                   <DataPair label="Shots" value={integerFormatter.format(session.shotCount)} />
-                  <DataPair label="Raw rows" value={integerFormatter.format(session.rawRowCount)} />
+                  <DataPair
+                    label="File rows"
+                    value={integerFormatter.format(session.rawRowCount)}
+                  />
                 </MobileDataCard>
               ))
             ) : (
@@ -270,7 +273,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           {rowTypes.length > 0 ? (
             <details className="mt-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
               <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
-                Raw CSV archive
+                File audit
               </summary>
               <div className="mt-2 grid gap-2">
                 {rowTypes.map((rowType) => (
@@ -313,7 +316,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                             value={integerFormatter.format(session.shotCount)}
                           />
                           <DataPair
-                            label="Raw rows"
+                            label="File rows"
                             value={integerFormatter.format(session.rawRowCount)}
                           />
                         </MobileDataCard>
