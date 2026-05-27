@@ -368,7 +368,7 @@ export default async function CourseRecordDetailPage({
             )}
           </article>
 
-          <main className="grid gap-4">
+          <section className="grid gap-4">
             <section className="premium-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <Trophy className="size-4 text-amber-600" />
@@ -425,7 +425,7 @@ export default async function CourseRecordDetailPage({
                 ) : null}
               </div>
             </details>
-          </main>
+          </section>
         </section>
       </div>
     </PageShell>

@@ -12,7 +12,7 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body>
-        <main className="grid min-h-screen place-items-center px-4 py-10">
+        <main id="main-content" className="grid min-h-screen place-items-center px-4 py-10">
           <section className="premium-card max-w-xl p-6 text-center">
             <h1 className="text-3xl font-semibold tracking-normal">
               {BRAND_NAME} hit a fatal error

@@ -362,7 +362,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
       <div className="sticky top-0 z-40 hidden border-b border-[#E5E7EB] bg-white sm:block">
         <nav
           aria-label="Primary"
-          className="mx-auto flex h-14 w-full max-w-7xl items-center gap-3 px-6 lg:px-8"
+          className="mx-auto flex h-14 w-full max-w-none items-center gap-3 px-6 lg:px-8"
         >
           <Link
             href="/dashboard"

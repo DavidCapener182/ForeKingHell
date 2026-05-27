@@ -91,7 +91,7 @@ export function ScorecardExtractionPanel({
               aria-live="polite"
             >
               {scorecardExtractState.status === "loading"
-                ? `Extracting ${scorecardExtractState.fileName}...`
+                ? `Extracting ${scorecardExtractState.fileName}…`
                 : scorecardExtractState.message}
             </p>
           ) : null}

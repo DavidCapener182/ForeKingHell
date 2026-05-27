@@ -19,7 +19,7 @@ export function RecordSubmitButton({
   return (
     <Button type="submit" disabled={pending} className={className}>
       {pending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-      {pending ? "Submitting..." : label}
+      {pending ? "Submitting…" : label}
     </Button>
   );
 }

@@ -469,7 +469,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             {data.needsSync || isPending ? (
               <p className="text-sm text-zinc-300">
                 {isPending
-                  ? "Syncing historical rounds and provider sessions..."
+                  ? "Syncing historical rounds and provider sessions…"
                   : "Achievement sync queued."}
               </p>
             ) : null}

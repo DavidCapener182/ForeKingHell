@@ -140,7 +140,7 @@ export default async function ProvidersPage() {
       <ProviderHealthFeaturePanel data={featureData} />
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-        <main className="premium-card p-4">
+        <section className="premium-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
             <Database className="size-4 text-sky-600" />
             Recent provider sessions
@@ -163,7 +163,7 @@ export default async function ProvidersPage() {
               ))
             )}
           </div>
-        </main>
+        </section>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">

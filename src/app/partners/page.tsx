@@ -1,12 +1,11 @@
-import type { ReactNode } from "react";
-import { Gift, Megaphone, Plus, ShieldCheck, TicketPercent } from "lucide-react";
+import { Plus, TicketPercent } from "lucide-react";
 
 import {
   createPartnerOfferAction,
   createSponsorAction,
   recordOfferClickAction,
 } from "@/app/partners/actions";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,14 +18,16 @@ export default async function PartnersPage() {
 
   return (
     <PageShell size="7xl">
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="amber">Sponsored growth</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Sponsors and partner offers</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Keep sponsored challenges and affiliate offers contextual, labelled and optional. This
-          page is the lightweight partner dashboard foundation.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow={<StatusPill tone="amber">Sponsored growth</StatusPill>}
+        title="Sponsors and partner offers"
+        description="Keep sponsored challenges and affiliate offers contextual, labelled and optional. This page is the lightweight partner dashboard foundation."
+        metrics={[
+          { label: "Sponsors", value: data.sponsors.length },
+          { label: "Active offers", value: data.offers.length },
+          { label: "Label policy", value: "Required" },
+        ]}
+      />
 
       <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         <aside className="grid gap-4 lg:sticky lg:top-28">
@@ -41,7 +42,7 @@ export default async function PartnersPage() {
               />
               <Input
                 name="websiteUrl"
-                placeholder="https://..."
+                placeholder="https://example.com"
                 className="h-9 rounded-xl bg-slate-50"
               />
               <Input
@@ -96,7 +97,7 @@ export default async function PartnersPage() {
               />
               <Input
                 name="offerUrl"
-                placeholder="https://..."
+                placeholder="https://example.com/offer"
                 className="h-9 rounded-xl bg-slate-50"
               />
               <Input
@@ -112,26 +113,8 @@ export default async function PartnersPage() {
           </section>
         </aside>
 
-        <main className="grid gap-4">
-          <section className="grid gap-3 md:grid-cols-3">
-            <Metric
-              icon={<Megaphone className="size-4 text-amber-600" />}
-              label="Sponsors"
-              value={data.sponsors.length}
-            />
-            <Metric
-              icon={<Gift className="size-4 text-emerald-600" />}
-              label="Active offers"
-              value={data.offers.length}
-            />
-            <Metric
-              icon={<ShieldCheck className="size-4 text-sky-600" />}
-              label="Label policy"
-              value="Required"
-            />
-          </section>
-
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+        <section className="grid gap-4">
+          <section id="offers" className="premium-card p-4">
             <p className="text-sm font-semibold">Active contextual offers</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {data.offers.length === 0 ? (
@@ -174,7 +157,7 @@ export default async function PartnersPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="premium-card p-4">
             <p className="text-sm font-semibold">Sponsor pipeline</p>
             <div className="mt-4 grid gap-2">
               {data.sponsors.map((sponsor) => (
@@ -195,21 +178,9 @@ export default async function PartnersPage() {
               ))}
             </div>
           </section>
-        </main>
+        </section>
       </section>
     </PageShell>
-  );
-}
-
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
-  return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
-    </div>
   );
 }
 

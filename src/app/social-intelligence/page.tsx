@@ -1,12 +1,11 @@
-import type { ReactNode } from "react";
-import { Brain, Flag, MessageSquareWarning, ShieldAlert, Sparkles } from "lucide-react";
+import { Brain, Flag, MessageSquareWarning, Sparkles } from "lucide-react";
 
 import {
   generateSocialSummaryAction,
   reportSocialTargetAction,
 } from "@/app/social-intelligence/actions";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,14 +28,16 @@ export default async function SocialIntelligencePage() {
     <PageShell size="7xl">
       <MobileRouteHeader title="Social" group="social" activeKey="recaps" />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="sky">Recaps and safety</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Recaps & Safety</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Generate weekly and challenge recaps while keeping suspicious attempts, reported comments
-          and moderation records visible early.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow={<StatusPill tone="sky">Recaps and safety</StatusPill>}
+        title="Recaps & Safety"
+        description="Generate weekly and challenge recaps while keeping suspicious attempts, reported comments and moderation records visible early."
+        metrics={[
+          { label: "Summaries", value: data.summaries.length },
+          { label: "Reports", value: data.reports.length },
+          { label: "Moderation", value: data.moderation.length },
+        ]}
+      />
 
       <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         <aside className="grid gap-4 lg:sticky lg:top-28">
@@ -92,7 +93,7 @@ export default async function SocialIntelligencePage() {
               />
               <Input
                 name="reason"
-                placeholder="Spam, abuse, suspicious result..."
+                placeholder="Spam, abuse, suspicious result"
                 className="h-9 rounded-xl bg-slate-50"
                 required
               />
@@ -110,25 +111,7 @@ export default async function SocialIntelligencePage() {
           </section>
         </aside>
 
-        <main className="grid gap-4">
-          <section className="grid gap-3 md:grid-cols-3">
-            <Metric
-              icon={<Sparkles className="size-4 text-emerald-600" />}
-              label="Summaries"
-              value={data.summaries.length}
-            />
-            <Metric
-              icon={<ShieldAlert className="size-4 text-red-600" />}
-              label="Reports"
-              value={data.reports.length}
-            />
-            <Metric
-              icon={<Flag className="size-4 text-amber-600" />}
-              label="Moderation events"
-              value={data.moderation.length}
-            />
-          </section>
-
+        <section className="grid gap-4">
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Weekly and challenge recaps</p>
             <div className="mt-4 grid gap-3">
@@ -187,13 +170,31 @@ export default async function SocialIntelligencePage() {
                       />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant="outline">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        title="Use Admin Moderation to resolve safety events."
+                      >
                         Approve
                       </Button>
-                      <Button type="button" size="sm" variant="outline">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        title="Use Admin Moderation to resolve safety events."
+                      >
                         Reject
                       </Button>
-                      <Button type="button" size="sm" variant="outline">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        title="Use Admin Moderation to request evidence."
+                      >
                         Request more evidence
                       </Button>
                     </div>
@@ -222,29 +223,9 @@ export default async function SocialIntelligencePage() {
                 : null}
             </div>
           </section>
-        </main>
+        </section>
       </section>
     </PageShell>
-  );
-}
-
-function Metric({
-  icon,
-  label: metricLabel,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm">
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {icon}
-        {metricLabel}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
-    </div>
   );
 }
 

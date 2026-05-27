@@ -12,21 +12,20 @@ export default async function RapsodoPage() {
   ]);
 
   return (
-    <>
-      <RapsodoSyncClient
-        initialStatus={
-          status.ok
-            ? status.data
-            : {
-                connected: false,
-                expiresAt: null,
-                profile: null,
-              }
-        }
-      />
-      <div className="px-4 pb-24 sm:px-6 lg:px-8">
+    <RapsodoSyncClient
+      initialStatus={
+        status.ok
+          ? status.data
+          : {
+              connected: false,
+              expiresAt: null,
+              profile: null,
+            }
+      }
+    >
+      <div className="pb-16">
         <ProviderHealthFeaturePanel data={featureData} />
       </div>
-    </>
+    </RapsodoSyncClient>
   );
 }

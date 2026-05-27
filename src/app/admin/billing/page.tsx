@@ -5,13 +5,14 @@ import {
   AdminMetric,
   AdminNav,
   AdminNotice,
+  AdminPageHeader,
   AdminSection,
   formatDateTime,
   label,
   PlanBadge,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAdminBillingData } from "@/lib/admin";
@@ -40,14 +41,11 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
       <AdminNav active="/admin/billing" />
       <AdminNotice status={params?.adminStatus} error={params?.adminError} />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="sky">Admin billing</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Billing and entitlements</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Inspect active subscriptions, full-access grants and the entitlement limits that feature
-          checks use.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Admin billing"
+        title="Billing and entitlements"
+        description="Inspect active subscriptions, full-access grants and the entitlement limits that feature checks use."
+      />
 
       <section className="grid gap-3 md:grid-cols-4">
         <AdminMetric
@@ -114,7 +112,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
           </AdminSection>
         </aside>
 
-        <main className="grid gap-4">
+        <section className="grid gap-4">
           <AdminSection title="Subscriptions" description="Latest subscription and lifetime rows.">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[780px] text-left text-sm">
@@ -182,7 +180,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
               ))}
             </div>
           </AdminSection>
-        </main>
+        </section>
       </section>
     </PageShell>
   );

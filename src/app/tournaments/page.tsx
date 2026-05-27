@@ -286,7 +286,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
         <CompetitionFeaturePanel data={featureData} />
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-          <main className="grid gap-4">
+          <section className="grid gap-4">
             <section className="premium-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -310,7 +310,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                 ) : null}
               </div>
             </section>
-          </main>
+          </section>
 
           <aside className="grid gap-4 xl:sticky xl:top-28">
             <section className="premium-card p-4">

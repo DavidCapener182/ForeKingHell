@@ -631,7 +631,7 @@ export default async function TournamentDetailPage({
             )}
           </article>
 
-          <main className="grid gap-4">
+          <section className="grid gap-4">
             <section id="standings" className="premium-card scroll-mt-28 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -734,7 +734,7 @@ export default async function TournamentDetailPage({
                 </Button>
               </form>
             </section>
-          </main>
+          </section>
         </section>
       </div>
     </PageShell>

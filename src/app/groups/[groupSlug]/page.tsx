@@ -63,7 +63,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
   return (
     <PageShell size="7xl">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <main className="grid gap-4">
+        <section className="grid gap-4">
           <header className="premium-hero overflow-hidden">
             <div className="h-36 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)]" />
             <div className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -269,7 +269,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               ))}
             </div>
           </section>
-        </main>
+        </section>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">

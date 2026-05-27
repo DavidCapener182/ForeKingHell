@@ -37,9 +37,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
       <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(5,12,7,0.9)_0%,rgba(5,12,7,0.76)_42%,rgba(5,12,7,0.42)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(0deg,rgba(5,12,7,0.92),rgba(5,12,7,0))]" />
 
-      <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8">
+      <div className="mx-auto grid min-h-screen w-full max-w-none items-center gap-8 px-5 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8 xl:px-10">
         <header className="order-2 grid gap-7 py-6 lg:order-1 lg:py-10">
-          <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur">
+          <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/20 bg-[#07110B]/70 px-3 py-2 text-sm font-medium text-white">
             <BrandMark className="size-12 rounded-md" sizes="48px" priority />
             {BRAND_NAME}
           </div>
@@ -104,7 +104,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
 
 function GolfProof({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/20 bg-white/10 p-3 text-white shadow-sm backdrop-blur">
+    <div className="rounded-lg border border-white/20 bg-[#07110B]/58 p-3 text-white shadow-sm">
       <div className="flex items-center gap-2 text-emerald-100">
         {icon}
         <p className="text-sm font-semibold">{label}</p>

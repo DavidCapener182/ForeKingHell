@@ -72,7 +72,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       </header>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <main id="plans" className="grid scroll-mt-28 gap-4 md:grid-cols-2">
+        <section id="plans" className="grid scroll-mt-28 gap-4 md:grid-cols-2">
           {visiblePlans.map((plan) => (
             <PlanCard
               key={plan.key}
@@ -82,7 +82,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               limits={data.planLimits.filter((limit) => limit.planKey === plan.key).slice(0, 4)}
             />
           ))}
-        </main>
+        </section>
 
         <aside className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">

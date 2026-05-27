@@ -5,12 +5,13 @@ import {
   AdminMetric,
   AdminNav,
   AdminNotice,
+  AdminPageHeader,
   AdminSection,
   formatDateTime,
   label,
   PlanBadge,
 } from "@/app/admin/admin-components";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getAdminDashboardData, getAdminOperationsSnapshot } from "@/lib/admin";
@@ -36,19 +37,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       <AdminNav active="/admin" />
       <AdminNotice status={params?.adminStatus} error={params?.adminError} />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <StatusPill tone="sky">Admin operations</StatusPill>
-            <h1 className="mt-3 text-3xl font-semibold tracking-normal">Site control room</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Monitor growth, billing access, social safety and challenge operations from one
-              protected surface.
-            </p>
-          </div>
-          <Badge variant="secondary">Owner access</Badge>
-        </div>
-      </header>
+      <AdminPageHeader
+        eyebrow="Admin operations"
+        title="Site control room"
+        description="Monitor growth, billing access, social safety and challenge operations from one protected surface."
+        action={<Badge variant="secondary">Owner access</Badge>}
+      />
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <AdminMetric

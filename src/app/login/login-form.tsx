@@ -67,7 +67,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           className="h-12 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
         >
           <KeyRound className="size-4" />
-          {passwordPending ? "Signing in..." : "Sign in with password"}
+          {passwordPending ? "Signing in…" : "Sign in with password"}
         </Button>
         {passwordMessage ? (
           <p
@@ -138,7 +138,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             className="h-12 w-full rounded-lg border-slate-200 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900"
           >
             <Mail className="size-4" />
-            {magicPending ? "Sending..." : "Email me a secure link"}
+            {magicPending ? "Sending…" : "Email me a secure link"}
           </Button>
           {magicMessage ? (
             <p

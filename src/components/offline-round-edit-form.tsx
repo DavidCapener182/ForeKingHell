@@ -69,7 +69,7 @@ export function OfflineRoundEditForm({
       {saveStatus === "saving" ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-[#0B7A3B]" aria-live="polite">
           <Loader2 className="size-3.5 animate-spin" />
-          Saving...
+          Saving…
         </p>
       ) : null}
       {saveStatus === "saved" ? (

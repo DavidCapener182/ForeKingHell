@@ -210,6 +210,23 @@
     border-color: var(--surface-border);
   }
 
+  select,
+  textarea {
+    touch-action: manipulation;
+    transition:
+      border-color 150ms ease-out,
+      box-shadow 150ms ease-out,
+      background-color 150ms ease-out,
+      color 150ms ease-out;
+  }
+
+  @media (pointer: coarse) {
+    select,
+    textarea {
+      min-height: 2.75rem;
+    }
+  }
+
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {

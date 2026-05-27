@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -100,7 +108,13 @@ const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 
 const RAPSODO_SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const SAVE_CONFIRMATION_DISMISS_MS = 14000;
 
-export function RapsodoSyncClient({ initialStatus }: { initialStatus: ConnectionStatus }) {
+export function RapsodoSyncClient({
+  initialStatus,
+  children,
+}: {
+  initialStatus: ConnectionStatus;
+  children?: ReactNode;
+}) {
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [notice, setNotice] = useState<Notice>({ kind: "idle" });
@@ -580,7 +594,10 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
   }
 
   return (
-    <main className="min-h-0 px-4 py-5 pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8">
+    <main
+      id="main-content"
+      className="min-h-0 px-4 py-5 pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8"
+    >
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
 
@@ -1423,6 +1440,7 @@ export function RapsodoSyncClient({ initialStatus }: { initialStatus: Connection
             onDismiss={() => setSaveConfirmation(null)}
           />
         ) : null}
+        {children}
       </div>
     </main>
   );

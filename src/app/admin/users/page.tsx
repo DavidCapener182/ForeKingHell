@@ -9,12 +9,13 @@ import {
   AdminMetric,
   AdminNav,
   AdminNotice,
+  AdminPageHeader,
   AdminSection,
   formatDateTime,
   label,
   PlanBadge,
 } from "@/app/admin/admin-components";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,14 +42,11 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       <AdminNav active="/admin/users" />
       <AdminNotice status={params?.adminStatus} error={params?.adminError} />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="sky">Admin users</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Users and access</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Search accounts, grant lifetime full access and add owner/operator access for people
-          running the site.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Admin users"
+        title="Users and access"
+        description="Search accounts, grant lifetime full access and add owner/operator access for people running the site."
+      />
 
       <section className="grid gap-3 md:grid-cols-3">
         <AdminMetric

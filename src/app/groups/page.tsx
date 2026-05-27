@@ -283,7 +283,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
           </section>
         </aside>
 
-        <main className="order-1 grid gap-4 lg:order-none">
+        <section className="order-1 grid gap-4 lg:order-none">
           <header className="premium-hero p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -382,7 +382,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
           </section>
 
           <GroupDigestFeaturePanel data={featureData} />
-        </main>
+        </section>
       </section>
     </PageShell>
   );

@@ -4,12 +4,13 @@ import { Flag, ListChecks, Target, Trophy } from "lucide-react";
 import {
   AdminMetric,
   AdminNav,
+  AdminPageHeader,
   AdminSection,
   formatDateTime,
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getAdminChallengesData } from "@/lib/admin";
@@ -26,14 +27,12 @@ export default async function AdminChallengesPage() {
     <PageShell size="7xl">
       <AdminNav active="/admin/challenges" />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="amber">Admin challenges</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Challenges and tournaments</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Monitor challenge templates, active boards, participation, attempts and calculated
-          results.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Admin challenges"
+        title="Challenges and tournaments"
+        description="Monitor challenge templates, active boards, participation, attempts and calculated results."
+        tone="amber"
+      />
 
       <section className="grid gap-3 md:grid-cols-4">
         <AdminMetric

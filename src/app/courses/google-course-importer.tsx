@@ -45,7 +45,7 @@ export function GoogleCourseImporter() {
     }
 
     setSearchState({
-      message: "Searching Google Places...",
+      message: "Searching Google Places…",
       results: searchState.results,
       status: "loading",
     });

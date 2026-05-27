@@ -22,7 +22,7 @@ export default async function LongestShotsPage() {
   const longestShots = await getLongestShots();
 
   return (
-    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+    <main id="main-content" className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">

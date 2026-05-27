@@ -5,12 +5,13 @@ import {
   AdminMetric,
   AdminNav,
   AdminNotice,
+  AdminPageHeader,
   AdminSection,
   formatDateTime,
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getAdminModerationData } from "@/lib/admin";
 
@@ -34,13 +35,12 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
       <AdminNav active="/admin/moderation" />
       <AdminNotice status={params?.adminStatus} error={params?.adminError} />
 
-      <header className="rounded-xl border bg-white p-5 shadow-sm">
-        <StatusPill tone="amber">Safety</StatusPill>
-        <h1 className="mt-3 text-3xl font-semibold tracking-normal">Moderation queue</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          Review user reports, suspicious social activity and automated moderation events.
-        </p>
-      </header>
+      <AdminPageHeader
+        eyebrow="Safety"
+        title="Moderation queue"
+        description="Review user reports, suspicious social activity and automated moderation events."
+        tone="amber"
+      />
 
       <section className="grid gap-3 md:grid-cols-3">
         <AdminMetric

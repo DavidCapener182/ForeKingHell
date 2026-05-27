@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { StatusPill, type Tone } from "@/components/premium";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", icon: Activity },
@@ -55,6 +56,37 @@ export function AdminNotice({ status, error }: { status?: string; error?: string
     <Alert variant={error ? "destructive" : "default"}>
       <AlertDescription>{error ?? status}</AlertDescription>
     </Alert>
+  );
+}
+
+export function AdminPageHeader({
+  eyebrow,
+  title,
+  description,
+  tone = "sky",
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  tone?: Tone;
+  action?: ReactNode;
+}) {
+  return (
+    <header className="premium-hero p-3 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <StatusPill tone={tone}>{eyebrow}</StatusPill>
+          <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">
+            {title}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:leading-6">
+            {description}
+          </p>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+    </header>
   );
 }
 
