@@ -1017,7 +1017,7 @@ function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
     <div className="relative min-h-[180px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-3 text-white shadow-sm sm:min-h-[280px] sm:p-4">
       <HeroFairwayVisual shot={shot} />
       <div className="relative z-10 flex h-full flex-col justify-end">
-        <div className="w-full rounded-lg border border-white/15 bg-white/90 px-3 py-2 text-slate-950 shadow-sm backdrop-blur">
+        <div className="w-full rounded-lg border border-white/15 bg-white/95 px-3 py-2 text-slate-950 shadow-sm">
           {shot ? (
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
               <div className="flex min-w-0 items-center gap-1.5">

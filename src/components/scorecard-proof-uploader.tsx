@@ -54,7 +54,7 @@ export function ScorecardProofUploader({
     }
 
     setScreenshotPath(`scorecard-upload:${file.name}`);
-    setState({ status: "loading", message: `Reading ${file.name}...` });
+    setState({ status: "loading", message: `Reading ${file.name}…` });
 
     try {
       const imageDataUrl = await readFileAsDataUrl(file);
@@ -125,7 +125,7 @@ export function ScorecardProofUploader({
           ) : (
             <ImageIcon className="size-4" />
           )}
-          {state.status === "loading" ? "Reading..." : "Upload"}
+          {state.status === "loading" ? "Reading…" : "Upload"}
         </Button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">

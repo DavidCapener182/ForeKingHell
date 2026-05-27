@@ -62,6 +62,12 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
 
   return (
     <SidebarProvider>
+      <a
+        href="#main-content"
+        className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only"
+      >
+        Skip to content
+      </a>
       <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
         <SidebarHeader className="border-b border-sidebar-border">
           <div className="flex items-center gap-2 px-1 py-1">

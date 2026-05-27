@@ -77,7 +77,7 @@ export function ScorecardExtractionPanel({
               ) : (
                 <ImageIcon className="size-4" />
               )}
-              {scorecardExtractState.status === "loading" ? "Reading..." : "Upload image"}
+              {scorecardExtractState.status === "loading" ? "Reading…" : "Upload image"}
             </Button>
           </div>
           {scorecardExtractState.status !== "idle" ? (

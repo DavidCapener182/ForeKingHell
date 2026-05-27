@@ -699,7 +699,7 @@ function CategoryBarRow({
         ) : null}
       </div>
       <div className="grid h-9 grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50 shadow-inner">
-        <div className="flex items-center justify-end border-r-2 border-[#667085]">
+        <div className="flex items-center justify-end border-r border-[#667085]">
           {total !== null && total < 0 ? (
             <span
               className="h-full rounded-l-md bg-[linear-gradient(90deg,#E5483F,#B42318)]"
@@ -1874,7 +1874,7 @@ function SgHorizontalBar({ value, maxAbs }: { value: number | null; maxAbs: numb
 
   return (
     <div className="grid h-3 grid-cols-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
-      <div className="flex items-center justify-end border-r-2 border-slate-500">
+      <div className="flex items-center justify-end border-r border-slate-500">
         {value !== null && value < 0 ? (
           <span className="h-full rounded-l-full bg-[#B42318]" style={{ width: `${width}%` }} />
         ) : null}

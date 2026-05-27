@@ -1402,7 +1402,7 @@ function DashboardSummaryHero({
         <Link
           href={practiceHref}
           prefetch={false}
-          className="group flex min-h-full flex-col justify-between rounded-[22px] border border-[#CFE7D6] bg-white/90 p-5 shadow-[0_18px_40px_rgba(8,122,61,0.10)] backdrop-blur transition-colors hover:border-[#0F8F4D]"
+          className="group flex min-h-full flex-col justify-between rounded-[22px] border border-[#CFE7D6] bg-white/95 p-5 shadow-[0_18px_40px_rgba(8,122,61,0.10)] transition-colors hover:border-[#0F8F4D]"
         >
           <div>
             <div className="flex items-center justify-between gap-3">
@@ -1840,9 +1840,9 @@ function TargetLaneVisual({
         <div className="absolute inset-y-0 left-0 w-[24%] bg-[linear-gradient(135deg,#FFF2D8_0%,#FFF8E8_100%)]" />
         <div className="absolute inset-y-0 left-[24%] w-[50%] bg-[linear-gradient(135deg,#E7F6EF_0%,#F3FBF7_100%)]" />
         <div className="absolute inset-y-0 right-0 w-[26%] bg-[linear-gradient(135deg,#EAF1FF_0%,#F4F7FF_100%)]" />
-        <div className="absolute left-[24%] top-0 h-full border-l-2 border-dashed border-[#EA6A00]" />
-        <div className="absolute left-[74%] top-0 h-full border-l-2 border-dashed border-[#2563EB]" />
-        <div className="absolute left-1/2 top-0 h-full border-l-[3px] border-[#087A3D]" />
+        <div className="absolute left-[24%] top-0 h-full border-l border-dashed border-[#EA6A00]" />
+        <div className="absolute left-[74%] top-0 h-full border-l border-dashed border-[#2563EB]" />
+        <div className="absolute left-1/2 top-0 h-full border-l border-[#087A3D]" />
         <span className="absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[#087A3D] shadow-[0_8px_18px_rgba(15,23,42,0.1)]">
           Target
         </span>

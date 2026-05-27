@@ -657,7 +657,7 @@ export function ImportForm({
                 className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-auto"
               >
                 <Upload className="size-4" />
-                {isPending ? "Saving..." : "Save batch"}
+                {isPending ? "Saving…" : "Save batch"}
               </Button>
             </div>
           </div>
@@ -985,7 +985,7 @@ export function ImportForm({
                 className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
               >
                 <Upload className="size-4" />
-                {isPending ? "Saving..." : "Save batch"}
+                {isPending ? "Saving…" : "Save batch"}
               </Button>
             ) : (
               <Button

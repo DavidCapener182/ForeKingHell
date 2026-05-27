@@ -149,7 +149,7 @@ export function MobileNav({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] transition-colors",
+                  "flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   active
                     ? "font-semibold text-primary"
                     : "font-medium text-muted-foreground hover:bg-muted",
@@ -183,7 +183,7 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium transition-colors",
+                  "grid min-h-11 touch-manipulation grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
                 )}
               >

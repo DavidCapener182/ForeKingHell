@@ -129,7 +129,7 @@ export function RoundsWorkspace({
                 <Input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Search course..."
+                  placeholder="Search course…"
                   className="pl-8"
                 />
               </label>
@@ -173,10 +173,18 @@ export function RoundsWorkspace({
                   {filteredRounds.map((round) => (
                     <TableRow
                       key={round.id}
-                      aria-selected={round.id === selectedRound?.id}
-                      className="cursor-pointer border-l-4 border-l-transparent aria-selected:border-l-emerald-600 aria-selected:bg-emerald-50/45"
+                      aria-pressed={round.id === selectedRound?.id}
+                      className="cursor-pointer outline-none aria-pressed:bg-emerald-50/45 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset"
                       data-state={round.id === selectedRound?.id ? "selected" : undefined}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedRoundId(round.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedRoundId(round.id);
+                        }
+                      }}
                     >
                       <TableCell className="max-w-[18rem] font-medium">
                         <span className="block truncate">{roundTitle(round)}</span>

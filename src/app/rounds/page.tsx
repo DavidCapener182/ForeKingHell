@@ -123,8 +123,8 @@ function RoundsHero({
   simulatorRounds: number;
 }) {
   return (
-    <section className="premium-hero overflow-hidden p-4 sm:p-5">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+    <section className="premium-hero min-w-0 overflow-hidden p-4 sm:p-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <div className="order-2 min-w-0 space-y-4 xl:order-none">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 space-y-2">
@@ -149,20 +149,20 @@ function RoundsHero({
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              <Button asChild>
+            <div className="grid min-w-0 grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap lg:justify-end">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/rounds/new">
                   <Plus className="size-4" />
                   Add real round
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/import">
                   <Upload className="size-4" />
                   Import round CSV
                 </Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" className="hidden w-full sm:inline-flex sm:w-auto">
                 <Link href="/achievements">
                   <Award className="size-4" />
                   Achievements
@@ -195,7 +195,7 @@ function RoundsHero({
           </div>
         </div>
 
-        <div className="order-1 xl:order-none">
+        <div className="order-1 min-w-0 xl:order-none">
           <LatestRoundSpotlight latestRound={latestRound} />
         </div>
       </div>
@@ -226,7 +226,7 @@ function LatestRoundSpotlight({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <PageArtwork
         variant="fairway"
         alt=""
@@ -241,7 +241,7 @@ function LatestRoundSpotlight({
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Latest round
           </p>
-          <h2 className="mt-1 truncate text-xl font-semibold tracking-normal">
+          <h2 className="mt-1 line-clamp-2 break-words text-lg font-semibold tracking-normal sm:truncate sm:text-xl">
             {roundTitle(latestRound)}
           </h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">

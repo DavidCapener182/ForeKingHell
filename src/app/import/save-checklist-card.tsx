@@ -49,7 +49,7 @@ export function SaveChecklistCard({
           className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
         >
           {!isOnline ? <WifiOff className="size-4" /> : <Upload className="size-4" />}
-          {isPending ? "Saving..." : isOnline ? "Save import" : "Queue offline"}
+          {isPending ? "Saving…" : isOnline ? "Save import" : "Queue offline"}
         </Button>
       </CardContent>
     </Card>

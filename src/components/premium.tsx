@@ -47,6 +47,7 @@ export function PageShell({
 }: PageShellProps) {
   return (
     <main
+      id="main-content"
       className={cn(
         "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
         className,

@@ -158,7 +158,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <span>Notes</span>
           <Input
             name="notes"
-            placeholder="Weather, tees, match notes..."
+            placeholder="Weather, tees, match notes…"
             className="h-11 rounded-xl bg-white"
           />
         </label>
@@ -172,7 +172,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <span>Conditions</span>
             <Input
               name="weatherConditions"
-              placeholder="Dry, soft, rain..."
+              placeholder="Dry, soft, rain…"
               className="h-11 rounded-xl bg-white"
             />
           </label>
@@ -198,7 +198,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <span>Equipment notes</span>
           <Input
             name="equipmentNotes"
-            placeholder="Ball, shaft setting, new club, grip changes..."
+            placeholder="Ball, shaft setting, new club, grip changes…"
             className="h-11 rounded-xl bg-white"
           />
         </label>

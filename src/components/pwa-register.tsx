@@ -60,7 +60,7 @@ export function PwaRegister() {
     }
 
     setSyncMessage(
-      `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}...`,
+      `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}…`,
     );
 
     for (const action of syncableActions) {

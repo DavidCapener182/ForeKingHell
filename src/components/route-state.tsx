@@ -7,8 +7,8 @@ import { BRAND_NAME } from "@/lib/brand";
 
 export function RouteLoadingState({ label = `Loading ${BRAND_NAME}` }: { label?: string }) {
   return (
-    <main className="min-h-[40vh] px-4 py-5 pb-24 sm:px-6 lg:px-8">
-      <div className="mx-auto grid w-full max-w-7xl place-items-center pt-10 sm:pt-16">
+    <main id="main-content" className="min-h-[40vh] px-4 py-5 pb-24 sm:px-6 lg:px-8">
+      <div className="grid w-full place-items-center pt-10 sm:pt-16">
         <DelayedGolfLoader label={label} delayMs={2500} />
       </div>
     </main>
@@ -25,7 +25,7 @@ export function RouteErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
+    <main id="main-content" className="grid min-h-screen place-items-center px-4 py-10">
       <section className="premium-card max-w-xl p-6 text-center">
         <div className="mx-auto grid size-12 place-items-center rounded-full bg-amber-50 text-amber-700 ring-1 ring-amber-100">
           <AlertTriangle className="size-6" />
@@ -45,7 +45,7 @@ export function RouteErrorState({
 
 export function RouteNotFoundState() {
   return (
-    <main className="grid min-h-screen place-items-center px-4 py-10">
+    <main id="main-content" className="grid min-h-screen place-items-center px-4 py-10">
       <section className="premium-card max-w-xl p-6 text-center">
         <div className="mx-auto grid size-12 place-items-center rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-100">
           <SearchX className="size-6" />

@@ -1448,17 +1448,25 @@ function BagMovementPanel({ rows }: { rows: ProgressClubRow[] }) {
           <TableBody>
             {rows.map((row) => (
               <TableRow key={row.clubId}>
-                <TableCell className={cn("border-l-4", bagRowMarkerClass(row))}>
-                  <Link
-                    href={`/bag/${row.clubId}/analytics`}
-                    prefetch={false}
-                    className="font-semibold hover:text-emerald-700"
-                  >
-                    {formatClubType(row.clubType)}
-                  </Link>
-                  <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
-                    {row.brandModel}
-                  </p>
+                <TableCell>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn("mt-1.5 size-2 shrink-0 rounded-full", bagRowMarkerClass(row))}
+                    />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/bag/${row.clubId}/analytics`}
+                        prefetch={false}
+                        className="font-semibold hover:text-emerald-700"
+                      >
+                        {formatClubType(row.clubType)}
+                      </Link>
+                      <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
+                        {row.brandModel}
+                      </p>
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <StatusPill
@@ -1804,22 +1812,22 @@ function bagMovementSummary(rows: ProgressClubRow[]) {
 
 function bagRowMarkerClass(row: ProgressClubRow) {
   if (row.sampleSize < 10 || row.confidenceLabel === "Not enough data") {
-    return "border-slate-300";
+    return "bg-slate-300";
   }
 
   if (row.trustIndex <= 62) {
-    return "border-amber-400";
+    return "bg-amber-400";
   }
 
   if (row.offlineDeltaYd !== null && row.offlineDeltaYd <= -2) {
-    return "border-sky-400";
+    return "bg-sky-400";
   }
 
   if (row.carryDeltaYd !== null && row.carryDeltaYd >= 5) {
-    return "border-emerald-500";
+    return "bg-emerald-500";
   }
 
-  return "border-transparent";
+  return "bg-transparent";
 }
 
 function uniqueClubLabels(values: Array<{ clubType: string } | null | undefined>) {

@@ -218,7 +218,7 @@ export function MobileTabBar({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "shrink-0 whitespace-nowrap border-b-2 py-3 text-base font-semibold tracking-normal",
+              "min-h-11 shrink-0 touch-manipulation whitespace-nowrap border-b-2 py-3 text-base font-semibold tracking-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active ? "border-[#0B7A3B] text-[#050505]" : "border-transparent text-[#6B7280]",
             )}
           >
@@ -312,7 +312,7 @@ export function BottomSheet({
       <Drawer>
         <DrawerTrigger
           className={cn(
-            "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-sm",
+            "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-sm outline-none transition-colors duration-150 ease-out hover:bg-[#064E3B] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             triggerClassName,
           )}
         >
