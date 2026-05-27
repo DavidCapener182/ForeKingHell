@@ -57,7 +57,7 @@ export function MobileNav({
     <>
       <header
         aria-label="Mobile app bar"
-        className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-border bg-white/98 px-4 pt-[env(safe-area-inset-top)] sm:hidden"
+        className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-[#DDE7DC] bg-[#FFFDF8] px-4 pt-[env(safe-area-inset-top)] shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden"
       >
         <div className="relative flex h-[3.25rem] items-center">
           <Sheet>
@@ -66,7 +66,7 @@ export function MobileNav({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative z-10 size-10 rounded-full"
+                className="relative z-10 size-10 rounded-full border border-emerald-900/10 bg-white shadow-sm"
                 aria-label="Open navigation"
               >
                 <Menu className="size-5" />
@@ -127,7 +127,7 @@ export function MobileNav({
           <Button
             asChild
             variant="secondary"
-            className="relative z-10 ml-auto h-9 rounded-full px-3"
+            className="relative z-10 ml-auto h-9 rounded-full border border-emerald-900/10 bg-emerald-50 px-3 text-emerald-900 shadow-sm hover:bg-emerald-100"
           >
             <Link
               href="/achievements"
@@ -141,7 +141,7 @@ export function MobileNav({
       </header>
 
       <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
-        <div className="grid grid-cols-5 border-t border-border bg-white/98 px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">
+        <div className="grid grid-cols-5 border-t border-[#DDE7DC] bg-[#FFFDF8] px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_28px_rgba(26,49,31,0.1)]">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
@@ -154,11 +154,18 @@ export function MobileNav({
                 className={cn(
                   "flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   active
-                    ? "font-semibold text-primary"
+                    ? "bg-emerald-50 font-semibold text-primary shadow-[inset_0_0_0_1px_rgba(11,122,59,0.12)]"
                     : "font-medium text-muted-foreground hover:bg-muted",
                 )}
               >
-                <Icon className="size-5" aria-hidden />
+                <span
+                  className={cn(
+                    "grid size-7 place-items-center rounded-full",
+                    active ? "bg-white text-primary shadow-sm" : "",
+                  )}
+                >
+                  <Icon className="size-5" aria-hidden />
+                </span>
                 <span className="truncate">{item.label}</span>
               </Link>
             );

@@ -69,7 +69,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         Skip to content
       </a>
       <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
-        <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarHeader className="border-b border-sidebar-border bg-[#FFFDF8]">
           <div className="flex items-center gap-2 px-1 py-1">
             <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
               <Link href="/dashboard">
@@ -130,7 +130,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         </SidebarContent>
 
         <SidebarSeparator />
-        <SidebarFooter className="border-t border-sidebar-border">
+        <SidebarFooter className="border-t border-sidebar-border bg-[#FFFDF8]">
           <Button asChild className="w-full justify-start">
             <Link href="/import">
               <Upload className="size-4" />

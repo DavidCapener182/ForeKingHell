@@ -100,7 +100,7 @@ export function PageHeader({
 
   return (
     <>
-      <header className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}>
+      <header className={cn("premium-hero grid gap-3 p-3 sm:hidden", className)}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <div className="min-w-0">
             {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
@@ -114,13 +114,16 @@ export function PageHeader({
             ) : null}
           </div>
           {visual ? (
-            <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg" data-compact-media>
+            <div
+              className="h-14 w-16 shrink-0 overflow-hidden rounded-lg ring-1 ring-emerald-950/10"
+              data-compact-media
+            >
               {visual}
             </div>
           ) : null}
         </div>
         {primaryMetric || actions ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-emerald-900/10 bg-white/90 px-2.5 py-2 shadow-sm">
             {primaryMetric ? (
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -159,7 +162,7 @@ export function PageHeader({
             <div className="max-w-3xl space-y-1.5">
               {eyebrow ? <div>{eyebrow}</div> : null}
               <div className="space-y-1.5">
-                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance">
+                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance text-[#111611]">
                   {title}
                 </h1>
                 {description ? (
@@ -176,7 +179,7 @@ export function PageHeader({
           {visual ? (
             <div
               className={cn(
-                "hidden overflow-hidden rounded-lg lg:block",
+                "hidden overflow-hidden rounded-lg ring-1 ring-emerald-950/10 lg:block",
                 hasWideVisual ? "h-44" : "h-28",
               )}
               data-compact-media
@@ -186,7 +189,7 @@ export function PageHeader({
           ) : null}
         </div>
         {metrics?.length ? (
-          <div className="-mx-1 mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto border-y border-[#E5E7EB] bg-white px-1 py-2 sm:mx-0 sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+          <div className="mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
             {metrics.map((metric) => (
               <div key={metric.label} className="metric-tile desktop-metric-tile">
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -228,7 +231,7 @@ export function MobileCompactPageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("premium-hero grid gap-2 p-3 sm:hidden", className)}>
+    <header className={cn("premium-hero grid gap-3 p-3 sm:hidden", className)}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <div className="min-w-0">
           {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
@@ -242,13 +245,16 @@ export function MobileCompactPageHeader({
           ) : null}
         </div>
         {visual ? (
-          <div className="h-12 w-14 shrink-0 overflow-hidden rounded-lg" data-compact-media>
+          <div
+            className="h-14 w-16 shrink-0 overflow-hidden rounded-lg ring-1 ring-emerald-950/10"
+            data-compact-media
+          >
             {visual}
           </div>
         ) : null}
       </div>
       {metricLabel || action ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-emerald-900/10 bg-white/90 px-2.5 py-2 shadow-sm">
           {metricLabel ? (
             <div className="min-w-0">
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -297,7 +303,7 @@ export function MobileSectionChips({
         <a
           key={item.href}
           href={item.href}
-          className="min-h-10 shrink-0 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
+          className="min-h-10 shrink-0 rounded-full border border-emerald-900/10 bg-white/92 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-[border-color,background-color,color] duration-150 ease-out hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
         >
           {item.label}
         </a>
@@ -352,7 +358,7 @@ export function ActiveFilterChips({
     >
       {items.map((item) => {
         const content = (
-          <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+          <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-emerald-900/10 bg-white/92 px-3 text-sm font-semibold text-slate-700 shadow-sm">
             {item.label}
           </span>
         );
@@ -625,7 +631,9 @@ export function MobileCurrentItemCard({
       <div className="premium-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold tracking-normal">{title}</h2>
+            <h2 className="truncate text-lg font-semibold tracking-normal text-[#111611]">
+              {title}
+            </h2>
             {subtitle ? (
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{subtitle}</p>
             ) : null}
@@ -736,13 +744,15 @@ export function MetricCard({
   const card = (
     <Card
       className={cn(
-        "premium-card h-full transition-colors group-hover:border-[#0B7A3B]",
+        "premium-card h-full transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
         className,
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
         <div className="space-y-1">
-          <CardDescription>{label}</CardDescription>
+          <CardDescription className="font-medium uppercase tracking-[0.12em]">
+            {label}
+          </CardDescription>
           <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>
         </div>
         {Icon ? (
@@ -798,9 +808,9 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <CardHeader className="gap-1 border-b border-[#E5E7EB] px-4 py-3">
+    <CardHeader className="gap-1 border-b border-[#DDE7DC] bg-[#FBFDF9] px-4 py-3">
       <div>
-        <CardTitle className="text-base font-semibold tracking-normal sm:text-lg">
+        <CardTitle className="text-base font-semibold tracking-normal text-[#111611] sm:text-lg">
           {title}
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}

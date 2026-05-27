@@ -34,7 +34,7 @@ export function MobileAppShell({ children, className }: MobileAppShellProps) {
   return (
     <section
       className={cn(
-        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip bg-white px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
+        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip bg-[#F7FAF5] px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#050505] sm:hidden [&>*]:min-w-0",
         className,
       )}
     >
@@ -54,12 +54,12 @@ export function MobileTopBar({ title, leading, actions, className }: MobileTopBa
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.5rem+env(safe-area-inset-top))] h-[calc(5.65rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#E5E7EB] bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))]",
+        "sticky top-0 z-40 -mx-4 -mb-4 -mt-[calc(0.5rem+env(safe-area-inset-top))] h-[calc(5.65rem+env(safe-area-inset-top)+1px)] w-auto min-w-0 overflow-hidden border-b border-[#DDE7DC] bg-[#FFFDF8] px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] shadow-[0_10px_24px_rgba(26,49,31,0.08)]",
         className,
       )}
     >
       <div className="h-9" aria-hidden="true" />
-      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#E5E7EB] px-4">
+      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#DDE7DC] px-4">
         <div className="flex min-w-0 items-center justify-start gap-1.5">{leading}</div>
         <h1 className="max-w-[12rem] truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal">
           {title}
@@ -153,7 +153,7 @@ export function MobileRouteTabs({
       tabs={mobileRouteGroups[group]}
       activeKey={activeKey}
       className={cn(
-        sticky ? "sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-white" : "",
+        sticky ? "sticky top-[calc(5.65rem+env(safe-area-inset-top)+1px)] z-40 bg-[#FFFDF8]" : "",
         className,
       )}
     />
@@ -174,12 +174,12 @@ export function MobileRouteHeader({
   return (
     <section
       className={cn(
-        "sticky top-0 z-40 -mx-4 -mt-4 grid min-w-0 gap-0 bg-white px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:hidden",
+        "sticky top-0 z-40 -mx-4 -mt-4 grid min-w-0 gap-0 bg-[#FFFDF8] px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden",
         className,
       )}
     >
       <div className="-mx-4 h-9 px-4" aria-hidden="true" />
-      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#E5E7EB] px-4">
+      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#DDE7DC] px-4">
         <span aria-hidden="true" />
         <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
           {title}
@@ -207,7 +207,7 @@ export function MobileTabBar({
       aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
       tabIndex={0}
       className={cn(
-        "-mx-4 flex min-w-0 gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "-mx-4 flex min-w-0 gap-2 overflow-x-auto border-b border-[#DDE7DC] px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
@@ -221,8 +221,10 @@ export function MobileTabBar({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "min-h-11 shrink-0 touch-manipulation whitespace-nowrap border-b-2 py-3 text-base font-semibold tracking-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              active ? "border-[#0B7A3B] text-[#050505]" : "border-transparent text-[#6B7280]",
+              "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              active
+                ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-sm"
+                : "border-transparent text-[#6B7280] hover:bg-white hover:text-[#111611]",
             )}
           >
             {tab.label}
