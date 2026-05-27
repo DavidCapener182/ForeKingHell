@@ -40,6 +40,7 @@ import {
   DataPair,
   DataPanel,
   MobileAccordionSection,
+  MobileBentoSummary,
   MobileHorizontalRail,
   PageHeader,
   PageShell,
@@ -49,7 +50,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { MobileStatusAction } from "@/components/mobile-sports";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
@@ -684,7 +684,7 @@ function DashboardMobileLayout({
           <Button
             asChild
             size="sm"
-            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            className="premium-action rounded-lg"
           >
             <Link
               href={
@@ -698,8 +698,6 @@ function DashboardMobileLayout({
         }
       />
 
-      {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
-
       <section id="today" className="scroll-mt-28">
         <TodayPlan
           latestSession={data.recentSessions[0] ?? null}
@@ -712,8 +710,8 @@ function DashboardMobileLayout({
         />
       </section>
 
-      <MobileMetricStrip
-        items={metrics.map((metric) => ({
+      <MobileBentoSummary
+        items={metrics.slice(0, 4).map((metric) => ({
           label: metric.label,
           value: metric.value,
           detail: metric.detail,
@@ -721,50 +719,79 @@ function DashboardMobileLayout({
         }))}
       />
 
-      <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
-
-      <ActionCentrePanel data={featureData} />
-
-      <DataPanel id="decisions" className="scroll-mt-28">
-        <SectionHeader
-          title="On-course decisions"
-          description="Course-number reminders from the current bag map."
-          action={
-            <Button asChild variant="outline">
-              <Link href="/bag" prefetch={false}>
-                <Target className="size-4" />
-                Full advice
-              </Link>
-            </Button>
-          }
-        />
-        <CardContent>
-          <CompactReadoutGrid
-            columnsClassName="md:grid-cols-3"
-            items={data.courseAdvice.slice(0, 3).map((item) => ({
-              label: item.label,
-              value: item.value,
-              detail: item.detail,
-              tone: item.tone,
-              href: item.clubId ? `/bag/${item.clubId}` : "/bag",
-            }))}
-          />
-        </CardContent>
-      </DataPanel>
-
-      <section
-        id="progress"
-        className="grid scroll-mt-28 items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]"
-      >
+      {data.stats.shotCount === 0 ? (
         <MobileAccordionSection
-          title="What changed?"
-          description="Latest imported-shot and round signals."
-          count={`${data.whatChanged.length} signals`}
+          title="First-run path"
+          description="Import, map clubs and read the first signal."
+          count="7 steps"
         >
-          <CompactReadoutGrid items={data.whatChanged} />
+          <DashboardFirstRunOnboarding />
         </MobileAccordionSection>
+      ) : null}
 
-        {pinnedDashboardSections.has("coach") ? (
+      <MobileAccordionSection
+        title="Can I trust this?"
+        description="Data health and mapping checks."
+        count={featureData.dataHealth.metric}
+      >
+        <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
+      </MobileAccordionSection>
+
+      <MobileAccordionSection
+        title="Action centre"
+        description="Fix data, practice and competition flow when needed."
+        count={`${featureData.dashboardActions.length} items`}
+      >
+        <ActionCentrePanel data={featureData} />
+      </MobileAccordionSection>
+
+      <MobileAccordionSection
+        title="On-course decisions"
+        description="Course-number reminders from the current bag map."
+        count={`${data.courseAdvice.length} reads`}
+      >
+        <DataPanel id="decisions" className="scroll-mt-28">
+          <SectionHeader
+            title="On-course decisions"
+            description="Course-number reminders from the current bag map."
+            action={
+              <Button asChild variant="outline">
+                <Link href="/bag" prefetch={false}>
+                  <Target className="size-4" />
+                  Full advice
+                </Link>
+              </Button>
+            }
+          />
+          <CardContent>
+            <CompactReadoutGrid
+              columnsClassName="md:grid-cols-3"
+              items={data.courseAdvice.slice(0, 3).map((item) => ({
+                label: item.label,
+                value: item.value,
+                detail: item.detail,
+                tone: item.tone,
+                href: item.clubId ? `/bag/${item.clubId}` : "/bag",
+              }))}
+            />
+          </CardContent>
+        </DataPanel>
+      </MobileAccordionSection>
+
+      <MobileAccordionSection
+        title="What changed?"
+        description="Latest imported-shot and round signals."
+        count={`${data.whatChanged.length} signals`}
+      >
+        <CompactReadoutGrid items={data.whatChanged} />
+      </MobileAccordionSection>
+
+      {pinnedDashboardSections.has("coach") ? (
+        <MobileAccordionSection
+          title="Next practice"
+          description="The current highest-value coach signal."
+          count={data.coachPreview?.clubName ?? "Waiting"}
+        >
           <DataPanel>
             <SectionHeader
               title="Next practice"
@@ -814,46 +841,52 @@ function DashboardMobileLayout({
               )}
             </CardContent>
           </DataPanel>
-        ) : null}
-      </section>
+        </MobileAccordionSection>
+      ) : null}
 
       <section id="tools" className="grid scroll-mt-28 gap-4">
-        <MobileHorizontalRail
-          title="Key tools"
-          description="The fastest paths into today's golf work."
-          action={
-            <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
-              <Link href="/dashboard#tools" prefetch={false}>
-                Tools
-              </Link>
-            </Button>
-          }
-          itemClassName="min-w-[68vw] max-w-[18rem]"
+        <MobileAccordionSection
+          title="Tools"
+          description="Fast paths into the full command centre."
+          count={`${routeCards.length} pages`}
         >
-          {routeCards.slice(0, 6).map((card) => {
-            const Icon = card.icon;
+          <MobileHorizontalRail
+            title="Key tools"
+            description="The fastest paths into today's golf work."
+            action={
+              <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
+                <Link href="/dashboard#tools" prefetch={false}>
+                  Tools
+                </Link>
+              </Button>
+            }
+            itemClassName="min-w-[68vw] max-w-[18rem]"
+          >
+            {routeCards.slice(0, 6).map((card) => {
+              const Icon = card.icon;
 
-            return (
-              <Link
-                key={`${card.title}-${card.href}`}
-                href={card.href}
-                prefetch={false}
-                className="apple-panel-strong block min-h-28 p-3"
-              >
-                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
-                  <Icon className="size-5" />
-                </div>
-                <p className="font-semibold tracking-normal">{card.title}</p>
-                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                  {card.description}
-                </p>
-                <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {card.metric}
-                </p>
-              </Link>
-            );
-          })}
-        </MobileHorizontalRail>
+              return (
+                <Link
+                  key={`${card.title}-${card.href}`}
+                  href={card.href}
+                  prefetch={false}
+                  className="apple-panel-strong block min-h-28 p-3"
+                >
+                  <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
+                    <Icon className="size-5" />
+                  </div>
+                  <p className="font-semibold tracking-normal">{card.title}</p>
+                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                    {card.description}
+                  </p>
+                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                    {card.metric}
+                  </p>
+                </Link>
+              );
+            })}
+          </MobileHorizontalRail>
+        </MobileAccordionSection>
         <MobileAccordionSection
           title="Find a tool"
           description="Search every route without turning Today into a directory."
@@ -865,124 +898,146 @@ function DashboardMobileLayout({
 
       <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         {pinnedDashboardSections.has("bag") ? (
-          <MobileHorizontalRail
+          <MobileAccordionSection
             title="Bag confidence"
             description="Stock numbers and confidence by club."
-            action={
-              <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
-                <Link href="/bag" prefetch={false}>
-                  View all
-                </Link>
-              </Button>
-            }
+            count={`${data.bagPreview.length} clubs`}
           >
-            {data.bagPreview.map((club) => (
-              <Link
-                key={club.id}
-                href={`/bag/${club.id}`}
-                prefetch={false}
-                className="apple-panel-strong block p-4"
-              >
-                <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
-                <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
-                  <MiniMetric
-                    label="Play"
-                    value={formatYards(club.stock.recommendedPlayNumberYd)}
-                  />
-                  <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
-                  <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
-                </div>
-                <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-1",
-                      club.stock.confidenceScore < 35
-                        ? "bg-rose-50 text-rose-700"
-                        : club.stock.confidenceScore < 60
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-emerald-50 text-emerald-700",
-                    )}
-                  >
-                    {club.stock.label}
-                  </span>
-                  {club.stock.sampleSize < 20 ? (
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                      Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
+            <MobileHorizontalRail
+              title="Bag confidence"
+              description="Stock numbers and confidence by club."
+              action={
+                <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
+                  <Link href="/bag" prefetch={false}>
+                    View all
+                  </Link>
+                </Button>
+              }
+            >
+              {data.bagPreview.map((club) => (
+                <Link
+                  key={club.id}
+                  href={`/bag/${club.id}`}
+                  prefetch={false}
+                  className="apple-panel-strong block p-4"
+                >
+                  <p className="text-lg font-semibold tracking-normal">
+                    {formatClubType(club.type)}
+                  </p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+                    <MiniMetric
+                      label="Play"
+                      value={formatYards(club.stock.recommendedPlayNumberYd)}
+                    />
+                    <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
+                    <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-1",
+                        club.stock.confidenceScore < 35
+                          ? "bg-rose-50 text-rose-700"
+                          : club.stock.confidenceScore < 60
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-emerald-50 text-emerald-700",
+                      )}
+                    >
+                      {club.stock.label}
                     </span>
-                  ) : null}
-                </div>
-                <Progress value={club.stock.confidenceScore} className="mt-3" />
-              </Link>
-            ))}
-          </MobileHorizontalRail>
+                    {club.stock.sampleSize < 20 ? (
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                        Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
+                      </span>
+                    ) : null}
+                  </div>
+                  <Progress value={club.stock.confidenceScore} className="mt-3" />
+                </Link>
+              ))}
+            </MobileHorizontalRail>
+          </MobileAccordionSection>
         ) : null}
 
         {pinnedDashboardSections.has("rounds") ? (
-          <DataPanel>
-            <SectionHeader
-              title="Latest round"
-              description="Newest round, simulator, or simulated-course file."
-              action={<Flag className="size-5 text-sky-500" />}
-            />
-            <CardContent>
-              {data.latestRound ? (
-                <div className="space-y-4">
-                  <div className="apple-panel-strong p-4">
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(data.latestRound.date)} -{" "}
-                      {formatSessionType(data.latestRound.type)}
-                    </p>
-                    <p className="mt-1 text-2xl font-semibold tracking-normal">
-                      {data.latestRound.courseName ?? data.latestRound.fileName ?? "Untitled round"}
-                    </p>
+          <MobileAccordionSection
+            title="Latest round"
+            description="Newest round, simulator, or simulated-course file."
+            count={data.latestRound ? formatScoreVsPar(data.latestRound.totalScore, data.latestRound.totalPar) : "None"}
+          >
+            <DataPanel>
+              <SectionHeader
+                title="Latest round"
+                description="Newest round, simulator, or simulated-course file."
+                action={<Flag className="size-5 text-sky-500" />}
+              />
+              <CardContent>
+                {data.latestRound ? (
+                  <div className="space-y-4">
+                    <div className="apple-panel-strong p-4">
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(data.latestRound.date)} -{" "}
+                        {formatSessionType(data.latestRound.type)}
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tracking-normal">
+                        {data.latestRound.courseName ??
+                          data.latestRound.fileName ??
+                          "Untitled round"}
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                      <RoundMetric label="Score" value={data.latestRound.totalScore} />
+                      <RoundMetric label="Par" value={data.latestRound.totalPar} />
+                      <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
+                      <RoundMetric
+                        label="Diff"
+                        value={formatHandicapValue(data.latestRound.handicapDifferential)}
+                      />
+                    </div>
+                    <Separator />
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button asChild className="flex-1">
+                        <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
+                          <Flag className="size-4" />
+                          Review round
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" className="flex-1">
+                        <Link href="/rounds" prefetch={false}>
+                          All rounds
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                    <RoundMetric label="Score" value={data.latestRound.totalScore} />
-                    <RoundMetric label="Par" value={data.latestRound.totalPar} />
-                    <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
-                    <RoundMetric
-                      label="Diff"
-                      value={formatHandicapValue(data.latestRound.handicapDifferential)}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button asChild className="flex-1">
-                      <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
-                        <Flag className="size-4" />
-                        Review round
+                ) : (
+                  <div className="apple-panel p-6">
+                    <p className="font-medium">No round imports yet</p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      Save a simulated-course CSV to unlock scorecards, hole review, and round shot
+                      maps.
+                    </p>
+                    <Button asChild variant="outline" className="mt-4">
+                      <Link href="/import" prefetch={false}>
+                        <Upload className="size-4" />
+                        Import round CSV
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" className="flex-1">
-                      <Link href="/rounds" prefetch={false}>
-                        All rounds
-                      </Link>
-                    </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="apple-panel p-6">
-                  <p className="font-medium">No round imports yet</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Save a simulated-course CSV to unlock scorecards, hole review, and round shot
-                    maps.
-                  </p>
-                  <Button asChild variant="outline" className="mt-4">
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import round CSV
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </DataPanel>
+                )}
+              </CardContent>
+            </DataPanel>
+          </MobileAccordionSection>
         ) : null}
       </section>
 
-      <DashboardMobileSocialPulse social={social} challenges={challenges} />
+      <MobileAccordionSection
+        title="Social pulse"
+        description="Network moments and challenge prompts."
+        count={`${social.items.length} items`}
+      >
+        <DashboardMobileSocialPulse social={social} challenges={challenges} />
+      </MobileAccordionSection>
     </div>
   );
 }
@@ -1039,7 +1094,7 @@ function DashboardFirstRunOnboarding() {
         title="First-run Rapsodo path"
         description="Start here if there is no usable shot data yet. Data comes first; sharing and competition stay optional."
         action={
-          <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button asChild className="premium-action rounded-lg">
             <Link href="/import" prefetch={false}>
               <Upload className="size-4" />
               Import Rapsodo

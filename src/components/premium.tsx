@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, ChevronDown, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { ArrowRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Card,
   CardAction,
@@ -580,9 +586,202 @@ export function MobileBentoSummary({
   );
 }
 
+export function MobileCompanionHero({
+  eyebrow,
+  title,
+  description,
+  metricLabel,
+  metricValue,
+  metricDetail,
+  action,
+  className,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  metricLabel?: ReactNode;
+  metricValue?: ReactNode;
+  metricDetail?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("premium-hero grid gap-3 rounded-lg p-3 sm:hidden", className)}>
+      <div className="min-w-0">
+        {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
+        <h2 className="text-2xl font-semibold leading-tight tracking-normal text-balance">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      {metricLabel || action ? (
+        <div className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-3 py-2.5">
+          {metricLabel ? (
+            <div className="min-w-0">
+              <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                {metricLabel}
+              </p>
+              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
+                {metricValue}
+              </p>
+              {metricDetail ? (
+                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                  {metricDetail}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <span aria-hidden />
+          )}
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function MobileQuickDecisionCard({
+  label,
+  value,
+  detail,
+  tone = "green",
+  href,
+  action,
+  className,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+  tone?: Tone;
+  href?: string;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const content = (
+    <div className={cn("apple-panel-strong grid gap-3 rounded-lg p-3 sm:hidden", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {label}
+          </p>
+          <p className="mt-1 text-xl font-semibold leading-6 tracking-normal">{value}</p>
+          {detail ? (
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{detail}</p>
+          ) : null}
+        </div>
+        <span className={cn("mt-1 size-2.5 rounded-full ring-4", compactToneClasses[tone])} />
+      </div>
+      {action ? <div data-primary-action>{action}</div> : null}
+    </div>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} prefetch={false} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
+}
+
+export function MobilePrimaryActionCard({
+  title,
+  description,
+  action,
+  className,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  action: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:rounded-lg",
+        className,
+      )}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold tracking-normal text-foreground">{title}</p>
+        {description ? (
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            {description}
+          </p>
+        ) : null}
+      </div>
+      <div data-primary-action>{action}</div>
+    </section>
+  );
+}
+
+export function MobileCompanionAccordion({
+  items,
+  defaultValue,
+  className,
+}: {
+  items: Array<{
+    value: string;
+    title: ReactNode;
+    summary?: ReactNode;
+    description?: ReactNode;
+    children: ReactNode;
+    defaultOpen?: boolean;
+  }>;
+  defaultValue?: string;
+  className?: string;
+}) {
+  const resolvedDefaultValue = defaultValue ?? items.find((item) => item.defaultOpen)?.value;
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue={resolvedDefaultValue}
+      className={cn("grid gap-2 sm:hidden", className)}
+    >
+      {items.map((item) => (
+        <AccordionItem
+          key={item.value}
+          value={item.value}
+          className="premium-card overflow-hidden rounded-lg border border-border/70"
+        >
+          <AccordionTrigger className="min-h-12 px-3 py-2 text-left no-underline hover:no-underline">
+            <span className="grid min-w-0 gap-0.5">
+              <span className="truncate text-sm font-semibold tracking-normal">{item.title}</span>
+              {item.description ? (
+                <span className="truncate text-xs font-normal text-muted-foreground">
+                  {item.description}
+                </span>
+              ) : null}
+            </span>
+            {item.summary ? (
+              <span className="ml-auto max-w-28 truncate text-xs font-medium text-muted-foreground">
+                {item.summary}
+              </span>
+            ) : null}
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-border/70 p-3">{item.children}</AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  );
+}
+
 export function MobileAccordionSection({
   title,
   count,
+  summary,
   description,
   children,
   defaultOpen = false,
@@ -591,6 +790,7 @@ export function MobileAccordionSection({
 }: {
   title: ReactNode;
   count?: ReactNode;
+  summary?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
@@ -598,27 +798,36 @@ export function MobileAccordionSection({
   contentClassName?: string;
 }) {
   return (
-    <details
-      open={defaultOpen}
-      className={cn(
-        "group premium-card rounded-lg sm:hidden",
-        className,
-      )}
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue={defaultOpen ? "mobile-section" : undefined}
+      className={cn("sm:hidden", className)}
     >
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold tracking-normal">{title}</span>
-          {description ? (
-            <span className="block truncate text-xs text-muted-foreground">{description}</span>
+      <AccordionItem
+        value="mobile-section"
+        className="premium-card overflow-hidden rounded-lg border border-border/70"
+      >
+        <AccordionTrigger className="min-h-12 px-3 py-2 no-underline hover:no-underline">
+          <span className="grid min-w-0 gap-0.5">
+            <span className="truncate text-sm font-semibold tracking-normal">{title}</span>
+            {description ? (
+              <span className="truncate text-xs font-normal text-muted-foreground">
+                {description}
+              </span>
+            ) : null}
+          </span>
+          {count || summary ? (
+            <span className="ml-auto max-w-28 truncate text-xs font-medium text-muted-foreground">
+              {count ?? summary}
+            </span>
           ) : null}
-        </span>
-        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
-          {count ? <span>{count}</span> : null}
-          <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
-        </span>
-      </summary>
-      <div className={cn("border-t border-border/70 p-3", contentClassName)}>{children}</div>
-    </details>
+        </AccordionTrigger>
+        <AccordionContent className={cn("border-t border-border/70 p-3", contentClassName)}>
+          {children}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 

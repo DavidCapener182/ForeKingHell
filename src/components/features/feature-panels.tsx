@@ -26,7 +26,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { DataPanel, DataPair, SectionHeader, StatusPill, type Tone } from "@/components/premium";
+import {
+  DataPanel,
+  DataPair,
+  MobileAccordionSection,
+  SectionHeader,
+  StatusPill,
+  type Tone,
+} from "@/components/premium";
 import type {
   CourseFollowFeatureData,
   FeatureIdeasData,
@@ -57,8 +64,17 @@ export function ActionCentrePanel({
           </Button>
         }
       />
+      <MobileFeatureInsightPreview
+        items={data.dashboardActions}
+        moreTitle="More actions"
+        moreDescription="Secondary fixes and follow-ups."
+      />
       <div
-        className={isDashboard ? "grid gap-3 p-4 md:grid-cols-3" : "grid gap-3 p-4 sm:grid-cols-2"}
+        className={
+          isDashboard
+            ? "hidden gap-3 p-4 sm:grid md:grid-cols-3"
+            : "hidden gap-3 p-4 sm:grid sm:grid-cols-2"
+        }
       >
         {data.dashboardActions.map((item) => (
           <ActionInsightCard key={item.title} item={item} compact={isDashboard} />
@@ -106,7 +122,12 @@ export function ImportQualityFeaturePanel({ data }: { data: FeatureIdeasData }) 
           </StatusPill>
         }
       />
-      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <MobileFeatureInsightPreview
+        items={data.importQuality.checks}
+        moreTitle="More import checks"
+        moreDescription="Mapping, duplicate and eligibility details."
+      />
+      <div className="hidden gap-3 p-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
         {data.importQuality.checks.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -127,7 +148,12 @@ export function DataHealthFeaturePanel({ data }: { data: FeatureIdeasData }) {
           </StatusPill>
         }
       />
-      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+      <MobileFeatureInsightPreview
+        items={data.dataHealth.checks}
+        moreTitle="More trust checks"
+        moreDescription="Progress, coach and competition readiness."
+      />
+      <div className="hidden gap-3 p-4 sm:grid sm:grid-cols-2 xl:grid-cols-3">
         {data.dataHealth.checks.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -144,7 +170,12 @@ export function ProviderHealthFeaturePanel({ data }: { data: FeatureIdeasData })
         description="Each adapter reports readiness, last activity and beta status without exposing raw provider metadata."
         action={<StatusPill tone="sky">Adapters</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+      <MobileFeatureInsightPreview
+        items={data.providerHealth}
+        moreTitle="More provider checks"
+        moreDescription="Adapter status and latest activity."
+      />
+      <div className="hidden gap-3 p-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
         {data.providerHealth.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -165,7 +196,69 @@ export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
           </StatusPill>
         }
       />
-      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-3 p-3 sm:hidden">
+        {data.bagAlerts.slice(0, 2).map((item) => (
+          <InsightCard key={item.title} item={item} compact />
+        ))}
+        <MobileAccordionSection
+          title="More fitting detail"
+          description="Target links, extra alerts and club identities."
+          count="Full analysis"
+        >
+          <div className="grid gap-3">
+            {data.bagAlerts.slice(2, 4).map((item) => (
+              <InsightCard key={item.title} item={item} compact />
+            ))}
+            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold">
+                <Target className="size-4 text-emerald-700" />
+                Target distance links
+              </p>
+              <div className="mt-3 grid gap-2">
+                {data.targetDistanceOptions.slice(2, 7).map((option) => (
+                  <Link
+                    key={option.target}
+                    href={option.href}
+                    prefetch={false}
+                    className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+                  >
+                    <span className="font-semibold tabular-nums">{option.target} yd</span>
+                    <span className="truncate text-muted-foreground">{option.clubName}</span>
+                    <span
+                      className={
+                        option.gap === null
+                          ? "text-slate-500"
+                          : Math.abs(option.gap) <= 5
+                            ? "text-emerald-700"
+                            : "text-amber-700"
+                      }
+                    >
+                      {option.playNumber === null ? "--" : `${option.playNumber} yd`}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              {data.clubIdentities.slice(0, 4).map((club) => (
+                <Link
+                  key={club.clubId}
+                  href={club.href}
+                  prefetch={false}
+                  className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold">{club.name}</p>
+                    <StatusPill tone="green">{club.confidence}</StatusPill>
+                  </div>
+                  <p className="mt-2 text-muted-foreground">{club.purpose}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </MobileAccordionSection>
+      </div>
+      <div className="hidden gap-4 p-4 sm:grid xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3 md:grid-cols-2">
           {data.bagAlerts.slice(0, 4).map((item) => (
             <InsightCard key={item.title} item={item} compact />
@@ -202,7 +295,7 @@ export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
           </div>
         </div>
       </div>
-      <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="hidden gap-3 border-t border-slate-200 p-4 sm:grid md:grid-cols-2 xl:grid-cols-3">
         {data.clubIdentities.slice(0, 6).map((club) => (
           <Link
             key={club.clubId}
@@ -313,7 +406,60 @@ export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) 
           </StatusPill>
         }
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="grid gap-3 p-3 sm:hidden">
+        {data.practicePlan.slice(0, 1).map((item) => (
+          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="font-semibold">{item.title}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+            <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+          </div>
+        ))}
+        {top ? (
+          <form
+            action={completePracticeDrillAction}
+            className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+          >
+            <input type="hidden" name="sourceId" value={top.id} />
+            <input type="hidden" name="title" value={top.title} />
+            <input type="hidden" name="focusArea" value={top.focusArea} />
+            <input type="hidden" name="clubId" value={top.clubId ?? ""} />
+            <input type="hidden" name="clubType" value={top.clubType ?? ""} />
+            <input type="hidden" name="targetShots" value={top.targetShots} />
+            <p className="text-sm font-semibold">Start 20-minute plan</p>
+            <p className="mt-1 text-sm text-muted-foreground">{top.detail}</p>
+            <Input
+              className="mt-3 bg-white"
+              type="number"
+              min={0}
+              max={200}
+              name="recordedShots"
+              aria-label="Recorded shots"
+              defaultValue={top.targetShots}
+            />
+            <Button type="submit" className="premium-action mt-2 w-full">
+              <CalendarCheck className="size-4" />
+              Mark drill complete
+            </Button>
+          </form>
+        ) : null}
+        <MobileAccordionSection
+          title="More coach actions"
+          description="Extra drills and challenge template."
+          count={`${Math.max(data.practicePlan.length - 1, 0) + 1} items`}
+        >
+          <div className="grid gap-3">
+            {data.practicePlan.slice(1).map((item) => (
+              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                <p className="font-semibold">{item.title}</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+                <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+              </div>
+            ))}
+            <CoachChallengeForm data={data} />
+          </div>
+        </MobileAccordionSection>
+      </div>
+      <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-3 md:grid-cols-3">
           {data.practicePlan.map((item) => (
             <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
@@ -347,7 +493,7 @@ export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) 
             />
             <Button
               type="submit"
-              className="mt-2 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="premium-action mt-2 w-full"
             >
               <CalendarCheck className="size-4" />
               Mark drill complete
@@ -355,43 +501,8 @@ export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) 
           </form>
         ) : null}
       </div>
-      <div className="border-t border-slate-200 p-4">
-        <form
-          action={createCoachSignalChallengeAction}
-          className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
-        >
-          <div>
-            <p className="font-semibold">Challenge template from coach signal</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {data.coachChallengeRecommendation.detail}
-            </p>
-          </div>
-          <input type="hidden" name="title" value={data.coachChallengeRecommendation.title} />
-          <input
-            type="hidden"
-            name="description"
-            value={data.coachChallengeRecommendation.detail}
-          />
-          <input
-            type="hidden"
-            name="clubId"
-            value={data.coachChallengeRecommendation.clubId ?? ""}
-          />
-          <input
-            type="hidden"
-            name="clubType"
-            value={data.coachChallengeRecommendation.clubType ?? ""}
-          />
-          <input
-            type="hidden"
-            name="focusArea"
-            value={data.coachChallengeRecommendation.focusArea}
-          />
-          <Button type="submit" variant="outline">
-            <Trophy className="size-4" />
-            Create challenge
-          </Button>
-        </form>
+      <div className="hidden border-t border-slate-200 p-4 sm:block">
+        <CoachChallengeForm data={data} />
       </div>
     </DataPanel>
   );
@@ -405,7 +516,12 @@ export function RoundOpportunityFeaturePanel({ data }: { data: FeatureIdeasData 
         description="Detect course-board eligibility, proof gaps and post-round recap options from the latest scorecard."
         action={<StatusPill tone="green">Detector</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-3">
+      <MobileFeatureInsightPreview
+        items={data.roundOpportunities}
+        moreTitle="More round checks"
+        moreDescription="Eligibility, proof gaps and recap options."
+      />
+      <div className="hidden gap-3 p-4 sm:grid md:grid-cols-3">
         {data.roundOpportunities.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -421,6 +537,9 @@ export function RoundOpportunityFeaturePanel({ data }: { data: FeatureIdeasData 
 }
 
 export function HandicapConfidenceFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  const visibleChecks = data.handicapConfidence.checks.slice(0, 2);
+  const secondaryChecks = data.handicapConfidence.checks.slice(2);
+
   return (
     <DataPanel>
       <SectionHeader
@@ -432,19 +551,27 @@ export function HandicapConfidenceFeaturePanel({ data }: { data: FeatureIdeasDat
           </StatusPill>
         }
       />
-      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
-        {data.handicapConfidence.checks.map((check) => (
-          <div
-            key={check.label}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+      <div className="grid gap-3 p-3 sm:hidden">
+        {visibleChecks.map((check) => (
+          <HandicapCheckRow key={check.label} check={check} />
+        ))}
+        {secondaryChecks.length ? (
+          <MobileAccordionSection
+            title="More handicap checks"
+            description="Remaining confidence signals."
+            count={`${secondaryChecks.length} more`}
           >
-            <span>{check.label}</span>
-            {check.done ? (
-              <CheckCircle2 className="size-4 text-emerald-700" />
-            ) : (
-              <span className="font-medium text-amber-700">Needed</span>
-            )}
-          </div>
+            <div className="grid gap-2">
+              {secondaryChecks.map((check) => (
+                <HandicapCheckRow key={check.label} check={check} />
+              ))}
+            </div>
+          </MobileAccordionSection>
+        ) : null}
+      </div>
+      <div className="hidden gap-3 p-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
+        {data.handicapConfidence.checks.map((check) => (
+          <HandicapCheckRow key={check.label} check={check} />
         ))}
       </div>
     </DataPanel>
@@ -452,6 +579,13 @@ export function HandicapConfidenceFeaturePanel({ data }: { data: FeatureIdeasDat
 }
 
 export function WeeklyRecapFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  const weeklySummary = [
+    { label: "Best club", value: data.weeklyRecap.bestClub },
+    { label: "Weakest signal", value: data.weeklyRecap.weakestSignal },
+    { label: "New PBs", value: data.weeklyRecap.newPbs },
+    { label: "Next goal", value: data.weeklyRecap.nextGoal },
+  ];
+
   return (
     <DataPanel>
       <SectionHeader
@@ -461,52 +595,32 @@ export function WeeklyRecapFeaturePanel({ data }: { data: FeatureIdeasData }) {
           <StatusPill tone={data.weeklyRecap.tone as Tone}>{data.weeklyRecap.metric}</StatusPill>
         }
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-3 p-3 sm:hidden">
+        {weeklySummary.slice(0, 2).map((item) => (
+          <DataPair key={item.label} label={item.label} value={item.value} />
+        ))}
+        <MobileAccordionSection
+          title="Weekly detail"
+          description="Recap, practice plan and calendar."
+          count="Full recap"
+        >
+          <div className="grid gap-3">
+            <div className="grid gap-2">
+              {weeklySummary.slice(2).map((item) => (
+                <DataPair key={item.label} label={item.label} value={item.value} />
+              ))}
+            </div>
+            <WeeklyRecapCard data={data} />
+          </div>
+        </MobileAccordionSection>
+      </div>
+      <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="grid gap-3 sm:grid-cols-2">
-          <DataPair label="Best club" value={data.weeklyRecap.bestClub} />
-          <DataPair label="Weakest signal" value={data.weeklyRecap.weakestSignal} />
-          <DataPair label="New PBs" value={data.weeklyRecap.newPbs} />
-          <DataPair label="Next goal" value={data.weeklyRecap.nextGoal} />
+          {weeklySummary.map((item) => (
+            <DataPair key={item.label} label={item.label} value={item.value} />
+          ))}
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-sm font-semibold">AI weekly recap</p>
-            <StatusPill
-              tone={data.weeklyRecap.generatedFrom.startsWith("openai") ? "green" : "slate"}
-            >
-              {data.weeklyRecap.generatedFrom.startsWith("openai") ? "AI" : "Rules"}
-            </StatusPill>
-          </div>
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            {data.weeklyRecap.coachNote}
-          </p>
-          <div className="mt-3 grid gap-1 text-sm">
-            {data.weeklyRecap.practicePlan.slice(0, 3).map((step) => (
-              <div
-                key={step}
-                className="rounded-md bg-white px-2 py-1 text-muted-foreground ring-1 ring-slate-200"
-              >
-                {step}
-              </div>
-            ))}
-          </div>
-          <p className="mt-4 text-sm font-semibold">Practice plan calendar</p>
-          <div className="mt-3 grid gap-2">
-            {data.practiceCalendar.slice(0, 4).map((item) => (
-              <DataPair
-                key={`${item.title}-${item.date.toISOString()}`}
-                label={dateFormatter.format(item.date)}
-                value={item.title}
-              />
-            ))}
-          </div>
-          <form action={saveCurrentWeeklyRecapAction}>
-            <Button type="submit" variant="outline" className="mt-3 w-full">
-              <ClipboardCheck className="size-4" />
-              Save weekly recap
-            </Button>
-          </form>
-        </div>
+        <WeeklyRecapCard data={data} />
       </div>
     </DataPanel>
   );
@@ -627,6 +741,21 @@ export function CourseFollowFeaturePanel({
 }
 
 export function CompetitionFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  const dailyChallengeItems: FeatureInsight[] = data.dailyMicroChallenges.map((item) => ({
+    ...item,
+    metric: item.status,
+    href: "/challenges",
+    tone: (item.status === "live" ? "green" : "sky") as FeatureInsight["tone"],
+  }));
+  const roundDueItems = data.roundDueReminders.length
+    ? data.roundDueReminders
+    : data.tournamentChecklist;
+  const mobileCompetitionItems = [
+    dailyChallengeItems[0],
+    data.tournamentChecklist[0],
+    roundDueItems[0],
+  ].filter(Boolean) as FeatureInsight[];
+
   return (
     <DataPanel>
       <SectionHeader
@@ -634,21 +763,28 @@ export function CompetitionFeaturePanel({ data }: { data: FeatureIdeasData }) {
         description="Daily micro-challenges, tournament proof checklists and round-due reminders stay secondary to the data."
         action={<StatusPill tone="sky">Compete</StatusPill>}
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-3">
-        <FeatureColumn
-          title="Daily micro-challenges"
-          items={data.dailyMicroChallenges.map((item) => ({
-            ...item,
-            metric: item.status,
-            href: "/challenges",
-            tone: item.status === "live" ? "green" : "sky",
-          }))}
-        />
+      <MobileFeatureInsightPreview
+        items={mobileCompetitionItems}
+        moreTitle="More competition"
+        moreDescription="Tournament proof and round reminders."
+        visibleCount={2}
+      />
+      <MobileAccordionSection
+        title="Full competition engine"
+        description="All challenge, tournament and round-due checks."
+        count="Full analysis"
+        className="px-3 pb-3"
+      >
+        <div className="grid gap-3">
+          <FeatureColumn title="Daily micro-challenges" items={dailyChallengeItems} />
+          <FeatureColumn title="Tournament proof" items={data.tournamentChecklist} />
+          <FeatureColumn title="Round due" items={roundDueItems} />
+        </div>
+      </MobileAccordionSection>
+      <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-3">
+        <FeatureColumn title="Daily micro-challenges" items={dailyChallengeItems} />
         <FeatureColumn title="Tournament proof" items={data.tournamentChecklist} />
-        <FeatureColumn
-          title="Round due"
-          items={data.roundDueReminders.length ? data.roundDueReminders : data.tournamentChecklist}
-        />
+        <FeatureColumn title="Round due" items={roundDueItems} />
       </div>
     </DataPanel>
   );
@@ -662,7 +798,12 @@ export function LeaderboardClimbPanel({ data }: { data: FeatureIdeasData }) {
         description="Concrete actions that move records, challenges and leaderboards."
         action={<StatusPill tone="green">Next moves</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-3">
+      <MobileFeatureInsightPreview
+        items={data.waysToClimb}
+        moreTitle="More ways to climb"
+        moreDescription="Records, challenges and leaderboard actions."
+      />
+      <div className="hidden gap-3 p-4 sm:grid md:grid-cols-3">
         {data.waysToClimb.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -672,6 +813,23 @@ export function LeaderboardClimbPanel({ data }: { data: FeatureIdeasData }) {
 }
 
 export function SocialFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  const socialItems: FeatureInsight[] = [
+    {
+      title: "Highlight of the week",
+      metric: data.social.highlightOfWeek.metric,
+      detail: data.social.highlightOfWeek.title,
+      href: data.social.highlightOfWeek.href,
+      tone: "green",
+    },
+    {
+      title: "Profile completeness",
+      metric: data.social.profileCompleteness.metric,
+      detail: data.social.profileCompleteness.detail,
+      href: data.social.profileCompleteness.href,
+      tone: "sky",
+    },
+  ];
+
   return (
     <DataPanel>
       <SectionHeader
@@ -683,72 +841,56 @@ export function SocialFeaturePanel({ data }: { data: FeatureIdeasData }) {
           </StatusPill>
         }
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <MobileFeatureInsightPreview
+        items={socialItems}
+        moreTitle="More social checks"
+        moreDescription="Highlights and profile readiness."
+      />
+      <MobileAccordionSection
+        title="Sharing controls"
+        description="Opt-in post-round and practice sharing."
+        count={data.social.publicSharePreview ? "Preview on" : "Preview off"}
+        className="px-3 pb-3"
+      >
+        <SocialPreferencesForm data={data} />
+      </MobileAccordionSection>
+      <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3 sm:grid-cols-2">
-          <InsightCard
-            item={{
-              title: "Highlight of the week",
-              metric: data.social.highlightOfWeek.metric,
-              detail: data.social.highlightOfWeek.title,
-              href: data.social.highlightOfWeek.href,
-              tone: "green",
-            }}
-            compact
-          />
-          <InsightCard
-            item={{
-              title: "Profile completeness",
-              metric: data.social.profileCompleteness.metric,
-              detail: data.social.profileCompleteness.detail,
-              href: data.social.profileCompleteness.href,
-              tone: "sky",
-            }}
-            compact
-          />
+          {socialItems.map((item) => (
+            <InsightCard key={item.title} item={item} compact />
+          ))}
         </div>
-        <form
-          action={updateFeaturePreferencesAction}
-          className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
-        >
-          <p className="text-sm font-semibold">Auto-share toggles</p>
-          <div className="mt-3 grid gap-2 text-sm">
-            <CheckboxLine
-              name="autoShareRounds"
-              label="Post-round recaps"
-              checked={data.preferences.autoShareRounds}
-            />
-            <CheckboxLine
-              name="autoSharePbs"
-              label="Personal bests"
-              checked={data.preferences.autoSharePbs}
-            />
-            <CheckboxLine
-              name="autoShareAchievements"
-              label="Achievements"
-              checked={data.preferences.autoShareAchievements}
-            />
-            <CheckboxLine
-              name="autoSharePractice"
-              label="Practice completions"
-              checked={data.preferences.autoSharePractice}
-            />
-            <CheckboxLine
-              name="publicSharePreview"
-              label="Public share preview"
-              checked={data.preferences.publicSharePreview}
-            />
-          </div>
-          <Button type="submit" className="mt-3 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Megaphone className="size-4" />
-            Save sharing controls
-          </Button>
-        </form>
+        <SocialPreferencesForm data={data} />
       </div>
     </DataPanel>
   );
 }
 
 export function ProfileFeaturePanel({ data }: { data: FeatureIdeasData }) {
+  const profileItems: FeatureInsight[] = [
+    {
+      title: "Profile completeness",
+      metric: data.social.profileCompleteness.metric,
+      detail: data.social.profileCompleteness.detail,
+      href: "/profile",
+      tone: "sky",
+    },
+    {
+      title: "Featured records",
+      metric: `${data.social.featuredRecords}`,
+      detail: "Records selected for the profile trophy shelf.",
+      href: "/course-records",
+      tone: "amber",
+    },
+    {
+      title: "Public share preview",
+      metric: data.social.publicSharePreview ? "On" : "Off",
+      detail: "Preview what friends and public visitors can see.",
+      href: "/settings",
+      tone: data.social.publicSharePreview ? "green" : "slate",
+    },
+  ];
+
   return (
     <DataPanel>
       <SectionHeader
@@ -756,37 +898,15 @@ export function ProfileFeaturePanel({ data }: { data: FeatureIdeasData }) {
         description="Completeness, featured records, trophy shelf and public preview are now feature-state aware."
         action={<StatusPill tone="sky">{data.social.profileCompleteness.metric}</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-3">
-        <InsightCard
-          item={{
-            title: "Profile completeness",
-            metric: data.social.profileCompleteness.metric,
-            detail: data.social.profileCompleteness.detail,
-            href: "/profile",
-            tone: "sky",
-          }}
-          compact
-        />
-        <InsightCard
-          item={{
-            title: "Featured records",
-            metric: `${data.social.featuredRecords}`,
-            detail: "Records selected for the profile trophy shelf.",
-            href: "/course-records",
-            tone: "amber",
-          }}
-          compact
-        />
-        <InsightCard
-          item={{
-            title: "Public share preview",
-            metric: data.social.publicSharePreview ? "On" : "Off",
-            detail: "Preview what friends and public visitors can see.",
-            href: "/settings",
-            tone: data.social.publicSharePreview ? "green" : "slate",
-          }}
-          compact
-        />
+      <MobileFeatureInsightPreview
+        items={profileItems}
+        moreTitle="More profile checks"
+        moreDescription="Records, trophy shelf and public preview."
+      />
+      <div className="hidden gap-3 p-4 sm:grid md:grid-cols-3">
+        {profileItems.map((item) => (
+          <InsightCard key={item.title} item={item} compact />
+        ))}
       </div>
     </DataPanel>
   );
@@ -800,12 +920,199 @@ export function GroupDigestFeaturePanel({ data }: { data: FeatureIdeasData }) {
         description="Summarises group posts, linked challenges and champion-board activity."
         action={<StatusPill tone="green">Digest</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+      <MobileFeatureInsightPreview
+        items={data.groupDigest}
+        moreTitle="More digest detail"
+        moreDescription="Group posts, challenges and champion boards."
+      />
+      <div className="hidden gap-3 p-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
         {data.groupDigest.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
       </div>
     </DataPanel>
+  );
+}
+
+function HandicapCheckRow({
+  check,
+}: {
+  check: FeatureIdeasData["handicapConfidence"]["checks"][number];
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+      <span>{check.label}</span>
+      {check.done ? (
+        <CheckCircle2 className="size-4 text-emerald-700" />
+      ) : (
+        <span className="font-medium text-amber-700">Needed</span>
+      )}
+    </div>
+  );
+}
+
+function WeeklyRecapCard({ data }: { data: FeatureIdeasData }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold">AI weekly recap</p>
+        <StatusPill tone={data.weeklyRecap.generatedFrom.startsWith("openai") ? "green" : "slate"}>
+          {data.weeklyRecap.generatedFrom.startsWith("openai") ? "AI" : "Rules"}
+        </StatusPill>
+      </div>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">
+        {data.weeklyRecap.coachNote}
+      </p>
+      <div className="mt-3 grid gap-1 text-sm">
+        {data.weeklyRecap.practicePlan.slice(0, 3).map((step) => (
+          <div
+            key={step}
+            className="rounded-md bg-white px-2 py-1 text-muted-foreground ring-1 ring-slate-200"
+          >
+            {step}
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-sm font-semibold">Practice plan calendar</p>
+      <div className="mt-3 grid gap-2">
+        {data.practiceCalendar.slice(0, 4).map((item) => (
+          <DataPair
+            key={`${item.title}-${item.date.toISOString()}`}
+            label={dateFormatter.format(item.date)}
+            value={item.title}
+          />
+        ))}
+      </div>
+      <form action={saveCurrentWeeklyRecapAction}>
+        <Button type="submit" variant="outline" className="mt-3 w-full">
+          <ClipboardCheck className="size-4" />
+          Save weekly recap
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function MobileFeatureInsightPreview({
+  items,
+  moreTitle,
+  moreDescription,
+  visibleCount = 2,
+}: {
+  items: FeatureInsight[];
+  moreTitle: string;
+  moreDescription?: string;
+  visibleCount?: number;
+}) {
+  const visibleItems = items.slice(0, visibleCount);
+  const secondaryItems = items.slice(visibleCount);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-3 p-3 sm:hidden">
+      {visibleItems.map((item) => (
+        <InsightCard key={item.title} item={item} compact />
+      ))}
+      {secondaryItems.length ? (
+        <MobileAccordionSection
+          title={moreTitle}
+          description={moreDescription}
+          count={`${secondaryItems.length} more`}
+        >
+          <div className="grid gap-2">
+            {secondaryItems.map((item) => (
+              <InsightCard key={item.title} item={item} compact />
+            ))}
+          </div>
+        </MobileAccordionSection>
+      ) : null}
+    </div>
+  );
+}
+
+function SocialPreferencesForm({ data }: { data: FeatureIdeasData }) {
+  return (
+    <form
+      action={updateFeaturePreferencesAction}
+      className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
+    >
+      <p className="text-sm font-semibold">Auto-share toggles</p>
+      <div className="mt-3 grid gap-2 text-sm">
+        <CheckboxLine
+          name="autoShareRounds"
+          label="Post-round recaps"
+          checked={data.preferences.autoShareRounds}
+        />
+        <CheckboxLine
+          name="autoSharePbs"
+          label="Personal bests"
+          checked={data.preferences.autoSharePbs}
+        />
+        <CheckboxLine
+          name="autoShareAchievements"
+          label="Achievements"
+          checked={data.preferences.autoShareAchievements}
+        />
+        <CheckboxLine
+          name="autoSharePractice"
+          label="Practice completions"
+          checked={data.preferences.autoSharePractice}
+        />
+        <CheckboxLine
+          name="publicSharePreview"
+          label="Public share preview"
+          checked={data.preferences.publicSharePreview}
+        />
+      </div>
+      <Button type="submit" className="premium-action mt-3 w-full">
+        <Megaphone className="size-4" />
+        Save sharing controls
+      </Button>
+    </form>
+  );
+}
+
+function CoachChallengeForm({ data }: { data: FeatureIdeasData }) {
+  return (
+    <form
+      action={createCoachSignalChallengeAction}
+      className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+    >
+      <div>
+        <p className="font-semibold">Challenge template from coach signal</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {data.coachChallengeRecommendation.detail}
+        </p>
+      </div>
+      <input type="hidden" name="title" value={data.coachChallengeRecommendation.title} />
+      <input
+        type="hidden"
+        name="description"
+        value={data.coachChallengeRecommendation.detail}
+      />
+      <input
+        type="hidden"
+        name="clubId"
+        value={data.coachChallengeRecommendation.clubId ?? ""}
+      />
+      <input
+        type="hidden"
+        name="clubType"
+        value={data.coachChallengeRecommendation.clubType ?? ""}
+      />
+      <input
+        type="hidden"
+        name="focusArea"
+        value={data.coachChallengeRecommendation.focusArea}
+      />
+      <Button type="submit" variant="outline">
+        <Trophy className="size-4" />
+        Create challenge
+      </Button>
+    </form>
   );
 }
 

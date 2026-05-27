@@ -139,102 +139,126 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               fileCount={visibleFiles.length}
             />
             <MobileRapsodoConnect initialStatus={connectionStatus} />
-            <ImportQualityFeaturePanel data={featureData} />
-            <NativeListSection id="import-sources" title="Other sources">
-              <div className="grid gap-2">
-                <Link
-                  href="/rapsodo"
-                  prefetch={false}
-                  className="premium-rail-card grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
-                >
-                  <Upload className="size-5 text-[#0B7A3B]" />
-                  <span className="min-w-0">
-                    <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
-                    <span className="block text-sm text-[#6B7280]">
-                      Load session list, preview shots and import verified data
-                    </span>
-                  </span>
-                  <ProofBadge tier="gold" />
-                </Link>
-                <Link
-                  id="csv-import"
-                  href="/import?source=csv#csv-import"
-                  prefetch={false}
-                  className="premium-rail-card grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3 text-left"
-                >
-                  <Upload className="size-5 text-[#0B7A3B]" />
-                  <span className="min-w-0">
-                    <span className="block font-semibold">CSV files</span>
-                    <span className="block text-sm font-normal text-[#6B7280]">
-                      Open the full import wizard for exported Rapsodo CSVs
-                    </span>
-                  </span>
-                  <ProofBadge tier="silver" />
-                </Link>
-                <BottomSheet
-                  label={
-                    <>
-                      <ShieldCheck className="size-4" /> Upload scorecard proof
-                    </>
-                  }
-                  title="Scorecard proof"
-                  triggerClassName="w-full rounded-lg bg-white/80 text-[#050505] ring-1 ring-[#E5E7EB]"
-                >
-                  <div className="grid gap-3 text-sm text-[#6B7280]">
-                    <p>
-                      Use proof upload after selecting an eligible record, tournament or challenge.
-                      Strong proof combines direct Rapsodo import, scorecard screenshot,
-                      course/date/tee match and duplicate checks.
-                    </p>
-                    <Button asChild className="premium-action rounded-lg">
-                      <a href="#rapsodo-connect">Continue to Rapsodo</a>
-                    </Button>
-                  </div>
-                </BottomSheet>
-                <Button asChild variant="outline" className="justify-start rounded-lg">
-                  <Link href="/rounds/new" prefetch={false}>
-                    <Award className="size-4" />
-                    Manual round
-                  </Link>
-                </Button>
-              </div>
-            </NativeListSection>
-            <NativeListSection
-              title="Eligible submissions"
-              description="Secondary suggestions after import quality checks pass."
+            <MobileAccordionSection
+              title="Import quality checks"
+              description="Mapping, duplicates and eligibility."
+              count={featureData.importQuality.metric}
             >
-              {eligibleSubmissionCards.map((item) => (
-                <div
-                  key={item.title}
-                  className="premium-rail-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{item.title}</p>
-                    <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
-                  </div>
-                  <Button asChild variant="outline" className="rounded-full">
-                    <Link href={item.href} prefetch={false}>
-                      {item.actionLabel}
+              <ImportQualityFeaturePanel data={featureData} />
+            </MobileAccordionSection>
+            <MobileAccordionSection
+              title="Other sources"
+              description="CSV, scorecard proof and manual round entry."
+              count="4 options"
+            >
+              <NativeListSection id="import-sources" title="Other sources">
+                <div className="grid gap-2">
+                  <Link
+                    href="/rapsodo"
+                    prefetch={false}
+                    className="premium-rail-card grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
+                  >
+                    <Upload className="size-5 text-[#0B7A3B]" />
+                    <span className="min-w-0">
+                      <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
+                      <span className="block text-sm text-[#6B7280]">
+                        Load session list, preview shots and import verified data
+                      </span>
+                    </span>
+                    <ProofBadge tier="gold" />
+                  </Link>
+                  <Link
+                    id="csv-import"
+                    href="/import?source=csv#csv-import"
+                    prefetch={false}
+                    className="premium-rail-card grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3 text-left"
+                  >
+                    <Upload className="size-5 text-[#0B7A3B]" />
+                    <span className="min-w-0">
+                      <span className="block font-semibold">CSV files</span>
+                      <span className="block text-sm font-normal text-[#6B7280]">
+                        Open the full import wizard for exported Rapsodo CSVs
+                      </span>
+                    </span>
+                    <ProofBadge tier="silver" />
+                  </Link>
+                  <BottomSheet
+                    label={
+                      <>
+                        <ShieldCheck className="size-4" /> Upload scorecard proof
+                      </>
+                    }
+                    title="Scorecard proof"
+                    triggerClassName="w-full rounded-lg bg-white/80 text-[#050505] ring-1 ring-[#E5E7EB]"
+                  >
+                    <div className="grid gap-3 text-sm text-[#6B7280]">
+                      <p>
+                        Use proof upload after selecting an eligible record, tournament or
+                        challenge. Strong proof combines direct Rapsodo import, scorecard
+                        screenshot, course/date/tee match and duplicate checks.
+                      </p>
+                      <Button asChild className="premium-action rounded-lg">
+                        <a href="#rapsodo-connect">Continue to Rapsodo</a>
+                      </Button>
+                    </div>
+                  </BottomSheet>
+                  <Button asChild variant="outline" className="justify-start rounded-lg">
+                    <Link href="/rounds/new" prefetch={false}>
+                      <Award className="size-4" />
+                      Manual round
                     </Link>
                   </Button>
                 </div>
-              ))}
-            </NativeListSection>
-            <EventHeroCard
-              eyebrow="Empty upload state"
-              title="Rapsodo CSVs unlock the app"
-              description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
-              href="#rapsodo-connect"
-              actionLabel="Connect Rapsodo"
-              media={
-                <PageArtwork
-                  variant="import"
-                  alt=""
-                  className="block h-full min-h-0 rounded-none"
-                  sizes="calc(100vw - 2rem)"
-                />
-              }
-            />
+              </NativeListSection>
+            </MobileAccordionSection>
+            <MobileAccordionSection
+              title="Eligible submissions"
+              description="Record, tournament and challenge suggestions."
+              count={`${eligibleSubmissionCards.length} items`}
+            >
+              <NativeListSection
+                title="Eligible submissions"
+                description="Secondary suggestions after import quality checks pass."
+              >
+                {eligibleSubmissionCards.map((item) => (
+                  <div
+                    key={item.title}
+                    className="premium-rail-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{item.title}</p>
+                      <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
+                    </div>
+                    <Button asChild variant="outline" className="rounded-full">
+                      <Link href={item.href} prefetch={false}>
+                        {item.actionLabel}
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </NativeListSection>
+            </MobileAccordionSection>
+            <MobileAccordionSection
+              title="Full import context"
+              description="Why Rapsodo data unlocks the app."
+              count="Guide"
+            >
+              <EventHeroCard
+                eyebrow="Empty upload state"
+                title="Rapsodo CSVs unlock the app"
+                description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
+                href="#rapsodo-connect"
+                actionLabel="Connect Rapsodo"
+                media={
+                  <PageArtwork
+                    variant="import"
+                    alt=""
+                    className="block h-full min-h-0 rounded-none"
+                    sizes="calc(100vw - 2rem)"
+                  />
+                }
+              />
+            </MobileAccordionSection>
           </MobileAppShell>
         )}
         <div className="hidden sm:contents">

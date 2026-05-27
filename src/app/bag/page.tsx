@@ -29,6 +29,7 @@ import {
   DataPanel,
   DataTableFrame,
   MobileAccordionSection,
+  MobileBentoSummary,
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
@@ -169,6 +170,7 @@ export default async function BagPage() {
             { key: "longest", label: "Longest", href: "/bag/longest" },
           ]}
         />
+        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
         <MobileStatusAction
           label="Gapping ladder"
           value={bestClub ? formatClubType(bestClub.type) : "--"}
@@ -178,106 +180,157 @@ export default async function BagPage() {
               : `${bag.length} clubs · ${totalShots} shots`
           }
           action={
-            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button asChild className="premium-action rounded-full">
               <Link href="/import" prefetch={false}>
                 Import
               </Link>
             </Button>
           }
         />
-        <NativeListSection title="Gapping">
-          <ProgressCard
-            title="Bag trust"
-            value={`${averageConfidence}%`}
-            detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
-          >
+        <MobileBentoSummary
+          items={[
+            {
+              label: "Bag trust",
+              value: `${averageConfidence}%`,
+              detail: `${bag.length} clubs · ${totalShots} shots`,
+              tone: averageConfidence >= 70 ? "green" : "amber",
+            },
+            {
+              label: "Weak gap",
+              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
+              detail: weakestGap ? workOnText(weakestGap) : "Need carry samples",
+              tone: weakestGap?.targetTone ?? "slate",
+            },
+            {
+              label: "Dangerous miss",
+              value: bestClub ? formatBagDangerousMiss(bestClub.stock) : "--",
+              detail: bestClub ? formatClubType(bestClub.type) : "Build a trusted club",
+              tone: bestClub ? "sky" : "slate",
+            },
+            {
+              label: "Best trust",
+              value: bestClub ? formatClubType(bestClub.type) : "--",
+              detail: bestClub ? `${bestClub.stock.confidenceScore}% confidence` : "Need samples",
+              tone: "green",
+            },
+          ]}
+        />
+        <MobileAccordionSection
+          title="Full gapping ladder"
+          description="Carry ladder, trust and strongest numbers."
+          count={`${gappingRows.length} clubs`}
+        >
+          <NativeListSection title="Gapping">
+            <ProgressCard
+              title="Bag trust"
+              value={`${averageConfidence}%`}
+              detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
+            >
+              <div className="grid gap-2">
+                {gappingRows.slice(0, 8).map((row) => (
+                  <Link
+                    key={row.id}
+                    href={`/bag/${row.id}`}
+                    prefetch={false}
+                    className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                  >
+                    <span className="font-semibold">{formatClubType(row.clubType)}</span>
+                    <span className="h-2 rounded-full bg-[#E5E7EB]">
+                      <span
+                        className="block h-2 rounded-full bg-[#0B7A3B]"
+                        style={{
+                          width: `${carryWidthPercent(row.carryYd, maxGappingCarry)}%`,
+                        }}
+                      />
+                    </span>
+                    <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
+                  </Link>
+                ))}
+              </div>
+            </ProgressCard>
+            <div className="grid grid-cols-2 gap-2">
+              <PBCard
+                title="Best club"
+                value={bestClub ? formatClubType(bestClub.type) : "--"}
+                detail="Highest trust"
+              />
+              <PBCard
+                title="Weakest gap"
+                value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
+                detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
+              />
+            </div>
+          </NativeListSection>
+        </MobileAccordionSection>
+        <MobileAccordionSection
+          title="Gapping doctor"
+          description="Overlap, missing yardage and weak samples."
+          count={`${bagDoctorFindings.length} checks`}
+        >
+          <NativeListSection title="Gapping doctor">
             <div className="grid gap-2">
-              {gappingRows.slice(0, 8).map((row) => (
+              {bagDoctorFindings.slice(0, 3).map((finding) => (
                 <Link
-                  key={row.id}
-                  href={`/bag/${row.id}`}
+                  key={`${finding.title}-${finding.detail}`}
+                  href={finding.href ?? "/import"}
                   prefetch={false}
-                  className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                  className="premium-rail-card rounded-lg p-3"
                 >
-                  <span className="font-semibold">{formatClubType(row.clubType)}</span>
-                  <span className="h-2 rounded-full bg-[#E5E7EB]">
-                    <span
-                      className="block h-2 rounded-full bg-[#0B7A3B]"
-                      style={{
-                        width: `${carryWidthPercent(row.carryYd, maxGappingCarry)}%`,
-                      }}
-                    />
-                  </span>
-                  <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{finding.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#6B7280]">{finding.detail}</p>
+                    </div>
+                    <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
+                  </div>
                 </Link>
               ))}
             </div>
-          </ProgressCard>
-          <div className="grid grid-cols-2 gap-2">
-            <PBCard
-              title="Best club"
-              value={bestClub ? formatClubType(bestClub.type) : "--"}
-              detail="Highest trust"
-            />
-            <PBCard
-              title="Weakest gap"
-              value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
-              detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
-            />
-          </div>
-        </NativeListSection>
-        <NativeListSection title="Gapping doctor">
-          <div className="grid gap-2">
-            {bagDoctorFindings.slice(0, 3).map((finding) => (
-              <Link
-                key={`${finding.title}-${finding.detail}`}
-                href={finding.href ?? "/import"}
-                prefetch={false}
-                className="premium-rail-card rounded-lg p-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">{finding.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-[#6B7280]">{finding.detail}</p>
-                  </div>
-                  <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </NativeListSection>
-        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-        <NativeListSection title="Club rail">
-          <div
-            aria-label="Club rail"
-            tabIndex={0}
-            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            {bag.map((club, index) => (
-              <Link
-                key={club.id}
-                href={`/bag/${club.id}`}
-                prefetch={false}
-                className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
-              >
-                <ClubArtwork
-                  clubType={club.type}
-                  brand={club.brand}
-                  model={club.model}
-                  alt=""
-                  className="h-14 rounded-lg"
-                  sizes="144px"
-                  priority={index === 0}
-                />
-                <span className="font-semibold">{formatClubType(club.type)}</span>
-                <span className="text-sm text-[#6B7280]">
-                  {formatMetric(club.stock.carryMedianYd)} yd
-                </span>
-              </Link>
-            ))}
-          </div>
-        </NativeListSection>
-        <BagFeaturePanel data={featureData} />
+          </NativeListSection>
+        </MobileAccordionSection>
+        <MobileAccordionSection
+          title="Club rail"
+          description="Open any club detail."
+          count={`${bag.length} clubs`}
+        >
+          <NativeListSection title="Club rail">
+            <div
+              aria-label="Club rail"
+              tabIndex={0}
+              className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {bag.map((club, index) => (
+                <Link
+                  key={club.id}
+                  href={`/bag/${club.id}`}
+                  prefetch={false}
+                  className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
+                >
+                  <ClubArtwork
+                    clubType={club.type}
+                    brand={club.brand}
+                    model={club.model}
+                    alt=""
+                    className="h-14 rounded-lg"
+                    sizes="144px"
+                    priority={index === 0}
+                  />
+                  <span className="font-semibold">{formatClubType(club.type)}</span>
+                  <span className="text-sm text-[#6B7280]">
+                    {formatMetric(club.stock.carryMedianYd)} yd
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </NativeListSection>
+        </MobileAccordionSection>
+        <MobileAccordionSection
+          title="Fitting and benchmarks"
+          description="Feature checks, target links and club identities."
+          count="Full analysis"
+        >
+          <BagFeaturePanel data={featureData} />
+        </MobileAccordionSection>
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -1963,6 +2016,21 @@ function stockTrendToneClass(status: StockCarryTrend["status"]) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatBagDangerousMiss(stock: BagClub["stock"]) {
+  const left = stock.dispersionLeftYd ?? 0;
+  const right = stock.dispersionRightYd ?? 0;
+
+  if (left === 0 && right === 0) {
+    return "Needs side data";
+  }
+
+  if (left >= right) {
+    return `${formatMetric(left)} yd left`;
+  }
+
+  return `${formatMetric(right)} yd right`;
 }
 
 function formatSignedYards(value: number) {

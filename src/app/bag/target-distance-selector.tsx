@@ -9,7 +9,7 @@ import { ChevronRight, Lightbulb, Minus, Plus, ShieldCheck, Target } from "lucid
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { DataPanel } from "@/components/premium";
+import { DataPanel, MobileAccordionSection } from "@/components/premium";
 import { formatClubType } from "@/lib/club-format";
 
 export type TargetDistanceRow = {
@@ -364,26 +364,90 @@ export function TargetDistanceSelector({
   }
 
   return (
-    <DataPanel className="overflow-hidden rounded-[1.35rem] border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-      <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-5 pt-6">
+    <DataPanel className="overflow-hidden rounded-lg border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:rounded-[1.35rem]">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3 pt-3 sm:gap-4 sm:px-6 sm:pb-5 sm:pt-6">
         <div className="flex items-center gap-4">
-          <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-            <Target className="size-7" />
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:size-14 sm:rounded-2xl">
+            <Target className="size-5 sm:size-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-semibold tracking-normal text-slate-950">
+            <h2 className="text-xl font-semibold tracking-normal text-slate-950 sm:text-2xl">
               Target distance selector
             </h2>
-            <p className="mt-1 text-base text-slate-600">{description}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-slate-600 sm:text-base">{description}</p>
           </div>
         </div>
-        <div className="grid size-9 place-items-center rounded-full text-emerald-700 ring-1 ring-emerald-100">
+        <div className="hidden size-9 place-items-center rounded-full text-emerald-700 ring-1 ring-emerald-100 sm:grid">
           <Target className="size-5" />
         </div>
       </div>
 
-      <CardContent className="grid gap-6 px-6 pb-6 pt-1 lg:grid-cols-[minmax(430px,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(560px,0.95fr)_minmax(0,1.8fr)]">
-        <div className="relative min-h-[620px] overflow-hidden rounded-2xl border border-[#DDE5DF] bg-emerald-50 shadow-sm">
+      <CardContent className="grid gap-3 px-3 pb-4 pt-0 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-1 lg:grid-cols-[minmax(430px,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(560px,0.95fr)_minmax(0,1.8fr)]">
+        <div className="premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">
+                I have
+              </p>
+              <p className="mt-1 text-4xl font-semibold tracking-normal text-emerald-950">
+                {targetYd}
+                <span className="ml-1 text-xl text-slate-600">yd</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700"
+                aria-label="Reduce target distance by 5 yards"
+                onClick={() => selectTarget(targetYd - STEP_YD)}
+              >
+                <Minus className="size-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700"
+                aria-label="Increase target distance by 5 yards"
+                onClick={() => selectTarget(targetYd + STEP_YD)}
+              >
+                <Plus className="size-5" />
+              </Button>
+            </div>
+          </div>
+          <input
+            id="target-distance-yards-mobile"
+            name="targetDistanceYardsMobile"
+            type="number"
+            inputMode="numeric"
+            min={MIN_TARGET_YD}
+            max={MAX_TARGET_YD}
+            step={STEP_YD}
+            value={targetYd}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => selectTarget(Number(event.target.value))}
+            className="h-12 w-full rounded-xl border border-[#D7DEE8] bg-white px-4 text-lg font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"
+          />
+          <div className="grid grid-cols-5 gap-2" aria-label="Target distance presets">
+            {TARGET_PRESETS.map((distance) => (
+              <Button
+                key={distance}
+                type="button"
+                size="sm"
+                variant={distance === targetYd ? "default" : "outline"}
+                aria-pressed={distance === targetYd}
+                className="h-10 rounded-full px-2 text-xs font-semibold"
+                onClick={() => selectTarget(distance)}
+              >
+                {distance}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative hidden min-h-[620px] overflow-hidden rounded-2xl border border-[#DDE5DF] bg-emerald-50 shadow-sm sm:block">
           <Image
             src={TARGET_DISTANCE_IMAGE_SRC}
             alt=""
@@ -476,14 +540,14 @@ export function TargetDistanceSelector({
           </div>
         </div>
 
-        <div className="flex min-h-[620px] flex-col gap-5">
-          <div className="flex flex-1 flex-col rounded-2xl border border-[#D7DEE8] bg-white p-7 shadow-sm">
+        <div className="flex min-h-0 flex-col gap-3 sm:min-h-[620px] sm:gap-5">
+          <div className="flex flex-1 flex-col rounded-xl border border-[#D7DEE8] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-emerald-700">
                   {isMultiShotPlan ? "Recommended route" : "Recommended"}
                 </p>
-                <p className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">
+                <p className="mt-2 text-2xl font-semibold tracking-normal text-slate-950 sm:text-3xl">
                   {planTitle}
                 </p>
               </div>
@@ -493,7 +557,7 @@ export function TargetDistanceSelector({
               </span>
             </div>
 
-            <div className="mt-6 grid gap-3 rounded-xl bg-slate-50/80 px-5 py-4 shadow-inner sm:grid-cols-4">
+            <div className="mt-4 hidden grid-cols-2 gap-3 rounded-xl bg-slate-50/80 px-4 py-3 shadow-inner sm:mt-6 sm:grid sm:grid-cols-4 sm:px-5 sm:py-4">
               <SummaryMetric
                 label="Planned total"
                 value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
@@ -510,6 +574,42 @@ export function TargetDistanceSelector({
                 }
               />
             </div>
+
+            <MobileAccordionSection
+              title="Decision detail"
+              description="Risk, sample size and course-condition reminder."
+              count={riskLevel}
+              className="mt-3"
+            >
+              <div className="grid gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <SummaryMetric
+                    label="Planned total"
+                    value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
+                    tone="green"
+                  />
+                  <SummaryMetric label="Risk" value={riskLevel} tone={planTone} />
+                  <SummaryMetric label="Matched window" value={windowQuality} tone={planTone} />
+                  <SummaryMetric
+                    label="Sample"
+                    value={
+                      plan
+                        ? `${plan.shots.reduce((total, shot) => total + shot.row.sampleSize, 0)} shots`
+                        : "--"
+                    }
+                  />
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+                  <div className="flex items-start gap-2">
+                    <Lightbulb className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                    <p>
+                      <span className="font-semibold text-emerald-700">Tip:</span> Wind,
+                      elevation and lie can affect distances. Review conditions before committing.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </MobileAccordionSection>
 
             {plan && plan.shots.length > 0 ? (
               <div className="mt-7 flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -561,7 +661,7 @@ export function TargetDistanceSelector({
             ) : null}
 
             {alternatives.length > 0 ? (
-              <div className="mt-7">
+              <div className="mt-7 hidden sm:block">
                 <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-slate-200" />
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -621,9 +721,50 @@ export function TargetDistanceSelector({
                 </div>
               </div>
             ) : null}
+            {alternatives.length > 0 ? (
+              <MobileAccordionSection
+                title="Alternative routes"
+                description="Other playable ways to cover the number."
+                count={`${alternatives.length} options`}
+              >
+                <div className="grid gap-3">
+                  {alternatives.map((alternative) => {
+                    const finalShot = alternative.shots[alternative.shots.length - 1];
+                    const alternativeTone = getPlanTone(alternative);
+
+                    return (
+                      <Link
+                        key={alternative.routeKey}
+                        href={`/bag/${finalShot.row.id}`}
+                        prefetch={false}
+                        className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm transition hover:border-emerald-300"
+                      >
+                        <p className="truncate text-lg font-semibold text-slate-950">
+                          {formatRouteTitle(alternative)}
+                        </p>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                          <SummaryMetric
+                            label="Total"
+                            value={`${formatMetric(alternative.expectedYd)} yd`}
+                          />
+                          <SummaryMetric
+                            label="Result"
+                            value={formatPlanMiss(alternative)}
+                            tone={alternativeTone}
+                          />
+                        </div>
+                        <p className="mt-3 text-sm text-slate-600">
+                          {alternative.lowestTrust}% lowest trust
+                        </p>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </MobileAccordionSection>
+            ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+          <div className="hidden flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex sm:px-5 sm:py-4">
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <Lightbulb className="size-5 text-emerald-600" />
               <p>

@@ -34,7 +34,12 @@ import type {
 } from "@/app/import/import-types";
 import { UploadDropzone } from "@/app/import/upload-dropzone";
 import { useImportFiles } from "@/app/import/use-import-files";
-import { MobileCompactPageHeader, StickyMobileAction } from "@/components/premium";
+import {
+  MobileAccordionSection,
+  MobileBentoSummary,
+  MobileCompactPageHeader,
+  StickyMobileAction,
+} from "@/components/premium";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { achievementUnlockHref, clubHref, shotRowsHref } from "@/lib/alert-links";
 import { trackPlausibleEvent } from "@/lib/analytics";
@@ -66,7 +71,6 @@ import type {
 } from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { cn } from "@/lib/utils";
 
 type SaveState =
@@ -678,7 +682,7 @@ export function ImportForm({
           }
         />
 
-        <MobileMetricStrip
+        <MobileBentoSummary
           items={[
             {
               label: "Files",
@@ -702,19 +706,41 @@ export function ImportForm({
           ]}
         />
 
-        <ImportFlowGuide
-          currentStep={visibleMobileStep}
-          isCourseUpload={isCourseUpload}
-          fileCount={aggregate.fileCount}
-          rowCount={aggregate.rowCount}
-          shotCount={aggregate.shotCount}
-          clubCount={aggregate.clubCount}
-          warningCount={aggregate.warnings.length}
-          courseHoleCount={scorecard.holes.length}
-          courseAssignedShotCount={courseAssignedShotCount}
-          canSave={canSave}
-          onStepChange={setMobileStep}
-        />
+        <MobileAccordionSection
+          title="Import checklist"
+          description="Status for upload, clubs, audit and save."
+          count={canSave ? "Ready" : "Review"}
+        >
+          <ImportFlowGuide
+            currentStep={visibleMobileStep}
+            isCourseUpload={isCourseUpload}
+            fileCount={aggregate.fileCount}
+            rowCount={aggregate.rowCount}
+            shotCount={aggregate.shotCount}
+            clubCount={aggregate.clubCount}
+            warningCount={aggregate.warnings.length}
+            courseHoleCount={scorecard.holes.length}
+            courseAssignedShotCount={courseAssignedShotCount}
+            canSave={canSave}
+            onStepChange={setMobileStep}
+          />
+        </MobileAccordionSection>
+
+        <div className="hidden sm:block">
+          <ImportFlowGuide
+            currentStep={visibleMobileStep}
+            isCourseUpload={isCourseUpload}
+            fileCount={aggregate.fileCount}
+            rowCount={aggregate.rowCount}
+            shotCount={aggregate.shotCount}
+            clubCount={aggregate.clubCount}
+            warningCount={aggregate.warnings.length}
+            courseHoleCount={scorecard.holes.length}
+            courseAssignedShotCount={courseAssignedShotCount}
+            canSave={canSave}
+            onStepChange={setMobileStep}
+          />
+        </div>
 
         <header className="premium-hero hidden p-5 sm:block sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

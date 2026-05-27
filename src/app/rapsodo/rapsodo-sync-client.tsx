@@ -45,6 +45,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataPair,
+  MobileAccordionSection,
+  MobileBentoSummary,
   MobileCompactPageHeader,
   MobileDataCard,
   MobileDataList,
@@ -69,7 +71,6 @@ import {
 import type { RapsodoShotOverride } from "@/lib/imports/save-rapsodo-import";
 import type { RapsodoClubChoice } from "@/lib/rapsodo/club-inference";
 import type { RapsodoSessionListItem, RapsodoSessionPreview } from "@/lib/rapsodo/sync-types";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { cn } from "@/lib/utils";
 
 type ConnectionStatus = {
@@ -641,7 +642,7 @@ export function RapsodoSyncClient({
           }
         />
 
-        <MobileMetricStrip
+        <MobileBentoSummary
           items={[
             {
               label: "Connection",
@@ -701,6 +702,43 @@ export function RapsodoSyncClient({
           step={visibleMobileStep}
           onStepChange={setMobileStep}
         />
+
+        <MobileAccordionSection
+          title="Filters"
+          description="Date range and session type."
+          count={sessionFilter === "all" ? "All" : sessionFilter}
+        >
+          <div className="grid gap-2">
+            <select
+              aria-label="Remote session type"
+              className="h-10 rounded-md border bg-background px-3 text-sm"
+              value={sessionFilter}
+              onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
+            >
+              <option value="all">All</option>
+              <option value="range">Range</option>
+              <option value="course">Course</option>
+            </select>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                aria-label="Session start date"
+                type="date"
+                value={dateFilter.startDate}
+                onChange={(event) =>
+                  setDateFilter((current) => ({ ...current, startDate: event.target.value }))
+                }
+              />
+              <Input
+                aria-label="Session end date"
+                type="date"
+                value={dateFilter.endDate}
+                onChange={(event) =>
+                  setDateFilter((current) => ({ ...current, endDate: event.target.value }))
+                }
+              />
+            </div>
+          </div>
+        </MobileAccordionSection>
 
         {notice.kind !== "idle" ? (
           <div ref={noticeRef} className="scroll-mt-4">
@@ -829,7 +867,7 @@ export function RapsodoSyncClient({
                 </form>
               )}
 
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="hidden gap-2 sm:grid sm:grid-cols-2">
                 <Input
                   aria-label="Session start date"
                   type="date"
@@ -866,7 +904,7 @@ export function RapsodoSyncClient({
                 </div>
                 <select
                   aria-label="Remote session type"
-                  className="h-9 rounded-md border bg-background px-3 text-sm"
+                  className="hidden h-9 rounded-md border bg-background px-3 text-sm sm:block"
                   value={sessionFilter}
                   onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
                 >
@@ -991,25 +1029,31 @@ export function RapsodoSyncClient({
           </Card>
         </section>
 
-        <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm sm:hidden">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-semibold">Provider import health</span>
-            <Badge
-              className={cn(
-                status.connected
-                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-100",
-              )}
-            >
-              {status.connected ? "Connected" : "Signed out"}
-            </Badge>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {status.connected
-              ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
-              : "Sign in or use manual CSV import when R-Cloud is unavailable."}
-          </p>
-        </section>
+        <MobileAccordionSection
+          title="Provider health"
+          description="Connection and latest sync status."
+          count={status.connected ? "Connected" : "Signed out"}
+        >
+          <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold">Provider import health</span>
+              <Badge
+                className={cn(
+                  status.connected
+                    ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-100",
+                )}
+              >
+                {status.connected ? "Connected" : "Signed out"}
+              </Badge>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              {status.connected
+                ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
+                : "Sign in or use manual CSV import when R-Cloud is unavailable."}
+            </p>
+          </section>
+        </MobileAccordionSection>
 
         {preview ? (
           <section
@@ -1127,62 +1171,58 @@ export function RapsodoSyncClient({
                     <AlertDescription>{preview.warnings.join(" ")}</AlertDescription>
                   </Alert>
                 ) : null}
-                <div className="sm:hidden">
-                  <details className="premium-command-surface rounded-lg">
-                    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                      Review shots
-                      <Badge variant="secondary">{preview.shots.length}</Badge>
-                    </summary>
-                    <div className="grid gap-2 border-t p-3">
-                      {preview.shots.slice(0, 8).map((shot) => (
-                        <MobileDataCard
-                          key={shot.rowNumber}
-                          title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
-                          subtitle={shot.reportedClubLabel}
-                          action={
-                            <Badge
-                              variant={
-                                shot.suggestion.confidence === "low" ? "secondary" : "default"
-                              }
-                            >
-                              {shot.suggestion.confidenceScore}%
-                            </Badge>
-                          }
-                        >
-                          <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
-                          <DataPair label="Total" value={formatMetric(shot.totalYd)} />
-                          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-                            Confirmed club
-                            <select
-                              aria-label={`Confirmed club for shot ${
-                                shot.shotNumber ?? shot.rowNumber
-                              }`}
-                              className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
-                              value={selectedClubByRow[shot.rowNumber] ?? ""}
-                              onChange={(event) => {
-                                setClubSelectionMode("custom");
-                                setSelectedClubByRow((current) => ({
-                                  ...current,
-                                  [shot.rowNumber]: event.target.value,
-                                }));
-                              }}
-                            >
-                              <option value="">Choose club</option>
-                              {preview.clubChoices.map((choice) => (
-                                <option
-                                  key={`${shot.rowNumber}-${choice.clubKey}`}
-                                  value={choice.clubKey}
-                                >
-                                  {choice.clubLabel}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </MobileDataCard>
-                      ))}
-                    </div>
-                  </details>
-                </div>
+                <MobileAccordionSection
+                  title="Review shots"
+                  description="Raw row audit and club confirmation."
+                  count={preview.shots.length}
+                >
+                  <div className="grid gap-2">
+                    {preview.shots.slice(0, 8).map((shot) => (
+                      <MobileDataCard
+                        key={shot.rowNumber}
+                        title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
+                        subtitle={shot.reportedClubLabel}
+                        action={
+                          <Badge
+                            variant={shot.suggestion.confidence === "low" ? "secondary" : "default"}
+                          >
+                            {shot.suggestion.confidenceScore}%
+                          </Badge>
+                        }
+                      >
+                        <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
+                        <DataPair label="Total" value={formatMetric(shot.totalYd)} />
+                        <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                          Confirmed club
+                          <select
+                            aria-label={`Confirmed club for shot ${
+                              shot.shotNumber ?? shot.rowNumber
+                            }`}
+                            className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
+                            value={selectedClubByRow[shot.rowNumber] ?? ""}
+                            onChange={(event) => {
+                              setClubSelectionMode("custom");
+                              setSelectedClubByRow((current) => ({
+                                ...current,
+                                [shot.rowNumber]: event.target.value,
+                              }));
+                            }}
+                          >
+                            <option value="">Choose club</option>
+                            {preview.clubChoices.map((choice) => (
+                              <option
+                                key={`${shot.rowNumber}-${choice.clubKey}`}
+                                value={choice.clubKey}
+                              >
+                                {choice.clubLabel}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </MobileDataCard>
+                    ))}
+                  </div>
+                </MobileAccordionSection>
                 <div className="hidden rounded-lg border sm:block">
                   <Table className="text-xs">
                     <TableHeader>
