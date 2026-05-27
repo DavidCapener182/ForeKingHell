@@ -276,6 +276,11 @@ export default async function CoachPage() {
               value: formatRate(coach.summary.totals.averagePlayableRate),
               detail: "Average across clubs with side data",
             },
+            {
+              label: "Data trust",
+              value: featureData.dataHealth.metric,
+              detail: featureData.dataHealth.status,
+            },
           ]}
         />
 
@@ -583,41 +588,34 @@ function CoachPracticePlan({
   return (
     <CardContent className="space-y-4">
       <div className="rounded-xl border bg-emerald-50 p-3 sm:p-4">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-stretch">
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <Badge className="bg-white text-emerald-700 hover:bg-white">
-                  Based on stored shot data
-                </Badge>
-                <h2 className="mt-2 text-xl font-semibold tracking-normal sm:mt-3 sm:text-2xl">
-                  {topClub
-                    ? `${topClub.clubName}: ${topClub.issueLabel}`
-                    : "Build a baseline first"}
-                </h2>
-              </div>
-              <StatusPill tone={topClub?.tone ?? "slate"}>
-                {topClub ? `${topClub.trustIndex}% trust` : "Needs data"}
-              </StatusPill>
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Badge className="bg-white text-emerald-700 hover:bg-white">
+                Based on stored shot data
+              </Badge>
+              <h2 className="mt-2 text-xl font-semibold tracking-normal sm:mt-3 sm:text-2xl">
+                {topClub
+                  ? `${topClub.clubName}: ${topClub.issueLabel}`
+                  : "Build a baseline first"}
+              </h2>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
-              <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
-              <SmallMetric
-                label="Target"
-                value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"}
-              />
-            </div>
+            <StatusPill tone={topClub?.tone ?? "slate"}>
+              {topClub ? `${topClub.trustIndex}% trust` : "Needs data"}
+            </StatusPill>
           </div>
-          <PageArtwork
-            variant="coach"
-            alt=""
-            className="h-full min-h-32 rounded-xl"
-            sizes="224px"
-            priority
-          />
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
+            <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
+            <SmallMetric
+              label="Target"
+              value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"}
+            />
+          </div>
         </div>
       </div>
+
+      <PracticePrescription topClub={topClub} />
 
       {drillChallenges.length > 0 ? (
         <div className="space-y-3">
@@ -712,6 +710,107 @@ function CoachPracticePlan({
       </div>
     </CardContent>
   );
+}
+
+function PracticePrescription({ topClub }: { topClub: CoachClubCard | null }) {
+  const prescription = practicePrescriptionFor(topClub);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Badge variant="outline">Practice prescription</Badge>
+          <h3 className="mt-2 text-lg font-semibold tracking-normal">{prescription.title}</h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{prescription.detail}</p>
+        </div>
+        <StatusPill tone={topClub?.tone ?? "slate"}>{prescription.duration}</StatusPill>
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <SmallMetric label="Pass target" value={prescription.passTarget} />
+        <SmallMetric label="Stop rule" value={prescription.stopRule} />
+        <SmallMetric label="Retest" value={prescription.retest} />
+      </div>
+    </div>
+  );
+}
+
+function practicePrescriptionFor(card: CoachClubCard | null) {
+  if (!card) {
+    return {
+      title: "20-ball baseline builder",
+      detail:
+        "Hit normal stock swings with clear club labels. Keep warm-ups, chips and recovery swings out of the scored set.",
+      duration: "20 balls",
+      passTarget: "20 clean rows saved",
+      stopRule: "Stop after 3 miscoded clubs",
+      retest: "Repeat next session",
+    };
+  }
+
+  if (card.issue === "direction") {
+    return {
+      title: `${card.clubName} start-line gate`,
+      detail: card.drill,
+      duration: "20 balls",
+      passTarget: "14/20 playable",
+      stopRule: "Stop after 5 straight same-side misses",
+      retest: "Re-test in 7 days",
+    };
+  }
+
+  if (card.issue === "launch") {
+    return {
+      title: `${card.clubName} launch window`,
+      detail: card.drill,
+      duration: "20 balls",
+      passTarget: `14/20 inside ${card.launchWindow.low}-${card.launchWindow.high} deg`,
+      stopRule: "Stop after 5 low or high flights in a row",
+      retest: "Compare next import",
+    };
+  }
+
+  if (card.issue === "strike") {
+    return {
+      title: `${card.clubName} strike ladder`,
+      detail: card.drill,
+      duration: "20 balls",
+      passTarget: "14/20 solid strikes",
+      stopRule: "Stop if speed chasing starts",
+      retest: "Repeat after two sessions",
+    };
+  }
+
+  if (card.issue === "delivery") {
+    return {
+      title: `${card.clubName} delivery window`,
+      detail: card.drill,
+      duration: "20 balls",
+      passTarget: "14/20 predictable starts",
+      stopRule: "Stop after 5 path spikes",
+      retest: "Check next comparable import",
+    };
+  }
+
+  if (card.issue === "distance") {
+    return {
+      title: `${card.clubName} carry repeatability`,
+      detail: card.drill,
+      duration: "20 balls",
+      passTarget: "3 sets inside 8 yd",
+      stopRule: "Stop if fatigue widens carry",
+      retest: "Re-test same target",
+    };
+  }
+
+  return {
+    title: `${card.clubName} trust builder`,
+    detail: card.drill,
+    duration: "20 balls",
+    passTarget: "20 clean stock shots",
+    stopRule: "Stop after 3 bad-data tags",
+    retest: "Repeat next range visit",
+  };
 }
 
 function winTargetForChallenge(challenge: CoachDrillChallenge) {

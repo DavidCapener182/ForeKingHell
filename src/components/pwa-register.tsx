@@ -123,8 +123,12 @@ export function PwaRegister() {
 
   useEffect(() => {
     window.addEventListener("fkh-offline-queue-changed", refreshOfflineCount);
-    return () => window.removeEventListener("fkh-offline-queue-changed", refreshOfflineCount);
-  }, [refreshOfflineCount]);
+    window.addEventListener("fkh-offline-retry-requested", replayOfflineActions);
+    return () => {
+      window.removeEventListener("fkh-offline-queue-changed", refreshOfflineCount);
+      window.removeEventListener("fkh-offline-retry-requested", replayOfflineActions);
+    };
+  }, [refreshOfflineCount, replayOfflineActions]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {

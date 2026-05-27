@@ -178,6 +178,9 @@ const DISTANCE_FIELDS = new Set<string>([
   ...FIELD_ALIASES.apex,
   ...FIELD_ALIASES.sideCarry,
 ]);
+const RAPSODO_SESSION_TITLE_PATTERN =
+  /\b(?:rapsodo|r-cloud|mlm\s*2\s*pro|mlm2pro|mlm\s*pro|mlm)\b/i;
+const SLASH_DATE_PATTERN = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i;
 
 export function parseRapsodoCsv(
   csvText: string,
@@ -213,7 +216,7 @@ export function parseRapsodoCsv(
   const exportedAtIso = parseExportedAtIso(sessionTitle);
 
   if (hasAmbiguousSlashDate(sessionTitle)) {
-    warnings.push("Export date is ambiguous; slash dates are interpreted as US month/day/year.");
+    warnings.push("Export date is ambiguous; confirm the session date before saving this import.");
   }
   const headers = rows[headerIndex].map((header) => header.trim());
   const dataRows = rows.slice(headerIndex + 1);
@@ -531,7 +534,7 @@ function isShotDataRow(headers: string[], row: string[], columnMapping: RapsodoC
     return false;
   }
 
-  return !isNonShotClubType(clubType);
+  return !isNonShotClubType(clubType) && hasUsefulShotMetric(headers, row, columnMapping);
 }
 
 function isSummaryRow(headers: string[], row: string[], columnMapping: RapsodoColumnMapping) {
@@ -543,6 +546,17 @@ function isSummaryRow(headers: string[], row: string[], columnMapping: RapsodoCo
 
 function isNonShotClubType(clubType: string) {
   return ["average", "avg", "stddev", "standarddeviation", "clubtype"].includes(clubType);
+}
+
+function hasUsefulShotMetric(
+  headers: string[],
+  row: string[],
+  columnMapping: RapsodoColumnMapping,
+) {
+  const raw = toRawRow(headers, row);
+  return SHOT_METRIC_FIELDS.some(
+    (field) => parseNumber(valueForField(raw, field, columnMapping)) !== null,
+  );
 }
 
 function parseRawRow(
@@ -599,8 +613,14 @@ function parseRawRow(
 }
 
 function findSessionTitle(rows: string[][]) {
+  const cells = rows.flatMap((row) => row).map((cell) => cell.trim());
   return nullableText(
-    rows.flatMap((row) => row).find((cell) => /rapsodo mlm2pro/i.test(cell)) ?? null,
+    cells.find(
+      (cell) => RAPSODO_SESSION_TITLE_PATTERN.test(cell) && SLASH_DATE_PATTERN.test(cell),
+    ) ??
+      cells.find((cell) => RAPSODO_SESSION_TITLE_PATTERN.test(cell)) ??
+      cells.find((cell) => SLASH_DATE_PATTERN.test(cell)) ??
+      null,
   );
 }
 
@@ -609,16 +629,25 @@ function parseExportedAtIso(title: string | null) {
     return null;
   }
 
-  const match = title.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i);
+  const match = title.match(SLASH_DATE_PATTERN);
 
   if (!match) {
     return null;
   }
 
-  const [, monthText, dayText, yearText, hourText, minuteText, meridiem] = match;
-  const month = Number(monthText);
-  const day = Number(dayText);
+  const [, firstText, secondText, yearText, hourText, minuteText, meridiem] = match;
+  const first = Number(firstText);
+  const second = Number(secondText);
   const year = Number(yearText);
+  const isDayFirst = first > 12 && second <= 12;
+  const isMonthFirst = second > 12 && first <= 12;
+
+  if (!isDayFirst && !isMonthFirst) {
+    return null;
+  }
+
+  const day = isDayFirst ? first : second;
+  const month = isDayFirst ? second : first;
   let hour = hourText ? Number(hourText) : 12;
   const minute = minuteText ? Number(minuteText) : 0;
 

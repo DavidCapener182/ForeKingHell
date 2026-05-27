@@ -23,14 +23,17 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ActionCentrePanel, DataHealthFeaturePanel } from "@/components/features/feature-panels";
+import { ActionCentrePanel } from "@/components/features/feature-panels";
 import {
   DashboardMobileHeader,
   type DashboardTabKey,
 } from "@/app/dashboard/dashboard-mobile-header";
+import {
+  DashboardCommandPalette,
+  type DashboardCommandRoute,
+} from "@/app/dashboard/dashboard-command-palette";
 import { Button } from "@/components/ui/button";
 import {
   CompactReadoutGrid,
@@ -50,46 +53,35 @@ import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { MobileStatusAction } from "@/components/mobile-sports";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
-  clubs,
-  importRows,
-  rapsodoSyncSessions,
-  sessions,
-  shots,
-  teeSets,
-  users,
-} from "@/db/schema";
-import { getDb } from "@/db/client";
-import { buildCoachSummary } from "@/lib/coach";
+  getDashboardData,
+  type DashboardData,
+  type DashboardInsight,
+} from "@/app/dashboard/dashboard-data";
+import {
+  formatDate,
+  formatHandicapTrend,
+  formatHoleResult,
+  formatScoreVsPar,
+  formatSessionType,
+  formatYards,
+  getDashboardPracticeTask,
+  getRoundHoleHighlights,
+  holeResultClass,
+  integerFormatter,
+  normalizeDashboardTone,
+  toneDotClass,
+  toneSoftClass,
+  type DashboardTone,
+} from "@/app/dashboard/dashboard-formatters";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
-import { buildCourseDecisionAdvice, getClubDecisionLabel } from "@/lib/course-decision-advice";
-import {
-  clubSortValue,
-  formatClubType,
-  isShortGameTouchClubType,
-  isTrackedClubType,
-} from "@/lib/club-format";
-import { requireCurrentUserId } from "@/lib/current-user";
-import { getProgressData } from "@/lib/progress-data";
-import {
-  calculateHandicapSummary,
-  calculateRoundDifferential,
-  formatHandicapValue,
-  type HandicapSummary,
-} from "@/lib/round-handicap";
-import { calculateShortGameTouchSummary } from "@/lib/short-game";
-import { calculateStockYardage } from "@/lib/stock-yardage";
-import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
-import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
+import { formatClubType } from "@/lib/club-format";
+import { formatHandicapValue } from "@/lib/round-handicap";
+import type { DashboardPin } from "@/lib/user-settings";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const integerFormatter = new Intl.NumberFormat("en-GB");
-const numberFormatter = new Intl.NumberFormat("en-GB", {
-  maximumFractionDigits: 1,
-});
 
 function parseDashboardSection(section?: string): DashboardTabKey {
   if (
@@ -486,6 +478,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         primaryActionLabel={primaryActionLabel}
         activeDashboardSection={activeDashboardSection}
         featureData={featureData}
+        commandRoutes={toDashboardCommandRoutes(mobileRouteCards)}
       />
 
       <div className="hidden flex-col gap-6 sm:flex">
@@ -495,6 +488,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           coachPreview={data.coachPreview}
           scoringCeiling={formatHandicapValue(data.stats.combinedHandicap.value)}
           scoringTrend={formatHandicapTrend(data.stats.combinedHandicap)}
+          dataHealth={featureData.dataHealth}
           primaryAction={primaryAction}
           primaryActionLabel={primaryActionLabel}
           latestRound={data.latestRound}
@@ -502,7 +496,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
         {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
 
-        <DataHealthFeaturePanel data={featureData} />
+        <TodayCommandBrief
+          latestSession={latestSession}
+          bestClub={bestClub}
+          coachPreview={data.coachPreview}
+          firstSignal={firstSignal}
+          dataHealth={featureData.dataHealth}
+          primaryAction={primaryAction}
+          primaryActionLabel={primaryActionLabel}
+          latestRound={data.latestRound}
+        />
 
         <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
           <div className="flex min-w-0 flex-col gap-6">
@@ -547,7 +550,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
             <DashboardSocialPulse social={social} />
 
-            <QuickActions routes={routeCards} />
+            <QuickActions
+              routes={routeCards}
+              commandRoutes={toDashboardCommandRoutes(routeCards)}
+            />
           </section>
         </div>
       </div>
@@ -555,8 +561,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
 }
 
-type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
-type DashboardTone = "green" | "sky" | "amber" | "slate" | "pink";
 type DashboardRoute = {
   title: string;
   description: string;
@@ -587,6 +591,7 @@ function DashboardMobileLayout({
   primaryActionLabel,
   activeDashboardSection,
   featureData,
+  commandRoutes,
 }: {
   data: DashboardData;
   social: Awaited<ReturnType<typeof getFeedPageData>>;
@@ -598,6 +603,7 @@ function DashboardMobileLayout({
   primaryActionLabel: string;
   activeDashboardSection: DashboardTabKey;
   featureData: FeatureIdeasData;
+  commandRoutes: DashboardCommandRoute[];
 }) {
   return (
     <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
@@ -764,7 +770,7 @@ function DashboardMobileLayout({
 
             return (
               <Link
-                key={card.href}
+                key={`${card.title}-${card.href}`}
                 href={card.href}
                 prefetch={false}
                 className="apple-panel-strong block min-h-28 p-3"
@@ -784,35 +790,11 @@ function DashboardMobileLayout({
           })}
         </MobileHorizontalRail>
         <MobileAccordionSection
-          title="All tools"
-          description="Every page remains available without turning the dashboard into a directory."
+          title="Command palette"
+          description="Search every route without turning Today into a directory."
           count={`${routeCards.length} pages`}
         >
-          <div className="grid gap-2">
-            {routeCards.map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <Link
-                  key={card.href}
-                  href={card.href}
-                  prefetch={false}
-                  className="grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2"
-                >
-                  <span className={`grid size-8 place-items-center rounded-md ${card.accent}`}>
-                    <Icon className="size-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold">{card.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {card.description}
-                    </span>
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground">{card.metric}</span>
-                </Link>
-              );
-            })}
-          </div>
+          <DashboardCommandPalette routes={commandRoutes} />
         </MobileAccordionSection>
       </section>
 
@@ -1049,7 +1031,7 @@ function TodayPlan({
   totalShots: number;
   bestClub: DashboardData["bagPreview"][number] | null;
   biggestProblem: DashboardData["coachPreview"];
-  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+  firstSignal: DashboardInsight | null;
   primaryAction: string;
   primaryActionLabel: string;
 }) {
@@ -1324,6 +1306,7 @@ function DashboardSummaryHero({
   coachPreview,
   scoringCeiling,
   scoringTrend,
+  dataHealth,
   primaryAction,
   primaryActionLabel,
   latestRound,
@@ -1333,6 +1316,7 @@ function DashboardSummaryHero({
   coachPreview: DashboardData["coachPreview"];
   scoringCeiling: string;
   scoringTrend: string;
+  dataHealth: FeatureIdeasData["dataHealth"];
   primaryAction: string;
   primaryActionLabel: string;
   latestRound: DashboardData["latestRound"];
@@ -1430,7 +1414,7 @@ function DashboardSummaryHero({
         </Link>
       </div>
 
-      <div className="relative grid gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-4">
+      <div className="relative grid gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-5">
         <HeroInsightCard
           title="Current form"
           value={scoringCeiling}
@@ -1459,6 +1443,13 @@ function DashboardSummaryHero({
           }
           href={practiceHref}
           tone="green"
+        />
+        <HeroInsightCard
+          title="Data trust"
+          value={dataHealth.metric}
+          detail={dataHealth.status}
+          href="/settings#offline-storage"
+          tone={normalizeDashboardTone(dataHealth.tone)}
         />
         <HeroInsightCard
           title="Latest round"
@@ -1523,6 +1514,121 @@ function HeroInsightCard({
   );
 }
 
+function TodayCommandBrief({
+  latestSession,
+  bestClub,
+  coachPreview,
+  firstSignal,
+  dataHealth,
+  primaryAction,
+  primaryActionLabel,
+  latestRound,
+}: {
+  latestSession: DashboardData["recentSessions"][number] | null;
+  bestClub: DashboardData["bagPreview"][number] | null;
+  coachPreview: DashboardData["coachPreview"];
+  firstSignal: DashboardInsight | null;
+  dataHealth: FeatureIdeasData["dataHealth"];
+  primaryAction: string;
+  primaryActionLabel: string;
+  latestRound: DashboardData["latestRound"];
+}) {
+  const nextActionHref = coachPreview ? `/bag/${coachPreview.clubId}/analytics` : primaryAction;
+  const detailHref = bestClub ? `/bag/${bestClub.id}` : latestRound ? `/rounds/${latestRound.id}` : "/today";
+  const items = [
+    {
+      question: "What should I do next?",
+      answer: coachPreview
+        ? `${coachPreview.clubName} ${coachPreview.issueLabel.toLowerCase()}`
+        : primaryActionLabel,
+      detail: coachPreview
+        ? getDashboardPracticeTask(coachPreview)
+        : "Import one clean session to unlock the first reliable practice signal.",
+      href: nextActionHref,
+      action: coachPreview ? "Start drill" : "Import",
+      icon: Target,
+      tone: coachPreview ? normalizeDashboardTone(coachPreview.tone) : "green",
+    },
+    {
+      question: "What changed since last time?",
+      answer: firstSignal?.value ?? (latestSession ? formatDate(latestSession.date) : "No signal yet"),
+      detail:
+        firstSignal?.detail ??
+        (latestSession
+          ? `${integerFormatter.format(latestSession.shotCount)} shots in the latest saved session.`
+          : "Save a session and this becomes the latest movement readout."),
+      href: "/progress",
+      action: "Review",
+      icon: Star,
+      tone: firstSignal ? normalizeDashboardTone(firstSignal.tone) : "slate",
+    },
+    {
+      question: "Can I trust the data?",
+      answer: dataHealth.metric,
+      detail: dataHealth.detail,
+      href: "/settings#offline-storage",
+      action: "Check",
+      icon: Eye,
+      tone: normalizeDashboardTone(dataHealth.tone),
+    },
+    {
+      question: "Where do I go for detail?",
+      answer: bestClub ? formatClubType(bestClub.type) : latestRound ? "Latest round" : "Today",
+      detail: bestClub
+        ? `${bestClub.stock.confidenceScore}% trust with ${integerFormatter.format(bestClub.shotCount)} saved shots.`
+        : latestRound
+          ? (latestRound.courseName ?? latestRound.fileName ?? "Open the latest round review.")
+          : "Start from the latest practice readout once an import exists.",
+      href: detailHref,
+      action: "Open",
+      icon: Database,
+      tone: bestClub ? "green" : "sky",
+    },
+  ] satisfies Array<{
+    question: string;
+    answer: ReactNode;
+    detail: ReactNode;
+    href: string;
+    action: string;
+    icon: LucideIcon;
+    tone: DashboardTone;
+  }>;
+
+  return (
+    <section className="grid gap-3 rounded-[22px] border border-[#DFE7DF] bg-[#FBFDFB] p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)] lg:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
+
+        return (
+          <Link
+            key={item.question}
+            href={item.href}
+            prefetch={false}
+            className="group grid min-h-[11.5rem] grid-rows-[auto_1fr_auto] rounded-[18px] border border-[#E5E7EB] bg-white p-4 transition-colors hover:border-[#0B7A3B]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-sm font-semibold leading-5 text-[#111827]">{item.question}</p>
+              <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", toneSoftClass(item.tone))}>
+                <Icon className="size-4" />
+              </span>
+            </div>
+            <div className="mt-4 min-w-0">
+              <p className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
+                {item.answer}
+              </p>
+              <p className="mt-1 line-clamp-3 text-sm leading-5 text-[#667085]">{item.detail}</p>
+            </div>
+            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
+              {item.action}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </Link>
+        );
+      })}
+    </section>
+  );
+}
+
 function LatestPracticeSignalPanel({
   latestSession,
   stats,
@@ -1533,7 +1639,7 @@ function LatestPracticeSignalPanel({
 }: {
   latestSession: DashboardData["recentSessions"][number] | null;
   stats: DashboardData["stats"];
-  firstSignal: ReturnType<typeof buildWhatChangedInsights>[number] | null;
+  firstSignal: DashboardInsight | null;
   latestRound: DashboardData["latestRound"];
   compact?: boolean;
   className?: string;
@@ -2102,31 +2208,60 @@ function getDashboardLadderClubs(clubs: DashboardData["bagPreview"]) {
 
 function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] }) {
   const maxCarry = Math.max(1, ...clubs.map((club) => club.stock.carryMedianYd ?? 0));
+  const sortedClubs = [...clubs].sort(
+    (left, right) => (right.stock.carryMedianYd ?? 0) - (left.stock.carryMedianYd ?? 0),
+  );
 
   return (
     <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
-      <p className="text-sm font-semibold text-[#111827]">Club-distance ladder</p>
+      <p className="text-sm font-semibold text-[#111827]">Bag confidence ladder</p>
       <div className="mt-3 grid gap-2.5">
-        {clubs.map((club) => {
+        {sortedClubs.map((club, index) => {
           const carry = club.stock.carryMedianYd ?? 0;
           const width = Math.max(8, Math.round((carry / maxCarry) * 100));
+          const nextCarry = sortedClubs[index + 1]?.stock.carryMedianYd ?? null;
+          const hasGappingWarning =
+            carry > 0 && nextCarry !== null && nextCarry > 0 && Math.abs(carry - nextCarry) < 8;
+          const needsMoreShots = club.stock.confidenceScore < 60;
 
           return (
             <Link
               key={club.id}
               href={`/bag/${club.id}`}
               prefetch={false}
-              className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.5rem] items-center gap-3 text-sm"
+              className="grid gap-2 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]"
             >
-              <span className="font-semibold text-[#111827]">{formatClubType(club.type)}</span>
-              <span className="h-2 overflow-hidden rounded-full bg-[#EEF2F0]">
-                <span
-                  className="block h-full rounded-full bg-[#9AD7AE]"
-                  style={{ width: `${width}%` }}
-                />
+              <span className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.75rem_3.75rem] items-center gap-3">
+                <span className="font-semibold text-[#111827]">{formatClubType(club.type)}</span>
+                <span className="h-2 overflow-hidden rounded-full bg-[#EEF2F0]">
+                  <span
+                    className="block h-full rounded-full bg-[#9AD7AE]"
+                    style={{ width: `${width}%` }}
+                  />
+                </span>
+                <span className="text-right tabular-nums text-[#111827]">
+                  {formatYards(club.stock.carryMedianYd)}
+                </span>
+                <span className="text-right tabular-nums text-[#667085]">
+                  {club.stock.confidenceScore}%
+                </span>
               </span>
-              <span className="text-right tabular-nums text-[#667085]">
-                {formatYards(club.stock.carryMedianYd)}
+              <span className="flex flex-wrap gap-1.5 pl-[4.5rem] text-[11px] font-semibold uppercase tracking-[0.08em]">
+                {club.stock.recommendedPlayNumberYd ? (
+                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">
+                    Safe {formatYards(club.stock.recommendedPlayNumberYd)}
+                  </span>
+                ) : null}
+                {needsMoreShots ? (
+                  <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+                    Needs more shots
+                  </span>
+                ) : null}
+                {hasGappingWarning ? (
+                  <span className="rounded-full bg-rose-50 px-2 py-1 text-rose-700">
+                    Gap warning
+                  </span>
+                ) : null}
               </span>
             </Link>
           );
@@ -2403,7 +2538,7 @@ function WhatChangedPanel({
   insights,
   className,
 }: {
-  insights: ReturnType<typeof buildWhatChangedInsights>;
+  insights: DashboardInsight[];
   className?: string;
 }) {
   return (
@@ -2536,7 +2671,13 @@ function SocialStatLink({
   );
 }
 
-function QuickActions({ routes }: { routes: DashboardRoute[] }) {
+function QuickActions({
+  routes,
+  commandRoutes,
+}: {
+  routes: DashboardRoute[];
+  commandRoutes: DashboardCommandRoute[];
+}) {
   const primaryRoutes = routes.slice(0, 6);
   const secondaryRoutes = routes.slice(6);
 
@@ -2545,7 +2686,7 @@ function QuickActions({ routes }: { routes: DashboardRoute[] }) {
 
     return (
       <Link
-        key={route.href}
+        key={`${route.title}-${route.href}`}
         href={route.href}
         prefetch={false}
         title={route.description}
@@ -2577,18 +2718,27 @@ function QuickActions({ routes }: { routes: DashboardRoute[] }) {
       {secondaryRoutes.length > 0 ? (
         <details className="mt-3 rounded-lg border border-[#DFE7DF] bg-white">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-[#111827] marker:hidden">
-            <span>All tools</span>
+            <span>Command palette</span>
             <span className="text-xs font-medium text-[#667085]">
               {secondaryRoutes.length} more
             </span>
           </summary>
-          <div className="grid gap-2 border-t border-[#E5E7EB] p-3 sm:grid-cols-2">
-            {secondaryRoutes.map(renderRoute)}
+          <div className="border-t border-[#E5E7EB] p-3">
+            <DashboardCommandPalette routes={commandRoutes} />
           </div>
         </details>
       ) : null}
     </DashboardPanel>
   );
+}
+
+function toDashboardCommandRoutes(routes: DashboardRoute[]): DashboardCommandRoute[] {
+  return routes.map((route) => ({
+    title: route.title,
+    description: route.description,
+    href: route.href,
+    metric: String(route.metric),
+  }));
 }
 
 function DashboardSocialMoment({ item }: { item: FeedItemView }) {
@@ -2630,686 +2780,4 @@ function getBestClub(clubs: DashboardData["bagPreview"]) {
       return trustDelta || right.shotCount - left.shotCount;
     })[0] ?? null
   );
-}
-
-function formatHandicapTrend(summary: HandicapSummary) {
-  const trend = summary.trend.direction;
-  const delta = summary.trend.delta;
-
-  if (trend === "down" && typeof delta === "number") {
-    return `Improved by ${formatHandicapValue(Math.abs(delta))}`;
-  }
-
-  if (trend === "up" && typeof delta === "number") {
-    return `Higher by ${formatHandicapValue(Math.abs(delta))}`;
-  }
-
-  if (trend === "flat") {
-    return "Flat trend";
-  }
-
-  return `${summary.sampleSize} round sample`;
-}
-
-function formatScoreVsPar(score: number | null, par: number | null) {
-  if (typeof score !== "number") {
-    return "--";
-  }
-
-  if (typeof par !== "number") {
-    return integerFormatter.format(score);
-  }
-
-  const versusPar = score - par;
-  return `${integerFormatter.format(score)} (${versusPar >= 0 ? "+" : ""}${integerFormatter.format(versusPar)})`;
-}
-
-function getRoundHoleHighlights(latestRound: NonNullable<DashboardData["latestRound"]>) {
-  const holes = (latestRound.scorecardJson ?? [])
-    .map((hole, index) => ({
-      holeNumber: index + 1,
-      delta: typeof hole.score === "number" ? hole.score - hole.par : null,
-    }))
-    .filter((hole): hole is { holeNumber: number; delta: number } => hole.delta !== null);
-
-  if (holes.length === 0) {
-    return null;
-  }
-
-  const best = holes.reduce((left, right) => (right.delta < left.delta ? right : left));
-  const worst = holes.reduce((left, right) => (right.delta > left.delta ? right : left));
-
-  return {
-    best: `${best.delta <= -1 ? "Birdie" : formatHoleResult(best.delta)} · hole ${best.holeNumber}`,
-    watch: worst.delta > 0 ? `+${worst.delta} · hole ${worst.holeNumber}` : null,
-  };
-}
-
-function formatHoleResult(delta: number | null) {
-  if (delta === null) {
-    return "--";
-  }
-
-  if (delta <= -1) {
-    return "Bird";
-  }
-
-  if (delta === 0) {
-    return "Par";
-  }
-
-  if (delta === 1) {
-    return "Bog";
-  }
-
-  return `+${delta}`;
-}
-
-function holeResultClass(delta: number | null) {
-  if (delta === null) {
-    return "bg-[#F2F4F7] text-[#667085]";
-  }
-
-  if (delta <= -1) {
-    return "bg-[#E8F7EE] text-[#087A3D]";
-  }
-
-  if (delta === 0) {
-    return "bg-[#EAF1FF] text-[#2563EB]";
-  }
-
-  if (delta === 1) {
-    return "bg-[#FFF4DB] text-[#8A4B00]";
-  }
-
-  return "bg-[#FEE4E2] text-[#B42318]";
-}
-
-function getCompactPracticeTask(drill: string) {
-  return drill.split(/\s+The goal\b/i)[0]?.trim() || drill;
-}
-
-function getDashboardPracticeTask(coachPreview: NonNullable<DashboardData["coachPreview"]>) {
-  if (/direction/i.test(coachPreview.issueLabel)) {
-    return "Hit 10 balls with a hard left boundary. Count only shots inside the playable window.";
-  }
-
-  return getCompactPracticeTask(coachPreview.drill);
-}
-
-function normalizeDashboardTone(tone: DashboardTone): Exclude<DashboardTone, "pink"> {
-  return tone === "pink" ? "amber" : tone;
-}
-
-function toneDotClass(tone: DashboardTone) {
-  switch (normalizeDashboardTone(tone)) {
-    case "green":
-      return "bg-[#0F8F4D] ring-[#E8F7EE]";
-    case "amber":
-      return "bg-[#8A4B00] ring-[#FFF4DB]";
-    case "sky":
-      return "bg-[#2563EB] ring-[#EAF1FF]";
-    case "slate":
-      return "bg-[#98A2B3] ring-[#F2F4F7]";
-  }
-}
-
-function toneSoftClass(tone: DashboardTone) {
-  switch (normalizeDashboardTone(tone)) {
-    case "green":
-      return "bg-[#E8F7EE] text-[#087A3D]";
-    case "amber":
-      return "bg-[#FFF4DB] text-[#8A4B00]";
-    case "sky":
-      return "bg-[#EAF1FF] text-[#2563EB]";
-    case "slate":
-      return "bg-[#F2F4F7] text-[#667085]";
-  }
-}
-
-function normalizeDashboardPins(value: string[] | null | undefined): DashboardPin[] {
-  const allowedPins = new Set<string>(dashboardPinOptions);
-  const pins = (value ?? []).filter((pin): pin is DashboardPin => allowedPins.has(pin));
-
-  return pins.length > 0 ? pins : [...dashboardPinOptions];
-}
-
-async function getDashboardData() {
-  const db = getDb();
-  const userId = await requireCurrentUserId();
-  const [
-    [shotCount],
-    [rawRowCount],
-    [sessionCount],
-    [profile],
-    recentSessionRows,
-    roundRows,
-    allClubRows,
-    shotCountsByClub,
-    recentStockShots,
-  ] = await Promise.all([
-    db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
-    db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
-    db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
-    db
-      .select({ dashboardPins: users.dashboardPins })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1),
-    db
-      .select({
-        id: sessions.id,
-        fileName: sessions.fileName,
-        type: sessions.type,
-        courseName: sessions.courseName,
-        date: sessions.date,
-      })
-      .from(sessions)
-      .where(eq(sessions.userId, userId))
-      .orderBy(desc(sessions.date), asc(sessions.fileName))
-      .limit(5),
-    db
-      .select({
-        id: sessions.id,
-        fileName: sessions.fileName,
-        type: sessions.type,
-        courseName: sessions.courseName,
-        date: sessions.date,
-        scorecardJson: sessions.scorecardJson,
-        courseRating: teeSets.courseRating,
-        slopeRating: teeSets.slopeRating,
-        providerKind: rapsodoSyncSessions.providerKind,
-        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
-      })
-      .from(sessions)
-      .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
-      .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
-      .orderBy(desc(sessions.date), asc(sessions.fileName)),
-    db
-      .select({
-        id: clubs.id,
-        type: clubs.type,
-        brand: clubs.brand,
-        model: clubs.model,
-      })
-      .from(clubs)
-      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
-      .orderBy(asc(clubs.type)),
-    db
-      .select({
-        clubId: shots.clubId,
-        count: count(),
-      })
-      .from(shots)
-      .where(eq(shots.userId, userId))
-      .groupBy(shots.clubId),
-    db
-      .select({
-        id: shots.id,
-        clubId: shots.clubId,
-        shotAt: shots.shotAt,
-        carryYd: shots.carryYd,
-        totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
-        ballSpeedMph: shots.ballSpeedMph,
-        launchAngleDeg: shots.launchAngleDeg,
-        courseHoleNumber: shots.courseHoleNumber,
-        sessionType: sessions.type,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-      })
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
-      .orderBy(desc(shots.shotAt))
-      .limit(500),
-  ]);
-  const clubRows = allClubRows.filter((club) => isTrackedClubType(club.type));
-
-  const recentSessionIds = recentSessionRows.map((session) => session.id);
-  const [shotCountsBySession, rawCountsBySession] =
-    recentSessionIds.length > 0
-      ? await Promise.all([
-          db
-            .select({
-              sessionId: shots.sessionId,
-              count: count(),
-            })
-            .from(shots)
-            .where(and(eq(shots.userId, userId), inArray(shots.sessionId, recentSessionIds)))
-            .groupBy(shots.sessionId),
-          db
-            .select({
-              sessionId: importRows.sessionId,
-              count: count(),
-            })
-            .from(importRows)
-            .where(
-              and(eq(importRows.userId, userId), inArray(importRows.sessionId, recentSessionIds)),
-            )
-            .groupBy(importRows.sessionId),
-        ])
-      : [[], []];
-
-  const shotCountBySessionId = new Map(
-    shotCountsBySession.map((row) => [row.sessionId, row.count]),
-  );
-  const rawCountBySessionId = new Map(rawCountsBySession.map((row) => [row.sessionId, row.count]));
-  const shotCountByClubId = new Map(shotCountsByClub.map((row) => [row.clubId, row.count]));
-  const stockShotsByClubId = new Map<string, typeof recentStockShots>();
-
-  for (const shot of recentStockShots) {
-    const clubShots = stockShotsByClubId.get(shot.clubId) ?? [];
-    clubShots.push(shot);
-    stockShotsByClubId.set(shot.clubId, clubShots);
-  }
-
-  const recentSessions = recentSessionRows.map((session) => ({
-    ...session,
-    shotCount: shotCountBySessionId.get(session.id) ?? 0,
-    rawRowCount: rawCountBySessionId.get(session.id) ?? 0,
-  }));
-
-  const bag = clubRows
-    .map((club) => {
-      const clubShots = stockShotsByClubId.get(club.id) ?? [];
-      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
-      const stock = calculateStockYardage(clubShots, 50, {
-        clubType: club.type,
-      });
-      const touch = calculateShortGameTouchSummary(clubShots, 80, {
-        clubType: club.type,
-      });
-      const isShortGameTouch = isShortGameTouchClubType(club.type);
-      const decisionLabel = getClubDecisionLabel({
-        isShortGameTouch,
-        stockLabel: stock.label,
-      });
-
-      return {
-        ...club,
-        brandModel,
-        isShortGameTouch,
-        decisionLabel,
-        shotCount: shotCountByClubId.get(club.id) ?? 0,
-        stock,
-        touch,
-      };
-    })
-    .sort((left, right) => {
-      const shotCountDifference = right.shotCount - left.shotCount;
-      return shotCountDifference || clubSortValue(left.type) - clubSortValue(right.type);
-    });
-  const bagPreview = bag.slice(0, 5);
-  const courseAdvice = buildCourseDecisionAdvice(bag);
-  const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
-  const latestRound = roundSummaries[0] ?? null;
-  const realHandicap = calculateHandicapSummary(
-    roundSummaries
-      .filter((round) => round.type === "real_round")
-      .map((round) => round.handicapDifferential),
-  );
-  const simHandicap = calculateHandicapSummary(
-    roundSummaries
-      .filter((round) => round.type !== "real_round")
-      .map((round) => round.handicapDifferential),
-  );
-  const combinedHandicap = calculateHandicapSummary(
-    roundSummaries.map((round) => round.handicapDifferential),
-  );
-  const whatChanged = buildWhatChangedInsights({
-    clubRows,
-    stockShots: recentStockShots,
-    bagPreview,
-    latestRound,
-  });
-  const coachData = await getProgressData();
-  const coachCard = buildCoachSummary(coachData.clubs).clubCards[0] ?? null;
-
-  return {
-    dashboardPins: normalizeDashboardPins(profile?.dashboardPins),
-    stats: {
-      shotCount: shotCount?.value ?? 0,
-      rawRowCount: rawRowCount?.value ?? 0,
-      sessionCount: sessionCount?.value ?? 0,
-      clubCount: clubRows.length,
-      roundCount: roundSummaries.length,
-      realHandicap,
-      simHandicap,
-      combinedHandicap,
-    },
-    recentSessions,
-    latestRound,
-    bagPreview,
-    courseAdvice,
-    whatChanged,
-    coachPreview: coachCard
-      ? {
-          clubId: coachCard.clubId,
-          clubName: coachCard.clubName,
-          issueLabel: coachCard.issueLabel,
-          reason: coachCard.reason,
-          drill: coachCard.drill,
-          tone: coachCard.tone,
-          trustIndex: coachCard.trustIndex,
-        }
-      : null,
-  };
-}
-
-type InsightTone = "green" | "sky" | "amber" | "slate";
-
-function buildWhatChangedInsights({
-  clubRows,
-  stockShots,
-  bagPreview,
-  latestRound,
-}: {
-  clubRows: Array<{ id: string; type: string }>;
-  stockShots: Array<{
-    clubId: string;
-    shotAt: Date;
-    carryYd: number | null;
-    sideCarryYd: number | null;
-    ballSpeedMph: number | null;
-  }>;
-  bagPreview: Array<{
-    type: string;
-    shotCount: number;
-    stock: {
-      confidenceScore: number;
-      carryMedianYd: number | null;
-      label: string;
-    };
-  }>;
-  latestRound: ReturnType<typeof summarizeRound> | null;
-}) {
-  const clubTypeById = new Map(clubRows.map((club) => [club.id, club.type]));
-  const now = new Date();
-  const currentStart = daysBefore(now, 30);
-  const previousStart = daysBefore(now, 60);
-  const shotsByClub = new Map<string, typeof stockShots>();
-
-  for (const shot of stockShots) {
-    if (!clubTypeById.has(shot.clubId)) {
-      continue;
-    }
-
-    const clubShots = shotsByClub.get(shot.clubId) ?? [];
-    clubShots.push(shot);
-    shotsByClub.set(shot.clubId, clubShots);
-  }
-
-  const clubChanges = [...shotsByClub.entries()]
-    .map(([clubId, clubShots]) => {
-      const currentShots = clubShots.filter((shot) => {
-        const shotDate = new Date(shot.shotAt);
-        return shotDate >= currentStart && shotDate <= now;
-      });
-      const previousShots = clubShots.filter((shot) => {
-        const shotDate = new Date(shot.shotAt);
-        return shotDate >= previousStart && shotDate < currentStart;
-      });
-
-      const currentCarry = median(currentShots.map((shot) => shot.carryYd).filter(isNumber));
-      const previousCarry = median(previousShots.map((shot) => shot.carryYd).filter(isNumber));
-      const currentMiss = averageNumber(
-        currentShots
-          .map((shot) => shot.sideCarryYd)
-          .filter(isNumber)
-          .map(Math.abs),
-      );
-      const previousMiss = averageNumber(
-        previousShots
-          .map((shot) => shot.sideCarryYd)
-          .filter(isNumber)
-          .map(Math.abs),
-      );
-      const currentBallSpeed = averageNumber(
-        currentShots.map((shot) => shot.ballSpeedMph).filter(isNumber),
-      );
-      const previousBallSpeed = averageNumber(
-        previousShots.map((shot) => shot.ballSpeedMph).filter(isNumber),
-      );
-
-      return {
-        clubId,
-        clubType: clubTypeById.get(clubId) ?? "club",
-        currentCount: currentShots.length,
-        previousCount: previousShots.length,
-        carryDelta:
-          currentCarry !== null && previousCarry !== null ? currentCarry - previousCarry : null,
-        missDelta:
-          currentMiss !== null && previousMiss !== null ? currentMiss - previousMiss : null,
-        ballSpeedDelta:
-          currentBallSpeed !== null && previousBallSpeed !== null
-            ? currentBallSpeed - previousBallSpeed
-            : null,
-      };
-    })
-    .filter((change) => change.currentCount >= 3 && change.previousCount >= 3);
-
-  const insights: Array<{
-    label: string;
-    value: string;
-    detail: string;
-    tone: InsightTone;
-  }> = [];
-
-  const strongestCarryChange = clubChanges
-    .filter((change) => change.carryDelta !== null)
-    .sort((left, right) => Math.abs(right.carryDelta ?? 0) - Math.abs(left.carryDelta ?? 0))[0];
-
-  if (strongestCarryChange?.carryDelta !== null && strongestCarryChange?.carryDelta !== undefined) {
-    insights.push({
-      label: `${formatClubType(strongestCarryChange.clubType)} carry`,
-      value: `${formatSignedYards(strongestCarryChange.carryDelta)} vs previous 30`,
-      detail: `${strongestCarryChange.currentCount} recent shots compared with ${strongestCarryChange.previousCount} older shots.`,
-      tone: strongestCarryChange.carryDelta >= 0 ? "green" : "amber",
-    });
-  }
-
-  const strongestMissChange = clubChanges
-    .filter((change) => change.missDelta !== null)
-    .sort((left, right) => Math.abs(right.missDelta ?? 0) - Math.abs(left.missDelta ?? 0))[0];
-
-  if (strongestMissChange?.missDelta !== null && strongestMissChange?.missDelta !== undefined) {
-    const tighter = strongestMissChange.missDelta < 0;
-    insights.push({
-      label: `${formatClubType(strongestMissChange.clubType)} dispersion`,
-      value: `${numberFormatter.format(Math.abs(strongestMissChange.missDelta))} yd ${tighter ? "tighter" : "wider"}`,
-      detail: "Average left/right miss compared with the previous 30-day window.",
-      tone: tighter ? "green" : "amber",
-    });
-  }
-
-  const strongestSpeedChange = clubChanges
-    .filter((change) => change.ballSpeedDelta !== null)
-    .sort(
-      (left, right) => Math.abs(right.ballSpeedDelta ?? 0) - Math.abs(left.ballSpeedDelta ?? 0),
-    )[0];
-
-  if (
-    strongestSpeedChange?.ballSpeedDelta !== null &&
-    strongestSpeedChange?.ballSpeedDelta !== undefined
-  ) {
-    insights.push({
-      label: `${formatClubType(strongestSpeedChange.clubType)} speed`,
-      value: `${formatSignedNumber(strongestSpeedChange.ballSpeedDelta)} mph`,
-      detail: "Ball speed movement against the previous 30-day window.",
-      tone: strongestSpeedChange.ballSpeedDelta >= 0 ? "sky" : "slate",
-    });
-  }
-
-  if (latestRound && latestRound.totalScore !== null && latestRound.totalPar !== null) {
-    const versusPar = latestRound.totalScore - latestRound.totalPar;
-    insights.push({
-      label: "Latest round",
-      value: `${latestRound.totalScore} (${versusPar >= 0 ? "+" : ""}${versusPar})`,
-      detail: "Review this round to keep recent form accurate.",
-      tone: versusPar <= 10 ? "green" : "amber",
-    });
-  }
-
-  const bestConfidenceClub = [...bagPreview].sort(
-    (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
-  )[0];
-
-  if (bestConfidenceClub) {
-    insights.push({
-      label: "Most trusted club",
-      value: `${formatClubType(bestConfidenceClub.type)} / ${Math.round(bestConfidenceClub.stock.confidenceScore)}%`,
-      detail: `Reliable with ${integerFormatter.format(bestConfidenceClub.shotCount)} saved shots.`,
-      tone: "green",
-    });
-  }
-
-  const fillerOptions: Array<{
-    label: string;
-    value: string;
-    detail: string;
-    tone: "slate";
-  }> = [
-    {
-      label: "Data depth",
-      value:
-        bagPreview.length > 0
-          ? `${integerFormatter.format(bagPreview.length)} clubs mapped`
-          : "Import needed",
-      detail:
-        bagPreview.length > 0
-          ? "Keep adding shots to unlock stronger trend comparisons."
-          : "Upload a Rapsodo CSV to start building the personal baseline.",
-      tone: "slate",
-    },
-    {
-      label: "Next step",
-      value: "Log a session",
-      detail: "More recent shots produce sharper insight cards on this dashboard.",
-      tone: "slate",
-    },
-    {
-      label: "Coverage",
-      value: bagPreview.length > 0 ? "Bag mapped" : "Bag not mapped",
-      detail:
-        bagPreview.length > 0
-          ? "Refresh stock yardages from the bag page after each range session."
-          : "Map every club so on-course distances become trustworthy.",
-      tone: "slate",
-    },
-  ];
-
-  let fillerIndex = 0;
-  while (insights.length < 3 && fillerIndex < fillerOptions.length) {
-    insights.push(fillerOptions[fillerIndex]);
-    fillerIndex += 1;
-  }
-
-  return insights.slice(0, 3);
-}
-
-function summarizeRound(round: {
-  id: string;
-  fileName: string | null;
-  type: string;
-  courseName: string | null;
-  date: Date;
-  courseRating?: number | null;
-  slopeRating?: number | null;
-  scorecardJson: Array<{
-    par: number;
-    score?: number | null;
-    putts?: number | null;
-  }> | null;
-}) {
-  const scorecard = round.scorecardJson ?? [];
-  const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
-  const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-  const totalPar =
-    scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
-  const handicapDifferential = calculateRoundDifferential({
-    totalScore,
-    totalPar,
-    courseRating: round.courseRating ?? null,
-    slopeRating: round.slopeRating ?? null,
-    holesPlayed: scorecard.length,
-  });
-
-  return {
-    ...round,
-    totalScore,
-    totalPutts,
-    totalPar,
-    handicapDifferential,
-  };
-}
-
-function sumNullable(values: Array<number | null>) {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
-}
-
-function daysBefore(value: Date, days: number) {
-  const date = new Date(value);
-  date.setDate(date.getDate() - days);
-  return date;
-}
-
-function median(values: number[]) {
-  if (values.length === 0) {
-    return null;
-  }
-
-  const sorted = [...values].sort((left, right) => left - right);
-  const middle = Math.floor(sorted.length / 2);
-
-  return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
-}
-
-function averageNumber(values: number[]) {
-  return values.length > 0
-    ? values.reduce((total, value) => total + value, 0) / values.length
-    : null;
-}
-
-function isNumber(value: number | null): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(value);
-}
-
-function formatYards(value: number | null) {
-  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
-}
-
-function formatSignedYards(value: number) {
-  return `${formatSignedNumber(value)} yd`;
-}
-
-function formatSignedNumber(value: number) {
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${numberFormatter.format(value)}`;
-}
-
-function formatSessionType(value: string) {
-  if (value === "real_round") {
-    return "Real round";
-  }
-
-  if (value === "simulated_course") {
-    return "Sim course";
-  }
-
-  return value
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
 }

@@ -45,7 +45,7 @@ export function ScorecardExtractionPanel({
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onApplySawgrassPreset}>
-            Use TPC Sawgrass preset
+            Use sample TPC Sawgrass scorecard
           </Button>
           <input
             ref={scorecardImageInputRef}
@@ -106,7 +106,7 @@ export function ScorecardExtractionPanel({
             id="course-name"
             value={courseName}
             onChange={(event) => onCourseNameChange(event.target.value)}
-            placeholder="TPC Sawgrass"
+            placeholder="Confirm course name"
           />
         </div>
         <div className="space-y-2">

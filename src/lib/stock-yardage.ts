@@ -49,6 +49,7 @@ export type StockYardageSample<T extends StockShot> = {
 
 export type StockYardageOptions = {
   clubType?: string | null;
+  averageSampleSize?: number;
 };
 
 const EXCLUDED_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
@@ -132,7 +133,10 @@ export function selectStockYardageShots<T extends StockShot>(
   const recentCandidatePool = [...stockCandidates]
     .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
     .slice(0, maxShots);
-  const cleanShots = selectBestStockShots(recentCandidatePool, STOCK_AVERAGE_SAMPLE_SIZE);
+  const cleanShots = selectBestStockShots(
+    recentCandidatePool,
+    options.averageSampleSize ?? STOCK_AVERAGE_SAMPLE_SIZE,
+  );
   const carryValues = cleanShots.map((shot) => shot.carryYd).filter(isNumber);
 
   if (carryValues.length === 0) {

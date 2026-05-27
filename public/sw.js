@@ -1,6 +1,8 @@
-const CACHE_NAME = "forekinghell-pwa-v4";
-const PAGE_CACHE_NAME = "forekinghell-pwa-pages-v1";
+const CACHE_NAME = "forekinghell-pwa-v5";
+const PAGE_CACHE_NAME = "forekinghell-pwa-pages-v2";
+const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [
+  "/offline",
   "/manifest.webmanifest",
   "/icons/favicon-16x16.png",
   "/icons/favicon-32x32.png",
@@ -38,6 +40,10 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+
+  if (event.data?.type === "FKH_PURGE_PRIVATE_CACHES") {
+    event.waitUntil(caches.delete(PAGE_CACHE_NAME));
   }
 });
 
@@ -105,17 +111,27 @@ self.addEventListener("sync", (event) => {
 
 async function networkFirstPage(request) {
   const cache = await caches.open(PAGE_CACHE_NAME);
+  const url = new URL(request.url);
 
   try {
     const response = await fetch(request);
 
-    if (response.ok && response.headers.get("content-type")?.includes("text/html")) {
+    if (
+      response.ok &&
+      OFFLINE_SAFE_PAGE_PATHS.has(url.pathname) &&
+      !request.headers.get("cookie") &&
+      !response.headers.has("set-cookie") &&
+      response.headers.get("content-type")?.includes("text/html")
+    ) {
       cache.put(request, response.clone());
     }
 
     return response;
   } catch {
-    const cached = await cache.match(request);
+    const cached =
+      (OFFLINE_SAFE_PAGE_PATHS.has(url.pathname) ? await cache.match(request) : null) ||
+      (await cache.match("/offline"));
+
     return (
       cached ||
       new Response("LM World Tour is offline and this page is not cached yet.", {

@@ -34,6 +34,7 @@ import {
 
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { purgePrivateServiceWorkerCaches } from "@/lib/service-worker-cache";
 import { calculateUserLevel } from "@/lib/achievements/xp";
 import { BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 
@@ -407,7 +408,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
 
                       return (
                         <Link
-                          key={item.href}
+                          key={`${group.label}-${item.href}`}
                           href={item.href}
                           role="menuitem"
                           aria-current={active ? "page" : undefined}
@@ -439,7 +440,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
 
               return (
                 <Button
-                  key={item.href}
+                  key={`tablet-${item.label}-${item.href}`}
                   asChild
                   variant={active ? "default" : "ghost"}
                   className={
@@ -475,7 +476,12 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
             <Zap className="size-4 text-emerald-300" />
             <span>Lvl {level.level}</span>
           </Link>
-          <form action="/auth/sign-out" method="post" className="hidden sm:block">
+          <form
+            action="/auth/sign-out"
+            method="post"
+            className="hidden sm:block"
+            onSubmit={() => purgePrivateServiceWorkerCaches()}
+          >
             <Button
               type="submit"
               variant="ghost"
@@ -524,7 +530,7 @@ export function AppNav({ totalXp, isAdmin = false, profile = null }: AppNavProps
 
             return (
               <Link
-                key={item.href}
+                key={`mobile-${item.label}-${item.href}`}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={

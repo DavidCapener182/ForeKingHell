@@ -1,9 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { calculateClubAnalytics, type ClubAnalyticsShot } from "@/lib/club-analytics";
 import { buildProgressSummary, type ProgressClub } from "@/lib/progress-summary";
 
 describe("buildProgressSummary", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-21T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("surfaces the most improved, most trusted, and practice-priority clubs", () => {
     const clubs: ProgressClub[] = [
       progressClub({
@@ -40,7 +49,7 @@ describe("buildProgressSummary", () => {
 
     expect(summary.totals.clubs).toBe(3);
     expect(summary.rankings.mostImproved?.clubType).toBe("driver");
-    expect(summary.rankings.mostTrusted?.clubType).toBe("8i");
+    expect(summary.rankings.mostTrusted?.clubType).toBe("driver");
     expect(summary.practicePlan[0]?.clubType).toBe("5w");
     expect(summary.signals.some((signal) => signal.label.includes("Driver"))).toBe(true);
     expect(summary.journey.some((event) => event.title.includes("Driver"))).toBe(true);

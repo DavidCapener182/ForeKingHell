@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { calculateClubAnalytics, classifyShotShape, likelyMishitTags } from "@/lib/club-analytics";
 
@@ -13,6 +13,15 @@ describe("classifyShotShape", () => {
 });
 
 describe("calculateClubAnalytics", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-21T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("builds distance, accuracy, delivery, and progress profiles from clean shots", () => {
     const baselineShots = Array.from({ length: 20 }, (_, index) =>
       shot({
@@ -33,11 +42,11 @@ describe("calculateClubAnalytics", () => {
         sessionId: "current-session",
         shotAt: `2026-05-${String(index + 1).padStart(2, "0")}T12:00:00.000Z`,
         carryYd: 205 + (index % 3),
-        sideCarryYd: -10 + (index % 4),
+        sideCarryYd: -24 + (index % 4),
         ballSpeedMph: 135 + (index % 2),
         launchAngleDeg: 15,
         launchDirectionDeg: 1,
-        clubPathDeg: 3,
+        clubPathDeg: 7,
       }),
     );
 
@@ -46,7 +55,7 @@ describe("calculateClubAnalytics", () => {
       shots: [...baselineShots, ...currentShots],
     });
 
-    expect(analytics.sample.stockShots).toBeGreaterThanOrEqual(30);
+    expect(analytics.sample.stockShots).toBe(20);
     expect(analytics.distance.safeCarryYd).toBeLessThan(analytics.distance.aggressiveCarryYd ?? 0);
     expect(analytics.accuracy.primaryMiss).toBe("Left");
     expect(analytics.launch.launchWindowScore).toBe(100);

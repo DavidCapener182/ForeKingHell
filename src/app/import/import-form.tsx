@@ -38,7 +38,17 @@ import { MobileCompactPageHeader, StickyMobileAction } from "@/components/premiu
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { achievementUnlockHref, clubHref, shotRowsHref } from "@/lib/alert-links";
 import { trackPlausibleEvent } from "@/lib/analytics";
+import {
+  MAX_IMPORT_CSV_BYTES,
+  MAX_IMPORT_FILES_PER_BATCH,
+  formatMegabytes,
+  utf8ByteLength,
+} from "@/lib/imports/import-limits";
 import { queueOfflineAction } from "@/lib/offline-queue";
+import {
+  isOfflineImportStorageEnabled,
+  subscribeOfflineImportStoragePreference,
+} from "@/lib/offline-storage-preferences";
 import {
   inferCourseShotsFromHoleShotCounts,
   inferCourseShots,
@@ -130,6 +140,7 @@ export function ImportForm({
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [isOnline, setIsOnline] = useState(true);
+  const [offlineStorageEnabled, setOfflineStorageEnabled] = useState(false);
   const isCourseUpload = sessionType === "simulated_course";
   const mobileImportSteps = useMemo(
     () => [
@@ -162,6 +173,13 @@ export function ImportForm({
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
+  }, []);
+
+  useEffect(() => {
+    const updatePreference = () => setOfflineStorageEnabled(isOfflineImportStorageEnabled());
+
+    updatePreference();
+    return subscribeOfflineImportStoragePreference(updatePreference);
   }, []);
 
   const scorecard = useMemo(() => parseScorecardText(scorecardText), [scorecardText]);
@@ -276,6 +294,25 @@ export function ImportForm({
       }
     }
 
+    if (uploadedFiles.length > MAX_IMPORT_FILES_PER_BATCH) {
+      warnings.push(
+        `Import up to ${MAX_IMPORT_FILES_PER_BATCH} CSV files at a time. Split larger batches into smaller imports.`,
+      );
+    }
+
+    const oversizedFiles = uploadedFiles.filter(
+      (file) =>
+        Math.max(file.fileSizeBytes, utf8ByteLength(file.rawCsvText)) > MAX_IMPORT_CSV_BYTES,
+    );
+
+    if (oversizedFiles.length > 0) {
+      warnings.push(
+        `${oversizedFiles.map((file) => file.fileName).join(", ")} ${
+          oversizedFiles.length === 1 ? "is" : "are"
+        } too large. Maximum CSV size is ${formatMegabytes(MAX_IMPORT_CSV_BYTES)}.`,
+      );
+    }
+
     return {
       fileCount: uploadedFiles.length,
       rowCount: parsedFiles.reduce((total, file) => total + file.parsed.rawRows.length, 0),
@@ -291,7 +328,7 @@ export function ImportForm({
     scorecard.holes.length,
     scorecard.warnings,
     scorecardText,
-    uploadedFiles.length,
+    uploadedFiles,
   ]);
 
   const courseShotByRowNumber = useMemo(
@@ -311,8 +348,15 @@ export function ImportForm({
     .slice(0, 12);
 
   const detectedUnits = [...new Set(parsedFiles.map((file) => file.parsed.detectedDistanceUnit))];
+  const detectedSessionDateIso =
+    parsedFiles.find((file) => file.parsed.exportedAtIso)?.parsed.exportedAtIso ?? null;
   const canSave =
     uploadedFiles.length > 0 &&
+    uploadedFiles.length <= MAX_IMPORT_FILES_PER_BATCH &&
+    uploadedFiles.every(
+      (file) =>
+        Math.max(file.fileSizeBytes, utf8ByteLength(file.rawCsvText)) <= MAX_IMPORT_CSV_BYTES,
+    ) &&
     aggregate.shotCount > 0 &&
     (!isCourseUpload ||
       (uploadedFiles.length === 1 &&
@@ -322,7 +366,21 @@ export function ImportForm({
 
   async function readSelectedFiles(files: FileList | File[]) {
     setSaveState({ status: "idle" });
-    await readImportFiles(files);
+    const selectedFiles = Array.from(files);
+    const oversizedFiles = selectedFiles.filter((file) => file.size > MAX_IMPORT_CSV_BYTES);
+
+    if (oversizedFiles.length > 0) {
+      setSaveState({
+        status: "error",
+        message: `${oversizedFiles.map((file) => file.name).join(", ")} ${
+          oversizedFiles.length === 1 ? "is" : "are"
+        } too large. Split it into smaller session exports. Maximum CSV size is ${formatMegabytes(
+          MAX_IMPORT_CSV_BYTES,
+        )}.`,
+      });
+    }
+
+    await readImportFiles(selectedFiles.filter((file) => file.size <= MAX_IMPORT_CSV_BYTES));
   }
 
   function removeFile(fileId: string) {
@@ -395,7 +453,7 @@ export function ImportForm({
 
   function applyExtractedScorecard(scorecard: ExtractedScorecard) {
     const extractedCourseName = scorecard.courseName?.trim() || "";
-    const isSawgrass = /sawgrass|stadium/i.test(extractedCourseName);
+    const isSawgrass = /sawgrass/i.test(extractedCourseName);
     const nextHoleReview: HoleReviewState = {};
 
     for (const hole of scorecard.holes) {
@@ -410,16 +468,16 @@ export function ImportForm({
     }
 
     setSessionType("simulated_course");
-    setCourseName(extractedCourseName || "TPC Sawgrass - THE PLAYERS Stadium Course");
+    setCourseName(extractedCourseName);
     setHoleReview(nextHoleReview);
 
     if (scorecard.dateIso) {
       setSessionDate(scorecard.dateIso);
     }
 
-    if (isSawgrass || scorecard.totalYards === 6086) {
+    if (isSawgrass) {
       setScorecardText(TPC_SAWGRASS_PLAYERS_2026_SCORECARD);
-      return `Extracted ${scorecard.holes.length} hole scores and applied the TPC Sawgrass White tee yardages.`;
+      return `Extracted ${scorecard.holes.length} hole scores and applied the sample TPC Sawgrass yardages. Confirm course, tees, par and yardage before saving.`;
     }
 
     const extractedRows = scorecard.holes
@@ -428,10 +486,10 @@ export function ImportForm({
 
     if (extractedRows.length === scorecard.holes.length && extractedRows.length > 0) {
       setScorecardText(extractedRows.join("\n"));
-      return `Extracted ${scorecard.holes.length} holes from the scorecard image.`;
+      return `Extracted ${scorecard.holes.length} holes from the scorecard image. Confirm course, tees, par and yardage before saving.`;
     }
 
-    return `Extracted ${scorecard.holes.length} hole scores. Add scorecard yardages before saving.`;
+    return `Extracted ${scorecard.holes.length} hole scores. Confirm course, tees, par and add scorecard yardages before saving.`;
   }
 
   function resetCourseReview() {
@@ -510,7 +568,11 @@ export function ImportForm({
         });
         notifyAchievementUnlocks(result.achievementUnlockNotifications);
         clearFiles();
-        router.refresh();
+        if (result.savedSessionId) {
+          router.push(`/import/result?sessionId=${encodeURIComponent(result.savedSessionId)}`);
+        } else {
+          router.refresh();
+        }
       } else {
         setSaveState({ status: "error", message: result.message });
       }
@@ -543,6 +605,15 @@ export function ImportForm({
   }
 
   async function queueImportBatch(inputs: SaveRapsodoImportInput[]) {
+    if (!offlineStorageEnabled) {
+      setSaveState({
+        status: "error",
+        message:
+          "Offline import storage is off for this device. Enable it in Settings before queuing raw CSV files for retry.",
+      });
+      return;
+    }
+
     await queueOfflineAction({
       id: `import-csv-${Date.now()}-${crypto.randomUUID()}`,
       kind: "import-csv",
@@ -629,6 +700,20 @@ export function ImportForm({
               tone: aggregate.warnings.length > 0 ? "pink" : "slate",
             },
           ]}
+        />
+
+        <ImportFlowGuide
+          currentStep={visibleMobileStep}
+          isCourseUpload={isCourseUpload}
+          fileCount={aggregate.fileCount}
+          rowCount={aggregate.rowCount}
+          shotCount={aggregate.shotCount}
+          clubCount={aggregate.clubCount}
+          warningCount={aggregate.warnings.length}
+          courseHoleCount={scorecard.holes.length}
+          courseAssignedShotCount={courseAssignedShotCount}
+          canSave={canSave}
+          onStepChange={setMobileStep}
         />
 
         <header className="premium-hero hidden p-5 sm:block sm:p-7">
@@ -849,6 +934,7 @@ export function ImportForm({
                   sessionType={sessionType}
                   distanceUnit={distanceUnit}
                   detectedUnits={detectedUnits}
+                  detectedSessionDateIso={detectedSessionDateIso}
                   onSessionDateChange={setSessionDate}
                   onSessionTypeChange={setSessionType}
                   onDistanceUnitChange={setDistanceUnit}
@@ -1039,6 +1125,157 @@ function MobileImportStepper({
         </button>
       ))}
     </nav>
+  );
+}
+
+function ImportFlowGuide({
+  currentStep,
+  isCourseUpload,
+  fileCount,
+  rowCount,
+  shotCount,
+  clubCount,
+  warningCount,
+  courseHoleCount,
+  courseAssignedShotCount,
+  canSave,
+  onStepChange,
+}: {
+  currentStep: MobileImportStep;
+  isCourseUpload: boolean;
+  fileCount: number;
+  rowCount: number;
+  shotCount: number;
+  clubCount: number;
+  warningCount: number;
+  courseHoleCount: number;
+  courseAssignedShotCount: number;
+  canSave: boolean;
+  onStepChange: (step: MobileImportStep) => void;
+}) {
+  const flowSteps = [
+    {
+      id: "type" as const,
+      title: "Choose source",
+      value: isCourseUpload ? "Sim course" : "Range session",
+      detail: isCourseUpload
+        ? "CSV plus confirmed scorecard"
+        : "Launch monitor CSV import",
+      ready: true,
+      icon: Route,
+    },
+    {
+      id: "upload" as const,
+      title: "Upload",
+      value: fileCount > 0 ? `${fileCount} file${fileCount === 1 ? "" : "s"}` : "No files",
+      detail: fileCount > 0 ? `${rowCount} raw rows read` : "Add Rapsodo CSV exports",
+      ready: fileCount > 0,
+      icon: Upload,
+    },
+    {
+      id: "columns" as const,
+      title: "Confirm clubs",
+      value: shotCount > 0 ? `${clubCount} club${clubCount === 1 ? "" : "s"}` : "Mapping needed",
+      detail: shotCount > 0 ? `${shotCount} shots ready to audit` : "Map unknown club columns",
+      ready: shotCount > 0,
+      icon: Database,
+    },
+    ...(isCourseUpload
+      ? [
+          {
+            id: "course" as const,
+            title: "Confirm course",
+            value: courseHoleCount > 0 ? `${courseHoleCount} holes` : "Scorecard needed",
+            detail:
+              courseHoleCount > 0
+                ? `${courseAssignedShotCount}/${shotCount} shots assigned`
+                : "Confirm course, tees, par and yardage",
+            ready: courseHoleCount > 0 && courseAssignedShotCount === shotCount && shotCount > 0,
+            icon: Route,
+          },
+        ]
+      : []),
+    {
+      id: "preview" as const,
+      title: "Review audit",
+      value: warningCount > 0 ? `${warningCount} warning${warningCount === 1 ? "" : "s"}` : "Clean",
+      detail: warningCount > 0 ? "Check rows before saving" : "Preview accepted shots",
+      ready: shotCount > 0 && warningCount === 0,
+      icon: AlertCircle,
+    },
+    {
+      id: "save" as const,
+      title: "Save result",
+      value: canSave ? "Ready" : "Blocked",
+      detail: canSave ? "Creates a result summary page" : "Complete the required checks",
+      ready: canSave,
+      icon: CheckCircle2,
+    },
+  ];
+
+  return (
+    <section className="rounded-[20px] border border-[#DFE7DF] bg-[#FBFDFB] p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-1 px-1 pb-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#111827]">Guided import path</p>
+          <p className="mt-1 text-sm leading-5 text-[#667085]">
+            Move one clean export into trusted bag numbers, with every raw row still accounted for.
+          </p>
+        </div>
+        <Badge className="w-fit bg-white text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
+          {canSave ? "Ready to save" : "Review required"}
+        </Badge>
+      </div>
+      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+        {flowSteps.map((step, index) => {
+          const Icon = step.icon;
+          const active = step.id === currentStep;
+
+          return (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => onStepChange(step.id)}
+              className={cn(
+                "grid min-h-[8.75rem] grid-rows-[auto_1fr] rounded-[16px] border bg-white p-3 text-left transition-colors",
+                active
+                  ? "border-[#0B7A3B] shadow-[0_8px_20px_rgba(8,122,61,0.08)]"
+                  : "border-[#E5E7EB] hover:border-[#CFE7D6]",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="grid size-8 place-items-center rounded-full bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
+                  {index + 1}
+                </span>
+                <span
+                  className={cn(
+                    "grid size-8 place-items-center rounded-lg",
+                    step.ready
+                      ? "bg-[#E8F7EE] text-[#087A3D]"
+                      : active
+                        ? "bg-[#FFF4DB] text-[#8A4B00]"
+                        : "bg-[#F2F4F7] text-[#667085]",
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
+              </div>
+              <span className="mt-3 min-w-0">
+                <span className="block text-sm font-semibold leading-5 text-[#111827]">
+                  {step.title}
+                </span>
+                <span className="mt-1 block line-clamp-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">
+                  {step.value}
+                </span>
+                <span className="mt-1 block line-clamp-2 text-sm leading-5 text-[#667085]">
+                  {step.detail}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

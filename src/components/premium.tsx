@@ -299,9 +299,9 @@ export function MobileSectionChips({
         className,
       )}
     >
-      {items.map((item) => (
+      {items.map((item, index) => (
         <a
-          key={item.href}
+          key={`${item.label}-${item.href}-${index}`}
           href={item.href}
           className="min-h-10 shrink-0 rounded-full border border-emerald-900/10 bg-white/92 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-[border-color,background-color,color] duration-150 ease-out hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
         >

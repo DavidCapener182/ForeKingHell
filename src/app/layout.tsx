@@ -54,7 +54,7 @@ type AppShellData = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "light",
+  theme: "system",
   tableDensity: "comfortable",
 };
 
@@ -69,8 +69,8 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className="h-full"
-      data-theme="light"
+      className={preferences.theme === "dark" ? "h-full dark" : "h-full"}
+      data-theme={preferences.theme}
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
       suppressHydrationWarning
@@ -115,6 +115,7 @@ async function getAppShellData(): Promise<AppShellData> {
       db
         .select({
           preferredUnits: users.preferredUnits,
+          theme: users.theme,
           tableDensity: users.tableDensity,
           displayName: userProfiles.displayName,
           username: userProfiles.username,
@@ -146,7 +147,10 @@ async function getAppShellData(): Promise<AppShellData> {
       achievementNotifications,
       preferences: {
         preferredUnits: accountRow?.preferredUnits === "metres" ? "metres" : "yards",
-        theme: "light",
+        theme:
+          accountRow?.theme === "dark" || accountRow?.theme === "light"
+            ? accountRow.theme
+            : "system",
         tableDensity: accountRow?.tableDensity === "compact" ? "compact" : "comfortable",
       },
       isAdmin: Boolean(admin[0]),

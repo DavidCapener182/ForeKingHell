@@ -21,6 +21,7 @@ import {
   removeMembershipAction,
   updateUserSettingsAction,
 } from "@/app/settings/actions";
+import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
 import { DataHealthFeaturePanel, SocialFeaturePanel } from "@/components/features/feature-panels";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
@@ -38,6 +39,7 @@ import {
   dashboardPinOptions,
   preferredUnitOptions,
   tableDensityOptions,
+  themeOptions,
   type PrivacySettings,
 } from "@/lib/user-settings";
 
@@ -200,6 +202,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Data export
             </a>
             <a
+              href="#offline-storage"
+              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+            >
+              Offline storage
+            </a>
+            <a
               href="#danger-zone"
               className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50"
             >
@@ -234,6 +242,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <div className="mt-3 grid gap-2 text-sm">
             <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
             <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
+            <SettingsPreviewRow label="Theme" value={profile.theme} />
             <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
           </div>
         </section>
@@ -245,6 +254,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         ownedMembershipCount={ownedMemberships.length}
         receivedMembershipCount={receivedMemberships.length}
       />
+      <OfflineStoragePanel />
       <DataControlStatusPanel
         profile={profile}
         ownedInvitationCount={ownedInvitations.length}
@@ -283,6 +293,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   name="tableDensity"
                   defaultValue={profile.tableDensity}
                   values={tableDensityOptions}
+                />
+                <SelectField
+                  label="Theme"
+                  name="theme"
+                  defaultValue={profile.theme}
+                  values={themeOptions}
                 />
               </div>
 

@@ -101,6 +101,74 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0f1712;
+  --foreground: #eef8ef;
+  --card: #162019;
+  --card-foreground: #eef8ef;
+  --popover: #162019;
+  --popover-foreground: #eef8ef;
+  --primary: #36c978;
+  --primary-foreground: #06130a;
+  --secondary: #13251a;
+  --secondary-foreground: #b9f4cd;
+  --muted: #1b271f;
+  --muted-foreground: #aab7ad;
+  --accent: #173d25;
+  --accent-foreground: #c9f9d9;
+  --destructive: #fb7185;
+  --border: #29362c;
+  --input: #334238;
+  --ring: #36c978;
+  --surface: #162019;
+  --surface-strong: #1b281f;
+  --surface-soft: #111b15;
+  --surface-border: #29362c;
+  --surface-shadow: 0 22px 52px rgba(0, 0, 0, 0.34);
+  --surface-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.28);
+  --sidebar: #111b15;
+  --sidebar-foreground: #e6f3e8;
+  --sidebar-accent: #1d2c21;
+  --sidebar-accent-foreground: #b9f4cd;
+  --sidebar-border: #29362c;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] {
+    color-scheme: dark;
+    --background: #0f1712;
+    --foreground: #eef8ef;
+    --card: #162019;
+    --card-foreground: #eef8ef;
+    --popover: #162019;
+    --popover-foreground: #eef8ef;
+    --primary: #36c978;
+    --primary-foreground: #06130a;
+    --secondary: #13251a;
+    --secondary-foreground: #b9f4cd;
+    --muted: #1b271f;
+    --muted-foreground: #aab7ad;
+    --accent: #173d25;
+    --accent-foreground: #c9f9d9;
+    --destructive: #fb7185;
+    --border: #29362c;
+    --input: #334238;
+    --ring: #36c978;
+    --surface: #162019;
+    --surface-strong: #1b281f;
+    --surface-soft: #111b15;
+    --surface-border: #29362c;
+    --surface-shadow: 0 22px 52px rgba(0, 0, 0, 0.34);
+    --surface-shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.28);
+    --sidebar: #111b15;
+    --sidebar-foreground: #e6f3e8;
+    --sidebar-accent: #1d2c21;
+    --sidebar-accent-foreground: #b9f4cd;
+    --sidebar-border: #29362c;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -120,6 +188,22 @@
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+  }
+
+  html[data-theme="dark"] body {
+    background:
+      linear-gradient(90deg, rgba(54, 201, 120, 0.055) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(54, 201, 120, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, #101812 0%, #0f1712 48%, #0b120e 100%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="system"] body {
+      background:
+        linear-gradient(90deg, rgba(54, 201, 120, 0.055) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(54, 201, 120, 0.04) 1px, transparent 1px),
+        linear-gradient(180deg, #101812 0%, #0f1712 48%, #0b120e 100%);
+    }
   }
 
   @media (max-width: 640px) {

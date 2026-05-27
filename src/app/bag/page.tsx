@@ -1,9 +1,12 @@
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowLeft,
   Award,
+  Gauge,
   MapPinned,
   Minus,
+  ShieldCheck,
   Trophy,
   Target,
   TrendingDown,
@@ -149,6 +152,7 @@ export default async function BagPage() {
             stockConfidenceClubs.length,
         );
   const maxGappingCarry = maxCarryYd(gappingRows);
+  const bagDoctorFindings = buildBagDoctorFindings(gappingRows);
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
@@ -220,6 +224,26 @@ export default async function BagPage() {
               value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
               detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
             />
+          </div>
+        </NativeListSection>
+        <NativeListSection title="Gapping doctor">
+          <div className="grid gap-2">
+            {bagDoctorFindings.slice(0, 3).map((finding) => (
+              <Link
+                key={`${finding.title}-${finding.detail}`}
+                href={finding.href ?? "/import"}
+                prefetch={false}
+                className="rounded-lg border border-[#E5E7EB] bg-white p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">{finding.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-[#6B7280]">{finding.detail}</p>
+                  </div>
+                  <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
+                </div>
+              </Link>
+            ))}
           </div>
         </NativeListSection>
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
@@ -311,6 +335,11 @@ export default async function BagPage() {
               value: `${averageConfidence}%`,
               detail: "Average stock confidence",
             },
+            {
+              label: "Data trust",
+              value: featureData.dataHealth.metric,
+              detail: featureData.dataHealth.status,
+            },
           ]}
         />
 
@@ -375,6 +404,12 @@ export default async function BagPage() {
         />
 
         <BagFeaturePanel data={featureData} />
+
+        <BagConfidenceLadder
+          rows={gappingRows}
+          maxCarryYd={maxGappingCarry}
+          findings={bagDoctorFindings}
+        />
 
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
 
@@ -751,6 +786,262 @@ type GappingRow = {
   averageLaunchAngleDeg: number | null;
   decisionLabel: ClubDecisionLabel;
 };
+
+type BagDoctorFinding = {
+  title: string;
+  detail: string;
+  label: string;
+  tone: "green" | "sky" | "pink" | "amber" | "slate";
+  href?: string;
+};
+
+function BagConfidenceLadder({
+  rows,
+  maxCarryYd,
+  findings,
+}: {
+  rows: GappingRow[];
+  maxCarryYd: number;
+  findings: BagDoctorFinding[];
+}) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start">
+      <DataPanel>
+        <SectionHeader
+          title="Bag confidence ladder"
+          description="Carry, trust, gapping and safe-play numbers from driver down through scoring clubs."
+          action={<Gauge className="size-5 text-emerald-600" />}
+        />
+        <CardContent>
+          <div
+            aria-label="Bag confidence ladder"
+            tabIndex={0}
+            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
+          >
+            {rows.map((row) => {
+              const confidence = confidenceReadout(row);
+              const gap = gapReadout(row);
+
+              return (
+                <Link
+                  key={row.id}
+                  href={`/bag/${row.id}`}
+                  prefetch={false}
+                  className="grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-300"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs text-muted-foreground">{row.brandModel}</p>
+                        <p className="mt-1 text-lg font-semibold tracking-normal">
+                          {formatClubType(row.clubType)}
+                        </p>
+                      </div>
+                      <StatusPill tone={confidence.tone}>{confidence.label}</StatusPill>
+                    </div>
+
+                    <p className="mt-4 text-3xl font-semibold tracking-normal">
+                      {formatMetric(row.carryYd)}
+                      <span className="ml-1 text-sm text-muted-foreground">yd</span>
+                    </p>
+                    <div className="mt-3 h-2 rounded-full bg-slate-100">
+                      <span
+                        className="block h-2 rounded-full bg-[#0B7A3B]"
+                        style={{ width: `${carryWidthPercent(row.carryYd, maxCarryYd)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <span className="text-muted-foreground">Safe play</span>
+                      <span className="font-semibold">
+                        {row.playNumberYd === null ? "--" : `${formatMetric(row.playNumberYd)} yd`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <span className="text-muted-foreground">Next gap</span>
+                      <span className="font-semibold">{gap.value}</span>
+                    </div>
+                    <StatusPill tone={gap.tone} className="max-w-full justify-center truncate">
+                      {gap.label}
+                    </StatusPill>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </DataPanel>
+
+      <DataPanel>
+        <SectionHeader
+          title="Gapping doctor"
+          description="Flags overlap, missing yardage windows, and numbers that need more clean shots."
+          action={
+            findings.every((finding) => finding.tone === "green") ? (
+              <ShieldCheck className="size-5 text-emerald-600" />
+            ) : (
+              <AlertTriangle className="size-5 text-amber-600" />
+            )
+          }
+        />
+        <CardContent className="grid gap-3">
+          {findings.map((finding) => (
+            <Link
+              key={`${finding.title}-${finding.detail}`}
+              href={finding.href ?? "/import"}
+              prefetch={false}
+              className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">{finding.title}</p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{finding.detail}</p>
+                </div>
+                <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
+              </div>
+            </Link>
+          ))}
+        </CardContent>
+      </DataPanel>
+    </section>
+  );
+}
+
+function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
+  if (rows.length === 0) {
+    return [
+      {
+        title: "Import a first bag sample",
+        detail: "A Rapsodo CSV with several clubs will unlock carry, gapping and trust checks.",
+        label: "Start",
+        tone: "slate",
+        href: "/import",
+      },
+    ];
+  }
+
+  const findings: BagDoctorFinding[] = [];
+  const unreliable = rows
+    .filter((row) => row.confidenceScore < 55 || row.sampleSize < 10)
+    .sort(
+      (left, right) =>
+        left.confidenceScore - right.confidenceScore || left.sampleSize - right.sampleSize,
+    );
+  const overlap = rows.find((row) => row.gapToNextYd !== null && row.gapToNextYd < 8);
+  const missingWindow = rows.find((row) => row.gapToNextYd !== null && row.gapToNextYd > 18);
+  const wedge = rows.find(
+    (row) => ["pw", "gw", "sw", "lw"].includes(row.clubType) && row.sampleSize < 15,
+  );
+
+  if (unreliable[0]) {
+    findings.push({
+      title: `${formatClubType(unreliable[0].clubType)} is not decision-ready`,
+      detail: `${unreliable[0].sampleSize} clean shots and ${unreliable[0].confidenceScore}% trust. Retest before using this as a stock number.`,
+      label: "Retest",
+      tone: "amber",
+      href: `/bag/${unreliable[0].id}`,
+    });
+  }
+
+  if (overlap) {
+    findings.push({
+      title: `${formatClubType(overlap.clubType)} overlaps the next club`,
+      detail: `${formatGap(overlap.gapToNextYd)} to the next club. Check strike quality, loft setup, or club mapping.`,
+      label: "Overlap",
+      tone: "pink",
+      href: `/bag/${overlap.id}`,
+    });
+  }
+
+  if (missingWindow) {
+    findings.push({
+      title: "Missing yardage window",
+      detail: `${formatClubType(missingWindow.clubType)} leaves ${formatGap(
+        missingWindow.gapToNextYd,
+      )} to the next club. Add a choke-down or flighted option.`,
+      label: "Gap",
+      tone: "amber",
+      href: `/bag/${missingWindow.id}`,
+    });
+  }
+
+  if (wedge && !findings.some((finding) => finding.href === `/bag/${wedge.id}`)) {
+    findings.push({
+      title: "Wedge window needs more proof",
+      detail: `${formatClubType(wedge.clubType)} has ${wedge.sampleSize} clean stock shots. Add partial and full swings before trusting scoring numbers.`,
+      label: "Wedges",
+      tone: "sky",
+      href: `/bag/${wedge.id}`,
+    });
+  }
+
+  if (findings.length === 0) {
+    const strongest = [...rows].sort((left, right) => right.confidenceScore - left.confidenceScore)[0];
+
+    return [
+      {
+        title: "No urgent gapping flags",
+        detail: strongest
+          ? `${formatClubType(strongest.clubType)} is currently the clearest number at ${strongest.confidenceScore}% trust.`
+          : "The current bag has enough shape for first-pass decisions.",
+        label: "Clean",
+        tone: "green",
+        href: strongest ? `/bag/${strongest.id}` : "/bag",
+      },
+    ];
+  }
+
+  return findings.slice(0, 4);
+}
+
+function confidenceReadout(row: GappingRow): {
+  label: string;
+  tone: BagDoctorFinding["tone"];
+} {
+  if (row.sampleSize < 10) {
+    return { label: "Needs shots", tone: "slate" };
+  }
+
+  if (row.confidenceScore >= 75) {
+    return { label: "Trusted", tone: "green" };
+  }
+
+  if (row.confidenceScore >= 60) {
+    return { label: "Usable", tone: "sky" };
+  }
+
+  return { label: "Retest", tone: "amber" };
+}
+
+function gapReadout(row: GappingRow): {
+  value: string;
+  label: string;
+  tone: BagDoctorFinding["tone"];
+} {
+  if (row.gapToNextYd === null) {
+    return { value: "--", label: "End club", tone: "slate" };
+  }
+
+  if (row.gapToNextYd < 8) {
+    return { value: formatGap(row.gapToNextYd), label: "Overlap risk", tone: "pink" };
+  }
+
+  if (row.gapToNextYd > 18) {
+    return { value: formatGap(row.gapToNextYd), label: "Missing window", tone: "amber" };
+  }
+
+  return { value: formatGap(row.gapToNextYd), label: "Gap ok", tone: "green" };
+}
+
+function formatGap(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
 
 function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
   return buildClubBenchmarkRows(

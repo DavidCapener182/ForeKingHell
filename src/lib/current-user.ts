@@ -9,6 +9,7 @@ import { cache } from "react";
 import { userProfiles, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
+import type { ThemePreference } from "@/lib/user-settings";
 
 export type CurrentUser = {
   id: string;
@@ -18,13 +19,13 @@ export type CurrentUser = {
 
 export type CurrentUserPreferences = {
   preferredUnits: "yards" | "metres";
-  theme: "light";
+  theme: ThemePreference;
   tableDensity: "comfortable" | "compact";
 };
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "light",
+  theme: "system",
   tableDensity: "comfortable",
 };
 
@@ -87,9 +88,13 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 
   return {
     preferredUnits: profile?.preferredUnits === "metres" ? "metres" : "yards",
-    theme: "light",
+    theme: normalizeTheme(profile?.theme),
     tableDensity: profile?.tableDensity === "compact" ? "compact" : "comfortable",
   };
+}
+
+function normalizeTheme(value: string | null | undefined): ThemePreference {
+  return value === "dark" || value === "light" ? value : "system";
 }
 
 export async function ensureUserProfile(user: CurrentUser) {

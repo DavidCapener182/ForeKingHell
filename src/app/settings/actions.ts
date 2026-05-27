@@ -75,6 +75,7 @@ import {
   parsePreferredUnits,
   parsePrivacySettings,
   parseTableDensity,
+  parseTheme,
 } from "@/lib/user-settings";
 
 export async function createInvitationAction(formData: FormData) {
@@ -223,7 +224,7 @@ export async function updateUserSettingsAction(formData: FormData) {
     .set({
       name: nullableString(formData, "name"),
       preferredUnits: parsePreferredUnits(formData.get("preferredUnits")),
-      theme: "light",
+      theme: parseTheme(formData.get("theme")),
       tableDensity: parseTableDensity(formData.get("tableDensity")),
       dashboardPins: parseDashboardPins(formData.getAll("dashboardPins")),
       privacySettingsJson: parsePrivacySettings(formData),

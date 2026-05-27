@@ -8,5 +8,8 @@ export async function POST(request: Request) {
     await supabase.auth.signOut();
   }
 
-  return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  response.headers.set("Clear-Site-Data", '"cache"');
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }

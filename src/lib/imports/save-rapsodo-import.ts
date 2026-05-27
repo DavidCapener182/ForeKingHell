@@ -35,6 +35,7 @@ import {
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import {
   type DistanceUnit,
+  type ParseRapsodoCsvResult,
   type ParsedRapsodoRawRow,
   type ParsedRapsodoShot,
   type RapsodoColumnMapping,
@@ -48,6 +49,14 @@ import {
   DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
   buildStrokesGainedEventsFromCourseShots,
 } from "@/lib/strokes-gained";
+import {
+  MAX_IMPORT_CSV_BYTES,
+  MAX_IMPORT_CSV_ROWS,
+  MAX_IMPORT_FILES_PER_BATCH,
+  MAX_PARSED_SHOTS_PER_FILE,
+  formatMegabytes,
+  utf8ByteLength,
+} from "@/lib/imports/import-limits";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -142,6 +151,7 @@ const SHORT_WEDGE_CLUB_TYPES = new Set(["sw", "lw", "wedge"]);
 export async function saveRapsodoImport(
   input: SaveRapsodoImportInput,
 ): Promise<SaveRapsodoImportResult> {
+  const startedAt = Date.now();
   try {
     const userId = await requireCurrentUserId();
     const validatedInput = validateInput(input);
@@ -149,6 +159,7 @@ export async function saveRapsodoImport(
       fallbackDistanceUnit: validatedInput.distanceUnit,
       columnMapping: validatedInput.columnMapping,
     });
+    validateParsedImport(validatedInput, parsed);
 
     if (parsed.shots.length === 0) {
       return {
@@ -205,6 +216,20 @@ export async function saveRapsodoImport(
     }
 
     revalidateImportPages();
+    logImportTelemetry("fkh.import.saved", {
+      userId,
+      fileName: validatedInput.fileName,
+      fileHash: hashRawCsv(validatedInput.rawCsvText),
+      fileSizeBytes: utf8ByteLength(validatedInput.rawCsvText),
+      rawRowCount: parsed.rawRows.length,
+      parsedShotCount: parsed.shots.length,
+      warningCount: parsed.warnings.length + (coursePlan?.warnings.length ?? 0),
+      duplicate: result.skipped,
+      parseVersion: "rapsodo-v1",
+      source: validatedInput.source,
+      offlineReplay: false,
+      durationMs: Date.now() - startedAt,
+    });
 
     return {
       ok: true,
@@ -230,6 +255,23 @@ export async function saveRapsodoImportBatch(
     };
   }
 
+  if (inputs.length > MAX_IMPORT_FILES_PER_BATCH) {
+    return {
+      ok: false,
+      message: `Import up to ${MAX_IMPORT_FILES_PER_BATCH} CSV files at a time. Split larger batches into smaller imports.`,
+    };
+  }
+
+  let validatedInputs: SaveRapsodoImportInput[];
+  try {
+    validatedInputs = inputs.map(validateInput);
+  } catch (error) {
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : "Import validation failed.",
+    };
+  }
+
   const warnings: string[] = [];
   const uniqueClubKeys = new Set<string>();
   let shotCount = 0;
@@ -240,14 +282,30 @@ export async function saveRapsodoImportBatch(
   const longestShotNotifications: LongestShotNotification[] = [];
   const achievementUnlockNotifications: AchievementUnlockNotification[] = [];
 
-  const parsedInputs = inputs.map((input) => {
+  const parsedInputs: Array<{
+    input: SaveRapsodoImportInput;
+    parsed: ParseRapsodoCsvResult;
+  }> = [];
+  for (const input of validatedInputs) {
     const parsed = parseRapsodoCsv(input.rawCsvText, {
       fallbackDistanceUnit: input.distanceUnit,
       columnMapping: input.columnMapping,
     });
 
-    return { input, parsed };
-  });
+    try {
+      validateParsedImport(input, parsed);
+    } catch (error) {
+      return {
+        ok: false,
+        message:
+          error instanceof Error
+            ? `${input.fileName}: ${error.message}`
+            : "Import validation failed.",
+      };
+    }
+
+    parsedInputs.push({ input, parsed });
+  }
 
   for (const { input, parsed } of parsedInputs) {
     const result = await saveRapsodoImport(input);
@@ -693,6 +751,10 @@ function roundOne(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+function logImportTelemetry(event: string, payload: Record<string, unknown>) {
+  console.info(event, payload);
+}
+
 function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
   if (input.source !== "rapsodo") {
     throw new Error("Only Rapsodo CSV imports are supported in this slice.");
@@ -710,6 +772,17 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     throw new Error("CSV file is empty.");
   }
 
+  const actualSizeBytes = utf8ByteLength(input.rawCsvText);
+  const reportedSizeBytes = Number.isFinite(input.fileSizeBytes) ? input.fileSizeBytes : 0;
+
+  if (Math.max(actualSizeBytes, reportedSizeBytes) > MAX_IMPORT_CSV_BYTES) {
+    throw new Error(
+      `This file is too large. Split it into smaller session exports. Maximum CSV size is ${formatMegabytes(
+        MAX_IMPORT_CSV_BYTES,
+      )}.`,
+    );
+  }
+
   return {
     ...input,
     fileName: input.fileName.trim().slice(0, 260) || "rapsodo-import.csv",
@@ -722,6 +795,35 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     shotOverrides: sanitizeShotOverrides(input.shotOverrides),
     notes: input.notes?.slice(0, 2000),
   };
+}
+
+function validateParsedImport(input: SaveRapsodoImportInput, parsed: ParseRapsodoCsvResult) {
+  if (parsed.rawRows.length > MAX_IMPORT_CSV_ROWS) {
+    throw new Error(
+      `This file has too many rows. Split it into smaller session exports. Maximum row count is ${MAX_IMPORT_CSV_ROWS.toLocaleString(
+        "en-GB",
+      )}.`,
+    );
+  }
+
+  if (parsed.shots.length > MAX_PARSED_SHOTS_PER_FILE) {
+    throw new Error(
+      `This file has too many parsed shots. Split it into smaller session exports. Maximum shots per file is ${MAX_PARSED_SHOTS_PER_FILE.toLocaleString(
+        "en-GB",
+      )}.`,
+    );
+  }
+
+  logImportTelemetry("fkh.import.parsed", {
+    fileName: input.fileName,
+    fileHash: hashRawCsv(input.rawCsvText),
+    fileSizeBytes: utf8ByteLength(input.rawCsvText),
+    rawRowCount: parsed.rawRows.length,
+    parsedShotCount: parsed.shots.length,
+    warningCount: parsed.warnings.length,
+    parseVersion: "rapsodo-v1",
+    source: input.source,
+  });
 }
 
 function buildCoursePlan(

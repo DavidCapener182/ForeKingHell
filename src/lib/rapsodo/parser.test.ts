@@ -202,7 +202,7 @@ describe("Rapsodo parser edge cases", () => {
     );
   });
 
-  it("warns that ambiguous slash dates are interpreted as US month/day/year", () => {
+  it("warns on ambiguous slash dates and leaves the date for user confirmation", () => {
     const csv = [
       '"Rapsodo MLM2PRO: Player - 04/05/2026 8:00 AM"',
       "Club Type,Carry Distance",
@@ -211,10 +211,32 @@ describe("Rapsodo parser edge cases", () => {
 
     const result = parseRapsodoCsv(csv);
 
-    expect(result.exportedAtIso).toBe("2026-04-05T08:00:00.000Z");
+    expect(result.exportedAtIso).toBeNull();
     expect(result.warnings).toContain(
-      "Export date is ambiguous; slash dates are interpreted as US month/day/year.",
+      "Export date is ambiguous; confirm the session date before saving this import.",
     );
+  });
+
+  it("detects broader Rapsodo title formats for unambiguous UK-style dates", () => {
+    const csv = [
+      '"MLM2 Pro export: Player - 24/04/2026 1:19 PM"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.sessionTitle).toBe("MLM2 Pro export: Player - 24/04/2026 1:19 PM");
+    expect(result.exportedAtIso).toBe("2026-04-24T13:19:00.000Z");
+  });
+
+  it("keeps club-only rows as unknown raw rows instead of parsed shots", () => {
+    const csv = ["Club Type,Carry Distance,Ball Speed,Launch Angle", "Driver,,,"].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shotCount).toBe(0);
+    expect(result.rawRows.map((row) => row.rowType)).toEqual(["header", "unknown"]);
   });
 
   it("keeps extreme side-carry values rather than dropping the shot", () => {

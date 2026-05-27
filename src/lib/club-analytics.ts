@@ -250,7 +250,10 @@ export function calculateClubAnalytics({
     orderedShots.length > 0
       ? new Date(dateValue(orderedShots[orderedShots.length - 1].shotAt))
       : null;
-  const allSample = selectStockYardageShots(orderedShots, orderedShots.length, { clubType });
+  const allSample = selectStockYardageShots(orderedShots, orderedShots.length, {
+    clubType,
+    averageSampleSize: orderedShots.length,
+  });
   const trendShots = [...allSample.filteredShots].sort(
     (left, right) => dateValue(left.shotAt) - dateValue(right.shotAt),
   );

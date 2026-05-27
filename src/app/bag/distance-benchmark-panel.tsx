@@ -217,6 +217,8 @@ const TOUR_REFERENCES: Record<string, TourReference> = {
 
 const COMPARISON_METRICS = METRICS.filter((metric) => metric.key !== "carryYd");
 const PEER_TAB_VALUE = "peers";
+const BENCHMARK_TABLE_CLASS = "min-w-[1280px] table-fixed";
+const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "15%", "9%", "9%", "14%", "30%", "11%", "6%"];
 const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
   "clubSpeedMph",
@@ -226,6 +228,7 @@ const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "landAngleDeg",
 ];
 const METRIC_BY_KEY = new Map(METRICS.map((metric) => [metric.key, metric]));
+const CARRY_METRIC = metricByKey("carryYd");
 const FLIGHT_METRIC_KEYS = new Set<ClubBenchmarkMetricKey>(["maxHeightYd", "landAngleDeg"]);
 
 export function DistanceBenchmarkPanel({
@@ -461,7 +464,8 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
 
       <div className="hidden sm:block">
         <DataTableFrame>
-          <Table className="min-w-[980px]">
+          <Table className={BENCHMARK_TABLE_CLASS}>
+            <BenchmarkTableColumns />
             <TableHeader>
               <TableRow>
                 <TableHead>Club</TableHead>
@@ -469,7 +473,8 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                 <TableHead className="text-right">Your carry</TableHead>
                 <TableHead>Level</TableHead>
                 <TableHead>Next</TableHead>
-                <TableHead className="min-w-[280px]">Benchmark band</TableHead>
+                <TableHead>Benchmark band</TableHead>
+                <TableHead>Tour anchor</TableHead>
                 <TableHead className="text-right">Sample</TableHead>
               </TableRow>
             </TableHeader>
@@ -500,6 +505,9 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                   </TableCell>
                   <TableCell>
                     <BenchmarkMeter row={row} />
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {tourAnchorText(row, CARRY_METRIC)}
                   </TableCell>
                   <TableCell className="text-right">
                     <span className="font-medium">{row.sampleSize}</span>
@@ -597,7 +605,8 @@ function LevelMetricContent({
 
       <div className="hidden sm:block">
         <DataTableFrame>
-          <Table className="min-w-[1080px]">
+          <Table className={BENCHMARK_TABLE_CLASS}>
+            <BenchmarkTableColumns />
             <TableHeader>
               <TableRow>
                 <TableHead>Club</TableHead>
@@ -605,7 +614,7 @@ function LevelMetricContent({
                 <TableHead className="text-right">Your {metric.shortLabel.toLowerCase()}</TableHead>
                 <TableHead>{metricLevelLabel(metric)}</TableHead>
                 <TableHead>{metricTargetLabel(metric)}</TableHead>
-                <TableHead className="min-w-[280px]">{metricBandLabel(metric)}</TableHead>
+                <TableHead>{metricBandLabel(metric)}</TableHead>
                 <TableHead>Tour anchor</TableHead>
                 <TableHead className="text-right">Sample</TableHead>
               </TableRow>
@@ -652,6 +661,16 @@ function LevelMetricContent({
         </DataTableFrame>
       </div>
     </>
+  );
+}
+
+function BenchmarkTableColumns() {
+  return (
+    <colgroup>
+      {BENCHMARK_TABLE_COLUMN_WIDTHS.map((width, index) => (
+        <col key={`${width}-${index}`} style={{ width }} />
+      ))}
+    </colgroup>
   );
 }
 
@@ -934,6 +953,16 @@ function buildPeerDisplayRows(
       };
     }).filter((item): item is PeerComparisonDisplayRow => item !== null),
   );
+}
+
+function metricByKey(metricKey: ClubBenchmarkMetricKey) {
+  const metric = METRIC_BY_KEY.get(metricKey);
+
+  if (!metric) {
+    throw new Error(`Unknown benchmark metric: ${metricKey}`);
+  }
+
+  return metric;
 }
 
 function bestPeerRankRow(peerRows: PeerComparisonDisplayRow[]) {

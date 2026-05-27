@@ -13,11 +13,18 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import type { DistanceUnit } from "@/lib/rapsodo/parser";
 import type { SessionType } from "@/app/import/import-types";
 
+const detectedDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
 export function SessionSettings({
   sessionDate,
   sessionType,
   distanceUnit,
   detectedUnits,
+  detectedSessionDateIso,
   onSessionDateChange,
   onSessionTypeChange,
   onDistanceUnitChange,
@@ -26,6 +33,7 @@ export function SessionSettings({
   sessionType: SessionType;
   distanceUnit: DistanceUnit;
   detectedUnits: string[];
+  detectedSessionDateIso: string | null;
   onSessionDateChange: (value: string) => void;
   onSessionTypeChange: (value: SessionType) => void;
   onDistanceUnitChange: (value: DistanceUnit) => void;
@@ -46,6 +54,11 @@ export function SessionSettings({
               value={sessionDate}
               onChange={(event) => onSessionDateChange(event.target.value)}
             />
+            <FieldDescription>
+              {detectedSessionDateIso
+                ? `Detected date: ${detectedDateFormatter.format(new Date(detectedSessionDateIso))}. Source: CSV title. Change date if needed.`
+                : "No unambiguous CSV title date detected. Confirm this before saving."}
+            </FieldDescription>
           </Field>
           <Field>
             <FieldLabel htmlFor="session-type">Session type</FieldLabel>

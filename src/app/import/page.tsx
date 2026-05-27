@@ -70,6 +70,7 @@ export default async function ImportPage() {
   ]);
   const visibleFiles = library.files.filter((file) => file.status !== "archived");
   const duplicateFiles = visibleFiles.filter((file) => file.status === "duplicate").length;
+  const eligibleSubmissionCards = buildEligibleSubmissionCards(visibleFiles);
   const connectionStatus = rapsodoStatus.ok
     ? rapsodoStatus.data
     : {
@@ -193,7 +194,7 @@ export default async function ImportPage() {
                 </div>
                 <Button asChild variant="outline" className="rounded-full">
                   <Link href={item.href} prefetch={false}>
-                    Submit
+                    {item.actionLabel}
                   </Link>
                 </Button>
               </div>
@@ -243,11 +244,11 @@ export default async function ImportPage() {
             connected={connectionStatus.connected}
             fileCount={visibleFiles.length}
           />
-          <ImportFileLibrary files={visibleFiles} />
-          <ImportQualityFeaturePanel data={featureData} />
           <div id="rapsodo-import" className="hidden sm:block">
             <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
           </div>
+          <ImportQualityFeaturePanel data={featureData} />
+          <ImportFileLibrary files={visibleFiles} />
         </div>
       </PageShell>
     </>
@@ -362,28 +363,85 @@ function FirstRunRapsodoOnboarding({
   );
 }
 
-const eligibleSubmissionCards = [
+const demoEligibleSubmissionCards = [
   {
     title: "Aintree Course Record",
     detail: "Gold proof · Best gross and front nine boards",
     href: "/course-records",
+    actionLabel: "Submit",
   },
   {
     title: "Spring Major Round 2",
     detail: "Scorecard screenshot required",
     href: "/tournaments",
+    actionLabel: "Submit",
   },
   {
     title: "May Friends Board",
     detail: "Friends · same verification tier",
     href: "/leaderboard",
+    actionLabel: "Submit",
   },
   {
     title: "Wedge Window Challenge",
     detail: "12 shots · 24-34° launch",
     href: "/challenges",
+    actionLabel: "Submit",
   },
 ];
+
+function buildEligibleSubmissionCards(
+  visibleFiles: Awaited<ReturnType<typeof getImportLibrary>>["files"],
+) {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+    return demoEligibleSubmissionCards;
+  }
+
+  const savedFiles = visibleFiles.filter((file) => file.status === "saved");
+  const duplicateFiles = visibleFiles.filter((file) => file.status === "duplicate");
+
+  if (savedFiles.length === 0) {
+    return [
+      {
+        title: "No eligible submissions yet",
+        detail: "Import a verified session before records, tournaments or challenges are offered.",
+        href: "#rapsodo-connect",
+        actionLabel: "Import",
+      },
+    ];
+  }
+
+  return [
+    {
+      title: `${integerFormatter.format(savedFiles.length)} imported ${
+        savedFiles.length === 1 ? "file" : "files"
+      } ready for review`,
+      detail: "Open live records and submit only where the course/date rules match.",
+      href: "/course-records",
+      actionLabel: "Review",
+    },
+    {
+      title: "Challenge eligibility",
+      detail: "Use live challenge rules instead of sample event cards.",
+      href: "/challenges",
+      actionLabel: "Check",
+    },
+    {
+      title:
+        duplicateFiles.length > 0
+          ? `${integerFormatter.format(duplicateFiles.length)} duplicate ${
+              duplicateFiles.length === 1 ? "file" : "files"
+            } excluded`
+          : "No duplicate blockers",
+      detail:
+        duplicateFiles.length > 0
+          ? "Clean up duplicates before submitting proof-backed results."
+          : "Recent imports are not marked as duplicate in the file library.",
+      href: "/import",
+      actionLabel: "Open",
+    },
+  ];
+}
 
 async function getImportLibrary() {
   const userId = await requireCurrentUserId();

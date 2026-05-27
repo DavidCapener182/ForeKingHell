@@ -12,6 +12,7 @@ import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { purgePrivateServiceWorkerCaches } from "@/lib/service-worker-cache";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -235,7 +236,11 @@ function ProfileDropdown({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
-        <form action="/auth/sign-out" method="post">
+        <form
+          action="/auth/sign-out"
+          method="post"
+          onSubmit={() => purgePrivateServiceWorkerCaches()}
+        >
           <DropdownMenuItem asChild variant="destructive">
             <button type="submit" className="w-full">
               <LogOut className="size-4" />

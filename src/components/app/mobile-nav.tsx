@@ -11,6 +11,7 @@ import {
 } from "@/components/app/nav-items";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { purgePrivateServiceWorkerCaches } from "@/lib/service-worker-cache";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -106,7 +107,11 @@ export function MobileNav({
                     </Link>
                   </SheetClose>
                 </Button>
-                <form action="/auth/sign-out" method="post">
+                <form
+                  action="/auth/sign-out"
+                  method="post"
+                  onSubmit={() => purgePrivateServiceWorkerCaches()}
+                >
                   <Button type="submit" variant="outline" className="w-full justify-start">
                     Sign out
                   </Button>
@@ -148,7 +153,7 @@ export function MobileNav({
 
             return (
               <Link
-                key={item.href}
+                key={`${item.label}-${item.href}`}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
@@ -188,7 +193,7 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
           const active = item.isActive(pathname);
 
           return (
-            <SheetClose key={item.href} asChild>
+            <SheetClose key={`${group.label}-${item.label}-${item.href}`} asChild>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}

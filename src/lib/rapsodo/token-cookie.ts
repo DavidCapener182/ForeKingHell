@@ -101,6 +101,10 @@ function secretKey() {
     return createHash("sha256").update(configuredSecret, "utf8").digest();
   }
 
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("RAPSODO_TOKEN_SECRET is required in production.");
+  }
+
   if (!ephemeralSecret) {
     ephemeralSecret = randomBytes(32);
   }
