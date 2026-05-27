@@ -596,18 +596,18 @@ function RapsodoMobileInbox({
   const sessionTitle = latest?.title ?? latestSession?.fileName ?? "Rapsodo session";
 
   return (
-    <section className="grid gap-3 rounded-lg border border-emerald-100 bg-white p-4 shadow-sm">
+    <section className="premium-hero grid gap-3 p-4">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo inbox</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-normal text-[#050505]">
+          <h2 className="mt-1 text-2xl font-semibold tracking-normal text-foreground">
             {hasPending
               ? "New Rapsodo session found"
               : latestSession
                 ? "No new Rapsodo sessions"
                 : "Start with Rapsodo"}
           </h2>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
             {hasPending
               ? `${sessionTitle} is waiting. Confirm clubs, import it, then check the bag update.`
               : latestSession
@@ -615,7 +615,7 @@ function RapsodoMobileInbox({
                 : "Connect Rapsodo so the next practice session is ready to review on your phone."}
           </p>
         </div>
-        <Button asChild size="sm" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+        <Button asChild size="sm" className="premium-action rounded-lg">
           <Link href="/rapsodo" prefetch={false}>
             {hasPending ? "Review & import" : "Check Rapsodo"}
           </Link>
@@ -1054,10 +1054,10 @@ function DashboardFirstRunOnboarding() {
               key={step.title}
               href={step.href}
               prefetch={false}
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/35"
+              className="apple-panel-strong p-3 text-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/35"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="grid size-7 place-items-center rounded-full bg-[#F5F6F4] text-xs font-semibold">
+                <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold">
                   {index + 1}
                 </span>
                 {step.ready ? (
@@ -1071,7 +1071,7 @@ function DashboardFirstRunOnboarding() {
             </Link>
           ))}
         </div>
-        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+        <div className="trust-indicator mt-3 rounded-lg p-3">
           <p className="text-sm font-semibold">What happens to my data?</p>
           <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
             <p>Private by default.</p>
@@ -1087,11 +1087,11 @@ function DashboardFirstRunOnboarding() {
 
 function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasData["dataHealth"] }) {
   return (
-    <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+    <section className="premium-card grid gap-3 rounded-lg p-3 sm:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#050505]">Can I trust this?</p>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
+          <p className="text-sm font-semibold text-foreground">Can I trust this?</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
             Last import, club mapping and next useful data check.
           </p>
         </div>
@@ -1134,7 +1134,7 @@ function TodayPlan({
             <Button
               asChild
               size="sm"
-              className="min-h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="premium-action min-h-9 rounded-lg"
             >
               <Link
                 href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
@@ -1147,7 +1147,7 @@ function TodayPlan({
         }
       />
       <CardContent>
-        <div className="mb-3 flex items-center gap-3 rounded-xl border border-emerald-100 bg-white/85 p-3 shadow-sm sm:hidden">
+        <div className="premium-command-surface mb-3 flex items-center gap-3 rounded-lg p-3 sm:hidden">
           <ShotTraceMotif className="h-14 w-20 shrink-0 text-emerald-700" />
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -1161,7 +1161,7 @@ function TodayPlan({
           </div>
         </div>
         <div className="mb-3 sm:hidden" data-primary-action>
-          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button asChild className="premium-action w-full rounded-lg">
             <Link
               href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
               prefetch={false}
@@ -1388,17 +1388,17 @@ function DashboardPanel({
     <section
       id={id}
       className={cn(
-        "scroll-mt-28 rounded-[18px] border border-[#DFE7DF] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+        "premium-card scroll-mt-28 rounded-lg",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-[#EDF1ED] px-6 py-5">
+      <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-6 py-5">
         <div className="min-w-0">
-          <h2 className="text-[20px] font-semibold leading-7 tracking-normal text-[#111827]">
+          <h2 className="text-[20px] font-semibold leading-7 tracking-normal text-foreground">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#667085]">{description}</p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
           ) : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
@@ -1441,12 +1441,10 @@ function DashboardSummaryHero({
     : `current form is ${scoringCeiling}, bag confidence needs more shots, and ${nextUsefulMove}`;
 
   return (
-    <section className="relative overflow-hidden rounded-[24px] border border-[#CFE7D6] bg-white shadow-[0_12px_30px_rgba(8,122,61,0.06)]">
+    <section className="premium-hero relative overflow-hidden rounded-lg">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,#F8FAF8_0%,#FFFFFF_48%,#ECF7F1_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(248,250,248,0.92)_0%,rgba(255,255,255,0.46)_48%,rgba(236,247,241,0.62)_100%)]" />
         <div className="absolute right-0 top-0 h-full w-[46%] border-l border-[#DCECE0] bg-[repeating-linear-gradient(90deg,rgba(15,143,77,0.10)_0,rgba(15,143,77,0.10)_1px,transparent_1px,transparent_54px)]" />
-        <div className="absolute right-10 top-8 h-40 w-40 rounded-full border border-[#BFE4CA]" />
-        <div className="absolute right-20 top-[4.5rem] h-20 w-20 rounded-full border border-[#D7ECDD]" />
         <div className="absolute right-10 bottom-9 h-px w-72 -rotate-6 bg-[#9DCFB0]" />
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
@@ -1599,14 +1597,14 @@ function HeroInsightCard({
       href={href}
       prefetch={false}
       className={cn(
-        "group block rounded-[18px] border bg-white p-4 transition-colors",
+        "group premium-rail-card block rounded-lg p-4 transition-colors",
         primary
           ? "border-[#CFE7D6] shadow-[0_12px_30px_rgba(8,122,61,0.08)] hover:border-[#0F8F4D]"
-          : "border-[#DFE7DF] hover:border-[#CFE7D6]",
+          : "hover:border-[#CFE7D6]",
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[15px] font-semibold leading-6 text-[#111827]">{title}</p>
+        <p className="text-[15px] font-semibold leading-6 text-foreground">{title}</p>
         {actionText ? (
           <span className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg bg-[#087A3D] px-3 text-xs font-semibold text-white transition-colors group-hover:bg-[#065F32]">
             {actionText}
@@ -1616,8 +1614,8 @@ function HeroInsightCard({
           <DashboardDot tone={tone} />
         )}
       </div>
-      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-[#111827]">{value}</p>
-      <p className="mt-1.5 text-sm leading-5 text-[#667085]">{detail}</p>
+      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-foreground">{value}</p>
+      <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{detail}</p>
     </Link>
   );
 }
@@ -1708,7 +1706,7 @@ function TodayCommandBrief({
   }>;
 
   return (
-    <section className="grid gap-3 rounded-[22px] border border-[#DFE7DF] bg-[#FBFDFB] p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)] lg:grid-cols-4">
+    <section className="premium-command-surface grid gap-3 rounded-lg p-3 lg:grid-cols-4">
       {items.map((item) => {
         const Icon = item.icon;
 
@@ -1717,7 +1715,7 @@ function TodayCommandBrief({
             key={item.question}
             href={item.href}
             prefetch={false}
-            className="group grid min-h-[11.5rem] grid-rows-[auto_1fr_auto] rounded-[18px] border border-[#E5E7EB] bg-white p-4 transition-colors hover:border-[#0B7A3B]"
+            className="group grid min-h-[11.5rem] grid-rows-[auto_1fr_auto] rounded-lg border border-border bg-white/75 p-4 transition-colors hover:border-[#0B7A3B] hover:bg-white"
           >
             <div className="flex items-start justify-between gap-3">
               <p className="text-sm font-semibold leading-5 text-[#111827]">{item.question}</p>
@@ -1920,7 +1918,7 @@ function PracticeRecommendationCard({
     <section
       id="practice"
       className={cn(
-        "scroll-mt-28 rounded-[22px] border border-[#DCE7DE] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.06)] lg:p-6",
+        "premium-card scroll-mt-28 rounded-lg p-5 lg:p-6",
         className,
       )}
     >
@@ -1956,7 +1954,7 @@ function PracticeRecommendationCard({
             <TargetLaneVisual coachPreview={coachPreview} />
           </div>
 
-          <section className="rounded-2xl border border-[#DFE7DF] bg-[#FBFDFB] p-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+          <section className="premium-command-surface rounded-lg p-5">
             <div className="flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
                 <Crosshair className="size-5" strokeWidth={2.3} />
@@ -2054,7 +2052,7 @@ function TargetLaneVisual({
         : "border-[#087A3D] bg-[#087A3D]";
 
   return (
-    <div className="mt-8 rounded-2xl border border-[#DFE7DF] bg-white/80 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)]">
+    <div className="premium-command-surface mt-8 rounded-lg p-4">
       <div className="mb-3 grid grid-cols-[24%_50%_26%] px-1 text-sm font-bold uppercase tracking-[0.12em] text-[#667085]">
         <span>Left miss</span>
         <span className="text-center">Playable window</span>
@@ -2120,7 +2118,7 @@ function PerformanceSnapshot({
   return (
     <section
       className={cn(
-        "scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]",
+        "premium-card scroll-mt-28 rounded-lg",
         className,
       )}
     >
@@ -2152,7 +2150,7 @@ function PerformanceSnapshot({
               href={metric.href}
               prefetch={false}
               className={cn(
-                "group flex min-w-0 flex-col rounded-2xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
+                "group premium-rail-card flex min-w-0 flex-col rounded-lg p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
                 paired ? "min-h-[190px]" : "min-h-[220px]",
               )}
             >
@@ -2331,8 +2329,8 @@ function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] })
   );
 
   return (
-    <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white p-4">
-      <p className="text-sm font-semibold text-[#111827]">Bag confidence ladder</p>
+    <div className="premium-command-surface min-w-0 rounded-lg p-4">
+      <p className="text-sm font-semibold text-foreground">Bag confidence ladder</p>
       <div className="mt-3 grid gap-2.5">
         {sortedClubs.map((club, index) => {
           const carry = club.stock.carryMedianYd ?? 0;
@@ -2347,7 +2345,7 @@ function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] })
               key={club.id}
               href={`/bag/${club.id}`}
               prefetch={false}
-              className="grid gap-2 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]"
+              className="grid gap-2 rounded-lg border border-transparent px-2 py-2 text-sm transition-colors hover:border-[#CFE7D6] hover:bg-white/60"
             >
               <span className="grid grid-cols-[4.5rem_minmax(0,1fr)_3.75rem_3.75rem] items-center gap-3">
                 <span className="font-semibold text-[#111827]">{formatClubType(club.type)}</span>
@@ -2401,25 +2399,25 @@ function LatestRoundPanel({
   return (
     <section
       className={cn(
-        "scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]",
+        "premium-card scroll-mt-28 rounded-lg",
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-[#EDF1ED] px-5 py-5">
+      <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-5 py-5">
         <div className="flex min-w-0 items-start gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
             <Flag className="size-6" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+            <h2 className="text-xl font-semibold leading-7 tracking-normal text-foreground">
               Latest round
             </h2>
-            <p className="mt-1 text-sm leading-6 text-[#667085]">
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
               Newest scorecard or simulated-course round.
             </p>
           </div>
         </div>
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#DFE7DF] bg-white text-[#2563EB]">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-white/70 text-[#2563EB]">
           <Flag className="size-5" />
         </span>
       </div>
@@ -2465,7 +2463,7 @@ function LatestRoundPanel({
           <div className="mt-5">
             <Button
               asChild
-              className="h-11 w-full rounded-lg bg-[#087A3D] text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
+              className="premium-action h-11 w-full rounded-lg text-sm font-semibold"
             >
               <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
                 <Flag className="size-4" />

@@ -48,7 +48,7 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
         description={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button asChild className="premium-action rounded-lg">
               <Link href={`/rounds/${result.id}`} prefetch={false}>
                 <CheckCircle2 className="size-4" />
                 Open session
@@ -86,7 +86,7 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
           }
         />
         <CardContent className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
-          <div className="rounded-lg border bg-[#F5F6F4] p-4">
+          <div className="premium-command-surface rounded-lg p-4">
             <p className="text-4xl font-semibold tracking-normal">
               {featureData.dataHealth.score}/100
             </p>
@@ -101,7 +101,7 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
                 key={check.title}
                 href={check.href ?? "/settings"}
                 prefetch={false}
-                className="rounded-lg border bg-white px-3 py-2 transition-colors hover:border-[#0B7A3B]"
+                className="premium-rail-card rounded-lg px-3 py-2 transition-colors hover:border-[#0B7A3B]"
               >
                 <p className="text-xs text-muted-foreground">{check.title}</p>
                 <p className="mt-1 text-sm font-semibold">{check.metric}</p>
@@ -153,18 +153,18 @@ function PracticePrescriptionCard({ plan }: { plan: FeatureIdeasData["practicePl
         }
       />
       <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+        <div className="premium-hero rounded-lg p-4">
           <p className="text-sm font-semibold text-emerald-900">Prescription</p>
           <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">{plan.title}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.detail}</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <ResultMetric label="Target balls" value={plan.targetShots} detail="Count every shot" />
-            <div className="rounded-lg border bg-white p-4">
+            <div className="luxury-metric-card rounded-lg border p-4">
               <p className="text-sm text-muted-foreground">Goal</p>
               <p className="mt-2 text-lg font-semibold tracking-normal">Stock window</p>
               <p className="mt-1 text-sm text-muted-foreground">Retest next session</p>
             </div>
-            <div className="rounded-lg border bg-white p-4">
+            <div className="luxury-metric-card rounded-lg border p-4">
               <p className="text-sm text-muted-foreground">Focus</p>
               <p className="mt-2 text-lg font-semibold tracking-normal">
                 {plan.focusArea.replace(/-/g, " ")}
@@ -173,7 +173,7 @@ function PracticePrescriptionCard({ plan }: { plan: FeatureIdeasData["practicePl
             </div>
           </div>
         </div>
-        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+        <Button asChild className="premium-action rounded-lg">
           <Link href={plan.clubId ? `/bag/${plan.clubId}/analytics` : "/coach"} prefetch={false}>
             <Crosshair className="size-4" />
             Open practice
@@ -230,7 +230,7 @@ async function getImportResultData(sessionId: string) {
 
 function ResultMetric({ label, value, detail }: { label: string; value: number; detail: string }) {
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="luxury-metric-card rounded-lg border p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-normal">
         {integerFormatter.format(value)}
@@ -255,7 +255,7 @@ function ResultAction({
     <Link
       href={href}
       prefetch={false}
-      className="rounded-lg border bg-white p-4 transition-colors hover:border-[#0B7A3B]"
+      className="premium-rail-card rounded-lg p-4 transition-colors hover:border-[#0B7A3B]"
     >
       <span className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
         {icon}

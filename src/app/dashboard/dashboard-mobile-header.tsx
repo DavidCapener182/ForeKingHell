@@ -59,10 +59,10 @@ export function DashboardMobileHeader({
   }, []);
 
   return (
-    <section className="sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid max-w-[100vw] gap-0 overflow-x-clip bg-[#FFFDF8] px-4 shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden">
-      <header className="-mx-4 grid h-12 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#DDE7DC] px-4">
+    <section className="premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid max-w-[100vw] gap-0 overflow-x-clip px-4 sm:hidden">
+      <header className="-mx-4 grid h-12 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
         <span aria-hidden="true" />
-        <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
+        <h1 className="truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground">
           Dashboard
         </h1>
         <span aria-hidden="true" />
@@ -70,7 +70,7 @@ export function DashboardMobileHeader({
       <nav
         aria-label="Dashboard sections"
         tabIndex={0}
-        className="-mx-4 flex max-w-[100vw] gap-2 overflow-x-auto border-b border-[#DDE7DC] px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="premium-route-tabs -mx-4 flex max-w-[100vw] gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;
@@ -83,10 +83,10 @@ export function DashboardMobileHeader({
               aria-current={active ? "page" : undefined}
               onClick={() => setActiveKey(tab.key)}
               className={cn(
-                "min-h-10 shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold tracking-normal transition-[border-color,background-color,color] duration-150 ease-out",
+                "min-h-10 shrink-0 whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold tracking-normal transition-[border-color,background-color,color,box-shadow] duration-150 ease-out",
                 active
-                  ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-sm"
-                  : "border-transparent text-[#6B7280] hover:bg-white hover:text-[#111611]",
+                  ? "premium-route-tab-active"
+                  : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",
               )}
             >
               {tab.label}

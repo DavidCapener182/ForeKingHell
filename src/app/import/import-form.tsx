@@ -670,7 +670,7 @@ export function ImportForm({
               size="sm"
               disabled={!canSave}
               onClick={saveImportBatch}
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="premium-action rounded-lg"
             >
               <Upload className="size-4" />
               Save
@@ -739,7 +739,7 @@ export function ImportForm({
                 size="lg"
                 disabled={!canSave}
                 onClick={saveImportBatch}
-                className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-auto"
+                className="premium-action w-full sm:w-auto"
               >
                 <Upload className="size-4" />
                 {isPending ? "Saving…" : "Save batch"}
@@ -796,7 +796,7 @@ export function ImportForm({
                     <Button
                       asChild
                       size="sm"
-                      className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                      className="premium-action"
                     >
                       <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
                         <GitCompareArrows className="size-4" />
@@ -864,7 +864,7 @@ export function ImportForm({
               ) : null}
               {saveState.status === "success" &&
               saveState.achievementUnlockNotifications.length > 0 ? (
-                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-foreground">
+                <div className="trust-indicator mt-3 rounded-lg p-3 text-foreground">
                   <p className="text-sm font-medium">
                     {saveState.achievementUnlockNotifications.length === 1
                       ? "Achievement unlocked"
@@ -1068,7 +1068,7 @@ export function ImportForm({
                 type="button"
                 disabled={!canSave}
                 onClick={saveImportBatch}
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                className="premium-action rounded-lg"
               >
                 <Upload className="size-4" />
                 {isPending ? "Saving…" : "Save batch"}
@@ -1076,7 +1076,7 @@ export function ImportForm({
             ) : (
               <Button
                 type="button"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                className="premium-action rounded-lg"
                 onClick={() =>
                   setMobileStep(
                     mobileImportSteps[
@@ -1117,8 +1117,8 @@ function MobileImportStepper({
           className={cn(
             "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
             item.id === step
-              ? "border-slate-950 bg-slate-950 text-white"
-              : "border-slate-200 bg-white/90 text-slate-700",
+              ? "premium-route-tab-active"
+              : "border-border bg-white/80 text-slate-700",
           )}
         >
           {item.label}
@@ -1214,7 +1214,7 @@ function ImportFlowGuide({
   ];
 
   return (
-    <section className="rounded-[20px] border border-[#DFE7DF] bg-[#FBFDFB] p-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
+    <section className="premium-command-surface rounded-lg p-3">
       <div className="flex flex-col gap-1 px-1 pb-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-[#111827]">Guided import path</p>
@@ -1222,7 +1222,7 @@ function ImportFlowGuide({
             Move one clean export into trusted bag numbers, with every raw row still accounted for.
           </p>
         </div>
-        <Badge className="w-fit bg-white text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
+          <Badge className="w-fit bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
           {canSave ? "Ready to save" : "Review required"}
         </Badge>
       </div>
@@ -1237,14 +1237,14 @@ function ImportFlowGuide({
               type="button"
               onClick={() => onStepChange(step.id)}
               className={cn(
-                "grid min-h-[8.75rem] grid-rows-[auto_1fr] rounded-[16px] border bg-white p-3 text-left transition-colors",
+                "grid min-h-[8.75rem] grid-rows-[auto_1fr] rounded-lg border bg-white/76 p-3 text-left transition-colors",
                 active
                   ? "border-[#0B7A3B] shadow-[0_8px_20px_rgba(8,122,61,0.08)]"
                   : "border-[#E5E7EB] hover:border-[#CFE7D6]",
               )}
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="grid size-8 place-items-center rounded-full bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
+                <span className="grid size-8 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
                   {index + 1}
                 </span>
                 <span

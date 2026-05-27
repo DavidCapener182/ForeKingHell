@@ -34,7 +34,7 @@ export function MobileAppShell({ children, className }: MobileAppShellProps) {
   return (
     <section
       className={cn(
-        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip bg-[#F7FAF5] px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-2 text-[#050505] sm:hidden [&>*]:min-w-0",
+        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-2 text-foreground sm:hidden [&>*]:min-w-0",
         className,
       )}
     >
@@ -54,13 +54,13 @@ export function MobileTopBar({ title, leading, actions, className }: MobileTopBa
   return (
     <header
       className={cn(
-        "sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mb-4 -mt-2 h-[calc(2.75rem+1px)] w-auto min-w-0 overflow-hidden border-b border-[#DDE7DC] bg-[#FFFDF8] px-4 shadow-[0_10px_24px_rgba(26,49,31,0.08)]",
+        "premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mb-4 -mt-2 h-[calc(2.75rem+1px)] w-auto min-w-0 overflow-hidden border-b px-4",
         className,
       )}
     >
-      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-[#DDE7DC] px-4">
+      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border/70 px-4">
         <div className="flex min-w-0 items-center justify-start gap-1.5">{leading}</div>
-        <h1 className="max-w-[12rem] truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal">
+        <h1 className="max-w-[12rem] truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground">
           {title}
         </h1>
         <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
@@ -79,7 +79,7 @@ export function MobileIconButton({
   icon: LucideIcon;
 }) {
   return (
-    <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-[#050505]">
+    <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-foreground">
       <Link href={href} prefetch={false} aria-label={label}>
         <Icon className="size-5" />
       </Link>
@@ -152,7 +152,7 @@ export function MobileRouteTabs({
       tabs={mobileRouteGroups[group]}
       activeKey={activeKey}
       className={cn(
-        sticky ? "sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40 bg-[#FFFDF8]" : "",
+        sticky ? "sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40" : "",
         className,
       )}
     />
@@ -173,13 +173,13 @@ export function MobileRouteHeader({
   return (
     <section
       className={cn(
-        "sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid min-w-0 gap-0 bg-[#FFFDF8] px-4 shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden",
+        "premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid min-w-0 gap-0 px-4 sm:hidden",
         className,
       )}
     >
-      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-[#DDE7DC] px-4">
+      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
         <span aria-hidden="true" />
-        <h1 className="truncate text-center text-[1.35rem] font-semibold leading-7 tracking-normal text-[#050505]">
+        <h1 className="truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground">
           {title}
         </h1>
         <span aria-hidden="true" />
@@ -205,7 +205,7 @@ export function MobileTabBar({
       aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
       tabIndex={0}
       className={cn(
-        "-mx-4 flex min-w-0 gap-2 overflow-x-auto border-b border-[#DDE7DC] px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "premium-route-tabs -mx-4 flex min-w-0 gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >
@@ -219,10 +219,10 @@ export function MobileTabBar({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-full border px-3 py-2 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
-                ? "border-emerald-700 bg-emerald-50 text-emerald-950 shadow-sm"
-                : "border-transparent text-[#6B7280] hover:bg-white hover:text-[#111611]",
+                ? "premium-route-tab-active"
+                : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",
             )}
           >
             {tab.label}
@@ -245,14 +245,14 @@ export function MobileStatusAction({
   action?: ReactNode;
 }) {
   return (
-    <section className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 border-b border-[#E5E7EB] pb-4">
+    <section className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-lg p-4">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-[#6B7280]">{label}</p>
-        <p className="mt-1 truncate text-2xl font-semibold tracking-normal text-[#050505]">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+        <p className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground">
           {value}
         </p>
         {detail ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">{detail}</p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{detail}</p>
         ) : null}
       </div>
       {action ? (
@@ -285,10 +285,10 @@ export function NativeListSection({
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
             {title ? (
-              <h2 className="text-xl font-semibold tracking-normal text-[#050505]">{title}</h2>
+              <h2 className="text-xl font-semibold tracking-normal text-foreground">{title}</h2>
             ) : null}
             {description ? (
-              <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -315,7 +315,7 @@ export function BottomSheet({
       <Drawer>
         <DrawerTrigger
           className={cn(
-            "inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-sm outline-none transition-colors duration-150 ease-out hover:bg-[#064E3B] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "premium-action inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             triggerClassName,
           )}
         >

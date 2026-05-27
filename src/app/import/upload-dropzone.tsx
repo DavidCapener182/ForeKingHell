@@ -62,7 +62,7 @@ export function UploadDropzone({
 
       <div
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 px-4 py-8 text-center transition-colors",
+          "premium-command-surface flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-dashed px-4 py-8 text-center transition-colors",
           isDragging
             ? "border-emerald-500 bg-emerald-50"
             : "border-border hover:border-emerald-400",
@@ -109,7 +109,7 @@ export function UploadDropzone({
       </div>
 
       {readProgress ? (
-        <div className="rounded-xl border bg-white p-3" aria-live="polite">
+        <div className="premium-command-surface rounded-lg p-3" aria-live="polite">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium">Reading {readProgress.fileName}</span>
             <span className="text-muted-foreground">
@@ -139,7 +139,7 @@ export function UploadDropzone({
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center justify-between gap-3 rounded-lg bg-white/90 px-3 py-2 ring-1 ring-slate-200/80"
+                className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <FileText className="size-4 shrink-0 text-sky-500" />

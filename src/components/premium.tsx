@@ -104,7 +104,7 @@ export function PageHeader({
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <div className="min-w-0">
             {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-            <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance">
+            <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance text-foreground">
               {title}
             </h1>
             {description && !primaryMetric && !actions ? (
@@ -123,7 +123,7 @@ export function PageHeader({
           ) : null}
         </div>
         {primaryMetric || actions ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-emerald-900/10 bg-white/90 px-2.5 py-2 shadow-sm">
+          <div className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 py-2">
             {primaryMetric ? (
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -132,6 +132,11 @@ export function PageHeader({
                 <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
                   {primaryMetric.value}
                 </p>
+                {primaryMetric.detail ? (
+                  <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                    {primaryMetric.detail}
+                  </p>
+                ) : null}
               </div>
             ) : (
               <span aria-hidden />
@@ -162,7 +167,7 @@ export function PageHeader({
             <div className="max-w-3xl space-y-1.5">
               {eyebrow ? <div>{eyebrow}</div> : null}
               <div className="space-y-1.5">
-                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance text-[#111611]">
+                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance text-foreground">
                   {title}
                 </h1>
                 {description ? (
@@ -191,7 +196,7 @@ export function PageHeader({
         {metrics?.length ? (
           <div className="mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
             {metrics.map((metric) => (
-              <div key={metric.label} className="metric-tile desktop-metric-tile">
+              <div key={metric.label} className="metric-tile desktop-metric-tile luxury-metric-card">
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {metric.label}
                 </p>
@@ -236,7 +241,7 @@ export function MobileCompactPageHeader({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <div className="min-w-0">
           {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-          <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance">
+          <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance text-foreground">
             {title}
           </h1>
           {description && !metricLabel && !action ? (
@@ -255,7 +260,7 @@ export function MobileCompactPageHeader({
         ) : null}
       </div>
       {metricLabel || action ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-emerald-900/10 bg-white/90 px-2.5 py-2 shadow-sm">
+        <div className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 py-2">
           {metricLabel ? (
             <div className="min-w-0">
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -302,6 +307,7 @@ export function MobileSectionChips({
       tabIndex={0}
       className={cn(
         "sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden",
+        "premium-route-tabs rounded-lg",
         className,
       )}
     >
@@ -309,7 +315,7 @@ export function MobileSectionChips({
         <a
           key={`${item.label}-${item.href}-${index}`}
           href={item.href}
-          className="min-h-10 shrink-0 rounded-full border border-emerald-900/10 bg-white/92 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-[border-color,background-color,color] duration-150 ease-out hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900"
+          className="min-h-10 shrink-0 rounded-md border border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground"
         >
           {item.label}
         </a>
@@ -335,7 +341,7 @@ export function StickyMobileAction({
     >
       <div
         data-sticky-mobile-action
-        className="pointer-events-auto rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+        className="premium-mobile-action-bar pointer-events-auto rounded-lg p-2"
       >
         {children}
       </div>
@@ -364,7 +370,7 @@ export function ActiveFilterChips({
     >
       {items.map((item) => {
         const content = (
-          <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-emerald-900/10 bg-white/92 px-3 text-sm font-semibold text-slate-700 shadow-sm">
+          <span className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-emerald-900/10 bg-white/80 px-3 text-sm font-semibold text-slate-700 shadow-sm">
             {item.label}
           </span>
         );
@@ -399,7 +405,7 @@ export function MobileFilterSheet({
           type="button"
           className={cn(
             buttonVariants({ variant: "outline" }),
-            "min-h-11 w-full justify-center rounded-lg bg-background shadow-sm",
+            "premium-command-surface min-h-11 w-full justify-center rounded-lg shadow-sm",
           )}
         >
           <SlidersHorizontal className="size-4" aria-hidden />
@@ -595,7 +601,7 @@ export function MobileAccordionSection({
     <details
       open={defaultOpen}
       className={cn(
-        "group rounded-lg border border-slate-200 bg-white shadow-sm sm:hidden",
+        "group premium-card rounded-lg sm:hidden",
         className,
       )}
     >
@@ -611,7 +617,7 @@ export function MobileAccordionSection({
           <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
         </span>
       </summary>
-      <div className={cn("border-t border-slate-200 p-3", contentClassName)}>{children}</div>
+      <div className={cn("border-t border-border/70 p-3", contentClassName)}>{children}</div>
     </details>
   );
 }
@@ -678,7 +684,7 @@ export function TopThreeDisclosure({
       <div className={cn("sm:hidden", className)}>
         {visibleItems.map(render)}
         <details className="contents">
-          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-white/80 px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
             {moreLabel}
           </summary>
           <div className="contents">
@@ -750,7 +756,7 @@ export function MetricCard({
   const card = (
     <Card
       className={cn(
-        "premium-card h-full transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
+        "premium-card luxury-metric-card h-full transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
         className,
       )}
     >
@@ -814,7 +820,7 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <CardHeader className="gap-1 border-b border-[#DDE7DC] bg-[#FBFDF9] px-4 py-3">
+    <CardHeader className="gap-1 border-b border-border/70 bg-white/35 px-4 py-3">
       <div>
         <CardTitle className="text-base font-semibold tracking-normal text-[#111611] sm:text-lg">
           {title}
@@ -886,7 +892,7 @@ export function CompactReadoutGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
+        "premium-rail-card overflow-hidden rounded-lg",
         className,
       )}
     >
@@ -926,7 +932,7 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
     </>
   );
   const baseClassName =
-    "flex min-h-20 min-w-0 items-start gap-3 border-b border-slate-200/70 px-3 py-2.5 md:border-r";
+    "flex min-h-20 min-w-0 items-start gap-3 border-b border-border/70 px-3 py-2.5 md:border-r";
   const title = item.title ?? stringValue(item.detail);
 
   if (item.href) {
@@ -967,7 +973,7 @@ export function CompactLinkGrid({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
+    "premium-rail-card overflow-hidden rounded-lg",
         className,
       )}
     >
@@ -984,7 +990,7 @@ export function CompactLinkGrid({
             prefetch={false}
             title={item.description}
             aria-label={item.description ? `${item.title}: ${item.description}` : item.title}
-            className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-slate-200/70 px-3 py-2 transition-colors hover:bg-emerald-50/70 sm:border-r"
+            className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-border/70 px-3 py-2 transition-colors hover:bg-emerald-50/70 sm:border-r"
           >
             <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", item.accent)}>
               <item.icon className="size-4" aria-hidden />
@@ -1140,7 +1146,7 @@ export function DataPair({
   return (
     <div
       className={cn(
-        "flex min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg bg-slate-50/80 px-3 py-2 text-sm",
+        "trust-indicator flex min-w-0 max-w-full items-center justify-between gap-3 overflow-hidden rounded-lg px-3 py-2 text-sm",
         className,
       )}
     >

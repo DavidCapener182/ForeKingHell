@@ -70,11 +70,11 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         Skip to content
       </a>
       <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
-        <SidebarHeader className="border-b border-sidebar-border bg-[#FFFDF8]">
+        <SidebarHeader className="border-b border-sidebar-border bg-[linear-gradient(180deg,var(--lux-ivory),#f4f7ef)]">
           <div className="flex items-center gap-2 px-1 py-1">
             <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
               <Link href="/dashboard">
-                <BrandMark className="size-9 rounded-md" sizes="36px" />
+                <BrandMark className="size-9 rounded-lg shadow-sm" sizes="36px" />
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{BRAND_NAME}</span>
                   <span className="truncate text-xs text-muted-foreground">Golf analytics</span>
@@ -103,7 +103,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
                           tooltip={item.label}
                           className={cn(
                             active &&
-                              "bg-primary/8 font-medium text-primary hover:bg-primary/10 hover:text-primary",
+                              "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
                           )}
                         >
                           <Link href={item.href} aria-current={active ? "page" : undefined}>
@@ -131,8 +131,8 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         </SidebarContent>
 
         <SidebarSeparator />
-        <SidebarFooter className="border-t border-sidebar-border bg-[#FFFDF8]">
-          <Button asChild className="w-full justify-start">
+        <SidebarFooter className="border-t border-sidebar-border bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]">
+          <Button asChild className="premium-action w-full justify-start rounded-lg">
             <Link href="/import">
               <Upload className="size-4" />
               <span className="group-data-[collapsible=icon]:hidden">Import data</span>

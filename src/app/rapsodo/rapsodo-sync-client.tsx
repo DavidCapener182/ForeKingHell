@@ -633,7 +633,7 @@ export function RapsodoSyncClient({
               size="sm"
               disabled={!canSave}
               onClick={savePreview}
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="premium-action rounded-lg"
             >
               <Upload className="size-4" />
               Import
@@ -750,7 +750,7 @@ export function RapsodoSyncClient({
             <CardContent className="space-y-4">
               {status.connected ? (
                 <div className="space-y-4">
-                  <div className="rounded-[8px] border bg-emerald-50 p-3 text-sm text-emerald-900">
+                  <div className="trust-indicator rounded-lg p-3 text-sm">
                     <div className="flex items-center gap-2 font-medium">
                       <ShieldCheck className="size-4" />
                       Token saved
@@ -816,7 +816,7 @@ export function RapsodoSyncClient({
                   />
                   <Button
                     type="submit"
-                    className="w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                    className="premium-action w-full"
                     disabled={isPending}
                   >
                     {loadingLabel === "Signing in" ? (
@@ -914,7 +914,7 @@ export function RapsodoSyncClient({
                   </div>
                 )}
               </MobileDataList>
-              <div className="hidden overflow-hidden rounded-[8px] border sm:block">
+              <div className="hidden overflow-hidden rounded-lg border sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -991,7 +991,7 @@ export function RapsodoSyncClient({
           </Card>
         </section>
 
-        <section className="grid gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm shadow-sm sm:hidden">
+        <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm sm:hidden">
           <div className="flex items-center justify-between gap-3">
             <span className="font-semibold">Provider import health</span>
             <Badge
@@ -1035,7 +1035,7 @@ export function RapsodoSyncClient({
                     type="button"
                     onClick={savePreview}
                     disabled={!canSave}
-                    className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                    className="premium-action"
                   >
                     {loadingLabel === "Saving shots" ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -1049,7 +1049,7 @@ export function RapsodoSyncClient({
               <CardContent className="space-y-3">
                 <div
                   className={cn(
-                    "grid gap-2 rounded-[8px] border bg-[#f9fafb] p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
+                    "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
                     visibleMobileStep === "clubs" ? "grid" : "hidden sm:grid",
                   )}
                 >
@@ -1057,7 +1057,7 @@ export function RapsodoSyncClient({
                     type="button"
                     variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
                     className={
-                      clubSelectionMode === "recommendations" ? "bg-[#0B7A3B] text-white" : ""
+                      clubSelectionMode === "recommendations" ? "premium-action" : ""
                     }
                     onClick={() => applyClubSelectionMode("recommendations")}
                     disabled={isPending}
@@ -1068,7 +1068,7 @@ export function RapsodoSyncClient({
                   <Button
                     type="button"
                     variant={clubSelectionMode === "rapsodo" ? "default" : "outline"}
-                    className={clubSelectionMode === "rapsodo" ? "bg-[#0B7A3B] text-white" : ""}
+                    className={clubSelectionMode === "rapsodo" ? "premium-action" : ""}
                     onClick={() => applyClubSelectionMode("rapsodo")}
                     disabled={isPending}
                   >
@@ -1076,7 +1076,7 @@ export function RapsodoSyncClient({
                     Use Rapsodo clubs
                   </Button>
                   <label
-                    className={`flex min-h-10 items-center gap-3 rounded-md border bg-white px-3 py-2 text-sm ${
+                    className={`flex min-h-10 items-center gap-3 rounded-md border bg-white/75 px-3 py-2 text-sm ${
                       rapsodoWritebackRows.updatableCount === 0 ? "opacity-60" : ""
                     }`}
                   >
@@ -1128,7 +1128,7 @@ export function RapsodoSyncClient({
                   </Alert>
                 ) : null}
                 <div className="sm:hidden">
-                  <details className="rounded-xl border bg-white">
+                  <details className="premium-command-surface rounded-lg">
                     <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                       Review shots
                       <Badge variant="secondary">{preview.shots.length}</Badge>
@@ -1183,7 +1183,7 @@ export function RapsodoSyncClient({
                     </div>
                   </details>
                 </div>
-                <div className="hidden rounded-[8px] border sm:block">
+                <div className="hidden rounded-lg border sm:block">
                   <Table className="text-xs">
                     <TableHeader>
                       <TableRow>
@@ -1281,7 +1281,7 @@ export function RapsodoSyncClient({
                     <Button
                       type="button"
                       variant={courseImportMode === "shot_only" ? "default" : "outline"}
-                      className={courseImportMode === "shot_only" ? "bg-[#0B7A3B] text-white" : ""}
+                      className={courseImportMode === "shot_only" ? "premium-action" : ""}
                       onClick={() => setCourseImportMode("shot_only")}
                       disabled={isPending}
                     >
@@ -1292,7 +1292,7 @@ export function RapsodoSyncClient({
                       type="button"
                       variant={courseImportMode === "scored_round" ? "default" : "outline"}
                       className={
-                        courseImportMode === "scored_round" ? "bg-[#0B7A3B] text-white" : ""
+                        courseImportMode === "scored_round" ? "premium-action" : ""
                       }
                       onClick={() => setCourseImportMode("scored_round")}
                       disabled={isPending}
@@ -1302,7 +1302,7 @@ export function RapsodoSyncClient({
                     </Button>
                   </div>
                   {courseImportMode === "shot_only" ? (
-                    <div className="rounded-[8px] border bg-[#f9fafb] p-3 text-sm text-muted-foreground">
+                    <div className="premium-command-surface rounded-lg p-3 text-sm text-muted-foreground">
                       These shots will save as a shot-linked course round without scorecard detail.
                     </div>
                   ) : (
@@ -1320,7 +1320,7 @@ export function RapsodoSyncClient({
                           onChange={(event) => setScorecardText(event.target.value)}
                         />
                       </div>
-                      <div className="rounded-[8px] border bg-[#f9fafb] p-3 text-sm">
+                      <div className="premium-command-surface rounded-lg p-3 text-sm">
                         {scorecard.holes.length === 0 ? (
                           <p className="text-muted-foreground">
                             Add scorecard rows before saving this course session.
@@ -1338,7 +1338,7 @@ export function RapsodoSyncClient({
                     </>
                   )}
                   {courseImportMode === "scored_round" && scorecard.holes.length > 0 ? (
-                    <div className="rounded-[8px] border">
+                    <div className="rounded-lg border">
                       <Table className="text-xs">
                         <TableHeader>
                           <TableRow>
@@ -1426,7 +1426,7 @@ export function RapsodoSyncClient({
                 type="button"
                 disabled={!canSave}
                 onClick={savePreview}
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                className="premium-action rounded-lg"
               >
                 <Upload className="size-4" />
                 Import selected sessions
@@ -1434,7 +1434,7 @@ export function RapsodoSyncClient({
             ) : (
               <Button
                 type="button"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                className="premium-action rounded-lg"
                 onClick={() =>
                   setMobileStep(
                     mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
@@ -1578,8 +1578,8 @@ function RapsodoMobileStepper({
           className={cn(
             "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
             item.id === step
-              ? "border-slate-950 bg-slate-950 text-white"
-              : "border-slate-200 bg-white/90 text-slate-700",
+              ? "premium-route-tab-active"
+              : "border-border bg-white/80 text-slate-700",
           )}
         >
           {item.label}
@@ -1591,7 +1591,7 @@ function RapsodoMobileStepper({
 
 function StatusTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[8px] border border-white/70 bg-white/70 p-3">
+    <div className="luxury-metric-card rounded-lg border p-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-normal">{value}</p>
     </div>
@@ -1600,7 +1600,7 @@ function StatusTile({ label, value }: { label: string; value: string }) {
 
 function CompactSummaryTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-center justify-between gap-3 rounded-[8px] border bg-[#f9fafb] px-3 py-2">
+    <div className="premium-command-surface flex min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-2">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <span className="truncate text-sm font-semibold">{value}</span>
     </div>

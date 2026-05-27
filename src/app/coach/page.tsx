@@ -112,7 +112,7 @@ export default async function CoachPage() {
             </Button>
           }
         />
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
+        <section className="premium-hero rounded-lg p-3">
           <p className="text-sm font-semibold text-[#0B7A3B]">Why</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal">
             {topClub?.reason ?? coach.headline}
@@ -517,7 +517,7 @@ function CoachSocialPrompt({
         action={<Trophy className="size-5 text-amber-600" />}
       />
       <CardContent className="grid gap-3">
-        <p className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-slate-700">
+        <p className="trust-indicator rounded-lg p-3 text-sm leading-6 text-slate-700">
           {topClub
             ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
             : "Build a clean club baseline before comparing with friends or entering verified boards."}
@@ -587,7 +587,7 @@ function CoachPracticePlan({
 }) {
   return (
     <CardContent className="space-y-4">
-      <div className="rounded-xl border bg-emerald-50 p-3 sm:p-4">
+      <div className="premium-hero rounded-lg p-3 sm:p-4">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

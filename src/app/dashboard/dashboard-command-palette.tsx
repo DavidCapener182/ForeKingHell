@@ -57,10 +57,10 @@ export function DashboardCommandPalette({ routes }: { routes: DashboardCommandRo
   }, []);
 
   return (
-    <div className="rounded-lg border border-[#DFE7DF] bg-white p-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <div className="premium-command-surface rounded-lg p-3">
       <label className="grid gap-2 text-sm font-medium">
         <span className="sr-only">Search tools</span>
-        <span className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-lg border bg-[#F8FAF8] px-3">
+        <span className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-lg border border-border/80 bg-white/70 px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
           <Search className="size-4 text-[#667085]" />
           <input
             ref={inputRef}
@@ -78,7 +78,7 @@ export function DashboardCommandPalette({ routes }: { routes: DashboardCommandRo
             key={suggestion}
             type="button"
             onClick={() => setQuery(suggestion)}
-            className="min-h-8 shrink-0 rounded-full border border-[#DFE7DF] bg-[#FBFDFB] px-3 text-xs font-semibold text-[#475467] transition-colors hover:border-[#0B7A3B] hover:text-[#087A3D]"
+            className="min-h-8 shrink-0 rounded-md border border-border bg-white/70 px-3 text-xs font-semibold text-[#475467] transition-colors hover:border-[#0B7A3B] hover:text-[#087A3D]"
           >
             {suggestion}
           </button>
@@ -91,9 +91,9 @@ export function DashboardCommandPalette({ routes }: { routes: DashboardCommandRo
               key={`${route.title}-${route.href}`}
               href={route.href}
               prefetch={false}
-              className="group grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 transition-colors hover:border-[#0B7A3B]"
+              className="group grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-white/72 px-3 py-2 transition-[border-color,background-color,box-shadow] hover:border-[#0B7A3B] hover:bg-white"
             >
-              <span className="grid size-7 place-items-center rounded-full bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
+              <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
                 {index + 1}
               </span>
               <span className="min-w-0">

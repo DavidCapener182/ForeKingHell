@@ -35,7 +35,7 @@ export function AppPageHeader({
   className,
 }: AppPageHeaderProps) {
   return (
-    <Card className={cn("premium-card overflow-hidden", className)}>
+    <Card className={cn("premium-hero overflow-hidden", className)}>
       <CardHeader className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           {eyebrow ? (
@@ -58,7 +58,7 @@ export function AppPageHeader({
         <CardContent>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric) => (
-              <div key={metric.label} className="metric-tile">
+              <div key={metric.label} className="metric-tile luxury-metric-card">
                 <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {metric.label}
                 </p>

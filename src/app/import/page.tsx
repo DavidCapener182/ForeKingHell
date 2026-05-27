@@ -112,7 +112,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
             <MobileTopBar title="Import" />
             <MobileTabBar
               activeKey="rapsodo"
-              className="sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40 bg-white"
+              className="sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40"
               tabs={[
                 { key: "rapsodo", label: "Rapsodo", href: "#rapsodo-connect" },
                 { key: "csv", label: "CSV", href: "/import?source=csv#csv-import" },
@@ -126,7 +126,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               value="Import verified session"
               detail={`${integerFormatter.format(visibleFiles.length)} recent files · ${integerFormatter.format(duplicateFiles)} duplicates detected`}
               action={
-                <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                <Button asChild className="premium-action rounded-lg">
                   <a href="#rapsodo-connect">
                     <Upload className="size-4" />
                     Rapsodo
@@ -145,7 +145,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                 <Link
                   href="/rapsodo"
                   prefetch={false}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+                  className="premium-rail-card grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
                 >
                   <Upload className="size-5 text-[#0B7A3B]" />
                   <span className="min-w-0">
@@ -160,7 +160,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                   id="csv-import"
                   href="/import?source=csv#csv-import"
                   prefetch={false}
-                  className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 text-left"
+                  className="premium-rail-card grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3 text-left"
                 >
                   <Upload className="size-5 text-[#0B7A3B]" />
                   <span className="min-w-0">
@@ -178,7 +178,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                     </>
                   }
                   title="Scorecard proof"
-                  triggerClassName="w-full rounded-lg bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+                  triggerClassName="w-full rounded-lg bg-white/80 text-[#050505] ring-1 ring-[#E5E7EB]"
                 >
                   <div className="grid gap-3 text-sm text-[#6B7280]">
                     <p>
@@ -186,7 +186,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                       Strong proof combines direct Rapsodo import, scorecard screenshot,
                       course/date/tee match and duplicate checks.
                     </p>
-                    <Button asChild className="rounded-full bg-[#0B7A3B] text-white">
+                    <Button asChild className="premium-action rounded-lg">
                       <a href="#rapsodo-connect">Continue to Rapsodo</a>
                     </Button>
                   </div>
@@ -206,7 +206,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               {eligibleSubmissionCards.map((item) => (
                 <div
                   key={item.title}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+                  className="premium-rail-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
                 >
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{item.title}</p>
@@ -341,9 +341,9 @@ function FirstRunRapsodoOnboarding({
       <CardContent>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
           {steps.map((step, index) => (
-            <div key={step.title} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div key={step.title} className="apple-panel-strong p-3">
               <div className="flex items-center justify-between gap-3">
-                <span className="grid size-7 place-items-center rounded-full bg-[#F5F6F4] text-sm font-semibold">
+                <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-sm font-semibold">
                   {index + 1}
                 </span>
                 {step.ready ? (
@@ -357,7 +357,7 @@ function FirstRunRapsodoOnboarding({
             </div>
           ))}
         </div>
-        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3">
+        <div className="trust-indicator mt-3 rounded-lg p-3">
           <p className="text-sm font-semibold">What happens to my data?</p>
           <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
             <p>Private by default.</p>
@@ -367,7 +367,7 @@ function FirstRunRapsodoOnboarding({
           </div>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button asChild className="premium-action rounded-lg">
             <a href="#rapsodo-connect">
               <Upload className="size-4" />
               Start with Rapsodo

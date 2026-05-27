@@ -47,7 +47,10 @@ export function AppMetricCard({
 }: AppMetricCardProps) {
   const content = (
     <Card
-      className={cn("premium-card h-full transition-colors hover:border-primary/40", className)}
+      className={cn(
+        "premium-card luxury-metric-card h-full transition-colors hover:border-primary/40",
+        className,
+      )}
     >
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">

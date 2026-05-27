@@ -42,24 +42,24 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
   }
 
   return (
-    <section id="rapsodo-connect" className="rounded-lg border border-[#E5E7EB] bg-white p-4">
+    <section id="rapsodo-connect" className="premium-hero rounded-lg p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo sync · Live</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal text-[#050505]">
+          <h2 className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
             {status.connected ? "Provider connected" : "Connect Rapsodo"}
           </h2>
-          <p className="mt-1 text-sm leading-5 text-[#6B7280]">
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
             Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into
             the shared LM World Tour history.
           </p>
         </div>
-        <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
+        <span className="grid size-11 place-items-center rounded-lg bg-[#F5F6F4] text-[#0B7A3B]">
           {status.connected ? <ShieldCheck className="size-5" /> : <Cloud className="size-5" />}
         </span>
       </div>
 
-      <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/70 p-3 text-sm leading-5 text-emerald-950">
+      <div className="trust-indicator mt-4 rounded-lg p-3 text-sm leading-5">
         We do not store your Rapsodo password. It is exchanged for a short-lived encrypted token.
         You can disconnect at any time.
       </div>
@@ -74,7 +74,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
                 : "Ready to load R-Cloud sessions."}
             </p>
           </div>
-          <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button asChild className="premium-action rounded-lg">
             <Link href="/rapsodo" prefetch={false}>
               Open Rapsodo sessions
             </Link>
@@ -108,7 +108,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
           <Button
             type="submit"
             disabled={isPending}
-            className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            className="premium-action rounded-lg"
           >
             {isPending ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
             Sign in to Rapsodo

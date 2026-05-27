@@ -197,7 +197,7 @@ export default async function BagPage() {
                   key={row.id}
                   href={`/bag/${row.id}`}
                   prefetch={false}
-                  className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
+                  className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
                 >
                   <span className="font-semibold">{formatClubType(row.clubType)}</span>
                   <span className="h-2 rounded-full bg-[#E5E7EB]">
@@ -233,7 +233,7 @@ export default async function BagPage() {
                 key={`${finding.title}-${finding.detail}`}
                 href={finding.href ?? "/import"}
                 prefetch={false}
-                className="rounded-lg border border-[#E5E7EB] bg-white p-3"
+                className="premium-rail-card rounded-lg p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -258,7 +258,7 @@ export default async function BagPage() {
                 key={club.id}
                 href={`/bag/${club.id}`}
                 prefetch={false}
-                className="grid min-w-36 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3"
+                className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
               >
                 <ClubArtwork
                   clubType={club.type}
@@ -831,7 +831,7 @@ function BagConfidenceLadder({
                   key={row.id}
                   href={`/bag/${row.id}`}
                   prefetch={false}
-                  className="grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-emerald-300"
+                  className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-emerald-300"
                 >
                   <div className="min-w-0">
                     <div className="flex items-start justify-between gap-2">
@@ -1512,7 +1512,7 @@ function BagSocialComparison({
         action={<Users className="size-5 text-emerald-600" />}
       />
       <CardContent className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="rounded-lg border bg-[#F5F6F4] p-3 text-sm leading-6 text-muted-foreground">
+        <div className="trust-indicator rounded-lg p-3 text-sm leading-6 text-muted-foreground">
           {leaderboardOptedIn && bestClub
             ? `${formatClubType(bestClub.type)} is your most trusted active club. Compare it through friend boards or a private challenge when you want a fair opt-in benchmark.`
             : "Leaderboard comparison is off in your profile, so this page is keeping the bag readout private."}

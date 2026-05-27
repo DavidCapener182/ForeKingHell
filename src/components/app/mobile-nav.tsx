@@ -58,7 +58,7 @@ export function MobileNav({
     <>
       <header
         aria-label="Mobile app bar"
-        className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-[#DDE7DC] bg-[#FFFDF8] px-4 pt-[env(safe-area-inset-top)] shadow-[0_10px_24px_rgba(26,49,31,0.08)] sm:hidden"
+        className="premium-mobile-bar fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b px-4 pt-[env(safe-area-inset-top)] sm:hidden"
       >
         <div className="relative flex h-[3.25rem] items-center">
           <Sheet>
@@ -67,7 +67,7 @@ export function MobileNav({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="relative z-10 size-10 rounded-full border border-emerald-900/10 bg-white shadow-sm"
+                className="relative z-10 size-10 rounded-lg border border-emerald-900/10 bg-white/75 shadow-sm"
                 aria-label="Open navigation"
               >
                 <Menu className="size-5" />
@@ -75,19 +75,23 @@ export function MobileNav({
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="z-[70] w-[20rem] max-w-[calc(100vw-2rem)] gap-0 p-0"
+              className="z-[70] w-[20rem] max-w-[calc(100vw-2rem)] gap-0 border-r border-emerald-950/15 bg-[linear-gradient(180deg,#fffdf4,#f2f6ee)] p-0"
             >
-              <SheetHeader className="border-b border-border p-4 text-left">
+              <SheetHeader className="border-b border-border/80 p-4 text-left">
                 <div className="flex items-center gap-3">
-                  <BrandMark className="size-12 rounded-md" sizes="48px" />
+                  <BrandMark className="size-12 rounded-lg shadow-sm" sizes="48px" />
                   <div className="min-w-0">
                     <SheetTitle className="truncate">{BRAND_NAME}</SheetTitle>
                     <SheetDescription className="truncate">{profileLabel}</SheetDescription>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <Badge variant="secondary">Lvl {level}</Badge>
-                  <Badge variant="outline">{xpFormatter.format(totalXp)} XP</Badge>
+                  <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">
+                    Lvl {level}
+                  </Badge>
+                  <Badge variant="outline" className="bg-white/70">
+                    {xpFormatter.format(totalXp)} XP
+                  </Badge>
                   {isAdmin ? <Badge>Admin</Badge> : null}
                 </div>
               </SheetHeader>
@@ -98,8 +102,8 @@ export function MobileNav({
                   ))}
                 </div>
               </ScrollArea>
-              <div className="mt-auto grid gap-2 border-t border-border p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-                <Button asChild className="justify-start">
+              <div className="mt-auto grid gap-2 border-t border-border/80 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button asChild className="premium-action justify-start rounded-lg">
                   <SheetClose asChild>
                     <Link href="/import">
                       <Upload className="size-4" />
@@ -125,14 +129,14 @@ export function MobileNav({
             aria-label={`${BRAND_NAME} dashboard`}
             className="absolute inset-y-0 left-1/2 z-0 flex max-w-[12rem] -translate-x-1/2 translate-y-1 items-center justify-center gap-2 truncate text-center text-[1.02rem] font-semibold leading-none tracking-normal text-foreground"
           >
-            <BrandMark className="size-8 rounded-md" sizes="32px" />
+            <BrandMark className="size-8 rounded-lg shadow-sm" sizes="32px" />
             <span className="truncate">{BRAND_NAME}</span>
           </Link>
 
           <Button
             asChild
             variant="secondary"
-            className="relative z-10 ml-auto h-9 rounded-full border border-emerald-900/10 bg-emerald-50 px-3 text-emerald-900 shadow-sm hover:bg-emerald-100"
+            className="relative z-10 ml-auto h-9 rounded-lg border border-emerald-900/10 bg-white/70 px-3 text-emerald-950 shadow-sm hover:bg-white"
           >
             <Link
               href="/achievements"
@@ -146,7 +150,7 @@ export function MobileNav({
       </header>
 
       <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
-        <div className="grid grid-cols-5 border-t border-[#DDE7DC] bg-[#FFFDF8] px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-12px_28px_rgba(26,49,31,0.1)]">
+        <div className="premium-mobile-bar grid grid-cols-5 border-t px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
@@ -157,16 +161,16 @@ export function MobileNav({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  "flex min-h-12 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[11px] outline-none transition-[background-color,color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   active
-                    ? "bg-emerald-50 font-semibold text-primary shadow-[inset_0_0_0_1px_rgba(11,122,59,0.12)]"
-                    : "font-medium text-muted-foreground hover:bg-muted",
+                    ? "mobile-nav-primary-active font-semibold"
+                    : "font-medium text-muted-foreground hover:bg-white/60 hover:text-foreground",
                 )}
               >
                 <span
                   className={cn(
-                    "grid size-7 place-items-center rounded-full",
-                    active ? "bg-white text-primary shadow-sm" : "",
+                    "grid size-7 place-items-center rounded-md",
+                    active ? "mobile-nav-primary-icon-active" : "",
                   )}
                 >
                   <Icon className="size-5" aria-hidden />
@@ -184,7 +188,7 @@ export function MobileNav({
 function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: string }) {
   return (
     <section className="grid gap-1">
-      <div className="px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="px-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {group.label}
       </div>
       <div className="grid gap-1">
@@ -199,7 +203,9 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "grid min-h-11 touch-manipulation grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-2 text-sm font-medium outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                  active
+                    ? "mobile-nav-drawer-active"
+                    : "text-foreground hover:bg-white/70",
                 )}
               >
                 <Icon className="size-4" aria-hidden />
