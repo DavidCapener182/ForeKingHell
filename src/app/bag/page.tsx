@@ -224,7 +224,11 @@ export default async function BagPage() {
         </NativeListSection>
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
         <NativeListSection title="Club rail">
-          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+          <div
+            aria-label="Club rail"
+            tabIndex={0}
+            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
             {bag.map((club, index) => (
               <Link
                 key={club.id}
@@ -392,7 +396,9 @@ export default async function BagPage() {
 
         <section
           id="clubs"
-          className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
+          aria-label="Club detail cards"
+          tabIndex={0}
+          className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
         >
           {bag.map((club) => (
             <Link

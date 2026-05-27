@@ -245,11 +245,11 @@ export default async function ImportPage() {
           />
           <ImportFileLibrary files={visibleFiles} />
           <ImportQualityFeaturePanel data={featureData} />
+          <div id="rapsodo-import" className="hidden sm:block">
+            <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
+          </div>
         </div>
       </PageShell>
-      <div id="rapsodo-import" className="hidden sm:block">
-        <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
-      </div>
     </>
   );
 }

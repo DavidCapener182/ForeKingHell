@@ -393,7 +393,7 @@ export function TargetDistanceSelector({
             className="scale-[1.03] object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-white/92 via-white/76 to-white/0" />
-          <div className="absolute inset-x-0 top-0 h-[390px] backdrop-blur-[7px] [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
+          <div className="absolute inset-x-0 top-0 h-[390px] bg-white/72 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
           <div className="relative z-10 flex min-h-[620px] flex-col p-7">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">
@@ -416,7 +416,7 @@ export function TargetDistanceSelector({
                   size="sm"
                   variant={distance === targetYd ? "default" : "outline"}
                   aria-pressed={distance === targetYd}
-                  className="h-11 rounded-full border-slate-200 bg-white/90 px-3 text-sm font-semibold text-slate-950 shadow-sm backdrop-blur hover:bg-white data-[state=active]:bg-emerald-600"
+                  className="h-11 rounded-full border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 shadow-sm hover:bg-white data-[state=active]:bg-emerald-600"
                   onClick={() => selectTarget(distance)}
                 >
                   {distance} yd
@@ -425,13 +425,18 @@ export function TargetDistanceSelector({
             </div>
 
             <div className="mt-8">
-              <p className="text-base font-medium text-slate-700">Type hole yards</p>
+              <label
+                htmlFor="target-distance-yards"
+                className="text-base font-medium text-slate-700"
+              >
+                Type hole yards
+              </label>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="size-12 rounded-full border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm backdrop-blur hover:bg-emerald-50"
+                  className="size-12 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-50"
                   aria-label="Reduce target distance by 5 yards"
                   onClick={() => selectTarget(targetYd - STEP_YD)}
                 >
@@ -439,6 +444,8 @@ export function TargetDistanceSelector({
                 </Button>
                 <div className="relative">
                   <input
+                    id="target-distance-yards"
+                    name="targetDistanceYards"
                     type="number"
                     inputMode="numeric"
                     min={MIN_TARGET_YD}
@@ -447,7 +454,7 @@ export function TargetDistanceSelector({
                     value={targetYd}
                     onFocus={(event) => event.currentTarget.select()}
                     onChange={(event) => selectTarget(Number(event.target.value))}
-                    className="h-14 w-36 rounded-xl border border-[#D7DEE8] bg-white/95 px-5 pr-12 text-xl font-semibold text-slate-950 shadow-sm outline-none backdrop-blur focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                    className="h-14 w-36 rounded-xl border border-[#D7DEE8] bg-white px-5 pr-12 text-xl font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"
                   />
                   <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">
                     yd
@@ -457,7 +464,7 @@ export function TargetDistanceSelector({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="size-12 rounded-full border-emerald-100 bg-emerald-50/80 text-emerald-700 shadow-sm backdrop-blur hover:bg-emerald-50"
+                  className="size-12 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-50"
                   aria-label="Increase target distance by 5 yards"
                   onClick={() => selectTarget(targetYd + STEP_YD)}
                 >

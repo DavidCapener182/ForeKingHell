@@ -30,7 +30,7 @@ export default async function PartnersPage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="text-sm font-semibold">Add sponsor prospect</p>
             <form action={createSponsorAction} className="mt-3 grid gap-3">
@@ -63,6 +63,7 @@ export default async function PartnersPage() {
             <form action={createPartnerOfferAction} className="mt-3 grid gap-3">
               <select
                 name="sponsorId"
+                aria-label="Sponsor"
                 className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
                 required
               >
@@ -84,7 +85,11 @@ export default async function PartnersPage() {
                 className="rounded-xl border bg-slate-50 px-3 py-2 text-sm"
                 placeholder="Short labelled offer copy"
               />
-              <select name="offerType" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+              <select
+                name="offerType"
+                aria-label="Offer type"
+                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
+              >
                 <option value="affiliate">Affiliate</option>
                 <option value="discount">Discount</option>
                 <option value="prize">Prize</option>
@@ -111,7 +116,7 @@ export default async function PartnersPage() {
               </Button>
             </form>
           </section>
-        </aside>
+        </section>
 
         <section className="grid gap-4">
           <section id="offers" className="premium-card p-4">

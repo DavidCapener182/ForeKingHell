@@ -29,7 +29,7 @@ export function ShotPatternSummaryDrawer({
       : "--";
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/96 p-3 shadow-lg backdrop-blur">
+    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

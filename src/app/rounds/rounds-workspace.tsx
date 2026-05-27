@@ -173,18 +173,8 @@ export function RoundsWorkspace({
                   {filteredRounds.map((round) => (
                     <TableRow
                       key={round.id}
-                      aria-pressed={round.id === selectedRound?.id}
-                      className="cursor-pointer outline-none aria-pressed:bg-emerald-50/45 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset"
+                      className={round.id === selectedRound?.id ? "bg-emerald-50/45" : undefined}
                       data-state={round.id === selectedRound?.id ? "selected" : undefined}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedRoundId(round.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedRoundId(round.id);
-                        }
-                      }}
                     >
                       <TableCell className="max-w-[18rem] font-medium">
                         <span className="block truncate">{roundTitle(round)}</span>
@@ -218,15 +208,25 @@ export function RoundsWorkspace({
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link
-                            href={`/rounds/${round.id}`}
-                            onClick={(event) => event.stopPropagation()}
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            type="button"
+                            variant={round.id === selectedRound?.id ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => setSelectedRoundId(round.id)}
                           >
-                            {round.shotCount > 0 ? "Review" : "Add data"}
-                            <ChevronRight className="size-4" />
-                          </Link>
-                        </Button>
+                            {round.id === selectedRound?.id ? "Selected" : "Select"}
+                          </Button>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link
+                              href={`/rounds/${round.id}`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {round.shotCount > 0 ? "Review" : "Add data"}
+                              <ChevronRight className="size-4" />
+                            </Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

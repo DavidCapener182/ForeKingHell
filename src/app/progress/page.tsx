@@ -33,7 +33,6 @@ import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -438,7 +437,11 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
             {data.practiceCalendar.length} planned
           </span>
         </div>
-        <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+        <div
+          aria-label="Practice plan calendar"
+          tabIndex={0}
+          className="mt-4 flex gap-3 overflow-x-auto pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           {data.practiceCalendar.slice(0, 4).map((item, index) => (
             <div
               key={`${item.title}-${item.date.toISOString()}`}
@@ -623,28 +626,16 @@ function ComparisonBar({ summary }: { summary: ProgressSummary }) {
           stock shots
         </p>
       </div>
-      <Tabs defaultValue="all" className="sm:justify-self-end">
-        <TabsList>
-          <TabsTrigger
-            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
-            value="all"
-          >
-            All data
-          </TabsTrigger>
-          <TabsTrigger
-            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
-            value="30d"
-          >
-            Last 30 days
-          </TabsTrigger>
-          <TabsTrigger
-            className="data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm"
-            value="10s"
-          >
-            Last 10 sessions
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div
+        aria-label="Progress period"
+        className="inline-flex w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-sm text-muted-foreground sm:justify-self-end"
+      >
+        <span className="rounded-md bg-background px-2.5 py-1 font-medium text-foreground shadow-sm">
+          All data
+        </span>
+        <span className="px-2.5 py-1 font-medium">Last 30 days</span>
+        <span className="px-2.5 py-1 font-medium">Last 10 sessions</span>
+      </div>
     </section>
   );
 }

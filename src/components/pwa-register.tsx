@@ -235,7 +235,7 @@ export function PwaRegister() {
 
   return (
     <div className="fixed inset-x-3 bottom-20 z-50 sm:bottom-4 sm:left-auto sm:right-4 sm:w-[360px]">
-      <div className="glass-toolbar rounded-2xl p-3">
+      <div className="surface-toast rounded-2xl p-3">
         <div className="flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#111827] text-white">
             {!isOnline ? (

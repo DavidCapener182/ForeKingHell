@@ -204,7 +204,11 @@ export default async function HandicapPage() {
         <PlayingHandicapPanel summary={playingHandicap} />
       </section>
 
-      <section className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4">
+      <section
+        aria-label="Handicap confidence panels"
+        tabIndex={0}
+        className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4"
+      >
         <div className="min-w-[82vw] md:min-w-0">
           <HandicapPanel
             title="Real course ceiling"

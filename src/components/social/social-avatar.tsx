@@ -46,7 +46,12 @@ export function SocialAvatar({
 
   if (href) {
     return (
-      <Link href={href} prefetch={false} className="shrink-0">
+      <Link
+        href={href}
+        prefetch={false}
+        className="shrink-0"
+        aria-label={`Open ${displayName || username || "player"} profile`}
+      >
         {content}
       </Link>
     );

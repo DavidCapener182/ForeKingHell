@@ -312,7 +312,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             </section>
           </section>
 
-          <aside className="grid gap-4 xl:sticky xl:top-28">
+          <section className="grid gap-4 xl:sticky xl:top-28">
             <section className="premium-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <CalendarDays className="size-4 text-emerald-600" />
@@ -337,7 +337,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                 ))}
               </div>
             </section>
-          </aside>
+          </section>
         </section>
       </div>
     </PageShell>

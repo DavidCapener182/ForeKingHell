@@ -70,7 +70,8 @@ export function DashboardMobileHeader({
       </header>
       <nav
         aria-label="Dashboard sections"
-        className="-mx-4 flex max-w-[100vw] gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4"
+        tabIndex={0}
+        className="-mx-4 flex max-w-[100vw] gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;

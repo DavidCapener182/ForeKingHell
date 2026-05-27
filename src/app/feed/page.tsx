@@ -218,7 +218,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
       </MobileAppShell>
 
       <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
-        <aside className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
+        <section className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
           <section className="premium-card overflow-hidden">
             <div
               className="h-20 bg-cover bg-center"
@@ -283,7 +283,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               />
             </div>
           </section>
-        </aside>
+        </section>
 
         <section className="grid gap-4">
           <header className="premium-hero p-4 sm:p-5">
@@ -450,7 +450,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           <SocialFeaturePanel data={featureData} />
         </section>
 
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Network pulse</p>
             <div className="mt-3 grid gap-2">
@@ -497,7 +497,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               </Button>
             </div>
           </section>
-        </aside>
+        </section>
       </section>
     </PageShell>
   );

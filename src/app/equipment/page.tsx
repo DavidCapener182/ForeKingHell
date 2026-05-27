@@ -151,7 +151,11 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         ]}
       />
 
-      <section className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+      <section
+        aria-label="Active club highlights"
+        tabIndex={0}
+        className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4"
+      >
         {data.activeClubs.slice(0, 4).map((club) => (
           <div
             key={club.id}

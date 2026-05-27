@@ -208,7 +208,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
       </MobileAppShell>
 
       <section className="hidden gap-4 sm:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-        <aside className="order-2 grid gap-4 lg:order-none lg:sticky lg:top-28">
+        <section className="order-2 grid gap-4 lg:order-none lg:sticky lg:top-28">
           <section className="premium-card p-4">
             <div className="flex items-center gap-3">
               <SocialAvatar
@@ -281,7 +281,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </Button>
             </form>
           </section>
-        </aside>
+        </section>
 
         <section className="order-1 grid gap-4 lg:order-none">
           <header className="premium-hero p-5">

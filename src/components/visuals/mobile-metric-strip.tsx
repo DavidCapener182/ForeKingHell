@@ -29,7 +29,14 @@ export function MobileMetricStrip({
   }
 
   return (
-    <div className={cn("-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:hidden", className)}>
+    <div
+      aria-label="Mobile summary metrics"
+      tabIndex={0}
+      className={cn(
+        "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden",
+        className,
+      )}
+    >
       {items.map((item, index) => (
         <div
           key={`${String(item.label)}-${index}`}

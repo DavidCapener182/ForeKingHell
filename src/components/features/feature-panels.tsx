@@ -534,6 +534,7 @@ export function CourseRecordFeaturePanel({ data }: { data: FeatureIdeasData }) {
             className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_10rem_auto]"
           >
             <select
+              aria-label="Course record board"
               name="recordId"
               defaultValue={recordId}
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
@@ -547,6 +548,7 @@ export function CourseRecordFeaturePanel({ data }: { data: FeatureIdeasData }) {
             <Input name="targetLabel" placeholder="Beat this board by 2 shots" />
             <Input name="targetValue" type="number" step="0.1" placeholder="Target" />
             <select
+              aria-label="Friend target"
               name="targetUserId"
               className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
             >

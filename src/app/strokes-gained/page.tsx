@@ -563,7 +563,8 @@ function CategoryNavTabs({
   return (
     <nav
       aria-label="Strokes gained views"
-      className="flex max-w-full gap-1 overflow-x-auto border-b border-slate-200"
+      tabIndex={0}
+      className="flex max-w-full gap-1 overflow-x-auto border-b border-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {items.map((item) => (
         <Link

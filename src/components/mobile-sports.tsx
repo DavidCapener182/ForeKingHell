@@ -195,16 +195,19 @@ export function MobileTabBar({
   tabs,
   activeKey,
   className,
+  ariaLabel,
 }: {
   tabs: MobileTab[];
   activeKey: string;
   className?: string;
+  ariaLabel?: string;
 }) {
   return (
     <nav
-      aria-label="Mobile tabs"
+      aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
+      tabIndex={0}
       className={cn(
-        "-mx-4 flex min-w-0 gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4",
+        "-mx-4 flex min-w-0 gap-6 overflow-x-auto border-b border-[#E5E7EB] px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         className,
       )}
     >

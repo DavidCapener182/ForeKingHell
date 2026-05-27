@@ -154,7 +154,11 @@ export function TodayShotCharts({
           Pattern detected: {patternInsight}
         </div>
 
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+        <div
+          aria-label="Shot chart club filters"
+          tabIndex={0}
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        >
           <button
             type="button"
             aria-pressed={selectedClub === "all"}

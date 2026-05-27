@@ -291,7 +291,7 @@
     border-right: 0;
   }
 
-  .glass-toolbar {
+  .surface-toast {
     border: 1px solid #e5e7eb;
     background: #ffffff;
     box-shadow: none;
@@ -320,7 +320,7 @@
     .premium-card,
     .premium-hero,
     .metric-tile,
-    .glass-toolbar,
+    .surface-toast,
     .soft-panel,
     .apple-panel,
     .apple-panel-strong {

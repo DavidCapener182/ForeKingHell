@@ -1749,21 +1749,21 @@ function MobilePlayRoute({
 function TodayScopeFields({ data }: { data: TodayPracticeData }) {
   return (
     <>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         Date
         <input
           type="date"
           name="date"
           defaultValue={data.dateKey}
-          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
         />
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         Session
         <select
           name="session"
           defaultValue={data.filters.sessionId}
-          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
         >
           <option value="">All sessions for this practice date</option>
           {data.sessions.map((session) => (
@@ -1773,12 +1773,12 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         Club
         <select
           name="club"
           defaultValue={data.filters.club}
-          className="h-9 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
         >
           <option value="">All clubs</option>
           {data.clubs.map((club) => (

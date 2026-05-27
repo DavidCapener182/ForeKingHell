@@ -287,8 +287,9 @@ export function MobileSectionChips({
   return (
     <nav
       aria-label="Page sections"
+      tabIndex={0}
       className={cn(
-        "sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden",
+        "sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden",
         className,
       )}
     >
@@ -342,7 +343,13 @@ export function ActiveFilterChips({
   }
 
   return (
-    <div className={cn("flex gap-2 overflow-x-auto pb-1", className)}>
+    <div
+      tabIndex={0}
+      className={cn(
+        "flex gap-2 overflow-x-auto pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        className,
+      )}
+    >
       {items.map((item) => {
         const content = (
           <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
@@ -465,7 +472,11 @@ export function MobileHorizontalRail({
         </div>
       ) : null}
       <div className="-mx-4 max-w-[100vw] overflow-hidden">
-        <div className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+        <div
+          aria-label={typeof title === "string" ? `${title} cards` : "Mobile carousel cards"}
+          tabIndex={0}
+          className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
           {items.map((item, index) => (
             <div key={index} className={cn("shrink-0 snap-start", itemClassName)}>
               {item}

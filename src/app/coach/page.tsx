@@ -628,7 +628,11 @@ function CoachPracticePlan({
               data proves it.
             </p>
           </div>
-          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:snap-none sm:px-0">
+          <div
+            aria-label="Coach drill challenge cards"
+            tabIndex={0}
+            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:grid sm:snap-none sm:px-0"
+          >
             {drillChallenges.map((challenge) => (
               <div key={challenge.id} className="min-w-[82vw] shrink-0 snap-start sm:min-w-0">
                 <CoachDrillChallengeCard

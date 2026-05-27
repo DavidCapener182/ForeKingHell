@@ -175,7 +175,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       ) : null}
 
       <section className="hidden gap-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start">
-        <aside className="premium-card sticky top-28 p-3">
+        <section className="premium-card sticky top-28 p-3">
           <p className="px-2 text-sm font-semibold">Settings</p>
           <nav className="mt-2 grid gap-1 text-sm">
             <a
@@ -206,7 +206,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Danger zone
             </a>
           </nav>
-        </aside>
+        </section>
 
         <section className="premium-card p-4">
           <p className="flex items-center gap-2 text-sm font-semibold">
@@ -229,14 +229,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
         </section>
 
-        <aside className="premium-card sticky top-28 min-w-0 p-4">
+        <section className="premium-card sticky top-28 min-w-0 p-4">
           <p className="text-sm font-semibold">Account panel</p>
           <div className="mt-3 grid gap-2 text-sm">
             <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
             <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
             <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
           </div>
-        </aside>
+        </section>
       </section>
 
       <DataHealthFeaturePanel data={featureData} />

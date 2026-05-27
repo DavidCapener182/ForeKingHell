@@ -148,6 +148,7 @@ function Sidebar({
   className,
   children,
   dir,
+  "aria-label": ariaLabel = "Primary navigation",
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right";
@@ -158,7 +159,8 @@ function Sidebar({
 
   if (collapsible === "none") {
     return (
-      <div
+      <nav
+        aria-label={ariaLabel}
         data-slot="sidebar"
         className={cn(
           "flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground",
@@ -167,7 +169,7 @@ function Sidebar({
         {...props}
       >
         {children}
-      </div>
+      </nav>
     );
   }
 
@@ -198,7 +200,8 @@ function Sidebar({
   }
 
   return (
-    <div
+    <nav
+      aria-label={ariaLabel}
       className="group peer hidden text-sidebar-foreground sm:block"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
@@ -239,7 +242,7 @@ function Sidebar({
           {children}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }
 

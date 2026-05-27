@@ -90,7 +90,11 @@ export default async function AdminChallengesPage() {
             </Button>
           }
         >
-          <div className="overflow-x-auto">
+          <div
+            aria-label="Challenge boards table"
+            tabIndex={0}
+            className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <table className="w-full min-w-[860px] text-left text-sm">
               <thead className="border-b text-xs uppercase text-muted-foreground">
                 <tr>

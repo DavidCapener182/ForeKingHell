@@ -12,6 +12,8 @@ function Table({
   return (
     <div
       data-slot="table-container"
+      tabIndex={0}
+      aria-label="Scrollable data table"
       className={cn("data-table-scroll relative w-full overflow-x-auto", containerClassName)}
     >
       <table

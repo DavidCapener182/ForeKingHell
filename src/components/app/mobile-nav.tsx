@@ -55,7 +55,10 @@ export function MobileNav({
 
   return (
     <>
-      <div className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-border bg-white/98 px-4 pt-[env(safe-area-inset-top)] sm:hidden">
+      <header
+        aria-label="Mobile app bar"
+        className="fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b border-border bg-white/98 px-4 pt-[env(safe-area-inset-top)] sm:hidden"
+      >
         <div className="relative flex h-[3.25rem] items-center">
           <Sheet>
             <SheetTrigger asChild>
@@ -135,7 +138,7 @@ export function MobileNav({
             </Link>
           </Button>
         </div>
-      </div>
+      </header>
 
       <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
         <div className="grid grid-cols-5 border-t border-border bg-white/98 px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5 shadow-[0_-8px_22px_rgba(15,23,42,0.08)]">

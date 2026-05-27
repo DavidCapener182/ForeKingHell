@@ -70,7 +70,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <AdminSection title="Find user" description="Search by email, profile name or handle.">
             <form action="/admin/users" className="grid gap-3">
               <Input
@@ -121,6 +121,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               />
               <select
                 name="role"
+                aria-label="Admin role"
                 defaultValue="operator"
                 className="h-10 rounded-xl border bg-slate-50 px-3 text-sm"
               >
@@ -133,13 +134,17 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               </Button>
             </form>
           </AdminSection>
-        </aside>
+        </section>
 
         <AdminSection
           title="Accounts"
           description="Names are cleaned before display so shared database artifacts are not exposed."
         >
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            tabIndex={0}
+            aria-label="Accounts table"
+          >
             <table className="w-full min-w-[820px] text-left text-sm">
               <thead className="border-b text-xs uppercase text-muted-foreground">
                 <tr>

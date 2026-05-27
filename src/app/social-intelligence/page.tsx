@@ -40,14 +40,18 @@ export default async function SocialIntelligencePage() {
       />
 
       <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="rounded-xl border bg-white p-4 shadow-sm">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <Sparkles className="size-4 text-emerald-600" />
               Generate summary
             </p>
             <form action={generateSocialSummaryAction} className="mt-3 grid gap-3">
-              <select name="summaryType" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+              <select
+                name="summaryType"
+                aria-label="Summary type"
+                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
+              >
                 <option value="import_recap">Import recap</option>
                 <option value="friend_comparison">Friend comparison</option>
                 <option value="challenge_coach">Challenge coach</option>
@@ -55,6 +59,7 @@ export default async function SocialIntelligencePage() {
               </select>
               <select
                 name="visibility"
+                aria-label="Summary visibility"
                 defaultValue="private"
                 className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
               >
@@ -77,7 +82,11 @@ export default async function SocialIntelligencePage() {
               Report content
             </p>
             <form action={reportSocialTargetAction} className="mt-3 grid gap-3">
-              <select name="targetType" className="h-9 rounded-xl border bg-slate-50 px-3 text-sm">
+              <select
+                name="targetType"
+                aria-label="Report target type"
+                className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
+              >
                 <option value="feed_item">Feed item</option>
                 <option value="comment">Comment</option>
                 <option value="challenge_result">Challenge result</option>
@@ -109,7 +118,7 @@ export default async function SocialIntelligencePage() {
               </Button>
             </form>
           </section>
-        </aside>
+        </section>
 
         <section className="grid gap-4">
           <section className="rounded-xl border bg-white p-4 shadow-sm">

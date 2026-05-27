@@ -165,7 +165,7 @@ export default async function ProvidersPage() {
           </div>
         </section>
 
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">
             <p className="flex items-center gap-2 text-sm font-semibold">
               <FileSpreadsheet className="size-4 text-emerald-600" />
@@ -223,7 +223,7 @@ export default async function ProvidersPage() {
               your performance history.
             </p>
           </section>
-        </aside>
+        </section>
       </section>
     </PageShell>
   );

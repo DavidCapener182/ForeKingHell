@@ -830,6 +830,7 @@ export function RapsodoSyncClient({
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <Input
+                  aria-label="Session start date"
                   type="date"
                   value={dateFilter.startDate}
                   onChange={(event) =>
@@ -837,6 +838,7 @@ export function RapsodoSyncClient({
                   }
                 />
                 <Input
+                  aria-label="Session end date"
                   type="date"
                   value={dateFilter.endDate}
                   onChange={(event) =>
@@ -862,6 +864,7 @@ export function RapsodoSyncClient({
                   </CardDescription>
                 </div>
                 <select
+                  aria-label="Remote session type"
                   className="h-9 rounded-md border bg-background px-3 text-sm"
                   value={sessionFilter}
                   onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
@@ -918,7 +921,9 @@ export function RapsodoSyncClient({
                       <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Shots</TableHead>
-                      <TableHead className="w-28" />
+                      <TableHead className="w-28">
+                        <span className="sr-only">Action</span>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1148,6 +1153,9 @@ export function RapsodoSyncClient({
                           <label className="grid gap-1 text-xs font-medium text-muted-foreground">
                             Confirmed club
                             <select
+                              aria-label={`Confirmed club for shot ${
+                                shot.shotNumber ?? shot.rowNumber
+                              }`}
                               className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
                               value={selectedClubByRow[shot.rowNumber] ?? ""}
                               onChange={(event) => {
@@ -1199,6 +1207,9 @@ export function RapsodoSyncClient({
                           </TableCell>
                           <TableCell className="px-2 py-1.5">
                             <select
+                              aria-label={`Confirmed club for shot ${
+                                shot.shotNumber ?? shot.rowNumber
+                              }`}
                               className="h-8 w-56 rounded-md border bg-background px-2 text-xs"
                               value={selectedClubByRow[shot.rowNumber] ?? ""}
                               onChange={(event) => {
@@ -1555,7 +1566,8 @@ function RapsodoMobileStepper({
   return (
     <nav
       aria-label="Rapsodo steps"
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
+      tabIndex={0}
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden"
     >
       {steps.map((item) => (
         <button

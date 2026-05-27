@@ -271,7 +271,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
           </section>
         </section>
 
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Group activity</p>
             <div className="mt-3 grid gap-2 text-sm">
@@ -376,7 +376,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </Badge>
             </div>
           </section>
-        </aside>
+        </section>
       </section>
     </PageShell>
   );

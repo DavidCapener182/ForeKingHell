@@ -282,9 +282,9 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
           <Badge className="text-white" style={{ background: shot.accent }}>
             {formatClubType(shot.clubType)}
           </Badge>
-          <h3 className="mt-3 text-2xl font-semibold tracking-normal">
+          <h2 className="mt-3 text-2xl font-semibold tracking-normal">
             {formatMetric(shot.totalYd ?? shot.carryYd)} yd longest total
-          </h3>
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Shot #{shot.shotNumber ?? "-"} on {formatDate(shot.shotAt)}
           </p>

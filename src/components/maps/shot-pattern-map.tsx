@@ -749,7 +749,7 @@ export function ShotPatternMap({
 
   return (
     <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 sm:grid sm:h-auto sm:min-h-0 sm:gap-4 sm:overflow-visible sm:bg-transparent xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,1fr)]">
-      <div className="apple-panel absolute inset-x-2 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[900] max-h-[38svh] space-y-2 overflow-y-auto rounded-xl bg-white/95 p-2 shadow-2xl backdrop-blur sm:static sm:z-auto sm:max-h-none sm:space-y-4 sm:overflow-visible sm:rounded-lg sm:bg-[var(--surface-soft)] sm:p-4 sm:shadow-none sm:backdrop-blur-none">
+      <div className="apple-panel absolute inset-x-2 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[900] max-h-[38svh] space-y-2 overflow-y-auto rounded-xl bg-white p-2 shadow-lg sm:static sm:z-auto sm:max-h-none sm:space-y-4 sm:overflow-visible sm:rounded-lg sm:bg-[var(--surface-soft)] sm:p-4 sm:shadow-none">
         <div className="hidden sm:block">
           <p className="text-sm font-semibold text-[#0B7A3B]">Shot Pattern Overlay</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-normal">{courseName}</h2>
@@ -1017,6 +1017,9 @@ export function ShotPatternMap({
             <img
               src={satelliteImageUrl}
               alt=""
+              width={1200}
+              height={900}
+              fetchPriority="high"
               className={cn(
                 "absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-300",
                 staticSatelliteReady ? "opacity-100" : "opacity-0",
@@ -1048,7 +1051,7 @@ export function ShotPatternMap({
             style={{ backgroundColor: "transparent" }}
           />
           <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-start justify-between gap-2 sm:top-3">
-            <div className="rounded-lg bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm">
               {selectedHole ? (
                 <span className="grid leading-tight">
                   <span>
@@ -1065,7 +1068,7 @@ export function ShotPatternMap({
                 "Hole map"
               )}
             </div>
-            <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
+            <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
               <Button
                 type="button"
                 size="sm"

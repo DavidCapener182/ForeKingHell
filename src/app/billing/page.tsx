@@ -84,7 +84,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           ))}
         </section>
 
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <section className="premium-card p-4">
             <p className="text-sm font-semibold">Current plan</p>
             <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
@@ -149,7 +149,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               </Button>
             </div>
           </section>
-        </aside>
+        </section>
       </section>
     </PageShell>
   );
@@ -209,6 +209,7 @@ function PlanCard({
         <input type="hidden" name="planKey" value={plan.key} />
         <select
           name="interval"
+          aria-label={`${plan.name} billing interval`}
           className="h-9 rounded-lg border bg-white px-3 text-sm"
           disabled={plan.key === "free"}
         >

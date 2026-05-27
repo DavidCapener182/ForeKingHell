@@ -479,13 +479,13 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
             )}
           />
           <div className="absolute left-3 right-3 top-3 z-20 flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-            <div className="w-fit rounded-lg bg-white/92 px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm backdrop-blur">
+            <div className="w-fit rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm">
               {selectedHole
                 ? `Hole ${selectedHole.holeNumber} - ${selectedHole.yards} yd`
                 : "Hole map"}
             </div>
             <div className="flex flex-wrap gap-2">
-              <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
+              <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
                 <Button
                   type="button"
                   size="sm"
@@ -516,7 +516,7 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
                 size="sm"
                 variant={showAllHoleShots ? "default" : "secondary"}
                 className={cn(
-                  "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
+                  "h-10 rounded-lg border border-slate-200 bg-white shadow-sm",
                   showAllHoleShots && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setShowAllHoleShots((current) => !current)}
@@ -528,14 +528,14 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
                 size="sm"
                 variant={showShotNumbers ? "default" : "secondary"}
                 className={cn(
-                  "h-10 rounded-lg bg-white/92 shadow-sm backdrop-blur",
+                  "h-10 rounded-lg border border-slate-200 bg-white shadow-sm",
                   showShotNumbers && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setShowShotNumbers((current) => !current)}
               >
                 Numbers
               </Button>
-              <div className="flex w-fit rounded-lg border bg-white/92 p-1 shadow-sm backdrop-blur">
+              <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
                 <Button
                   type="button"
                   size="sm"
@@ -729,7 +729,10 @@ function HoleVectorFallback({
               key={projected.shot.id}
               role="button"
               tabIndex={0}
-              className="cursor-pointer outline-none"
+              aria-label={`Select ${formatClubType(projected.shot.clubType)} shot ${
+                projected.shot.holeShotNumber ?? projected.shot.shotNumber ?? ""
+              }`}
+              className="cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               onClick={() => onSelectShot(projected.shot)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {

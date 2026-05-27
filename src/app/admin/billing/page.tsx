@@ -75,7 +75,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
-        <aside className="grid gap-4 lg:sticky lg:top-28">
+        <section className="grid gap-4 lg:sticky lg:top-28">
           <AdminSection
             title="Grant lifetime full"
             description="Use this for owner, tester and permanent internal accounts."
@@ -110,11 +110,15 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                 ))}
             </div>
           </AdminSection>
-        </aside>
+        </section>
 
         <section className="grid gap-4">
           <AdminSection title="Subscriptions" description="Latest subscription and lifetime rows.">
-            <div className="overflow-x-auto">
+            <div
+              className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              tabIndex={0}
+              aria-label="Subscriptions table"
+            >
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="border-b text-xs uppercase text-muted-foreground">
                   <tr>
