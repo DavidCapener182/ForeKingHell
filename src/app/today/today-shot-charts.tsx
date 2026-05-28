@@ -6,6 +6,11 @@ import { Check, Eye } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartFrame } from "@/components/premium";
+import {
+  buildDispersionCorridorBuckets,
+  type DispersionCorridorBucket,
+  type DispersionCorridorTone,
+} from "@/lib/dispersion-corridor";
 import { cn } from "@/lib/utils";
 
 export type TodayChartShot = {
@@ -270,7 +275,7 @@ export function TodayShotCharts({
             title="Dispersion"
             detail="Primary diagnostic: carry landing by left-right miss."
             empty={!visibleShots.some(hasDispersionData)}
-            footer={<DispersionMarkerLegend />}
+            footer={<DispersionPanelFooter shots={visibleShots} />}
           >
             <DispersionChart shots={visibleShots} />
           </ChartPanel>
@@ -324,6 +329,65 @@ function ChartPanel({
           {footer}
         </div>
       )}
+    </div>
+  );
+}
+
+function DispersionPanelFooter({ shots }: { shots: ChartPoint[] }) {
+  const points = shots.filter(hasDispersionData);
+  const maxSide = dispersionSideMax(points);
+  const targetSide = dispersionTargetSide(maxSide);
+  const buckets = buildDispersionCorridorBuckets(
+    points.map((shot) => shot.sideCarryYd),
+    {
+      maxSideYd: maxSide,
+      targetSideYd: targetSide,
+    },
+  );
+
+  return (
+    <div className="space-y-2">
+      <DispersionCorridorStats buckets={buckets} />
+      <DispersionMarkerLegend />
+    </div>
+  );
+}
+
+function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucket[] }) {
+  if (buckets.length === 0) {
+    return null;
+  }
+
+  const total = buckets[0]?.total ?? 0;
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-2">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <p className="font-semibold text-slate-950">Corridor split</p>
+        <p className="text-[11px] text-muted-foreground">{total} plotted shots</p>
+      </div>
+      <div
+        className={cn("grid gap-1.5", buckets.length === 5 ? "sm:grid-cols-5" : "sm:grid-cols-3")}
+      >
+        {buckets.map((bucket) => (
+          <div
+            key={bucket.id}
+            aria-label={`${bucket.label}: ${formatPercent(bucket.percent)} of shots, ${formatCorridorRange(bucket)}`}
+            className={cn(
+              "min-w-0 rounded-md px-2 py-1.5 text-xs",
+              corridorBucketClass(bucket.tone),
+            )}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-medium">{shortCorridorLabel(bucket)}</span>
+              <span className="shrink-0 text-sm font-semibold">
+                {formatPercent(bucket.percent)}
+              </span>
+            </div>
+            <p className="mt-0.5 text-[10px] leading-3 opacity-70">{formatCorridorRange(bucket)}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -439,11 +503,8 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
 function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const points = shots.filter(hasDispersionData);
   const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
-  const maxSide = Math.max(
-    20,
-    niceMax(max(points.map((shot) => Math.abs(shot.sideCarryYd ?? 0))), 10),
-  );
-  const centerZone = Math.min(10, maxSide);
+  const maxSide = dispersionSideMax(points);
+  const centerZone = dispersionTargetSide(maxSide);
   const yTicks = ticks(maxCarry, 4);
   const xTicks = [-maxSide, -maxSide / 2, 0, maxSide / 2, maxSide];
   const xScale = (value: number) => padding.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
@@ -1022,6 +1083,14 @@ function niceMax(value: number, step: number) {
   return Math.max(step, Math.ceil(value / step) * step);
 }
 
+function dispersionSideMax(points: Array<Pick<TodayChartShot, "sideCarryYd">>) {
+  return Math.max(20, niceMax(max(points.map((shot) => Math.abs(shot.sideCarryYd ?? 0))), 10));
+}
+
+function dispersionTargetSide(maxSide: number) {
+  return Math.min(10, maxSide);
+}
+
 function niceTrajectoryMax(value: number) {
   return Math.min(150, Math.max(60, niceMax(value + 10, 10)));
 }
@@ -1058,6 +1127,36 @@ function formatSigned(value: number | null) {
   if (value === null) return "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${numberFormatter.format(value)} yd`;
+}
+
+function formatPercent(value: number) {
+  return `${numberFormatter.format(value)}%`;
+}
+
+function formatCorridorRange(bucket: DispersionCorridorBucket) {
+  const suffix = bucket.tone === "left" ? " L" : bucket.tone === "right" ? " R" : "";
+
+  return `${formatTick(bucket.minYd)} to ${formatTick(bucket.maxYd)}${suffix}`;
+}
+
+function shortCorridorLabel(bucket: DispersionCorridorBucket) {
+  if (bucket.id === "far-left") return "Far L";
+  if (bucket.id === "left") return "Left";
+  if (bucket.id === "right") return "Right";
+  if (bucket.id === "far-right") return "Far R";
+  return bucket.label;
+}
+
+function corridorBucketClass(tone: DispersionCorridorTone) {
+  if (tone === "target") {
+    return "bg-emerald-50 text-emerald-950 ring-1 ring-emerald-100";
+  }
+
+  if (tone === "left") {
+    return "bg-rose-50 text-rose-950";
+  }
+
+  return "bg-sky-50 text-sky-950";
 }
 
 function hashText(value: string) {
