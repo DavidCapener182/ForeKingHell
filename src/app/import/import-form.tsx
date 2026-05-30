@@ -22,7 +22,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CourseOverlay } from "@/app/import/course-overlay";
-import { ImportStepper } from "@/app/import/import-stepper";
 import { SaveChecklistCard } from "@/app/import/save-checklist-card";
 import { ScorecardExtractionPanel } from "@/app/import/scorecard-extraction-panel";
 import { SessionSettings } from "@/app/import/session-settings";
@@ -694,43 +693,29 @@ export function ImportForm({
           onStepChange={setMobileStep}
         />
 
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Files",
-              value: aggregate.fileCount.toString(),
-              detail: "Selected",
-              tone: "green",
-            },
-            { label: "Rows", value: aggregate.rowCount.toString(), detail: "Parsed", tone: "sky" },
-            {
-              label: "Shots",
-              value: aggregate.shotCount.toString(),
-              detail: "Preview",
-              tone: "amber",
-            },
-            {
-              label: "Warnings",
-              value: aggregate.warnings.length.toString(),
-              detail: "Review",
-              tone: aggregate.warnings.length > 0 ? "pink" : "slate",
-            },
-          ]}
-        />
-
-        <div className="hidden sm:block">
-          <ImportFlowGuide
-            currentStep={visibleMobileStep}
-            isCourseUpload={isCourseUpload}
-            fileCount={aggregate.fileCount}
-            rowCount={aggregate.rowCount}
-            shotCount={aggregate.shotCount}
-            clubCount={aggregate.clubCount}
-            warningCount={aggregate.warnings.length}
-            courseHoleCount={scorecard.holes.length}
-            courseAssignedShotCount={courseAssignedShotCount}
-            canSave={canSave}
-            onStepChange={setMobileStep}
+        <div className="sm:hidden">
+          <MobileBentoSummary
+            items={[
+              {
+                label: "Files",
+                value: aggregate.fileCount.toString(),
+                detail: "Selected",
+                tone: "green",
+              },
+              { label: "Rows", value: aggregate.rowCount.toString(), detail: "Parsed", tone: "sky" },
+              {
+                label: "Shots",
+                value: aggregate.shotCount.toString(),
+                detail: "Preview",
+                tone: "amber",
+              },
+              {
+                label: "Warnings",
+                value: aggregate.warnings.length.toString(),
+                detail: "Review",
+                tone: aggregate.warnings.length > 0 ? "pink" : "slate",
+              },
+            ]}
           />
         </div>
 
@@ -766,25 +751,27 @@ export function ImportForm({
           </div>
         </header>
 
+        <div className="hidden sm:block">
+          <ImportFlowGuide
+            currentStep={visibleMobileStep}
+            isCourseUpload={isCourseUpload}
+            fileCount={aggregate.fileCount}
+            rowCount={aggregate.rowCount}
+            shotCount={aggregate.shotCount}
+            clubCount={aggregate.clubCount}
+            warningCount={aggregate.warnings.length}
+            courseHoleCount={scorecard.holes.length}
+            courseAssignedShotCount={courseAssignedShotCount}
+            canSave={canSave}
+            onStepChange={setMobileStep}
+          />
+        </div>
+
         <MobileImportStepper
           steps={mobileImportSteps}
           step={visibleMobileStep}
           onStepChange={setMobileStep}
         />
-
-        <div className="hidden sm:block">
-          <ImportStepper
-            isCourseUpload={isCourseUpload}
-            hasFiles={uploadedFiles.length > 0}
-            hasShots={aggregate.shotCount > 0}
-            hasCourseMapping={
-              !isCourseUpload ||
-              (scorecard.holes.length > 0 && courseAssignedShotCount === aggregate.shotCount)
-            }
-            hasWarnings={aggregate.warnings.length > 0}
-            canSave={canSave}
-          />
-        </div>
 
         {saveState.status !== "idle" ? (
           <Alert variant={saveState.status === "error" ? "destructive" : "default"}>

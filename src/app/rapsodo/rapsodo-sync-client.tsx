@@ -273,6 +273,11 @@ export function RapsodoSyncClient({
     ? mobileStep
     : "preview";
   const activeMobileStepIndex = mobileSteps.findIndex((step) => step.id === visibleMobileStep);
+  const isMobileReviewStep = ["preview", "clubs", "course", "import"].includes(visibleMobileStep);
+  const showStickyReviewBar = Boolean(preview && isMobileReviewStep);
+  const showMobileReviewChrome = Boolean(preview);
+  const showMobileConnectionCard = !status.connected || visibleMobileStep === "connect";
+  const showMobileSessionsCard = status.connected && (!preview || visibleMobileStep === "sessions");
   const latestUnimportedSession = useMemo(
     () =>
       [...availableSessions].sort(
@@ -603,7 +608,12 @@ export function RapsodoSyncClient({
   return (
     <main
       id="main-content"
-      className="min-h-0 px-4 py-5 pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8"
+      className={cn(
+        "min-h-0 px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
+        showStickyReviewBar
+          ? "pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:pb-6"
+          : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-6",
+      )}
     >
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
@@ -661,77 +671,113 @@ export function RapsodoSyncClient({
           </div>
         </header>
 
-        <RapsodoMobileStepper
-          steps={mobileSteps}
-          step={visibleMobileStep}
-          onStepChange={setMobileStep}
-        />
-
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Connection",
-              value: status.connected ? "On" : "Off",
-              detail: "R-Cloud",
-              tone: status.connected ? "green" : "slate",
-            },
-            {
-              label: "Available",
-              value: availableSessions.length.toString(),
-              detail: "Sessions",
-              tone: "sky",
-            },
-            {
-              label: "New",
-              value: newSessionCount.toString(),
-              detail: "Since last sync",
-              tone: newSessionCount > 0 ? "amber" : "slate",
-            },
-            {
-              label: "Preview",
-              value: preview ? preview.shotCount.toString() : "--",
-              detail: "Shots",
-              tone: "pink",
-            },
-          ]}
-        />
-
-        <MobileAccordionSection
-          title="Filters"
-          description="Date range and session type."
-          count={sessionFilter === "all" ? "All" : sessionFilter}
-        >
-          <div className="grid gap-2">
-            <select
-              aria-label="Remote session type"
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-              value={sessionFilter}
-              onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
-            >
-              <option value="all">All</option>
-              <option value="range">Range</option>
-              <option value="course">Course</option>
-            </select>
-            <div className="grid grid-cols-2 gap-2">
-              <Input
-                aria-label="Session start date"
-                type="date"
-                value={dateFilter.startDate}
-                onChange={(event) =>
-                  setDateFilter((current) => ({ ...current, startDate: event.target.value }))
-                }
-              />
-              <Input
-                aria-label="Session end date"
-                type="date"
-                value={dateFilter.endDate}
-                onChange={(event) =>
-                  setDateFilter((current) => ({ ...current, endDate: event.target.value }))
-                }
-              />
+        {!status.connected ? (
+          <section className="premium-command-surface hidden rounded-2xl p-5 sm:grid sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center">
+            <div className="space-y-2">
+              <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                Why connect
+              </Badge>
+              <h2 className="text-2xl font-semibold tracking-normal text-foreground">
+                Connect Rapsodo to unlock your bag and coach
+              </h2>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                Pull latest sessions, confirm clubs, update bag trust and unlock coach
+                recommendations from the same reviewed launch-monitor data.
+              </p>
             </div>
-          </div>
-        </MobileAccordionSection>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { title: "Pull latest sessions", detail: "Find waiting R-Cloud exports.", icon: CloudUpload },
+                { title: "Confirm clubs", detail: "Map Rapsodo labels before save.", icon: ShieldCheck },
+                { title: "Update bag + coach", detail: "Refresh trust and drill signals.", icon: Sparkles },
+              ].map((item) => (
+                <div key={item.title} className="rounded-xl border bg-white/80 p-3">
+                  <item.icon className="size-5 text-emerald-700" />
+                  <p className="mt-3 text-sm font-semibold">{item.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {showMobileReviewChrome ? (
+          <RapsodoMobileStepper
+            steps={mobileSteps}
+            step={visibleMobileStep}
+            onStepChange={setMobileStep}
+          />
+        ) : null}
+
+        {showMobileReviewChrome ? (
+          <MobileBentoSummary
+            items={[
+              {
+                label: "Connection",
+                value: status.connected ? "On" : "Off",
+                detail: "R-Cloud",
+                tone: status.connected ? "green" : "slate",
+              },
+              {
+                label: "Available",
+                value: availableSessions.length.toString(),
+                detail: "Sessions",
+                tone: "sky",
+              },
+              {
+                label: "New",
+                value: newSessionCount.toString(),
+                detail: "Since last sync",
+                tone: newSessionCount > 0 ? "amber" : "slate",
+              },
+              {
+                label: "Preview",
+                value: preview ? preview.shotCount.toString() : "--",
+                detail: "Shots",
+                tone: "pink",
+              },
+            ]}
+          />
+        ) : null}
+
+        {status.connected ? (
+          <MobileAccordionSection
+            title="Filters"
+            description="Date range and session type."
+            count={sessionFilter === "all" ? "All" : sessionFilter}
+          >
+            <div className="grid gap-2">
+              <select
+                aria-label="Remote session type"
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+                value={sessionFilter}
+                onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
+              >
+                <option value="all">All</option>
+                <option value="range">Range</option>
+                <option value="course">Course</option>
+              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  aria-label="Session start date"
+                  type="date"
+                  value={dateFilter.startDate}
+                  onChange={(event) =>
+                    setDateFilter((current) => ({ ...current, startDate: event.target.value }))
+                  }
+                />
+                <Input
+                  aria-label="Session end date"
+                  type="date"
+                  value={dateFilter.endDate}
+                  onChange={(event) =>
+                    setDateFilter((current) => ({ ...current, endDate: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </MobileAccordionSection>
+        ) : null}
 
         {notice.kind !== "idle" ? (
           <div ref={noticeRef} className="scroll-mt-4">
@@ -768,7 +814,7 @@ export function RapsodoSyncClient({
           <Card
             className={cn(
               "premium-card",
-              visibleMobileStep === "connect" ? "flex" : "hidden sm:flex",
+              showMobileConnectionCard ? "flex" : "hidden sm:flex",
             )}
           >
             <CardHeader>
@@ -880,7 +926,7 @@ export function RapsodoSyncClient({
           <Card
             className={cn(
               "premium-card",
-              visibleMobileStep === "sessions" ? "flex" : "hidden sm:flex",
+              showMobileSessionsCard ? "flex" : "hidden sm:flex",
             )}
           >
             <CardHeader>
@@ -1435,42 +1481,46 @@ export function RapsodoSyncClient({
           </section>
         ) : null}
 
-        <StickyMobileAction>
-          <div className="grid grid-cols-[auto_1fr] gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl"
-              disabled={activeMobileStepIndex <= 0}
-              onClick={() => setMobileStep(mobileSteps[Math.max(0, activeMobileStepIndex - 1)].id)}
-            >
-              Back
-            </Button>
-            {visibleMobileStep === "import" ? (
+        {showStickyReviewBar ? (
+          <StickyMobileAction>
+            <div className="grid grid-cols-[auto_1fr] gap-2">
               <Button
                 type="button"
-                disabled={!canSave}
-                onClick={savePreview}
-                className="premium-action rounded-lg"
-              >
-                <Upload className="size-4" />
-                Import selected sessions
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="premium-action rounded-lg"
+                variant="outline"
+                className="rounded-xl"
+                disabled={activeMobileStepIndex <= 0}
                 onClick={() =>
-                  setMobileStep(
-                    mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
-                  )
+                  setMobileStep(mobileSteps[Math.max(0, activeMobileStepIndex - 1)].id)
                 }
               >
-                Next
+                Back
               </Button>
-            )}
-          </div>
-        </StickyMobileAction>
+              {visibleMobileStep === "import" ? (
+                <Button
+                  type="button"
+                  disabled={!canSave}
+                  onClick={savePreview}
+                  className="premium-action rounded-lg"
+                >
+                  <Upload className="size-4" />
+                  Import selected sessions
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="premium-action rounded-lg"
+                  onClick={() =>
+                    setMobileStep(
+                      mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
+                    )
+                  }
+                >
+                  Next
+                </Button>
+              )}
+            </div>
+          </StickyMobileAction>
+        ) : null}
         {saveConfirmation ? (
           <SaveConfirmationToast
             confirmation={saveConfirmation}

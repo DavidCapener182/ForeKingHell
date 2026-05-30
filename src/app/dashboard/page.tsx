@@ -72,7 +72,6 @@ import {
   toneSoftClass,
   type DashboardTone,
 } from "@/app/dashboard/dashboard-formatters";
-import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { formatClubType } from "@/lib/club-format";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import type { DashboardPin } from "@/lib/user-settings";
@@ -83,14 +82,12 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 function parseDashboardSection(section?: string): DashboardTabKey {
-  if (
-    section === "today" ||
-    section === "decisions" ||
-    section === "progress" ||
-    section === "tools" ||
-    section === "bag"
-  ) {
+  if (section === "today" || section === "decisions" || section === "more") {
     return section;
+  }
+
+  if (section === "progress" || section === "tools" || section === "bag") {
+    return "more";
   }
 
   return "today";
@@ -143,11 +140,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return <MissingDatabaseUrlSetup />;
   }
 
-  const [params, data, social, challengeData, featureData] = await Promise.all([
+  const [params, data, social, featureData] = await Promise.all([
     searchParams,
     getDashboardData(),
     getFeedPageData(),
-    getChallengesPageData(),
     getFeatureIdeasData(),
   ]);
   const activeDashboardSection = parseDashboardSection(params?.section);
@@ -469,7 +465,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <DashboardMobileLayout
         data={data}
         social={social}
-        challenges={challengeData.active}
         metrics={mobileMetrics}
         routeCards={mobileRouteCards}
         pinnedDashboardSections={pinnedDashboardSections}
@@ -487,17 +482,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           coachPreview={data.coachPreview}
           scoringCeiling={formatHandicapValue(data.stats.combinedHandicap.value)}
           scoringTrend={formatHandicapTrend(data.stats.combinedHandicap)}
-          dataHealth={featureData.dataHealth}
-          primaryAction={primaryAction}
-          primaryActionLabel={primaryActionLabel}
-          latestRound={data.latestRound}
-        />
-
-        <TodayCommandBrief
-          latestSession={latestSession}
-          bestClub={bestClub}
-          coachPreview={data.coachPreview}
-          firstSignal={firstSignal}
           dataHealth={featureData.dataHealth}
           primaryAction={primaryAction}
           primaryActionLabel={primaryActionLabel}
@@ -553,6 +537,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             />
           </section>
         </div>
+
+        <TodayCommandBrief
+          latestSession={latestSession}
+          bestClub={bestClub}
+          coachPreview={data.coachPreview}
+          firstSignal={firstSignal}
+          dataHealth={featureData.dataHealth}
+          primaryAction={primaryAction}
+          primaryActionLabel={primaryActionLabel}
+          latestRound={data.latestRound}
+        />
 
         {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
       </div>
@@ -672,7 +667,6 @@ function DashboardTodayCompanionHero({
 function DashboardMobileLayout({
   data,
   social,
-  challenges,
   metrics,
   routeCards,
   pinnedDashboardSections,
@@ -684,7 +678,6 @@ function DashboardMobileLayout({
 }: {
   data: DashboardData;
   social: Awaited<ReturnType<typeof getFeedPageData>>;
-  challenges: ChallengeListItem[];
   metrics: DashboardMetric[];
   routeCards: DashboardRoute[];
   pinnedDashboardSections: Set<DashboardPin>;
@@ -694,10 +687,23 @@ function DashboardMobileLayout({
   featureData: FeatureIdeasData;
   commandRoutes: DashboardCommandRoute[];
 }) {
+  const mobileFeatureData = {
+    ...featureData,
+    dashboardActions: featureData.dashboardActions.slice(0, 3),
+  };
+  const hiddenActionCount = Math.max(
+    0,
+    featureData.dashboardActions.length - mobileFeatureData.dashboardActions.length,
+  );
+
   return (
     <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
 
+      <div
+        id="dashboard-mobile-today"
+        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+      />
       <DashboardTodayCompanionHero
         inbox={data.rapsodoInbox}
         latestSession={data.recentSessions[0] ?? null}
@@ -741,6 +747,15 @@ function DashboardMobileLayout({
               </div>
             ),
           },
+        ]}
+      />
+
+      <div
+        id="dashboard-mobile-decisions"
+        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+      />
+      <MobileCompanionAccordion
+        items={[
           {
             value: "decisions",
             title: "Decisions",
@@ -759,6 +774,15 @@ function DashboardMobileLayout({
               </div>
             ),
           },
+        ]}
+      />
+
+      <div
+        id="dashboard-mobile-more"
+        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+      />
+      <MobileCompanionAccordion
+        items={[
           {
             value: "data-trust",
             title: "Data trust",
@@ -770,9 +794,18 @@ function DashboardMobileLayout({
                 <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
                 <DashboardMobileGroup
                   title="Action centre"
-                  count={`${featureData.dashboardActions.length} items`}
+                  count={`${mobileFeatureData.dashboardActions.length} items`}
+                  action={
+                    hiddenActionCount > 0 ? (
+                      <Button asChild variant="outline" size="sm" className="rounded-lg">
+                        <Link href="/progress" prefetch={false}>
+                          View all
+                        </Link>
+                      </Button>
+                    ) : undefined
+                  }
                 >
-                  <ActionCentrePanel data={featureData} layout="dashboard" compactMobile />
+                  <ActionCentrePanel data={mobileFeatureData} layout="dashboard" compactMobile />
                 </DashboardMobileGroup>
               </div>
             ),
@@ -785,7 +818,7 @@ function DashboardMobileLayout({
             children: (
               <div className="grid gap-4">
                 <DashboardMobileTools routeCards={routeCards} commandRoutes={commandRoutes} />
-                <DashboardMobileSocialPulse social={social} challenges={challenges} />
+                <DashboardMobileSocialPulse social={social} />
               </div>
             ),
           },
@@ -1222,31 +1255,18 @@ function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasDat
 
 function DashboardMobileSocialPulse({
   social,
-  challenges,
 }: {
   social: Awaited<ReturnType<typeof getFeedPageData>>;
-  challenges: ChallengeListItem[];
 }) {
-  const topItems = social.items.slice(0, 3);
+  const topItem = social.items[0] ?? null;
   const pbCount = social.items.filter(
     (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
   ).length;
-  const recordCount = social.items.filter((item) =>
-    item.itemType.startsWith("course_record"),
-  ).length;
-  const tournamentCount = social.items.filter((item) =>
-    item.itemType.startsWith("tournament"),
-  ).length;
-  const closingSoon =
-    challenges
-      .filter((challenge) => challenge.endsAt)
-      .sort((left, right) => (left.endsAt?.getTime() ?? 0) - (right.endsAt?.getTime() ?? 0))[0] ??
-    null;
 
   return (
     <DashboardMobileGroup
       title="Social pulse"
-      description="Recent activity from your golf network."
+      description="One quiet network signal. Open Social for the full feed."
       action={
         <Button asChild variant="outline" size="sm" className="rounded-lg">
           <Link href="/feed" prefetch={false}>
@@ -1256,88 +1276,31 @@ function DashboardMobileSocialPulse({
         </Button>
       }
     >
-      <div className="grid gap-4">
-        <CompactReadoutGrid
-          columnsClassName="sm:grid-cols-2"
-          items={[
-            {
-              label: "Friends active",
-              value: social.friendCount.toString(),
-              detail: "Accepted golfer friendships",
-              tone: "green",
-              href: "/friends",
-            },
-            {
-              label: "Network PBs",
-              value: pbCount.toString(),
-              detail: "Visible PB and longest-drive cards",
-              tone: "amber",
-              href: "/feed?filter=pbs",
-            },
-            {
-              label: "Course records",
-              value: recordCount.toString(),
-              detail: "Champion, defended, and beaten marks",
-              tone: "amber",
-              href: "/course-records",
-            },
-            {
-              label: "Tournaments",
-              value: tournamentCount.toString(),
-              detail: "Entries and verified round submissions",
-              tone: "green",
-              href: "/tournaments",
-            },
-            {
-              label: "Challenge closing",
-              value: closingSoon?.title ?? "--",
-              detail: closingSoon?.endsAt
-                ? `Ends ${formatDate(closingSoon.endsAt)}`
-                : "No open closing board",
-              tone: closingSoon ? "sky" : "slate",
-              href: closingSoon ? `/challenges/${closingSoon.id}` : "/challenges",
-            },
-          ]}
-        />
-        <div className="grid gap-2">
-          {topItems.length > 0 ? (
-            topItems.map((item) => <DashboardMobileSocialMoment key={item.id} item={item} />)
-          ) : (
-            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No visible social moments yet. Add friends or join a challenge to populate this pulse.
-            </p>
-          )}
+      <Link
+        href={topItem?.proofUrl ?? "/feed"}
+        prefetch={false}
+        className="grid gap-3 rounded-xl border bg-slate-50 px-3 py-3 text-sm transition-colors hover:bg-white"
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <DataPair label="Friends" value={social.friendCount.toString()} />
+          <DataPair label="Network PBs" value={pbCount.toString()} />
         </div>
-      </div>
+        {topItem ? (
+          <div className="border-t border-slate-200 pt-3">
+            <p className="font-semibold leading-5">{topItem.headline}</p>
+            <p className="mt-1 line-clamp-2 text-muted-foreground">
+              {topItem.metricValue
+                ? `${topItem.metricLabel ?? "Metric"} ${topItem.metricValue}`
+                : (topItem.context ?? "Social update")}
+            </p>
+          </div>
+        ) : (
+          <p className="border-t border-slate-200 pt-3 text-muted-foreground">
+            Add friends or join a challenge to populate this pulse.
+          </p>
+        )}
+      </Link>
     </DashboardMobileGroup>
-  );
-}
-
-function DashboardMobileSocialMoment({ item }: { item: FeedItemView }) {
-  return (
-    <Link
-      href={item.proofUrl ?? "/feed"}
-      prefetch={false}
-      className="grid gap-1 rounded-xl border bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-white"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-medium">{item.headline}</p>
-        <StatusPill
-          tone={
-            item.verificationLabel === "Manual" || item.verificationLabel === "Unverified"
-              ? "slate"
-              : "green"
-          }
-        >
-          {item.verificationLabel}
-        </StatusPill>
-      </div>
-      <p className="text-muted-foreground">
-        {item.metricValue
-          ? `${item.metricLabel ?? "Metric"} ${item.metricValue}`
-          : (item.context ?? "Social update")}
-      </p>
-    </Link>
   );
 }
 
@@ -1454,7 +1417,7 @@ function DashboardSummaryHero({
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="relative grid gap-7 px-7 py-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-stretch">
+      <div className="relative grid gap-7 px-7 py-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-stretch">
         <div className="flex min-w-0 flex-col justify-between gap-6">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1467,13 +1430,13 @@ function DashboardSummaryHero({
                 </StatusPill>
               ) : null}
             </div>
-            <h1 className="mt-4 text-[34px] font-bold leading-10 tracking-normal text-[#111827]">
+            <h1 className="mt-4 text-[40px] font-bold leading-[2.85rem] tracking-normal text-[#111827]">
               LM World Tour
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#667085]">
               Your golf operating system: form, bag confidence, practice and rounds.
             </p>
-            <p className="mt-5 max-w-3xl text-base font-medium leading-7 text-[#111827]">
+            <p className="mt-5 max-w-3xl text-xl font-semibold leading-8 text-[#111827]">
               Today&apos;s read: {todayRead}.
             </p>
           </div>
@@ -1554,8 +1517,6 @@ function DashboardSummaryHero({
           }
           href={practiceHref}
           tone="green"
-          primary
-          actionText="Start"
         />
         <HeroInsightCard
           title="Data trust"

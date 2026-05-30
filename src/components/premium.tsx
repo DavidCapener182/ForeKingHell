@@ -771,7 +771,7 @@ export function MobileCompanionAccordion({
               ) : null}
             </span>
             {item.summary ? (
-              <span className="ml-auto max-w-28 truncate text-xs font-medium text-muted-foreground">
+              <span className="ml-auto max-w-36 shrink-0 truncate text-xs font-medium text-muted-foreground">
                 {item.summary}
               </span>
             ) : null}
@@ -825,7 +825,7 @@ export function MobileAccordionSection({
             ) : null}
           </span>
           {count || summary ? (
-            <span className="ml-auto max-w-28 truncate text-xs font-medium text-muted-foreground">
+            <span className="ml-auto max-w-36 shrink-0 truncate text-xs font-medium text-muted-foreground">
               {count ?? summary}
             </span>
           ) : null}

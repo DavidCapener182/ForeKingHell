@@ -371,14 +371,10 @@ export function TargetDistanceSelector({
   const alternatives = planOptions
     .filter((option) => option.routeKey !== plan?.routeKey)
     .slice(0, 3);
-  const description =
-    plan && isMultiShotPlan
-      ? `Plan ${targetYd} yd as a hole distance: start with ${formatClubType(
-          plan.shots[0].row.clubType,
-        )}, then match the remaining number.`
-      : `I need ${targetYd} yd: pick the club with the closest recommended carry and enough trust to use on course.`;
+  const description = "Pick the safest club for today’s number.";
   const planTone = getPlanTone(plan);
   const riskLevel = getRiskLevel(plan);
+  const decisionSummary = riskLevel === "--" ? "Risk" : riskLevel;
   const windowQuality = getWindowQuality(plan);
 
   function selectTarget(value: number) {
@@ -387,16 +383,16 @@ export function TargetDistanceSelector({
 
   return (
     <DataPanel className="overflow-hidden rounded-lg border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:rounded-[1.35rem]">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3 pt-3 sm:gap-4 sm:px-6 sm:pb-5 sm:pt-6">
-        <div className="flex items-center gap-4">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:size-14 sm:rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2.5 pt-2.5 sm:gap-4 sm:px-6 sm:pb-5 sm:pt-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:size-14 sm:rounded-2xl">
             <Target className="size-5 sm:size-7" />
           </div>
           <div>
             <h2 className="text-xl font-semibold tracking-normal text-slate-950 sm:text-2xl">
               Target distance selector
             </h2>
-            <p className="mt-1 line-clamp-2 text-sm text-slate-600 sm:text-base">{description}</p>
+            <p className="mt-1 text-sm text-slate-600 sm:text-base">{description}</p>
           </div>
         </div>
         <div className="hidden size-9 place-items-center rounded-full text-emerald-700 ring-1 ring-emerald-100 sm:grid">
@@ -621,7 +617,7 @@ export function TargetDistanceSelector({
             <MobileAccordionSection
               title="Decision detail"
               description="Risk, sample size and course-condition reminder."
-              count={riskLevel}
+              count={decisionSummary}
               className="mt-3"
             >
               <div className="grid gap-3">

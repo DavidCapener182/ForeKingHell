@@ -59,6 +59,7 @@ type FriendTargetOption = {
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const UNMAPPED_CLUB_TYPES = new Set(["ot", "other", "unknown"]);
 
 export type FeatureInsight = {
   title: string;
@@ -70,6 +71,37 @@ export type FeatureInsight = {
 
 export type FeatureIdeasData = Awaited<ReturnType<typeof buildFeatureIdeasDataForUser>>;
 export type CourseFollowFeatureData = Pick<FeatureIdeasData, "courseFollows">;
+
+function isUnmappedClubType(value: string | null | undefined) {
+  return UNMAPPED_CLUB_TYPES.has(value?.trim().toLowerCase() ?? "");
+}
+
+function formatBagAlertClubName(club: Pick<ClubRow, "type" | "brand" | "model">) {
+  if (!isUnmappedClubType(club.type)) {
+    return formatClubType(club.type);
+  }
+
+  const modelName = [club.brand, club.model]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return modelName || "Unmapped club";
+}
+
+function formatOverlapAlertTitle(
+  previousClub: Pick<ClubRow, "type" | "brand" | "model">,
+  currentClub: Pick<ClubRow, "type" | "brand" | "model">,
+) {
+  const previousName = formatBagAlertClubName(previousClub);
+  const currentName = formatBagAlertClubName(currentClub);
+
+  if (previousName === "Unmapped club" && currentName === "Unmapped club") {
+    return "Unmapped club overlap";
+  }
+
+  return `${previousName} and ${currentName} overlap`;
+}
 
 export async function getFeatureIdeasData() {
   return buildFeatureIdeasDataForUser(await requireCurrentUserId());
@@ -1297,7 +1329,7 @@ function buildBagAlerts(
 
     if (gap < 7) {
       alerts.push({
-        title: `${formatClubType(previous.club.type)} and ${formatClubType(current.club.type)} overlap`,
+        title: formatOverlapAlertTitle(previous.club, current.club),
         metric: `${numberFormatter.format(gap)} yd`,
         detail: "Bag fitting alert: these clubs may be covering the same stock number.",
         href: "/bag",

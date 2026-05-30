@@ -33,7 +33,6 @@ import {
   MobileAccordionSection,
   MobileDataCard,
   MobileDataList,
-  PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
@@ -262,29 +261,6 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
           </MobileAppShell>
         )}
         <div className="hidden sm:contents">
-          <PageHeader
-            eyebrow={<StatusPill tone="green">Import</StatusPill>}
-            title="CSV import"
-            description="Upload Rapsodo files, review duplicates, and keep a versioned file history for reprocessing."
-            metrics={[
-              {
-                label: "Files",
-                value: integerFormatter.format(visibleFiles.length),
-                detail: "Saved import-file records",
-              },
-              {
-                label: "Duplicates",
-                value: integerFormatter.format(duplicateFiles),
-                detail: "Detected before save",
-              },
-              {
-                label: "Backfilled",
-                value: integerFormatter.format(library.backfilledCount),
-                detail: "Recovered from legacy sessions",
-              },
-            ]}
-          />
-
           <FirstRunRapsodoOnboarding
             connected={connectionStatus.connected}
             fileCount={visibleFiles.length}

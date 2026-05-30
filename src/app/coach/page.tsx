@@ -136,42 +136,47 @@ export default async function CoachPage() {
             {
               value: "practice-tools",
               title: "Practice tools",
-              description: "Track drill plus extra daily XP drills.",
-              summary: `${drillChallenges.length} drills`,
+              description: "Active drill, completion and progress.",
+              summary: "1 active",
               children: (
                 <div className="grid gap-4">
-                  <CoachPracticeFeaturePanel data={featureData} compactMobile />
-                  <NativeListSection
-                    id="more-drills"
-                    title="Daily XP drills"
-                    description="Hit the shot-count target, then win the drill for the bigger XP unlock. Progress reads from today’s uploaded shots."
-                  >
-                    {drillChallenges.length > 0 ? (
-                      drillChallenges.map((challenge) => (
-                        <CoachDrillChallengeCard
-                          key={challenge.id}
-                          challenge={challenge}
-                          status={
-                            drillStatuses[challenge.id] ?? {
-                              completed: false,
-                              won: false,
-                              uploadedShotCount: 0,
-                              completionTarget: challenge.completionTarget,
-                              winCount: 0,
-                              winTarget: winTargetForChallenge(challenge),
-                              completedAwarded: false,
-                              wonAwarded: false,
-                            }
-                          }
-                        />
-                      ))
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
-                        Import at least three clean shots with one club to generate today’s XP
-                        drills.
-                      </div>
-                    )}
-                  </NativeListSection>
+                  <CoachPracticeFeaturePanel
+                    data={featureData}
+                    compactMobile
+                    compactExtras={
+                      <NativeListSection
+                        id="more-drills"
+                        title="Daily XP drills"
+                        description="Hit the shot-count target, then win the drill for the bigger XP unlock. Progress reads from today’s uploaded shots."
+                      >
+                        {drillChallenges.length > 0 ? (
+                          drillChallenges.map((challenge) => (
+                            <CoachDrillChallengeCard
+                              key={challenge.id}
+                              challenge={challenge}
+                              status={
+                                drillStatuses[challenge.id] ?? {
+                                  completed: false,
+                                  won: false,
+                                  uploadedShotCount: 0,
+                                  completionTarget: challenge.completionTarget,
+                                  winCount: 0,
+                                  winTarget: winTargetForChallenge(challenge),
+                                  completedAwarded: false,
+                                  wonAwarded: false,
+                                }
+                              }
+                            />
+                          ))
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-border bg-background p-4 text-sm text-muted-foreground">
+                            Import at least three clean shots with one club to generate today’s XP
+                            drills.
+                          </div>
+                        )}
+                      </NativeListSection>
+                    }
+                  />
                 </div>
               ),
             },

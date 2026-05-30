@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   Bell,
   CalendarCheck,
@@ -493,11 +494,14 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
 export function CoachPracticeFeaturePanel({
   data,
   compactMobile = false,
+  compactExtras,
 }: {
   data: FeatureIdeasData;
   compactMobile?: boolean;
+  compactExtras?: ReactNode;
 }) {
   const top = data.practicePlan[0];
+  const extraPracticeItems = data.practicePlan.slice(1);
 
   if (compactMobile) {
     return (
@@ -537,14 +541,30 @@ export function CoachPracticeFeaturePanel({
             </Button>
           </form>
         ) : null}
-        {data.practicePlan.slice(1).map((item) => (
-          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
-            <p className="font-semibold">{item.title}</p>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
-            <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-sm font-semibold">Progress read</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <DataPair label="Coach confidence" value={data.coachConfidence.metric} />
+            <DataPair label="Active target" value={top ? `${top.targetShots} shots` : "--"} />
           </div>
-        ))}
-        <CoachChallengeForm data={data} />
+        </div>
+        <MobileAccordionSection
+          title="More drills"
+          description="Bench work, challenges and XP drills."
+          count={`${extraPracticeItems.length + (compactExtras ? 1 : 0)} more`}
+        >
+          <div className="grid gap-3">
+            {extraPracticeItems.map((item) => (
+              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                <p className="font-semibold">{item.title}</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+                <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+              </div>
+            ))}
+            <CoachChallengeForm data={data} />
+            {compactExtras}
+          </div>
+        </MobileAccordionSection>
       </div>
     );
   }
