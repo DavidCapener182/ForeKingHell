@@ -90,6 +90,7 @@ import { ensureCurrentSocialProfile, getBlockedUserIds, getFriendIds } from "@/l
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import {
+  SAND_WEDGE_STOCK_MIN_CARRY_YD,
   calculateStockCarryTrend,
   calculateStockYardage,
   selectStockYardageShots,
@@ -133,7 +134,7 @@ export default async function BagPage() {
     benchmarkRows.length > 0 ? await getPeerBenchmarkSummary(benchmarkRows) : emptyPeerSummary();
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
-  const stockConfidenceClubs = bag.filter((club) => !club.isShortGameTouch);
+  const stockConfidenceClubs = bag.filter(shouldShowInCarryGapping);
   const bestClub =
     [...stockConfidenceClubs].sort(
       (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
@@ -1442,7 +1443,7 @@ function buildGappingRows(
   bag: BagClub[],
   options: { handicapBand?: string | null } = {},
 ): GappingRow[] {
-  const stockBag = bag.filter((club) => !club.isShortGameTouch);
+  const stockBag = bag.filter(shouldShowInCarryGapping);
 
   const baseRows: GappingRow[] = stockBag.map((club, index) => {
     const nextClub = stockBag
@@ -1479,6 +1480,14 @@ function buildGappingRows(
   return buildPersonalGappingTargets(baseRows, {
     handicapBand: options.handicapBand,
   });
+}
+
+function shouldShowInCarryGapping(club: BagClub) {
+  if (!club.isShortGameTouch) {
+    return true;
+  }
+
+  return club.type === "sw" && (club.stock.carryMedianYd ?? 0) > SAND_WEDGE_STOCK_MIN_CARRY_YD;
 }
 
 function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): TargetDistanceRow[] {

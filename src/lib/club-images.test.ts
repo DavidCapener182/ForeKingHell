@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  brandPreferredLogoImageUrls,
   brandLogoIconUrls,
   buildClubProductImageSearchQuery,
   clubImageRoutePath,
+  rankBrandLogoSearchCandidates,
 } from "@/lib/club-images";
 
 describe("club image helpers", () => {
@@ -37,6 +39,45 @@ describe("club image helpers", () => {
     expect(routePath).toContain("/api/club-images?");
     expect(routePath).toContain("brand=PING");
     expect(routePath).toContain("model=i530");
+    expect(routePath).toContain("v=4");
+  });
+
+  it("uses a wordmark logo override for Titleist spelling variants", () => {
+    expect(brandPreferredLogoImageUrls("Titlest")[0]).toBe(
+      "https://upload.wikimedia.org/wikipedia/commons/7/70/Titleist_logo.svg",
+    );
+    expect(brandPreferredLogoImageUrls("Titleist")[0]).toBe(
+      "https://upload.wikimedia.org/wikipedia/commons/7/70/Titleist_logo.svg",
+    );
+  });
+
+  it("prefers logo-like brand search results over product photography", () => {
+    const ranked = rankBrandLogoSearchCandidates(
+      [
+        {
+          url: "https://example.com/images/titleist-pro-v1-ball.jpg",
+          title: "Titleist Pro V1 golf balls",
+          displayLink: "example.com",
+          contextLink: "https://example.com/titleist-pro-v1",
+          mime: "image/jpeg",
+          source: "image",
+        },
+        {
+          url: "https://upload.wikimedia.org/wikipedia/commons/7/70/Titleist_logo.svg",
+          title: "Titleist logo.svg",
+          displayLink: "upload.wikimedia.org",
+          contextLink: "https://commons.wikimedia.org/wiki/File:Titleist_logo.svg",
+          mime: "image/svg+xml",
+          source: "image",
+        },
+      ],
+      "Titleist",
+    );
+
+    expect(ranked[0]?.url).toContain("Titleist_logo.svg");
+    expect(ranked.map((candidate) => candidate.url)).not.toContain(
+      "https://example.com/images/titleist-pro-v1-ball.jpg",
+    );
   });
 
   it("builds a product image query from brand, model, and club", () => {

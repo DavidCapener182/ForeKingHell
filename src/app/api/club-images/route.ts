@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
 import {
   brandLogoIconUrls,
+  brandPreferredLogoImageUrls,
   buildBrandLogoSearchQuery,
   buildClubProductImageSearchQuery,
   clubArtworkPath,
+  rankBrandLogoSearchCandidates,
 } from "@/lib/club-images";
 import { searchGoogleImages } from "@/lib/google-image-search";
 import {
@@ -19,6 +21,9 @@ export const runtime = "nodejs";
 const IMAGE_CACHE_CONTROL = DEFAULT_REMOTE_IMAGE_CACHE_CONTROL;
 const CLUB_IMAGE_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} club image resolver; +${BRAND_PUBLIC_URL})`;
 
+type ImageSearchCandidates = Awaited<ReturnType<typeof searchGoogleImages>>;
+type ImageSearchRanker = (candidates: ImageSearchCandidates) => ImageSearchCandidates;
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const clubType = requestUrl.searchParams.get("type");
@@ -28,6 +33,18 @@ export async function GET(request: Request) {
     safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
 
   try {
+    const hasBrand = Boolean(brand?.trim());
+
+    if (hasBrand) {
+      for (const logoImageUrl of brandPreferredLogoImageUrls(brand)) {
+        const response = await imageResponseFromUrl(logoImageUrl, "brand-logo");
+
+        if (response) {
+          return response;
+        }
+      }
+    }
+
     const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
 
     if (productQuery) {
@@ -38,21 +55,21 @@ export async function GET(request: Request) {
       }
     }
 
-    const hasBrand = Boolean(brand?.trim());
-
     if (hasBrand) {
-      for (const logoIconUrl of brandLogoIconUrls(brand)) {
-        const response = await imageResponseFromUrl(logoIconUrl, "brand-logo");
+      const brandLogoQuery = buildBrandLogoSearchQuery(brand);
+
+      if (brandLogoQuery) {
+        const response = await imageResponseFromSearch(brandLogoQuery, "brand-logo", (candidates) =>
+          rankBrandLogoSearchCandidates(candidates, brand),
+        );
 
         if (response) {
           return response;
         }
       }
 
-      const brandLogoQuery = buildBrandLogoSearchQuery(brand);
-
-      if (brandLogoQuery) {
-        const response = await imageResponseFromSearch(brandLogoQuery, "brand-logo");
+      for (const logoIconUrl of brandLogoIconUrls(brand)) {
+        const response = await imageResponseFromUrl(logoIconUrl, "brand-logo");
 
         if (response) {
           return response;
@@ -66,8 +83,14 @@ export async function GET(request: Request) {
   return redirectToFallback(requestUrl, fallback);
 }
 
-async function imageResponseFromSearch(query: string, source: "product" | "brand-logo") {
-  const candidates = await searchGoogleImages(query, { num: 6 });
+async function imageResponseFromSearch(
+  query: string,
+  source: "product" | "brand-logo",
+  rankCandidates?: ImageSearchRanker,
+) {
+  const candidates = rankCandidates
+    ? rankCandidates(await searchGoogleImages(query, { num: 10 }))
+    : await searchGoogleImages(query, { num: 6 });
 
   for (const candidate of candidates) {
     const response = await imageResponseFromUrl(candidate.url, source);

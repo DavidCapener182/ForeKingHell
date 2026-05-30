@@ -1,4 +1,5 @@
 import { formatClubType } from "@/lib/club-format";
+import type { GoogleImageCandidate } from "@/lib/google-image-search";
 
 type ClubArtworkView = "side" | "top";
 type ClubArtworkSource = "panel" | "generated-v2";
@@ -9,8 +10,13 @@ type ClubImageInput = {
   model?: string | null | undefined;
 };
 
+export type BrandLogoSearchCandidate = Pick<
+  GoogleImageCandidate,
+  "url" | "title" | "displayLink" | "contextLink" | "mime" | "source"
+>;
+
 const knownClubArt = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
-const CLUB_IMAGE_ROUTE_VERSION = "3";
+const CLUB_IMAGE_ROUTE_VERSION = "4";
 
 const clubArtAliases: Record<string, string> = {
   "3w": "5w",
@@ -50,6 +56,10 @@ const brandLogoDomains: Record<string, string> = {
   yonex: "yonex.com",
 };
 
+const brandPreferredLogoUrls: Record<string, string[]> = {
+  titleist: ["https://upload.wikimedia.org/wikipedia/commons/7/70/Titleist_logo.svg"],
+};
+
 const brandLogoAliases: Record<string, string> = {
   macgreggor: "macgregor",
   macgreoor: "macgregor",
@@ -60,6 +70,28 @@ const brandLogoAliases: Record<string, string> = {
   titlest: "titleist",
   titlist: "titleist",
 };
+
+const brandLogoTerms = ["logo", "wordmark", "brand", "mark"];
+const poorBrandLogoTerms = [
+  "ball",
+  "balls",
+  "driver",
+  "fairway",
+  "hybrid",
+  "iron",
+  "irons",
+  "wedge",
+  "wedges",
+  "putter",
+  "putters",
+  "bag",
+  "bags",
+  "cap",
+  "cart",
+  "glove",
+  "pro v1",
+  "product",
+];
 
 export function clubArtworkPath(
   clubType: string | null | undefined,
@@ -112,6 +144,14 @@ export function buildBrandLogoSearchQuery(brand: string | null | undefined) {
   const normalized = normalizePart(brand);
 
   return normalized ? `${normalized} golf logo` : null;
+}
+
+export function brandPreferredLogoImageUrls(brand: string | null | undefined) {
+  return [
+    ...new Set(
+      brandLookupKeys(brand).flatMap((lookupKey) => brandPreferredLogoUrls[lookupKey] ?? []),
+    ),
+  ];
 }
 
 export function brandLogoIconUrl(brand: string | null | undefined) {
@@ -175,6 +215,90 @@ function brandDomainCandidates(brand: string | null | undefined) {
   return [...new Set(domains)];
 }
 
+export function rankBrandLogoSearchCandidates(
+  candidates: BrandLogoSearchCandidate[],
+  brand: string | null | undefined,
+) {
+  return candidates
+    .map((candidate, index) => ({
+      candidate,
+      index,
+      score: scoreBrandLogoSearchCandidate(candidate, brand),
+    }))
+    .filter((entry) => entry.score >= 12)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((entry) => entry.candidate);
+}
+
+export function scoreBrandLogoSearchCandidate(
+  candidate: BrandLogoSearchCandidate,
+  brand: string | null | undefined,
+) {
+  const normalized = normalizeBrandKey(brand);
+
+  if (!normalized) {
+    return 0;
+  }
+
+  const compactBrand = compactBrandKey(normalized);
+  const canonicalBrand = canonicalBrandKey(brand) ?? normalized;
+  const compactCanonicalBrand = compactBrandKey(canonicalBrand);
+  const title = normalizeForMatching(candidate.title);
+  const displayLink = normalizeForMatching(candidate.displayLink);
+  const contextLink = normalizeForMatching(candidate.contextLink);
+  const url = normalizeForMatching(candidate.url);
+  const haystack = [title, displayLink, contextLink, url].filter(Boolean).join(" ");
+  const compactHaystack = compactBrandKey(haystack);
+  let score = 0;
+
+  if (haystack.includes(normalized) || haystack.includes(canonicalBrand)) {
+    score += 14;
+  }
+
+  if (
+    (compactBrand && compactHaystack.includes(compactBrand)) ||
+    (compactCanonicalBrand && compactHaystack.includes(compactCanonicalBrand))
+  ) {
+    score += 10;
+  }
+
+  if (brandLogoTerms.some((term) => haystack.includes(term))) {
+    score += 10;
+  }
+
+  if (brandLogoTerms.some((term) => url.includes(term))) {
+    score += 4;
+  }
+
+  const compactDisplayLink = compactBrandKey(displayLink);
+
+  if (
+    brandDomainCandidates(brand).some((domain) =>
+      compactDisplayLink.includes(compactBrandKey(domain)),
+    )
+  ) {
+    score += 6;
+  }
+
+  if (
+    candidate.mime === "image/png" ||
+    candidate.mime === "image/svg+xml" ||
+    candidate.mime === "image/webp"
+  ) {
+    score += 2;
+  }
+
+  if (candidate.source === "thumbnail") {
+    score -= 1;
+  }
+
+  if (poorBrandLogoTerms.some((term) => haystack.includes(term))) {
+    score -= 20;
+  }
+
+  return score;
+}
+
 function formatSearchClubType(value: string | null | undefined) {
   const normalized = normalizePart(value);
 
@@ -220,6 +344,35 @@ function addSearchParam(params: URLSearchParams, key: string, value: string | nu
   }
 }
 
+function brandLookupKeys(brand: string | null | undefined) {
+  const normalized = normalizeBrandKey(brand);
+
+  if (!normalized) {
+    return [];
+  }
+
+  const compact = compactBrandKey(normalized);
+
+  return [
+    normalized,
+    compact,
+    brandLogoAliases[normalized],
+    brandLogoAliases[compact],
+  ].filter((key): key is string => Boolean(key));
+}
+
+function canonicalBrandKey(brand: string | null | undefined) {
+  const normalized = normalizeBrandKey(brand);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const compact = compactBrandKey(normalized);
+
+  return brandLogoAliases[normalized] ?? brandLogoAliases[compact] ?? normalized;
+}
+
 function normalizePart(value: string | null | undefined) {
   const normalized = value?.trim().replace(/\s+/g, " ");
 
@@ -238,4 +391,16 @@ function normalizeBrandKey(value: string | null | undefined) {
 
 function compactBrandKey(value: string) {
   return value.replace(/[^a-z0-9]+/g, "");
+}
+
+function normalizeForMatching(value: string | null | undefined) {
+  return (
+    value
+      ?.normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim() ?? ""
+  );
 }
