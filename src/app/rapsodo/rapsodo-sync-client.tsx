@@ -47,7 +47,6 @@ import {
   DataPair,
   MobileAccordionSection,
   MobileBentoSummary,
-  MobileCompactPageHeader,
   MobileDataCard,
   MobileDataList,
   StickyMobileAction,
@@ -624,56 +623,16 @@ export function RapsodoSyncClient({
           </Button>
         </div>
 
-        <MobileCompactPageHeader
-          eyebrow={
-            <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-              Inbox
-            </Badge>
-          }
-          title="Rapsodo Inbox"
-          description="Review the newest unimported R-Cloud session first."
-          metricLabel="Available"
-          metricValue={availableSessions.length.toString()}
-          metricDetail={status.connected ? `${newSessionCount} new` : "Signed out"}
-        />
-
         <RapsodoInboxPrimaryCard
           session={latestUnimportedSession}
           connected={status.connected}
+          availableCount={availableSessions.length}
+          newSessionCount={newSessionCount}
           isPending={isPending}
           loadingLabel={loadingLabel}
           onConnect={() => setMobileStep("connect")}
           onLoadSessions={() => void loadSessions()}
           onPreviewSession={previewSession}
-        />
-
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Connection",
-              value: status.connected ? "On" : "Off",
-              detail: "R-Cloud",
-              tone: status.connected ? "green" : "slate",
-            },
-            {
-              label: "Available",
-              value: availableSessions.length.toString(),
-              detail: "Sessions",
-              tone: "sky",
-            },
-            {
-              label: "New",
-              value: newSessionCount.toString(),
-              detail: "Since last sync",
-              tone: newSessionCount > 0 ? "amber" : "slate",
-            },
-            {
-              label: "Preview",
-              value: preview ? preview.shotCount.toString() : "--",
-              detail: "Shots",
-              tone: "pink",
-            },
-          ]}
         />
 
         <header className="premium-hero hidden p-5 sm:block sm:p-7">
@@ -706,6 +665,35 @@ export function RapsodoSyncClient({
           steps={mobileSteps}
           step={visibleMobileStep}
           onStepChange={setMobileStep}
+        />
+
+        <MobileBentoSummary
+          items={[
+            {
+              label: "Connection",
+              value: status.connected ? "On" : "Off",
+              detail: "R-Cloud",
+              tone: status.connected ? "green" : "slate",
+            },
+            {
+              label: "Available",
+              value: availableSessions.length.toString(),
+              detail: "Sessions",
+              tone: "sky",
+            },
+            {
+              label: "New",
+              value: newSessionCount.toString(),
+              detail: "Since last sync",
+              tone: newSessionCount > 0 ? "amber" : "slate",
+            },
+            {
+              label: "Preview",
+              value: preview ? preview.shotCount.toString() : "--",
+              detail: "Shots",
+              tone: "pink",
+            },
+          ]}
         />
 
         <MobileAccordionSection
@@ -1595,6 +1583,8 @@ function SaveConfirmationToast({
 function RapsodoInboxPrimaryCard({
   session,
   connected,
+  availableCount,
+  newSessionCount,
   isPending,
   loadingLabel,
   onConnect,
@@ -1603,55 +1593,98 @@ function RapsodoInboxPrimaryCard({
 }: {
   session: RapsodoSessionListItem | null;
   connected: boolean;
+  availableCount: number;
+  newSessionCount: number;
   isPending: boolean;
   loadingLabel: string | null;
   onConnect: () => void;
   onLoadSessions: () => void;
   onPreviewSession: (session: RapsodoSessionListItem) => void;
 }) {
+  const sessionCountCopy =
+    availableCount === 1 ? "1 session ready" : `${availableCount} sessions ready`;
+  const latestCopy = session
+    ? `Latest: ${session.title} · ${
+        session.shotCount === null ? "shots pending preview" : `${session.shotCount} shots`
+      }`
+    : connected
+      ? "No unimported sessions waiting"
+      : "Connect R-Cloud to open the inbox";
+
   return (
-    <section className="premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden">
+    <section className="premium-hero grid gap-3 p-3 sm:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0B7A3B]">Newest unimported session</p>
-          <h2 className="mt-1 line-clamp-2 text-2xl font-semibold leading-tight tracking-normal">
-            {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
-          </h2>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {session
-              ? `${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(
-                  session,
-                )} · ${
-                  session.shotCount === null
-                    ? "shots pending preview"
-                    : `${session.shotCount} shots`
-                }`
-              : connected
-                ? "Load Rapsodo after practice to pull the newest unimported session into this inbox."
-                : "Sign in once, then the newest practice session can be reviewed and imported here."}
+          <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">Inbox</Badge>
+          <h1 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">
+            Rapsodo Inbox
+          </h1>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            Review sessions from R-Cloud.
           </p>
         </div>
-        {session?.isNew ? (
-          <Badge className="shrink-0 bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
-        ) : null}
+        <div className="premium-command-surface min-w-20 rounded-lg px-2.5 py-2 text-right">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Available
+          </p>
+          <p className="mt-0.5 text-xl font-semibold tracking-normal">{availableCount}</p>
+          <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+            {connected ? `${newSessionCount} new` : "Signed out"}
+          </p>
+        </div>
       </div>
-      <Button
-        type="button"
-        className="premium-action w-full rounded-lg"
-        disabled={isPending}
-        onClick={session ? () => onPreviewSession(session) : connected ? onLoadSessions : onConnect}
-      >
-        {loadingLabel === "Loading sessions" || loadingLabel === "Exporting CSV" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : session ? (
-          <Sparkles className="size-4" />
-        ) : connected ? (
-          <RefreshCw className="size-4" />
-        ) : (
-          <Cloud className="size-4" />
-        )}
-        {session ? "Review latest" : connected ? "Load sessions" : "Connect R-Cloud"}
-      </Button>
+
+      <div className="premium-command-surface grid gap-3 rounded-lg p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-primary">Newest unimported session</p>
+            <h2 className="mt-1 line-clamp-2 text-2xl font-semibold leading-tight tracking-normal">
+              {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
+            </h2>
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+              {session
+                ? `${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(
+                    session,
+                  )} · ${
+                    session.shotCount === null
+                      ? "shots pending preview"
+                      : `${session.shotCount} shots`
+                  }`
+                : connected
+                  ? "Load Rapsodo after practice to pull the newest unimported session into this inbox."
+                  : "Sign in once, then the newest practice session can be reviewed and imported here."}
+            </p>
+          </div>
+          {session?.isNew ? (
+            <Badge className="shrink-0 bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
+          ) : null}
+        </div>
+        <div className="rounded-lg border border-border bg-white/70 px-3 py-2">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            {sessionCountCopy}
+          </p>
+          <p className="mt-1 line-clamp-1 text-sm font-semibold">{latestCopy}</p>
+        </div>
+        <Button
+          type="button"
+          className="premium-action w-full rounded-lg"
+          disabled={isPending}
+          onClick={
+            session ? () => onPreviewSession(session) : connected ? onLoadSessions : onConnect
+          }
+        >
+          {loadingLabel === "Loading sessions" || loadingLabel === "Exporting CSV" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : session ? (
+            <Sparkles className="size-4" />
+          ) : connected ? (
+            <RefreshCw className="size-4" />
+          ) : (
+            <Cloud className="size-4" />
+          )}
+          {session ? "Review latest" : connected ? "Load sessions" : "Connect R-Cloud"}
+        </Button>
+      </div>
     </section>
   );
 }

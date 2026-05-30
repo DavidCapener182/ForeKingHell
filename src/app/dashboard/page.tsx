@@ -493,8 +493,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
-
         <TodayCommandBrief
           latestSession={latestSession}
           bestClub={bestClub}
@@ -506,7 +504,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
           <div className="flex min-w-0 flex-col gap-6">
             <ActionCentrePanel data={featureData} layout="dashboard" />
 
@@ -528,11 +526,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ) : null}
 
             <CourseDecisionPanel items={data.courseAdvice.slice(0, 3)} />
-
-            <WhatChangedPanel insights={data.whatChanged} />
           </div>
 
-          <section className="flex min-w-0 flex-col gap-6">
+          <section className="flex min-w-0 flex-col gap-5">
             <LatestPracticeSignalPanel
               compact
               latestSession={latestSession}
@@ -540,6 +536,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               firstSignal={firstSignal}
               latestRound={data.latestRound}
             />
+
+            <WhatChangedPanel insights={data.whatChanged} />
 
             {pinnedDashboardSections.has("rounds") ? (
               <LatestRoundPanel latestRound={data.latestRound} />
@@ -555,6 +553,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             />
           </section>
         </div>
+
+        {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
       </div>
     </PageShell>
   );
@@ -779,8 +779,8 @@ function DashboardMobileLayout({
           },
           {
             value: "more",
-            title: "More",
-            description: "Tools, route search and social pulse.",
+            title: "More tools",
+            description: "Full command centre tools, route search and quieter social pulse.",
             summary: `${routeCards.length} tools`,
             children: (
               <div className="grid gap-4">
@@ -1454,7 +1454,7 @@ function DashboardSummaryHero({
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="relative grid gap-6 px-7 py-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+      <div className="relative grid gap-7 px-7 py-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-stretch">
         <div className="flex min-w-0 flex-col justify-between gap-6">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1554,6 +1554,8 @@ function DashboardSummaryHero({
           }
           href={practiceHref}
           tone="green"
+          primary
+          actionText="Start"
         />
         <HeroInsightCard
           title="Data trust"
@@ -1713,41 +1715,54 @@ function TodayCommandBrief({
   }>;
 
   return (
-    <section className="premium-command-surface grid gap-3 rounded-lg p-3 lg:grid-cols-4">
-      {items.map((item) => {
-        const Icon = item.icon;
+    <section className="premium-card grid gap-3 rounded-lg p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Quick answers</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Shortcuts into the command centre without competing with the main action.
+          </p>
+        </div>
+        <StatusPill className="bg-background text-muted-foreground ring-border">Context</StatusPill>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-4">
+        {items.map((item) => {
+          const Icon = item.icon;
 
-        return (
-          <Link
-            key={item.question}
-            href={item.href}
-            prefetch={false}
-            className="group grid min-h-[11.5rem] grid-rows-[auto_1fr_auto] rounded-lg border border-border bg-white/75 p-4 transition-colors hover:border-[#0B7A3B] hover:bg-white"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <p className="text-sm font-semibold leading-5 text-[#111827]">{item.question}</p>
-              <span
-                className={cn(
-                  "grid size-9 shrink-0 place-items-center rounded-lg",
-                  toneSoftClass(item.tone),
-                )}
-              >
-                <Icon className="size-4" />
+          return (
+            <Link
+              key={item.question}
+              href={item.href}
+              prefetch={false}
+              className="group grid min-h-[9.75rem] grid-rows-[auto_1fr_auto] rounded-lg border border-border bg-white/70 p-3.5 transition-colors hover:border-primary/30 hover:bg-white"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold leading-5 text-foreground">{item.question}</p>
+                <span
+                  className={cn(
+                    "grid size-8 shrink-0 place-items-center rounded-lg",
+                    toneSoftClass(item.tone),
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
+              </div>
+              <div className="mt-4 min-w-0">
+                <p className="text-lg font-bold leading-6 tracking-normal text-foreground">
+                  {item.answer}
+                </p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                  {item.detail}
+                </p>
+              </div>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+                {item.action}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>
-            </div>
-            <div className="mt-4 min-w-0">
-              <p className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
-                {item.answer}
-              </p>
-              <p className="mt-1 line-clamp-3 text-sm leading-5 text-[#667085]">{item.detail}</p>
-            </div>
-            <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
-              {item.action}
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </Link>
-        );
-      })}
+            </Link>
+          );
+        })}
+      </div>
     </section>
   );
 }

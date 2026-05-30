@@ -237,24 +237,17 @@ export default async function CoachPage() {
           title="Coach"
           description={`${coach.headline} ${coach.subhead}`}
           visual={<PageArtwork variant="coach" alt="" className="h-full min-h-44" priority />}
+          visualSize="wide"
           actions={
             topClub ? (
-              <Button
-                asChild
-                size="lg"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button asChild size="lg" className="premium-action rounded-lg">
                 <Link href={`/bag/${topClub.clubId}/analytics`} prefetch={false}>
                   <Brain className="size-4" />
                   Open {topClub.clubName}
                 </Link>
               </Button>
             ) : (
-              <Button
-                asChild
-                size="lg"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button asChild size="lg" className="premium-action rounded-lg">
                 <Link href="/import" prefetch={false}>
                   <Upload className="size-4" />
                   Import first session
@@ -594,14 +587,14 @@ function CoachPracticePlan({
 }) {
   return (
     <CardContent className="space-y-4">
-      <div className="premium-hero rounded-lg p-3 sm:p-4">
+      <div className="premium-command-surface rounded-lg p-3 sm:p-4">
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <Badge className="bg-white text-emerald-700 hover:bg-white">
+              <Badge className="bg-background text-primary ring-1 ring-border hover:bg-background">
                 Based on stored shot data
               </Badge>
-              <h2 className="mt-2 text-xl font-semibold tracking-normal sm:mt-3 sm:text-2xl">
+              <h2 className="mt-2 text-lg font-semibold tracking-normal sm:mt-3 sm:text-xl">
                 {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
               </h2>
             </div>

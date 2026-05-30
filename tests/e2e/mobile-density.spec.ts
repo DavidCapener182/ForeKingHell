@@ -26,7 +26,7 @@ test.describe("mobile density screenshots", () => {
         { name: "dashboard", path: "/dashboard", text: /Dashboard|Today/i },
         { name: "today", path: "/today", text: /Today/i },
         { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
-        { name: "rapsodo", path: "/rapsodo", text: /Rapsodo|cloud sync/i },
+        { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
         { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
         { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
         { name: "equipment", path: "/equipment", text: /Equipment/i },

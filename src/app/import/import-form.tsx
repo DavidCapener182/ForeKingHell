@@ -681,6 +681,19 @@ export function ImportForm({
           }
         />
 
+        <MobileImportStatusStrip
+          currentStep={visibleMobileStep}
+          fileCount={aggregate.fileCount}
+          shotCount={aggregate.shotCount}
+          clubCount={aggregate.clubCount}
+          warningCount={aggregate.warnings.length}
+          isCourseUpload={isCourseUpload}
+          courseHoleCount={scorecard.holes.length}
+          courseAssignedShotCount={courseAssignedShotCount}
+          canSave={canSave}
+          onStepChange={setMobileStep}
+        />
+
         <MobileBentoSummary
           items={[
             {
@@ -703,19 +716,6 @@ export function ImportForm({
               tone: aggregate.warnings.length > 0 ? "pink" : "slate",
             },
           ]}
-        />
-
-        <MobileImportStatusStrip
-          currentStep={visibleMobileStep}
-          fileCount={aggregate.fileCount}
-          shotCount={aggregate.shotCount}
-          clubCount={aggregate.clubCount}
-          warningCount={aggregate.warnings.length}
-          isCourseUpload={isCourseUpload}
-          courseHoleCount={scorecard.holes.length}
-          courseAssignedShotCount={courseAssignedShotCount}
-          canSave={canSave}
-          onStepChange={setMobileStep}
         />
 
         <div className="hidden sm:block">
@@ -1171,82 +1171,106 @@ function MobileImportStatusStrip({
     {
       id: "upload" as const,
       label: "File",
-      value: fileCount > 0 ? fileCount.toString() : "--",
-      ready: fileCount > 0,
+      value: fileCount > 0 ? "✓" : "Add",
+      state: fileCount > 0 ? ("ready" as const) : ("blocked" as const),
     },
     {
       id: "preview" as const,
       label: "Shots",
-      value: shotCount > 0 ? shotCount.toString() : "--",
-      ready: shotCount > 0,
+      value: shotCount > 0 ? "✓" : "--",
+      state: shotCount > 0 ? ("ready" as const) : ("blocked" as const),
     },
     {
       id: "columns" as const,
       label: "Clubs",
-      value: clubCount > 0 ? clubCount.toString() : "--",
-      ready: clubCount > 0,
+      value: clubCount > 0 ? "✓" : shotCount > 0 ? "Review" : "--",
+      state:
+        clubCount > 0
+          ? ("ready" as const)
+          : shotCount > 0
+            ? ("warning" as const)
+            : ("blocked" as const),
     },
     {
       id: isCourseUpload ? ("course" as const) : ("preview" as const),
       label: "Audit",
-      value: warningCount > 0 ? warningCount.toString() : courseReady ? "OK" : "Map",
-      ready: warningCount === 0 && courseReady && shotCount > 0,
+      value: warningCount > 0 ? `${warningCount} warn` : courseReady && shotCount > 0 ? "✓" : "Map",
+      state:
+        warningCount > 0
+          ? ("warning" as const)
+          : courseReady && shotCount > 0
+            ? ("ready" as const)
+            : ("blocked" as const),
     },
     {
       id: "save" as const,
       label: "Save",
       value: canSave ? "Ready" : "Wait",
-      ready: canSave,
+      state: canSave ? ("ready" as const) : ("blocked" as const),
     },
   ];
 
   return (
-    <section className="premium-command-surface grid gap-2 rounded-lg p-3 sm:hidden">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold">Import status</p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Upload, audit and save stay visible as you move through the stepper.
-          </p>
-        </div>
-        <Badge className="bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
+    <section
+      className="premium-command-surface grid gap-2 rounded-lg p-3 sm:hidden"
+      aria-label="Import status"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Import status</p>
+        <Badge className="bg-background/80 text-muted-foreground ring-1 ring-border hover:bg-background">
           {canSave ? "Ready" : "Review"}
         </Badge>
       </div>
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
         {statusItems.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            onClick={() => onStepChange(item.id)}
-            className={cn(
-              "grid min-h-[4.5rem] content-between rounded-lg border bg-white/80 px-2 py-2 text-left",
-              currentStep === item.id
-                ? "border-[#0B7A3B]"
-                : item.ready
-                  ? "border-emerald-100"
-                  : "border-slate-200",
-            )}
-          >
-            <span
+          <div key={item.label} className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onStepChange(item.id)}
               className={cn(
-                "grid size-5 place-items-center rounded-full",
-                item.ready ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500",
+                "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-background/80 px-2.5 text-xs font-semibold shadow-sm transition-colors",
+                currentStep === item.id
+                  ? "border-primary/40 text-primary"
+                  : item.state === "ready"
+                    ? "border-primary/15 text-primary"
+                    : item.state === "warning"
+                      ? "border-amber-200 text-amber-700"
+                      : "border-border text-muted-foreground",
               )}
+              aria-label={`${item.label}: ${item.value}`}
             >
-              {item.ready ? (
-                <CheckCircle2 className="size-3.5" />
-              ) : (
-                <AlertCircle className="size-3.5" />
-              )}
-            </span>
-            <span>
-              <span className="block truncate text-[11px] font-medium text-muted-foreground">
-                {item.label}
+              <span
+                className={cn(
+                  "grid size-4 place-items-center rounded-full",
+                  item.state === "ready"
+                    ? "bg-primary/10 text-primary"
+                    : item.state === "warning"
+                      ? "bg-amber-100 text-amber-700"
+                      : "bg-muted text-muted-foreground",
+                )}
+              >
+                {item.state === "ready" ? (
+                  <CheckCircle2 className="size-3" />
+                ) : (
+                  <AlertCircle className="size-3" />
+                )}
               </span>
-              <span className="block truncate text-sm font-semibold">{item.value}</span>
-            </span>
-          </button>
+              <span>{item.label}</span>
+              <span
+                className={cn(
+                  "text-[11px] font-medium",
+                  item.state === "blocked" ? "text-muted-foreground" : "text-current",
+                )}
+              >
+                {item.value}
+              </span>
+            </button>
+            {item.label !== "Save" ? (
+              <span className="text-muted-foreground/50" aria-hidden="true">
+                ·
+              </span>
+            ) : null}
+          </div>
         ))}
       </div>
     </section>

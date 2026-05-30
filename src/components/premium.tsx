@@ -200,7 +200,12 @@ export function PageHeader({
           ) : null}
         </div>
         {metrics?.length ? (
-          <div className="mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
+          <div
+            className={cn(
+              "mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4",
+              metrics.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
+            )}
+          >
             {metrics.map((metric) => (
               <div
                 key={metric.label}

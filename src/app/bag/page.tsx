@@ -101,6 +101,7 @@ import {
   type StockShot,
 } from "@/lib/stock-yardage";
 import { DistanceBenchmarkPanel } from "./distance-benchmark-panel";
+import { PersonalBestCard, type PersonalBestMetric } from "./personal-best-card";
 import { TargetDistanceSelector, type TargetDistanceRow } from "./target-distance-selector";
 
 export const dynamic = "force-dynamic";
@@ -121,8 +122,6 @@ const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "landAngleDeg",
 ];
 
-type PersonalBestMetric = "carry" | "total";
-
 type PageProps = {
   searchParams?: Promise<{
     pb?: string | string[];
@@ -130,13 +129,6 @@ type PageProps = {
 };
 
 const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
-const PERSONAL_BEST_METRIC_OPTIONS: Array<{
-  value: PersonalBestMetric;
-  label: string;
-}> = [
-  { value: "carry", label: "Carry" },
-  { value: "total", label: "Total" },
-];
 
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
@@ -235,8 +227,11 @@ export default async function BagPage({ searchParams }: PageProps) {
                 <div className="grid gap-4">
                   <NativeListSection title="Personal bests">
                     <div className="grid gap-3">
-                      <PersonalBestMetricToggle metric={personalBestMetric} />
-                      <PersonalBestRows clubs={bag} metric={personalBestMetric} />
+                      <PersonalBestCard
+                        clubs={bag}
+                        initialMetric={personalBestMetric}
+                        variant="inline"
+                      />
                     </div>
                   </NativeListSection>
                   <NativeListSection title="Full gapping ladder">
@@ -393,6 +388,7 @@ export default async function BagPage({ searchParams }: PageProps) {
           visual={
             <PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" priority />
           }
+          visualSize="wide"
           actions={
             <>
               <Button asChild variant="outline">
@@ -443,6 +439,8 @@ export default async function BagPage({ searchParams }: PageProps) {
             { label: "Clubs", href: "#clubs" },
           ]}
         />
+
+        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
 
         <MobileSummaryHero
           eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
@@ -497,8 +495,8 @@ export default async function BagPage({ searchParams }: PageProps) {
 
         <BagFeaturePanel data={featureData} />
 
-        <section id="personal-bests" className="w-full scroll-mt-28 sm:max-w-md">
-          <PersonalBestCard clubs={bag} metric={personalBestMetric} />
+        <section id="personal-bests" className="w-full scroll-mt-28">
+          <PersonalBestCard clubs={bag} initialMetric={personalBestMetric} />
         </section>
 
         <BagConfidenceLadder
@@ -506,8 +504,6 @@ export default async function BagPage({ searchParams }: PageProps) {
           maxCarryYd={maxDisplayCarry}
           findings={bagDoctorFindings}
         />
-
-        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
 
         {wedgeRoleClubs.length > 0 ? (
           <section id="wedge-roles" className="scroll-mt-28">
@@ -969,26 +965,6 @@ function parsePersonalBestMetric(value: string | string[] | undefined): Personal
   return rawValue === "total" ? "total" : "carry";
 }
 
-function bagHref(personalBestMetric: PersonalBestMetric) {
-  const params = new URLSearchParams();
-
-  if (personalBestMetric !== "carry") {
-    params.set("pb", personalBestMetric);
-  }
-
-  const query = params.toString();
-
-  return query ? `/bag?${query}` : "/bag";
-}
-
-function personalBestMetricLabel(metric: PersonalBestMetric) {
-  return metric === "total" ? "Total" : "Carry";
-}
-
-function personalBestMetricHref(metric: PersonalBestMetric) {
-  return bagHref(metric);
-}
-
 function visualCarryYd(row: GappingRow) {
   return row.gappingCarryYd;
 }
@@ -1015,111 +991,6 @@ function clubSecondaryCarryYd(club: BagClub) {
   }
 
   return club.stock.bestStockCarryYd;
-}
-
-function PersonalBestCard({ clubs, metric }: { clubs: BagClub[]; metric: PersonalBestMetric }) {
-  const maxPersonalBest = Math.max(
-    1,
-    ...clubs.map((club) => personalBestValueYd(club, metric) ?? 0),
-  );
-
-  return (
-    <Card className="premium-card w-full">
-      <CardHeader className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg tracking-normal">Personal bests</CardTitle>
-            <CardDescription>
-              Best clean {personalBestMetricLabel(metric).toLowerCase()} by club.
-            </CardDescription>
-          </div>
-          <PersonalBestMetricToggle metric={metric} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2 p-4 pt-0">
-        <PersonalBestRows clubs={clubs} metric={metric} maxPersonalBest={maxPersonalBest} />
-      </CardContent>
-    </Card>
-  );
-}
-
-function PersonalBestRows({
-  clubs,
-  metric,
-  maxPersonalBest,
-}: {
-  clubs: BagClub[];
-  metric: PersonalBestMetric;
-  maxPersonalBest?: number;
-}) {
-  const maxValue =
-    maxPersonalBest ?? Math.max(1, ...clubs.map((club) => personalBestValueYd(club, metric) ?? 0));
-
-  return (
-    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-      {clubs.map((club) => {
-        const valueYd = personalBestValueYd(club, metric);
-        const otherValueYd = personalBestValueYd(club, metric === "carry" ? "total" : "carry");
-
-        return (
-          <Link
-            key={club.id}
-            href={`/bag/${club.id}`}
-            prefetch={false}
-            className="grid gap-1 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-2 transition-colors hover:border-emerald-300"
-          >
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold">{formatClubType(club.type)}</span>
-              <span className="font-semibold">
-                {formatMetric(valueYd)}
-                {valueYd === null ? "" : " yd"}
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-white">
-              <span
-                className="block h-2 rounded-full bg-[#0B7A3B]"
-                style={{ width: `${carryWidthPercent(valueYd, maxValue)}%` }}
-              />
-            </div>
-            <p className="truncate text-xs text-muted-foreground">
-              {metric === "carry" ? "Total" : "Carry"} {formatMetric(otherValueYd)}
-              {otherValueYd === null ? "" : " yd"}
-            </p>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function PersonalBestMetricToggle({ metric }: { metric: PersonalBestMetric }) {
-  return (
-    <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1">
-      {PERSONAL_BEST_METRIC_OPTIONS.map((option) => {
-        const active = option.value === metric;
-
-        return (
-          <Button
-            key={option.value}
-            asChild
-            size="sm"
-            variant={active ? "default" : "ghost"}
-            className={`h-8 rounded-md px-2 text-xs ${
-              active ? "bg-[#0B7A3B] text-white hover:bg-[#064E3B]" : ""
-            }`}
-          >
-            <Link href={personalBestMetricHref(option.value)} prefetch={false}>
-              {option.label}
-            </Link>
-          </Button>
-        );
-      })}
-    </div>
-  );
-}
-
-function personalBestValueYd(club: BagClub, metric: PersonalBestMetric) {
-  return metric === "total" ? club.personalBest.totalYd : club.personalBest.carryYd;
 }
 
 function WedgeRolePanel({ clubs }: { clubs: BagClub[] }) {
