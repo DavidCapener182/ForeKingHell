@@ -3,7 +3,11 @@ import type { ComponentProps, ReactNode } from "react";
 import { count, desc, eq, sql } from "drizzle-orm";
 import { Archive, ArrowLeft, Award, ChevronDown, CircleDot, Save, Wrench } from "lucide-react";
 
-import { createBallModelAction, saveEquipmentHistoryAction } from "@/app/equipment/actions";
+import {
+  createBallModelAction,
+  retireClubAction,
+  saveEquipmentHistoryAction,
+} from "@/app/equipment/actions";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -35,7 +39,7 @@ import {
 } from "@/components/ui/table";
 import { ballModels, clubEquipmentHistory, clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { formatClubType } from "@/lib/club-format";
+import { clubSortValue, formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
@@ -115,9 +119,11 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       {params?.saved ? (
         <Alert>
           <CircleDot className="size-4" />
-          <AlertTitle>Equipment saved</AlertTitle>
+          <AlertTitle>{params.saved === "retired" ? "Club retired" : "Equipment saved"}</AlertTitle>
           <AlertDescription>
-            The inventory record is available for future comparisons.
+            {params.saved === "retired"
+              ? "The club is hidden from the active bag, but its historic shots remain available for comparison."
+              : "The inventory record is available for future comparisons."}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -201,6 +207,17 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       <EquipmentSocialBadges data={data} activeHistoryCount={activeHistory.length} />
 
       <BagFeaturePanel data={featureData} />
+
+      <DataPanel>
+        <SectionHeader
+          title="Current bag"
+          description="Retire a club when it leaves the bag. New Rapsodo imports can then use the replacement club while old shots stay attached to the retired record."
+          action={<Archive className="size-5 text-amber-600" />}
+        />
+        <CardContent>
+          <ActiveClubsTable active={data.activeClubs} shotStatsByClubId={data.shotStatsByClubId} />
+        </CardContent>
+      </DataPanel>
 
       <EquipmentMobileDisclosure
         title="Add or edit equipment"
@@ -464,6 +481,119 @@ function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
   );
 }
 
+function ActiveClubsTable({
+  active,
+  shotStatsByClubId,
+}: {
+  active: ActiveClub[];
+  shotStatsByClubId: Map<string | null, { shotCount: number; lastShotAt: Date | null }>;
+}) {
+  return (
+    <DataTableFrame
+      mobile={
+        <MobileDataList
+          empty={
+            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No active clubs.
+            </p>
+          }
+        >
+          {active.map((club) => {
+            const shotStats = shotStatsByClubId.get(club.id);
+
+            return (
+              <MobileDataCard
+                key={club.id}
+                title={formatClubType(club.type)}
+                subtitle={[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
+                action={<RetireClubForm club={club} compact />}
+              >
+                <DataPair
+                  label="Shots"
+                  value={(shotStats?.shotCount ?? 0).toLocaleString("en-GB")}
+                />
+                <DataPair
+                  label="Last shot"
+                  value={
+                    shotStats?.lastShotAt instanceof Date ? formatDate(shotStats.lastShotAt) : "--"
+                  }
+                />
+              </MobileDataCard>
+            );
+          })}
+        </MobileDataList>
+      }
+    >
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Club</TableHead>
+            <TableHead>Brand / model</TableHead>
+            <TableHead className="text-right">Shots</TableHead>
+            <TableHead>Last shot</TableHead>
+            <TableHead className="w-32">
+              <span className="sr-only">Action</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {active.length > 0 ? (
+            active.map((club) => {
+              const shotStats = shotStatsByClubId.get(club.id);
+
+              return (
+                <TableRow key={club.id}>
+                  <TableCell className="font-medium">{formatClubType(club.type)}</TableCell>
+                  <TableCell>
+                    {[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {(shotStats?.shotCount ?? 0).toLocaleString("en-GB")}
+                  </TableCell>
+                  <TableCell>
+                    {shotStats?.lastShotAt instanceof Date
+                      ? formatDate(shotStats.lastShotAt)
+                      : "--"}
+                  </TableCell>
+                  <TableCell>
+                    <RetireClubForm club={club} />
+                  </TableCell>
+                </TableRow>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                No active clubs.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </DataTableFrame>
+  );
+}
+
+function RetireClubForm({ club, compact = false }: { club: ActiveClub; compact?: boolean }) {
+  const label = [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" ");
+
+  return (
+    <form action={retireClubAction}>
+      <input type="hidden" name="clubId" value={club.id} />
+      <Button
+        type="submit"
+        variant="outline"
+        size={compact ? "sm" : "default"}
+        className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+        aria-label={`Retire ${label}`}
+      >
+        <Archive className="size-4" />
+        Retire
+      </Button>
+    </form>
+  );
+}
+
 async function getEquipmentData() {
   const userId = await requireCurrentUserId();
   const db = getDb();
@@ -522,7 +652,14 @@ async function getEquipmentData() {
       const rightTime = right.lastShotAt instanceof Date ? right.lastShotAt.getTime() : 0;
       return rightTime - leftTime || left.type.localeCompare(right.type);
     });
-  const activeClubs = clubRows.filter((club) => club.active);
+  const activeClubs = clubRows
+    .filter((club) => club.active)
+    .sort(
+      (left, right) =>
+        clubSortValue(left.type) - clubSortValue(right.type) ||
+        (left.brand ?? "").localeCompare(right.brand ?? "") ||
+        (left.model ?? "").localeCompare(right.model ?? ""),
+    );
 
   return {
     clubs: clubRows,
@@ -534,6 +671,7 @@ async function getEquipmentData() {
   };
 }
 
+type ActiveClub = Awaited<ReturnType<typeof getEquipmentData>>["activeClubs"][number];
 type RetiredClub = Awaited<ReturnType<typeof getEquipmentData>>["retiredClubs"][number];
 
 function EquipmentHistoryTable({

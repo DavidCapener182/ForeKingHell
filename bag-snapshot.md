@@ -1,0 +1,23 @@
+- generic [active] [ref=e1] [box=0,0,1705,7692]:
+  - generic [ref=e2239] [box=1342,795,334,76]:
+    - img [ref=e2241] [box=1352,805,16,16]
+    - generic [ref=e2244] [box=1390,795,242,76]:
+      - paragraph [ref=e2245] [box=1390,795,242,40]: Install LM World Tour for faster access on this device.
+      - button "Install" [ref=e2247] [box=1390,843,59,28]
+    - button "Dismiss PWA notice" [ref=e2248] [box=1644,795,32,32]:
+      - img [box=1652,803,16,16]
+      - generic [ref=e2249] [box=1660,811,1,1]: Dismiss PWA notice
+  - generic [ref=e2] [box=0,0,1705,7692]:
+    - link "Skip to content" [ref=e3] [cursor=pointer] [box=11,11,24,16]:
+      - /url: "#main-content"
+    - navigation "Primary navigation" [ref=e4] [box=0,0,256,7692]:
+      - generic [ref=e6] [box=0,0,255,900]
+    - main [ref=e241] [box=256,0,1449,7692]:
+      - generic [ref=e242] [box=288,24,1385,7636]
+  - complementary "Social feed preview" [box=0,7692,1705,0]:
+    - button "Open social feed preview" [ref=e2225] [box=1554,836,131,44]:
+      - img [box=1571,850,16,16]
+      - generic [ref=e2226] [box=1595,848,73,20]: Social feed
+  - button "Open Next.js Dev Tools" [ref=e2232] [cursor=pointer] [box=22,846,32,32]:
+    - img [ref=e2233] [box=22,842,40,40]
+  - alert [ref=e2236] [box=-1,-1,1,1]

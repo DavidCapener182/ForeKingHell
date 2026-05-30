@@ -91,6 +91,58 @@ export async function saveEquipmentHistoryAction(formData: FormData) {
   redirect("/equipment?saved=spec");
 }
 
+export async function retireClubAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  const clubId = requiredString(formData, "clubId");
+  const db = getDb();
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    const [club] = await tx
+      .select({ id: clubs.id, active: clubs.active })
+      .from(clubs)
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
+      .limit(1);
+
+    if (!club) {
+      throw new Error("Club not found for this account.");
+    }
+
+    if (!club.active) {
+      return;
+    }
+
+    await tx
+      .update(clubs)
+      .set({
+        active: false,
+        updatedAt: now,
+      })
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
+
+    await tx
+      .update(clubEquipmentHistory)
+      .set({
+        effectiveTo: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(clubEquipmentHistory.userId, userId),
+          eq(clubEquipmentHistory.clubId, clubId),
+          isNull(clubEquipmentHistory.effectiveTo),
+        ),
+      );
+  });
+
+  revalidatePath("/equipment");
+  revalidatePath("/bag");
+  revalidatePath("/dashboard");
+  revalidatePath("/progress");
+  revalidatePath("/rapsodo");
+  redirect("/equipment?saved=retired");
+}
+
 function requiredString(formData: FormData, key: string) {
   const value = formData.get(key);
 
