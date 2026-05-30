@@ -45,6 +45,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
 
+function featureInsightKey(item: FeatureInsight, index: number) {
+  return [item.title, item.metric, item.href, index].filter(Boolean).join("-");
+}
+
 export function ActionCentrePanel({
   data,
   layout = "default",
@@ -197,8 +201,8 @@ export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
         }
       />
       <div className="grid gap-3 p-3 sm:hidden">
-        {data.bagAlerts.slice(0, 2).map((item) => (
-          <InsightCard key={item.title} item={item} compact />
+        {data.bagAlerts.slice(0, 2).map((item, index) => (
+          <InsightCard key={featureInsightKey(item, index)} item={item} compact />
         ))}
         <MobileAccordionSection
           title="More fitting detail"
@@ -206,8 +210,8 @@ export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
           count="Full analysis"
         >
           <div className="grid gap-3">
-            {data.bagAlerts.slice(2, 4).map((item) => (
-              <InsightCard key={item.title} item={item} compact />
+            {data.bagAlerts.slice(2, 4).map((item, index) => (
+              <InsightCard key={featureInsightKey(item, index + 2)} item={item} compact />
             ))}
             <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
               <p className="flex items-center gap-2 text-sm font-semibold">
@@ -260,8 +264,8 @@ export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
       </div>
       <div className="hidden gap-4 p-4 sm:grid xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3 md:grid-cols-2">
-          {data.bagAlerts.slice(0, 4).map((item) => (
-            <InsightCard key={item.title} item={item} compact />
+          {data.bagAlerts.slice(0, 4).map((item, index) => (
+            <InsightCard key={featureInsightKey(item, index)} item={item} compact />
           ))}
         </div>
         <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">

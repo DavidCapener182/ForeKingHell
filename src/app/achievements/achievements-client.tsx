@@ -432,7 +432,14 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           mobileTab === "next" ? "grid" : "hidden sm:grid",
         )}
       >
-        <Card className="premium-card border-zinc-900 bg-[#111827] text-white" size="sm">
+        <Card
+          className="border border-zinc-800 bg-[#111827] text-white shadow-[0_18px_44px_rgba(7,17,11,0.18)]"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(52, 211, 153, 0.14), transparent 42%), #111827",
+            boxShadow: "0 18px 44px rgba(7, 17, 11, 0.18)",
+          }}
+        >
           <CardHeader>
             <div className="flex items-start justify-between gap-4">
               <div>

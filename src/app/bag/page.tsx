@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Award,
+  Database,
   Gauge,
   MapPinned,
   Minus,
@@ -14,7 +15,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
@@ -95,6 +96,8 @@ import {
   calculateStockYardage,
   selectStockYardageShots,
   type StockCarryTrend,
+  type StockShotRole,
+  type StockShotRoleSummary,
   type StockShot,
 } from "@/lib/stock-yardage";
 import { DistanceBenchmarkPanel } from "./distance-benchmark-panel";
@@ -118,11 +121,30 @@ const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "landAngleDeg",
 ];
 
-export default async function BagPage() {
+type PersonalBestMetric = "carry" | "total";
+
+type PageProps = {
+  searchParams?: Promise<{
+    pb?: string | string[];
+  }>;
+};
+
+const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
+const PERSONAL_BEST_METRIC_OPTIONS: Array<{
+  value: PersonalBestMetric;
+  label: string;
+}> = [
+  { value: "carry", label: "Carry" },
+  { value: "total", label: "Total" },
+];
+
+export default async function BagPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
   const [bag, profile, challengeData, featureData] = await Promise.all([
     getBag(),
     ensureCurrentSocialProfile(),
-    getChallengesPageData(),
+    getBagChallengeData(),
     getFeatureIdeasData(),
   ]);
   const gappingRows = buildGappingRows(bag, {
@@ -153,8 +175,10 @@ export default async function BagPage() {
           stockConfidenceClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
             stockConfidenceClubs.length,
         );
-  const maxGappingCarry = maxCarryYd(gappingRows);
+  const maxDisplayCarry = maxVisualCarryYd(gappingRows);
   const bagDoctorFindings = buildBagDoctorFindings(gappingRows);
+  const wedgeRoleClubs = bag.filter(hasWedgeRoleReadout);
+  const stockFilterClubs = bag.filter((club) => club.stock.stockExclusionReasons.length > 0);
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
@@ -217,8 +241,20 @@ export default async function BagPage() {
           ]}
         />
         <MobileAccordionSection
+          title="Personal bests"
+          description={`${personalBestMetricLabel(personalBestMetric)} records by club.`}
+          count={`${bag.length} clubs`}
+        >
+          <NativeListSection title="Personal bests">
+            <div className="grid gap-3">
+              <PersonalBestMetricToggle metric={personalBestMetric} />
+              <PersonalBestRows clubs={bag} metric={personalBestMetric} />
+            </div>
+          </NativeListSection>
+        </MobileAccordionSection>
+        <MobileAccordionSection
           title="Full gapping ladder"
-          description="Carry ladder, trust and strongest numbers."
+          description="Recommended view, with best stock, latest reliable and personal best still shown in the cards."
           count={`${gappingRows.length} clubs`}
         >
           <NativeListSection title="Gapping">
@@ -228,25 +264,29 @@ export default async function BagPage() {
               detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
             >
               <div className="grid gap-2">
-                {gappingRows.slice(0, 8).map((row) => (
-                  <Link
-                    key={row.id}
-                    href={`/bag/${row.id}`}
-                    prefetch={false}
-                    className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <span className="font-semibold">{formatClubType(row.clubType)}</span>
-                    <span className="h-2 rounded-full bg-[#E5E7EB]">
-                      <span
-                        className="block h-2 rounded-full bg-[#0B7A3B]"
-                        style={{
-                          width: `${carryWidthPercent(row.carryYd, maxGappingCarry)}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="font-semibold">{formatMetric(row.carryYd)} yd</span>
-                  </Link>
-                ))}
+                {gappingRows.slice(0, 8).map((row) => {
+                  const visualCarry = visualCarryYd(row);
+
+                  return (
+                    <Link
+                      key={row.id}
+                      href={`/bag/${row.id}`}
+                      prefetch={false}
+                      className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <span className="font-semibold">{formatClubType(row.clubType)}</span>
+                      <span className="h-2 rounded-full bg-[#E5E7EB]">
+                        <span
+                          className="block h-2 rounded-full bg-[#0B7A3B]"
+                          style={{
+                            width: `${carryWidthPercent(visualCarry, maxDisplayCarry)}%`,
+                          }}
+                        />
+                      </span>
+                      <span className="font-semibold">{formatCarryYards(visualCarry)}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </ProgressCard>
             <div className="grid grid-cols-2 gap-2">
@@ -289,6 +329,28 @@ export default async function BagPage() {
             </div>
           </NativeListSection>
         </MobileAccordionSection>
+        {wedgeRoleClubs.length > 0 ? (
+          <MobileAccordionSection
+            title="Wedge roles"
+            description="Full, pitch, and chip/touch windows."
+            count={`${wedgeRoleClubs.length} clubs`}
+          >
+            <NativeListSection title="Wedge roles">
+              <WedgeRoleCards clubs={wedgeRoleClubs} compact />
+            </NativeListSection>
+          </MobileAccordionSection>
+        ) : null}
+        {stockFilterClubs.length > 0 ? (
+          <MobileAccordionSection
+            title="Stock filters"
+            description="Why shots did not feed Best Stock."
+            count={`${stockFilterClubs.length} clubs`}
+          >
+            <NativeListSection title="Best-stock filters">
+              <StockFilterCards clubs={stockFilterClubs} compact />
+            </NativeListSection>
+          </MobileAccordionSection>
+        ) : null}
         <MobileAccordionSection
           title="Club rail"
           description="Open any club detail."
@@ -318,7 +380,7 @@ export default async function BagPage() {
                   />
                   <span className="font-semibold">{formatClubType(club.type)}</span>
                   <span className="text-sm text-[#6B7280]">
-                    {formatMetric(club.stock.carryMedianYd)} yd
+                    {formatMetric(club.stock.bestStockCarryYd)} yd
                   </span>
                 </Link>
               ))}
@@ -353,7 +415,7 @@ export default async function BagPage() {
         <PageHeader
           eyebrow={<StatusPill>Bag map</StatusPill>}
           title="Stock yardages"
-          description="Rolling median carry, outlier filtering, dispersion, and course-decision trust by club."
+          description="Best stock carry, latest reliable form, recommended numbers, dispersion, and trust by club."
           visual={
             <PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" priority />
           }
@@ -400,6 +462,8 @@ export default async function BagPage() {
         <MobileSectionChips
           items={[
             { label: "Gapping", href: "#gapping" },
+            { label: "PBs", href: "#personal-bests" },
+            { label: "Wedges", href: "#wedge-roles" },
             { label: "Levels", href: "#levels" },
             { label: "Decisions", href: "#decisions" },
             { label: "Clubs", href: "#clubs" },
@@ -459,13 +523,25 @@ export default async function BagPage() {
 
         <BagFeaturePanel data={featureData} />
 
+        <section id="personal-bests" className="w-full scroll-mt-28 sm:max-w-md">
+          <PersonalBestCard clubs={bag} metric={personalBestMetric} />
+        </section>
+
         <BagConfidenceLadder
           rows={gappingRows}
-          maxCarryYd={maxGappingCarry}
+          maxCarryYd={maxDisplayCarry}
           findings={bagDoctorFindings}
         />
 
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+
+        {wedgeRoleClubs.length > 0 ? (
+          <section id="wedge-roles" className="scroll-mt-28">
+            <WedgeRolePanel clubs={wedgeRoleClubs} />
+          </section>
+        ) : null}
+
+        {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
 
         {gappingRows.length > 0 ? (
           <section id="gapping" className="scroll-mt-28">
@@ -523,30 +599,20 @@ export default async function BagPage() {
                   <div className="grid grid-cols-[1fr_auto] items-end gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Touch median" : "Stock carry"}
+                        {club.isShortGameTouch ? "Touch median" : "Recommended"}
                       </p>
                       <p className="text-4xl font-semibold tracking-normal sm:text-5xl">
-                        {formatMetric(
-                          club.isShortGameTouch
-                            ? club.touch.carryMedianYd
-                            : club.stock.carryMedianYd,
-                        )}
+                        {formatMetric(clubPrimaryCarryYd(club))}
                         <span className="ml-1 text-lg text-muted-foreground">yd</span>
                       </p>
                       {club.stockTrend ? <ShotTrendBadge trend={club.stockTrend} /> : null}
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Full stock" : "Play"}
+                        {club.isShortGameTouch ? "Full stock" : "Best stock"}
                       </p>
                       <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
-                        {formatMetric(
-                          club.isShortGameTouch
-                            ? club.type === "sw"
-                              ? club.stock.carryMedianYd
-                              : null
-                            : club.stock.recommendedPlayNumberYd,
-                        )}
+                        {formatMetric(clubSecondaryCarryYd(club))}
                       </p>
                     </div>
                   </div>
@@ -556,7 +622,9 @@ export default async function BagPage() {
                       shots={club.shots}
                       accent={club.accent}
                       carryMedianYd={
-                        club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.carryMedianYd
+                        club.isShortGameTouch
+                          ? club.touch.carryMedianYd
+                          : club.stock.bestStockCarryYd
                       }
                     />
                   </div>
@@ -570,18 +638,27 @@ export default async function BagPage() {
                       ).toString()}
                     />
                     <Metric
-                      label={club.isShortGameTouch ? "Upper touch" : "Good carry"}
+                      label={club.isShortGameTouch ? "Full best" : "Personal best"}
+                      value={formatMetric(club.stock.personalBestCarryYd)}
+                    />
+                    <Metric
+                      label={club.isShortGameTouch ? "Upper touch" : "Latest reliable"}
                       value={formatMetric(
-                        club.isShortGameTouch ? club.touch.carryP75Yd : club.stock.carryP75Yd,
+                        club.isShortGameTouch
+                          ? club.touch.carryP75Yd
+                          : club.stock.latestReliableCarryYd,
                       )}
                     />
                     <Metric
-                      label={club.isShortGameTouch ? "Longest touch" : "Total"}
-                      value={formatMetric(
+                      label={club.isShortGameTouch ? "Longest touch" : "Reliable range"}
+                      value={
                         club.isShortGameTouch
-                          ? club.touch.longestCarryYd
-                          : club.stock.totalMedianYd,
-                      )}
+                          ? formatMetric(club.touch.longestCarryYd)
+                          : formatCarryRange(
+                              club.stock.latestReliableCarryP25Yd,
+                              club.stock.latestReliableCarryP75Yd,
+                            )
+                      }
                     />
                     <Metric
                       label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
@@ -671,6 +748,15 @@ export default async function BagPage() {
   );
 }
 
+async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {
+  try {
+    return await getChallengesPageData();
+  } catch (error) {
+    console.error("[bag] Challenge data unavailable", error);
+    return { active: [] };
+  }
+}
+
 async function getBag() {
   const db = getDb();
   const userId = await requireCurrentUserId();
@@ -709,6 +795,43 @@ async function getBag() {
       memberIds: clubGroup.map((club) => club.id),
     };
   });
+
+  const allClubMemberIds = mergedClubRows.flatMap((club) => club.memberIds);
+  const personalBestRows =
+    allClubMemberIds.length > 0
+      ? await db
+          .select({
+            clubId: shots.clubId,
+            carryYd: sql<number | null>`max(${shots.carryYd})`,
+            totalYd: sql<number | null>`max(${shots.totalYd})`,
+          })
+          .from(shots)
+          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+          .where(
+            and(
+              eq(shots.userId, userId),
+              eq(sessions.userId, userId),
+              inArray(shots.clubId, allClubMemberIds),
+              isNotNull(shots.carryYd),
+              sql`(${shots.qualityTag} is null or lower(${shots.qualityTag}) not in ('mishit', 'top', 'thin', 'fat', 'bad_data'))`,
+              sql`(${shots.shotCategory} is null or lower(${shots.shotCategory}) not in ('chip', 'pitch', 'recovery', 'bunker'))`,
+              sql`(lower(${shots.clubType}) not in ('sw', 'lw', 'wedge') or ${shots.carryYd} >= ${SAND_WEDGE_STOCK_MIN_CARRY_YD})`,
+              sql`(lower(${shots.clubType}) not in ('pw', 'gw', 'aw') or ${shots.carryYd} > 30)`,
+            ),
+          )
+          .groupBy(shots.clubId)
+      : [];
+  const personalBestByClubId = new Map<
+    string,
+    { carryYd: number | null; totalYd: number | null }
+  >();
+
+  for (const row of personalBestRows) {
+    personalBestByClubId.set(row.clubId, {
+      carryYd: row.carryYd,
+      totalYd: row.totalYd,
+    });
+  }
 
   const clubData = await Promise.all(
     mergedClubRows.map(async (club) => {
@@ -757,6 +880,9 @@ async function getBag() {
       return {
         club,
         recentShots,
+        personalBestRows: club.memberIds.flatMap((clubId) =>
+          personalBestByClubId.get(clubId) ? [personalBestByClubId.get(clubId)!] : [],
+        ),
         rawShotCount: shotCount?.value ?? 0,
       };
     }),
@@ -764,7 +890,7 @@ async function getBag() {
 
   return clubData
     .filter(({ club }) => isTrackedClubType(club.type))
-    .map(({ club, recentShots, rawShotCount }) => {
+    .map(({ club, recentShots, personalBestRows, rawShotCount }) => {
       const accent = clubAccent(club.type);
       const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
@@ -772,9 +898,17 @@ async function getBag() {
       const touch = calculateShortGameTouchSummary(recentShots, RECENT_SHOTS_PER_CLUB, {
         clubType: club.type,
       });
-      const stock = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, {
+      const stockBase = calculateStockYardage(recentShots, RECENT_SHOTS_PER_CLUB, {
         clubType: club.type,
       });
+      const personalBest = {
+        carryYd: roundOne(maxNumberOrNull(personalBestRows.map((row) => row.carryYd))),
+        totalYd: roundOne(maxNumberOrNull(personalBestRows.map((row) => row.totalYd))),
+      };
+      const stock = {
+        ...stockBase,
+        personalBestCarryYd: personalBest.carryYd,
+      };
       const stockTrend = isTouchOnlyClub
         ? null
         : calculateStockCarryTrend(recentShots, RECENT_SHOTS_PER_CLUB, {
@@ -793,6 +927,7 @@ async function getBag() {
         decisionLabel,
         rawShotCount,
         shots: recentShots,
+        personalBest,
         touch,
         stock,
         stockTrend,
@@ -826,6 +961,11 @@ type GappingRow = {
   clubType: string;
   brandModel: string;
   carryYd: number | null;
+  gappingCarryYd: number | null;
+  latestReliableCarryYd: number | null;
+  latestReliableCarryP25Yd: number | null;
+  latestReliableCarryP75Yd: number | null;
+  personalBestCarryYd: number | null;
   playNumberYd: number | null;
   gapToNextYd: number | null;
   targetCarryYd: number | null;
@@ -849,6 +989,283 @@ type BagDoctorFinding = {
   href?: string;
 };
 
+function parsePersonalBestMetric(value: string | string[] | undefined): PersonalBestMetric {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+
+  return rawValue === "total" ? "total" : "carry";
+}
+
+function bagHref(personalBestMetric: PersonalBestMetric) {
+  const params = new URLSearchParams();
+
+  if (personalBestMetric !== "carry") {
+    params.set("pb", personalBestMetric);
+  }
+
+  const query = params.toString();
+
+  return query ? `/bag?${query}` : "/bag";
+}
+
+function personalBestMetricLabel(metric: PersonalBestMetric) {
+  return metric === "total" ? "Total" : "Carry";
+}
+
+function personalBestMetricHref(metric: PersonalBestMetric) {
+  return bagHref(metric);
+}
+
+function visualCarryYd(row: GappingRow) {
+  return row.gappingCarryYd;
+}
+
+function maxVisualCarryYd(rows: GappingRow[]) {
+  return Math.max(1, ...rows.map((row) => visualCarryYd(row) ?? 0));
+}
+
+function formatCarryYards(carryYd: number | null) {
+  return carryYd === null ? "--" : `${formatMetric(carryYd)} yd`;
+}
+
+function clubPrimaryCarryYd(club: BagClub) {
+  if (club.isShortGameTouch) {
+    return club.touch.carryMedianYd;
+  }
+
+  return club.stock.coursePlayCarryYd;
+}
+
+function clubSecondaryCarryYd(club: BagClub) {
+  if (club.isShortGameTouch) {
+    return club.type === "sw" ? club.stock.bestStockCarryYd : null;
+  }
+
+  return club.stock.bestStockCarryYd;
+}
+
+function PersonalBestCard({ clubs, metric }: { clubs: BagClub[]; metric: PersonalBestMetric }) {
+  const maxPersonalBest = Math.max(
+    1,
+    ...clubs.map((club) => personalBestValueYd(club, metric) ?? 0),
+  );
+
+  return (
+    <Card className="premium-card w-full">
+      <CardHeader className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg tracking-normal">Personal bests</CardTitle>
+            <CardDescription>
+              Best clean {personalBestMetricLabel(metric).toLowerCase()} by club.
+            </CardDescription>
+          </div>
+          <PersonalBestMetricToggle metric={metric} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 p-4 pt-0">
+        <PersonalBestRows clubs={clubs} metric={metric} maxPersonalBest={maxPersonalBest} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function PersonalBestRows({
+  clubs,
+  metric,
+  maxPersonalBest,
+}: {
+  clubs: BagClub[];
+  metric: PersonalBestMetric;
+  maxPersonalBest?: number;
+}) {
+  const maxValue =
+    maxPersonalBest ?? Math.max(1, ...clubs.map((club) => personalBestValueYd(club, metric) ?? 0));
+
+  return (
+    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+      {clubs.map((club) => {
+        const valueYd = personalBestValueYd(club, metric);
+        const otherValueYd = personalBestValueYd(club, metric === "carry" ? "total" : "carry");
+
+        return (
+          <Link
+            key={club.id}
+            href={`/bag/${club.id}`}
+            prefetch={false}
+            className="grid gap-1 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-2 transition-colors hover:border-emerald-300"
+          >
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-semibold">{formatClubType(club.type)}</span>
+              <span className="font-semibold">
+                {formatMetric(valueYd)}
+                {valueYd === null ? "" : " yd"}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-white">
+              <span
+                className="block h-2 rounded-full bg-[#0B7A3B]"
+                style={{ width: `${carryWidthPercent(valueYd, maxValue)}%` }}
+              />
+            </div>
+            <p className="truncate text-xs text-muted-foreground">
+              {metric === "carry" ? "Total" : "Carry"} {formatMetric(otherValueYd)}
+              {otherValueYd === null ? "" : " yd"}
+            </p>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function PersonalBestMetricToggle({ metric }: { metric: PersonalBestMetric }) {
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1">
+      {PERSONAL_BEST_METRIC_OPTIONS.map((option) => {
+        const active = option.value === metric;
+
+        return (
+          <Button
+            key={option.value}
+            asChild
+            size="sm"
+            variant={active ? "default" : "ghost"}
+            className={`h-8 rounded-md px-2 text-xs ${
+              active ? "bg-[#0B7A3B] text-white hover:bg-[#064E3B]" : ""
+            }`}
+          >
+            <Link href={personalBestMetricHref(option.value)} prefetch={false}>
+              {option.label}
+            </Link>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+function personalBestValueYd(club: BagClub, metric: PersonalBestMetric) {
+  return metric === "total" ? club.personalBest.totalYd : club.personalBest.carryYd;
+}
+
+function WedgeRolePanel({ clubs }: { clubs: BagClub[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Wedge roles"
+        description="Full, pitch, and chip/touch windows are derived without changing the database schema."
+        action={<Target className="size-5 text-emerald-600" />}
+      />
+      <CardContent>
+        <WedgeRoleCards clubs={clubs} />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function WedgeRoleCards({ clubs, compact = false }: { clubs: BagClub[]; compact?: boolean }) {
+  return (
+    <div className={compact ? "grid gap-2" : "grid gap-3 lg:grid-cols-2 xl:grid-cols-3"}>
+      {clubs.map((club) => (
+        <Link
+          key={club.id}
+          href={`/bag/${club.id}`}
+          prefetch={false}
+          className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-xs text-muted-foreground">{club.brandModel}</p>
+              <p className="mt-1 text-base font-semibold">{formatClubType(club.type)}</p>
+            </div>
+            <StatusPill tone={club.stock.coursePlayCarryYd === null ? "amber" : "green"}>
+              {club.stock.coursePlayCarryYd === null ? "Building" : "Ready"}
+            </StatusPill>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {WEDGE_ROLE_ORDER.map((role) => (
+              <WedgeRoleReadout
+                key={role}
+                role={role}
+                summary={roleSummaryFor(club.stock.shotRoleSummaries, role)}
+              />
+            ))}
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function WedgeRoleReadout({
+  role,
+  summary,
+}: {
+  role: StockShotRole;
+  summary: StockShotRoleSummary | null;
+}) {
+  return (
+    <div className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-white/80 px-2 py-1.5 text-xs">
+      <span className="font-semibold">{wedgeRoleLabel(role)}</span>
+      <span className="truncate text-muted-foreground">
+        {summary ? `${summary.sampleSize} shots · ${formatRoleRange(summary)}` : "No shots"}
+      </span>
+      <span className="font-semibold">
+        {summary === null || summary.carryMedianYd === null
+          ? "--"
+          : `${formatMetric(summary.carryMedianYd)} yd`}
+      </span>
+    </div>
+  );
+}
+
+function StockFilterPanel({ clubs }: { clubs: BagClub[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Best-stock filters"
+        description="Shows why rows did not feed the Best Stock median. Personal Best is tracked separately so one long clean shot still appears."
+        action={<Database className="size-5 text-sky-600" />}
+      />
+      <CardContent>
+        <StockFilterCards clubs={clubs} />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function StockFilterCards({ clubs, compact = false }: { clubs: BagClub[]; compact?: boolean }) {
+  const sortedClubs = [...clubs]
+    .sort((left, right) => right.stock.stockExclusionCount - left.stock.stockExclusionCount)
+    .slice(0, compact ? 4 : 8);
+
+  return (
+    <div className={compact ? "grid gap-2" : "grid gap-3 lg:grid-cols-2 xl:grid-cols-4"}>
+      {sortedClubs.map((club) => (
+        <Link
+          key={club.id}
+          href={`/bag/${club.id}`}
+          prefetch={false}
+          className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-sky-300"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-semibold">{formatClubType(club.type)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {club.stock.sampleSize} used · {club.stock.stockExclusionCount} not used
+              </p>
+            </div>
+            <StatusPill tone="sky">{formatMetric(club.stock.personalBestCarryYd)} PB</StatusPill>
+          </div>
+          <p className="mt-3 text-sm leading-5 text-muted-foreground">
+            {formatStockExclusionReasons(club.stock.stockExclusionReasons)}
+          </p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 function BagConfidenceLadder({
   rows,
   maxCarryYd,
@@ -867,7 +1284,7 @@ function BagConfidenceLadder({
       <DataPanel>
         <SectionHeader
           title="Bag confidence ladder"
-          description="Carry, trust, gapping and safe-play numbers from driver down through scoring clubs."
+          description="Recommended is the primary course number. Best Stock stays visible as potential."
           action={<Gauge className="size-5 text-emerald-600" />}
         />
         <CardContent>
@@ -879,6 +1296,7 @@ function BagConfidenceLadder({
             {rows.map((row) => {
               const confidence = confidenceReadout(row);
               const gap = gapReadout(row);
+              const visualCarry = visualCarryYd(row);
 
               return (
                 <Link
@@ -898,27 +1316,33 @@ function BagConfidenceLadder({
                       <StatusPill tone={confidence.tone}>{confidence.label}</StatusPill>
                     </div>
 
-                    <p className="mt-4 text-3xl font-semibold tracking-normal">
-                      {formatMetric(row.carryYd)}
-                      <span className="ml-1 text-sm text-muted-foreground">yd</span>
+                    <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      {row.playNumberYd === null ? "Best stock" : "Recommended"}
+                    </p>
+                    <p className="mt-1 text-3xl font-semibold tracking-normal">
+                      {formatCarryYards(visualCarry)}
                     </p>
                     <div className="mt-3 h-2 rounded-full bg-slate-100">
                       <span
                         className="block h-2 rounded-full bg-[#0B7A3B]"
-                        style={{ width: `${carryWidthPercent(row.carryYd, maxCarryYd)}%` }}
+                        style={{
+                          width: `${carryWidthPercent(visualCarry, maxCarryYd)}%`,
+                        }}
                       />
                     </div>
                   </div>
 
                   <div className="grid gap-2 text-xs">
                     <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
-                      <span className="text-muted-foreground">Safe play</span>
+                      <span className="text-muted-foreground">
+                        {row.playNumberYd === null ? "Recommended" : "Best stock"}
+                      </span>
                       <span className="font-semibold">
-                        {row.playNumberYd === null ? "--" : `${formatMetric(row.playNumberYd)} yd`}
+                        {row.playNumberYd === null ? "--" : formatCarryYards(row.carryYd)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
-                      <span className="text-muted-foreground">Next gap</span>
+                      <span className="text-muted-foreground">Course gap</span>
                       <span className="font-semibold">{gap.value}</span>
                     </div>
                     <StatusPill tone={gap.tone} className="max-w-full justify-center truncate">
@@ -1004,11 +1428,14 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
   }
 
   if (overlap) {
+    const severeOverlap = isSevereGapCompression(overlap);
     findings.push({
-      title: `${formatClubType(overlap.clubType)} overlaps the next club`,
-      detail: `${formatGap(overlap.gapToNextYd)} to the next club. Check strike quality, loft setup, or club mapping.`,
-      label: "Overlap",
-      tone: "pink",
+      title: severeOverlap
+        ? `${formatClubType(overlap.clubType)} overlaps the next club`
+        : `${formatClubType(overlap.clubType)} gap is worth watching`,
+      detail: `${formatGap(overlap.gapToNextYd)} course gap to the next club. Check strike quality, loft setup, or club mapping.`,
+      label: severeOverlap ? "Overlap" : "Watch",
+      tone: severeOverlap ? "pink" : "amber",
       href: `/bag/${overlap.id}`,
     });
   }
@@ -1016,9 +1443,9 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
   if (missingWindow) {
     findings.push({
       title: "Missing yardage window",
-      detail: `${formatClubType(missingWindow.clubType)} leaves ${formatGap(
+      detail: `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
         missingWindow.gapToNextYd,
-      )} to the next club. Add a choke-down or flighted option.`,
+      )} course gap to the next club. Add a choke-down or flighted option.`,
       label: "Gap",
       tone: "amber",
       href: `/bag/${missingWindow.id}`,
@@ -1036,7 +1463,9 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
   }
 
   if (findings.length === 0) {
-    const strongest = [...rows].sort((left, right) => right.confidenceScore - left.confidenceScore)[0];
+    const strongest = [...rows].sort(
+      (left, right) => right.confidenceScore - left.confidenceScore,
+    )[0];
 
     return [
       {
@@ -1083,7 +1512,11 @@ function gapReadout(row: GappingRow): {
   }
 
   if (row.gapToNextYd < 8) {
-    return { value: formatGap(row.gapToNextYd), label: "Overlap risk", tone: "pink" };
+    return {
+      value: formatGap(row.gapToNextYd),
+      label: isSevereGapCompression(row) ? "Overlap risk" : "Watch gap",
+      tone: isSevereGapCompression(row) ? "pink" : "amber",
+    };
   }
 
   if (row.gapToNextYd > 18) {
@@ -1091,6 +1524,15 @@ function gapReadout(row: GappingRow): {
   }
 
   return { value: formatGap(row.gapToNextYd), label: "Gap ok", tone: "green" };
+}
+
+function isSevereGapCompression(row: GappingRow) {
+  return (
+    row.gapToNextYd !== null &&
+    row.gapToNextYd <= 4 &&
+    row.sampleSize >= 20 &&
+    row.confidenceScore >= 75
+  );
 }
 
 function formatGap(value: number | null) {
@@ -1103,7 +1545,7 @@ function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
       clubId: club.id,
       clubType: club.type,
       brandModel: club.brandModel,
-      carryYd: club.stock.carryMedianYd,
+      carryYd: club.stock.bestStockCarryYd,
       bestSampleFloorYd: club.stock.bestSampleFloorYd,
       sampleSize: club.stock.sampleSize,
       confidenceScore: club.stock.confidenceScore,
@@ -1118,7 +1560,7 @@ function buildBenchmarkMetricValues(club: BagClub): ClubBenchmarkMetricValues {
   });
 
   return {
-    carryYd: club.stock.carryMedianYd,
+    carryYd: club.stock.bestStockCarryYd,
     clubSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.clubSpeedMph),
     ballSpeedMph: averageBenchmarkMetric(filteredShots, (shot) => shot.ballSpeedMph),
     smashFactor: averageBenchmarkMetric(filteredShots, (shot) => shot.smashFactor, 2),
@@ -1439,6 +1881,14 @@ function roundOne(value: number | null) {
   return value === null ? null : Math.round(value * 10) / 10;
 }
 
+function maxNumberOrNull(values: Array<number | null | undefined>) {
+  const numbers = values.filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  );
+
+  return numbers.length > 0 ? Math.max(...numbers) : null;
+}
+
 function buildGappingRows(
   bag: BagClub[],
   options: { handicapBand?: string | null } = {},
@@ -1446,22 +1896,33 @@ function buildGappingRows(
   const stockBag = bag.filter(shouldShowInCarryGapping);
 
   const baseRows: GappingRow[] = stockBag.map((club, index) => {
+    const clubGappingCarryYd = club.stock.coursePlayCarryYd ?? club.stock.bestStockCarryYd;
     const nextClub = stockBag
       .slice(index + 1)
-      .find((candidate) => candidate.stock.carryMedianYd !== null);
+      .find(
+        (candidate) =>
+          (candidate.stock.coursePlayCarryYd ?? candidate.stock.bestStockCarryYd) !== null,
+      );
+    const nextClubGappingCarryYd =
+      nextClub === undefined
+        ? null
+        : (nextClub.stock.coursePlayCarryYd ?? nextClub.stock.bestStockCarryYd);
     const gapToNextYd =
-      club.stock.carryMedianYd !== null &&
-      nextClub !== undefined &&
-      nextClub.stock.carryMedianYd !== null
-        ? club.stock.carryMedianYd - nextClub.stock.carryMedianYd
+      clubGappingCarryYd !== null && nextClubGappingCarryYd !== null
+        ? clubGappingCarryYd - nextClubGappingCarryYd
         : null;
 
     return {
       id: club.id,
       clubType: club.type,
       brandModel: club.brandModel,
-      carryYd: club.stock.carryMedianYd,
-      playNumberYd: club.stock.recommendedPlayNumberYd,
+      carryYd: club.stock.bestStockCarryYd,
+      gappingCarryYd: clubGappingCarryYd,
+      latestReliableCarryYd: club.stock.latestReliableCarryYd,
+      latestReliableCarryP25Yd: club.stock.latestReliableCarryP25Yd,
+      latestReliableCarryP75Yd: club.stock.latestReliableCarryP75Yd,
+      personalBestCarryYd: club.stock.personalBestCarryYd,
+      playNumberYd: club.stock.coursePlayCarryYd,
       gapToNextYd: gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
       targetCarryYd: null,
       targetPlayNumberYd: null,
@@ -1487,7 +1948,7 @@ function shouldShowInCarryGapping(club: BagClub) {
     return true;
   }
 
-  return club.type === "sw" && (club.stock.carryMedianYd ?? 0) > SAND_WEDGE_STOCK_MIN_CARRY_YD;
+  return (club.stock.bestStockCarryYd ?? 0) >= SAND_WEDGE_STOCK_MIN_CARRY_YD;
 }
 
 function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): TargetDistanceRow[] {
@@ -1495,14 +1956,14 @@ function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): Tar
     id: row.id,
     clubType: row.clubType,
     carryYd: row.carryYd,
+    latestReliableCarryYd: row.latestReliableCarryYd,
     playNumberYd: row.playNumberYd,
     sampleSize: row.sampleSize,
     confidenceScore: row.confidenceScore,
     shotRole: "stock",
   }));
-  const stockIds = new Set(stockRows.map((row) => row.id));
   const touchRows: TargetDistanceRow[] = bag
-    .filter((club) => club.isShortGameTouch && !stockIds.has(club.id) && club.touch.sampleSize > 0)
+    .filter((club) => club.isShortGameTouch && club.touch.sampleSize > 0)
     .flatMap((club) => {
       const touchPlayNumberYd =
         club.touch.carryMedianYd ?? club.touch.carryP75Yd ?? club.touch.longestCarryYd;
@@ -1514,7 +1975,7 @@ function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): Tar
 
       return [
         {
-          id: club.id,
+          id: `${club.id}:touch`,
           clubType: club.type,
           carryYd: touchPlayNumberYd,
           playNumberYd: touchPlayNumberYd,
@@ -1536,7 +1997,7 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
     <DataPanel>
       <SectionHeader
         title="On-course decisions"
-        description="Course-number reminders from the current bag map."
+        description="Recommended-number reminders from the current bag map."
         action={<MapPinned className="size-5 text-sky-500" />}
       />
       <CardContent>
@@ -1601,7 +2062,8 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
       <CardHeader className="p-4 sm:p-6">
         <CardTitle className="text-xl tracking-normal sm:text-2xl">Carry gapping</CardTitle>
         <CardDescription className="hidden sm:block">
-          Best-20 stock carry by club, with realistic next-step targets from the current bag data.
+          Recommended is the course number. Best stock, latest reliable, and personal best stay
+          visible by club.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -1628,15 +2090,20 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                 href={`/bag/${row.id}`}
                 title={formatClubType(row.clubType)}
                 subtitle={row.brandModel}
-                action={<GapBadge gapYd={row.gapToNextYd} />}
+                action={<GapBadge row={row} />}
               >
                 <DataPair
-                  label="Carry"
+                  label="Best stock"
                   value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
                 />
+                <DataPair label="Latest reliable" value={formatLatestReliable(row)} />
                 <DataPair
-                  label="Play"
+                  label="Recommended"
                   value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`}
+                />
+                <DataPair
+                  label="Personal best"
+                  value={`${formatMetric(row.personalBestCarryYd)}${row.personalBestCarryYd === null ? "" : " yd"}`}
                 />
                 <DataPair
                   label="Target"
@@ -1650,13 +2117,15 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
         </MobileAccordionSection>
         <div className="hidden sm:block">
           <DataTableFrame>
-            <Table className="min-w-[980px]">
+            <Table className="min-w-[1220px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Club</TableHead>
                   <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Carry</TableHead>
-                  <TableHead className="text-right">Play</TableHead>
+                  <TableHead className="text-right">Best stock</TableHead>
+                  <TableHead className="text-right">Latest reliable</TableHead>
+                  <TableHead className="text-right">Recommended</TableHead>
+                  <TableHead className="text-right">Personal best</TableHead>
                   <TableHead className="text-right">Gap</TableHead>
                   <TableHead className="text-right">Target</TableHead>
                   <TableHead className="text-right">Work on</TableHead>
@@ -1683,11 +2152,27 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                       {row.carryYd === null ? "" : " yd"}
                     </TableCell>
                     <TableCell className="text-right">
+                      <span className="font-medium">
+                        {formatMetric(row.latestReliableCarryYd)}
+                        {row.latestReliableCarryYd === null ? "" : " yd"}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {formatCarryRange(
+                          row.latestReliableCarryP25Yd,
+                          row.latestReliableCarryP75Yd,
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
                       {formatMetric(row.playNumberYd)}
                       {row.playNumberYd === null ? "" : " yd"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <GapBadge gapYd={row.gapToNextYd} />
+                      {formatMetric(row.personalBestCarryYd)}
+                      {row.personalBestCarryYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <GapBadge row={row} />
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="font-medium">
@@ -1749,8 +2234,8 @@ function GappingRecommendations({
           {numberFormatter.format(targetGapYd)} yd
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Personal gap from your current reliable carries. Progress targets are capped by club type,
-          confidence, and handicap band.
+          Personal gap from your current recommended carries. Progress targets are capped by club
+          type, confidence, and handicap band.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
@@ -1786,12 +2271,13 @@ function workOnText(row: Pick<GappingRow, "targetMessage">) {
 }
 
 function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
-  const maxCarry = maxCarryYd(rows);
+  const maxCarry = maxVisualCarryYd(rows);
 
   return (
     <div className="apple-panel grid gap-3 p-3 sm:p-4">
       {rows.map((row) => {
-        const width = carryWidthPercent(row.carryYd, maxCarry);
+        const visualCarry = visualCarryYd(row);
+        const width = carryWidthPercent(visualCarry, maxCarry);
 
         return (
           <Link
@@ -1801,9 +2287,7 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold">{formatClubType(row.clubType)}</span>
-              <span className="text-slate-700">
-                {formatMetric(row.carryYd)} yd carry · {formatMetric(row.playNumberYd)} yd play
-              </span>
+              {carryBarReadout(row)}
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-white">
               <div className="h-full rounded-full bg-emerald-600" style={{ width: `${width}%` }} />
@@ -1815,25 +2299,55 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
   );
 }
 
-function maxCarryYd(rows: Array<Pick<GappingRow, "carryYd">>) {
-  return Math.max(1, ...rows.map((row) => row.carryYd ?? 0));
+function carryBarReadout(row: GappingRow) {
+  if (row.playNumberYd !== null) {
+    return (
+      <span className="grid gap-0.5 text-right leading-tight">
+        <span className="font-semibold text-slate-900">
+          {formatMetric(row.playNumberYd)} yd recommended
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {formatCarryYards(row.carryYd)} best stock
+        </span>
+      </span>
+    );
+  }
+
+  if (row.carryYd !== null) {
+    return (
+      <span className="grid gap-0.5 text-right leading-tight">
+        <span className="font-semibold text-slate-900">{formatMetric(row.carryYd)} yd stock</span>
+        <span className="text-xs text-muted-foreground">recommended building</span>
+      </span>
+    );
+  }
+
+  return <span className="text-slate-700">Needs calibration</span>;
 }
 
 function carryWidthPercent(carryYd: number | null, maxCarry: number) {
+  if (carryYd === null || carryYd <= 0 || maxCarry <= 0) {
+    return 0;
+  }
+
   return Math.max(8, ((carryYd ?? 0) / maxCarry) * 100);
 }
 
-function GapBadge({ gapYd }: { gapYd: number | null }) {
+function GapBadge({ row }: { row: GappingRow }) {
+  const gapYd = row.gapToNextYd;
+
   if (gapYd === null) {
     return <span className="text-muted-foreground">--</span>;
   }
 
   const tone =
-    gapYd < 8
-      ? "border-amber-200 bg-amber-50 text-amber-700"
-      : gapYd > 18
-        ? "border-rose-200 bg-rose-50 text-rose-700"
-        : "border-emerald-200 bg-emerald-50 text-emerald-700";
+    gapYd < 8 && isSevereGapCompression(row)
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : gapYd < 8
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : gapYd > 18
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
   return (
     <span
@@ -2025,6 +2539,67 @@ function stockTrendToneClass(status: StockCarryTrend["status"]) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatCarryRange(low: number | null, high: number | null) {
+  if (low === null || high === null) {
+    return "--";
+  }
+
+  return `${formatMetric(low)}-${formatMetric(high)} yd`;
+}
+
+function formatLatestReliable(row: GappingRow) {
+  if (row.latestReliableCarryYd === null) {
+    return "--";
+  }
+
+  const range = formatCarryRange(row.latestReliableCarryP25Yd, row.latestReliableCarryP75Yd);
+
+  return range === "--"
+    ? `${formatMetric(row.latestReliableCarryYd)} yd`
+    : `${formatMetric(row.latestReliableCarryYd)} yd · ${range}`;
+}
+
+function hasWedgeRoleReadout(club: BagClub) {
+  const clubType = club.type.toLowerCase();
+
+  return (
+    ["pw", "gw", "aw", "sw", "lw"].includes(clubType) && club.stock.shotRoleSummaries.length > 0
+  );
+}
+
+function roleSummaryFor(summaries: StockShotRoleSummary[], role: StockShotRole) {
+  return summaries.find((summary) => summary.role === role) ?? null;
+}
+
+function wedgeRoleLabel(role: StockShotRole) {
+  if (role === "chip-touch") {
+    return "Chip/touch";
+  }
+
+  return role[0].toUpperCase() + role.slice(1);
+}
+
+function formatRoleRange(summary: StockShotRoleSummary) {
+  const range = formatCarryRange(summary.carryP25Yd, summary.carryP75Yd);
+
+  if (range === "--") {
+    return `best ${formatMetric(summary.longestCarryYd)} yd`;
+  }
+
+  return `${range} · best ${formatMetric(summary.longestCarryYd)} yd`;
+}
+
+function formatStockExclusionReasons(reasons: BagClub["stock"]["stockExclusionReasons"]) {
+  if (reasons.length === 0) {
+    return "No exclusions in the current best-stock sample.";
+  }
+
+  return reasons
+    .slice(0, 3)
+    .map((reason) => `${reason.label}: ${reason.count}`)
+    .join(" · ");
 }
 
 function formatBagDangerousMiss(stock: BagClub["stock"]) {

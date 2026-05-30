@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { ArrowLeft, ChevronLeft, ChevronRight, Flag, Search, Upload } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Search,
+  Upload,
+} from "lucide-react";
 import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { DateFilterPopover } from "@/components/app/date-filter-popover";
@@ -59,9 +69,46 @@ type ShotFilters = {
   q: string;
   from: string;
   to: string;
+  sort: ShotSortMetric;
+  dir: ShotSortDirection;
 };
 
 const PAGE_SIZE = 25;
+const shotSortMetrics = [
+  "recent",
+  "shot",
+  "carry",
+  "total",
+  "side",
+  "launch",
+  "ballSpeed",
+  "clubSpeed",
+  "launchDirection",
+  "apex",
+  "attack",
+  "path",
+  "descent",
+  "smash",
+] as const;
+type ShotSortMetric = (typeof shotSortMetrics)[number];
+type ShotSortDirection = "asc" | "desc";
+
+const shotSortLabels: Record<ShotSortMetric, string> = {
+  recent: "Newest first",
+  shot: "Shot",
+  carry: "Carry",
+  total: "Total",
+  side: "Side",
+  launch: "Launch",
+  ballSpeed: "Ball mph",
+  clubSpeed: "Club speed",
+  launchDirection: "Direction",
+  apex: "Apex",
+  attack: "Attack",
+  path: "Path",
+  descent: "Descent",
+  smash: "Smash",
+};
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -482,14 +529,14 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>File</TableHead>
-                  <TableHead className="text-right">Shot</TableHead>
+                  <SortableShotHead filters={filters} metric="shot" label="Shot" />
                   <TableHead>Hole</TableHead>
                   <TableHead>Club</TableHead>
-                  <TableHead className="text-right">Carry</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Side</TableHead>
-                  <TableHead className="text-right">Launch</TableHead>
-                  <TableHead className="text-right">Ball mph</TableHead>
+                  <SortableShotHead filters={filters} metric="carry" label="Carry" />
+                  <SortableShotHead filters={filters} metric="total" label="Total" />
+                  <SortableShotHead filters={filters} metric="side" label="Side" />
+                  <SortableShotHead filters={filters} metric="launch" label="Launch" />
+                  <SortableShotHead filters={filters} metric="ballSpeed" label="Ball mph" />
                   <TableHead>Advanced</TableHead>
                 </TableRow>
               </TableHeader>
@@ -637,6 +684,33 @@ function ShotFilterFields({
       </Field>
       <DateFilterPopover name="from" label="From" defaultValue={filters.from} />
       <DateFilterPopover name="to" label="To" defaultValue={filters.to} />
+      <Field>
+        <FieldLabel>Sort by</FieldLabel>
+        <Select name="sort" defaultValue={filters.sort}>
+          <SelectTrigger aria-label="Sort shots by metric" className="h-10 w-full bg-white/90">
+            <SelectValue placeholder="Newest first" />
+          </SelectTrigger>
+          <SelectContent>
+            {shotSortMetrics.map((metric) => (
+              <SelectItem key={metric} value={metric}>
+                {shotSortLabels[metric]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field>
+        <FieldLabel>Order</FieldLabel>
+        <Select name="dir" defaultValue={filters.dir}>
+          <SelectTrigger aria-label="Sort direction" className="h-10 w-full bg-white/90">
+            <SelectValue placeholder="High to low" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">High to low</SelectItem>
+            <SelectItem value="asc">Low to high</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
     </>
   );
 }
@@ -727,7 +801,7 @@ async function getShotDatabase(filters: ShotFilters) {
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
       .innerJoin(clubs, eq(shots.clubId, clubs.id))
       .where(where)
-      .orderBy(desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber))
+      .orderBy(...shotOrderBy(filters))
       .limit(PAGE_SIZE)
       .offset((filters.page - 1) * PAGE_SIZE),
   ]);
@@ -774,8 +848,54 @@ function buildShotWhere(filters: ShotFilters, userId: string) {
   return and(...clauses);
 }
 
+function shotOrderBy(filters: ShotFilters) {
+  if (filters.sort === "recent") {
+    return [desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber)];
+  }
+
+  const column = shotSortColumn(filters.sort);
+  const primarySort =
+    filters.dir === "desc" ? sql`${column} desc nulls last` : sql`${column} asc nulls last`;
+
+  return [primarySort, desc(shots.shotAt), asc(sessions.fileName), asc(shots.shotNumber)];
+}
+
+function shotSortColumn(sort: Exclude<ShotSortMetric, "recent">) {
+  switch (sort) {
+    case "shot":
+      return shots.shotNumber;
+    case "carry":
+      return shots.carryYd;
+    case "total":
+      return shots.totalYd;
+    case "side":
+      return shots.sideCarryYd;
+    case "launch":
+      return shots.launchAngleDeg;
+    case "ballSpeed":
+      return shots.ballSpeedMph;
+    case "clubSpeed":
+      return shots.clubSpeedMph;
+    case "launchDirection":
+      return shots.launchDirectionDeg;
+    case "apex":
+      return shots.apexFt;
+    case "attack":
+      return shots.attackAngleDeg;
+    case "path":
+      return shots.clubPathDeg;
+    case "descent":
+      return shots.descentAngleDeg;
+    case "smash":
+      return shots.smashFactor;
+  }
+}
+
 function parseFilters(params: Awaited<SearchParams>): ShotFilters {
   const page = Math.max(1, Number(first(params.page)) || 1);
+  const sortParam = first(params.sort);
+  const sort = isShotSortMetric(sortParam) ? sortParam : "recent";
+  const dir = first(params.dir) === "asc" ? "asc" : "desc";
 
   return {
     page,
@@ -785,6 +905,8 @@ function parseFilters(params: Awaited<SearchParams>): ShotFilters {
     q: first(params.q).trim().slice(0, 120),
     from: dateParam(first(params.from)),
     to: dateParam(first(params.to)),
+    sort,
+    dir,
   };
 }
 
@@ -793,11 +915,7 @@ function allToEmpty(value: string) {
 }
 
 function pageHref(filters: ShotFilters, page: number) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries({ ...filters, page: page.toString() })) {
-    if (value) params.set(key, value.toString());
-  }
-  return `/shots?${params.toString()}`;
+  return shotsHref({ ...filters, page });
 }
 
 function buildActiveFilterChips(
@@ -827,20 +945,114 @@ function buildActiveFilterChips(
   if (filters.from)
     chips.push({ label: `From ${filters.from} x`, href: filterHref(filters, "from") });
   if (filters.to) chips.push({ label: `To ${filters.to} x`, href: filterHref(filters, "to") });
+  if (filters.sort !== "recent") {
+    chips.push({
+      label: `${shotSortLabels[filters.sort]} ${sortDirectionLabel(filters.dir).toLowerCase()} x`,
+      href: filterHref(filters, "sort"),
+    });
+  }
 
   return chips;
 }
 
 function filterHref(filters: ShotFilters, omitKey: keyof ShotFilters) {
+  const next = { ...filters, page: 1 };
+
+  switch (omitKey) {
+    case "club":
+      next.club = "";
+      break;
+    case "sessionId":
+      next.sessionId = "";
+      break;
+    case "category":
+      next.category = "";
+      break;
+    case "q":
+      next.q = "";
+      break;
+    case "from":
+      next.from = "";
+      break;
+    case "to":
+      next.to = "";
+      break;
+    case "sort":
+    case "dir":
+      next.sort = "recent";
+      next.dir = "desc";
+      break;
+    case "page":
+      next.page = 1;
+      break;
+  }
+
+  return shotsHref(next);
+}
+
+function shotsHref(filters: ShotFilters) {
   const params = new URLSearchParams();
 
-  for (const [key, value] of Object.entries({ ...filters, page: 1 })) {
-    if (key === omitKey || !value) continue;
-    params.set(key, value.toString());
+  if (filters.page > 1) params.set("page", filters.page.toString());
+  if (filters.club) params.set("club", filters.club);
+  if (filters.sessionId) params.set("sessionId", filters.sessionId);
+  if (filters.category) params.set("category", filters.category);
+  if (filters.q) params.set("q", filters.q);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
+  if (filters.sort !== "recent") {
+    params.set("sort", filters.sort);
+    if (filters.dir !== "desc") params.set("dir", filters.dir);
   }
 
   const query = params.toString();
   return query ? `/shots?${query}` : "/shots";
+}
+
+function sortHref(filters: ShotFilters, sort: ShotSortMetric) {
+  const dir = filters.sort === sort && filters.dir === "desc" ? "asc" : "desc";
+  return shotsHref({ ...filters, page: 1, sort, dir });
+}
+
+function SortableShotHead({
+  filters,
+  metric,
+  label,
+}: {
+  filters: ShotFilters;
+  metric: ShotSortMetric;
+  label: string;
+}) {
+  const active = filters.sort === metric;
+  const dir = active ? filters.dir : "desc";
+  const nextDir = active && filters.dir === "desc" ? "low to high" : "high to low";
+  const Icon = active ? (dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+
+  return (
+    <TableHead className="text-right" aria-sort={active ? sortAriaValue(dir) : "none"}>
+      <Link
+        href={sortHref(filters, metric)}
+        className="inline-flex w-full items-center justify-end gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={`Sort by ${label}, ${nextDir}`}
+        prefetch={false}
+      >
+        {label}
+        <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} />
+      </Link>
+    </TableHead>
+  );
+}
+
+function sortAriaValue(dir: ShotSortDirection) {
+  return dir === "desc" ? "descending" : "ascending";
+}
+
+function sortDirectionLabel(dir: ShotSortDirection) {
+  return dir === "desc" ? "High-low" : "Low-high";
+}
+
+function isShotSortMetric(value: string): value is ShotSortMetric {
+  return shotSortMetrics.includes(value as ShotSortMetric);
 }
 
 function first(value: string | string[] | undefined) {

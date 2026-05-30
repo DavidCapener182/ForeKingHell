@@ -108,7 +108,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
         }
         metrics={[
           {
-            label: "Stock carry",
+            label: "Best stock",
             value: formatYards(analytics.distance.stockCarryYd),
             detail: `${integerFormatter.format(analytics.sample.stockShots)} clean stock shots`,
           },
@@ -120,7 +120,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           {
             label: "Playable rate",
             value: formatRate(analytics.accuracy.playableShotRate),
-            detail: `${analytics.accuracy.primaryMiss} miss profile`,
+            detail: `Recommended ${formatYards(analytics.distance.stockPlayNumberYd)}`,
           },
           {
             label: "Launch window",
@@ -259,7 +259,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           <DataPanel>
             <SectionHeader
               title="Distance profile"
-              description="Stock, safe, aggressive, best, and mishit floor."
+              description="Best stock, personal best, latest reliable, recommended number, and mishit floor."
             />
             <CardContent>
               <DistanceDistribution analytics={analytics} accent={accent} />
@@ -283,12 +283,20 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           title="Distance"
           icon={BarChart3}
           metrics={[
-            ["Stock carry", formatYards(analytics.distance.stockCarryYd)],
+            ["Best stock", formatYards(analytics.distance.stockCarryYd)],
+            ["Personal best", formatYards(analytics.distance.personalBestCarryYd)],
+            ["Latest reliable", formatYards(analytics.distance.latestReliableCarryYd)],
+            [
+              "Latest range",
+              formatRange(
+                analytics.distance.latestReliableCarryP25Yd,
+                analytics.distance.latestReliableCarryP75Yd,
+              ),
+            ],
+            ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
             ["Safe carry", formatYards(analytics.distance.safeCarryYd)],
             ["Aggressive", formatYards(analytics.distance.aggressiveCarryYd)],
-            ["Best carry", formatYards(analytics.distance.bestCarryYd)],
             ["Mishit floor", formatYards(analytics.distance.mishitFloorYd)],
-            ["Carry spread", formatYards(analytics.distance.carrySpreadYd)],
           ]}
         />
         <ProfileCard
@@ -358,7 +366,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
                 : "--",
             ],
             ["Next gap", formatYards(analytics.gapping.nextGapYd)],
-            ["Play number", formatYards(analytics.distance.stockPlayNumberYd)],
+            ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
           ]}
         />
       </section>
@@ -497,7 +505,7 @@ async function getClubAnalyticsData(clubId: string) {
       return {
         clubId: activeClub.id,
         clubType: activeClub.type,
-        stockCarryYd: stock.carryMedianYd,
+        stockCarryYd: stock.bestStockCarryYd,
         confidenceScore: stock.confidenceScore,
         sampleSize: stock.sampleSize,
       };
@@ -937,10 +945,11 @@ function DistanceDistribution({ analytics, accent }: { analytics: ClubAnalytics;
   const values: Array<[string, number | null]> = [
     ["Mishit", analytics.distance.mishitFloorYd],
     ["Safe", analytics.distance.safeCarryYd],
-    ["Stock", analytics.distance.stockCarryYd],
+    ["Recommended", analytics.distance.stockPlayNumberYd],
+    ["Best stock", analytics.distance.stockCarryYd],
+    ["Personal best", analytics.distance.personalBestCarryYd],
     ["Aggressive", analytics.distance.aggressiveCarryYd],
-    ["P90", analytics.distance.p90CarryYd],
-    ["Best", analytics.distance.bestCarryYd],
+    ["Peak", analytics.distance.bestCarryYd],
   ];
   const maxValue = Math.max(1, ...values.map(([, value]) => value ?? 0));
 
@@ -954,7 +963,7 @@ function DistanceDistribution({ analytics, accent }: { analytics: ClubAnalytics;
               className="h-full rounded-full"
               style={{
                 width: `${((value ?? 0) / maxValue) * 100}%`,
-                background: label === "Stock" ? "#111827" : accent,
+                background: label === "Recommended" ? "#111827" : accent,
               }}
             />
           </div>
@@ -1078,6 +1087,14 @@ function DeltaMetric({
 
 function formatYards(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
+
+function formatRange(low: number | null, high: number | null) {
+  if (low === null || high === null) {
+    return "--";
+  }
+
+  return `${numberFormatter.format(low)}-${numberFormatter.format(high)} yd`;
 }
 
 function formatFeet(value: number | null) {

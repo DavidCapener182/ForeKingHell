@@ -18,7 +18,11 @@ import {
   isShortGameTouchClubType,
 } from "@/lib/club-format";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
-import { calculateStockYardage } from "@/lib/stock-yardage";
+import {
+  calculateStockYardage,
+  type StockShotRole,
+  type StockShotRoleSummary,
+} from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
 import { ClubAnalysisTabs, type AnalysisShot } from "./club-analysis-tabs";
 
@@ -61,6 +65,7 @@ const RANGE_OPTIONS: Array<{
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
 
 export function ClubDetailClient({
   club,
@@ -107,6 +112,9 @@ export function ClubDetailClient({
   );
   const isShortGameTouch = isShortGameTouchClubType(club.type);
   const isSandWedge = club.type === "sw";
+  const hasWedgeRoles =
+    ["pw", "gw", "aw", "sw", "lw"].includes(club.type.toLowerCase()) &&
+    stock.shotRoleSummaries.length > 0;
   const latestShotDate = selectedShots[0]?.shotAt ? formatDate(selectedShots[0].shotAt) : "--";
   const shotCount =
     shotRange !== "all"
@@ -123,9 +131,9 @@ export function ClubDetailClient({
         }
         title={clubModelName}
         description={clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
-        metricLabel={isShortGameTouch ? "Touch median" : "Stock carry"}
+        metricLabel={isShortGameTouch ? "Touch median" : "Best stock"}
         metricValue={formatMetric(
-          isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+          isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
           " yd",
         )}
         metricDetail={`${selectedShots.length} in ${selectedRange.compactLabel}`}
@@ -159,22 +167,28 @@ export function ClubDetailClient({
       <MobileMetricStrip
         items={[
           {
-            label: isShortGameTouch ? "Touch" : "Carry",
+            label: isShortGameTouch ? "Touch" : "Best",
             value: formatMetric(
-              isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+              isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
               " yd",
             ),
-            detail: "Stock",
+            detail: isShortGameTouch ? "Median" : "Stock",
             tone: "green",
           },
           {
-            label: "Play",
+            label: "PB",
+            value: formatMetric(stock.personalBestCarryYd, " yd"),
+            detail: "Personal best",
+            tone: "sky",
+          },
+          {
+            label: "Recommended",
             value: formatMetric(
-              isShortGameTouch && !isSandWedge ? null : stock.recommendedPlayNumberYd,
+              isShortGameTouch && !isSandWedge ? null : stock.coursePlayCarryYd,
               " yd",
             ),
-            detail: "Number",
-            tone: "sky",
+            detail: "Play number",
+            tone: "amber",
           },
           { label: "Shots", value: shotCount, detail: "Range", tone: "amber" },
           {
@@ -217,21 +231,21 @@ export function ClubDetailClient({
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px] xl:min-w-0">
                 <StatTile
-                  label={isShortGameTouch ? "Touch median" : "Stock carry"}
+                  label={isShortGameTouch ? "Touch median" : "Best stock"}
                   value={formatMetric(
-                    isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd,
+                    isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
                     " yd",
                   )}
                   icon={Target}
                 />
                 <StatTile
-                  label={isShortGameTouch ? "Full stock" : "Play number"}
+                  label={isShortGameTouch ? "Full stock" : "Recommended"}
                   value={formatMetric(
                     isShortGameTouch
                       ? isSandWedge
-                        ? stock.carryMedianYd
+                        ? stock.bestStockCarryYd
                         : null
-                      : stock.recommendedPlayNumberYd,
+                      : stock.coursePlayCarryYd,
                     " yd",
                   )}
                   icon={Gauge}
@@ -273,14 +287,41 @@ export function ClubDetailClient({
           </CardHeader>
           <CardContent className="space-y-5">
             <div>
-              <p className="text-sm text-muted-foreground">Carry median</p>
+              <p className="text-sm text-muted-foreground">
+                {isShortGameTouch ? "Touch median" : "Best stock carry"}
+              </p>
               <p className="text-6xl font-semibold tracking-normal">
-                {formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.carryMedianYd)}
+                {formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd)}
                 <span className="ml-2 text-lg text-muted-foreground">yd</span>
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <SmallMetric
+                label={isShortGameTouch ? "Full PB" : "Personal best"}
+                value={formatMetric(stock.personalBestCarryYd, " yd")}
+              />
+              {!isShortGameTouch ? (
+                <SmallMetric
+                  label="Recommended"
+                  value={formatMetric(stock.coursePlayCarryYd, " yd")}
+                />
+              ) : null}
+              {!isShortGameTouch ? (
+                <SmallMetric
+                  label="Latest reliable"
+                  value={formatMetric(stock.latestReliableCarryYd, " yd")}
+                />
+              ) : null}
+              {!isShortGameTouch ? (
+                <SmallMetric
+                  label="Latest range"
+                  value={formatRange(
+                    stock.latestReliableCarryP25Yd,
+                    stock.latestReliableCarryP75Yd,
+                  )}
+                />
+              ) : null}
               <SmallMetric
                 label={isShortGameTouch ? "Lower touch" : "Average"}
                 value={formatMetric(isShortGameTouch ? touch.carryP25Yd : stock.carryMeanYd, " yd")}
@@ -310,12 +351,14 @@ export function ClubDetailClient({
                 value={
                   isShortGameTouch
                     ? isSandWedge
-                      ? formatMetric(stock.carryMedianYd, " yd")
+                      ? formatMetric(stock.bestStockCarryYd, " yd")
                       : "--"
                     : formatMetric(stock.averageBallSpeedMph, " mph")
                 }
               />
             </div>
+
+            {hasWedgeRoles ? <WedgeRoleSummaryGrid summaries={stock.shotRoleSummaries} /> : null}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -345,8 +388,8 @@ export function ClubDetailClient({
             {isShortGameTouch ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
                 {club.type === "sw"
-                  ? "SW stock ignores sub-40 yd chips. Shorter round shots stay in touch analysis."
-                  : "Round chips and pitches stay in touch analysis, not stock yardage."}
+                  ? "SW stock uses full-role shots from 75 yd and above. Pitch and chip windows stay in touch analysis."
+                  : "Round chips and pitches stay in touch analysis, not best-stock yardage."}
               </div>
             ) : null}
           </CardContent>
@@ -358,13 +401,13 @@ export function ClubDetailClient({
             <CardDescription>
               {isShortGameTouch
                 ? "Distance-control spread for short-game shots."
-                : "The stock number stays conservative until the sample is stable."}
+                : "Recommended waits for a stable latest sample before it becomes decision-ready."}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             <HealthBlock
               label={isShortGameTouch ? "Touch shots" : "Excluded shots"}
-              value={(isShortGameTouch ? touch.sampleSize : stock.excludedCount).toString()}
+              value={(isShortGameTouch ? touch.sampleSize : stock.stockExclusionCount).toString()}
             />
             <HealthBlock
               label={isShortGameTouch ? "Full launch" : "Launch average"}
@@ -375,14 +418,25 @@ export function ClubDetailClient({
               }
             />
             <HealthBlock
-              label={isShortGameTouch ? "Touch range" : "Carry range"}
+              label={isShortGameTouch ? "Touch range" : "Best-stock range"}
               value={
                 isShortGameTouch
                   ? `${formatMetric(touch.carryP25Yd)}-${formatMetric(touch.carryP75Yd)} yd`
-                  : `${formatMetric(stock.carryP25Yd)}-${formatMetric(stock.carryP75Yd)} yd`
+                  : formatRange(stock.carryP25Yd, stock.carryP75Yd)
               }
             />
             <HealthBlock label="Last shot" value={latestShotDate} />
+            <div className="apple-panel-strong p-4 sm:col-span-2">
+              <p className="text-sm font-medium text-muted-foreground">Best-stock filter reasons</p>
+              <p className="mt-2 text-sm leading-6 text-foreground">
+                {formatStockExclusionReasons(stock.stockExclusionReasons)}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Best Stock is the median of the selected top-20 clean stock sample. Personal Best
+                keeps the single longest clean full-role carry visible without making that the play
+                number.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </section>
@@ -486,8 +540,81 @@ function HealthBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
+function WedgeRoleSummaryGrid({ summaries }: { summaries: StockShotRoleSummary[] }) {
+  return (
+    <div className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+      <div>
+        <p className="text-sm font-semibold">Wedge roles</p>
+        <p className="text-xs text-muted-foreground">Full, pitch, and chip/touch are separated.</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {WEDGE_ROLE_ORDER.map((role) => (
+          <WedgeRoleMini key={role} role={role} summary={roleSummaryFor(summaries, role)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WedgeRoleMini({
+  role,
+  summary,
+}: {
+  role: StockShotRole;
+  summary: StockShotRoleSummary | null;
+}) {
+  return (
+    <div className="rounded-md bg-white/80 p-2">
+      <p className="text-xs font-medium text-muted-foreground">{wedgeRoleLabel(role)}</p>
+      <p className="mt-1 text-lg font-semibold tracking-normal">
+        {summary === null || summary.carryMedianYd === null
+          ? "--"
+          : formatMetric(summary.carryMedianYd, " yd")}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {summary
+          ? `${summary.sampleSize} shots · ${formatRange(summary.carryP25Yd, summary.carryP75Yd)}`
+          : "No shots"}
+      </p>
+    </div>
+  );
+}
+
+function roleSummaryFor(summaries: StockShotRoleSummary[], role: StockShotRole) {
+  return summaries.find((summary) => summary.role === role) ?? null;
+}
+
+function wedgeRoleLabel(role: StockShotRole) {
+  if (role === "chip-touch") {
+    return "Chip/touch";
+  }
+
+  return role[0].toUpperCase() + role.slice(1);
+}
+
+function formatStockExclusionReasons(
+  reasons: ReturnType<typeof calculateStockYardage>["stockExclusionReasons"],
+) {
+  if (reasons.length === 0) {
+    return "No current stock exclusions.";
+  }
+
+  return reasons
+    .slice(0, 4)
+    .map((reason) => `${reason.label}: ${reason.count}`)
+    .join(" · ");
+}
+
 function formatMetric(value: number | null, suffix = "") {
   return value === null ? "--" : `${numberFormatter.format(value)}${suffix}`;
+}
+
+function formatRange(low: number | null, high: number | null) {
+  if (low === null || high === null) {
+    return "--";
+  }
+
+  return `${formatMetric(low)}-${formatMetric(high)} yd`;
 }
 
 function formatDate(value: string) {

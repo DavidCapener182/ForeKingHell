@@ -1,4 +1,5 @@
 import { isShortGameTouchClubType } from "@/lib/club-format";
+import { classifyStockShotRole } from "@/lib/stock-yardage";
 
 export type ShortGameTouchShot = {
   clubType?: string | null;
@@ -60,7 +61,8 @@ function isLikelyShortGameTouch(shot: ShortGameTouchShot, options: { clubType?: 
 
   const clubType = options.clubType ?? shot.clubType;
   if (isShortGameTouchClubType(clubType)) {
-    return shot.carryYd <= TOUCH_CARRY_LIMIT_YD;
+    const role = classifyStockShotRole(shot, { clubType });
+    return role === "chip-touch" || role === "pitch";
   }
 
   const category = shot.shotCategory?.toLowerCase();

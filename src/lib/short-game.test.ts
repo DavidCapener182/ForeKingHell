@@ -21,9 +21,9 @@ describe("calculateShortGameTouchSummary", () => {
       { clubType: "sw" },
     );
 
-    expect(result.sampleSize).toBe(4);
-    expect(result.carryMedianYd).toBe(64);
-    expect(result.longestCarryYd).toBe(94);
+    expect(result.sampleSize).toBe(2);
+    expect(result.carryMedianYd).toBe(30);
+    expect(result.longestCarryYd).toBe(42);
     expect(result.under30YdCount).toBe(1);
   });
 });

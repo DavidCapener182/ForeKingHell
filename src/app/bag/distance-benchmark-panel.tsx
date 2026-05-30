@@ -88,11 +88,11 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const METRICS: MetricDefinition[] = [
   {
     key: "carryYd",
-    label: "Carry distance",
-    shortLabel: "Carry",
+    label: "Best stock carry",
+    shortLabel: "Best stock",
     unit: "yd",
     precision: 1,
-    description: "Best-20 stock carry against broad club-distance reference levels.",
+    description: "Best-stock carry against broad club-distance reference levels.",
     comparisonMode: "higher",
   },
   {
@@ -449,12 +449,12 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
               action={<BenchmarkBadge row={row} />}
             >
               <DataPair
-                label="Carry"
+                label="Best stock"
                 value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
               />
               <DataPair label="Sample" value={row.sampleSize.toString()} />
               <DataPair label="Next" value={benchmarkNextText(row)} />
-              <DataPair label="Best-20 floor" value={benchmarkFloorText(row)} />
+              <DataPair label="Best-stock floor" value={benchmarkFloorText(row)} />
               <DataPair label="Reference" value={benchmarkReferenceText(row)} />
               <BenchmarkMeter row={row} />
             </MobileDataCard>

@@ -16,6 +16,7 @@ export type TargetDistanceRow = {
   id: string;
   clubType: string;
   carryYd: number | null;
+  latestReliableCarryYd?: number | null;
   playNumberYd: number | null;
   sampleSize: number;
   confidenceScore: number;
@@ -354,7 +355,7 @@ export function TargetDistanceSelector({
       ? `Plan ${targetYd} yd as a hole distance: start with ${formatClubType(
           plan.shots[0].row.clubType,
         )}, then match the remaining number.`
-      : `I need ${targetYd} yd: pick the club with the closest play number and enough trust to use on course.`;
+      : `I need ${targetYd} yd: pick the club with the closest recommended carry and enough trust to use on course.`;
   const planTone = getPlanTone(plan);
   const riskLevel = getRiskLevel(plan);
   const windowQuality = getWindowQuality(plan);
@@ -426,6 +427,7 @@ export function TargetDistanceSelector({
             max={MAX_TARGET_YD}
             step={STEP_YD}
             value={targetYd}
+            suppressHydrationWarning
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => selectTarget(Number(event.target.value))}
             className="h-12 w-full rounded-xl border border-[#D7DEE8] bg-white px-4 text-lg font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"
@@ -516,6 +518,7 @@ export function TargetDistanceSelector({
                     max={MAX_TARGET_YD}
                     step={STEP_YD}
                     value={targetYd}
+                    suppressHydrationWarning
                     onFocus={(event) => event.currentTarget.select()}
                     onChange={(event) => selectTarget(Number(event.target.value))}
                     className="h-14 w-36 rounded-xl border border-[#D7DEE8] bg-white px-5 pr-12 text-xl font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"

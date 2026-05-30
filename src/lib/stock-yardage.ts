@@ -14,14 +14,51 @@ export type StockShot = {
   shotAt?: Date | string | null;
 };
 
+export type StockShotRole = "full" | "pitch" | "chip-touch";
+
+export type StockExclusionReasonKey =
+  | "missing-carry"
+  | "quality-tag"
+  | "shot-category"
+  | "shot-role"
+  | "short-game-cluster"
+  | "recent-window"
+  | "best-stock-rank"
+  | "outlier";
+
+export type StockExclusionReason = {
+  key: StockExclusionReasonKey;
+  label: string;
+  count: number;
+};
+
+export type StockShotRoleSummary = {
+  role: StockShotRole;
+  sampleSize: number;
+  carryMedianYd: number | null;
+  carryP25Yd: number | null;
+  carryP75Yd: number | null;
+  longestCarryYd: number | null;
+};
+
 export type StockYardage = {
   sampleSize: number;
   rawSampleSize: number;
   excludedCount: number;
+  stockExclusionCount: number;
+  stockExclusionReasons: StockExclusionReason[];
+  shotRoleSummaries: StockShotRoleSummary[];
+  bestStockCarryYd: number | null;
+  personalBestCarryYd: number | null;
   carryMedianYd: number | null;
   carryMeanYd: number | null;
   carryP75Yd: number | null;
   carryP25Yd: number | null;
+  latestReliableSampleSize: number;
+  latestReliableCarryYd: number | null;
+  latestReliableCarryP25Yd: number | null;
+  latestReliableCarryP75Yd: number | null;
+  coursePlayCarryYd: number | null;
   bestSampleFloorYd: number | null;
   totalMedianYd: number | null;
   dispersionLeftYd: number | null;
@@ -52,17 +89,29 @@ export type StockYardageOptions = {
   averageSampleSize?: number;
 };
 
-const EXCLUDED_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
-const SAND_WEDGE_EXCLUDED_CATEGORIES = new Set(["recovery", "bunker"]);
+const EXCLUDED_STOCK_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
 const EXCLUDED_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
-export const SAND_WEDGE_STOCK_MIN_CARRY_YD = 40;
+const SCORING_WEDGE_CLUB_TYPES = new Set(["pw", "gw", "aw"]);
+export const SAND_WEDGE_STOCK_MIN_CARRY_YD = 75;
 const SAND_WEDGE_MIN_STOCK_CLUSTER_SHOTS = 5;
 const SAND_WEDGE_MIN_CLUSTER_GAP_YD = 7;
 const STOCK_AVERAGE_SAMPLE_SIZE = 20;
+const LATEST_RELIABLE_SAMPLE_SIZE = 10;
+const LATEST_RELIABLE_SHOT_LIMIT = 20;
 const MIN_TREND_WINDOW_SHOTS = 3;
 const MAX_LATEST_TREND_SHOTS = 5;
 const MAX_PREVIOUS_TREND_SHOTS = 15;
 const STOCK_TREND_THRESHOLD_YD = 2;
+const STOCK_EXCLUSION_LABELS: Record<StockExclusionReasonKey, string> = {
+  "missing-carry": "Missing carry",
+  "quality-tag": "Quality tag",
+  "shot-category": "Chip/pitch/recovery",
+  "shot-role": "Derived wedge role",
+  "short-game-cluster": "Below full wedge cluster",
+  "recent-window": "Outside recent window",
+  "best-stock-rank": "Outside top-20 sample",
+  outlier: "Outlier filter",
+};
 
 export function calculateStockYardage(
   shots: StockShot[],
@@ -71,9 +120,39 @@ export function calculateStockYardage(
 ): StockYardage {
   const { cleanShots, filteredShots } = selectStockYardageShots(shots, maxShots, options);
   const filteredCarry = filteredShots.map((shot) => shot.carryYd).filter(isNumber);
+  const personalBestCarryYd = calculatePersonalBestCarryYd(shots, maxShots, options);
+  const stockExclusionReasons = explainStockExclusions(shots, maxShots, options);
+  const stockExclusionCount = stockExclusionReasons.reduce(
+    (total, reason) => total + reason.count,
+    0,
+  );
+  const shotRoleSummaries = summarizeStockShotRoles(shots, maxShots, options);
+  const latestReliableSample = selectLatestReliableStockShots(shots, maxShots, options);
+  const latestReliableCarryValues = latestReliableSample.filteredShots
+    .map((shot) => shot.carryYd)
+    .filter(isNumber);
+  const latestReliableCarryYd =
+    latestReliableCarryValues.length >= LATEST_RELIABLE_SAMPLE_SIZE
+      ? roundOne(median(latestReliableCarryValues))
+      : null;
+  const latestReliableCarryP25Yd =
+    latestReliableCarryValues.length >= LATEST_RELIABLE_SAMPLE_SIZE
+      ? roundOne(percentile(latestReliableCarryValues, 0.25))
+      : null;
+  const latestReliableCarryP75Yd =
+    latestReliableCarryValues.length >= LATEST_RELIABLE_SAMPLE_SIZE
+      ? roundOne(percentile(latestReliableCarryValues, 0.75))
+      : null;
 
   if (filteredCarry.length === 0) {
-    return emptyStockYardage(shots.length);
+    return emptyStockYardage({
+      rawSampleSize: shots.length,
+      latestReliableSampleSize: latestReliableCarryValues.length,
+      personalBestCarryYd,
+      stockExclusionReasons,
+      stockExclusionCount,
+      shotRoleSummaries,
+    });
   }
 
   const filteredTotal = filteredShots.map((shot) => shot.totalYd).filter(isNumber);
@@ -98,15 +177,27 @@ export function calculateStockYardage(
     sideAbsP75,
     mostRecentShotAt,
   });
+  const bestStockCarryYd = roundOne(carryMedianYd);
+  const coursePlayCarryYd = calculateCoursePlayCarryYd(bestStockCarryYd, latestReliableCarryYd);
 
   return {
     sampleSize: filteredCarry.length,
     rawSampleSize: shots.length,
     excludedCount: cleanShots.length - filteredCarry.length,
-    carryMedianYd: roundOne(carryMedianYd),
+    stockExclusionCount,
+    stockExclusionReasons,
+    shotRoleSummaries,
+    bestStockCarryYd,
+    personalBestCarryYd,
+    carryMedianYd: bestStockCarryYd,
     carryMeanYd: roundOne(mean(filteredCarry)),
     carryP75Yd: roundOne(percentile(filteredCarry, 0.75)),
     carryP25Yd: roundOne(percentile(filteredCarry, 0.25)),
+    latestReliableSampleSize: latestReliableCarryValues.length,
+    latestReliableCarryYd,
+    latestReliableCarryP25Yd,
+    latestReliableCarryP75Yd,
+    coursePlayCarryYd,
     bestSampleFloorYd: roundOne(Math.min(...filteredCarry)),
     totalMedianYd: filteredTotal.length > 0 ? roundOne(median(filteredTotal)) : null,
     dispersionLeftYd:
@@ -115,7 +206,7 @@ export function calculateStockYardage(
     averageBallSpeedMph: filteredBallSpeed.length > 0 ? roundOne(mean(filteredBallSpeed)) : null,
     averageLaunchAngleDeg: filteredLaunch.length > 0 ? roundOne(mean(filteredLaunch)) : null,
     confidenceScore,
-    recommendedPlayNumberYd: roundToNearest(carryMedianYd, 5),
+    recommendedPlayNumberYd: coursePlayCarryYd,
     label: stockLabel(filteredCarry.length, distanceStdDev, carryMedianYd, confidenceScore),
   };
 }
@@ -127,7 +218,7 @@ export function selectStockYardageShots<T extends StockShot>(
 ): StockYardageSample<T> {
   const selectionClubType = options.clubType ?? shots.find((shot) => shot.clubType)?.clubType;
   const usableShots = shots.filter((shot) => isUsableFullShot(shot, options));
-  const stockCandidates = isSandWedgeClubType(selectionClubType)
+  const stockCandidates = isShortGameTouchClubType(selectionClubType)
     ? selectSandWedgeStockCluster(usableShots)
     : usableShots;
   const recentCandidatePool = [...stockCandidates]
@@ -137,24 +228,191 @@ export function selectStockYardageShots<T extends StockShot>(
     recentCandidatePool,
     options.averageSampleSize ?? STOCK_AVERAGE_SAMPLE_SIZE,
   );
-  const carryValues = cleanShots.map((shot) => shot.carryYd).filter(isNumber);
 
-  if (carryValues.length === 0) {
-    return { cleanShots, filteredShots: [] };
-  }
+  return {
+    cleanShots,
+    filteredShots: filterStockOutliers(cleanShots),
+  };
+}
 
-  const rawMedian = median(carryValues);
-  const mad = median(carryValues.map((value) => Math.abs(value - rawMedian)));
-  const maxDeviation = mad === 0 ? Number.POSITIVE_INFINITY : mad * 2.5;
-  const filteredShots = cleanShots.filter((shot) => {
-    if (shot.carryYd === null) {
-      return false;
+export function selectLatestReliableStockShots<T extends StockShot>(
+  shots: T[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+): StockYardageSample<T> {
+  const cleanShots = shots
+    .filter((shot) => isUsableFullShot(shot, options))
+    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
+    .slice(0, Math.min(maxShots, LATEST_RELIABLE_SHOT_LIMIT));
+
+  return {
+    cleanShots,
+    filteredShots: filterStockOutliers(cleanShots),
+  };
+}
+
+export function selectPersonalBestCarryShot<T extends StockShot>(
+  shots: T[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+) {
+  return (
+    [...shots]
+      .filter((shot): shot is T & { carryYd: number } =>
+        isPersonalBestEligibleFullShot(shot, options),
+      )
+      .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
+      .slice(0, maxShots)
+      .sort(
+        (left, right) =>
+          right.carryYd - left.carryYd || dateValue(right.shotAt) - dateValue(left.shotAt),
+      )[0] ?? null
+  );
+}
+
+export function calculatePersonalBestCarryYd(
+  shots: StockShot[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+) {
+  const personalBestShot = selectPersonalBestCarryShot(shots, maxShots, options);
+
+  return personalBestShot ? roundOne(personalBestShot.carryYd) : null;
+}
+
+export function selectPersonalBestTotalShot<T extends StockShot>(
+  shots: T[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+) {
+  return (
+    [...shots]
+      .filter(
+        (shot): shot is T & { totalYd: number } =>
+          isPersonalBestEligibleFullShot(shot, options) && isNumber(shot.totalYd),
+      )
+      .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
+      .slice(0, maxShots)
+      .sort(
+        (left, right) =>
+          right.totalYd - left.totalYd || dateValue(right.shotAt) - dateValue(left.shotAt),
+      )[0] ?? null
+  );
+}
+
+export function calculatePersonalBestTotalYd(
+  shots: StockShot[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+) {
+  const personalBestShot = selectPersonalBestTotalShot(shots, maxShots, options);
+
+  return personalBestShot ? roundOne(personalBestShot.totalYd) : null;
+}
+
+export function explainStockExclusions<T extends StockShot>(
+  shots: T[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+): StockExclusionReason[] {
+  const selectionClubType = options.clubType ?? shots.find((shot) => shot.clubType)?.clubType;
+  const reasonCounts = new Map<StockExclusionReasonKey, number>();
+  const usableShots: T[] = [];
+
+  for (const shot of shots) {
+    const directReason = directStockExclusionReason(shot, options);
+
+    if (directReason) {
+      incrementReason(reasonCounts, directReason);
+      continue;
     }
 
-    return Math.abs(shot.carryYd - rawMedian) <= maxDeviation;
-  });
+    usableShots.push(shot);
+  }
 
-  return { cleanShots, filteredShots };
+  const stockCandidates = isShortGameTouchClubType(selectionClubType)
+    ? selectSandWedgeStockCluster(usableShots)
+    : usableShots;
+  const shortGameClusterExclusions = usableShots.length - stockCandidates.length;
+
+  if (shortGameClusterExclusions > 0) {
+    incrementReason(reasonCounts, "short-game-cluster", shortGameClusterExclusions);
+  }
+
+  const recentCandidatePool = [...stockCandidates]
+    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
+    .slice(0, maxShots);
+  const recentWindowExclusions = stockCandidates.length - recentCandidatePool.length;
+
+  if (recentWindowExclusions > 0) {
+    incrementReason(reasonCounts, "recent-window", recentWindowExclusions);
+  }
+
+  const cleanShots = selectBestStockShots(
+    recentCandidatePool,
+    options.averageSampleSize ?? STOCK_AVERAGE_SAMPLE_SIZE,
+  );
+  const bestStockRankExclusions = recentCandidatePool.length - cleanShots.length;
+
+  if (bestStockRankExclusions > 0) {
+    incrementReason(reasonCounts, "best-stock-rank", bestStockRankExclusions);
+  }
+
+  const outlierExclusions = cleanShots.length - filterStockOutliers(cleanShots).length;
+
+  if (outlierExclusions > 0) {
+    incrementReason(reasonCounts, "outlier", outlierExclusions);
+  }
+
+  return [...reasonCounts.entries()]
+    .map(([key, count]) => ({ key, label: STOCK_EXCLUSION_LABELS[key], count }))
+    .filter((reason) => reason.count > 0)
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+}
+
+export function summarizeStockShotRoles<T extends StockShot>(
+  shots: T[],
+  maxShots = 50,
+  options: StockYardageOptions = {},
+): StockShotRoleSummary[] {
+  const grouped = new Map<StockShotRole, number[]>();
+
+  for (const shot of [...shots]
+    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
+    .slice(0, maxShots)) {
+    if (!isNumber(shot.carryYd) || hasExcludedQualityTag(shot)) {
+      continue;
+    }
+
+    const category = shot.shotCategory?.toLowerCase();
+
+    if (category === "recovery" || category === "bunker") {
+      continue;
+    }
+
+    const role = classifyStockShotRole(shot, options);
+
+    if (!role) {
+      continue;
+    }
+
+    grouped.set(role, [...(grouped.get(role) ?? []), shot.carryYd]);
+  }
+
+  return (["full", "pitch", "chip-touch"] as const)
+    .map((role) => {
+      const values = grouped.get(role) ?? [];
+
+      return {
+        role,
+        sampleSize: values.length,
+        carryMedianYd: values.length > 0 ? roundOne(median(values)) : null,
+        carryP25Yd: values.length > 0 ? roundOne(percentile(values, 0.25)) : null,
+        carryP75Yd: values.length > 0 ? roundOne(percentile(values, 0.75)) : null,
+        longestCarryYd: values.length > 0 ? roundOne(Math.max(...values)) : null,
+      };
+    })
+    .filter((summary) => summary.sampleSize > 0);
 }
 
 export function calculateStockCarryTrend(
@@ -220,35 +478,89 @@ export function calculateStockCarryTrend(
   };
 }
 
-function isUsableFullShot(shot: StockShot, options: StockYardageOptions) {
+export function classifyStockShotRole(
+  shot: Pick<StockShot, "clubType" | "carryYd" | "shotCategory">,
+  options: Pick<StockYardageOptions, "clubType"> = {},
+): StockShotRole | null {
   if (!isNumber(shot.carryYd)) {
-    return false;
+    return null;
   }
 
   const clubType = options.clubType ?? shot.clubType;
   const category = shot.shotCategory?.toLowerCase();
 
-  if (shot.qualityTag && EXCLUDED_QUALITY_TAGS.has(shot.qualityTag.toLowerCase())) {
-    return false;
-  }
-
-  if (isSandWedgeClubType(clubType)) {
-    if (shot.carryYd < SAND_WEDGE_STOCK_MIN_CARRY_YD) {
-      return false;
+  if (isShortGameTouchClubType(clubType)) {
+    if (category === "chip" || shot.carryYd <= 30) {
+      return "chip-touch";
     }
 
-    return !category || !SAND_WEDGE_EXCLUDED_CATEGORIES.has(category);
+    if (category === "pitch" || shot.carryYd < SAND_WEDGE_STOCK_MIN_CARRY_YD) {
+      return "pitch";
+    }
+
+    return "full";
   }
 
-  if (isShortGameTouchClubType(clubType)) {
-    return false;
+  if (isScoringWedgeClubType(clubType)) {
+    if (category === "chip" || shot.carryYd <= 30) {
+      return "chip-touch";
+    }
+
+    if (category === "pitch") {
+      return "pitch";
+    }
   }
 
-  if (category && EXCLUDED_CATEGORIES.has(category)) {
-    return false;
+  if (category === "chip") {
+    return "chip-touch";
   }
 
-  return true;
+  if (category === "pitch") {
+    return "pitch";
+  }
+
+  return "full";
+}
+
+function isUsableFullShot(shot: StockShot, options: StockYardageOptions) {
+  return directStockExclusionReason(shot, options) === null;
+}
+
+function isPersonalBestEligibleFullShot(shot: StockShot, options: StockYardageOptions) {
+  return directStockExclusionReason(shot, options) === null;
+}
+
+function directStockExclusionReason(
+  shot: StockShot,
+  options: Pick<StockYardageOptions, "clubType">,
+): StockExclusionReasonKey | null {
+  const category = shot.shotCategory?.toLowerCase();
+
+  if (!isNumber(shot.carryYd)) {
+    return "missing-carry";
+  }
+
+  if (hasExcludedQualityTag(shot)) {
+    return "quality-tag";
+  }
+
+  if (category && EXCLUDED_STOCK_CATEGORIES.has(category)) {
+    return "shot-category";
+  }
+
+  return classifyStockShotRole(shot, options) === "full" ? null : "shot-role";
+}
+
+function hasExcludedQualityTag(shot: Pick<StockShot, "qualityTag">) {
+  return Boolean(shot.qualityTag && EXCLUDED_QUALITY_TAGS.has(shot.qualityTag.toLowerCase()));
+}
+
+function incrementReason(
+  reasonCounts: Map<StockExclusionReasonKey, number>,
+  reason: StockExclusionReasonKey,
+  amount = 1,
+) {
+  reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + amount);
 }
 
 function selectSandWedgeStockCluster<T extends StockShot>(shots: T[]) {
@@ -285,8 +597,47 @@ function selectBestStockShots<T extends StockShot>(shots: T[], sampleSize: numbe
     .slice(0, sampleSize);
 }
 
-function isSandWedgeClubType(value: string | null | undefined) {
-  return value?.trim().toLowerCase() === "sw";
+function filterStockOutliers<T extends StockShot>(shots: T[]) {
+  const carryValues = shots.map((shot) => shot.carryYd).filter(isNumber);
+
+  if (carryValues.length === 0) {
+    return [];
+  }
+
+  const rawMedian = median(carryValues);
+  const mad = median(carryValues.map((value) => Math.abs(value - rawMedian)));
+  const maxDeviation = mad === 0 ? Number.POSITIVE_INFINITY : mad * 2.5;
+
+  return shots.filter((shot) => {
+    if (shot.carryYd === null) {
+      return false;
+    }
+
+    return Math.abs(shot.carryYd - rawMedian) <= maxDeviation;
+  });
+}
+
+function isScoringWedgeClubType(value: string | null | undefined) {
+  return SCORING_WEDGE_CLUB_TYPES.has(value?.trim().toLowerCase() ?? "");
+}
+
+function calculateCoursePlayCarryYd(
+  bestStockCarryYd: number | null,
+  latestReliableCarryYd: number | null,
+) {
+  if (bestStockCarryYd === null || latestReliableCarryYd === null) {
+    return null;
+  }
+
+  const roundedBestStock = roundToNearest(bestStockCarryYd, 5);
+  const roundedLatestReliable = roundToNearest(latestReliableCarryYd, 5);
+  const roundedMidpoint = roundToNearest((bestStockCarryYd + latestReliableCarryYd) / 2, 5);
+
+  return clamp(
+    roundedMidpoint,
+    Math.min(roundedBestStock, roundedLatestReliable),
+    Math.max(roundedBestStock, roundedLatestReliable),
+  );
 }
 
 function calculateConfidence(input: {
@@ -337,15 +688,39 @@ function stockLabel(
   return "Unstable";
 }
 
-function emptyStockYardage(rawSampleSize: number): StockYardage {
+function emptyStockYardage({
+  rawSampleSize,
+  latestReliableSampleSize = 0,
+  personalBestCarryYd = null,
+  stockExclusionReasons = [],
+  stockExclusionCount = 0,
+  shotRoleSummaries = [],
+}: {
+  rawSampleSize: number;
+  latestReliableSampleSize?: number;
+  personalBestCarryYd?: number | null;
+  stockExclusionReasons?: StockExclusionReason[];
+  stockExclusionCount?: number;
+  shotRoleSummaries?: StockShotRoleSummary[];
+}): StockYardage {
   return {
     sampleSize: 0,
     rawSampleSize,
     excludedCount: 0,
+    stockExclusionCount,
+    stockExclusionReasons,
+    shotRoleSummaries,
+    bestStockCarryYd: null,
+    personalBestCarryYd,
     carryMedianYd: null,
     carryMeanYd: null,
     carryP75Yd: null,
     carryP25Yd: null,
+    latestReliableSampleSize,
+    latestReliableCarryYd: null,
+    latestReliableCarryP25Yd: null,
+    latestReliableCarryP75Yd: null,
+    coursePlayCarryYd: null,
     bestSampleFloorYd: null,
     totalMedianYd: null,
     dispersionLeftYd: null,

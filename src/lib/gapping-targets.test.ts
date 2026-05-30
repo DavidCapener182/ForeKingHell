@@ -58,6 +58,38 @@ describe("personal gapping targets", () => {
     expect(nineIron?.targetMessage).not.toMatch(/take off/i);
   });
 
+  it("uses recommended gapping carries when they differ from best stock", () => {
+    const rows = buildPersonalGappingTargets([
+      club({
+        clubType: "5i",
+        carryYd: 164.1,
+        gappingCarryYd: 160,
+        confidenceScore: 84,
+        decisionLabel: "Trust",
+      }),
+      club({
+        clubType: "6i",
+        carryYd: 159.7,
+        gappingCarryYd: 148,
+        confidenceScore: 84,
+        decisionLabel: "Trust",
+      }),
+      club({
+        clubType: "7i",
+        carryYd: 154.3,
+        gappingCarryYd: 136,
+        confidenceScore: 84,
+        decisionLabel: "Trust",
+      }),
+    ]);
+
+    const sixIron = rows.find((row) => row.clubType === "6i");
+
+    expect(sixIron?.targetCarryYd).toBe(148);
+    expect(sixIron?.workOnYd).toBe(0);
+    expect(sixIron?.targetMessage).toBe("Distance healthy - focus consistency");
+  });
+
   it("keeps trusted scoring clubs focused on consistency", () => {
     const rows = buildPersonalGappingTargets(
       [

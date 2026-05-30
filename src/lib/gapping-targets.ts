@@ -3,6 +3,7 @@ export type GappingTargetTone = "green" | "sky" | "amber" | "pink" | "slate";
 export type PersonalGappingInput = {
   clubType: string;
   carryYd: number | null;
+  gappingCarryYd?: number | null;
   sampleSize: number;
   confidenceScore: number;
   decisionLabel?: string | null;
@@ -40,21 +41,23 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
   options: PersonalGappingTargetOptions = {},
 ): Array<T & PersonalGappingTarget> {
   const rowsWithCarry = rows
-    .map((row, index) => ({ row, index, carryYd: row.carryYd }))
+    .map((row, index) => ({ row, index, carryYd: gappingCarryYd(row) }))
     .filter((entry): entry is CarryEntry<T> => isFiniteNumber(entry.carryYd));
   const targetGapYd = personalTargetGap(rowsWithCarry);
   const firstCarry = rowsWithCarry[0] ?? null;
   let previousTargetCarryYd: number | null = null;
 
   return rows.map((row, index) => {
-    if (!isFiniteNumber(row.carryYd) || targetGapYd === null) {
+    const rowGappingCarryYd = gappingCarryYd(row);
+
+    if (!isFiniteNumber(rowGappingCarryYd) || targetGapYd === null) {
       return {
         ...row,
         targetCarryYd: null,
         targetPlayNumberYd: null,
         workOnYd: null,
         targetGapYd,
-        targetMessage: isFiniteNumber(row.carryYd)
+        targetMessage: isFiniteNumber(rowGappingCarryYd)
           ? "Need another club for gapping"
           : "Need carry samples",
         targetTone: "slate",
@@ -64,11 +67,14 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
 
     const next = findNextCarry(rowsWithCarry, index);
     const previousGapYd =
-      previousTargetCarryYd === null ? null : roundOne(previousTargetCarryYd - row.carryYd);
-    const nextGapYd = next ? roundOne(row.carryYd - next.carryYd) : null;
+      previousTargetCarryYd === null ? null : roundOne(previousTargetCarryYd - rowGappingCarryYd);
+    const nextGapYd = next ? roundOne(rowGappingCarryYd - next.carryYd) : null;
     const ladderOpportunityYd =
       firstCarry && index > firstCarry.index
-        ? Math.max(0, firstCarry.carryYd - targetGapYd * (index - firstCarry.index) - row.carryYd)
+        ? Math.max(
+            0,
+            firstCarry.carryYd - targetGapYd * (index - firstCarry.index) - rowGappingCarryYd,
+          )
         : 0;
     const gapOpportunityYd = Math.max(
       ladderOpportunityYd,
@@ -86,7 +92,7 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
         : Math.max(0, previousGapYd - HEALTHY_GAP_MIN_YD);
     const rawIncreaseYd = Math.min(gapOpportunityYd, progressionCapYd, previousGapRoomYd);
     const targetIncreaseYd = rawIncreaseYd >= MIN_TARGET_INCREASE_YD ? roundOne(rawIncreaseYd) : 0;
-    const targetCarryYd = roundOne(row.carryYd + targetIncreaseYd);
+    const targetCarryYd = roundOne(rowGappingCarryYd + targetIncreaseYd);
     const recommendation = targetRecommendation(row, {
       targetIncreaseYd,
       previousGapYd,
@@ -105,6 +111,10 @@ export function buildPersonalGappingTargets<T extends PersonalGappingInput>(
       targetPriorityYd: targetIncreaseYd,
     };
   });
+}
+
+function gappingCarryYd(row: PersonalGappingInput) {
+  return isFiniteNumber(row.gappingCarryYd) ? row.gappingCarryYd : row.carryYd;
 }
 
 function targetRecommendation(
@@ -130,7 +140,7 @@ function targetRecommendation(
     (input.previousGapYd !== null && input.previousGapYd < HEALTHY_GAP_MIN_YD) ||
     (input.nextGapYd !== null && input.nextGapYd < HEALTHY_GAP_MIN_YD)
   ) {
-    return { message: "Gap slightly compressed", tone: "amber" };
+    return { message: "Watch compressed gap", tone: "amber" };
   }
 
   if (hasLaunchWindowOpportunity(row)) {

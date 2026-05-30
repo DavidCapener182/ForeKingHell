@@ -68,6 +68,7 @@ function club(type: string, playNumberYd: number | null, label: StockYardage["la
     type,
     stock: {
       carryMedianYd: playNumberYd,
+      coursePlayCarryYd: playNumberYd,
       recommendedPlayNumberYd: playNumberYd,
       confidenceScore: label === "Reliable" ? 82 : label === "Developing" ? 58 : 20,
       label,

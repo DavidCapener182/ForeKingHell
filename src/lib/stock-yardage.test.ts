@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculatePersonalBestTotalYd,
   calculateStockCarryTrend,
   calculateStockYardage,
+  classifyStockShotRole,
+  explainStockExclusions,
+  selectLatestReliableStockShots,
+  selectPersonalBestCarryShot,
+  selectPersonalBestTotalShot,
   selectStockYardageShots,
+  summarizeStockShotRoles,
 } from "@/lib/stock-yardage";
 
 describe("calculateStockYardage", () => {
@@ -23,7 +30,14 @@ describe("calculateStockYardage", () => {
     expect(result.totalMedianYd).toBe(161.5);
     expect(result.dispersionLeftYd).toBe(8);
     expect(result.dispersionRightYd).toBe(6);
-    expect(result.recommendedPlayNumberYd).toBe(150);
+    expect(result.bestStockCarryYd).toBe(151.5);
+    expect(result.personalBestCarryYd).toBe(153);
+    expect(result.stockExclusionReasons).toEqual([
+      { key: "outlier", label: "Outlier filter", count: 1 },
+    ]);
+    expect(result.latestReliableCarryYd).toBeNull();
+    expect(result.coursePlayCarryYd).toBeNull();
+    expect(result.recommendedPlayNumberYd).toBeNull();
   });
 
   it("excludes chip, pitch, recovery, mishit, and bad-data rows", () => {
@@ -39,9 +53,10 @@ describe("calculateStockYardage", () => {
 
     expect(result.sampleSize).toBe(2);
     expect(result.carryMedianYd).toBe(141);
+    expect(result.stockExclusionCount).toBe(5);
   });
 
-  it("uses sand wedge shots at 40 yards and above while ignoring chip-distance shots", () => {
+  it("keeps sand wedge chips and pitches out of full-stock yardage", () => {
     const result = calculateStockYardage(
       [
         { ...shot(48, 52, 2), clubType: "sw", courseHoleNumber: 4, shotCategory: "pitch" },
@@ -53,8 +68,8 @@ describe("calculateStockYardage", () => {
       { clubType: "sw" },
     );
 
-    expect(result.sampleSize).toBe(3);
-    expect(result.carryMedianYd).toBe(52);
+    expect(result.sampleSize).toBe(0);
+    expect(result.carryMedianYd).toBeNull();
   });
 
   it("uses the upper sand wedge cluster for full-stock carry when partial wedges dominate", () => {
@@ -139,12 +154,182 @@ describe("calculateStockYardage", () => {
 
     expect(result.sampleSize).toBe(20);
     expect(result.carryMedianYd).toBe(145.5);
+    expect(result.bestStockCarryYd).toBe(145.5);
+    expect(result.personalBestCarryYd).toBe(156);
     expect(result.bestSampleFloorYd).toBe(136);
     expect(sampleIds).toContain("new-best");
     expect(sampleIds).toContain("baseline-154");
     expect(sampleIds).toContain("baseline-136");
     expect(sampleIds).not.toContain("baseline-135");
     expect(sampleIds).not.toContain("baseline-130");
+  });
+
+  it("shows a one-off clean personal best without turning Best Stock into the max", () => {
+    const steadyDriver = Array.from({ length: 20 }, (_, index) => ({
+      ...shot(210, 225, 0, dateForSequence(index)),
+      id: `steady-${index}`,
+    }));
+    const personalBest = { ...shot(227, 241, 0, dateForSequence(25)), id: "pb-driver" };
+    const allShots = [...steadyDriver, personalBest];
+    const result = calculateStockYardage(allShots, allShots.length, { clubType: "driver" });
+    const personalBestShot = selectPersonalBestCarryShot(allShots, allShots.length, {
+      clubType: "driver",
+    });
+
+    expect(result.bestStockCarryYd).toBe(210);
+    expect(result.personalBestCarryYd).toBe(227);
+    expect(personalBestShot?.id).toBe("pb-driver");
+  });
+
+  it("tracks clean personal best total separately from carry", () => {
+    const shots = [
+      { ...shot(210, 241, 0, dateForSequence(1)), id: "long-total" },
+      { ...shot(227, 238, 0, dateForSequence(2)), id: "long-carry" },
+      { ...shot(235, 260, 0, dateForSequence(3)), id: "bad-data", qualityTag: "bad_data" },
+    ];
+    const personalBestCarryShot = selectPersonalBestCarryShot(shots, shots.length, {
+      clubType: "driver",
+    });
+    const personalBestTotalShot = selectPersonalBestTotalShot(shots, shots.length, {
+      clubType: "driver",
+    });
+
+    expect(personalBestCarryShot?.id).toBe("long-carry");
+    expect(personalBestTotalShot?.id).toBe("long-total");
+    expect(calculatePersonalBestTotalYd(shots, shots.length, { clubType: "driver" })).toBe(241);
+  });
+
+  it("uses latest reliable carry from recent chronological shots, not longest shots", () => {
+    const olderBest = Array.from({ length: 20 }, (_, index) =>
+      shot(220, 235, 0, dateForSequence(index)),
+    );
+    const latestNormal = Array.from({ length: 20 }, (_, index) =>
+      shot(200, 214, 0, dateForSequence(index + 20)),
+    );
+    const allShots = [...olderBest, ...latestNormal];
+    const result = calculateStockYardage(allShots, allShots.length);
+    const latestSample = selectLatestReliableStockShots(allShots, allShots.length);
+
+    expect(result.bestStockCarryYd).toBe(220);
+    expect(result.latestReliableSampleSize).toBe(20);
+    expect(result.latestReliableCarryYd).toBe(200);
+    expect(result.latestReliableCarryP25Yd).toBe(200);
+    expect(result.latestReliableCarryP75Yd).toBe(200);
+    expect(result.coursePlayCarryYd).toBe(210);
+    expect(latestSample.filteredShots.every((sampleShot) => sampleShot.carryYd === 200)).toBe(true);
+  });
+
+  it("adds a latest reliable carry window from the recent filtered sample", () => {
+    const olderBest = Array.from({ length: 20 }, (_, index) =>
+      shot(220, 235, 0, dateForSequence(index)),
+    );
+    const latestWindow = [
+      192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210,
+      211,
+    ].map((carryYd, index) => shot(carryYd, carryYd + 12, 0, dateForSequence(index + 20)));
+    const result = calculateStockYardage([...olderBest, ...latestWindow], 50);
+
+    expect(result.latestReliableCarryYd).toBe(201.5);
+    expect(result.latestReliableCarryP25Yd).toBe(196.8);
+    expect(result.latestReliableCarryP75Yd).toBe(206.3);
+  });
+
+  it("hybrid course play keeps an optimistic driver and honest pitching wedge number", () => {
+    const driverShots = [
+      ...Array.from({ length: 20 }, (_, index) => shot(220, 235, 0, dateForSequence(index))),
+      ...Array.from({ length: 20 }, (_, index) => shot(200, 214, 0, dateForSequence(index + 20))),
+    ];
+    const pitchingWedgeShots = [
+      ...Array.from({ length: 20 }, (_, index) => shot(125, 132, 0, dateForSequence(index))),
+      ...Array.from({ length: 20 }, (_, index) => shot(115, 120, 0, dateForSequence(index + 20))),
+    ];
+
+    expect(calculateStockYardage(driverShots, driverShots.length).coursePlayCarryYd).toBe(210);
+    expect(
+      calculateStockYardage(pitchingWedgeShots, pitchingWedgeShots.length).coursePlayCarryYd,
+    ).toBe(120);
+  });
+
+  it("classifies wedge roles and keeps only full wedge shots in stock samples", () => {
+    const shots = [
+      { ...shot(22, 25, 1), id: "chip", clubType: "sw", shotCategory: "chip" },
+      { ...shot(52, 57, 1), id: "pitch", clubType: "sw", shotCategory: "full" },
+      { ...shot(84, 88, 1), id: "full-1", clubType: "sw", shotCategory: "full" },
+      { ...shot(92, 96, 1), id: "full-2", clubType: "sw", shotCategory: "full" },
+    ];
+    const sample = selectStockYardageShots(shots, 50, { clubType: "sw" });
+    const roleSummaries = summarizeStockShotRoles(shots, 50, { clubType: "sw" });
+
+    expect(classifyStockShotRole(shots[0], { clubType: "sw" })).toBe("chip-touch");
+    expect(classifyStockShotRole(shots[1], { clubType: "sw" })).toBe("pitch");
+    expect(classifyStockShotRole(shots[2], { clubType: "sw" })).toBe("full");
+    expect(sample.filteredShots.map((sampleShot) => sampleShot.id)).toEqual(["full-2", "full-1"]);
+    expect(roleSummaries).toEqual([
+      {
+        role: "full",
+        sampleSize: 2,
+        carryMedianYd: 88,
+        carryP25Yd: 86,
+        carryP75Yd: 90,
+        longestCarryYd: 92,
+      },
+      {
+        role: "pitch",
+        sampleSize: 1,
+        carryMedianYd: 52,
+        carryP25Yd: 52,
+        carryP75Yd: 52,
+        longestCarryYd: 52,
+      },
+      {
+        role: "chip-touch",
+        sampleSize: 1,
+        carryMedianYd: 22,
+        carryP25Yd: 22,
+        carryP75Yd: 22,
+        longestCarryYd: 22,
+      },
+    ]);
+  });
+
+  it("explains why rows did not feed the best-stock sample", () => {
+    const rows = [
+      ...Array.from({ length: 21 }, (_, index) =>
+        shot(150 + index, 165, 0, dateForSequence(index)),
+      ),
+      { ...shot(25, 28, 0, dateForSequence(30)), clubType: "sw", shotCategory: "chip" },
+      { ...shot(50, 55, 0, dateForSequence(31)), clubType: "sw", shotCategory: "full" },
+      { ...shot(180, 190, 0, dateForSequence(32)), qualityTag: "mishit" },
+      { ...shot(0, 0, 0, dateForSequence(33)), carryYd: null },
+    ];
+    const reasons = explainStockExclusions(rows, rows.length, { clubType: "sw" });
+
+    expect(reasons).toEqual(
+      expect.arrayContaining([
+        { key: "best-stock-rank", label: "Outside top-20 sample", count: 1 },
+        { key: "shot-category", label: "Chip/pitch/recovery", count: 1 },
+        { key: "shot-role", label: "Derived wedge role", count: 1 },
+        { key: "quality-tag", label: "Quality tag", count: 1 },
+        { key: "missing-carry", label: "Missing carry", count: 1 },
+      ]),
+    );
+  });
+
+  it("does not lock sand wedge course play until enough full-role shots exist", () => {
+    const result = calculateStockYardage(
+      Array.from({ length: 9 }, (_, index) => ({
+        ...shot(80 + index, 85 + index, 0, dateForSequence(index)),
+        clubType: "sw",
+      })),
+      50,
+      { clubType: "sw" },
+    );
+
+    expect(result.sampleSize).toBe(9);
+    expect(result.bestStockCarryYd).toBe(84);
+    expect(result.latestReliableSampleSize).toBe(9);
+    expect(result.latestReliableCarryYd).toBeNull();
+    expect(result.coursePlayCarryYd).toBeNull();
   });
 
   it("reports when the latest clean carry window is trending better", () => {
@@ -211,4 +396,8 @@ function shot(
 
 function dateForDay(day: number) {
   return `2026-05-${day.toString().padStart(2, "0")}T12:00:00.000Z`;
+}
+
+function dateForSequence(index: number) {
+  return new Date(Date.UTC(2026, 4, index + 1, 12)).toISOString();
 }

@@ -16,7 +16,7 @@ export type CourseDecisionClub = {
   isShortGameTouch?: boolean;
   stock: Pick<
     StockYardage,
-    "carryMedianYd" | "recommendedPlayNumberYd" | "confidenceScore" | "label"
+    "carryMedianYd" | "coursePlayCarryYd" | "recommendedPlayNumberYd" | "confidenceScore" | "label"
   >;
   touch?: {
     sampleSize: number;
@@ -82,11 +82,13 @@ export function getClubDecisionTone(label: ClubDecisionLabel): CourseDecisionTon
 export function buildCourseDecisionAdvice(clubs: CourseDecisionClub[]): CourseDecisionAdvice[] {
   const trustedStockClubs = clubs
     .map((club) => {
+      const playNumberYd = club.stock.coursePlayCarryYd ?? club.stock.recommendedPlayNumberYd;
+      const shortGameTouchOnly =
+        (club.isShortGameTouch ?? isShortGameTouchClubType(club.type)) && playNumberYd === null;
       const decisionLabel = getClubDecisionLabel({
-        isShortGameTouch: club.isShortGameTouch ?? isShortGameTouchClubType(club.type),
+        isShortGameTouch: shortGameTouchOnly,
         stockLabel: club.stock.label,
       });
-      const playNumberYd = club.stock.recommendedPlayNumberYd ?? club.stock.carryMedianYd;
 
       if ((decisionLabel !== "Trust" && decisionLabel !== "Developing") || playNumberYd === null) {
         return null;
@@ -168,7 +170,7 @@ function buildOneFiftyApproachAdvice(clubs: TrustedClub[]): CourseDecisionAdvice
       key: "150-approach",
       label: "150 yd approach",
       value: "Needs iron calibration",
-      detail: "Add clean mid-iron stock shots before trusting one course number here.",
+      detail: "Add clean mid-iron stock shots before trusting one recommended number here.",
       tone: "amber",
     };
   }
@@ -200,7 +202,7 @@ function buildInsideHundredAdvice(
   const fullWedge = trustedStockClubs
     .filter(
       (club) =>
-        isWedgeType(club.type) && !isShortGameTouchClubType(club.type) && club.playNumberYd <= 115,
+        isWedgeType(club.type) && club.playNumberYd <= 115,
     )
     .sort(
       (left, right) => Math.abs(left.playNumberYd - 100) - Math.abs(right.playNumberYd - 100),

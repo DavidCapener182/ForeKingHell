@@ -46,7 +46,11 @@ export type ClubAnalytics = {
   };
   distance: {
     stockCarryYd: number | null;
+    personalBestCarryYd: number | null;
     meanCarryYd: number | null;
+    latestReliableCarryYd: number | null;
+    latestReliableCarryP25Yd: number | null;
+    latestReliableCarryP75Yd: number | null;
     safeCarryYd: number | null;
     aggressiveCarryYd: number | null;
     p90CarryYd: number | null;
@@ -295,10 +299,14 @@ export function calculateClubAnalytics({
   const current = snapshot("Latest 30 clean shots", trendShots.slice(-30));
   const sessionComparison = compareLastTwoSessions(trendShots);
   const monthlyDelta = windowDelta(trendShots, "This month vs last month", 30, 60);
-  const gapping = buildGappingProfile(clubType, stock.carryMedianYd, bagContext);
+  const gapping = buildGappingProfile(clubType, stock.bestStockCarryYd, bagContext);
   const distance = {
-    stockCarryYd: stock.carryMedianYd,
+    stockCarryYd: stock.bestStockCarryYd,
+    personalBestCarryYd: stock.personalBestCarryYd,
     meanCarryYd: stock.carryMeanYd,
+    latestReliableCarryYd: stock.latestReliableCarryYd,
+    latestReliableCarryP25Yd: stock.latestReliableCarryP25Yd,
+    latestReliableCarryP75Yd: stock.latestReliableCarryP75Yd,
     safeCarryYd: roundOne(percentile(carryValues, 0.25)),
     aggressiveCarryYd: roundOne(percentile(carryValues, 0.75)),
     p90CarryYd: roundOne(percentile(carryValues, 0.9)),
@@ -306,7 +314,7 @@ export function calculateClubAnalytics({
     mishitFloorYd: roundOne(percentile(carryValues, 0.1)),
     totalMedianYd: stock.totalMedianYd,
     carrySpreadYd: roundOne(interquartileRange(carryValues)),
-    stockPlayNumberYd: stock.recommendedPlayNumberYd,
+    stockPlayNumberYd: stock.coursePlayCarryYd,
     doNotForceOverYd: roundOne(percentile(carryValues, 0.75)),
   };
   const accuracy = {
@@ -636,11 +644,11 @@ function buildDecision(input: {
   });
   const pressureUse =
     trustVerdict === "Trusted"
-      ? `Use it normally under pressure. Play ${formatNullableYards(input.distance.stockPlayNumberYd)} as the course number.`
+      ? `Use it normally under pressure. Recommended number is ${formatNullableYards(input.distance.stockPlayNumberYd)}.`
       : trustVerdict === "Playable"
         ? `Use it when the ${missText} is safe. Club up instead of forcing more than ${formatNullableYards(input.distance.doNotForceOverYd)}.`
         : trustVerdict === "Developing"
-          ? "Use it only when the miss pattern has room. Treat the stock number as a range, not a promise."
+          ? "Use it only when the miss pattern has room. Treat the best-stock number as a range, not a promise."
           : "Do not make this a pressure club yet. Build cleaner full-shot samples first.";
 
   return {
