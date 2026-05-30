@@ -51,6 +51,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   getDashboardData,
   type DashboardData,
@@ -1481,7 +1482,8 @@ function DashboardSummaryHero({
                 : "Import a clean CSV, then build the first club-specific practice recommendation."}
             </p>
           </div>
-          <span className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#087A3D] px-4 text-sm font-semibold text-white transition-colors group-hover:bg-[#065F32]">
+          <ShotTraceMotif className="mt-5 h-9 w-full text-emerald-700/70" />
+          <span className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#087A3D] px-4 text-sm font-semibold text-white transition-colors group-hover:bg-[#065F32]">
             Start practice
             <ArrowRight className="size-4" />
           </span>
