@@ -31,6 +31,7 @@ import {
   DataTableFrame,
   MobileAccordionSection,
   MobileBentoSummary,
+  MobileCompanionAccordion,
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
@@ -43,7 +44,6 @@ import {
 import {
   MobileAppShell,
   MobileRouteTabs,
-  MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
   NativeListSection,
@@ -196,22 +196,6 @@ export default async function BagPage({ searchParams }: PageProps) {
           ]}
         />
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-        <MobileStatusAction
-          label="Gapping ladder"
-          value={bestClub ? formatClubType(bestClub.type) : "--"}
-          detail={
-            weakestGap
-              ? `Problem gap: ${formatClubType(weakestGap.clubType)} · ${workOnText(weakestGap)}`
-              : `${bag.length} clubs · ${totalShots} shots`
-          }
-          action={
-            <Button asChild className="premium-action rounded-full">
-              <Link href="/import" prefetch={false}>
-                Import
-              </Link>
-            </Button>
-          }
-        />
         <MobileBentoSummary
           items={[
             {
@@ -240,160 +224,150 @@ export default async function BagPage({ searchParams }: PageProps) {
             },
           ]}
         />
-        <MobileAccordionSection
-          title="Personal bests"
-          description={`${personalBestMetricLabel(personalBestMetric)} records by club.`}
-          count={`${bag.length} clubs`}
-        >
-          <NativeListSection title="Personal bests">
-            <div className="grid gap-3">
-              <PersonalBestMetricToggle metric={personalBestMetric} />
-              <PersonalBestRows clubs={bag} metric={personalBestMetric} />
-            </div>
-          </NativeListSection>
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Full gapping ladder"
-          description="Recommended view, with best stock, latest reliable and personal best still shown in the cards."
-          count={`${gappingRows.length} clubs`}
-        >
-          <NativeListSection title="Gapping">
-            <ProgressCard
-              title="Bag trust"
-              value={`${averageConfidence}%`}
-              detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
-            >
-              <div className="grid gap-2">
-                {gappingRows.slice(0, 8).map((row) => {
-                  const visualCarry = visualCarryYd(row);
-
-                  return (
-                    <Link
-                      key={row.id}
-                      href={`/bag/${row.id}`}
-                      prefetch={false}
-                      className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
-                    >
-                      <span className="font-semibold">{formatClubType(row.clubType)}</span>
-                      <span className="h-2 rounded-full bg-[#E5E7EB]">
-                        <span
-                          className="block h-2 rounded-full bg-[#0B7A3B]"
-                          style={{
-                            width: `${carryWidthPercent(visualCarry, maxDisplayCarry)}%`,
-                          }}
-                        />
-                      </span>
-                      <span className="font-semibold">{formatCarryYards(visualCarry)}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </ProgressCard>
-            <div className="grid grid-cols-2 gap-2">
-              <PBCard
-                title="Best club"
-                value={bestClub ? formatClubType(bestClub.type) : "--"}
-                detail="Highest trust"
-              />
-              <PBCard
-                title="Weakest gap"
-                value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
-                detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
-              />
-            </div>
-          </NativeListSection>
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Gapping doctor"
-          description="Overlap, missing yardage and weak samples."
-          count={`${bagDoctorFindings.length} checks`}
-        >
-          <NativeListSection title="Gapping doctor">
-            <div className="grid gap-2">
-              {bagDoctorFindings.slice(0, 3).map((finding) => (
-                <Link
-                  key={`${finding.title}-${finding.detail}`}
-                  href={finding.href ?? "/import"}
-                  prefetch={false}
-                  className="premium-rail-card rounded-lg p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">{finding.title}</p>
-                      <p className="mt-1 text-xs leading-5 text-[#6B7280]">{finding.detail}</p>
+        <MobileCompanionAccordion
+          items={[
+            {
+              value: "performance",
+              title: "Performance",
+              description: "Personal bests, gapping ladder and doctor.",
+              summary: `${gappingRows.length} clubs`,
+              children: (
+                <div className="grid gap-4">
+                  <NativeListSection title="Personal bests">
+                    <div className="grid gap-3">
+                      <PersonalBestMetricToggle metric={personalBestMetric} />
+                      <PersonalBestRows clubs={bag} metric={personalBestMetric} />
                     </div>
-                    <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </NativeListSection>
-        </MobileAccordionSection>
-        {wedgeRoleClubs.length > 0 ? (
-          <MobileAccordionSection
-            title="Wedge roles"
-            description="Full, pitch, and chip/touch windows."
-            count={`${wedgeRoleClubs.length} clubs`}
-          >
-            <NativeListSection title="Wedge roles">
-              <WedgeRoleCards clubs={wedgeRoleClubs} compact />
-            </NativeListSection>
-          </MobileAccordionSection>
-        ) : null}
-        {stockFilterClubs.length > 0 ? (
-          <MobileAccordionSection
-            title="Stock filters"
-            description="Why shots did not feed Best Stock."
-            count={`${stockFilterClubs.length} clubs`}
-          >
-            <NativeListSection title="Best-stock filters">
-              <StockFilterCards clubs={stockFilterClubs} compact />
-            </NativeListSection>
-          </MobileAccordionSection>
-        ) : null}
-        <MobileAccordionSection
-          title="Club rail"
-          description="Open any club detail."
-          count={`${bag.length} clubs`}
-        >
-          <NativeListSection title="Club rail">
-            <div
-              aria-label="Club rail"
-              tabIndex={0}
-              className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {bag.map((club, index) => (
-                <Link
-                  key={club.id}
-                  href={`/bag/${club.id}`}
-                  prefetch={false}
-                  className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
-                >
-                  <ClubArtwork
-                    clubType={club.type}
-                    brand={club.brand}
-                    model={club.model}
-                    alt=""
-                    className="h-14 rounded-lg"
-                    sizes="144px"
-                    priority={index === 0}
-                  />
-                  <span className="font-semibold">{formatClubType(club.type)}</span>
-                  <span className="text-sm text-[#6B7280]">
-                    {formatMetric(club.stock.bestStockCarryYd)} yd
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </NativeListSection>
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Fitting and benchmarks"
-          description="Feature checks, target links and club identities."
-          count="Full analysis"
-        >
-          <BagFeaturePanel data={featureData} />
-        </MobileAccordionSection>
+                  </NativeListSection>
+                  <NativeListSection title="Full gapping ladder">
+                    <ProgressCard
+                      title="Bag trust"
+                      value={`${averageConfidence}%`}
+                      detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
+                    >
+                      <div className="grid gap-2">
+                        {gappingRows.slice(0, 8).map((row) => {
+                          const visualCarry = visualCarryYd(row);
+
+                          return (
+                            <Link
+                              key={row.id}
+                              href={`/bag/${row.id}`}
+                              prefetch={false}
+                              className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
+                            >
+                              <span className="font-semibold">{formatClubType(row.clubType)}</span>
+                              <span className="h-2 rounded-full bg-[#E5E7EB]">
+                                <span
+                                  className="block h-2 rounded-full bg-[#0B7A3B]"
+                                  style={{
+                                    width: `${carryWidthPercent(visualCarry, maxDisplayCarry)}%`,
+                                  }}
+                                />
+                              </span>
+                              <span className="font-semibold">{formatCarryYards(visualCarry)}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </ProgressCard>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PBCard
+                        title="Best club"
+                        value={bestClub ? formatClubType(bestClub.type) : "--"}
+                        detail="Highest trust"
+                      />
+                      <PBCard
+                        title="Weakest gap"
+                        value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
+                        detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
+                      />
+                    </div>
+                  </NativeListSection>
+                  <NativeListSection title="Gapping doctor">
+                    <div className="grid gap-2">
+                      {bagDoctorFindings.slice(0, 3).map((finding) => (
+                        <Link
+                          key={`${finding.title}-${finding.detail}`}
+                          href={finding.href ?? "/import"}
+                          prefetch={false}
+                          className="premium-rail-card rounded-lg p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold">{finding.title}</p>
+                              <p className="mt-1 text-xs leading-5 text-[#6B7280]">
+                                {finding.detail}
+                              </p>
+                            </div>
+                            <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </NativeListSection>
+                </div>
+              ),
+            },
+            {
+              value: "bag-setup",
+              title: "Bag setup",
+              description: "Wedge roles, stock filters and club rail.",
+              summary: `${bag.length} clubs`,
+              children: (
+                <div className="grid gap-4">
+                  {wedgeRoleClubs.length > 0 ? (
+                    <NativeListSection title="Wedge roles">
+                      <WedgeRoleCards clubs={wedgeRoleClubs} compact />
+                    </NativeListSection>
+                  ) : null}
+                  {stockFilterClubs.length > 0 ? (
+                    <NativeListSection title="Best-stock filters">
+                      <StockFilterCards clubs={stockFilterClubs} compact />
+                    </NativeListSection>
+                  ) : null}
+                  <NativeListSection title="Club rail">
+                    <div
+                      aria-label="Club rail"
+                      tabIndex={0}
+                      className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    >
+                      {bag.map((club, index) => (
+                        <Link
+                          key={club.id}
+                          href={`/bag/${club.id}`}
+                          prefetch={false}
+                          className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
+                        >
+                          <ClubArtwork
+                            clubType={club.type}
+                            brand={club.brand}
+                            model={club.model}
+                            alt=""
+                            className="h-14 rounded-lg"
+                            sizes="144px"
+                            priority={index === 0}
+                          />
+                          <span className="font-semibold">{formatClubType(club.type)}</span>
+                          <span className="text-sm text-[#6B7280]">
+                            {formatMetric(club.stock.bestStockCarryYd)} yd
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </NativeListSection>
+                </div>
+              ),
+            },
+            {
+              value: "fitting",
+              title: "Fitting and benchmarks",
+              description: "Feature checks, target links and club identities.",
+              summary: "Full analysis",
+              children: <BagFeaturePanel data={featureData} compactMobile />,
+            },
+          ]}
+        />
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">

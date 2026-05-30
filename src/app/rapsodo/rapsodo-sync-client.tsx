@@ -274,6 +274,13 @@ export function RapsodoSyncClient({
     ? mobileStep
     : "preview";
   const activeMobileStepIndex = mobileSteps.findIndex((step) => step.id === visibleMobileStep);
+  const latestUnimportedSession = useMemo(
+    () =>
+      [...availableSessions].sort(
+        (left, right) => sessionTimestamp(right) - sessionTimestamp(left),
+      )[0] ?? null,
+    [availableSessions],
+  );
 
   const loadSessions = useCallback(
     async (options: { silent?: boolean } = {}) => {
@@ -620,26 +627,24 @@ export function RapsodoSyncClient({
         <MobileCompactPageHeader
           eyebrow={
             <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-              R-Cloud
+              Inbox
             </Badge>
           }
-          title="Rapsodo cloud sync"
-          description="Connect, choose sessions, preview shots, map clubs and import."
+          title="Rapsodo Inbox"
+          description="Review the newest unimported R-Cloud session first."
           metricLabel="Available"
           metricValue={availableSessions.length.toString()}
           metricDetail={status.connected ? `${newSessionCount} new` : "Signed out"}
-          action={
-            <Button
-              type="button"
-              size="sm"
-              disabled={!canSave}
-              onClick={savePreview}
-              className="premium-action rounded-lg"
-            >
-              <Upload className="size-4" />
-              Import
-            </Button>
-          }
+        />
+
+        <RapsodoInboxPrimaryCard
+          session={latestUnimportedSession}
+          connected={status.connected}
+          isPending={isPending}
+          loadingLabel={loadingLabel}
+          onConnect={() => setMobileStep("connect")}
+          onLoadSessions={() => void loadSessions()}
+          onPreviewSession={previewSession}
         />
 
         <MobileBentoSummary
@@ -852,11 +857,7 @@ export function RapsodoSyncClient({
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                   />
-                  <Button
-                    type="submit"
-                    className="premium-action w-full"
-                    disabled={isPending}
-                  >
+                  <Button type="submit" className="premium-action w-full" disabled={isPending}>
                     {loadingLabel === "Signing in" ? (
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
@@ -1100,9 +1101,7 @@ export function RapsodoSyncClient({
                   <Button
                     type="button"
                     variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
-                    className={
-                      clubSelectionMode === "recommendations" ? "premium-action" : ""
-                    }
+                    className={clubSelectionMode === "recommendations" ? "premium-action" : ""}
                     onClick={() => applyClubSelectionMode("recommendations")}
                     disabled={isPending}
                   >
@@ -1331,9 +1330,7 @@ export function RapsodoSyncClient({
                     <Button
                       type="button"
                       variant={courseImportMode === "scored_round" ? "default" : "outline"}
-                      className={
-                        courseImportMode === "scored_round" ? "premium-action" : ""
-                      }
+                      className={courseImportMode === "scored_round" ? "premium-action" : ""}
                       onClick={() => setCourseImportMode("scored_round")}
                       disabled={isPending}
                     >
@@ -1595,6 +1592,70 @@ function SaveConfirmationToast({
   );
 }
 
+function RapsodoInboxPrimaryCard({
+  session,
+  connected,
+  isPending,
+  loadingLabel,
+  onConnect,
+  onLoadSessions,
+  onPreviewSession,
+}: {
+  session: RapsodoSessionListItem | null;
+  connected: boolean;
+  isPending: boolean;
+  loadingLabel: string | null;
+  onConnect: () => void;
+  onLoadSessions: () => void;
+  onPreviewSession: (session: RapsodoSessionListItem) => void;
+}) {
+  return (
+    <section className="premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0B7A3B]">Newest unimported session</p>
+          <h2 className="mt-1 line-clamp-2 text-2xl font-semibold leading-tight tracking-normal">
+            {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
+          </h2>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            {session
+              ? `${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(
+                  session,
+                )} · ${
+                  session.shotCount === null
+                    ? "shots pending preview"
+                    : `${session.shotCount} shots`
+                }`
+              : connected
+                ? "Load Rapsodo after practice to pull the newest unimported session into this inbox."
+                : "Sign in once, then the newest practice session can be reviewed and imported here."}
+          </p>
+        </div>
+        {session?.isNew ? (
+          <Badge className="shrink-0 bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
+        ) : null}
+      </div>
+      <Button
+        type="button"
+        className="premium-action w-full rounded-lg"
+        disabled={isPending}
+        onClick={session ? () => onPreviewSession(session) : connected ? onLoadSessions : onConnect}
+      >
+        {loadingLabel === "Loading sessions" || loadingLabel === "Exporting CSV" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : session ? (
+          <Sparkles className="size-4" />
+        ) : connected ? (
+          <RefreshCw className="size-4" />
+        ) : (
+          <Cloud className="size-4" />
+        )}
+        {session ? "Review latest" : connected ? "Load sessions" : "Connect R-Cloud"}
+      </Button>
+    </section>
+  );
+}
+
 function RapsodoMobileStepper({
   steps,
   step,
@@ -1705,6 +1766,13 @@ function isCourseSession(session: RapsodoSessionListItem) {
     .join(" ")
     .toLowerCase()
     .includes("course");
+}
+
+function sessionTimestamp(session: RapsodoSessionListItem) {
+  const date = session.dateIso ?? session.firstSeenAt ?? "";
+  const timestamp = Date.parse(date);
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function formatSessionKind(session: RapsodoSessionListItem) {

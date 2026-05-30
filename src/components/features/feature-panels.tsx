@@ -52,11 +52,24 @@ function featureInsightKey(item: FeatureInsight, index: number) {
 export function ActionCentrePanel({
   data,
   layout = "default",
+  compactMobile = false,
 }: {
   data: FeatureIdeasData;
   layout?: "default" | "dashboard";
+  compactMobile?: boolean;
 }) {
   const isDashboard = layout === "dashboard";
+
+  if (compactMobile) {
+    return (
+      <div className="grid gap-2">
+        {data.dashboardActions.map((item) => (
+          <ActionInsightCard key={item.title} item={item} compact />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <DataPanel>
       <SectionHeader
@@ -114,7 +127,23 @@ function ActionInsightCard({ item, compact = false }: { item: FeatureInsight; co
   );
 }
 
-export function ImportQualityFeaturePanel({ data }: { data: FeatureIdeasData }) {
+export function ImportQualityFeaturePanel({
+  data,
+  compactMobile = false,
+}: {
+  data: FeatureIdeasData;
+  compactMobile?: boolean;
+}) {
+  if (compactMobile) {
+    return (
+      <div className="grid gap-2">
+        {data.importQuality.checks.map((item) => (
+          <InsightCard key={item.title} item={item} compact />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <DataPanel>
       <SectionHeader
@@ -188,7 +217,71 @@ export function ProviderHealthFeaturePanel({ data }: { data: FeatureIdeasData })
   );
 }
 
-export function BagFeaturePanel({ data }: { data: FeatureIdeasData }) {
+export function BagFeaturePanel({
+  data,
+  compactMobile = false,
+}: {
+  data: FeatureIdeasData;
+  compactMobile?: boolean;
+}) {
+  if (compactMobile) {
+    return (
+      <div className="grid gap-3">
+        <div className="grid gap-2">
+          {data.bagAlerts.slice(0, 4).map((item, index) => (
+            <InsightCard key={featureInsightKey(item, index)} item={item} compact />
+          ))}
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Target className="size-4 text-emerald-700" />
+            Target distance links
+          </p>
+          <div className="mt-3 grid gap-2">
+            {data.targetDistanceOptions.slice(2, 7).map((option) => (
+              <Link
+                key={option.target}
+                href={option.href}
+                prefetch={false}
+                className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+              >
+                <span className="font-semibold tabular-nums">{option.target} yd</span>
+                <span className="truncate text-muted-foreground">{option.clubName}</span>
+                <span
+                  className={
+                    option.gap === null
+                      ? "text-slate-500"
+                      : Math.abs(option.gap) <= 5
+                        ? "text-emerald-700"
+                        : "text-amber-700"
+                  }
+                >
+                  {option.playNumber === null ? "--" : `${option.playNumber} yd`}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-2">
+          {data.clubIdentities.slice(0, 4).map((club) => (
+            <Link
+              key={club.clubId}
+              href={club.href}
+              prefetch={false}
+              className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-semibold">{club.name}</p>
+                <StatusPill tone="green">{club.confidence}</StatusPill>
+              </div>
+              <p className="mt-2 text-muted-foreground">{club.purpose}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DataPanel>
       <SectionHeader
@@ -397,8 +490,65 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
   );
 }
 
-export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) {
+export function CoachPracticeFeaturePanel({
+  data,
+  compactMobile = false,
+}: {
+  data: FeatureIdeasData;
+  compactMobile?: boolean;
+}) {
   const top = data.practicePlan[0];
+
+  if (compactMobile) {
+    return (
+      <div className="grid gap-3">
+        {data.practicePlan.slice(0, 1).map((item) => (
+          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="font-semibold">{item.title}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+            <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+          </div>
+        ))}
+        {top ? (
+          <form
+            action={completePracticeDrillAction}
+            className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+          >
+            <input type="hidden" name="sourceId" value={top.id} />
+            <input type="hidden" name="title" value={top.title} />
+            <input type="hidden" name="focusArea" value={top.focusArea} />
+            <input type="hidden" name="clubId" value={top.clubId ?? ""} />
+            <input type="hidden" name="clubType" value={top.clubType ?? ""} />
+            <input type="hidden" name="targetShots" value={top.targetShots} />
+            <p className="text-sm font-semibold">Start 20-minute plan</p>
+            <p className="mt-1 text-sm text-muted-foreground">{top.detail}</p>
+            <Input
+              className="mt-3 bg-white"
+              type="number"
+              min={0}
+              max={200}
+              name="recordedShots"
+              aria-label="Recorded shots"
+              defaultValue={top.targetShots}
+            />
+            <Button type="submit" className="premium-action mt-2 w-full">
+              <CalendarCheck className="size-4" />
+              Mark drill complete
+            </Button>
+          </form>
+        ) : null}
+        {data.practicePlan.slice(1).map((item) => (
+          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="font-semibold">{item.title}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+            <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
+          </div>
+        ))}
+        <CoachChallengeForm data={data} />
+      </div>
+    );
+  }
+
   return (
     <DataPanel>
       <SectionHeader
@@ -495,10 +645,7 @@ export function CoachPracticeFeaturePanel({ data }: { data: FeatureIdeasData }) 
               aria-label="Recorded shots"
               defaultValue={top.targetShots}
             />
-            <Button
-              type="submit"
-              className="premium-action mt-2 w-full"
-            >
+            <Button type="submit" className="premium-action mt-2 w-full">
               <CalendarCheck className="size-4" />
               Mark drill complete
             </Button>
@@ -964,9 +1111,7 @@ function WeeklyRecapCard({ data }: { data: FeatureIdeasData }) {
           {data.weeklyRecap.generatedFrom.startsWith("openai") ? "AI" : "Rules"}
         </StatusPill>
       </div>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">
-        {data.weeklyRecap.coachNote}
-      </p>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">{data.weeklyRecap.coachNote}</p>
       <div className="mt-3 grid gap-1 text-sm">
         {data.weeklyRecap.practicePlan.slice(0, 3).map((step) => (
           <div
@@ -1092,26 +1237,14 @@ function CoachChallengeForm({ data }: { data: FeatureIdeasData }) {
         </p>
       </div>
       <input type="hidden" name="title" value={data.coachChallengeRecommendation.title} />
-      <input
-        type="hidden"
-        name="description"
-        value={data.coachChallengeRecommendation.detail}
-      />
-      <input
-        type="hidden"
-        name="clubId"
-        value={data.coachChallengeRecommendation.clubId ?? ""}
-      />
+      <input type="hidden" name="description" value={data.coachChallengeRecommendation.detail} />
+      <input type="hidden" name="clubId" value={data.coachChallengeRecommendation.clubId ?? ""} />
       <input
         type="hidden"
         name="clubType"
         value={data.coachChallengeRecommendation.clubType ?? ""}
       />
-      <input
-        type="hidden"
-        name="focusArea"
-        value={data.coachChallengeRecommendation.focusArea}
-      />
+      <input type="hidden" name="focusArea" value={data.coachChallengeRecommendation.focusArea} />
       <Button type="submit" variant="outline">
         <Trophy className="size-4" />
         Create challenge

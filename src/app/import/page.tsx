@@ -144,7 +144,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               description="Mapping, duplicates and eligibility."
               count={featureData.importQuality.metric}
             >
-              <ImportQualityFeaturePanel data={featureData} />
+              <ImportQualityFeaturePanel data={featureData} compactMobile />
             </MobileAccordionSection>
             <MobileAccordionSection
               title="Other sources"

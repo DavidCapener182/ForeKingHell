@@ -313,6 +313,27 @@ function SummaryMetric({
   );
 }
 
+function MobileTargetMetric({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: ReactNode;
+  tone?: PlanTone;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+      <p className="truncate text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
+        {label}
+      </p>
+      <p className={`mt-1 truncate text-base font-semibold ${planMetricSoftToneClasses[tone]}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function TargetDistanceSelector({
   rows,
   initialTargetYd = 150,
@@ -560,6 +581,25 @@ export function TargetDistanceSelector({
               </span>
             </div>
 
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:hidden">
+              <MobileTargetMetric label="Club" value={planTitle} tone={planTone} />
+              <MobileTargetMetric
+                label="Play number"
+                value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
+                tone="green"
+              />
+              <MobileTargetMetric
+                label="Trust"
+                value={plan ? `${plan.lowestTrust}%` : "--"}
+                tone={planTone}
+              />
+              <MobileTargetMetric
+                label="Dangerous miss"
+                value={plan ? formatPlanMiss(plan) : "--"}
+                tone={planTone}
+              />
+            </div>
+
             <div className="mt-4 hidden grid-cols-2 gap-3 rounded-xl bg-slate-50/80 px-4 py-3 shadow-inner sm:mt-6 sm:grid sm:grid-cols-4 sm:px-5 sm:py-4">
               <SummaryMetric
                 label="Planned total"
@@ -606,8 +646,8 @@ export function TargetDistanceSelector({
                   <div className="flex items-start gap-2">
                     <Lightbulb className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                     <p>
-                      <span className="font-semibold text-emerald-700">Tip:</span> Wind,
-                      elevation and lie can affect distances. Review conditions before committing.
+                      <span className="font-semibold text-emerald-700">Tip:</span> Wind, elevation
+                      and lie can affect distances. Review conditions before committing.
                     </p>
                   </div>
                 </div>

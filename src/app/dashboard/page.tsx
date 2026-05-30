@@ -39,8 +39,9 @@ import {
   CompactReadoutGrid,
   DataPair,
   DataPanel,
-  MobileAccordionSection,
   MobileBentoSummary,
+  MobileCompanionAccordion,
+  MobileCompanionHero,
   MobileHorizontalRail,
   PageHeader,
   PageShell,
@@ -50,8 +51,6 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { MobileStatusAction } from "@/components/mobile-sports";
-import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
   getDashboardData,
   type DashboardData,
@@ -580,12 +579,22 @@ type DashboardMetric = {
   tone: DashboardTone;
 };
 
-function RapsodoMobileInbox({
+function DashboardTodayCompanionHero({
   inbox,
   latestSession,
+  coachPreview,
+  firstSignal,
+  dataHealth,
+  primaryAction,
+  primaryActionLabel,
 }: {
   inbox: DashboardData["rapsodoInbox"];
   latestSession: DashboardData["recentSessions"][number] | null;
+  coachPreview: DashboardData["coachPreview"];
+  firstSignal: DashboardInsight | null;
+  dataHealth: FeatureIdeasData["dataHealth"];
+  primaryAction: string;
+  primaryActionLabel: string;
 }) {
   const latest = inbox.latest;
   const hasPending = inbox.pendingCount > 0 && Boolean(latest);
@@ -594,37 +603,54 @@ function RapsodoMobileInbox({
       ? `${integerFormatter.format(latest.shotCount)} shots`
       : "Preview shots";
   const sessionTitle = latest?.title ?? latestSession?.fileName ?? "Rapsodo session";
+  const actionHref = hasPending
+    ? "/rapsodo"
+    : coachPreview
+      ? `/bag/${coachPreview.clubId}/analytics`
+      : primaryAction;
+  const actionLabel = hasPending
+    ? "Review latest"
+    : coachPreview
+      ? "Start drill"
+      : primaryActionLabel;
+  const title = hasPending
+    ? "New Rapsodo session found"
+    : coachPreview
+      ? `${coachPreview.clubName}: ${coachPreview.issueLabel}`
+      : latestSession
+        ? "Latest session is saved"
+        : "Build today's baseline";
+  const description = hasPending
+    ? `${sessionTitle} is waiting. Confirm clubs, import it, then trust the bag update.`
+    : coachPreview
+      ? coachPreview.drill
+      : latestSession
+        ? `${formatDate(latestSession.date)} is saved. Check Rapsodo after the next session.`
+        : "Connect or import Rapsodo data before the dashboard asks you to compare, share or compete.";
 
   return (
-    <section className="premium-hero grid gap-3 p-4">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo inbox</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-normal text-foreground">
-            {hasPending
-              ? "New Rapsodo session found"
-              : latestSession
-                ? "No new Rapsodo sessions"
-                : "Start with Rapsodo"}
-          </h2>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {hasPending
-              ? `${sessionTitle} is waiting. Confirm clubs, import it, then check the bag update.`
-              : latestSession
-                ? "Your latest session is already saved. Check Rapsodo when you finish hitting balls."
-                : "Connect Rapsodo so the next practice session is ready to review on your phone."}
-          </p>
-        </div>
+    <MobileCompanionHero
+      eyebrow={
+        <StatusPill tone={hasPending ? "amber" : dataHealth.tone}>Today companion</StatusPill>
+      }
+      title={title}
+      description={description}
+      metricLabel={hasPending ? "Rapsodo inbox" : "Data trust"}
+      metricValue={
+        hasPending ? `${integerFormatter.format(inbox.pendingCount)} waiting` : dataHealth.metric
+      }
+      metricDetail={hasPending ? shotLabel : dataHealth.status}
+      action={
         <Button asChild size="sm" className="premium-action rounded-lg">
-          <Link href="/rapsodo" prefetch={false}>
-            {hasPending ? "Review & import" : "Check Rapsodo"}
+          <Link href={actionHref} prefetch={false}>
+            {actionLabel}
           </Link>
         </Button>
-      </div>
-
+      }
+    >
       <div className="grid grid-cols-3 gap-2">
         <MiniMetric
-          label={hasPending ? "Waiting" : "Latest"}
+          label="Rapsodo"
           value={
             hasPending
               ? integerFormatter.format(inbox.pendingCount)
@@ -633,10 +659,13 @@ function RapsodoMobileInbox({
                 : "Connect"
           }
         />
-        <MiniMetric label="Shots" value={hasPending ? shotLabel : "After sync"} />
-        <MiniMetric label="Clubs" value={hasPending ? "Confirm" : "Match next"} />
+        <MiniMetric
+          label="Signal"
+          value={coachPreview?.clubName ?? firstSignal?.value?.toString() ?? primaryActionLabel}
+        />
+        <MiniMetric label="Trust" value={dataHealth.metric ?? dataHealth.status} />
       </div>
-    </section>
+    </MobileCompanionHero>
   );
 }
 
@@ -669,46 +698,15 @@ function DashboardMobileLayout({
     <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
 
-      <RapsodoMobileInbox
+      <DashboardTodayCompanionHero
         inbox={data.rapsodoInbox}
         latestSession={data.recentSessions[0] ?? null}
+        coachPreview={data.coachPreview}
+        firstSignal={data.whatChanged[0] ?? null}
+        dataHealth={featureData.dataHealth}
+        primaryAction={primaryAction}
+        primaryActionLabel={primaryActionLabel}
       />
-
-      <MobileStatusAction
-        label="Latest signal"
-        value={data.coachPreview?.clubName ?? "Build baseline"}
-        detail={
-          data.coachPreview?.issueLabel ?? "Import a session to unlock your next recommendation."
-        }
-        action={
-          <Button
-            asChild
-            size="sm"
-            className="premium-action rounded-lg"
-          >
-            <Link
-              href={
-                data.coachPreview ? `/bag/${data.coachPreview.clubId}/analytics` : primaryAction
-              }
-              prefetch={false}
-            >
-              {data.coachPreview ? "Open" : primaryActionLabel}
-            </Link>
-          </Button>
-        }
-      />
-
-      <section id="today" className="scroll-mt-28">
-        <TodayPlan
-          latestSession={data.recentSessions[0] ?? null}
-          totalShots={data.stats.shotCount}
-          bestClub={data.bagPreview[0] ?? null}
-          biggestProblem={data.coachPreview}
-          firstSignal={data.whatChanged[0] ?? null}
-          primaryAction={primaryAction}
-          primaryActionLabel={primaryActionLabel}
-        />
-      </section>
 
       <MobileBentoSummary
         items={metrics.slice(0, 4).map((metric) => ({
@@ -719,330 +717,374 @@ function DashboardMobileLayout({
         }))}
       />
 
-      {data.stats.shotCount === 0 ? (
-        <MobileAccordionSection
-          title="First-run path"
-          description="Import, map clubs and read the first signal."
-          count="7 steps"
-        >
-          <DashboardFirstRunOnboarding />
-        </MobileAccordionSection>
-      ) : null}
-
-      <MobileAccordionSection
-        title="Can I trust this?"
-        description="Data health and mapping checks."
-        count={featureData.dataHealth.metric}
-      >
-        <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
-      </MobileAccordionSection>
-
-      <MobileAccordionSection
-        title="Action centre"
-        description="Fix data, practice and competition flow when needed."
-        count={`${featureData.dashboardActions.length} items`}
-      >
-        <ActionCentrePanel data={featureData} />
-      </MobileAccordionSection>
-
-      <MobileAccordionSection
-        title="On-course decisions"
-        description="Course-number reminders from the current bag map."
-        count={`${data.courseAdvice.length} reads`}
-      >
-        <DataPanel id="decisions" className="scroll-mt-28">
-          <SectionHeader
-            title="On-course decisions"
-            description="Course-number reminders from the current bag map."
-            action={
-              <Button asChild variant="outline">
-                <Link href="/bag" prefetch={false}>
-                  <Target className="size-4" />
-                  Full advice
-                </Link>
-              </Button>
-            }
-          />
-          <CardContent>
-            <CompactReadoutGrid
-              columnsClassName="md:grid-cols-3"
-              items={data.courseAdvice.slice(0, 3).map((item) => ({
-                label: item.label,
-                value: item.value,
-                detail: item.detail,
-                tone: item.tone,
-                href: item.clubId ? `/bag/${item.clubId}` : "/bag",
-              }))}
-            />
-          </CardContent>
-        </DataPanel>
-      </MobileAccordionSection>
-
-      <MobileAccordionSection
-        title="What changed?"
-        description="Latest imported-shot and round signals."
-        count={`${data.whatChanged.length} signals`}
-      >
-        <CompactReadoutGrid items={data.whatChanged} />
-      </MobileAccordionSection>
-
-      {pinnedDashboardSections.has("coach") ? (
-        <MobileAccordionSection
-          title="Next practice"
-          description="The current highest-value coach signal."
-          count={data.coachPreview?.clubName ?? "Waiting"}
-        >
-          <DataPanel>
-            <SectionHeader
-              title="Next practice"
-              description="The current highest-value coach signal."
-              action={<Crosshair className="size-5 text-pink-500" />}
-            />
-            <CardContent>
-              {data.coachPreview ? (
-                <Link
-                  href={`/bag/${data.coachPreview.clubId}/analytics`}
-                  prefetch={false}
-                  className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
+      <MobileCompanionAccordion
+        items={[
+          {
+            value: "performance",
+            title: "Performance",
+            description: "Changes, bag trust and latest round.",
+            summary: `${data.whatChanged.length} signals`,
+            children: (
+              <div className="grid gap-4">
+                <DashboardMobileGroup
+                  title="What changed"
+                  count={`${data.whatChanged.length} signals`}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <StatusPill tone={data.coachPreview.tone}>
-                        {data.coachPreview.issueLabel}
-                      </StatusPill>
-                      <p className="mt-3 text-3xl font-semibold tracking-normal">
-                        {data.coachPreview.clubName}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {data.coachPreview.reason}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-semibold">{data.coachPreview.trustIndex}%</p>
-                      <p className="text-xs text-muted-foreground">trust</p>
-                    </div>
-                  </div>
-                  <p className="mt-4 text-sm font-medium">{data.coachPreview.drill}</p>
-                  <Progress value={data.coachPreview.trustIndex} className="mt-4" />
-                </Link>
-              ) : (
-                <div className="apple-panel-strong p-5">
-                  <p className="font-semibold">No coach priority yet</p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Import a range session to unlock club-specific practice recommendations.
-                  </p>
-                  <Button asChild variant="outline" className="mt-4">
-                    <Link href="/coach" prefetch={false}>
-                      <Brain className="size-4" />
-                      Open coach
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </DataPanel>
-        </MobileAccordionSection>
-      ) : null}
-
-      <section id="tools" className="grid scroll-mt-28 gap-4">
-        <MobileAccordionSection
-          title="Tools"
-          description="Fast paths into the full command centre."
-          count={`${routeCards.length} pages`}
-        >
-          <MobileHorizontalRail
-            title="Key tools"
-            description="The fastest paths into today's golf work."
-            action={
-              <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
-                <Link href="/dashboard#tools" prefetch={false}>
-                  Tools
-                </Link>
-              </Button>
-            }
-            itemClassName="min-w-[68vw] max-w-[18rem]"
-          >
-            {routeCards.slice(0, 6).map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <Link
-                  key={`${card.title}-${card.href}`}
-                  href={card.href}
-                  prefetch={false}
-                  className="apple-panel-strong block min-h-28 p-3"
+                  <CompactReadoutGrid items={data.whatChanged} />
+                </DashboardMobileGroup>
+                {pinnedDashboardSections.has("bag") ? (
+                  <DashboardMobileBagConfidence clubs={data.bagPreview} />
+                ) : null}
+                {pinnedDashboardSections.has("rounds") ? (
+                  <DashboardMobileLatestRound latestRound={data.latestRound} />
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            value: "decisions",
+            title: "Decisions",
+            description: "Course reads and next practice.",
+            summary: data.coachPreview?.clubName ?? `${data.courseAdvice.length} reads`,
+            children: (
+              <div className="grid gap-4">
+                <DashboardMobileCourseDecisions items={data.courseAdvice} />
+                {pinnedDashboardSections.has("coach") ? (
+                  <DashboardMobileNextPractice
+                    coachPreview={data.coachPreview}
+                    primaryAction={primaryAction}
+                    primaryActionLabel={primaryActionLabel}
+                  />
+                ) : null}
+              </div>
+            ),
+          },
+          {
+            value: "data-trust",
+            title: "Data trust",
+            description: "Health, mapping and repair actions.",
+            summary: featureData.dataHealth.metric,
+            children: (
+              <div className="grid gap-4">
+                {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding compactMobile /> : null}
+                <DashboardMobileDataHealth dataHealth={featureData.dataHealth} />
+                <DashboardMobileGroup
+                  title="Action centre"
+                  count={`${featureData.dashboardActions.length} items`}
                 >
-                  <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
-                    <Icon className="size-5" />
-                  </div>
-                  <p className="font-semibold tracking-normal">{card.title}</p>
-                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                    {card.description}
-                  </p>
-                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                    {card.metric}
-                  </p>
-                </Link>
-              );
-            })}
-          </MobileHorizontalRail>
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Find a tool"
-          description="Search every route without turning Today into a directory."
-          count={`${routeCards.length} pages`}
-        >
-          <DashboardCommandPalette routes={commandRoutes} />
-        </MobileAccordionSection>
-      </section>
-
-      <section id="bag" className="grid scroll-mt-28 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-        {pinnedDashboardSections.has("bag") ? (
-          <MobileAccordionSection
-            title="Bag confidence"
-            description="Stock numbers and confidence by club."
-            count={`${data.bagPreview.length} clubs`}
-          >
-            <MobileHorizontalRail
-              title="Bag confidence"
-              description="Stock numbers and confidence by club."
-              action={
-                <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
-                  <Link href="/bag" prefetch={false}>
-                    View all
-                  </Link>
-                </Button>
-              }
-            >
-              {data.bagPreview.map((club) => (
-                <Link
-                  key={club.id}
-                  href={`/bag/${club.id}`}
-                  prefetch={false}
-                  className="apple-panel-strong block p-4"
-                >
-                  <p className="text-lg font-semibold tracking-normal">
-                    {formatClubType(club.type)}
-                  </p>
-                  <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
-                    <MiniMetric
-                      label="Play"
-                      value={formatYards(club.stock.recommendedPlayNumberYd)}
-                    />
-                    <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
-                    <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-1",
-                        club.stock.confidenceScore < 35
-                          ? "bg-rose-50 text-rose-700"
-                          : club.stock.confidenceScore < 60
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-emerald-50 text-emerald-700",
-                      )}
-                    >
-                      {club.stock.label}
-                    </span>
-                    {club.stock.sampleSize < 20 ? (
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                        Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
-                      </span>
-                    ) : null}
-                  </div>
-                  <Progress value={club.stock.confidenceScore} className="mt-3" />
-                </Link>
-              ))}
-            </MobileHorizontalRail>
-          </MobileAccordionSection>
-        ) : null}
-
-        {pinnedDashboardSections.has("rounds") ? (
-          <MobileAccordionSection
-            title="Latest round"
-            description="Newest round, simulator, or simulated-course file."
-            count={data.latestRound ? formatScoreVsPar(data.latestRound.totalScore, data.latestRound.totalPar) : "None"}
-          >
-            <DataPanel>
-              <SectionHeader
-                title="Latest round"
-                description="Newest round, simulator, or simulated-course file."
-                action={<Flag className="size-5 text-sky-500" />}
-              />
-              <CardContent>
-                {data.latestRound ? (
-                  <div className="space-y-4">
-                    <div className="apple-panel-strong p-4">
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(data.latestRound.date)} -{" "}
-                        {formatSessionType(data.latestRound.type)}
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold tracking-normal">
-                        {data.latestRound.courseName ??
-                          data.latestRound.fileName ??
-                          "Untitled round"}
-                      </p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                      <RoundMetric label="Score" value={data.latestRound.totalScore} />
-                      <RoundMetric label="Par" value={data.latestRound.totalPar} />
-                      <RoundMetric label="Putts" value={data.latestRound.totalPutts} />
-                      <RoundMetric
-                        label="Diff"
-                        value={formatHandicapValue(data.latestRound.handicapDifferential)}
-                      />
-                    </div>
-                    <Separator />
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Button asChild className="flex-1">
-                        <Link href={`/rounds/${data.latestRound.id}`} prefetch={false}>
-                          <Flag className="size-4" />
-                          Review round
-                        </Link>
-                      </Button>
-                      <Button asChild variant="outline" className="flex-1">
-                        <Link href="/rounds" prefetch={false}>
-                          All rounds
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="apple-panel p-6">
-                    <p className="font-medium">No round imports yet</p>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      Save a simulated-course CSV to unlock scorecards, hole review, and round shot
-                      maps.
-                    </p>
-                    <Button asChild variant="outline" className="mt-4">
-                      <Link href="/import" prefetch={false}>
-                        <Upload className="size-4" />
-                        Import round CSV
-                      </Link>
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </DataPanel>
-          </MobileAccordionSection>
-        ) : null}
-      </section>
-
-      <MobileAccordionSection
-        title="Social pulse"
-        description="Network moments and challenge prompts."
-        count={`${social.items.length} items`}
-      >
-        <DashboardMobileSocialPulse social={social} challenges={challenges} />
-      </MobileAccordionSection>
+                  <ActionCentrePanel data={featureData} layout="dashboard" compactMobile />
+                </DashboardMobileGroup>
+              </div>
+            ),
+          },
+          {
+            value: "more",
+            title: "More",
+            description: "Tools, route search and social pulse.",
+            summary: `${routeCards.length} tools`,
+            children: (
+              <div className="grid gap-4">
+                <DashboardMobileTools routeCards={routeCards} commandRoutes={commandRoutes} />
+                <DashboardMobileSocialPulse social={social} challenges={challenges} />
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
 
-function DashboardFirstRunOnboarding() {
+function DashboardMobileGroup({
+  title,
+  count,
+  description,
+  action,
+  children,
+}: {
+  title: ReactNode;
+  count?: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold tracking-normal">{title}</p>
+          {description ? (
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action ? (
+          <div className="shrink-0">{action}</div>
+        ) : count ? (
+          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+            {count}
+          </span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function DashboardMobileCourseDecisions({ items }: { items: DashboardData["courseAdvice"] }) {
+  return (
+    <DashboardMobileGroup
+      title="On-course decisions"
+      description="Course-number reminders from the current bag map."
+      count={`${items.length} reads`}
+      action={
+        <Button asChild variant="outline" size="sm" className="rounded-lg">
+          <Link href="/bag" prefetch={false}>
+            <Target className="size-4" />
+            Full advice
+          </Link>
+        </Button>
+      }
+    >
+      <CompactReadoutGrid
+        columnsClassName="md:grid-cols-3"
+        items={items.slice(0, 3).map((item) => ({
+          label: item.label,
+          value: item.value,
+          detail: item.detail,
+          tone: item.tone,
+          href: item.clubId ? `/bag/${item.clubId}` : "/bag",
+        }))}
+      />
+    </DashboardMobileGroup>
+  );
+}
+
+function DashboardMobileNextPractice({
+  coachPreview,
+  primaryAction,
+  primaryActionLabel,
+}: {
+  coachPreview: DashboardData["coachPreview"];
+  primaryAction: string;
+  primaryActionLabel: string;
+}) {
+  return (
+    <DashboardMobileGroup
+      title="Next practice"
+      description="The current highest-value coach signal."
+      count={coachPreview?.clubName ?? "Waiting"}
+    >
+      {coachPreview ? (
+        <Link
+          href={`/bag/${coachPreview.clubId}/analytics`}
+          prefetch={false}
+          className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <StatusPill tone={coachPreview.tone}>{coachPreview.issueLabel}</StatusPill>
+              <p className="mt-3 text-3xl font-semibold tracking-normal">{coachPreview.clubName}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{coachPreview.reason}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-semibold">{coachPreview.trustIndex}%</p>
+              <p className="text-xs text-muted-foreground">trust</p>
+            </div>
+          </div>
+          <p className="mt-4 text-sm font-medium">{coachPreview.drill}</p>
+          <Progress value={coachPreview.trustIndex} className="mt-4" />
+        </Link>
+      ) : (
+        <div className="apple-panel-strong p-5">
+          <p className="font-semibold">No coach priority yet</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Import a range session to unlock club-specific practice recommendations.
+          </p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href={primaryAction} prefetch={false}>
+              <Brain className="size-4" />
+              {primaryActionLabel}
+            </Link>
+          </Button>
+        </div>
+      )}
+    </DashboardMobileGroup>
+  );
+}
+
+function DashboardMobileBagConfidence({ clubs }: { clubs: DashboardData["bagPreview"] }) {
+  return (
+    <DashboardMobileGroup
+      title="Bag confidence"
+      description="Stock numbers and confidence by club."
+      count={`${clubs.length} clubs`}
+    >
+      <MobileHorizontalRail
+        action={
+          <Button asChild variant="outline" size="sm" className="min-h-10 rounded-lg">
+            <Link href="/bag" prefetch={false}>
+              View all
+            </Link>
+          </Button>
+        }
+      >
+        {clubs.map((club) => (
+          <Link
+            key={club.id}
+            href={`/bag/${club.id}`}
+            prefetch={false}
+            className="apple-panel-strong block p-4"
+          >
+            <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
+            <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <MiniMetric label="Carry" value={formatYards(club.stock.carryMedianYd)} />
+              <MiniMetric label="Play" value={formatYards(club.stock.recommendedPlayNumberYd)} />
+              <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
+              <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
+            </div>
+            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
+              <span
+                className={cn(
+                  "rounded-full px-2 py-1",
+                  club.stock.confidenceScore < 35
+                    ? "bg-rose-50 text-rose-700"
+                    : club.stock.confidenceScore < 60
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-emerald-50 text-emerald-700",
+                )}
+              >
+                {club.stock.label}
+              </span>
+              {club.stock.sampleSize < 20 ? (
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                  Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
+                </span>
+              ) : null}
+            </div>
+            <Progress value={club.stock.confidenceScore} className="mt-3" />
+          </Link>
+        ))}
+      </MobileHorizontalRail>
+    </DashboardMobileGroup>
+  );
+}
+
+function DashboardMobileLatestRound({
+  latestRound,
+}: {
+  latestRound: DashboardData["latestRound"];
+}) {
+  return (
+    <DashboardMobileGroup
+      title="Latest round"
+      description="Newest round, simulator, or simulated-course file."
+      count={latestRound ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar) : "None"}
+    >
+      {latestRound ? (
+        <div className="grid gap-4">
+          <div className="apple-panel-strong p-4">
+            <p className="text-sm text-muted-foreground">
+              {formatDate(latestRound.date)} - {formatSessionType(latestRound.type)}
+            </p>
+            <p className="mt-1 text-2xl font-semibold tracking-normal">
+              {latestRound.courseName ?? latestRound.fileName ?? "Untitled round"}
+            </p>
+          </div>
+          <div className="grid gap-3">
+            <RoundMetric label="Score" value={latestRound.totalScore} />
+            <RoundMetric label="Par" value={latestRound.totalPar} />
+            <RoundMetric label="Putts" value={latestRound.totalPutts} />
+            <RoundMetric
+              label="Diff"
+              value={formatHandicapValue(latestRound.handicapDifferential)}
+            />
+          </div>
+          <Separator />
+          <div className="flex flex-col gap-2">
+            <Button asChild className="flex-1">
+              <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
+                <Flag className="size-4" />
+                Review round
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="flex-1">
+              <Link href="/rounds" prefetch={false}>
+                All rounds
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="apple-panel p-6">
+          <p className="font-medium">No round imports yet</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
+          </p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import round CSV
+            </Link>
+          </Button>
+        </div>
+      )}
+    </DashboardMobileGroup>
+  );
+}
+
+function DashboardMobileTools({
+  routeCards,
+  commandRoutes,
+}: {
+  routeCards: DashboardRoute[];
+  commandRoutes: DashboardCommandRoute[];
+}) {
+  return (
+    <>
+      <DashboardMobileGroup
+        title="Tools"
+        description="Fast paths into the full command centre."
+        count={`${routeCards.length} pages`}
+      >
+        <MobileHorizontalRail itemClassName="min-w-[68vw] max-w-[18rem]">
+          {routeCards.slice(0, 6).map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <Link
+                key={`${card.title}-${card.href}`}
+                href={card.href}
+                prefetch={false}
+                className="apple-panel-strong block min-h-28 p-3"
+              >
+                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
+                  <Icon className="size-5" />
+                </div>
+                <p className="font-semibold tracking-normal">{card.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                  {card.description}
+                </p>
+                <p className="mt-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  {card.metric}
+                </p>
+              </Link>
+            );
+          })}
+        </MobileHorizontalRail>
+      </DashboardMobileGroup>
+      <DashboardMobileGroup
+        title="Find a tool"
+        description="Search every route without turning Today into a directory."
+        count={`${routeCards.length} pages`}
+      >
+        <DashboardCommandPalette routes={commandRoutes} />
+      </DashboardMobileGroup>
+    </>
+  );
+}
+
+function DashboardFirstRunOnboarding({ compactMobile = false }: { compactMobile?: boolean }) {
   const steps = [
     {
       title: "Welcome",
@@ -1088,6 +1130,55 @@ function DashboardFirstRunOnboarding() {
     },
   ];
 
+  const content = (
+    <>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
+        {steps.map((step, index) => (
+          <Link
+            key={step.title}
+            href={step.href}
+            prefetch={false}
+            className="apple-panel-strong p-3 text-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/35"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold">
+                {index + 1}
+              </span>
+              {step.ready ? (
+                <CheckCircle2 className="size-4 text-emerald-700" />
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground">Next</span>
+              )}
+            </div>
+            <p className="mt-3 font-semibold leading-5">{step.title}</p>
+            <p className="mt-1 leading-5 text-muted-foreground">{step.detail}</p>
+          </Link>
+        ))}
+      </div>
+      <div className="trust-indicator mt-3 rounded-lg p-3">
+        <p className="text-sm font-semibold">What happens to my data?</p>
+        <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
+          <p>Private by default.</p>
+          <p>You control profile, feed and leaderboard visibility.</p>
+          <p>Friends do not get account access.</p>
+          <p>Coach, viewer and editor access is separate.</p>
+        </div>
+      </div>
+    </>
+  );
+
+  if (compactMobile) {
+    return (
+      <DashboardMobileGroup
+        title="First-run path"
+        description="Import, map clubs and read the first signal."
+        count="7 steps"
+      >
+        {content}
+      </DashboardMobileGroup>
+    );
+  }
+
   return (
     <DataPanel id="first-run-onboarding" className="scroll-mt-28">
       <SectionHeader
@@ -1102,40 +1193,7 @@ function DashboardFirstRunOnboarding() {
           </Button>
         }
       />
-      <CardContent>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
-          {steps.map((step, index) => (
-            <Link
-              key={step.title}
-              href={step.href}
-              prefetch={false}
-              className="apple-panel-strong p-3 text-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/35"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold">
-                  {index + 1}
-                </span>
-                {step.ready ? (
-                  <CheckCircle2 className="size-4 text-emerald-700" />
-                ) : (
-                  <span className="text-xs font-medium text-muted-foreground">Next</span>
-                )}
-              </div>
-              <p className="mt-3 font-semibold leading-5">{step.title}</p>
-              <p className="mt-1 leading-5 text-muted-foreground">{step.detail}</p>
-            </Link>
-          ))}
-        </div>
-        <div className="trust-indicator mt-3 rounded-lg p-3">
-          <p className="text-sm font-semibold">What happens to my data?</p>
-          <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
-            <p>Private by default.</p>
-            <p>You control profile, feed and leaderboard visibility.</p>
-            <p>Friends do not get account access.</p>
-            <p>Coach, viewer and editor access is separate.</p>
-          </div>
-        </div>
-      </CardContent>
+      <CardContent>{content}</CardContent>
     </DataPanel>
   );
 }
@@ -1162,107 +1220,6 @@ function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasDat
   );
 }
 
-function TodayPlan({
-  latestSession,
-  totalShots,
-  bestClub,
-  biggestProblem,
-  firstSignal,
-  primaryAction,
-  primaryActionLabel,
-}: {
-  latestSession: DashboardData["recentSessions"][number] | null;
-  totalShots: number;
-  bestClub: DashboardData["bagPreview"][number] | null;
-  biggestProblem: DashboardData["coachPreview"];
-  firstSignal: DashboardInsight | null;
-  primaryAction: string;
-  primaryActionLabel: string;
-}) {
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Latest practice signal"
-        description="Start here: latest practice form, latest change, club costing you shots, and what to practise next."
-        action={
-          <div data-primary-action>
-            <Button
-              asChild
-              size="sm"
-              className="premium-action min-h-9 rounded-lg"
-            >
-              <Link
-                href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
-                prefetch={false}
-              >
-                {biggestProblem ? "Plan" : "Import"}
-              </Link>
-            </Button>
-          </div>
-        }
-      />
-      <CardContent>
-        <div className="premium-command-surface mb-3 flex items-center gap-3 rounded-lg p-3 sm:hidden">
-          <ShotTraceMotif className="h-14 w-20 shrink-0 text-emerald-700" />
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Latest readout
-            </p>
-            <p className="truncate text-sm font-semibold">
-              {biggestProblem
-                ? `${biggestProblem.clubName}: ${biggestProblem.issueLabel}`
-                : primaryActionLabel}
-            </p>
-          </div>
-        </div>
-        <div className="mb-3 sm:hidden" data-primary-action>
-          <Button asChild className="premium-action w-full rounded-lg">
-            <Link
-              href={biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction}
-              prefetch={false}
-            >
-              {biggestProblem ? "Open practice plan" : primaryActionLabel}
-            </Link>
-          </Button>
-        </div>
-        <CompactReadoutGrid
-          columnsClassName="md:grid-cols-2 xl:grid-cols-4"
-          items={[
-            {
-              label: "Latest session",
-              value: latestSession ? formatDate(latestSession.date) : "No import yet",
-              detail: latestSession
-                ? `${latestSession.shotCount} shots · ${formatSessionType(latestSession.type)}`
-                : "Import a CSV to build your baseline",
-              tone: "sky",
-            },
-            {
-              label: "Your game",
-              value: `${totalShots.toLocaleString("en-GB")} shots`,
-              detail: firstSignal ? firstSignal.detail : "Waiting for enough data to spot movement",
-              tone: firstSignal?.tone ?? "slate",
-            },
-            {
-              label: "Best club",
-              value: bestClub ? formatClubType(bestClub.type) : "--",
-              detail: bestClub
-                ? `${bestClub.decisionLabel} · ${bestClub.stock.confidenceScore}% confidence · ${bestClub.shotCount} shots`
-                : "Need a tracked club sample",
-              tone: "green",
-            },
-            {
-              label: "Practice priority",
-              value: biggestProblem?.clubName ?? primaryActionLabel,
-              detail: biggestProblem?.drill ?? "Import data or review the latest round",
-              tone: biggestProblem?.tone ?? "amber",
-              href: biggestProblem ? `/bag/${biggestProblem.clubId}/analytics` : primaryAction,
-            },
-          ]}
-        />
-      </CardContent>
-    </DataPanel>
-  );
-}
 function DashboardMobileSocialPulse({
   social,
   challenges,
@@ -1287,20 +1244,19 @@ function DashboardMobileSocialPulse({
     null;
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Social pulse"
-        description="Recent activity from your golf network."
-        action={
-          <Button asChild variant="outline">
-            <Link href="/feed" prefetch={false}>
-              <Radio className="size-4" />
-              Open feed
-            </Link>
-          </Button>
-        }
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+    <DashboardMobileGroup
+      title="Social pulse"
+      description="Recent activity from your golf network."
+      action={
+        <Button asChild variant="outline" size="sm" className="rounded-lg">
+          <Link href="/feed" prefetch={false}>
+            <Radio className="size-4" />
+            Open feed
+          </Link>
+        </Button>
+      }
+    >
+      <div className="grid gap-4">
         <CompactReadoutGrid
           columnsClassName="sm:grid-cols-2"
           items={[
@@ -1352,8 +1308,8 @@ function DashboardMobileSocialPulse({
             </p>
           )}
         </div>
-      </CardContent>
-    </DataPanel>
+      </div>
+    </DashboardMobileGroup>
   );
 }
 
@@ -1440,13 +1396,7 @@ function DashboardPanel({
   className?: string;
 }) {
   return (
-    <section
-      id={id}
-      className={cn(
-        "premium-card scroll-mt-28 rounded-lg",
-        className,
-      )}
-    >
+    <section id={id} className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-6 py-5">
         <div className="min-w-0">
           <h2 className="text-[20px] font-semibold leading-7 tracking-normal text-foreground">
@@ -1669,7 +1619,9 @@ function HeroInsightCard({
           <DashboardDot tone={tone} />
         )}
       </div>
-      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-foreground">{value}</p>
+      <p className="mt-2 text-[26px] font-bold leading-8 tracking-normal text-foreground">
+        {value}
+      </p>
       <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{detail}</p>
     </Link>
   );
@@ -1972,10 +1924,7 @@ function PracticeRecommendationCard({
   return (
     <section
       id="practice"
-      className={cn(
-        "premium-card scroll-mt-28 rounded-lg p-5 lg:p-6",
-        className,
-      )}
+      className={cn("premium-card scroll-mt-28 rounded-lg p-5 lg:p-6", className)}
     >
       {coachPreview ? (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px] xl:items-start">
@@ -2171,12 +2120,7 @@ function PerformanceSnapshot({
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "premium-card scroll-mt-28 rounded-lg",
-        className,
-      )}
-    >
+    <section className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
       <div className="flex items-start gap-4 px-5 py-5">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
           <BarChart3 className="size-6" />
@@ -2452,12 +2396,7 @@ function LatestRoundPanel({
   const holeHighlights = latestRound ? getRoundHoleHighlights(latestRound) : null;
 
   return (
-    <section
-      className={cn(
-        "premium-card scroll-mt-28 rounded-lg",
-        className,
-      )}
-    >
+    <section className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-5 py-5">
         <div className="flex min-w-0 items-start gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
@@ -2516,10 +2455,7 @@ function LatestRoundPanel({
             </div>
           ) : null}
           <div className="mt-5">
-            <Button
-              asChild
-              className="premium-action h-11 w-full rounded-lg text-sm font-semibold"
-            >
+            <Button asChild className="premium-action h-11 w-full rounded-lg text-sm font-semibold">
               <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
                 <Flag className="size-4" />
                 Review round

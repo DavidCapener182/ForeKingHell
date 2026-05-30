@@ -35,7 +35,6 @@ import type {
 import { UploadDropzone } from "@/app/import/upload-dropzone";
 import { useImportFiles } from "@/app/import/use-import-files";
 import {
-  MobileAccordionSection,
   MobileBentoSummary,
   MobileCompactPageHeader,
   StickyMobileAction,
@@ -706,25 +705,18 @@ export function ImportForm({
           ]}
         />
 
-        <MobileAccordionSection
-          title="Import checklist"
-          description="Status for upload, clubs, audit and save."
-          count={canSave ? "Ready" : "Review"}
-        >
-          <ImportFlowGuide
-            currentStep={visibleMobileStep}
-            isCourseUpload={isCourseUpload}
-            fileCount={aggregate.fileCount}
-            rowCount={aggregate.rowCount}
-            shotCount={aggregate.shotCount}
-            clubCount={aggregate.clubCount}
-            warningCount={aggregate.warnings.length}
-            courseHoleCount={scorecard.holes.length}
-            courseAssignedShotCount={courseAssignedShotCount}
-            canSave={canSave}
-            onStepChange={setMobileStep}
-          />
-        </MobileAccordionSection>
+        <MobileImportStatusStrip
+          currentStep={visibleMobileStep}
+          fileCount={aggregate.fileCount}
+          shotCount={aggregate.shotCount}
+          clubCount={aggregate.clubCount}
+          warningCount={aggregate.warnings.length}
+          isCourseUpload={isCourseUpload}
+          courseHoleCount={scorecard.holes.length}
+          courseAssignedShotCount={courseAssignedShotCount}
+          canSave={canSave}
+          onStepChange={setMobileStep}
+        />
 
         <div className="hidden sm:block">
           <ImportFlowGuide
@@ -819,11 +811,7 @@ export function ImportForm({
               {saveState.status === "success" ? (
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                   {saveState.savedSessionId ? (
-                    <Button
-                      asChild
-                      size="sm"
-                      className="premium-action"
-                    >
+                    <Button asChild size="sm" className="premium-action">
                       <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
                         <GitCompareArrows className="size-4" />
                         Compare this session
@@ -1154,6 +1142,117 @@ function MobileImportStepper({
   );
 }
 
+function MobileImportStatusStrip({
+  currentStep,
+  fileCount,
+  shotCount,
+  clubCount,
+  warningCount,
+  isCourseUpload,
+  courseHoleCount,
+  courseAssignedShotCount,
+  canSave,
+  onStepChange,
+}: {
+  currentStep: MobileImportStep;
+  fileCount: number;
+  shotCount: number;
+  clubCount: number;
+  warningCount: number;
+  isCourseUpload: boolean;
+  courseHoleCount: number;
+  courseAssignedShotCount: number;
+  canSave: boolean;
+  onStepChange: (step: MobileImportStep) => void;
+}) {
+  const courseReady =
+    !isCourseUpload || (courseHoleCount > 0 && courseAssignedShotCount === shotCount);
+  const statusItems = [
+    {
+      id: "upload" as const,
+      label: "File",
+      value: fileCount > 0 ? fileCount.toString() : "--",
+      ready: fileCount > 0,
+    },
+    {
+      id: "preview" as const,
+      label: "Shots",
+      value: shotCount > 0 ? shotCount.toString() : "--",
+      ready: shotCount > 0,
+    },
+    {
+      id: "columns" as const,
+      label: "Clubs",
+      value: clubCount > 0 ? clubCount.toString() : "--",
+      ready: clubCount > 0,
+    },
+    {
+      id: isCourseUpload ? ("course" as const) : ("preview" as const),
+      label: "Audit",
+      value: warningCount > 0 ? warningCount.toString() : courseReady ? "OK" : "Map",
+      ready: warningCount === 0 && courseReady && shotCount > 0,
+    },
+    {
+      id: "save" as const,
+      label: "Save",
+      value: canSave ? "Ready" : "Wait",
+      ready: canSave,
+    },
+  ];
+
+  return (
+    <section className="premium-command-surface grid gap-2 rounded-lg p-3 sm:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Import status</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Upload, audit and save stay visible as you move through the stepper.
+          </p>
+        </div>
+        <Badge className="bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
+          {canSave ? "Ready" : "Review"}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-5 gap-1.5">
+        {statusItems.map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => onStepChange(item.id)}
+            className={cn(
+              "grid min-h-[4.5rem] content-between rounded-lg border bg-white/80 px-2 py-2 text-left",
+              currentStep === item.id
+                ? "border-[#0B7A3B]"
+                : item.ready
+                  ? "border-emerald-100"
+                  : "border-slate-200",
+            )}
+          >
+            <span
+              className={cn(
+                "grid size-5 place-items-center rounded-full",
+                item.ready ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500",
+              )}
+            >
+              {item.ready ? (
+                <CheckCircle2 className="size-3.5" />
+              ) : (
+                <AlertCircle className="size-3.5" />
+              )}
+            </span>
+            <span>
+              <span className="block truncate text-[11px] font-medium text-muted-foreground">
+                {item.label}
+              </span>
+              <span className="block truncate text-sm font-semibold">{item.value}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ImportFlowGuide({
   currentStep,
   isCourseUpload,
@@ -1184,9 +1283,7 @@ function ImportFlowGuide({
       id: "type" as const,
       title: "Choose source",
       value: isCourseUpload ? "Sim course" : "Range session",
-      detail: isCourseUpload
-        ? "CSV plus confirmed scorecard"
-        : "Launch monitor CSV import",
+      detail: isCourseUpload ? "CSV plus confirmed scorecard" : "Launch monitor CSV import",
       ready: true,
       icon: Route,
     },
@@ -1248,7 +1345,7 @@ function ImportFlowGuide({
             Move one clean export into trusted bag numbers, with every raw row still accounted for.
           </p>
         </div>
-          <Badge className="w-fit bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
+        <Badge className="w-fit bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
           {canSave ? "Ready to save" : "Review required"}
         </Badge>
       </div>

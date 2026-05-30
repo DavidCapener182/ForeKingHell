@@ -22,7 +22,8 @@ import {
   MetricCard,
   MobileAccordionSection,
   MobileBentoSummary,
-  MobilePrimaryActionCard,
+  MobileCompanionAccordion,
+  MobileCompanionHero,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -31,7 +32,6 @@ import {
 import {
   MobileAppShell,
   MobileRouteTabs,
-  MobileStatusAction,
   MobileTopBar,
   NativeListSection,
   PBCard,
@@ -93,35 +93,26 @@ export default async function CoachPage() {
       <MobileAppShell>
         <MobileTopBar title="Improve" />
         <MobileRouteTabs group="improve" activeKey="coach" />
-        <MobileStatusAction
-          label="Do this next"
-          value={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
-          detail={topClub?.drill ?? "Import enough clean shots for a prescription."}
+        <MobileCompanionHero
+          eyebrow={<StatusPill tone={topClub?.tone ?? "slate"}>Do this next</StatusPill>}
+          title={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
+          description={topClub?.reason ?? coach.headline}
+          metricLabel="Start today"
+          metricValue={coach.sessionPlan[0]?.duration ?? "12 shots"}
+          metricDetail={
+            topClub ? `${topClub.trustIndex}% trust · ${targetForCard(topClub)}` : coach.subhead
+          }
           action={
-            <Button
-              asChild
-              data-primary-action
-              className="h-10 rounded-full bg-[#0B7A3B] px-4 text-white hover:bg-[#064E3B]"
-            >
+            <Button asChild className="premium-action rounded-lg">
               <Link
                 href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"}
                 prefetch={false}
               >
-                {topClub ? "Open" : "Import"}
+                {topClub ? "Start drill" : "Import data"}
               </Link>
             </Button>
           }
-        />
-        <section className="premium-hero rounded-lg p-3">
-          <p className="text-sm font-semibold text-[#0B7A3B]">Why</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal">
-            {topClub?.reason ?? coach.headline}
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-            {topClub ? `${topClub.trustIndex}% trust · ${targetForCard(topClub)}` : coach.subhead}
-          </p>
-        </section>
-        <NativeListSection title="Drill">
+        >
           <ProgressCard
             title={coach.sessionPlan[0]?.title ?? "12 stock shots"}
             value={coach.sessionPlan[0]?.duration ?? "12 shots"}
@@ -139,89 +130,82 @@ export default async function CoachPage() {
               detail="Tracked"
             />
           </div>
-        </NativeListSection>
-        <MobilePrimaryActionCard
-          title="Start today's drill"
-          description={topClub?.drill ?? "Import enough clean shots for a prescription."}
-          action={
-            <Button asChild className="premium-action">
-              <Link
-                href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"}
-                prefetch={false}
-              >
-                {topClub ? "Start drill" : "Import data"}
-              </Link>
-            </Button>
-          }
+        </MobileCompanionHero>
+        <MobileCompanionAccordion
+          items={[
+            {
+              value: "practice-tools",
+              title: "Practice tools",
+              description: "Track drill plus extra daily XP drills.",
+              summary: `${drillChallenges.length} drills`,
+              children: (
+                <div className="grid gap-4">
+                  <CoachPracticeFeaturePanel data={featureData} compactMobile />
+                  <NativeListSection
+                    id="more-drills"
+                    title="Daily XP drills"
+                    description="Hit the shot-count target, then win the drill for the bigger XP unlock. Progress reads from today’s uploaded shots."
+                  >
+                    {drillChallenges.length > 0 ? (
+                      drillChallenges.map((challenge) => (
+                        <CoachDrillChallengeCard
+                          key={challenge.id}
+                          challenge={challenge}
+                          status={
+                            drillStatuses[challenge.id] ?? {
+                              completed: false,
+                              won: false,
+                              uploadedShotCount: 0,
+                              completionTarget: challenge.completionTarget,
+                              winCount: 0,
+                              winTarget: winTargetForChallenge(challenge),
+                              completedAwarded: false,
+                              wonAwarded: false,
+                            }
+                          }
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+                        Import at least three clean shots with one club to generate today’s XP
+                        drills.
+                      </div>
+                    )}
+                  </NativeListSection>
+                </div>
+              ),
+            },
+            {
+              value: "evidence",
+              title: "Evidence",
+              description: "What changed in your latest baselines.",
+              summary: `${coach.trainingImpact.slice(0, 2).length} items`,
+              children: <TrainingFeedback impacts={coach.trainingImpact.slice(0, 2)} />,
+            },
+            {
+              value: "club-diagnosis",
+              title: "Club diagnosis",
+              description: "Every club-specific issue when you need the report.",
+              summary: `${coach.clubCards.length} clubs`,
+              children: (
+                <NativeListSection
+                  title="Club diagnosis"
+                  description="Every club-specific issue when you need the report."
+                >
+                  {coach.clubCards.length > 0 ? (
+                    coach.clubCards.map((card) => (
+                      <CoachClubDiagnosis key={card.clubId} card={card} />
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+                      Import launch-monitor shots to unlock club-by-club coach diagnosis.
+                    </div>
+                  )}
+                </NativeListSection>
+              ),
+            },
+          ]}
         />
-        <MobileAccordionSection
-          title="Track drill"
-          description="Mark completion and create a coach challenge."
-          count={featureData.coachConfidence.metric}
-        >
-          <CoachPracticeFeaturePanel data={featureData} />
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="More drills"
-          description="Daily XP drills and win targets."
-          count={`${drillChallenges.length} drills`}
-        >
-          <NativeListSection
-            id="more-drills"
-            title="Daily XP drills"
-            description="Hit the shot-count target, then win the drill for the bigger XP unlock. Progress reads from today’s uploaded shots."
-          >
-            {drillChallenges.length > 0 ? (
-              drillChallenges.map((challenge) => (
-                <CoachDrillChallengeCard
-                  key={challenge.id}
-                  challenge={challenge}
-                  status={
-                    drillStatuses[challenge.id] ?? {
-                      completed: false,
-                      won: false,
-                      uploadedShotCount: 0,
-                      completionTarget: challenge.completionTarget,
-                      winCount: 0,
-                      winTarget: winTargetForChallenge(challenge),
-                      completedAwarded: false,
-                      wonAwarded: false,
-                    }
-                  }
-                />
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
-                Import at least three clean shots with one club to generate today’s XP drills.
-              </div>
-            )}
-          </NativeListSection>
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Evidence"
-          description="What changed in your latest baselines."
-          count={`${coach.trainingImpact.slice(0, 2).length} items`}
-        >
-          <TrainingFeedback impacts={coach.trainingImpact.slice(0, 2)} />
-        </MobileAccordionSection>
-        <MobileAccordionSection
-          title="Club diagnosis"
-          description="Every club-specific issue when you need the report."
-          count={`${coach.clubCards.length} clubs`}
-        >
-          <NativeListSection
-            title="Club diagnosis"
-            description="Every club-specific issue when you need the report."
-          >
-            {coach.clubCards.length > 0 ? (
-              coach.clubCards.map((card) => <CoachClubDiagnosis key={card.clubId} card={card} />)
-            ) : (
-              <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
-                Import launch-monitor shots to unlock club-by-club coach diagnosis.
-              </div>
-            )}
-          </NativeListSection>
-        </MobileAccordionSection>
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -618,9 +602,7 @@ function CoachPracticePlan({
                 Based on stored shot data
               </Badge>
               <h2 className="mt-2 text-xl font-semibold tracking-normal sm:mt-3 sm:text-2xl">
-                {topClub
-                  ? `${topClub.clubName}: ${topClub.issueLabel}`
-                  : "Build a baseline first"}
+                {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
               </h2>
             </div>
             <StatusPill tone={topClub?.tone ?? "slate"}>

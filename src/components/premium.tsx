@@ -202,7 +202,10 @@ export function PageHeader({
         {metrics?.length ? (
           <div className="mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-2 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4">
             {metrics.map((metric) => (
-              <div key={metric.label} className="metric-tile desktop-metric-tile luxury-metric-card">
+              <div
+                key={metric.label}
+                className="metric-tile desktop-metric-tile luxury-metric-card"
+              >
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {metric.label}
                 </p>
@@ -594,6 +597,7 @@ export function MobileCompanionHero({
   metricValue,
   metricDetail,
   action,
+  children,
   className,
 }: {
   eyebrow?: ReactNode;
@@ -603,6 +607,7 @@ export function MobileCompanionHero({
   metricValue?: ReactNode;
   metricDetail?: ReactNode;
   action?: ReactNode;
+  children?: ReactNode;
   className?: string;
 }) {
   return (
@@ -613,9 +618,7 @@ export function MobileCompanionHero({
           {title}
         </h2>
         {description ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {description}
-          </p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {metricLabel || action ? (
@@ -625,9 +628,7 @@ export function MobileCompanionHero({
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {metricLabel}
               </p>
-              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
-                {metricValue}
-              </p>
+              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">{metricValue}</p>
               {metricDetail ? (
                 <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
                   {metricDetail}
@@ -640,6 +641,7 @@ export function MobileCompanionHero({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
+      {children ? <div className="grid gap-2">{children}</div> : null}
     </section>
   );
 }
@@ -711,9 +713,7 @@ export function MobilePrimaryActionCard({
       <div className="min-w-0">
         <p className="text-sm font-semibold tracking-normal text-foreground">{title}</p>
         {description ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {description}
-          </p>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{description}</p>
         ) : null}
       </div>
       <div data-primary-action>{action}</div>
@@ -771,7 +771,9 @@ export function MobileCompanionAccordion({
               </span>
             ) : null}
           </AccordionTrigger>
-          <AccordionContent className="border-t border-border/70 p-3">{item.children}</AccordionContent>
+          <AccordionContent className="border-t border-border/70 p-3">
+            {item.children}
+          </AccordionContent>
         </AccordionItem>
       ))}
     </Accordion>
@@ -1099,12 +1101,7 @@ export function CompactReadoutGrid({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "premium-rail-card overflow-hidden rounded-lg",
-        className,
-      )}
-    >
+    <div className={cn("premium-rail-card overflow-hidden rounded-lg", className)}>
       <div className={cn("grid", columnsClassName)}>
         {items.map((item, index) => (
           <CompactReadoutCell key={readoutKey(item, index)} item={item} />
@@ -1180,12 +1177,7 @@ export function CompactLinkGrid({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-    "premium-rail-card overflow-hidden rounded-lg",
-        className,
-      )}
-    >
+    <div className={cn("premium-rail-card overflow-hidden rounded-lg", className)}>
       <div
         className={cn(
           "grid auto-cols-[minmax(15rem,1fr)] grid-flow-col overflow-x-auto sm:grid-flow-row sm:overflow-visible",
