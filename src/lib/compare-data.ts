@@ -185,6 +185,7 @@ export type ClubCompareSide = CompareSampleSummary & {
 export type ClubCompareData = {
   filters: ClubCompareFilters;
   clubs: ClubCompareClubOption[];
+  clubSides: ClubCompareSide[];
   clubA: ClubCompareSide | null;
   clubB: ClubCompareSide | null;
   delta: CompareDelta;
@@ -250,6 +251,7 @@ export type PlayerCompareDelta = {
 export type PlayerCompareData = {
   filters: PlayerCompareFilters;
   players: PlayerCompareOption[];
+  playerSides: PlayerCompareSide[];
   playerA: PlayerCompareSide | null;
   playerB: PlayerCompareSide | null;
   delta: PlayerCompareDelta;
@@ -525,6 +527,12 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
     active: club.active,
   }));
   const clubsWithShots = clubOptions.filter((club) => club.shotCount > 0);
+  const clubSides = clubOptions.map((club) =>
+    buildClubCompareSide(
+      club,
+      allShots.filter((shot) => shot.clubId === club.id),
+    ),
+  );
   const selectedA =
     clubOptions.find((club) => club.id === filters.clubAId) ??
     clubsWithShots[0] ??
@@ -535,18 +543,8 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
     clubsWithShots.find((club) => club.id !== selectedA?.id) ??
     clubOptions.find((club) => club.id !== selectedA?.id) ??
     null;
-  const clubA = selectedA
-    ? buildClubCompareSide(
-        selectedA,
-        allShots.filter((shot) => shot.clubId === selectedA.id),
-      )
-    : null;
-  const clubB = selectedB
-    ? buildClubCompareSide(
-        selectedB,
-        allShots.filter((shot) => shot.clubId === selectedB.id),
-      )
-    : null;
+  const clubA = clubSides.find((club) => club.clubId === selectedA?.id) ?? null;
+  const clubB = clubSides.find((club) => club.clubId === selectedB?.id) ?? null;
 
   return {
     filters: {
@@ -554,6 +552,7 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
       clubBId: selectedB?.id ?? "",
     },
     clubs: clubOptions,
+    clubSides,
     clubA,
     clubB,
     delta: clubA && clubB ? buildDelta(clubA, clubB) : emptyDelta(),
@@ -595,14 +594,13 @@ export async function getPlayerCompareData(
     ) ??
     players.find((player) => player.userId !== selectedA?.userId) ??
     null;
-  const selectedIds = [selectedA?.userId, selectedB?.userId].filter((value): value is string =>
-    Boolean(value),
-  );
+  const playerIds = players.map((player) => player.userId);
 
-  if (selectedIds.length === 0) {
+  if (playerIds.length === 0) {
     return {
       filters: { playerAId: "", playerBId: "" },
       players,
+      playerSides: [],
       playerA: null,
       playerB: null,
       delta: emptyPlayerDelta(),
@@ -646,7 +644,7 @@ export async function getPlayerCompareData(
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(inArray(shots.userId, selectedIds))
+      .where(inArray(shots.userId, playerIds))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
     db
       .select({
@@ -663,7 +661,7 @@ export async function getPlayerCompareData(
       })
       .from(sessions)
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
-      .where(inArray(sessions.userId, selectedIds))
+      .where(inArray(sessions.userId, playerIds))
       .orderBy(desc(sessions.date)),
     db
       .select({
@@ -675,7 +673,7 @@ export async function getPlayerCompareData(
       })
       .from(stockYardages)
       .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
-      .where(inArray(stockYardages.userId, selectedIds))
+      .where(inArray(stockYardages.userId, playerIds))
       .orderBy(desc(stockYardages.calculatedAt)),
     db
       .select({
@@ -689,7 +687,7 @@ export async function getPlayerCompareData(
       })
       .from(tournamentStandings)
       .innerJoin(tournaments, eq(tournamentStandings.tournamentId, tournaments.id))
-      .where(inArray(tournamentStandings.userId, selectedIds))
+      .where(inArray(tournamentStandings.userId, playerIds))
       .orderBy(desc(tournamentStandings.calculatedAt)),
     db
       .select({
@@ -702,7 +700,7 @@ export async function getPlayerCompareData(
       })
       .from(tournamentSubmissions)
       .innerJoin(tournaments, eq(tournamentSubmissions.tournamentId, tournaments.id))
-      .where(inArray(tournamentSubmissions.userId, selectedIds))
+      .where(inArray(tournamentSubmissions.userId, playerIds))
       .orderBy(desc(tournamentSubmissions.submittedAt)),
   ]);
 
@@ -725,39 +723,27 @@ export async function getPlayerCompareData(
   const submissionsByUser = groupBy(submissionRows, (submission) => submission.userId);
 
   const profileByUserId = new Map(profileRows.map((profile) => [profile.userId, profile]));
-  const playerA = selectedA
-    ? buildPlayerCompareSide({
-        profile: profileByUserId.get(selectedA.userId),
-        option: selectedA,
-        shots: shotRowsByUser.get(selectedA.userId) ?? [],
-        sessions: sessionsByUser.get(selectedA.userId) ?? [],
-        stockRows: stockByUser.get(selectedA.userId) ?? [],
-        tournamentRows: tournamentsByUser.get(selectedA.userId) ?? [],
-        submissionRows: submissionsByUser.get(selectedA.userId) ?? [],
-      })
-    : null;
-  const playerB = selectedB
-    ? buildPlayerCompareSide({
-        profile: profileByUserId.get(selectedB.userId),
-        option: selectedB,
-        shots: shotRowsByUser.get(selectedB.userId) ?? [],
-        sessions: sessionsByUser.get(selectedB.userId) ?? [],
-        stockRows: stockByUser.get(selectedB.userId) ?? [],
-        tournamentRows: tournamentsByUser.get(selectedB.userId) ?? [],
-        submissionRows: submissionsByUser.get(selectedB.userId) ?? [],
-      })
-    : null;
+  const playerSides = players.map((player) =>
+    buildPlayerCompareSide({
+      profile: profileByUserId.get(player.userId),
+      option: player,
+      shots: shotRowsByUser.get(player.userId) ?? [],
+      sessions: sessionsByUser.get(player.userId) ?? [],
+      stockRows: stockByUser.get(player.userId) ?? [],
+      tournamentRows: tournamentsByUser.get(player.userId) ?? [],
+      submissionRows: submissionsByUser.get(player.userId) ?? [],
+    }),
+  );
+  const playerA = playerSides.find((player) => player.userId === selectedA?.userId) ?? null;
+  const playerB = playerSides.find((player) => player.userId === selectedB?.userId) ?? null;
 
-  const playersWithSelectedEstimates = players.map((player) => {
-    if (player.userId === playerA?.userId) {
-      return { ...player, handicapEstimate: playerA.handicapEstimate };
-    }
+  const playersWithEstimates = players.map((player) => {
+    const side = playerSides.find((candidate) => candidate.userId === player.userId);
 
-    if (player.userId === playerB?.userId) {
-      return { ...player, handicapEstimate: playerB.handicapEstimate };
-    }
-
-    return player;
+    return {
+      ...player,
+      handicapEstimate: side?.handicapEstimate ?? player.handicapEstimate,
+    };
   });
 
   return {
@@ -765,7 +751,8 @@ export async function getPlayerCompareData(
       playerAId: selectedA?.userId ?? "",
       playerBId: selectedB?.userId ?? "",
     },
-    players: playersWithSelectedEstimates,
+    players: playersWithEstimates,
+    playerSides,
     playerA,
     playerB,
     delta: playerA && playerB ? buildPlayerDelta(playerA, playerB) : emptyPlayerDelta(),
