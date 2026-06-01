@@ -344,11 +344,12 @@ function DispersionPanelFooter({ shots }: { shots: ChartPoint[] }) {
       targetSideYd: targetSide,
     },
   );
+  const bestMarkerLabel = bestTargetCorridorShot(points, targetSide)?.label ?? "Best in corridor";
 
   return (
     <div className="space-y-2">
       <DispersionCorridorStats buckets={buckets} />
-      <DispersionMarkerLegend />
+      <DispersionMarkerLegend bestMarkerLabel={bestMarkerLabel} />
     </div>
   );
 }
@@ -392,12 +393,12 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
   );
 }
 
-function DispersionMarkerLegend() {
+function DispersionMarkerLegend({ bestMarkerLabel }: { bestMarkerLabel: string }) {
   return (
     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
       <MarkerLegendItem marker="1" label="Average landing" tone="slate" />
       <MarkerLegendItem marker="2" label="Worst miss" tone="pink" />
-      <MarkerLegendItem marker="3" label="Straightest shot" tone="green" />
+      <MarkerLegendItem marker="3" label={bestMarkerLabel} tone="green" />
     </div>
   );
 }
@@ -512,7 +513,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
-  const straightestShot = straightestDispersionShot(points);
+  const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
 
   return (
@@ -643,17 +644,17 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
           </path>
         );
       })}
-      {straightestShot ? (
+      {bestMarker ? (
         <DispersionMarker
-          shot={straightestShot}
-          x={xScale(straightestShot.sideCarryYd ?? 0)}
-          y={yScale(straightestShot.carryYd ?? straightestShot.totalYd ?? 0)}
-          label="Straightest shot"
+          shot={bestMarker.shot}
+          x={xScale(bestMarker.shot.sideCarryYd ?? 0)}
+          y={yScale(bestMarker.shot.carryYd ?? bestMarker.shot.totalYd ?? 0)}
+          label={bestMarker.label}
           marker="3"
           tone="green"
         />
       ) : null}
-      {worstShot && worstShot.id !== straightestShot?.id ? (
+      {worstShot && worstShot.id !== bestMarker?.shot.id ? (
         <DispersionMarker
           shot={worstShot}
           x={xScale(worstShot.sideCarryYd ?? 0)}
@@ -964,16 +965,39 @@ function averageTrajectoryPoints(points: ChartPoint[]): AverageTrajectory[] {
     .sort((left, right) => sortClub(left.clubType) - sortClub(right.clubType));
 }
 
-function straightestDispersionShot(points: ChartPoint[]) {
-  return (
-    [...points]
-      .filter(hasDispersionData)
-      .sort(
-        (left, right) =>
-          Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999) ||
-          (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
-      )[0] ?? null
-  );
+function bestTargetCorridorShot(
+  points: ChartPoint[],
+  targetSideYd: number,
+): { shot: ChartPoint; label: string } | null {
+  const validShots = points.filter(hasDispersionData);
+  const corridorShot = [...validShots]
+    .filter((shot) => {
+      const distance = shot.carryYd ?? shot.totalYd;
+
+      return (
+        isNumber(distance) &&
+        isNumber(shot.sideCarryYd) &&
+        Math.abs(shot.sideCarryYd) <= targetSideYd
+      );
+    })
+    .sort(
+      (left, right) =>
+        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0) ||
+        Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999),
+    )[0];
+
+  if (corridorShot) {
+    return { shot: corridorShot, label: "Best in corridor" };
+  }
+
+  const straightestShot =
+    [...validShots].sort(
+      (left, right) =>
+        Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999) ||
+        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+    )[0] ?? null;
+
+  return straightestShot ? { shot: straightestShot, label: "Straightest shot" } : null;
 }
 
 function worstDispersionShot(points: ChartPoint[]) {
