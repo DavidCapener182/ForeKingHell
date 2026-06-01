@@ -59,7 +59,6 @@ type FriendTargetOption = {
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
-const UNMAPPED_CLUB_TYPES = new Set(["ot", "other", "unknown"]);
 
 export type FeatureInsight = {
   title: string;
@@ -71,37 +70,6 @@ export type FeatureInsight = {
 
 export type FeatureIdeasData = Awaited<ReturnType<typeof buildFeatureIdeasDataForUser>>;
 export type CourseFollowFeatureData = Pick<FeatureIdeasData, "courseFollows">;
-
-function isUnmappedClubType(value: string | null | undefined) {
-  return UNMAPPED_CLUB_TYPES.has(value?.trim().toLowerCase() ?? "");
-}
-
-function formatBagAlertClubName(club: Pick<ClubRow, "type" | "brand" | "model">) {
-  if (!isUnmappedClubType(club.type)) {
-    return formatClubType(club.type);
-  }
-
-  const modelName = [club.brand, club.model]
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ");
-
-  return modelName || "Unmapped club";
-}
-
-function formatOverlapAlertTitle(
-  previousClub: Pick<ClubRow, "type" | "brand" | "model">,
-  currentClub: Pick<ClubRow, "type" | "brand" | "model">,
-) {
-  const previousName = formatBagAlertClubName(previousClub);
-  const currentName = formatBagAlertClubName(currentClub);
-
-  if (previousName === "Unmapped club" && currentName === "Unmapped club") {
-    return "Unmapped club overlap";
-  }
-
-  return `${previousName} and ${currentName} overlap`;
-}
 
 export async function getFeatureIdeasData() {
   return buildFeatureIdeasDataForUser(await requireCurrentUserId());
@@ -1331,29 +1299,56 @@ function buildBagAlerts(
       stock: stockByClub.get(club.id),
       shots: shotsByClub.get(club.id) ?? [],
     }))
-    .filter((row) => row.stock?.carryMedianYd !== null)
-    .sort((left, right) => (left.stock?.carryMedianYd ?? 0) - (right.stock?.carryMedianYd ?? 0));
+    .filter(
+      (row) =>
+        row.club.active &&
+        isTrackedClubType(row.club.type) &&
+        typeof bagAlertDistanceYd(row.stock) === "number",
+    )
+    .sort(
+      (left, right) =>
+        (bagAlertDistanceYd(left.stock) ?? 0) - (bagAlertDistanceYd(right.stock) ?? 0),
+    );
   const alerts: FeatureInsight[] = [];
 
   for (let index = 1; index < stockList.length; index += 1) {
     const previous = stockList[index - 1];
     const current = stockList[index];
-    const gap = (current.stock?.carryMedianYd ?? 0) - (previous.stock?.carryMedianYd ?? 0);
+    const previousDistance = bagAlertDistanceYd(previous.stock);
+    const currentDistance = bagAlertDistanceYd(current.stock);
+
+    if (
+      previous.club.type === current.club.type ||
+      previousDistance === null ||
+      currentDistance === null
+    ) {
+      continue;
+    }
+
+    const gap = currentDistance - previousDistance;
 
     if (gap < 7) {
       alerts.push({
-        title: formatOverlapAlertTitle(previous.club, current.club),
-        metric: `${numberFormatter.format(gap)} yd`,
-        detail: "Bag fitting alert: these clubs may be covering the same stock number.",
-        href: "/bag",
+        title: `Check ${formatClubType(previous.club.type)} / ${formatClubType(
+          current.club.type,
+        )} gap`,
+        metric: formatBagAlertGap(gap),
+        detail: `Both numbers sit around ${formatBagAlertDistance(
+          currentDistance,
+        )}. Confirm strike quality and club mapping before treating them as separate stock clubs.`,
+        href: `/bag/${current.club.id}`,
         tone: "amber",
       });
     } else if (gap > 18) {
       alerts.push({
-        title: `Wide gap into ${formatClubType(current.club.type)}`,
+        title: `Missing window: ${formatClubType(previous.club.type)} to ${formatClubType(
+          current.club.type,
+        )}`,
         metric: `${numberFormatter.format(gap)} yd`,
-        detail: "Bag fitting alert: consider a choke-down number or a missing club slot.",
-        href: "/bag",
+        detail: `There is no trusted course number between ${formatBagAlertDistance(
+          previousDistance,
+        )} and ${formatBagAlertDistance(currentDistance)}. Add a flighted option or retest this gap.`,
+        href: `/bag/${current.club.id}`,
         tone: "pink",
       });
     }
@@ -1363,9 +1358,10 @@ function buildBagAlerts(
     const confidence = row.stock?.confidenceScore ?? 0;
     if (row.shots.length >= 5 && confidence < 55) {
       alerts.push({
-        title: `${formatClubType(row.club.type)} trust below bag average`,
-        metric: `${Math.round(confidence)}%`,
-        detail: "More recent stock shots will tighten the recommendation.",
+        title: `Retest ${formatClubType(row.club.type)} stock number`,
+        metric: `${Math.round(confidence)}% trust`,
+        detail:
+          "The sample is loose enough that this number should stay out of course decisions until you add a measured block.",
         href: `/bag/${row.club.id}`,
         tone: "amber",
       });
@@ -1376,13 +1372,25 @@ function buildBagAlerts(
     ? alerts.slice(0, 6)
     : [
         {
-          title: "Bag fitting alerts",
+          title: "Bag gaps look playable",
           metric: "Clear",
-          detail: "No major gapping overlap or wide distance jump in the current stock yardages.",
+          detail: "No major overlap or missing yardage window in the current trusted bag numbers.",
           href: "/bag",
           tone: "green",
         },
       ];
+}
+
+function bagAlertDistanceYd(stock: StockRow | undefined) {
+  return stock?.recommendedPlayNumberYd ?? stock?.carryMedianYd ?? null;
+}
+
+function formatBagAlertGap(gapYd: number) {
+  return gapYd <= 0 ? "Same number" : `${numberFormatter.format(gapYd)} yd`;
+}
+
+function formatBagAlertDistance(distanceYd: number) {
+  return `${Math.round(distanceYd)} yd`;
 }
 
 function buildTargetDistanceOptions(clubRows: ClubRow[], stockByClub: Map<string, StockRow>) {

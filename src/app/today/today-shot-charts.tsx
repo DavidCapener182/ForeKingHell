@@ -397,7 +397,7 @@ function DispersionMarkerLegend() {
     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
       <MarkerLegendItem marker="1" label="Average landing" tone="slate" />
       <MarkerLegendItem marker="2" label="Worst miss" tone="pink" />
-      <MarkerLegendItem marker="3" label="Best shot" tone="green" />
+      <MarkerLegendItem marker="3" label="Straightest shot" tone="green" />
     </div>
   );
 }
@@ -512,7 +512,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
-  const bestShot = bestDispersionShot(points);
+  const straightestShot = straightestDispersionShot(points);
   const worstShot = worstDispersionShot(points);
 
   return (
@@ -643,17 +643,17 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
           </path>
         );
       })}
-      {bestShot ? (
+      {straightestShot ? (
         <DispersionMarker
-          shot={bestShot}
-          x={xScale(bestShot.sideCarryYd ?? 0)}
-          y={yScale(bestShot.carryYd ?? bestShot.totalYd ?? 0)}
-          label="Best shot"
+          shot={straightestShot}
+          x={xScale(straightestShot.sideCarryYd ?? 0)}
+          y={yScale(straightestShot.carryYd ?? straightestShot.totalYd ?? 0)}
+          label="Straightest shot"
           marker="3"
           tone="green"
         />
       ) : null}
-      {worstShot && worstShot.id !== bestShot?.id ? (
+      {worstShot && worstShot.id !== straightestShot?.id ? (
         <DispersionMarker
           shot={worstShot}
           x={xScale(worstShot.sideCarryYd ?? 0)}
@@ -964,7 +964,7 @@ function averageTrajectoryPoints(points: ChartPoint[]): AverageTrajectory[] {
     .sort((left, right) => sortClub(left.clubType) - sortClub(right.clubType));
 }
 
-function bestDispersionShot(points: ChartPoint[]) {
+function straightestDispersionShot(points: ChartPoint[]) {
   return (
     [...points]
       .filter(hasDispersionData)
