@@ -168,7 +168,11 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
   ] = await Promise.all([
     db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1),
     selectFeaturePreferenceRows(db, userId),
-    db.select().from(clubs).where(eq(clubs.userId, userId)).orderBy(clubs.type),
+    db
+      .select()
+      .from(clubs)
+      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
+      .orderBy(clubs.type),
     db.select().from(shots).where(eq(shots.userId, userId)).orderBy(desc(shots.shotAt)).limit(1200),
     db
       .select()
