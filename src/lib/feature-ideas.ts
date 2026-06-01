@@ -36,7 +36,7 @@ import {
   weeklyRecaps,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { formatClubType } from "@/lib/club-format";
+import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { roundSessionTypes } from "@/lib/round-sessions";
 import {
@@ -378,11 +378,16 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
   const preferences = preferenceRows[0] ?? defaultFeaturePreferences(userId);
   const latestShotsByClub = groupShotsByClub(shotRows);
   const latestStockByClub = latestStockRows(stockRows);
+  const featureBagClubRows = dedupeFeatureBagClubRows(
+    clubRows,
+    latestStockByClub,
+    latestShotsByClub,
+  );
   const importQuality = buildImportQuality(
     importFileRows,
     importJobRows,
     shotRows,
-    clubRows,
+    featureBagClubRows,
     sessionRows,
   );
   const providerHealth = buildProviderHealth(
@@ -394,13 +399,13 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
   const dataHealth = buildDataHealth({
     sessions: sessionRows,
     shots: shotRows,
-    clubs: clubRows,
+    clubs: featureBagClubRows,
     stockByClub: latestStockByClub,
     shotsByClub: latestShotsByClub,
     providerHealth,
   });
-  const bagAlerts = buildBagAlerts(clubRows, latestStockByClub, latestShotsByClub);
-  const targetDistanceOptions = buildTargetDistanceOptions(clubRows, latestStockByClub);
+  const bagAlerts = buildBagAlerts(featureBagClubRows, latestStockByClub, latestShotsByClub);
+  const targetDistanceOptions = buildTargetDistanceOptions(featureBagClubRows, latestStockByClub);
   const savedViews = [
     ...savedViewRows.map((view) => ({
       id: view.id,
@@ -411,7 +416,11 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     })),
     ...defaultSavedViews(shotRows),
   ].slice(0, 8);
-  const clubIdentities = buildClubIdentities(clubRows, latestStockByClub, latestShotsByClub);
+  const clubIdentities = buildClubIdentities(
+    featureBagClubRows,
+    latestStockByClub,
+    latestShotsByClub,
+  );
   const roundOpportunities = buildRoundOpportunities(sessionRows);
   const handicapConfidence = buildHandicapConfidence(sessionRows);
   const weeklyRecap = buildWeeklyRecap({
@@ -420,7 +429,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     recaps: recapRows,
     week,
   });
-  const coachConfidence = buildCoachConfidence(shotRows, clubRows, practiceRows);
+  const coachConfidence = buildCoachConfidence(shotRows, featureBagClubRows, practiceRows);
   const practicePlan = buildPracticePlan(bagAlerts, clubIdentities, practiceRows);
   const friendTargets = buildFriendTargetOptions(friendIds, friendProfileRows);
   const courseRecordGoalsData = buildCourseRecordGoals(
@@ -465,7 +474,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     targetDistanceOptions,
     savedViews,
     savedViewOptions: {
-      clubs: [...new Set(clubRows.map((club) => club.type))].map((type) => ({
+      clubs: [...new Set(featureBagClubRows.map((club) => club.type))].map((type) => ({
         value: type,
         label: formatClubType(type),
       })),
@@ -2115,6 +2124,45 @@ function groupShotsByClub(shotRows: ShotRow[]) {
     map.set(shot.clubId, [...(map.get(shot.clubId) ?? []), shot]);
   }
   return map;
+}
+
+function dedupeFeatureBagClubRows(
+  clubRows: ClubRow[],
+  stockByClub: Map<string, StockRow>,
+  shotsByClub: Map<string, ShotRow[]>,
+) {
+  const byType = new Map<string, ClubRow>();
+
+  for (const club of clubRows) {
+    if (!isTrackedClubType(club.type)) {
+      continue;
+    }
+
+    const current = byType.get(club.type);
+    if (
+      !current ||
+      featureBagClubScore(club, stockByClub, shotsByClub) >
+        featureBagClubScore(current, stockByClub, shotsByClub)
+    ) {
+      byType.set(club.type, club);
+    }
+  }
+
+  return [...byType.values()];
+}
+
+function featureBagClubScore(
+  club: ClubRow,
+  stockByClub: Map<string, StockRow>,
+  shotsByClub: Map<string, ShotRow[]>,
+) {
+  const stock = stockByClub.get(club.id);
+  const shotCount = shotsByClub.get(club.id)?.length ?? 0;
+  const identityScore = club.brand || club.model ? 20 : 0;
+  const stockScore =
+    typeof stock?.confidenceScore === "number" ? 1000 + Math.round(stock.confidenceScore) : 0;
+
+  return stockScore + Math.min(shotCount, 500) + identityScore;
 }
 
 function latestStockRows(stockRows: StockRow[]) {
