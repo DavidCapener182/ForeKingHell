@@ -46,7 +46,17 @@ import {
   parseVisibility,
 } from "@/lib/social";
 
-type ShotRow = typeof shots.$inferSelect;
+type ShotRow = Pick<
+  typeof shots.$inferSelect,
+  | "clubId"
+  | "clubType"
+  | "shotAt"
+  | "carryYd"
+  | "totalYd"
+  | "sideCarryYd"
+  | "ballSpeedMph"
+  | "launchAngleDeg"
+>;
 type ClubRow = typeof clubs.$inferSelect;
 type StockRow = typeof stockYardages.$inferSelect;
 type SessionRow = typeof sessions.$inferSelect;
@@ -59,6 +69,7 @@ type FriendTargetOption = {
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const FEATURE_SHOT_SAMPLE_LIMIT = 600;
 
 export type FeatureInsight = {
   title: string;
@@ -141,7 +152,21 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
       .from(clubs)
       .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
       .orderBy(clubs.type),
-    db.select().from(shots).where(eq(shots.userId, userId)).orderBy(desc(shots.shotAt)).limit(1200),
+    db
+      .select({
+        clubId: shots.clubId,
+        clubType: shots.clubType,
+        shotAt: shots.shotAt,
+        carryYd: shots.carryYd,
+        totalYd: shots.totalYd,
+        sideCarryYd: shots.sideCarryYd,
+        ballSpeedMph: shots.ballSpeedMph,
+        launchAngleDeg: shots.launchAngleDeg,
+      })
+      .from(shots)
+      .where(eq(shots.userId, userId))
+      .orderBy(desc(shots.shotAt))
+      .limit(FEATURE_SHOT_SAMPLE_LIMIT),
     db
       .select()
       .from(stockYardages)

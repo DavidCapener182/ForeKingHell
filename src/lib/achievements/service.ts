@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, like, lt, sql } from "drizzle-orm";
 
 import {
   achievementProgress,
@@ -255,7 +255,7 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
     [sessionCount],
     unlockRows,
     progressRows,
-    ledgerRows,
+    [xpTotalRow],
     clubTypeRows,
     [syncState],
   ] = await Promise.all([
@@ -286,7 +286,7 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
       .where(eq(achievementProgress.userId, userId)),
     db
       .select({
-        amount: xpLedger.amount,
+        totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
       })
       .from(xpLedger)
       .where(eq(xpLedger.userId, userId)),
@@ -330,7 +330,7 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
       return rightUnlockedAt - leftUnlockedAt;
     });
   const progressByAchievementId = new Map(progressRows.map((row) => [row.achievementId, row]));
-  const totalXp = ledgerRows.reduce((total, row) => total + row.amount, 0);
+  const totalXp = Number(xpTotalRow?.totalXp ?? 0);
   const trackedClubTypes = clubTypeRows
     .map((row) => row.clubType)
     .filter((clubType): clubType is string => isTrackedClubType(clubType))
@@ -1216,17 +1216,23 @@ async function awardXP(input: {
   const createdAt = input.createdAt ?? new Date();
 
   if (!input.ignoreDailyActionCap && input.reason.startsWith("action:")) {
-    const actionRows = await db
+    const dayStart = startOfUtcDay(createdAt);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const [actionTotal] = await db
       .select({
-        amount: xpLedger.amount,
-        reason: xpLedger.reason,
-        createdAt: xpLedger.createdAt,
+        totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
       })
       .from(xpLedger)
-      .where(eq(xpLedger.userId, input.userId));
-    const existingActionXp = actionRows
-      .filter((row) => row.reason.startsWith("action:") && isSameUtcDay(row.createdAt, createdAt))
-      .reduce((total, row) => total + row.amount, 0);
+      .where(
+        and(
+          eq(xpLedger.userId, input.userId),
+          like(xpLedger.reason, "action:%"),
+          gte(xpLedger.createdAt, dayStart),
+          lt(xpLedger.createdAt, dayEnd),
+        ),
+      );
+    const existingActionXp = Number(actionTotal?.totalXp ?? 0);
     amount = capActionXpForDay(existingActionXp, input.amount);
   }
 
@@ -1349,8 +1355,8 @@ function shouldPersistProgressCandidate(candidate: AchievementProgressCandidate)
   );
 }
 
-function isSameUtcDay(left: Date, right: Date) {
-  return left.toISOString().slice(0, 10) === right.toISOString().slice(0, 10);
+function startOfUtcDay(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
 }
 
 function formatNumber(value: number) {

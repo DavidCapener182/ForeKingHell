@@ -111,7 +111,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 const RECENT_SHOTS_PER_CLUB = 200;
-const PEER_SHOT_QUERY_LIMIT = 12000;
+const PEER_SHOT_QUERY_LIMIT = 3000;
 const PEER_MIN_STOCK_SHOTS = 3;
 const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
@@ -1449,6 +1449,13 @@ async function getPeerBenchmarkSummary(
     return emptyPeerSummary();
   }
 
+  const peerClubTypes = new Set(targetClubTypes);
+  if (targetClubTypes.has("hybrid")) {
+    for (let hybridNumber = 1; hybridNumber <= 9; hybridNumber += 1) {
+      peerClubTypes.add(`${hybridNumber}h`);
+    }
+  }
+
   const peerShots = await db
     .select({
       id: shots.id,
@@ -1473,7 +1480,13 @@ async function getPeerBenchmarkSummary(
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
-    .where(and(inArray(shots.userId, eligibleUserIds), eq(clubs.active, true)))
+    .where(
+      and(
+        inArray(shots.userId, eligibleUserIds),
+        inArray(shots.clubType, Array.from(peerClubTypes)),
+        eq(clubs.active, true),
+      ),
+    )
     .orderBy(desc(shots.shotAt))
     .limit(PEER_SHOT_QUERY_LIMIT);
 

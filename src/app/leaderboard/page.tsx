@@ -11,7 +11,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { and, desc, eq, gte, inArray, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 
 import {
   DataPanel,
@@ -598,20 +598,36 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
   const [xpRows, monthlyXpRows, previousMonthlyXpRows, rawShotRows, roundRows] =
     visibleIds.length > 0
       ? await Promise.all([
-          db.select().from(xpLedger).where(inArray(xpLedger.userId, visibleIds)),
           db
-            .select()
+            .select({
+              userId: xpLedger.userId,
+              totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
+            })
             .from(xpLedger)
-            .where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart))),
+            .where(inArray(xpLedger.userId, visibleIds))
+            .groupBy(xpLedger.userId),
           db
-            .select()
+            .select({
+              userId: xpLedger.userId,
+              totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
+            })
+            .from(xpLedger)
+            .where(and(inArray(xpLedger.userId, visibleIds), gte(xpLedger.createdAt, monthStart)))
+            .groupBy(xpLedger.userId),
+          db
+            .select({
+              userId: xpLedger.userId,
+              totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
+            })
             .from(xpLedger)
             .where(
               and(
                 inArray(xpLedger.userId, visibleIds),
                 gte(xpLedger.createdAt, previousMonthStart),
+                lt(xpLedger.createdAt, monthStart),
               ),
-            ),
+            )
+            .groupBy(xpLedger.userId),
           db
             .select({
               userId: shots.userId,
@@ -656,9 +672,7 @@ async function getLeaderboardData(activeTab: LeaderboardTab, filters: Leaderboar
     });
   const totalXpByUser = sumXpByUser(xpRows);
   const monthlyXpByUser = sumXpByUser(monthlyXpRows);
-  const previousMonthlyXpByUser = sumXpByUser(
-    previousMonthlyXpRows.filter((row) => row.createdAt < monthStart),
-  );
+  const previousMonthlyXpByUser = sumXpByUser(previousMonthlyXpRows);
   const monthlyShotsByUser = countByUser(shotRows.map((shot) => shot.userId));
   const longestDriveByUser = longestDriveRowsByUser(shotRows);
   const bestRoundByUser = minByUser(
@@ -1278,11 +1292,11 @@ function isTourPlayerProfile(profile: {
   );
 }
 
-function sumXpByUser(rows: Array<typeof xpLedger.$inferSelect>) {
+function sumXpByUser(rows: Array<{ userId: string; totalXp: number | string | null }>) {
   const totals = new Map<string, number>();
 
   for (const row of rows) {
-    totals.set(row.userId, (totals.get(row.userId) ?? 0) + row.amount);
+    totals.set(row.userId, (totals.get(row.userId) ?? 0) + Number(row.totalXp ?? 0));
   }
 
   return totals;

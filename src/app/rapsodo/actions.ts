@@ -33,6 +33,8 @@ import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string; code?: string };
 
+const RAPSODO_BAG_SHOT_SAMPLE_LIMIT = 600;
+
 export async function getRapsodoConnectionStatusAction(): Promise<
   ActionResult<{
     connected: boolean;
@@ -752,7 +754,7 @@ async function getRapsodoClubChoices(
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .where(and(eq(shots.userId, userId), eq(sessions.userId, userId)))
     .orderBy(desc(shots.shotAt))
-    .limit(1200);
+    .limit(RAPSODO_BAG_SHOT_SAMPLE_LIMIT);
   const recentShotsByClubId = groupBy(recentShotRows, (shot) => shot.clubId);
 
   const rapsodoClubByExactKey = new Map(rapsodoBagClubs.map((club) => [club.clubKey, club]));
