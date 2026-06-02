@@ -3,11 +3,18 @@ import {
   AlertTriangle,
   ArrowLeft,
   Award,
+  Bot,
+  Brain,
   Database,
   Gauge,
+  Grid3X3,
+  Layers3,
   MapPinned,
   Minus,
+  Radar,
   ShieldCheck,
+  ShoppingBag,
+  Sparkles,
   Trophy,
   Target,
   TrendingDown,
@@ -59,8 +66,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clubs, sessions, shots, userProfiles } from "@/db/schema";
+import { clubs, sessions, shots, strokesGainedShotEvents, userProfiles } from "@/db/schema";
 import { getDb } from "@/db/client";
+import {
+  buildAiCaddieCards,
+  buildConfidenceHeatMaps,
+  buildCourseStrategyMode,
+  buildPathTrendTracking,
+  buildPersonalStrokesGainedModel,
+  buildShotPatternOverlaySummaries,
+  buildSmartBagBuilder,
+  buildWedgeMatrix,
+  type AiCaddieCard,
+  type ConfidenceHeatMap,
+  type CourseStrategyMode,
+  type PathTrendTracking,
+  type PersonalStrokesGainedModel,
+  type ShotPatternOverlaySummary,
+  type SmartBagBuilder,
+  type WedgeMatrixClub,
+} from "@/lib/bag-intelligence";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import {
   buildClubBenchmarkRows,
@@ -80,6 +105,12 @@ import {
   type CourseDecisionAdvice,
 } from "@/lib/course-decision-advice";
 import { buildPersonalGappingTargets, type GappingTargetTone } from "@/lib/gapping-targets";
+import {
+  isManageableTopEndGap,
+  isMissingYardageWindowGap,
+  isScoringEndGap,
+  missingYardageWindowPriority,
+} from "@/lib/gapping-windows";
 import {
   clubAccent,
   clubSortValue,
@@ -113,6 +144,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const RECENT_SHOTS_PER_CLUB = 200;
 const PEER_SHOT_QUERY_LIMIT = 3000;
 const PEER_MIN_STOCK_SHOTS = 3;
+const PERSONAL_STROKES_GAINED_LIMIT = 200;
 const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
   "clubSpeedMph",
@@ -133,14 +165,35 @@ const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
-  const [bag, profile, challengeData, featureData] = await Promise.all([
-    getBag(),
-    ensureCurrentSocialProfile(),
-    getBagChallengeData(),
-    getFeatureIdeasData(),
-  ]);
+  const [bag, profile, challengeData, featureData, personalStrokesGainedEvents] = await Promise.all(
+    [
+      getBag(),
+      ensureCurrentSocialProfile(),
+      getBagChallengeData(),
+      getFeatureIdeasData(),
+      getPersonalStrokesGainedEvents(),
+    ],
+  );
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
+  });
+  const wedgeMatrix = buildWedgeMatrix(bag);
+  const smartBagBuilder = buildSmartBagBuilder({
+    clubs: bag,
+    gappingRows,
+    wedgeMatrix,
+  });
+  const pathTrend = buildPathTrendTracking(bag);
+  const shotPatternOverlays = buildShotPatternOverlaySummaries(bag);
+  const courseStrategy = buildCourseStrategyMode({ clubs: bag, wedgeMatrix });
+  const confidenceHeatMaps = buildConfidenceHeatMaps(bag);
+  const personalStrokesGained = buildPersonalStrokesGainedModel(personalStrokesGainedEvents);
+  const aiCaddieCards = buildAiCaddieCards({
+    strategy: courseStrategy,
+    smartBag: smartBagBuilder,
+    heatMaps: confidenceHeatMaps,
+    pathTrend,
+    personalStrokesGained,
   });
   const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
   const benchmarkRows = buildBenchmarkRows(bag);
@@ -305,6 +358,25 @@ export default async function BagPage({ searchParams }: PageProps) {
               ),
             },
             {
+              value: "lower-scores",
+              title: "Lower scores",
+              description: "Strategy, wedges, heat maps and caddie.",
+              summary: `${smartBagBuilder.currentScore}% bag`,
+              children: (
+                <LowerScoresFeatureStack
+                  smartBagBuilder={smartBagBuilder}
+                  wedgeMatrix={wedgeMatrix}
+                  pathTrend={pathTrend}
+                  shotPatternOverlays={shotPatternOverlays}
+                  courseStrategy={courseStrategy}
+                  confidenceHeatMaps={confidenceHeatMaps}
+                  aiCaddieCards={aiCaddieCards}
+                  personalStrokesGained={personalStrokesGained}
+                  compact
+                />
+              ),
+            },
+            {
               value: "bag-setup",
               title: "Bag setup",
               description: "Wedge roles, stock filters and club rail.",
@@ -433,6 +505,7 @@ export default async function BagPage({ searchParams }: PageProps) {
           items={[
             { label: "Gapping", href: "#gapping" },
             { label: "PBs", href: "#personal-bests" },
+            { label: "Lower scores", href: "#lower-scores" },
             { label: "Wedges", href: "#wedge-roles" },
             { label: "Levels", href: "#levels" },
             { label: "Decisions", href: "#decisions" },
@@ -497,6 +570,19 @@ export default async function BagPage({ searchParams }: PageProps) {
 
         <section id="personal-bests" className="w-full scroll-mt-28">
           <PersonalBestCard clubs={bag} initialMetric={personalBestMetric} />
+        </section>
+
+        <section id="lower-scores" className="scroll-mt-28">
+          <LowerScoresFeatureStack
+            smartBagBuilder={smartBagBuilder}
+            wedgeMatrix={wedgeMatrix}
+            pathTrend={pathTrend}
+            shotPatternOverlays={shotPatternOverlays}
+            courseStrategy={courseStrategy}
+            confidenceHeatMaps={confidenceHeatMaps}
+            aiCaddieCards={aiCaddieCards}
+            personalStrokesGained={personalStrokesGained}
+          />
         </section>
 
         <BagConfidenceLadder
@@ -727,6 +813,24 @@ async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {
   }
 }
 
+async function getPersonalStrokesGainedEvents() {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+
+  return db
+    .select({
+      category: strokesGainedShotEvents.category,
+      startLie: strokesGainedShotEvents.startLie,
+      endLie: strokesGainedShotEvents.endLie,
+      startDistanceYd: strokesGainedShotEvents.startDistanceYd,
+      strokesGained: strokesGainedShotEvents.strokesGained,
+    })
+    .from(strokesGainedShotEvents)
+    .where(eq(strokesGainedShotEvents.userId, userId))
+    .orderBy(desc(strokesGainedShotEvents.createdAt))
+    .limit(PERSONAL_STROKES_GAINED_LIMIT);
+}
+
 async function getBag() {
   const db = getDb();
   const userId = await requireCurrentUserId();
@@ -822,6 +926,7 @@ async function getBag() {
             apexFt: shots.apexFt,
             descentAngleDeg: shots.descentAngleDeg,
             attackAngleDeg: shots.attackAngleDeg,
+            clubPathDeg: shots.clubPathDeg,
             spinRate: shots.spinRate,
             smashFactor: shots.smashFactor,
             spinAxis: shots.spinAxis,
@@ -937,6 +1042,7 @@ type GappingRow = {
   latestReliableCarryP75Yd: number | null;
   personalBestCarryYd: number | null;
   playNumberYd: number | null;
+  nextClubType: string | null;
   gapToNextYd: number | null;
   targetCarryYd: number | null;
   targetPlayNumberYd: number | null;
@@ -991,6 +1097,420 @@ function clubSecondaryCarryYd(club: BagClub) {
   }
 
   return club.stock.bestStockCarryYd;
+}
+
+function LowerScoresFeatureStack({
+  smartBagBuilder,
+  wedgeMatrix,
+  pathTrend,
+  shotPatternOverlays,
+  courseStrategy,
+  confidenceHeatMaps,
+  aiCaddieCards,
+  personalStrokesGained,
+  compact = false,
+}: {
+  smartBagBuilder: SmartBagBuilder;
+  wedgeMatrix: WedgeMatrixClub[];
+  pathTrend: PathTrendTracking;
+  shotPatternOverlays: ShotPatternOverlaySummary[];
+  courseStrategy: CourseStrategyMode;
+  confidenceHeatMaps: ConfidenceHeatMap[];
+  aiCaddieCards: AiCaddieCard[];
+  personalStrokesGained: PersonalStrokesGainedModel;
+  compact?: boolean;
+}) {
+  return (
+    <div className={compact ? "grid gap-3" : "grid gap-4"}>
+      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[0.85fr_1.15fr]"}>
+        <SmartBagBuilderPanel model={smartBagBuilder} />
+        <WedgeMatrixPanel matrix={wedgeMatrix} />
+      </div>
+      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[0.9fr_1.1fr]"}>
+        <PathTrendPanel trend={pathTrend} />
+        <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+      </div>
+      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[1fr_1fr]"}>
+        <CourseStrategyModePanel strategy={courseStrategy} />
+        <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+      </div>
+      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[1fr_1fr]"}>
+        <AiCaddiePanel cards={aiCaddieCards} />
+        <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
+      </div>
+    </div>
+  );
+}
+
+function SmartBagBuilderPanel({ model }: { model: SmartBagBuilder }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Gap wedge integration"
+        description="Smart bag builder scores the current setup and ranks the next bag move."
+        action={<ShoppingBag className="size-5 text-emerald-600" />}
+      />
+      <CardContent className="grid gap-3">
+        <div className="apple-panel-strong grid gap-2 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Current bag score
+              </p>
+              <p className="mt-1 text-4xl font-semibold tracking-normal">{model.currentScore}%</p>
+            </div>
+            <StatusPill
+              tone={model.currentScore >= 85 ? "green" : model.currentScore >= 70 ? "sky" : "amber"}
+            >
+              {model.scoreLabel}
+            </StatusPill>
+          </div>
+          <Progress value={model.currentScore} />
+        </div>
+        <div className="grid gap-2">
+          {model.suggestions.length > 0 ? (
+            model.suggestions.map((suggestion) => (
+              <div
+                key={suggestion.id}
+                className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{suggestion.title}</p>
+                    <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                      {suggestion.detail}
+                    </p>
+                  </div>
+                  <StatusPill tone={suggestion.tone}>{suggestion.scoreAfter}%</StatusPill>
+                </div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Bag score {formatSignedPercent(suggestion.scoreLift)} projected
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+              No urgent fitting gap in the current numbers.
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Full wedge matrix"
+        description="Full, 3/4, and half-shot carry windows for scoring clubs."
+        action={<Grid3X3 className="size-5 text-amber-600" />}
+      />
+      <CardContent>
+        {matrix.length > 0 ? (
+          <div className="grid gap-3">
+            {matrix.map((club) => (
+              <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold">{club.label}</p>
+                    <p className="text-xs text-muted-foreground">{club.brandModel}</p>
+                  </div>
+                  <StatusPill
+                    tone={club.isSuggested ? "amber" : club.matrixScore >= 70 ? "green" : "sky"}
+                  >
+                    {club.isSuggested ? "Target" : `${club.matrixScore}%`}
+                  </StatusPill>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {club.rows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-white/85 px-2 py-1.5 text-xs"
+                    >
+                      <span className="font-semibold">{row.label}</span>
+                      <span className="truncate text-muted-foreground">
+                        {row.detail} {row.sampleSize > 0 ? `${row.sampleSize} shots` : ""}
+                      </span>
+                      <span className="font-semibold">{formatCarryYards(row.carryYd)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="Wedge matrix building"
+            detail="Add PW, GW/AW, SW or LW shots to build full and partial carry windows."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
+  const maxAbs = Math.max(
+    4,
+    ...trend.points.map((point) => Math.abs(point.pathDeg ?? 0)),
+    ...trend.points.map((point) => Math.abs(point.faceToPathProxyDeg ?? 0)),
+  );
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Path and face trend"
+        description="Measured club path plus start-line face proxy by month."
+        action={<Radar className="size-5 text-sky-600" />}
+      />
+      <CardContent className="grid gap-3">
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+          <div>
+            <p className="text-base font-semibold">{trend.label}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{trend.detail}</p>
+          </div>
+          <StatusPill tone={pathTrendStatusTone(trend.status)}>
+            {pathTrendStatusLabel(trend.status)}
+          </StatusPill>
+        </div>
+        {trend.points.length > 0 ? (
+          <div className="grid gap-2">
+            {trend.points.map((point) => (
+              <div
+                key={point.monthKey}
+                className="grid grid-cols-[3rem_minmax(0,1fr)_5.5rem] items-center gap-2 text-xs"
+              >
+                <span className="font-semibold">{point.label}</span>
+                <div className="grid gap-1">
+                  <TrendBar value={point.pathDeg} maxAbs={maxAbs} className="bg-emerald-600" />
+                  <TrendBar
+                    value={point.faceToPathProxyDeg}
+                    maxAbs={maxAbs}
+                    className="bg-sky-500"
+                  />
+                </div>
+                <span className="text-right font-semibold">
+                  {formatSignedDegrees(point.pathDeg)}
+                </span>
+              </div>
+            ))}
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-4 rounded-full bg-emerald-600" />
+                Path
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-2 w-4 rounded-full bg-sky-500" />
+                Face proxy
+              </span>
+            </div>
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="Path trend building"
+            detail="Import rows with club path to chart monthly movement."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function ShotPatternOverlayPanel({ overlays }: { overlays: ShotPatternOverlaySummary[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Shot pattern overlays"
+        description="Carry cone, offline window, and playable rate from actual shot patterns."
+        action={<Layers3 className="size-5 text-emerald-600" />}
+      />
+      <CardContent>
+        {overlays.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {overlays.map((overlay) => (
+              <div
+                key={overlay.clubId}
+                className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{overlay.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {overlay.sampleSize} shots · {overlay.primaryMiss} miss
+                    </p>
+                  </div>
+                  <StatusPill tone={overlay.tone}>{formatMetric(overlay.playableRate)}%</StatusPill>
+                </div>
+                <PatternOverlaySvg overlay={overlay} />
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <Metric label="P10" value={formatCarryYards(overlay.carryP10Yd)} />
+                  <Metric label="Median" value={formatCarryYards(overlay.carryP50Yd)} />
+                  <Metric label="P90" value={formatCarryYards(overlay.carryP90Yd)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="Patterns need side data"
+            detail="Add at least five usable shots with carry and offline values."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function CourseStrategyModePanel({ strategy }: { strategy: CourseStrategyMode }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Course strategy mode"
+        description="Target-yardage calls from recommended carries and miss windows."
+        action={<MapPinned className="size-5 text-sky-600" />}
+      />
+      <CardContent>
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-2"
+          items={strategy.scenarios.map((scenario) => ({
+            label: scenario.label,
+            value: scenario.recommendation,
+            detail: scenario.detail,
+            tone: scenario.tone,
+            href: scenario.clubId ? `/bag/${scenario.clubId}` : undefined,
+          }))}
+        />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function ConfidenceHeatMapPanel({ heatMaps }: { heatMaps: ConfidenceHeatMap[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Confidence heat maps"
+        description="Green, amber, and red carry windows by club."
+        action={<Sparkles className="size-5 text-emerald-600" />}
+      />
+      <CardContent>
+        {heatMaps.length > 0 ? (
+          <div className="grid gap-3">
+            {heatMaps.slice(0, 4).map((heatMap) => (
+              <div
+                key={heatMap.clubId}
+                className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">{heatMap.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {heatMap.confidenceScore}% confidence · {heatMap.sampleSize} shots
+                    </p>
+                  </div>
+                  <StatusPill tone={heatMap.confidenceScore >= 75 ? "green" : "sky"}>
+                    Heat
+                  </StatusPill>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {heatMap.bands.map((band) => (
+                    <div
+                      key={band.label}
+                      className={`rounded-md border px-2 py-2 ${intelligenceToneClass(band.tone)}`}
+                    >
+                      <p className="text-xs font-semibold">{band.label}</p>
+                      <p className="mt-1 text-lg font-semibold tracking-normal">
+                        {band.rangeLabel}
+                        <span className="ml-1 text-xs">yd</span>
+                      </p>
+                      <p className="mt-1 text-xs leading-4">{band.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="Heat maps building"
+            detail="Each club needs four usable carries and a recommended number."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function AiCaddiePanel({ cards }: { cards: AiCaddieCard[] }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="AI caddie"
+        description="Number-led caddie calls from bag, wedge, strategy, and SG evidence."
+        action={<Bot className="size-5 text-emerald-600" />}
+      />
+      <CardContent>
+        <CompactReadoutGrid
+          columnsClassName="md:grid-cols-2"
+          items={cards.map((card) => ({
+            label: card.title,
+            value: card.value,
+            detail: card.detail,
+            tone: card.tone,
+          }))}
+        />
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PersonalStrokesGainedModelPanel({ model }: { model: PersonalStrokesGainedModel }) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Personal strokes gained"
+        description="Your own judged round events, grouped into the scoring model."
+        action={<Brain className="size-5 text-sky-600" />}
+      />
+      <CardContent className="grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Metric label="Total" value={formatSignedStrokes(model.total)} />
+          <Metric label="Average" value={formatSignedStrokes(model.average)} />
+          <Metric label="Judged" value={model.sampleSize.toString()} />
+        </div>
+        {model.categories.length > 0 ? (
+          <div className="grid gap-2">
+            {model.categories.map((category) => (
+              <div
+                key={category.category}
+                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 text-sm"
+              >
+                <span className="font-semibold">{category.label}</span>
+                <span className="text-muted-foreground">{category.sampleSize} shots</span>
+                <StatusPill tone={category.tone}>{formatSignedStrokes(category.total)}</StatusPill>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="SG model building"
+            detail="Mapped rounds with expected-strokes events will unlock personal scoring leaks."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function EmptyPanelMessage({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+      <p className="font-semibold">{title}</p>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
+    </div>
+  );
 }
 
 function WedgeRolePanel({ clubs }: { clubs: BagClub[] }) {
@@ -1204,7 +1724,7 @@ function BagConfidenceLadder({
       <DataPanel>
         <SectionHeader
           title="Gapping doctor"
-          description="Flags overlap, missing yardage windows, and numbers that need more clean shots."
+          description="Flags overlap, course-critical yardage windows, and numbers that need more clean shots."
           action={
             findings.every((finding) => finding.tone === "green") ? (
               <ShieldCheck className="size-5 text-emerald-600" />
@@ -1257,7 +1777,14 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
         left.confidenceScore - right.confidenceScore || left.sampleSize - right.sampleSize,
     );
   const overlap = rows.find((row) => row.gapToNextYd !== null && row.gapToNextYd < 8);
-  const missingWindow = rows.find((row) => row.gapToNextYd !== null && row.gapToNextYd > 18);
+  const missingWindow = rows
+    .filter((row) => isMissingYardageWindowGap(gapWindowInput(row)))
+    .sort(
+      (left, right) =>
+        missingYardageWindowPriority(gapWindowInput(right)) -
+          missingYardageWindowPriority(gapWindowInput(left)) ||
+        (right.gapToNextYd ?? 0) - (left.gapToNextYd ?? 0),
+    )[0];
   const wedge = rows.find(
     (row) => ["pw", "gw", "sw", "lw"].includes(row.clubType) && row.sampleSize < 15,
   );
@@ -1286,12 +1813,18 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
   }
 
   if (missingWindow) {
+    const scoringGap = isScoringEndGap(gapWindowInput(missingWindow));
+
     findings.push({
-      title: "Missing yardage window",
-      detail: `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
-        missingWindow.gapToNextYd,
-      )} course gap to the next club. Add a choke-down or flighted option.`,
-      label: "Gap",
+      title: scoringGap ? "Scoring yardage window" : "Missing yardage window",
+      detail: scoringGap
+        ? `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
+            missingWindow.gapToNextYd,
+          )} scoring-end gap. Add the missing wedge, choke-down, or flighted option.`
+        : `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
+            missingWindow.gapToNextYd,
+          )} course gap to the next club. Add a choke-down or flighted option.`,
+      label: scoringGap ? "Scoring" : "Gap",
       tone: "amber",
       href: `/bag/${missingWindow.id}`,
     });
@@ -1365,7 +1898,15 @@ function gapReadout(row: GappingRow): {
   }
 
   if (row.gapToNextYd > 18) {
-    return { value: formatGap(row.gapToNextYd), label: "Missing window", tone: "amber" };
+    if (isManageableTopEndGap(gapWindowInput(row))) {
+      return { value: formatGap(row.gapToNextYd), label: "Top gap ok", tone: "sky" };
+    }
+
+    return {
+      value: formatGap(row.gapToNextYd),
+      label: isScoringEndGap(gapWindowInput(row)) ? "Scoring gap" : "Missing window",
+      tone: "amber",
+    };
   }
 
   return { value: formatGap(row.gapToNextYd), label: "Gap ok", tone: "green" };
@@ -1378,6 +1919,14 @@ function isSevereGapCompression(row: GappingRow) {
     row.sampleSize >= 20 &&
     row.confidenceScore >= 75
   );
+}
+
+function gapWindowInput(row: GappingRow) {
+  return {
+    longerClubType: row.clubType,
+    shorterClubType: row.nextClubType,
+    gapYd: row.gapToNextYd,
+  };
 }
 
 function formatGap(value: number | null) {
@@ -1781,6 +2330,7 @@ function buildGappingRows(
       latestReliableCarryP75Yd: club.stock.latestReliableCarryP75Yd,
       personalBestCarryYd: club.stock.personalBestCarryYd,
       playNumberYd: club.stock.coursePlayCarryYd,
+      nextClubType: nextClub?.type ?? null,
       gapToNextYd: gapToNextYd === null ? null : Math.round(gapToNextYd * 10) / 10,
       targetCarryYd: null,
       targetPlayNumberYd: null,
@@ -2259,6 +2809,123 @@ function targetToneClass(tone: GappingTargetTone) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+function intelligenceToneClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
+  if (tone === "green") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+
+  if (tone === "sky") {
+    return "border-sky-200 bg-sky-50 text-sky-700";
+  }
+
+  if (tone === "amber") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+
+  if (tone === "pink") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function pathTrendStatusTone(status: PathTrendTracking["status"]) {
+  if (status === "neutralising") {
+    return "green";
+  }
+
+  if (status === "stable") {
+    return "sky";
+  }
+
+  if (status === "widening") {
+    return "amber";
+  }
+
+  return "slate";
+}
+
+function pathTrendStatusLabel(status: PathTrendTracking["status"]) {
+  if (status === "neutralising") {
+    return "Neutralising";
+  }
+
+  if (status === "stable") {
+    return "Stable";
+  }
+
+  if (status === "widening") {
+    return "Widening";
+  }
+
+  return "Building";
+}
+
+function TrendBar({
+  value,
+  maxAbs,
+  className,
+}: {
+  value: number | null;
+  maxAbs: number;
+  className: string;
+}) {
+  const width = value === null ? 0 : Math.min(50, (Math.abs(value) / maxAbs) * 50);
+  const left = value === null ? 50 : value >= 0 ? 50 : 50 - width;
+
+  return (
+    <div className="relative h-2 rounded-full bg-white">
+      <span className="absolute left-1/2 top-0 h-2 w-px bg-slate-300" />
+      <span
+        className={`absolute top-0 h-2 rounded-full ${className}`}
+        style={{ left: `${left}%`, width: `${width}%` }}
+      />
+    </div>
+  );
+}
+
+function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) {
+  const carryP10 = overlay.carryP10Yd ?? 0;
+  const carryP50 = overlay.carryP50Yd ?? carryP10;
+  const carryP90 = overlay.carryP90Yd ?? carryP50;
+  const maxCarry = Math.max(1, carryP90);
+  const maxSide = Math.max(20, Math.abs(overlay.sideP10Yd ?? 0), Math.abs(overlay.sideP90Yd ?? 0));
+  const xLeft = 120 + ((overlay.sideP10Yd ?? 0) / maxSide) * 88;
+  const xRight = 120 + ((overlay.sideP90Yd ?? 0) / maxSide) * 88;
+  const yNear = 122 - (carryP10 / maxCarry) * 92;
+  const yMiddle = 122 - (carryP50 / maxCarry) * 92;
+  const yFar = 122 - (carryP90 / maxCarry) * 92;
+
+  return (
+    <svg
+      viewBox="0 0 240 140"
+      role="img"
+      aria-label={`${overlay.label} shot pattern overlay`}
+      className="mt-3 h-36 w-full rounded-lg border border-slate-200 bg-white"
+    >
+      <rect width="240" height="140" fill="#F8FAFC" />
+      <line x1="120" x2="120" y1="16" y2="126" stroke="#CBD5E1" strokeDasharray="4 4" />
+      <line x1="28" x2="212" y1="122" y2="122" stroke="#E2E8F0" />
+      <polygon
+        points={`${xLeft},${yNear} ${xRight},${yNear} ${xRight},${yFar} ${xLeft},${yFar}`}
+        fill="#DCFCE7"
+        opacity="0.75"
+        stroke="#16A34A"
+      />
+      <circle cx="120" cy={yMiddle} r="5" fill="#0F766E" />
+      <text x="12" y="24" fill="#64748B" fontSize="10">
+        left
+      </text>
+      <text x="210" y="24" textAnchor="end" fill="#64748B" fontSize="10">
+        right
+      </text>
+      <text x="120" y="136" textAnchor="middle" fill="#64748B" fontSize="10">
+        {formatCarryYards(carryP50)} median
+      </text>
+    </svg>
+  );
+}
+
 function MiniDispersion({
   shots,
   accent,
@@ -2405,6 +3072,26 @@ function formatCarryRange(low: number | null, high: number | null) {
   }
 
   return `${formatMetric(low)}-${formatMetric(high)} yd`;
+}
+
+function formatSignedPercent(value: number) {
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}%`;
+}
+
+function formatSignedDegrees(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} deg`;
+}
+
+function formatSignedStrokes(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
 }
 
 function formatLatestReliable(row: GappingRow) {

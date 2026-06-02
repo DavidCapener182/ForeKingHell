@@ -122,6 +122,7 @@ const hiddenRoutePrefixes = [
   "/today",
   "/dashboard",
   "/progress",
+  "/bag",
   "/rounds",
   "/strokes-gained",
 ];

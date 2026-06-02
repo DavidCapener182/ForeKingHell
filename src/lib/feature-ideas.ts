@@ -38,6 +38,7 @@ import {
 import { getDb } from "@/db/client";
 import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
 import { roundSessionTypes } from "@/lib/round-sessions";
 import {
   areFriends,
@@ -1351,6 +1352,11 @@ function buildBagAlerts(
     }
 
     const gap = currentDistance - previousDistance;
+    const gapWindow = {
+      longerClubType: current.club.type,
+      shorterClubType: previous.club.type,
+      gapYd: gap,
+    };
 
     if (gap < 7) {
       alerts.push({
@@ -1364,15 +1370,29 @@ function buildBagAlerts(
         href: `/bag/${current.club.id}`,
         tone: "amber",
       });
-    } else if (gap > 18) {
+    } else if (isMissingYardageWindowGap(gapWindow)) {
+      const scoringGap = isScoringEndGap(gapWindow);
+
       alerts.push({
-        title: `Missing window: ${formatClubType(previous.club.type)} to ${formatClubType(
-          current.club.type,
-        )}`,
+        title: scoringGap
+          ? `Scoring window: ${formatClubType(previous.club.type)} to ${formatClubType(
+              current.club.type,
+            )}`
+          : `Missing window: ${formatClubType(previous.club.type)} to ${formatClubType(
+              current.club.type,
+            )}`,
         metric: `${numberFormatter.format(gap)} yd`,
-        detail: `There is no trusted course number between ${formatBagAlertDistance(
-          previousDistance,
-        )} and ${formatBagAlertDistance(currentDistance)}. Add a flighted option or retest this gap.`,
+        detail: scoringGap
+          ? `The scoring end has no trusted course number between ${formatBagAlertDistance(
+              previousDistance,
+            )} and ${formatBagAlertDistance(
+              currentDistance,
+            )}. Add the missing wedge, flighted option, or retest this gap.`
+          : `There is no trusted course number between ${formatBagAlertDistance(
+              previousDistance,
+            )} and ${formatBagAlertDistance(
+              currentDistance,
+            )}. Add a flighted option or retest this gap.`,
         href: `/bag/${current.club.id}`,
         tone: "pink",
       });
