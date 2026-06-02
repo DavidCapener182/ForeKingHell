@@ -5,6 +5,7 @@ import type { StockShotRoleSummary } from "@/lib/stock-yardage";
 export type IntelligenceTone = "green" | "sky" | "amber" | "pink" | "slate";
 
 export type BagIntelligenceShot = {
+  id?: string | null;
   shotAt?: Date | string | null;
   clubType?: string | null;
   carryYd: number | null;
@@ -89,8 +90,36 @@ export type PathTrendPoint = {
   monthKey: string;
   label: string;
   pathDeg: number | null;
+  faceDeg: number | null;
   faceToPathProxyDeg: number | null;
+  patternCode: string;
+  patternLabel: string;
+  patternDetail: string;
   sampleSize: number;
+};
+
+export type PathTrendClubSummary = {
+  clubId: string;
+  clubType: string;
+  label: string;
+  sampleSize: number;
+  pathDeg: number | null;
+  faceDeg: number | null;
+  faceToPathProxyDeg: number | null;
+  patternCode: string;
+  patternLabel: string;
+};
+
+export type PathTrendShot = {
+  key: string;
+  label: string;
+  shotAtLabel: string;
+  pathDeg: number | null;
+  faceDeg: number | null;
+  faceToPathProxyDeg: number | null;
+  patternCode: string;
+  patternLabel: string;
+  patternDetail: string;
 };
 
 export type PathTrendTracking = {
@@ -100,6 +129,8 @@ export type PathTrendTracking = {
   status: "neutralising" | "stable" | "widening" | "building";
   detail: string;
   points: PathTrendPoint[];
+  clubs: PathTrendClubSummary[];
+  recentShots: PathTrendShot[];
 };
 
 export type ShotPatternOverlaySummary = {
@@ -300,6 +331,10 @@ export function buildSmartBagBuilder({
 }
 
 export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendTracking {
+  const clubSummaries = clubs
+    .map((item) => buildPathClubSummary(item))
+    .filter((item): item is PathTrendClubSummary => Boolean(item))
+    .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
   const club =
     clubs.find((item) => normalizeClubType(item.type) === "driver" && countPathShots(item) >= 3) ??
     [...clubs].sort((left, right) => countPathShots(right) - countPathShots(left))[0] ??
@@ -313,12 +348,14 @@ export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendT
       status: "building",
       detail: "Import club-path rows to start path trend tracking.",
       points: [],
+      clubs: clubSummaries,
+      recentShots: [],
     };
   }
 
   const grouped = new Map<string, BagIntelligenceShot[]>();
 
-  for (const shot of usableShots(club.shots).filter((shot) => isNumber(shot.clubPathDeg))) {
+  for (const shot of pathShotsForClub(club)) {
     const key = monthKey(shot.shotAt);
     grouped.set(key, [...(grouped.get(key) ?? []), shot]);
   }
@@ -337,12 +374,21 @@ export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendT
             : null,
         )
         .filter(isNumber);
+      const faceDeg = roundOne(
+        average(shotsForMonth.map((shot) => shot.launchDirectionDeg).filter(isNumber)),
+      );
+      const faceToPathProxyDeg = roundOne(average(faceProxyValues));
+      const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
 
       return {
         monthKey: key,
         label: monthLabel(key),
         pathDeg,
-        faceToPathProxyDeg: roundOne(average(faceProxyValues)),
+        faceDeg,
+        faceToPathProxyDeg,
+        patternCode: pattern.code,
+        patternLabel: pattern.label,
+        patternDetail: pattern.detail,
         sampleSize: shotsForMonth.length,
       };
     });
@@ -367,6 +413,11 @@ export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendT
     status,
     detail: pathTrendDetail(status, first?.pathDeg ?? null, latest?.pathDeg ?? null),
     points,
+    clubs: clubSummaries,
+    recentShots: pathShotsForClub(club)
+      .sort((left, right) => shotTime(right.shotAt) - shotTime(left.shotAt))
+      .slice(0, 6)
+      .map((shot, index) => buildPathTrendShot(shot, index)),
   };
 }
 
@@ -963,7 +1014,65 @@ function isPositionClub(clubType: string) {
 }
 
 function countPathShots(club: BagIntelligenceClub) {
-  return usableShots(club.shots).filter((shot) => isNumber(shot.clubPathDeg)).length;
+  return pathShotsForClub(club).length;
+}
+
+function pathShotsForClub(club: BagIntelligenceClub) {
+  return usableShots(club.shots).filter((shot) => isNumber(shot.clubPathDeg));
+}
+
+function buildPathClubSummary(club: BagIntelligenceClub): PathTrendClubSummary | null {
+  const shots = pathShotsForClub(club);
+
+  if (shots.length === 0) {
+    return null;
+  }
+
+  const pathDeg = roundOne(average(shots.map((shot) => shot.clubPathDeg).filter(isNumber)));
+  const faceDeg = roundOne(average(shots.map((shot) => shot.launchDirectionDeg).filter(isNumber)));
+  const faceToPathProxyDeg = roundOne(
+    average(shots.map((shot) => shotFaceToPathDeg(shot)).filter(isNumber)),
+  );
+  const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
+
+  return {
+    clubId: club.id,
+    clubType: club.type,
+    label: formatClubType(club.type),
+    sampleSize: shots.length,
+    pathDeg,
+    faceDeg,
+    faceToPathProxyDeg,
+    patternCode: pattern.code,
+    patternLabel: pattern.label,
+  };
+}
+
+function buildPathTrendShot(shot: BagIntelligenceShot, index: number): PathTrendShot {
+  const pathDeg = roundOne(shot.clubPathDeg);
+  const faceDeg = roundOne(shot.launchDirectionDeg);
+  const faceToPathProxyDeg = roundOne(shotFaceToPathDeg(shot));
+  const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
+
+  return {
+    key: shot.id ?? `${shot.shotAt ?? "shot"}-${index}`,
+    label: `Shot ${index + 1}`,
+    shotAtLabel: shotDateLabel(shot.shotAt),
+    pathDeg,
+    faceDeg,
+    faceToPathProxyDeg,
+    patternCode: pattern.code,
+    patternLabel: pattern.label,
+    patternDetail: pattern.detail,
+  };
+}
+
+function shotFaceToPathDeg(shot: BagIntelligenceShot) {
+  if (!isNumber(shot.launchDirectionDeg) || !isNumber(shot.clubPathDeg)) {
+    return null;
+  }
+
+  return shot.launchDirectionDeg - shot.clubPathDeg;
 }
 
 function usableShots(shots: BagIntelligenceShot[]) {
@@ -1056,6 +1165,108 @@ function pathTrendDetail(
   return `${movement} Delivery is holding steady.`;
 }
 
+function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number | null) {
+  if (!isNumber(pathDeg)) {
+    return {
+      code: "-",
+      label: "Path building",
+      detail: "Needs club-path rows before face-to-path can be pictured.",
+    };
+  }
+
+  const pathSide = pathDeg <= -2 ? "pull" : pathDeg >= 2 ? "push" : "straight";
+
+  if (!isNumber(faceToPathDeg)) {
+    const pathLabel =
+      pathSide === "pull" ? "Pull path" : pathSide === "push" ? "Push path" : "Straight path";
+
+    return {
+      code: pathSide === "pull" ? "B" : pathSide === "push" ? "H" : "E",
+      label: pathLabel,
+      detail: "Path measured; add launch direction or face angle to split draw/fade.",
+    };
+  }
+
+  const faceSide = faceToPathDeg <= -1.5 ? "closed" : faceToPathDeg >= 1.5 ? "open" : "square";
+  const pathLabel = pathSide === "pull" ? "pull" : pathSide === "push" ? "push" : "straight";
+  const faceLabel =
+    faceSide === "closed"
+      ? "face closed to path"
+      : faceSide === "open"
+        ? "face open to path"
+        : "face matching path";
+
+  if (pathSide === "straight" && faceSide === "square") {
+    return {
+      code: "E",
+      label: "Straight",
+      detail: `Straight path with ${faceLabel}.`,
+    };
+  }
+
+  if (pathSide === "straight" && faceSide === "open") {
+    return {
+      code: "F",
+      label: "Straight slice",
+      detail: `Straight path with ${faceLabel}.`,
+    };
+  }
+
+  if (pathSide === "straight" && faceSide === "closed") {
+    return {
+      code: "D",
+      label: "Straight draw/hook",
+      detail: `Straight path with ${faceLabel}.`,
+    };
+  }
+
+  if (pathSide === "push" && faceSide === "square") {
+    return {
+      code: "H",
+      label: "Push",
+      detail: `Push path with ${faceLabel}.`,
+    };
+  }
+
+  if (pathSide === "push" && faceSide === "open") {
+    return {
+      code: "I",
+      label: "Push fade/slice",
+      detail: `Push path with ${faceLabel}.`,
+    };
+  }
+
+  if (pathSide === "push" && faceSide === "closed") {
+    return {
+      code: "G",
+      label: "Push draw",
+      detail: `Push path with ${faceLabel}.`,
+    };
+  }
+
+  if (faceSide === "square") {
+    return {
+      code: "B",
+      label: "Pull",
+      detail: `Pull path with ${faceLabel}.`,
+    };
+  }
+
+  if (faceSide === "open") {
+    return {
+      code: "C",
+      label: "Pull fade/slice",
+      detail: `Pull path with ${faceLabel}.`,
+    };
+  }
+
+  return {
+    code: "A",
+    label: "Pull draw/hook",
+    detail: `${pathLabel} path with ${faceLabel}.`,
+  };
+}
+
 function pathTrendTone(status: PathTrendTracking["status"]): IntelligenceTone {
   if (status === "neutralising") {
     return "green";
@@ -1144,6 +1355,32 @@ function monthLabel(key: string) {
   ];
 
   return labels[month - 1] ?? key;
+}
+
+function shotDateLabel(value: Date | string | null | undefined) {
+  if (!value) {
+    return "Recent";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Recent";
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function shotTime(value: Date | string | null | undefined) {
+  if (!value) {
+    return 0;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
 }
 
 function isNumber(value: unknown): value is number {

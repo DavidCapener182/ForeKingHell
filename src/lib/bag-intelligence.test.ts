@@ -114,6 +114,12 @@ describe("bag intelligence", () => {
       ["Jan", 13],
       ["Feb", 7],
     ]);
+    expect(trend.points[0]).toMatchObject({
+      faceDeg: 16,
+      faceToPathProxyDeg: 3,
+      patternCode: "I",
+      patternLabel: "Push fade/slice",
+    });
     expect(trend.points[0].faceToPathProxyDeg).toBe(3);
   });
 

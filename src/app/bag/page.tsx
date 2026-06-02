@@ -1252,17 +1252,11 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
 }
 
 function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
-  const maxAbs = Math.max(
-    4,
-    ...trend.points.map((point) => Math.abs(point.pathDeg ?? 0)),
-    ...trend.points.map((point) => Math.abs(point.faceToPathProxyDeg ?? 0)),
-  );
-
   return (
     <DataPanel>
       <SectionHeader
-        title="Path and face trend"
-        description="Measured club path plus start-line face proxy by month."
+        title="Face-to-path trend"
+        description="Red is measured club path. Black is the face/start-line proxy against that path."
         action={<Radar className="size-5 text-sky-600" />}
       />
       <CardContent className="grid gap-3">
@@ -1270,42 +1264,52 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           <div>
             <p className="text-base font-semibold">{trend.label}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{trend.detail}</p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
+              Monthly cards are averages. Recent shots below are individual rows.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <span className="h-0.5 w-5 rounded-full bg-red-600" />
+                Club path
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="h-0.5 w-5 rounded-full bg-slate-950" />
+                Face / start line
+              </span>
+            </div>
           </div>
           <StatusPill tone={pathTrendStatusTone(trend.status)}>
             {pathTrendStatusLabel(trend.status)}
           </StatusPill>
         </div>
         {trend.points.length > 0 ? (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
             {trend.points.map((point) => (
               <div
                 key={point.monthKey}
-                className="grid grid-cols-[3rem_minmax(0,1fr)_5.5rem] items-center gap-2 text-xs"
+                className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
               >
-                <span className="font-semibold">{point.label}</span>
-                <div className="grid gap-1">
-                  <TrendBar value={point.pathDeg} maxAbs={maxAbs} className="bg-emerald-600" />
-                  <TrendBar
-                    value={point.faceToPathProxyDeg}
-                    maxAbs={maxAbs}
-                    className="bg-sky-500"
-                  />
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">{point.label}</p>
+                    <p className="mt-0.5 text-base font-semibold">{point.patternLabel}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{point.sampleSize} shots</p>
+                  </div>
+                  <StatusPill tone={facePathPatternTone(point.patternCode)}>
+                    {point.patternCode}
+                  </StatusPill>
                 </div>
-                <span className="text-right font-semibold">
-                  {formatSignedDegrees(point.pathDeg)}
-                </span>
+                <FacePathDiagram point={point} />
+                <p className="mt-2 min-h-8 text-xs leading-4 text-muted-foreground">
+                  {point.patternDetail}
+                </p>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <DataPair label="Path" value={formatSignedDegrees(point.pathDeg)} />
+                  <DataPair label="Face" value={formatSignedDegrees(point.faceDeg)} />
+                  <DataPair label="F-P" value={formatSignedDegrees(point.faceToPathProxyDeg)} />
+                </div>
               </div>
             ))}
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-4 rounded-full bg-emerald-600" />
-                Path
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-2 w-4 rounded-full bg-sky-500" />
-                Face proxy
-              </span>
-            </div>
           </div>
         ) : (
           <EmptyPanelMessage
@@ -1313,6 +1317,66 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
             detail="Import rows with club path to chart monthly movement."
           />
         )}
+        {trend.recentShots.length > 0 ? (
+          <div className="grid gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+            <div>
+              <p className="text-sm font-semibold">Recent individual shots</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Same face-to-path picture, one launch-monitor row at a time.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {trend.recentShots.map((shot) => (
+                <div
+                  key={shot.key}
+                  className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{shot.patternLabel}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{shot.shotAtLabel}</p>
+                    </div>
+                    <StatusPill tone={facePathPatternTone(shot.patternCode)}>
+                      {shot.patternCode}
+                    </StatusPill>
+                  </div>
+                  <FacePathDiagram point={shot} diagramKey={shot.key} />
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    <DataPair label="Path" value={formatSignedDegrees(shot.pathDeg)} />
+                    <DataPair label="Face" value={formatSignedDegrees(shot.faceDeg)} />
+                    <DataPair label="F-P" value={formatSignedDegrees(shot.faceToPathProxyDeg)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {trend.clubs.length > 1 ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-semibold">Clubs with path data</p>
+            <div className="mt-3 grid gap-2">
+              {trend.clubs.map((club) => (
+                <div
+                  key={club.clubId}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-md bg-[#F5F6F4] px-3 py-2 text-xs"
+                >
+                  <div>
+                    <p className="font-semibold">{club.label}</p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      {club.patternLabel} · {club.sampleSize} shots
+                    </p>
+                  </div>
+                  <div className="text-right font-semibold">
+                    <p>{formatSignedDegrees(club.pathDeg)}</p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      F-P {formatSignedDegrees(club.faceToPathProxyDeg)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </CardContent>
     </DataPanel>
   );
@@ -2861,27 +2925,126 @@ function pathTrendStatusLabel(status: PathTrendTracking["status"]) {
   return "Building";
 }
 
-function TrendBar({
-  value,
-  maxAbs,
-  className,
+function facePathPatternTone(patternCode: string) {
+  if (patternCode === "E") {
+    return "green";
+  }
+
+  if (patternCode === "G" || patternCode === "F" || patternCode === "H" || patternCode === "B") {
+    return "sky";
+  }
+
+  if (patternCode === "D" || patternCode === "C") {
+    return "amber";
+  }
+
+  if (patternCode === "A" || patternCode === "I") {
+    return "pink";
+  }
+
+  return "slate";
+}
+
+function FacePathDiagram({
+  point,
+  diagramKey,
 }: {
-  value: number | null;
-  maxAbs: number;
-  className: string;
+  point: Pick<
+    PathTrendTracking["points"][number],
+    "label" | "patternLabel" | "pathDeg" | "faceDeg"
+  >;
+  diagramKey?: string;
 }) {
-  const width = value === null ? 0 : Math.min(50, (Math.abs(value) / maxAbs) * 50);
-  const left = value === null ? 50 : value >= 0 ? 50 : 50 - width;
+  const markerSuffix = (diagramKey ?? point.label).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const pathLine = facePathLine(point.pathDeg, 92);
+  const faceLine = facePathLine(point.faceDeg, 100);
 
   return (
-    <div className="relative h-2 rounded-full bg-white">
-      <span className="absolute left-1/2 top-0 h-2 w-px bg-slate-300" />
-      <span
-        className={`absolute top-0 h-2 rounded-full ${className}`}
-        style={{ left: `${left}%`, width: `${width}%` }}
-      />
-    </div>
+    <svg
+      className="mt-3 h-40 w-full rounded-lg border border-slate-200 bg-[#F5F6F4]"
+      viewBox="0 0 240 150"
+      role="img"
+      aria-label={`${point.label} ${point.patternLabel} face-to-path diagram`}
+    >
+      <defs>
+        <marker
+          id={`path-arrow-${markerSuffix}`}
+          markerHeight="7"
+          markerWidth="7"
+          orient="auto"
+          refX="6"
+          refY="3.5"
+        >
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#dc2626" />
+        </marker>
+        <marker
+          id={`face-arrow-${markerSuffix}`}
+          markerHeight="7"
+          markerWidth="7"
+          orient="auto"
+          refX="6"
+          refY="3.5"
+        >
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#0f172a" />
+        </marker>
+      </defs>
+      <line x1="28" y1="82" x2="216" y2="82" stroke="#94a3b8" strokeDasharray="7 6" />
+      <line x1="206" y1="22" x2="206" y2="132" stroke="#cbd5e1" strokeDasharray="5 7" />
+      <circle cx="206" cy="82" r="5" fill="#fff" stroke="#64748b" strokeWidth="1.5" />
+      {pathLine ? (
+        <line
+          x1={pathLine.x1}
+          y1={pathLine.y1}
+          x2={pathLine.x2}
+          y2={pathLine.y2}
+          stroke="#dc2626"
+          strokeLinecap="round"
+          strokeWidth="7"
+          markerEnd={`url(#path-arrow-${markerSuffix})`}
+          opacity="0.72"
+        />
+      ) : null}
+      {faceLine ? (
+        <line
+          x1={faceLine.x1}
+          y1={faceLine.y1}
+          x2={faceLine.x2}
+          y2={faceLine.y2}
+          stroke="#0f172a"
+          strokeLinecap="round"
+          strokeWidth="4"
+          markerEnd={`url(#face-arrow-${markerSuffix})`}
+        />
+      ) : null}
+      <text x="31" y="34" fill="#475569" fontSize="11" fontWeight="600">
+        Target
+      </text>
+      <text x="127" y="31" fill="#475569" fontSize="11" fontWeight="600">
+        Right / push
+      </text>
+      <text x="127" y="132" fill="#475569" fontSize="11" fontWeight="600">
+        Left / pull
+      </text>
+    </svg>
   );
+}
+
+function facePathLine(value: number | null, length: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const baseX = 206;
+  const baseY = 82;
+  const angle = Math.max(-55, Math.min(55, value));
+  const radians = (angle * Math.PI) / 180;
+
+  return {
+    x1: baseX,
+    y1: baseY,
+    x2: Math.round((baseX - Math.cos(radians) * length) * 10) / 10,
+    y2: Math.round((baseY - Math.sin(radians) * length) * 10) / 10,
+  };
 }
 
 function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) {
