@@ -1378,7 +1378,7 @@ function buildBagAlerts(
           ? `Scoring window: ${formatClubType(previous.club.type)} to ${formatClubType(
               current.club.type,
             )}`
-          : `Missing window: ${formatClubType(previous.club.type)} to ${formatClubType(
+          : `Flight option: ${formatClubType(previous.club.type)} to ${formatClubType(
               current.club.type,
             )}`,
         metric: `${numberFormatter.format(gap)} yd`,
@@ -1388,13 +1388,13 @@ function buildBagAlerts(
             )} and ${formatBagAlertDistance(
               currentDistance,
             )}. Add the missing wedge, flighted option, or retest this gap.`
-          : `There is no trusted course number between ${formatBagAlertDistance(
+          : `There is a long-game course option between ${formatBagAlertDistance(
               previousDistance,
             )} and ${formatBagAlertDistance(
               currentDistance,
-            )}. Add a flighted option or retest this gap.`,
+            )}. Treat it behind wedge calibration and driver speed unless the course demands it.`,
         href: `/bag/${current.club.id}`,
-        tone: "pink",
+        tone: scoringGap ? "pink" : "sky",
       });
     }
   }

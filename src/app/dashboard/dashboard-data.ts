@@ -19,6 +19,7 @@ import {
   numberFormatter,
 } from "@/app/dashboard/dashboard-formatters";
 import { buildCoachSummary } from "@/lib/coach";
+import { buildPathTrendTracking, buildWedgeMatrix } from "@/lib/bag-intelligence";
 import { buildCourseDecisionAdvice, getClubDecisionLabel } from "@/lib/course-decision-advice";
 import {
   clubSortValue,
@@ -116,6 +117,8 @@ export async function getDashboardData() {
         sideCarryYd: shots.sideCarryYd,
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
+        launchDirectionDeg: shots.launchDirectionDeg,
+        clubPathDeg: shots.clubPathDeg,
         courseHoleNumber: shots.courseHoleNumber,
         sessionType: sessions.type,
         shotCategory: shots.shotCategory,
@@ -226,6 +229,28 @@ export async function getDashboardData() {
     });
   const bagPreview = bag.slice(0, 5);
   const courseAdvice = buildCourseDecisionAdvice(bag);
+  const bagIntelligenceClubs = bag.map((club) => ({
+    id: club.id,
+    type: club.type,
+    brandModel: club.brandModel,
+    shots: stockShotsByClubId.get(club.id) ?? [],
+    stock: {
+      bestStockCarryYd: club.stock.bestStockCarryYd,
+      coursePlayCarryYd: club.stock.coursePlayCarryYd,
+      latestReliableCarryYd: club.stock.latestReliableCarryYd,
+      latestReliableCarryP25Yd: club.stock.latestReliableCarryP25Yd,
+      latestReliableCarryP75Yd: club.stock.latestReliableCarryP75Yd,
+      personalBestCarryYd: club.stock.personalBestCarryYd,
+      confidenceScore: club.stock.confidenceScore,
+      sampleSize: club.stock.sampleSize,
+      dispersionLeftYd: club.stock.dispersionLeftYd,
+      dispersionRightYd: club.stock.dispersionRightYd,
+      shotRoleSummaries: club.stock.shotRoleSummaries,
+    },
+  }));
+  const pathTrend = buildPathTrendTracking(bagIntelligenceClubs);
+  const wedgeMatrix = buildWedgeMatrix(bagIntelligenceClubs);
+  const bagSummary = buildDashboardBagSummary(bag, wedgeMatrix);
   const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
   const realHandicap = calculateHandicapSummary(
@@ -280,6 +305,9 @@ export async function getDashboardData() {
     },
     latestRound,
     bagPreview,
+    bagSummary,
+    pathTrend,
+    wedgeMatrix,
     courseAdvice,
     whatChanged,
     coachPreview: coachCard
@@ -291,6 +319,10 @@ export async function getDashboardData() {
           drill: coachCard.drill,
           tone: coachCard.tone,
           trustIndex: coachCard.trustIndex,
+          sampleSize: coachCard.sampleSize,
+          stockCarryYd: coachCard.stockCarryYd,
+          usualMiss: coachCard.usualMiss,
+          playableRate: coachCard.playableRate,
         }
       : null,
   };
@@ -307,6 +339,140 @@ function normalizeDashboardPins(value: string[] | null | undefined): DashboardPi
 }
 
 type InsightTone = "green" | "sky" | "amber" | "slate";
+
+function buildDashboardBagSummary(
+  bag: Array<{
+    id: string;
+    type: string;
+    brandModel: string;
+    shotCount: number;
+    stock: {
+      confidenceScore: number;
+      sampleSize: number;
+      coursePlayCarryYd: number | null;
+      recommendedPlayNumberYd: number | null;
+      carryMedianYd: number | null;
+      dispersionLeftYd: number | null;
+      dispersionRightYd: number | null;
+      label: string;
+    };
+  }>,
+  wedgeMatrix: ReturnType<typeof buildWedgeMatrix>,
+) {
+  const stockClubs = bag.filter((club) => club.stock.sampleSize > 0);
+  const averageConfidence =
+    stockClubs.length === 0
+      ? 0
+      : Math.round(
+          stockClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
+            stockClubs.length,
+        );
+  const mostTrusted =
+    [...stockClubs].sort(
+      (left, right) =>
+        right.stock.confidenceScore - left.stock.confidenceScore ||
+        right.shotCount - left.shotCount,
+    )[0] ?? null;
+  const leastTrusted =
+    [...stockClubs].sort(
+      (left, right) =>
+        left.stock.confidenceScore - right.stock.confidenceScore ||
+        left.shotCount - right.shotCount,
+    )[0] ?? null;
+  const suggestedWedge = wedgeMatrix.find((club) => club.isSuggested) ?? null;
+  const scoringZones = wedgeMatrix.slice(0, 4).map((club) => ({
+    id: club.id,
+    label: club.label,
+    clubType: club.clubType,
+    isSuggested: club.isSuggested,
+    fullCarryYd: club.fullCarryYd,
+    matrixScore: club.matrixScore,
+    rows: club.rows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      carryYd: row.carryYd,
+      sampleSize: row.sampleSize,
+      status: row.status,
+      tone: row.tone,
+    })),
+  }));
+
+  return {
+    averageConfidence,
+    trustedClubCount: stockClubs.filter((club) => club.stock.confidenceScore >= 70).length,
+    mappedClubCount: bag.length,
+    mostTrusted: summarizeDashboardClub(mostTrusted),
+    leastTrusted: summarizeDashboardClub(leastTrusted),
+    scoringZones,
+    scoringStatus: suggestedWedge
+      ? `${suggestedWedge.label} gap suggested`
+      : scoringZones.length > 0
+        ? "Wedge matrix active"
+        : "Build scoring wedges",
+  };
+}
+
+function summarizeDashboardClub(
+  club: {
+    id: string;
+    type: string;
+    brandModel: string;
+    shotCount: number;
+    stock: {
+      confidenceScore: number;
+      sampleSize: number;
+      coursePlayCarryYd: number | null;
+      recommendedPlayNumberYd: number | null;
+      carryMedianYd: number | null;
+      dispersionLeftYd: number | null;
+      dispersionRightYd: number | null;
+      label: string;
+    };
+  } | null,
+) {
+  if (!club) {
+    return null;
+  }
+
+  return {
+    id: club.id,
+    label: formatClubType(club.type),
+    clubType: club.type,
+    brandModel: club.brandModel,
+    playNumberYd:
+      club.stock.coursePlayCarryYd ??
+      club.stock.recommendedPlayNumberYd ??
+      club.stock.carryMedianYd,
+    confidenceScore: club.stock.confidenceScore,
+    sampleSize: club.stock.sampleSize,
+    shotCount: club.shotCount,
+    stockLabel: club.stock.label,
+    missLabel: dashboardMissLabel(club.stock),
+    needsShots: Math.max(0, 20 - club.stock.sampleSize),
+  };
+}
+
+function dashboardMissLabel(stock: {
+  dispersionLeftYd: number | null;
+  dispersionRightYd: number | null;
+}) {
+  const left = stock.dispersionLeftYd ?? 0;
+  const right = stock.dispersionRightYd ?? 0;
+
+  if (left === 0 && right === 0) {
+    return "Miss pattern building";
+  }
+
+  if (left > right + 2) {
+    return `Left ${numberFormatter.format(left)} yd`;
+  }
+
+  if (right > left + 2) {
+    return `Right ${numberFormatter.format(right)} yd`;
+  }
+
+  return "Balanced window";
+}
 
 function buildWhatChangedInsights({
   clubRows,

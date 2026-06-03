@@ -183,6 +183,13 @@
       "when": 1779801280967,
       "tag": "0025_lm_world_tour_public_labels",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1780417691529,
+      "tag": "0026_security_advisor_hardening",
+      "breakpoints": true
     }
   ]
 }

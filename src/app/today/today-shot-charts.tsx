@@ -62,8 +62,8 @@ type AverageDispersion = {
   carryYd: number;
 };
 
-const chartWidth = 760;
-const chartHeight = 370;
+const chartWidth = 820;
+const chartHeight = 430;
 const padding = {
   top: 22,
   right: 36,
@@ -141,7 +141,7 @@ export function TodayShotCharts({
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
 
   return (
-    <Card className="premium-card">
+    <Card className="premium-card today-shot-pattern-card">
       <CardHeader>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -154,7 +154,7 @@ export function TodayShotCharts({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 text-sm font-medium leading-5 text-emerald-950">
           Pattern detected: {patternInsight}
         </div>
@@ -270,7 +270,7 @@ export function TodayShotCharts({
           ) : null}
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(280px,2fr)]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.9fr)]">
           <ChartPanel
             title="Dispersion"
             detail="Primary diagnostic: carry landing by left-right miss."
@@ -312,7 +312,7 @@ function ChartPanel({
   children: ReactNode;
 }) {
   return (
-    <div className="apple-panel min-w-0 p-3">
+    <div className="apple-panel min-w-0 p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">{title}</h2>

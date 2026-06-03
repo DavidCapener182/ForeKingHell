@@ -90,6 +90,7 @@ type MetricUnit = "yd" | "mph" | "deg" | "ft" | "ratio";
 type HighlightDirection = "higher" | "lower";
 type HighlightKind = "record" | "tie" | "close";
 type ClubSort = "bag" | "best" | "worst";
+type ReviewTone = "green" | "sky" | "pink" | "amber" | "slate";
 
 type ClubHighlight = {
   id: string;
@@ -114,6 +115,48 @@ type ClubHighlightDescriptor = {
   direction: HighlightDirection;
   closeThreshold: number;
   priority: number;
+};
+
+type PracticeScoreSummary = {
+  score: number;
+  tone: ReviewTone;
+  strong: string;
+  weak: string;
+  recommendation: string;
+  trend: string;
+};
+
+type WhatChangedItem = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: ReviewTone;
+  priority: number;
+};
+
+type SessionImpactItem = {
+  clubLabel: string;
+  value: number | null;
+  detail: string;
+  tone: ReviewTone;
+};
+
+type ConfidenceChangeItem = {
+  clubLabel: string;
+  previous: number | null;
+  current: number | null;
+  delta: number | null;
+  tone: ReviewTone;
+};
+
+type DriverHealthSummary = {
+  path: number | null;
+  targetPath: number;
+  startLine: number | null;
+  faceToPath: number | null;
+  status: string;
+  detail: string;
+  tone: ReviewTone;
 };
 
 export default async function TodayPage({ searchParams }: { searchParams: SearchParams }) {
@@ -168,8 +211,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <MobileRouteTabs group="dashboard" activeKey="today" />
         <MobileStatusAction
           label="Latest practice"
-          value="Latest Practice Review"
-          detail={data.overall.summary}
+          value={data.overall.title}
+          detail={reviewNarrative(data)}
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <Link href={shotDatabaseHref} prefetch={false}>
@@ -178,6 +221,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             </Button>
           }
         />
+        <TodayMobileVerdictCard data={data} />
         <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
         <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
         <MobileMetricStrip
@@ -539,6 +583,68 @@ function TodayPrescriptionCard({
         </Button>
       </div>
     </section>
+  );
+}
+
+function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
+  const score = practiceScoreSummary(data);
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+
+  return (
+    <section
+      id="verdict"
+      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm sm:hidden"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
+            Session verdict
+          </p>
+          <h2 className="mt-1 text-3xl font-semibold leading-8 tracking-normal text-[#050505]">
+            {data.overall.title}
+          </h2>
+        </div>
+        <div className="shrink-0 rounded-lg border border-[#DDE7DF] bg-[#F5F9F6] px-3 py-2 text-right">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0B7A3B]">
+            Score
+          </p>
+          <p className="text-2xl font-semibold leading-none tracking-normal text-[#050505]">
+            {score.score}
+          </p>
+          <p className="text-[11px] font-medium text-[#6B7280]">/100</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <MobileVerdictMetric
+          label="Strength"
+          value={best?.clubLabel ?? score.strong}
+          tone="green"
+        />
+        <MobileVerdictMetric label="Weakness" value={work?.clubLabel ?? score.weak} tone="pink" />
+        <MobileVerdictMetric label="Trend" value={score.trend} tone={score.tone} />
+      </div>
+      <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold leading-5 text-emerald-950">
+        Recommendation: {score.recommendation}
+      </p>
+    </section>
+  );
+}
+
+function MobileVerdictMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: ReviewTone;
+}) {
+  return (
+    <div className={`min-h-20 rounded-lg border px-2.5 py-2 ${verdictCardClass(tone)}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="mt-1 text-sm font-semibold leading-5 text-[#050505]">{value}</p>
+    </div>
   );
 }
 
@@ -918,22 +1024,37 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
   const bestShot = data.bestStraightShots[0];
   const scope = sessionScopeLabel(data);
   const focus = practiceFocus(data);
+  const score = practiceScoreSummary(data);
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+  const changes = whatChangedItems(data);
+  const impact = sessionImpactItems(data);
+  const confidence = confidenceChangeItems(data);
+  const driver = driverHealthSummary(data);
 
   return (
-    <section className="overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6">
+    <section className="overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-6 shadow-sm lg:p-8">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
         <div className="min-w-0">
-          <StatusPill tone={verdictTone(data.overall.verdict)}>Latest practice</StatusPill>
-          <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
-            Latest Practice Review
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+              {data.dateLabel}
+            </span>
+          </div>
+          <h1 className="mt-4 max-w-4xl text-6xl font-semibold uppercase leading-[1.02] tracking-normal text-slate-950 xl:text-7xl">
+            {data.overall.title}
           </h1>
-          <p className="mt-2 text-lg font-medium text-slate-800">{data.dateLabel}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {integerFormatter.format(data.shots.length)} shots ·{" "}
-            {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} ·{" "}
+          <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-700 xl:text-lg">
+            {reviewNarrative(data)}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {integerFormatter.format(data.shots.length)} shots /{" "}
+            {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} /{" "}
             {scope}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
             <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
             <HeroScopePill
               label={`${integerFormatter.format(data.comparisonShots.length)} comparison`}
@@ -945,24 +1066,47 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
             />
           </div>
 
-          <div className="mt-6 max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Session verdict
-            </p>
-            <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-slate-950">
-              {data.overall.title}
-            </h2>
-            <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-slate-700">
-              {reviewNarrative(data)}
-            </p>
-            <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-900">
-              <Target className="size-4" />
-              Focus next: {focus.clubText} start-line control.
-            </p>
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <VerdictStoryCard
+              label="Strength"
+              value={best?.clubLabel ?? score.strong}
+              detail={best ? `${formatRate(best.today.playableRate)} playable` : "Building signal"}
+              tone="green"
+              icon={<ShieldCheck className="size-4" />}
+            />
+            <VerdictStoryCard
+              label="Weakness"
+              value={work?.clubLabel ?? score.weak}
+              detail={
+                work ? `${formatYards(work.today.offlineAverageYd)} offline` : "No clear drag"
+              }
+              tone="pink"
+              icon={<Target className="size-4" />}
+            />
+            <VerdictStoryCard
+              label="Recommendation"
+              value={score.recommendation}
+              detail={`Start with ${focus.clubText}`}
+              tone="amber"
+              icon={<Dumbbell className="size-4" />}
+            />
           </div>
         </div>
 
-        <HeroShotSpotlight shot={bestShot} />
+        <div className="grid gap-3">
+          <PracticeScoreHeroCard score={score} reliable={reliable} />
+          <HeroShotSpotlight shot={bestShot} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
+        <WhatChangedCard items={changes} />
+        <DriverHealthCard summary={driver} />
+      </div>
+
+      <div className="mt-3 grid gap-3 xl:grid-cols-2">
+        <SessionImpactCard items={impact} />
+        <ConfidenceChangeCard items={confidence} />
       </div>
 
       <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
@@ -1000,6 +1144,255 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
         />
       </div>
     </section>
+  );
+}
+
+function VerdictStoryCard({
+  label,
+  value,
+  detail,
+  tone,
+  icon,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: ReviewTone;
+  icon: ReactNode;
+}) {
+  return (
+    <div className={`min-h-32 rounded-lg border px-3.5 py-3 shadow-sm ${verdictCardClass(tone)}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+        <span className={`grid size-8 place-items-center rounded-full ${reviewIconClass(tone)}`}>
+          {icon}
+        </span>
+      </div>
+      <p className="mt-3 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+        {value}
+      </p>
+      <p className="mt-1 text-sm font-medium leading-5 text-slate-700">{detail}</p>
+    </div>
+  );
+}
+
+function PracticeScoreHeroCard({
+  score,
+  reliable,
+}: {
+  score: PracticeScoreSummary;
+  reliable: ClubDayComparison | null;
+}) {
+  return (
+    <div className={`rounded-lg border px-4 py-4 shadow-sm ${verdictCardClass(score.tone)}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
+            Practice score
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-700">Practice quality, not handicap.</p>
+        </div>
+        <span
+          className={`grid size-10 place-items-center rounded-full ${reviewIconClass(score.tone)}`}
+        >
+          <Gauge className="size-5" />
+        </span>
+      </div>
+      <div className="mt-4 flex items-end gap-2">
+        <p className="text-6xl font-semibold leading-none tracking-normal text-slate-950">
+          {score.score}
+        </p>
+        <p className="pb-1 text-xl font-semibold text-slate-500">/100</p>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <ScoreMiniMetric label="Strong" value={score.strong} />
+        <ScoreMiniMetric label="Weak" value={score.weak} />
+        <ScoreMiniMetric label="Trend" value={score.trend} />
+      </div>
+      <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+        Most reliable: {reliable?.clubLabel ?? "building signal"}.
+      </p>
+    </div>
+  );
+}
+
+function ScoreMiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-h-16 rounded-lg border border-white/60 bg-white/65 px-2.5 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function WhatChangedCard({ items }: { items: WhatChangedItem[] }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+            Compared to last session
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+            What changed
+          </h2>
+        </div>
+        <Route className="size-5 text-sky-600" />
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        {items.map((item) => (
+          <div
+            key={`${item.label}-${item.value}`}
+            className={`rounded-lg border px-3 py-2.5 ${verdictCardClass(item.tone)}`}
+          >
+            <p className="text-sm font-semibold text-slate-950">{item.label}</p>
+            <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+              {item.value}
+            </p>
+            <p className="mt-1 text-xs font-medium leading-4 text-slate-600">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
+  return (
+    <div className={`rounded-lg border p-4 shadow-sm ${verdictCardClass(summary.tone)}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
+            Driver health
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+            {summary.status}
+          </h2>
+        </div>
+        <span
+          className={`grid size-10 place-items-center rounded-full ${reviewIconClass(summary.tone)}`}
+        >
+          <Flag className="size-5" />
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <DriverHealthMetric label="Path" value={formatDegrees(summary.path)} />
+        <DriverHealthMetric label="Target" value={formatDegrees(summary.targetPath)} />
+        <DriverHealthMetric label="Start line" value={formatDegrees(summary.startLine)} />
+        <DriverHealthMetric label="Face-to-path" value={formatDegrees(summary.faceToPath)} />
+      </div>
+      <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+        {summary.detail}
+      </p>
+    </div>
+  );
+}
+
+function DriverHealthMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/60 bg-white/65 px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
+  const values = items.map((item) => item.value).filter(isNumber);
+  const net =
+    values.length > 0 ? roundOneNumber(values.reduce((total, value) => total + value, 0)) : null;
+  const tone = deltaTone(net, "higher");
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+            Session impact
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+            Strokes saved / lost
+          </h2>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${reviewStatusClass(tone)}`}>
+          Net {formatSignedDecimal(net)}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <div
+              key={item.clubLabel}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-950">{item.clubLabel}</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-600">{item.detail}</p>
+              </div>
+              <p className={`text-lg font-semibold tabular-nums ${impactValueClass(item.tone)}`}>
+                {formatSignedDecimal(item.value)}
+              </p>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-sm font-medium text-slate-600">
+            No comparable club impact yet.
+          </div>
+        )}
+      </div>
+      <p className="mt-3 text-xs font-medium leading-5 text-muted-foreground">
+        Estimated from carry, dispersion, playable rate and consistency deltas.
+      </p>
+    </div>
+  );
+}
+
+function ConfidenceChangeCard({ items }: { items: ConfidenceChangeItem[] }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+            Confidence change
+          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+            Club confidence
+          </h2>
+        </div>
+        <ShieldCheck className="size-5 text-emerald-700" />
+      </div>
+      <div className="mt-3 grid gap-2">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <div
+              key={item.clubLabel}
+              className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-slate-950">{item.clubLabel}</p>
+                <p className={`text-sm font-semibold ${impactValueClass(item.tone)}`}>
+                  {confidenceRangeText(item)}
+                </p>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+                <span
+                  className={`block h-full rounded-full ${rateBarClass(item.tone)}`}
+                  style={{ width: `${clamp(item.current ?? 0, 0, 100)}%` }}
+                />
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-sm font-medium text-slate-600">
+            Confidence appears once comparable clubs exist.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2661,6 +3054,325 @@ function practiceFocus(data: TodayPracticeData) {
   };
 }
 
+function practiceScoreSummary(data: TodayPracticeData): PracticeScoreSummary {
+  const best = bestClubComparison(data.clubComparisons);
+  const work = needsWorkComparison(data.clubComparisons);
+  const reliable = reliableClubComparison(data.clubComparisons);
+  const focus = practiceFocus(data);
+  const confidence = snapshotConfidence(data.overall.today) ?? 50;
+  const deltaBoost =
+    (data.overall.offlineDeltaYd ?? 0) * -0.7 +
+    (data.overall.straightRateDelta ?? 0) * 0.24 +
+    (data.overall.playableRateDelta ?? 0) * 0.22 +
+    (data.overall.carryDeltaYd ?? 0) * 0.08;
+  const score = data.shots.length > 0 ? clamp(Math.round(confidence + deltaBoost), 0, 100) : 0;
+  const tone = score >= 82 ? "green" : score >= 68 ? "amber" : score >= 50 ? "sky" : "pink";
+  const trend =
+    data.overall.verdict === "better"
+      ? "Improving"
+      : data.overall.verdict === "worse"
+        ? "Needs work"
+        : data.overall.verdict === "mixed"
+          ? "Stable"
+          : "Baseline";
+
+  return {
+    score,
+    tone,
+    strong: best?.clubLabel ?? reliable?.clubLabel ?? "Building",
+    weak: work?.clubLabel ?? "None clear",
+    recommendation: `${focus.clubText} delivery drill`,
+    trend,
+  };
+}
+
+function whatChangedItems(data: TodayPracticeData): WhatChangedItem[] {
+  const items = data.clubComparisons.flatMap((comparison) => {
+    const changes: WhatChangedItem[] = [];
+
+    if (isNumber(comparison.carryDeltaYd)) {
+      changes.push({
+        label: `${comparison.clubLabel} carry`,
+        value: deltaText(comparison.carryDeltaYd, "yd", true),
+        detail: comparison.carryDeltaYd >= 0 ? "longer than baseline" : "shorter than baseline",
+        tone: deltaTone(comparison.carryDeltaYd, "higher"),
+        priority: Math.abs(comparison.carryDeltaYd) * 1.2,
+      });
+    }
+
+    if (isNumber(comparison.offlineDeltaYd)) {
+      changes.push({
+        label: `${comparison.clubLabel} dispersion`,
+        value:
+          comparison.offlineDeltaYd <= 0
+            ? `${numberFormatter.format(Math.abs(comparison.offlineDeltaYd))} yd tighter`
+            : `${numberFormatter.format(comparison.offlineDeltaYd)} yd wider`,
+        detail: comparison.offlineDeltaYd <= 0 ? "closer to target" : "wider cone than baseline",
+        tone: deltaTone(comparison.offlineDeltaYd, "lower"),
+        priority: Math.abs(comparison.offlineDeltaYd) * 1.5,
+      });
+    }
+
+    if (isNumber(comparison.consistencyDeltaYd)) {
+      changes.push({
+        label: `${comparison.clubLabel} carry cone`,
+        value:
+          comparison.consistencyDeltaYd <= 0
+            ? `${numberFormatter.format(Math.abs(comparison.consistencyDeltaYd))} yd tighter`
+            : `${numberFormatter.format(comparison.consistencyDeltaYd)} yd wider`,
+        detail:
+          comparison.consistencyDeltaYd <= 0
+            ? "carry cluster tightened"
+            : "carry cluster spread out",
+        tone: deltaTone(comparison.consistencyDeltaYd, "lower"),
+        priority: Math.abs(comparison.consistencyDeltaYd),
+      });
+    }
+
+    return changes;
+  });
+
+  const strongest = items.sort((left, right) => right.priority - left.priority).slice(0, 3);
+
+  if (strongest.length > 0) {
+    return strongest;
+  }
+
+  return [
+    {
+      label: "Carry",
+      value: deltaText(data.overall.carryDeltaYd, "yd", true),
+      detail: "against the comparable baseline",
+      tone: deltaTone(data.overall.carryDeltaYd, "higher"),
+      priority: 0,
+    },
+    {
+      label: "Dispersion",
+      value: offlineDeltaText(data.overall.offlineDeltaYd),
+      detail: "average offline movement",
+      tone: deltaTone(data.overall.offlineDeltaYd, "lower"),
+      priority: 0,
+    },
+    {
+      label: "Playable",
+      value: deltaText(data.overall.playableRateDelta, "pp", true),
+      detail: "playable shot rate",
+      tone: deltaTone(data.overall.playableRateDelta, "higher"),
+      priority: 0,
+    },
+  ];
+}
+
+function sessionImpactItems(data: TodayPracticeData): SessionImpactItem[] {
+  const storyComparisons = uniqueComparisons([
+    bestClubComparison(data.clubComparisons),
+    reliableClubComparison(data.clubComparisons),
+    needsWorkComparison(data.clubComparisons),
+  ]);
+  const comparisons =
+    storyComparisons.length > 0 ? storyComparisons : data.clubComparisons.slice(0, 3);
+
+  return comparisons.map((comparison) => {
+    const value = sessionImpactValue(comparison);
+    const tone = deltaTone(value, "higher");
+
+    return {
+      clubLabel: comparison.clubLabel,
+      value,
+      detail: impactDetail(comparison),
+      tone,
+    };
+  });
+}
+
+function sessionImpactValue(comparison: ClubDayComparison) {
+  if (comparison.verdict === "new") {
+    return null;
+  }
+
+  const impact =
+    clamp((comparison.offlineDeltaYd ?? 0) * -0.055, -0.42, 0.42) +
+    clamp((comparison.straightRateDelta ?? 0) * 0.012, -0.25, 0.25) +
+    clamp((comparison.playableRateDelta ?? 0) * 0.01, -0.2, 0.2) +
+    clamp((comparison.carryDeltaYd ?? 0) * 0.015, -0.18, 0.18) +
+    clamp((comparison.consistencyDeltaYd ?? 0) * -0.018, -0.18, 0.18);
+
+  return roundOneNumber(clamp(impact, -0.8, 0.8));
+}
+
+function impactDetail(comparison: ClubDayComparison) {
+  const signals = [
+    isNumber(comparison.offlineDeltaYd) ? offlineDeltaText(comparison.offlineDeltaYd) : null,
+    isNumber(comparison.playableRateDelta)
+      ? `${deltaText(comparison.playableRateDelta, "pp", true)} playable`
+      : null,
+    isNumber(comparison.carryDeltaYd)
+      ? `${deltaText(comparison.carryDeltaYd, "yd", true)} carry`
+      : null,
+  ].filter(Boolean) as string[];
+
+  return signals.slice(0, 2).join(" / ") || comparison.summary;
+}
+
+function confidenceChangeItems(data: TodayPracticeData): ConfidenceChangeItem[] {
+  const storyComparisons = uniqueComparisons([
+    bestClubComparison(data.clubComparisons),
+    reliableClubComparison(data.clubComparisons),
+    needsWorkComparison(data.clubComparisons),
+  ]);
+  const comparisons =
+    storyComparisons.length > 0 ? storyComparisons : data.clubComparisons.slice(0, 3);
+
+  return comparisons.map((comparison) => {
+    const previous =
+      comparison.previous.shotCount > 0 ? snapshotConfidence(comparison.previous) : null;
+    const current = comparison.today.shotCount > 0 ? snapshotConfidence(comparison.today) : null;
+    const delta = isNumber(current) && isNumber(previous) ? current - previous : null;
+
+    return {
+      clubLabel: comparison.clubLabel,
+      previous,
+      current,
+      delta,
+      tone: deltaTone(delta, "higher"),
+    };
+  });
+}
+
+function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
+  const driverShots = data.shots.filter((shot) => isDriverClubType(shot.clubType));
+  const path = roundOneNumber(averageNumbers(driverShots.map((shot) => shot.clubPathDeg)));
+  const startLine = roundOneNumber(
+    averageNumbers(driverShots.map((shot) => shot.launchDirectionDeg)),
+  );
+  const faceToPath =
+    isNumber(path) && isNumber(startLine) ? roundOneNumber(startLine - path) : null;
+  const targetPath = 5;
+
+  if (driverShots.length === 0) {
+    return {
+      path: null,
+      targetPath,
+      startLine: null,
+      faceToPath: null,
+      status: "No driver in review",
+      detail: "Add driver shots to see path, start line and draw health here.",
+      tone: "slate",
+    };
+  }
+
+  if (!isNumber(path)) {
+    return {
+      path: null,
+      targetPath,
+      startLine,
+      faceToPath: null,
+      status: "Driver path missing",
+      detail: "Driver shots are present, but club-path data was not captured.",
+      tone: "amber",
+    };
+  }
+
+  if (
+    path >= 3 &&
+    path <= 7 &&
+    (!isNumber(faceToPath) || (faceToPath >= -1.5 && faceToPath <= 3))
+  ) {
+    return {
+      path,
+      targetPath,
+      startLine,
+      faceToPath,
+      status: "Healthy push draw",
+      detail: "Path is sitting close to the +5 target window.",
+      tone: "green",
+    };
+  }
+
+  if (path < 3) {
+    return {
+      path,
+      targetPath,
+      startLine,
+      faceToPath,
+      status: "Path under target",
+      detail: "Driver is not travelling enough from the inside for the target draw.",
+      tone: "amber",
+    };
+  }
+
+  if (isNumber(faceToPath) && faceToPath > 3) {
+    return {
+      path,
+      targetPath,
+      startLine,
+      faceToPath,
+      status: "Face too open",
+      detail: "Path is usable, but the start line is drifting too far right.",
+      tone: "pink",
+    };
+  }
+
+  if (isNumber(faceToPath) && faceToPath < -1.5) {
+    return {
+      path,
+      targetPath,
+      startLine,
+      faceToPath,
+      status: "Face closing",
+      detail: "Path is present, but start line is closing against it.",
+      tone: "amber",
+    };
+  }
+
+  return {
+    path,
+    targetPath,
+    startLine,
+    faceToPath,
+    status: "Driver needs a check",
+    detail: "Path is outside the target window for the preferred draw pattern.",
+    tone: "amber",
+  };
+}
+
+function snapshotConfidence(snapshot: TodayPracticeData["overall"]["today"]) {
+  if (snapshot.shotCount <= 0) {
+    return null;
+  }
+
+  const playable = snapshot.playableRate ?? 55;
+  const straight = snapshot.straightRate ?? 24;
+  const offline = isNumber(snapshot.offlineAverageYd)
+    ? clamp(100 - snapshot.offlineAverageYd * 3.5, 0, 100)
+    : 55;
+  const consistency = isNumber(snapshot.carryStdDevYd)
+    ? clamp(100 - snapshot.carryStdDevYd * 2.4, 0, 100)
+    : 55;
+
+  return clamp(
+    Math.round(playable * 0.42 + straight * 0.24 + offline * 0.22 + consistency * 0.12),
+    0,
+    100,
+  );
+}
+
+function uniqueComparisons(items: Array<ClubDayComparison | null>) {
+  const seen = new Set<string>();
+  const result: ClubDayComparison[] = [];
+
+  for (const item of items) {
+    if (!item || seen.has(item.clubType)) {
+      continue;
+    }
+
+    seen.add(item.clubType);
+    result.push(item);
+  }
+
+  return result;
+}
+
 function bestClubComparison(comparisons: ClubDayComparison[]) {
   return [...comparisons].sort(compareBestClub)[0] ?? null;
 }
@@ -2893,6 +3605,22 @@ function reviewDeltaClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
   return `mt-2 text-sm font-medium ${color}`;
 }
 
+function verdictCardClass(tone: ReviewTone) {
+  if (tone === "green") return "border-emerald-100 bg-emerald-50/65 text-emerald-950";
+  if (tone === "pink") return "border-pink-100 bg-pink-50/65 text-pink-950";
+  if (tone === "amber") return "border-amber-100 bg-amber-50/70 text-amber-950";
+  if (tone === "sky") return "border-sky-100 bg-sky-50/70 text-sky-950";
+  return "border-slate-200 bg-slate-50 text-slate-950";
+}
+
+function impactValueClass(tone: ReviewTone) {
+  if (tone === "green") return "text-emerald-700";
+  if (tone === "pink") return "text-pink-700";
+  if (tone === "amber") return "text-amber-800";
+  if (tone === "sky") return "text-sky-700";
+  return "text-slate-600";
+}
+
 function verdictTone(verdict: TodayPracticeData["overall"]["verdict"]) {
   if (verdict === "better") return "green";
   if (verdict === "worse") return "pink";
@@ -2953,6 +3681,12 @@ function deltaText(value: number | null, unit: "yd" | "mph" | "pp", showNoBaseli
   if (value === null) return showNoBaseline ? "No baseline" : "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${numberFormatter.format(value)} ${unit}`;
+}
+
+function formatSignedDecimal(value: number | null) {
+  if (value === null) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${numberFormatter.format(value)}`;
 }
 
 function offlineDeltaText(value: number | null) {
@@ -3043,6 +3777,18 @@ function formatNumber(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
+function confidenceRangeText(item: ConfidenceChangeItem) {
+  if (!isNumber(item.current)) {
+    return "--";
+  }
+
+  if (!isNumber(item.previous)) {
+    return `${item.current}% baseline`;
+  }
+
+  return `${item.previous}% to ${item.current}% (${deltaText(item.delta, "pp", true)})`;
+}
+
 function formatShotCategory(value: string | null) {
   if (!value) return "--";
   return value
@@ -3062,6 +3808,20 @@ function titleCase(value: string) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function roundOneNumber(value: number | null | undefined) {
+  return isNumber(value) ? Math.round(value * 10) / 10 : null;
+}
+
+function averageNumbers(items: Array<number | null>) {
+  const values = items.filter(isNumber);
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function cssAttributeValue(value: string) {

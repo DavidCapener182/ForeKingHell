@@ -1038,7 +1038,7 @@ export function SectionHeader({
   return (
     <CardHeader className="gap-1 border-b border-border/70 bg-white/35 px-4 py-3">
       <div>
-        <CardTitle className="text-base font-semibold tracking-normal text-[#111611] sm:text-lg">
+        <CardTitle className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
           {title}
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}

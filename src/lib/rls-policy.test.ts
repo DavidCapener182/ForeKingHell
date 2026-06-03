@@ -28,6 +28,10 @@ const featureFoundationsMigration = readFileSync(
   join(process.cwd(), "drizzle/0022_feature_foundations.sql"),
   "utf8",
 );
+const securityAdvisorMigration = readFileSync(
+  join(process.cwd(), "drizzle/0026_security_advisor_hardening.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -237,5 +241,47 @@ describe("RLS migration", () => {
     );
     expect(featureFoundationsMigration).toContain("auth.uid() IS NOT NULL");
     expect(featureFoundationsMigration).toContain('"user_id" = auth.uid()');
+  });
+
+  it("hardens advisor-flagged functions, extension schema, and avatar listing", () => {
+    expect(securityAdvisorMigration).toContain(
+      "ALTER FUNCTION public.fkh_can_view_course_record(public.fkh_course_records) SET search_path = public",
+    );
+    expect(securityAdvisorMigration).toContain(
+      "ALTER FUNCTION public.fkh_can_view_tournament(public.fkh_tournaments) SET search_path = public",
+    );
+    expect(securityAdvisorMigration).toContain("ALTER EXTENSION citext SET SCHEMA extensions");
+    expect(securityAdvisorMigration).toContain(
+      'DROP POLICY IF EXISTS "Anyone can select from avatars" ON storage.objects',
+    );
+    expect(securityAdvisorMigration).toContain(
+      'DROP POLICY IF EXISTS "avatars_read_public" ON storage.objects',
+    );
+
+    for (const signature of [
+      "public.fkh_are_friends(uuid, uuid)",
+      "public.fkh_can_access_user(uuid, text[])",
+      "public.fkh_can_manage_group(uuid, uuid)",
+      "public.fkh_can_read_course(public.fkh_courses)",
+      "public.fkh_can_view_ai_summary(public.fkh_ai_social_summaries)",
+      "public.fkh_can_view_challenge(public.fkh_challenges)",
+      "public.fkh_can_view_feed_item(public.fkh_feed_items)",
+      "public.fkh_can_view_group(public.fkh_groups)",
+      "public.fkh_can_view_social_profile(public.fkh_user_profiles)",
+      "public.fkh_can_write_course(public.fkh_courses)",
+      "public.fkh_has_social_block(uuid, uuid)",
+      "public.fkh_is_group_member(uuid, uuid)",
+    ]) {
+      expect(securityAdvisorMigration).toContain(
+        `REVOKE EXECUTE ON FUNCTION ${signature} FROM PUBLIC`,
+      );
+      expect(securityAdvisorMigration).toContain(
+        `GRANT EXECUTE ON FUNCTION ${signature} TO anon, authenticated`,
+      );
+    }
+
+    expect(securityAdvisorMigration).toContain(
+      "ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC",
+    );
   });
 });

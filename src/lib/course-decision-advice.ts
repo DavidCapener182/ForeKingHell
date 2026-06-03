@@ -33,6 +33,9 @@ export type CourseDecisionAdvice = {
   detail: string;
   tone: CourseDecisionTone;
   clubId?: string;
+  targetYd?: number;
+  playNumberYd?: number;
+  expectedLeaveYd?: number;
 };
 
 type TrustedClub = CourseDecisionClub & {
@@ -125,6 +128,7 @@ function buildTwoHundredOutAdvice(clubs: TrustedClub[]): CourseDecisionAdvice {
       detail:
         "Build a fairway wood, hybrid, or long-iron sample before making this a pressure number.",
       tone: "amber",
+      targetYd: 200,
     };
   }
 
@@ -135,6 +139,9 @@ function buildTwoHundredOutAdvice(clubs: TrustedClub[]): CourseDecisionAdvice {
     detail: `Use the current ${club.decisionLabel.toLowerCase()} number and leave driver out of this decision.`,
     tone: getClubDecisionTone(club.decisionLabel),
     clubId: club.id,
+    targetYd: 200,
+    playNumberYd: club.playNumberYd,
+    expectedLeaveYd: Math.max(0, Math.round(200 - club.playNumberYd)),
   };
 }
 
@@ -148,6 +155,7 @@ function buildOneEightyTeeAdvice(clubs: TrustedClub[]): CourseDecisionAdvice {
       value: "Needs a position club",
       detail: "Prioritise a trusted wood, hybrid, or long iron for controlled tee shots.",
       tone: "amber",
+      targetYd: 180,
     };
   }
 
@@ -158,6 +166,9 @@ function buildOneEightyTeeAdvice(clubs: TrustedClub[]): CourseDecisionAdvice {
     detail: "Use this as the position club when driver brings too much trouble into play.",
     tone: getClubDecisionTone(club.decisionLabel),
     clubId: club.id,
+    targetYd: 180,
+    playNumberYd: club.playNumberYd,
+    expectedLeaveYd: Math.max(0, Math.round(180 - club.playNumberYd)),
   };
 }
 
@@ -172,6 +183,7 @@ function buildOneFiftyApproachAdvice(clubs: TrustedClub[]): CourseDecisionAdvice
       value: "Needs iron calibration",
       detail: "Add clean mid-iron stock shots before trusting one recommended number here.",
       tone: "amber",
+      targetYd: 150,
     };
   }
 
@@ -192,6 +204,9 @@ function buildOneFiftyApproachAdvice(clubs: TrustedClub[]): CourseDecisionAdvice
     detail: dangerDetail,
     tone: getClubDecisionTone(club.decisionLabel),
     clubId: club.id,
+    targetYd: 150,
+    playNumberYd: club.playNumberYd,
+    expectedLeaveYd: Math.max(0, Math.round(150 - club.playNumberYd)),
   };
 }
 
@@ -200,10 +215,7 @@ function buildInsideHundredAdvice(
   trustedStockClubs: TrustedClub[],
 ): CourseDecisionAdvice {
   const fullWedge = trustedStockClubs
-    .filter(
-      (club) =>
-        isWedgeType(club.type) && club.playNumberYd <= 115,
-    )
+    .filter((club) => isWedgeType(club.type) && club.playNumberYd <= 115)
     .sort(
       (left, right) => Math.abs(left.playNumberYd - 100) - Math.abs(right.playNumberYd - 100),
     )[0];
@@ -216,6 +228,9 @@ function buildInsideHundredAdvice(
       detail: `Use ${formatYards(fullWedge.playNumberYd)} as the full-shot anchor, then take yardage off by window.`,
       tone: getClubDecisionTone(fullWedge.decisionLabel),
       clubId: fullWedge.id,
+      targetYd: 100,
+      playNumberYd: fullWedge.playNumberYd,
+      expectedLeaveYd: Math.max(0, Math.round(100 - fullWedge.playNumberYd)),
     };
   }
 
@@ -237,6 +252,7 @@ function buildInsideHundredAdvice(
     detail: `Use the ${touchWindow} touch windows; keep chips and pitches out of full-stock numbers.`,
     tone: "amber",
     clubId: touchClub?.id,
+    targetYd: 100,
   };
 }
 

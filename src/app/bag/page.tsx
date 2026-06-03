@@ -5,6 +5,7 @@ import {
   Award,
   Bot,
   Brain,
+  ChevronDown,
   Database,
   Gauge,
   Grid3X3,
@@ -140,6 +141,9 @@ export const dynamic = "force-dynamic";
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+const shortMonthFormatter = new Intl.DateTimeFormat("en-GB", {
+  month: "short",
+});
 
 const RECENT_SHOTS_PER_CLUB = 200;
 const PEER_SHOT_QUERY_LIMIT = 3000;
@@ -161,6 +165,7 @@ type PageProps = {
 };
 
 const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
+const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
 
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
@@ -358,6 +363,22 @@ export default async function BagPage({ searchParams }: PageProps) {
               ),
             },
             {
+              value: "benchmarks",
+              title: "Distance benchmarks",
+              description: "Carry, speed, smash, height, land angle and peers.",
+              summary: benchmarkRows.length > 0 ? `${benchmarkRows.length} clubs` : "Building",
+              children:
+                benchmarkRows.length > 0 ? (
+                  <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
+                ) : (
+                  <NativeListSection title="Distance benchmarks">
+                    <p className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#6B7280]">
+                      Import more stock shots to unlock club speed, smash and peer benchmarks.
+                    </p>
+                  </NativeListSection>
+                ),
+            },
+            {
               value: "lower-scores",
               title: "Lower scores",
               description: "Strategy, wedges, heat maps and caddie.",
@@ -419,6 +440,11 @@ export default async function BagPage({ searchParams }: PageProps) {
                           <span className="text-sm text-[#6B7280]">
                             {formatMetric(club.stock.bestStockCarryYd)} yd
                           </span>
+                          <span className="grid gap-1 text-xs leading-4 text-[#6B7280]">
+                            <span>Trust score {clubTrustScore(club)}%</span>
+                            <span>Current miss {clubCurrentMiss(club).label}</span>
+                            <span>Club health {clubHealthReadout(club).label}</span>
+                          </span>
                         </Link>
                       ))}
                     </div>
@@ -428,7 +454,7 @@ export default async function BagPage({ searchParams }: PageProps) {
             },
             {
               value: "fitting",
-              title: "Fitting and benchmarks",
+              title: "Fitting",
               description: "Feature checks, target links and club identities.",
               summary: "Full analysis",
               children: <BagFeaturePanel data={featureData} compactMobile />,
@@ -503,15 +529,17 @@ export default async function BagPage({ searchParams }: PageProps) {
 
         <MobileSectionChips
           items={[
-            { label: "Gapping", href: "#gapping" },
+            { label: "Trust", href: "#bag-confidence" },
+            { label: "Levels", href: "#levels" },
             { label: "PBs", href: "#personal-bests" },
             { label: "Lower scores", href: "#lower-scores" },
             { label: "Wedges", href: "#wedge-roles" },
-            { label: "Levels", href: "#levels" },
             { label: "Decisions", href: "#decisions" },
             { label: "Clubs", href: "#clubs" },
           ]}
         />
+
+        <BagStickySummary rows={gappingRows} />
 
         <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
 
@@ -566,6 +594,20 @@ export default async function BagPage({ searchParams }: PageProps) {
           ]}
         />
 
+        <BagConfidenceLadder
+          rows={gappingRows}
+          maxCarryYd={maxDisplayCarry}
+          findings={bagDoctorFindings}
+        />
+
+        {benchmarkRows.length > 0 ? (
+          <section id="levels" className="scroll-mt-28">
+            <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
+          </section>
+        ) : null}
+
+        <ClubEvolutionPanel clubs={bag} />
+
         <BagFeaturePanel data={featureData} />
 
         <section id="personal-bests" className="w-full scroll-mt-28">
@@ -585,12 +627,6 @@ export default async function BagPage({ searchParams }: PageProps) {
           />
         </section>
 
-        <BagConfidenceLadder
-          rows={gappingRows}
-          maxCarryYd={maxDisplayCarry}
-          findings={bagDoctorFindings}
-        />
-
         {wedgeRoleClubs.length > 0 ? (
           <section id="wedge-roles" className="scroll-mt-28">
             <WedgeRolePanel clubs={wedgeRoleClubs} />
@@ -602,12 +638,6 @@ export default async function BagPage({ searchParams }: PageProps) {
         {gappingRows.length > 0 ? (
           <section id="gapping" className="scroll-mt-28">
             <CarryGappingTable rows={gappingRows} />
-          </section>
-        ) : null}
-
-        {benchmarkRows.length > 0 ? (
-          <section id="levels" className="scroll-mt-28">
-            <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
           </section>
         ) : null}
 
@@ -672,6 +702,9 @@ export default async function BagPage({ searchParams }: PageProps) {
                       </p>
                     </div>
                   </div>
+
+                  <ClubCardSignalStrip club={club} />
+                  <ClubEvolutionStrip club={club} />
 
                   <div className="hidden sm:block">
                     <MiniDispersion
@@ -1648,17 +1681,76 @@ function WedgeRoleReadout({
   );
 }
 
+function BagStickySummary({ rows }: { rows: GappingRow[] }) {
+  const preferredRows = STICKY_BAG_SUMMARY_TYPES.map((type) =>
+    rows.find((row) => row.clubType === type),
+  ).filter((row): row is GappingRow => Boolean(row));
+  const fallbackRows = rows
+    .filter((row) => !preferredRows.some((preferred) => preferred.id === row.id))
+    .slice(0, Math.max(0, 5 - preferredRows.length));
+  const summaryRows = [...preferredRows, ...fallbackRows].slice(0, 5);
+
+  if (summaryRows.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="sticky top-3 z-20 hidden sm:block">
+      <div className="premium-command-surface flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-950">Mini caddie</p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Driver, fairway, iron and wedge numbers at hand.
+          </p>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-wrap justify-end gap-2">
+          {summaryRows.map((row) => (
+            <Link
+              key={row.id}
+              href={`/bag/${row.id}`}
+              prefetch={false}
+              className="grid min-w-24 rounded-lg border border-slate-200/70 bg-white/85 px-3 py-2 text-sm shadow-sm transition-colors hover:border-emerald-300"
+            >
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {formatClubType(row.clubType)}
+              </span>
+              <span className="mt-0.5 text-lg font-semibold leading-6 tracking-normal text-slate-950">
+                {formatCarryYards(visualCarryYd(row))}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function StockFilterPanel({ clubs }: { clubs: BagClub[] }) {
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Best-stock filters"
-        description="Shows why rows did not feed the Best Stock median. Personal Best is tracked separately so one long clean shot still appears."
-        action={<Database className="size-5 text-sky-600" />}
-      />
-      <CardContent>
-        <StockFilterCards clubs={clubs} />
-      </CardContent>
+    <DataPanel id="best-stock-filters" className="scroll-mt-28">
+      <details className="group">
+        <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Database className="size-5 text-sky-600" />
+              <h2 className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
+                Best-stock filters
+              </h2>
+            </div>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Shows why rows did not feed the Best Stock median. Personal Best is tracked separately
+              so one long clean shot still appears.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusPill tone="sky">Secondary</StatusPill>
+            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
+          </div>
+        </summary>
+        <CardContent>
+          <StockFilterCards clubs={clubs} />
+        </CardContent>
+      </details>
     </DataPanel>
   );
 }
@@ -1709,7 +1801,10 @@ function BagConfidenceLadder({
   }
 
   return (
-    <section className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start">
+    <section
+      id="bag-confidence"
+      className="grid scroll-mt-28 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
+    >
       <DataPanel>
         <SectionHeader
           title="Bag confidence ladder"
@@ -1762,6 +1857,20 @@ function BagConfidenceLadder({
                   </div>
 
                   <div className="grid gap-2 text-xs">
+                    <div className="rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">Trust</span>
+                        <span className="font-semibold">{row.confidenceScore}%</span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
+                        <span
+                          className={`block h-full rounded-full ${confidenceBarClass(
+                            confidence.tone,
+                          )}`}
+                          style={{ width: `${Math.max(5, Math.min(100, row.confidenceScore))}%` }}
+                        />
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
                       <span className="text-muted-foreground">
                         {row.playNumberYd === null ? "Recommended" : "Best stock"}
@@ -1880,16 +1989,16 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
     const scoringGap = isScoringEndGap(gapWindowInput(missingWindow));
 
     findings.push({
-      title: scoringGap ? "Scoring yardage window" : "Missing yardage window",
+      title: scoringGap ? "Scoring yardage window" : "Long-game flight option",
       detail: scoringGap
         ? `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
             missingWindow.gapToNextYd,
           )} scoring-end gap. Add the missing wedge, choke-down, or flighted option.`
         : `${formatClubType(missingWindow.clubType)} leaves a ${formatGap(
             missingWindow.gapToNextYd,
-          )} course gap to the next club. Add a choke-down or flighted option.`,
-      label: scoringGap ? "Scoring" : "Gap",
-      tone: "amber",
+          )} long-game gap. Treat it as a flighted-shot option, behind wedge calibration and driver speed.`,
+      label: scoringGap ? "Scoring" : "Option",
+      tone: scoringGap ? "amber" : "sky",
       href: `/bag/${missingWindow.id}`,
     });
   }
@@ -1966,10 +2075,12 @@ function gapReadout(row: GappingRow): {
       return { value: formatGap(row.gapToNextYd), label: "Top gap ok", tone: "sky" };
     }
 
+    const scoringGap = isScoringEndGap(gapWindowInput(row));
+
     return {
       value: formatGap(row.gapToNextYd),
-      label: isScoringEndGap(gapWindowInput(row)) ? "Scoring gap" : "Missing window",
-      tone: "amber",
+      label: scoringGap ? "Scoring gap" : "Flight option",
+      tone: scoringGap ? "amber" : "sky",
     };
   }
 
@@ -2812,14 +2923,21 @@ function GapBadge({ row }: { row: GappingRow }) {
     return <span className="text-muted-foreground">--</span>;
   }
 
+  const input = gapWindowInput(row);
   const tone =
     gapYd < 8 && isSevereGapCompression(row)
       ? "border-rose-200 bg-rose-50 text-rose-700"
       : gapYd < 8
         ? "border-amber-200 bg-amber-50 text-amber-700"
-        : gapYd > 18
-          ? "border-rose-200 bg-rose-50 text-rose-700"
-          : "border-emerald-200 bg-emerald-50 text-emerald-700";
+        : gapYd > 18 && isScoringEndGap(input)
+          ? "border-amber-200 bg-amber-50 text-amber-700"
+          : gapYd > 18 && isMissingYardageWindowGap(input)
+            ? "border-sky-200 bg-sky-50 text-sky-700"
+            : gapYd > 18 && isManageableTopEndGap(input)
+              ? "border-sky-200 bg-sky-50 text-sky-700"
+              : gapYd > 18
+                ? "border-sky-200 bg-sky-50 text-sky-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
   return (
     <span
@@ -2871,6 +2989,26 @@ function targetToneClass(tone: GappingTargetTone) {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function confidenceBarClass(tone: BagDoctorFinding["tone"]) {
+  if (tone === "green") {
+    return "bg-emerald-600";
+  }
+
+  if (tone === "sky") {
+    return "bg-sky-500";
+  }
+
+  if (tone === "amber") {
+    return "bg-amber-500";
+  }
+
+  if (tone === "pink") {
+    return "bg-pink-600";
+  }
+
+  return "bg-slate-400";
 }
 
 function intelligenceToneClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
@@ -3146,6 +3284,144 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ClubCardSignalStrip({ club }: { club: BagClub }) {
+  const trust = clubTrustScore(club);
+  const health = clubHealthReadout(club);
+  const miss = clubCurrentMiss(club);
+
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      <ClubSignalMetric
+        label="Trust score"
+        value={`${trust}%`}
+        detail={club.isShortGameTouch && club.type !== "sw" ? "touch sample" : "stock confidence"}
+        tone={trust >= 75 ? "green" : trust >= 60 ? "sky" : "amber"}
+      />
+      <ClubSignalMetric
+        label="Current miss"
+        value={miss.label}
+        detail={miss.detail}
+        tone={miss.tone}
+      />
+      <ClubSignalMetric
+        label="Club health"
+        value={health.label}
+        detail={health.detail}
+        tone={health.tone}
+      />
+    </div>
+  );
+}
+
+function ClubSignalMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+}) {
+  return (
+    <div className={`min-h-24 rounded-lg border px-3 py-2 ${intelligenceToneClass(tone)}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="mt-1 text-base font-semibold leading-5 text-slate-950">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-4 text-slate-600">{detail}</p>
+    </div>
+  );
+}
+
+function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
+  const clubLines = clubs
+    .map((club) => ({ club, points: clubEvolutionPoints(club) }))
+    .filter((item) => item.points.length > 0)
+    .slice(0, 6);
+
+  if (clubLines.length === 0) {
+    return null;
+  }
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Club evolution"
+        description="Month-by-month carry movement from clean stock shots."
+        action={<TrendingUp className="size-5 text-emerald-600" />}
+      />
+      <CardContent>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {clubLines.map(({ club, points }) => (
+            <Link
+              key={club.id}
+              href={`/bag/${club.id}`}
+              prefetch={false}
+              className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold">{formatClubType(club.type)}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {clubHealthReadout(club).label} · {clubTrustScore(club)}% trust
+                  </p>
+                </div>
+                <StatusPill tone={clubEvolutionTone(points)}>
+                  {clubEvolutionDelta(points)}
+                </StatusPill>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {points.map((point) => (
+                  <div key={point.key} className="rounded-md bg-white/85 px-2 py-2 text-center">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      {point.label}
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tracking-normal">
+                      {formatMetric(point.carryYd)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">yd</p>
+                  </div>
+                ))}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function ClubEvolutionStrip({ club }: { club: BagClub }) {
+  const points = clubEvolutionPoints(club);
+
+  if (points.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Club evolution
+        </p>
+        <span className={`text-xs font-semibold ${clubEvolutionTextClass(points)}`}>
+          {clubEvolutionDelta(points)}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {points.map((point) => (
+          <div key={point.key} className="rounded-md bg-white/80 px-2 py-1.5 text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {point.label}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold">{formatMetric(point.carryYd)} yd</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ShotTrendBadge({ trend }: { trend: StockCarryTrend }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -3223,6 +3499,234 @@ function stockTrendToneClass(status: StockCarryTrend["status"]) {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function clubTrustScore(club: BagClub) {
+  if (club.isShortGameTouch && club.type !== "sw") {
+    return Math.min(90, Math.round((club.touch.sampleSize / 50) * 100));
+  }
+
+  return club.stock.confidenceScore;
+}
+
+function clubHealthReadout(club: BagClub): {
+  label: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+} {
+  const trust = clubTrustScore(club);
+  const stockSampleSize =
+    club.isShortGameTouch && club.type !== "sw" ? club.touch.sampleSize : club.stock.sampleSize;
+  const missSize = Math.max(club.stock.dispersionLeftYd ?? 0, club.stock.dispersionRightYd ?? 0);
+
+  if (
+    stockSampleSize < 10 ||
+    trust < 55 ||
+    (club.type === "sw" && club.stock.coursePlayCarryYd === null)
+  ) {
+    return {
+      label: "Calibrating",
+      detail: `${stockSampleSize} usable shots. Add more proof before course trust.`,
+      tone: "amber",
+    };
+  }
+
+  if (club.stockTrend?.status === "worse" || missSize >= 28) {
+    return {
+      label: "Needs attention",
+      detail:
+        club.stockTrend?.status === "worse"
+          ? stockTrendDetail(club.stockTrend)
+          : `Miss window reaches ${formatMetric(missSize)} yd.`,
+      tone: "pink",
+    };
+  }
+
+  if (trust >= 75) {
+    return {
+      label: "Healthy",
+      detail: `${trust}% trust from the current stock window.`,
+      tone: "green",
+    };
+  }
+
+  return {
+    label: "Usable",
+    detail: `${trust}% trust. Fine with a conservative target.`,
+    tone: "sky",
+  };
+}
+
+function clubCurrentMiss(club: BagClub): {
+  label: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+} {
+  const sideValues = club.shots.map((shot) => shot.sideCarryYd).filter(isFiniteMetric);
+
+  if (sideValues.length === 0) {
+    return {
+      label: "Needs side data",
+      detail: "Import offline values to show the miss.",
+      tone: "slate",
+    };
+  }
+
+  const averageSide = averageNumber(sideValues);
+  const averageStart = averageNumber(
+    club.shots.map((shot) => shot.launchDirectionDeg).filter(isFiniteMetric),
+  );
+  const averagePath = averageNumber(
+    club.shots.map((shot) => shot.clubPathDeg).filter(isFiniteMetric),
+  );
+  const averageCarry = averageNumber(club.shots.map((shot) => shot.carryYd).filter(isFiniteMetric));
+  const primaryCarry = clubPrimaryCarryYd(club);
+  const sideAbs = Math.abs(averageSide ?? 0);
+  const direction =
+    averageSide === null || sideAbs <= 4 ? "center" : averageSide > 0 ? "right" : "left";
+  const short = primaryCarry !== null && averageCarry !== null && averageCarry <= primaryCarry - 5;
+  const label =
+    short && direction !== "center"
+      ? `Short ${direction}`
+      : club.type === "driver" &&
+          averagePath !== null &&
+          averagePath >= 2.5 &&
+          averageStart !== null &&
+          averageStart >= 2
+        ? "Push draw"
+        : direction === "right" && averageStart !== null && averageStart >= 3
+          ? "Push right"
+          : direction === "left" && averageStart !== null && averageStart <= -2
+            ? "Pull left"
+            : direction === "right"
+              ? "Right miss"
+              : direction === "left"
+                ? "Left miss"
+                : "Playable window";
+  const tone = sideAbs <= 8 ? "green" : sideAbs <= 18 ? "sky" : "amber";
+
+  return {
+    label,
+    detail: `${formatSignedYards(roundOneNumber(averageSide ?? 0))} average side`,
+    tone,
+  };
+}
+
+function clubEvolutionPoints(club: BagClub) {
+  const { filteredShots } = selectStockYardageShots(club.shots, RECENT_SHOTS_PER_CLUB, {
+    clubType: club.type,
+  });
+  const grouped = new Map<string, { label: string; values: number[] }>();
+
+  for (const shot of filteredShots) {
+    if (!isFiniteMetric(shot.carryYd)) {
+      continue;
+    }
+
+    const date = shotDate(shot.shotAt);
+
+    if (!date) {
+      continue;
+    }
+
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const current = grouped.get(key) ?? {
+      label: shortMonthFormatter.format(date),
+      values: [],
+    };
+    current.values.push(shot.carryYd);
+    grouped.set(key, current);
+  }
+
+  const points = [...grouped.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, group]) => ({
+      key,
+      label: group.label,
+      carryYd: roundOne(percentile(group.values, 0.5)),
+    }))
+    .filter((point): point is { key: string; label: string; carryYd: number } =>
+      isFiniteMetric(point.carryYd),
+    )
+    .slice(-3);
+
+  return points.length >= 2 ? points : [];
+}
+
+function clubEvolutionDelta(points: Array<{ carryYd: number }>) {
+  if (points.length < 2) {
+    return "Building";
+  }
+
+  const delta = roundOneNumber(points[points.length - 1].carryYd - points[0].carryYd);
+
+  if (delta === 0) {
+    return "Stable";
+  }
+
+  return formatSignedYards(delta);
+}
+
+function clubEvolutionTone(points: Array<{ carryYd: number }>): BagDoctorFinding["tone"] {
+  if (points.length < 2) {
+    return "slate";
+  }
+
+  const delta = points[points.length - 1].carryYd - points[0].carryYd;
+
+  if (delta >= 3) {
+    return "green";
+  }
+
+  if (delta <= -3) {
+    return "amber";
+  }
+
+  return "sky";
+}
+
+function clubEvolutionTextClass(points: Array<{ carryYd: number }>) {
+  const tone = clubEvolutionTone(points);
+
+  if (tone === "green") {
+    return "text-emerald-700";
+  }
+
+  if (tone === "amber" || tone === "pink") {
+    return "text-amber-800";
+  }
+
+  if (tone === "sky") {
+    return "text-sky-700";
+  }
+
+  return "text-slate-600";
+}
+
+function averageNumber(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function roundOneNumber(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function shotDate(value: StockShot["shotAt"]) {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function formatMetric(value: number | null) {

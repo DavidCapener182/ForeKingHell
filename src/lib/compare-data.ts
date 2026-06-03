@@ -182,6 +182,39 @@ export type ClubCompareSide = CompareSampleSummary & {
   dateRange: string;
 };
 
+export type ProgressPeriodMode = "week" | "month";
+
+export type ProgressBaselineMode = "previous-week" | "previous-month";
+
+export type ProgressComparison = {
+  mode: ProgressBaselineMode;
+  label: string;
+  detail: string;
+  focus: CompareSampleSummary;
+  baseline: CompareSampleSummary;
+  delta: CompareDelta;
+  benefit: CompareData["benefit"];
+  clubRows: CompareClubRow[];
+};
+
+export type ProgressPeriod = {
+  key: string;
+  mode: ProgressPeriodMode;
+  label: string;
+  detail: string;
+  summary: CompareSampleSummary;
+  deltaFromPrevious: CompareDelta;
+  benefit: CompareData["benefit"];
+};
+
+export type ProgressCompareData = {
+  latestSession: CompareSessionOption | null;
+  previousWeek: ProgressComparison;
+  previousMonth: ProgressComparison;
+  weeklyPeriods: ProgressPeriod[];
+  monthlyPeriods: ProgressPeriod[];
+};
+
 export type ClubCompareData = {
   filters: ClubCompareFilters;
   clubs: ClubCompareClubOption[];
@@ -189,6 +222,7 @@ export type ClubCompareData = {
   clubA: ClubCompareSide | null;
   clubB: ClubCompareSide | null;
   delta: CompareDelta;
+  progress: ProgressCompareData;
 };
 
 export type PlayerCompareFilters = {
@@ -313,6 +347,10 @@ type PlayerTournamentSubmissionRow = PlayerTournamentScore & {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+const monthFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
@@ -556,6 +594,7 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
     clubA,
     clubB,
     delta: clubA && clubB ? buildDelta(clubA, clubB) : emptyDelta(),
+    progress: buildProgressCompareData({ clubs: clubOptions, shots: allShots }),
   };
 }
 
@@ -1165,6 +1204,262 @@ function buildClubCompareSide(
   };
 }
 
+export function buildProgressCompareData({
+  clubs,
+  shots,
+}: {
+  clubs: CompareClubOption[];
+  shots: CompareShot[];
+}): ProgressCompareData {
+  const trackedShots = shots.filter((shot) => isTrackedClubType(shot.clubType));
+  const latestSessionShots = latestImportedSessionShots(trackedShots);
+  const latestShot = latestSessionShots[0];
+  const latestSession = latestShot
+    ? {
+        id: latestShot.sessionId,
+        label: latestShot.sessionLabel,
+        dateLabel: formatDate(latestShot.sessionDate),
+        dateInput: dateInputValue(latestShot.sessionDate),
+        type: latestShot.sessionType,
+        shotCount: latestSessionShots.length,
+      }
+    : null;
+
+  return {
+    latestSession,
+    previousWeek: buildRecentProgressComparison({
+      mode: "previous-week",
+      label: "Previous 7 days",
+      days: 7,
+      clubs,
+      shots: trackedShots,
+      latestShot,
+    }),
+    previousMonth: buildRecentProgressComparison({
+      mode: "previous-month",
+      label: "Previous 30 days",
+      days: 30,
+      clubs,
+      shots: trackedShots,
+      latestShot,
+    }),
+    weeklyPeriods: buildProgressPeriods(trackedShots, "week", 8),
+    monthlyPeriods: buildProgressPeriods(trackedShots, "month", 6),
+  };
+}
+
+function buildRecentProgressComparison({
+  mode,
+  label,
+  days,
+  clubs,
+  shots,
+  latestShot,
+}: {
+  mode: ProgressBaselineMode;
+  label: string;
+  days: number;
+  clubs: CompareClubOption[];
+  shots: CompareShot[];
+  latestShot: CompareShot | undefined;
+}): ProgressComparison {
+  if (!latestShot) {
+    return emptyProgressComparison(mode, label, "Import a session to compare progress.");
+  }
+
+  const focusEnd = endOfLocalDay(latestShot.sessionDate);
+  const focusStart = startOfLocalDay(new Date(focusEnd.getTime() - 6 * DAY_MS));
+  const focusShots = shots.filter((shot) => isBetween(shot.sessionDate, focusStart, focusEnd));
+  const baselineWindow = findPreviousProgressWindow({
+    shots,
+    focusStart,
+    days,
+  });
+  const baselineLabel = baselineWindow.shifted
+    ? mode === "previous-week"
+      ? "Previous practice week"
+      : "Previous practice month"
+    : label;
+  const focusSelection: Selection = {
+    label: "Last 7 days",
+    detail: `${formatDate(focusStart)} to ${formatDate(focusEnd)}`,
+    shots: focusShots,
+    start: focusStart,
+    end: focusEnd,
+  };
+  const baselineSelection: Selection = {
+    label: baselineLabel,
+    detail: `${formatDate(baselineWindow.start)} to ${formatDate(baselineWindow.end)}`,
+    shots: baselineWindow.shots,
+    start: baselineWindow.start,
+    end: baselineWindow.end,
+  };
+  const focus = summarizeSelection(focusSelection);
+  const baseline = summarizeSelection(baselineSelection);
+  const delta = buildDelta(focus, baseline);
+  const focusClubIds = new Set(focusShots.map((shot) => shot.clubId));
+  const focusClubs = clubs.filter((club) => focusClubIds.has(club.id));
+  const clubRows = buildClubRows({
+    clubs: focusClubs,
+    focusShots,
+    baselineShots: baselineWindow.shots,
+  }).sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+
+  return {
+    mode,
+    label: baselineLabel,
+    detail: baselineSelection.detail,
+    focus,
+    baseline,
+    delta,
+    benefit: buildBenefit(focus, baseline, delta),
+    clubRows,
+  };
+}
+
+function findPreviousProgressWindow({
+  shots,
+  focusStart,
+  days,
+}: {
+  shots: CompareShot[];
+  focusStart: Date;
+  days: number;
+}) {
+  const earliestShotDate = minDate(shots.map((shot) => shot.sessionDate));
+  let end = new Date(focusStart.getTime() - 1);
+  let start = startOfLocalDay(new Date(end.getTime() - (days - 1) * DAY_MS));
+  const exactWindow = progressWindow(shots, start, end, false);
+
+  if (hasStockShots(exactWindow.shots) || !earliestShotDate) {
+    return exactWindow;
+  }
+
+  const earliestStart = startOfLocalDay(earliestShotDate);
+
+  while (start.getTime() > earliestStart.getTime()) {
+    end = new Date(end.getTime() - DAY_MS);
+    start = startOfLocalDay(new Date(end.getTime() - (days - 1) * DAY_MS));
+
+    const candidate = progressWindow(shots, start, end, true);
+
+    if (hasStockShots(candidate.shots)) {
+      return candidate;
+    }
+  }
+
+  return exactWindow;
+}
+
+function progressWindow(shots: CompareShot[], start: Date, end: Date, shifted: boolean) {
+  return {
+    start,
+    end,
+    shots: shots.filter((shot) => isBetween(shot.sessionDate, start, end)),
+    shifted,
+  };
+}
+
+function hasStockShots(shots: CompareShot[]) {
+  return selectComparableShots(shots).length > 0;
+}
+
+function emptyProgressComparison(
+  mode: ProgressBaselineMode,
+  label: string,
+  detail: string,
+): ProgressComparison {
+  const focus = summarizeSelection(emptySelection("Last 7 days", "No imported session found."));
+  const baseline = summarizeSelection(emptySelection(label, detail));
+  const delta = emptyDelta();
+
+  return {
+    mode,
+    label,
+    detail,
+    focus,
+    baseline,
+    delta,
+    benefit: buildBenefit(focus, baseline, delta),
+    clubRows: [],
+  };
+}
+
+function buildProgressPeriods(
+  shots: CompareShot[],
+  mode: ProgressPeriodMode,
+  limit: number,
+): ProgressPeriod[] {
+  const periodMap = new Map<
+    string,
+    {
+      key: string;
+      label: string;
+      detail: string;
+      start: Date;
+      end: Date;
+      shots: CompareShot[];
+    }
+  >();
+
+  for (const shot of shots) {
+    const start =
+      mode === "week" ? startOfLocalWeek(shot.sessionDate) : startOfLocalMonth(shot.sessionDate);
+    const end = mode === "week" ? endOfLocalWeek(start) : endOfLocalMonth(start);
+    const key = dateInputValue(start);
+    const current = periodMap.get(key) ?? {
+      key,
+      label: progressPeriodLabel(mode, start),
+      detail: `${formatDate(start)} to ${formatDate(end)}`,
+      start,
+      end,
+      shots: [],
+    };
+
+    current.shots.push(shot);
+    periodMap.set(key, current);
+  }
+
+  const chronological = [...periodMap.values()]
+    .sort((left, right) => left.start.getTime() - right.start.getTime())
+    .map((period) => {
+      const summary = summarizeSelection({
+        label: period.label,
+        detail: period.detail,
+        shots: period.shots,
+        start: period.start,
+        end: period.end,
+      });
+
+      return { ...period, summary };
+    });
+
+  return chronological
+    .map((period, index) => {
+      const previous = chronological[index - 1];
+      const previousSummary =
+        previous?.summary ??
+        summarizeSelection(emptySelection("Previous period", "No earlier data."));
+      const delta = previous ? buildDelta(period.summary, previous.summary) : emptyDelta();
+
+      return {
+        key: period.key,
+        mode,
+        label: period.label,
+        detail: period.detail,
+        summary: period.summary,
+        deltaFromPrevious: delta,
+        benefit: buildBenefit(period.summary, previousSummary, delta),
+      };
+    })
+    .slice(-limit)
+    .reverse();
+}
+
+function progressPeriodLabel(mode: ProgressPeriodMode, start: Date) {
+  return mode === "week" ? `Week of ${formatDate(start)}` : monthFormatter.format(start);
+}
+
 function buildPlayerCompareSide({
   profile,
   option,
@@ -1366,6 +1661,14 @@ function buildBenefit(
     }
   }
 
+  if (isNumber(delta.coneDeltaYd)) {
+    if (delta.coneDeltaYd <= -4) {
+      positives.push(`Shot cone tightened by ${formatAbs(delta.coneDeltaYd)} yd.`);
+    } else if (delta.coneDeltaYd >= 4) {
+      warnings.push(`Shot cone widened by ${formatAbs(delta.coneDeltaYd)} yd.`);
+    }
+  }
+
   if (isNumber(delta.bigMissRateDelta)) {
     if (delta.bigMissRateDelta <= -4) {
       positives.push(`Big misses dropped by ${formatAbs(delta.bigMissRateDelta)} points.`);
@@ -1398,12 +1701,12 @@ function buildBenefit(
     verdict,
     summary:
       verdict === "Beneficial"
-        ? "The focus sample moved in the right direction against the baseline."
+        ? "The focus sample is more playable and controlled against the baseline."
         : verdict === "Useful"
-          ? "There are useful gains, but at least one signal still needs watching."
+          ? "There are useful control gains, with at least one signal still worth watching."
           : verdict === "Mixed"
-            ? "The session helped in places, but the pattern is not clean yet."
-            : "The comparison shows more risk than gain; review the miss pattern before repeating it.",
+            ? "The period helped in places, but the control pattern is not clean yet."
+            : "The comparison shows more risk than gain; review the miss pattern before trusting it.",
     positives: positives.length > 0 ? positives : ["No strong positive movement yet."],
     warnings: warnings.length > 0 ? warnings : ["No major red flags in the selected comparison."],
   };
@@ -1586,6 +1889,24 @@ function startOfLocalDay(date: Date) {
 function endOfLocalDay(date: Date) {
   const start = startOfLocalDay(date);
   return new Date(start.getTime() + DAY_MS - 1);
+}
+
+function startOfLocalWeek(date: Date) {
+  const start = startOfLocalDay(date);
+  const dayOffset = (start.getDay() + 6) % 7;
+  return new Date(start.getTime() - dayOffset * DAY_MS);
+}
+
+function endOfLocalWeek(date: Date) {
+  return endOfLocalDay(new Date(startOfLocalWeek(date).getTime() + 6 * DAY_MS));
+}
+
+function startOfLocalMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfLocalMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
 function parseDateInput(value: string, endOfDay = false) {

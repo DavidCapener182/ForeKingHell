@@ -11,18 +11,14 @@ import {
   getPlayerCompareData,
   type ClubCompareFilters,
   type PlayerCompareFilters,
-  type PlayerCompareSide,
 } from "@/lib/compare-data";
 import { ClubCompareClient } from "./club-compare-client";
 import { PlayerCompareClient } from "./player-compare-client";
+import { ProgressCompareClient } from "./progress-compare-client";
 
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
-
-const numberFormatter = new Intl.NumberFormat("en-GB", {
-  maximumFractionDigits: 1,
-});
 
 export default async function ComparePage({ searchParams }: { searchParams: SearchParams }) {
   if (!process.env.DATABASE_URL?.trim()) {
@@ -42,8 +38,6 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
     getPlayerCompareData(parsePlayerFilters(params)),
     getClubCompareData(parseFilters(params)),
   ]);
-  const { playerA, playerB, delta: playerDelta } = playerData;
-  const playersReady = Boolean(playerA && playerB);
 
   return (
     <PageShell>
@@ -67,13 +61,9 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="sky">Player and club comparisons</StatusPill>}
+        eyebrow={<StatusPill tone="green">Your progress comparisons</StatusPill>}
         title="Compare"
-        description={
-          playersReady
-            ? `${playerA?.displayName} against ${playerB?.displayName}. Player gaps are Player A minus Player B.`
-            : "Compare player profiles, handicap, scoring, stock yardages, tournament scores, then drill into club-vs-club data."
-        }
+        description="Start with your latest week against recent practice, then drill into club-vs-club and player comparisons."
         actions={
           <Button
             asChild
@@ -86,33 +76,13 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             </Link>
           </Button>
         }
-        metrics={[
-          {
-            label: "Player A best",
-            value: playerA ? formatScore(playerA.bestScore) : "--",
-            detail: playerA ? playerStatusLabel(playerA) : "Choose a player",
-          },
-          {
-            label: "Player B best",
-            value: playerB ? formatScore(playerB.bestScore) : "--",
-            detail: playerB ? playerStatusLabel(playerB) : "Choose a player",
-          },
-          {
-            label: "Latest gap",
-            value: playersReady ? formatSignedStrokes(playerDelta.latestScoreDelta) : "--",
-            detail: "Latest 18-hole score equivalent",
-          },
-          {
-            label: "Tournament gap",
-            value: formatSignedStrokes(playerDelta.tournamentGrossDelta),
-            detail: "Lower total is better",
-          },
-        ]}
       />
 
-      <PlayerCompareClient data={playerData} />
+      <ProgressCompareClient data={data.progress} />
 
       <ClubCompareClient data={data} />
+
+      <PlayerCompareClient data={playerData} />
     </PageShell>
   );
 }
@@ -138,35 +108,4 @@ function parsePlayerFilters(searchParams: Awaited<SearchParams>): PlayerCompareF
 
 function stringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function playerStatusLabel(player: PlayerCompareSide) {
-  if (player.worldRank) {
-    return `OWGR #${player.worldRank}`;
-  }
-
-  const handicap = playerHandicapLabel(player);
-  return handicap === "--" ? "Player" : handicap;
-}
-
-function playerHandicapLabel(player: PlayerCompareSide) {
-  if (player.handicapBand) {
-    return player.handicapBand;
-  }
-
-  return typeof player.handicapEstimate === "number"
-    ? `Hcp ${numberFormatter.format(player.handicapEstimate)}`
-    : "--";
-}
-
-function formatScore(value: number | null) {
-  return value === null ? "--" : numberFormatter.format(value);
-}
-
-function formatSignedStrokes(value: number | null) {
-  return value === null ? "--" : `${signed(value)} shots`;
-}
-
-function signed(value: number) {
-  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
 }

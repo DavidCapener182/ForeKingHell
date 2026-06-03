@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crosshair, GitCompareArrows, Target } from "lucide-react";
+import { Crosshair, GitCompareArrows, Radar, Target, Trophy } from "lucide-react";
 
 import { ChartFrame, DataPanel, SectionHeader, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import type {
   CompareDelta,
   DispersionPoint,
 } from "@/lib/compare-data";
+import { cn } from "@/lib/utils";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -124,6 +125,8 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
         </DataPanel>
       ) : (
         <>
+          <WinnerCard clubA={clubA} clubB={clubB} delta={delta} />
+
           <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <DataPanel>
               <SectionHeader
@@ -143,7 +146,8 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
                 description="Winner uses higher carry, total, ball speed, and playable rate; lower miss numbers are better."
                 action={<Target className="size-5 text-emerald-500" />}
               />
-              <CardContent>
+              <CardContent className="grid gap-4">
+                <CompareRadarChart clubA={clubA} clubB={clubB} />
                 <DeltaTable clubA={clubA} clubB={clubB} delta={delta} />
               </CardContent>
             </DataPanel>
@@ -162,6 +166,66 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
         </>
       )}
     </>
+  );
+}
+
+function WinnerCard({
+  clubA,
+  clubB,
+  delta,
+}: {
+  clubA: ClubCompareSide;
+  clubB: ClubCompareSide;
+  delta: CompareDelta;
+}) {
+  const rows = compareMetricRows(clubA, clubB, delta);
+  const aWins = rows.filter((row) => row.outcome.winner === "a").length;
+  const bWins = rows.filter((row) => row.outcome.winner === "b").length;
+  const winner = aWins === bWins ? "tie" : aWins > bWins ? "a" : "b";
+  const winnerClub = winner === "a" ? clubA : winner === "b" ? clubB : null;
+  const winnerTone = winner === "b" ? "sky" : winner === "tie" ? "slate" : "green";
+  const winnerRows = rows
+    .filter((row) => row.outcome.winner === winner)
+    .slice(0, 3)
+    .map((row) => `${row.outcome.detail} ${row.label.toLowerCase()}`);
+
+  return (
+    <DataPanel className="border-emerald-950/10 bg-[linear-gradient(135deg,rgba(240,250,243,0.96),rgba(255,255,255,0.94))]">
+      <CardContent className="grid gap-4 py-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone={winnerTone}>
+              <Trophy className="mr-1 size-3.5" />
+              Winner
+            </StatusPill>
+            <StatusPill tone="slate">
+              {aWins}-{bWins} metric split
+            </StatusPill>
+          </div>
+          <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
+            {winnerClub ? winnerClub.label : "Too close to call"}
+          </h2>
+          <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
+            {winnerClub
+              ? `${winnerClub.label} leads the selected comparison on the clearest performance signals.`
+              : "The selected clubs split the headline metrics, so use the detailed rows before changing the bag."}
+          </p>
+        </div>
+        <div className="grid gap-2 md:grid-cols-3">
+          {(winnerRows.length > 0
+            ? winnerRows
+            : ["Carry is close", "Playable is close", "Launch is fit dependent"]
+          ).map((signal) => (
+            <div key={signal} className="rounded-lg border border-slate-200/70 bg-white/85 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Signal
+              </p>
+              <p className="mt-2 text-lg font-semibold leading-6 text-slate-950">{signal}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </DataPanel>
   );
 }
 
@@ -252,64 +316,7 @@ function DeltaTable({
   clubB: ClubCompareSide;
   delta: CompareDelta;
 }) {
-  const rows = [
-    {
-      label: "Carry",
-      a: formatYards(clubA.carryMedianYd),
-      b: formatYards(clubB.carryMedianYd),
-      diff: formatSignedYards(delta.carryDeltaYd),
-      outcome: metricOutcome(delta.carryDeltaYd, "higher", "yd"),
-    },
-    {
-      label: "Total",
-      a: formatYards(clubA.totalMedianYd),
-      b: formatYards(clubB.totalMedianYd),
-      diff: formatSignedYards(diff(clubA.totalMedianYd, clubB.totalMedianYd)),
-      outcome: metricOutcome(diff(clubA.totalMedianYd, clubB.totalMedianYd), "higher", "yd"),
-    },
-    {
-      label: "Ball speed",
-      a: formatMph(clubA.ballSpeedAverageMph),
-      b: formatMph(clubB.ballSpeedAverageMph),
-      diff: formatSignedMph(delta.ballSpeedDeltaMph),
-      outcome: metricOutcome(delta.ballSpeedDeltaMph, "higher", "mph"),
-    },
-    {
-      label: "Offline avg",
-      a: formatYards(clubA.absoluteOfflineAverageYd),
-      b: formatYards(clubB.absoluteOfflineAverageYd),
-      diff: formatSignedYards(delta.offlineDeltaYd),
-      outcome: metricOutcome(delta.offlineDeltaYd, "lower", "yd"),
-    },
-    {
-      label: "Shot cone",
-      a: formatYards(clubA.shotConeWidthYd),
-      b: formatYards(clubB.shotConeWidthYd),
-      diff: formatSignedYards(delta.coneDeltaYd),
-      outcome: metricOutcome(delta.coneDeltaYd, "lower", "yd"),
-    },
-    {
-      label: "Playable",
-      a: formatRate(clubA.playableRate),
-      b: formatRate(clubB.playableRate),
-      diff: formatSignedRate(delta.playableRateDelta),
-      outcome: metricOutcome(delta.playableRateDelta, "higher", "pts"),
-    },
-    {
-      label: "Big misses",
-      a: formatRate(clubA.bigMissRate),
-      b: formatRate(clubB.bigMissRate),
-      diff: formatSignedRate(delta.bigMissRateDelta),
-      outcome: metricOutcome(delta.bigMissRateDelta, "lower", "pts"),
-    },
-    {
-      label: "Launch",
-      a: formatDegrees(clubA.launchAverageDeg),
-      b: formatDegrees(clubB.launchAverageDeg),
-      diff: formatSignedDegrees(delta.launchDeltaDeg),
-      outcome: contextOutcome(),
-    },
-  ];
+  const rows = compareMetricRows(clubA, clubB, delta);
 
   return (
     <div className="overflow-hidden rounded-[8px] border">
@@ -327,8 +334,22 @@ function DeltaTable({
           {rows.map((row) => (
             <TableRow key={row.label}>
               <TableCell className="font-medium">{row.label}</TableCell>
-              <TableCell className="text-right">{row.a}</TableCell>
-              <TableCell className="text-right">{row.b}</TableCell>
+              <TableCell className="min-w-36">
+                <MetricValueBar
+                  value={row.a}
+                  rawValue={row.aValue}
+                  maxValue={row.maxValue}
+                  tone="green"
+                />
+              </TableCell>
+              <TableCell className="min-w-36">
+                <MetricValueBar
+                  value={row.b}
+                  rawValue={row.bValue}
+                  maxValue={row.maxValue}
+                  tone="sky"
+                />
+              </TableCell>
               <TableCell className={deltaClass(row.outcome.winner)}>{row.diff}</TableCell>
               <TableCell className="text-right">
                 <div className="flex flex-col items-end gap-1">
@@ -342,6 +363,232 @@ function DeltaTable({
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+function compareMetricRows(clubA: ClubCompareSide, clubB: ClubCompareSide, delta: CompareDelta) {
+  const totalDelta = diff(clubA.totalMedianYd, clubB.totalMedianYd);
+
+  return [
+    {
+      label: "Carry",
+      a: formatYards(clubA.carryMedianYd),
+      b: formatYards(clubB.carryMedianYd),
+      aValue: clubA.carryMedianYd,
+      bValue: clubB.carryMedianYd,
+      maxValue: maxMetric(clubA.carryMedianYd, clubB.carryMedianYd),
+      diff: formatSignedYards(delta.carryDeltaYd),
+      outcome: metricOutcome(delta.carryDeltaYd, "higher", "yd"),
+    },
+    {
+      label: "Total",
+      a: formatYards(clubA.totalMedianYd),
+      b: formatYards(clubB.totalMedianYd),
+      aValue: clubA.totalMedianYd,
+      bValue: clubB.totalMedianYd,
+      maxValue: maxMetric(clubA.totalMedianYd, clubB.totalMedianYd),
+      diff: formatSignedYards(totalDelta),
+      outcome: metricOutcome(totalDelta, "higher", "yd"),
+    },
+    {
+      label: "Ball speed",
+      a: formatMph(clubA.ballSpeedAverageMph),
+      b: formatMph(clubB.ballSpeedAverageMph),
+      aValue: clubA.ballSpeedAverageMph,
+      bValue: clubB.ballSpeedAverageMph,
+      maxValue: maxMetric(clubA.ballSpeedAverageMph, clubB.ballSpeedAverageMph),
+      diff: formatSignedMph(delta.ballSpeedDeltaMph),
+      outcome: metricOutcome(delta.ballSpeedDeltaMph, "higher", "mph"),
+    },
+    {
+      label: "Offline avg",
+      a: formatYards(clubA.absoluteOfflineAverageYd),
+      b: formatYards(clubB.absoluteOfflineAverageYd),
+      aValue: clubA.absoluteOfflineAverageYd,
+      bValue: clubB.absoluteOfflineAverageYd,
+      maxValue: maxMetric(clubA.absoluteOfflineAverageYd, clubB.absoluteOfflineAverageYd),
+      diff: formatSignedYards(delta.offlineDeltaYd),
+      outcome: metricOutcome(delta.offlineDeltaYd, "lower", "yd"),
+    },
+    {
+      label: "Shot cone",
+      a: formatYards(clubA.shotConeWidthYd),
+      b: formatYards(clubB.shotConeWidthYd),
+      aValue: clubA.shotConeWidthYd,
+      bValue: clubB.shotConeWidthYd,
+      maxValue: maxMetric(clubA.shotConeWidthYd, clubB.shotConeWidthYd),
+      diff: formatSignedYards(delta.coneDeltaYd),
+      outcome: metricOutcome(delta.coneDeltaYd, "lower", "yd"),
+    },
+    {
+      label: "Playable",
+      a: formatRate(clubA.playableRate),
+      b: formatRate(clubB.playableRate),
+      aValue: clubA.playableRate,
+      bValue: clubB.playableRate,
+      maxValue: 100,
+      diff: formatSignedRate(delta.playableRateDelta),
+      outcome: metricOutcome(delta.playableRateDelta, "higher", "pts"),
+    },
+    {
+      label: "Big misses",
+      a: formatRate(clubA.bigMissRate),
+      b: formatRate(clubB.bigMissRate),
+      aValue: clubA.bigMissRate,
+      bValue: clubB.bigMissRate,
+      maxValue: 100,
+      diff: formatSignedRate(delta.bigMissRateDelta),
+      outcome: metricOutcome(delta.bigMissRateDelta, "lower", "pts"),
+    },
+    {
+      label: "Launch",
+      a: formatDegrees(clubA.launchAverageDeg),
+      b: formatDegrees(clubB.launchAverageDeg),
+      aValue: clubA.launchAverageDeg,
+      bValue: clubB.launchAverageDeg,
+      maxValue: maxMetric(clubA.launchAverageDeg, clubB.launchAverageDeg),
+      diff: formatSignedDegrees(delta.launchDeltaDeg),
+      outcome: contextOutcome(),
+    },
+  ];
+}
+
+function MetricValueBar({
+  value,
+  rawValue,
+  maxValue,
+  tone,
+}: {
+  value: string;
+  rawValue: number | null;
+  maxValue: number;
+  tone: "green" | "sky";
+}) {
+  const width = rawValue === null || maxValue <= 0 ? 0 : clamp((rawValue / maxValue) * 100, 3, 100);
+
+  return (
+    <span className="grid gap-1 text-right">
+      <span className="font-medium tabular-nums text-slate-950">{value}</span>
+      <span className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <span
+          className={cn(
+            "block h-full rounded-full",
+            tone === "green" ? "bg-emerald-600" : "bg-sky-500",
+          )}
+          style={{ width: `${width}%` }}
+        />
+      </span>
+    </span>
+  );
+}
+
+function CompareRadarChart({ clubA, clubB }: { clubA: ClubCompareSide; clubB: ClubCompareSide }) {
+  const metrics = radarMetrics(clubA, clubB);
+  const centre = 150;
+  const radius = 108;
+  const rings = [0.25, 0.5, 0.75, 1];
+  const pointsFor = (side: "a" | "b") =>
+    metrics.map((metric, index) => radarPoint(index, metrics.length, centre, radius, metric[side]));
+  const polygonFor = (side: "a" | "b") =>
+    pointsFor(side)
+      .map((point) => `${point.x},${point.y}`)
+      .join(" ");
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white/85 p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-950">Performance radar</p>
+          <p className="text-xs text-muted-foreground">
+            Carry, speed, control, playable rate and launch context.
+          </p>
+        </div>
+        <Radar className="size-5 text-sky-600" />
+      </div>
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
+        <svg
+          viewBox="0 0 300 300"
+          role="img"
+          aria-label={`${clubA.label} and ${clubB.label} radar comparison`}
+          className="mx-auto aspect-square w-full max-w-[20rem]"
+        >
+          <rect width="300" height="300" rx="12" fill="#ffffff" />
+          {rings.map((ring) => (
+            <polygon
+              key={ring}
+              points={metrics
+                .map((_, index) => radarPoint(index, metrics.length, centre, radius * ring, 100))
+                .map((point) => `${point.x},${point.y}`)
+                .join(" ")}
+              fill="none"
+              stroke="#e2e8f0"
+            />
+          ))}
+          {metrics.map((metric, index) => {
+            const outer = radarPoint(index, metrics.length, centre, radius, 100);
+            const label = radarPoint(index, metrics.length, centre, radius + 24, 100);
+
+            return (
+              <g key={metric.label}>
+                <line x1={centre} y1={centre} x2={outer.x} y2={outer.y} stroke="#e2e8f0" />
+                <text
+                  x={label.x}
+                  y={label.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className="fill-slate-600 text-[11px] font-semibold"
+                >
+                  {metric.label}
+                </text>
+              </g>
+            );
+          })}
+          <polygon
+            points={polygonFor("b")}
+            fill="#0284c7"
+            fillOpacity="0.16"
+            stroke="#0284c7"
+            strokeWidth="2"
+          />
+          <polygon
+            points={polygonFor("a")}
+            fill="#059669"
+            fillOpacity="0.18"
+            stroke="#059669"
+            strokeWidth="2.2"
+          />
+          {pointsFor("b").map((point, index) => (
+            <circle
+              key={`b-${metrics[index].label}`}
+              cx={point.x}
+              cy={point.y}
+              r="3.5"
+              fill="#0284c7"
+            />
+          ))}
+          {pointsFor("a").map((point, index) => (
+            <circle
+              key={`a-${metrics[index].label}`}
+              cx={point.x}
+              cy={point.y}
+              r="4"
+              fill="#059669"
+            />
+          ))}
+        </svg>
+        <div className="grid gap-2 text-xs">
+          <span className="inline-flex items-center gap-2 font-semibold text-slate-950">
+            <span className="size-2.5 rounded-full bg-emerald-600" />
+            Club A: {clubA.label}
+          </span>
+          <span className="inline-flex items-center gap-2 font-semibold text-slate-950">
+            <span className="size-2.5 rounded-full bg-sky-600" />
+            Club B: {clubB.label}
+          </span>
+          <p className="leading-5 text-muted-foreground">Exact values sit in the metric rows.</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -427,6 +674,79 @@ function ClubDispersionPlot({ clubA, clubB }: { clubA: ClubCompareSide; clubB: C
       </div>
     </ChartFrame>
   );
+}
+
+function radarMetrics(clubA: ClubCompareSide, clubB: ClubCompareSide) {
+  const carryMax = maxMetric(clubA.carryMedianYd, clubB.carryMedianYd);
+  const speedMax = maxMetric(clubA.ballSpeedAverageMph, clubB.ballSpeedAverageMph);
+  const offlineMax = maxMetric(clubA.absoluteOfflineAverageYd, clubB.absoluteOfflineAverageYd);
+  const launchMax = maxMetric(clubA.launchAverageDeg, clubB.launchAverageDeg);
+
+  return [
+    {
+      label: "Carry",
+      a: normalizeHigher(clubA.carryMedianYd, carryMax),
+      b: normalizeHigher(clubB.carryMedianYd, carryMax),
+    },
+    {
+      label: "Ball speed",
+      a: normalizeHigher(clubA.ballSpeedAverageMph, speedMax),
+      b: normalizeHigher(clubB.ballSpeedAverageMph, speedMax),
+    },
+    {
+      label: "Offline",
+      a: normalizeLower(clubA.absoluteOfflineAverageYd, offlineMax),
+      b: normalizeLower(clubB.absoluteOfflineAverageYd, offlineMax),
+    },
+    {
+      label: "Playable",
+      a: normalizeHigher(clubA.playableRate, 100),
+      b: normalizeHigher(clubB.playableRate, 100),
+    },
+    {
+      label: "Launch",
+      a: normalizeHigher(clubA.launchAverageDeg, launchMax),
+      b: normalizeHigher(clubB.launchAverageDeg, launchMax),
+    },
+  ];
+}
+
+function radarPoint(index: number, total: number, centre: number, radius: number, value: number) {
+  const angle = -Math.PI / 2 + (index / total) * Math.PI * 2;
+  const scaledRadius = radius * (value / 100);
+
+  return {
+    x: centre + Math.cos(angle) * scaledRadius,
+    y: centre + Math.sin(angle) * scaledRadius,
+  };
+}
+
+function normalizeHigher(value: number | null, maxValue: number) {
+  if (value === null || maxValue <= 0) {
+    return 0;
+  }
+
+  return clamp((value / maxValue) * 100, 0, 100);
+}
+
+function normalizeLower(value: number | null, maxValue: number) {
+  if (value === null) {
+    return 0;
+  }
+
+  if (maxValue <= 0) {
+    return 100;
+  }
+
+  return clamp(100 - (value / maxValue) * 100, 0, 100);
+}
+
+function maxMetric(left: number | null, right: number | null) {
+  return Math.max(1, left ?? 0, right ?? 0);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function buildDelta(focus: ClubCompareSide, baseline: ClubCompareSide): CompareDelta {
