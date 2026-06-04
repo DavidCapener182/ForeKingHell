@@ -1431,7 +1431,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           </div>
         ) : null}
         {trend.points.length > 0 ? (
-          <div className="grid gap-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             {trend.points.map((point) => (
               <div
                 key={point.monthKey}
