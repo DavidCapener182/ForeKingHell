@@ -537,10 +537,12 @@ export default async function BagPage({ searchParams }: PageProps) {
             title="Why does the bag behave like this?"
             description="The diagnostic modules now live together: confidence windows, face-to-path, pattern overlays and personal strokes gained."
           />
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+          <div className="grid gap-4">
+            <div className="grid gap-4 xl:grid-cols-2">
+              <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+              <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+            </div>
             <PathTrendPanel trend={pathTrend} />
-            <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
             <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
           </div>
         </section>
@@ -1368,17 +1370,25 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
     <DataPanel>
       <SectionHeader
         title="Face-to-path trend"
-        description="Red is measured club path. Black is measured or calculated face angle against that path."
+        description="Delivery diagnostics for where the face points compared with the swing path."
         action={<Radar className="size-5 text-sky-600" />}
       />
       <CardContent className="grid gap-3">
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-          <div>
+        <div className="grid gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="min-w-0">
             <p className="text-base font-semibold">{trend.label}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{trend.detail}</p>
-            <p className="mt-1 text-xs font-medium text-muted-foreground">
-              Club reads show each measured club. Monthly cards are priority-club averages.
-            </p>
+            <div className="mt-3 grid gap-2 text-xs font-semibold sm:grid-cols-3">
+              <span className="rounded-lg bg-white px-3 py-2 text-slate-950">
+                Black line: club face
+              </span>
+              <span className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">
+                Red line: swing path
+              </span>
+              <span className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
+                Face-to-path: face minus path
+              </span>
+            </div>
           </div>
           <StatusPill tone={pathTrendStatusTone(trend.status)}>
             {pathTrendStatusLabel(trend.status)}
@@ -1405,14 +1415,14 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                       </span>
                     </span>
                     <StatusPill tone={facePathPatternTone(club.patternCode)}>
-                      {club.patternCode}
+                      {club.patternLabel}
                     </StatusPill>
                   </span>
                   <span className="grid grid-cols-3 gap-1.5 font-semibold">
                     <span>Path {formatSignedDegrees(club.pathDeg)}</span>
                     <span>Face {formatSignedDegrees(club.faceDeg)}</span>
                     <span className="text-emerald-700">
-                      F-P {formatSignedDegrees(club.faceToPathProxyDeg)}
+                      Face-path {formatSignedDegrees(club.faceToPathProxyDeg)}
                     </span>
                   </span>
                 </Link>
@@ -1434,7 +1444,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                     <p className="mt-1 text-xs text-muted-foreground">{point.sampleSize} shots</p>
                   </div>
                   <StatusPill tone={facePathPatternTone(point.patternCode)}>
-                    {point.patternCode}
+                    {point.patternLabel}
                   </StatusPill>
                 </div>
                 <FacePathDeliveryChart
@@ -1463,27 +1473,22 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           />
         )}
         {trend.recentShots.length > 0 ? (
-          <div className="grid gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-            <div>
-              <p className="text-sm font-semibold">Recent individual shots</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Same face-to-path picture, one shot row at a time.
-              </p>
-            </div>
-            <div className="grid gap-3">
+          <details className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-950 marker:hidden">
+              <span>Expand shot-by-shot diagrams</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {trend.recentShots.length} recent shots
+              </span>
+            </summary>
+            <div className="mt-3 grid gap-3 xl:grid-cols-2">
               {trend.recentShots.map((shot) => (
-                <div
-                  key={shot.key}
-                  className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">{shot.patternLabel}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{shot.shotAtLabel}</p>
-                    </div>
-                    <StatusPill tone={facePathPatternTone(shot.patternCode)}>
-                      {shot.patternCode}
-                    </StatusPill>
+                <div key={shot.key} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <div>
+                    <p className="text-sm font-semibold">{shot.patternLabel}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {shot.shotAtLabel} · face-to-path{" "}
+                      {formatSignedDegrees(shot.faceToPathProxyDeg)}
+                    </p>
                   </div>
                   <FacePathDeliveryChart
                     datum={{
@@ -1496,11 +1501,12 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                     idPrefix={`bag-shot-${shot.key}`}
                     className="mt-3"
                     chartClassName="bg-white"
+                    showMetricPills={false}
                   />
                 </div>
               ))}
             </div>
-          </div>
+          </details>
         ) : null}
       </CardContent>
     </DataPanel>
