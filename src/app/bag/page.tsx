@@ -3036,76 +3036,9 @@ function BenchmarkReferencePanel({
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
 }) {
-  const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
-  const strongest =
-    [...rowsWithData].sort(
-      (left, right) =>
-        (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
-        right.comparison.progressPercent - left.comparison.progressPercent,
-    )[0] ?? null;
-  const closestNext =
-    [...rows]
-      .filter(
-        (
-          row,
-        ): row is ClubBenchmarkRow & {
-          comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
-        } => row.comparison.yardsToNextLevel !== null,
-      )
-      .sort(
-        (left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel,
-      )[0] ?? null;
-
   return (
     <section id="levels" className="scroll-mt-28">
-      <details className="group">
-        <summary className="premium-card desktop-data-panel cursor-pointer list-none rounded-lg p-4 transition-colors hover:border-sky-300 [&::-webkit-details-marker]:hidden">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Gauge className="size-5 text-sky-600" />
-                <h3 className="text-lg font-semibold tracking-normal text-slate-950">
-                  Distance benchmarks
-                </h3>
-              </div>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Strongest match and closest next level stay visible. The full benchmark tables are
-                behind the expansion control.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <StatusPill tone="sky">Expand benchmarks</StatusPill>
-              <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <CompactReadoutGrid
-              columnsClassName="md:grid-cols-2"
-              items={[
-                {
-                  label: "Strongest match",
-                  value: strongest ? formatClubType(strongest.clubType) : "--",
-                  detail: strongest
-                    ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd`
-                    : "Need stock carry samples",
-                  tone: strongest ? "green" : "slate",
-                },
-                {
-                  label: "Closest next level",
-                  value: closestNext ? formatClubType(closestNext.clubType) : "--",
-                  detail: closestNext
-                    ? `${formatMetric(closestNext.comparison.yardsToNextLevel)} yd to ${closestNext.comparison.nextLevel?.label}`
-                    : "No next target yet",
-                  tone: closestNext ? "amber" : "slate",
-                },
-              ]}
-            />
-          </div>
-        </summary>
-        <div className="mt-4">
-          <DistanceBenchmarkPanel rows={rows} peerSummary={peerSummary} />
-        </div>
-      </details>
+      <DistanceBenchmarkPanel rows={rows} peerSummary={peerSummary} />
     </section>
   );
 }
