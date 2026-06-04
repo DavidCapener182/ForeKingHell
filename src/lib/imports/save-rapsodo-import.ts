@@ -550,6 +550,7 @@ async function persistImport(
           sideCarryYd: shot.sideCarryYd,
           attackAngleDeg: shot.attackAngleDeg,
           clubPathDeg: shot.clubPathDeg,
+          faceAngleDeg: shot.faceAngleDeg,
           descentAngleDeg: shot.descentAngleDeg,
           smashFactor: shot.smashFactor,
           spinRate: shot.spinRate,

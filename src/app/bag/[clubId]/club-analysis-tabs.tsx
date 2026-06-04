@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { clubAccent } from "@/lib/club-format";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ export type AnalysisShot = {
   apexFt: number | null;
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
+  faceAngleDeg: number | null;
   descentAngleDeg: number | null;
   smashFactor: number | null;
   spinRate: number | null;
@@ -41,7 +43,6 @@ export type AnalysisShot = {
   clubDataEstType: string | null;
 };
 
-type ActiveTab = "dispersion" | "trajectory" | "club";
 type DistanceView = "carry" | "total";
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -53,14 +54,15 @@ export function ClubAnalysisTabs({
   clubModelName,
   clubTypeLabel,
   shots,
+  afterDispersion,
 }: {
   clubType: string;
   clubModelName: string;
   clubTypeLabel: string;
   shots: AnalysisShot[];
+  afterDispersion?: ReactNode;
 }) {
   const accent = clubAccent(clubType);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("dispersion");
   const [distanceView, setDistanceView] = useState<DistanceView>("carry");
   const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
   const [openDateKeys, setOpenDateKeys] = useState<string[] | null>(null);
@@ -113,22 +115,26 @@ export function ClubAnalysisTabs({
 
   return (
     <div className="space-y-5">
-      <div className="premium-card p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div
-            className="grid size-10 place-items-center rounded-full text-sm font-semibold text-white"
-            style={{ background: accent }}
-          >
-            {clubTypeLabel.slice(0, 2)}
+      <section
+        id="club-dispersion"
+        className="premium-card scroll-mt-28 overflow-hidden p-3 sm:p-4"
+      >
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className="grid size-11 shrink-0 place-items-center rounded-full text-white"
+              style={{ background: accent }}
+            >
+              <Target className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-2xl font-semibold tracking-normal">Dispersion Map</h2>
+              <p className="truncate text-sm text-muted-foreground">
+                {clubModelName} · {clubTypeLabel} · this is how the club behaves.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground">David Capener</p>
-            <p className="font-medium">{clubModelName}</p>
-            {clubModelName !== clubTypeLabel ? (
-              <p className="text-xs text-muted-foreground">{clubTypeLabel}</p>
-            ) : null}
-          </div>
-          <div className="apple-panel ml-auto flex p-1">
+          <div className="apple-panel flex w-fit p-1">
             <Button
               type="button"
               size="sm"
@@ -149,33 +155,6 @@ export function ClubAnalysisTabs({
             </Button>
           </div>
         </div>
-      </div>
-
-      <div className="apple-panel-strong grid grid-cols-3 overflow-hidden">
-        <TabButton
-          active={activeTab === "dispersion"}
-          accent={accent}
-          icon={Target}
-          label="Dispersion"
-          onClick={() => setActiveTab("dispersion")}
-        />
-        <TabButton
-          active={activeTab === "trajectory"}
-          accent={accent}
-          icon={Activity}
-          label="Trajectory"
-          onClick={() => setActiveTab("trajectory")}
-        />
-        <TabButton
-          active={activeTab === "club"}
-          accent={accent}
-          icon={Gauge}
-          label="Club data"
-          onClick={() => setActiveTab("club")}
-        />
-      </div>
-
-      {activeTab === "dispersion" ? (
         <DispersionPanel
           clubType={clubType}
           shots={sortedShots}
@@ -184,33 +163,126 @@ export function ClubAnalysisTabs({
           distanceView={distanceView}
           accent={accent}
         />
-      ) : null}
+      </section>
 
-      {activeTab === "trajectory" ? (
+      {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
+
+      <section className="premium-card p-3 sm:p-4">
+        <SectionTitle
+          icon={Activity}
+          title="Trajectory"
+          detail="Flight window and apex pattern for the selected club."
+          accent={accent}
+        />
         <TrajectoryPanel
           shots={sortedShots}
           selectedShotId={selectedShot?.id ?? ""}
           accent={accent}
         />
-      ) : null}
+      </section>
 
-      {activeTab === "club" ? (
+      <section className="premium-card p-3 sm:p-4">
+        <SectionTitle
+          icon={Gauge}
+          title="Club Metrics"
+          detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
+          accent={accent}
+        />
         <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
-      ) : null}
+        <ShotMetricStrip shot={selectedShot} accent={accent} />
+      </section>
 
-      <ShotMetricStrip shot={selectedShot} accent={accent} />
+      <ShotHistory
+        groups={shotDateGroups}
+        activeOpenDateKeys={activeOpenDateKeys}
+        selectedShotId={selectedShot?.id ?? ""}
+        clubModelName={clubModelName}
+        clubTypeLabel={clubTypeLabel}
+        accent={accent}
+        onToggleGroup={toggleDateGroup}
+        onSelect={selectShot}
+      />
+    </div>
+  );
+}
 
-      <div className="space-y-3">
-        {shotDateGroups.map((group) => {
+function SectionTitle({
+  icon: Icon,
+  title,
+  detail,
+  accent,
+}: {
+  icon: LucideIcon;
+  title: string;
+  detail: string;
+  accent: string;
+}) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <span className="grid size-10 place-items-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+        <Icon className="size-5" style={{ color: accent }} />
+      </span>
+      <span>
+        <span className="block text-xl font-semibold tracking-normal">{title}</span>
+        <span className="block text-sm text-muted-foreground">{detail}</span>
+      </span>
+    </div>
+  );
+}
+
+function ShotHistory({
+  groups,
+  activeOpenDateKeys,
+  selectedShotId,
+  clubModelName,
+  clubTypeLabel,
+  accent,
+  onToggleGroup,
+  onSelect,
+}: {
+  groups: ReturnType<typeof groupShotsByDate>;
+  activeOpenDateKeys: string[];
+  selectedShotId: string;
+  clubModelName: string;
+  clubTypeLabel: string;
+  accent: string;
+  onToggleGroup: (dateKey: string, open: boolean) => void;
+  onSelect: (id: string) => void;
+}) {
+  const allShots = groups.flatMap((group) => group.shots);
+  const carryValues = allShots.map((shot) => shot.carryYd);
+  const bestCarryYd = maxMetric(carryValues);
+  const medianCarryYd = medianMetric(carryValues);
+  const worstCarryYd = minMetric(carryValues);
+
+  return (
+    <details id="club-shot-history" className="group premium-card scroll-mt-28 overflow-hidden">
+      <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block text-xl font-semibold tracking-normal">
+            Recent shots ({allShots.length})
+          </span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            Best {formatMetric(bestCarryYd)} yd · Median {formatMetric(medianCarryYd)} yd · Worst{" "}
+            {formatMetric(worstCarryYd)} yd
+          </span>
+        </span>
+        <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
+          Expand
+          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+        </span>
+      </summary>
+      <div className="space-y-3 border-t border-slate-200 bg-slate-50/45 p-3">
+        {groups.map((group) => {
           const isOpen = activeOpenDateKeys.includes(group.dateKey);
-          const selectedInGroup = group.shots.some((shot) => shot.id === selectedShot?.id);
+          const selectedInGroup = group.shots.some((shot) => shot.id === selectedShotId);
 
           return (
             <details
               key={group.dateKey}
               open={isOpen}
               className={cn(
-                "group overflow-hidden rounded-xl border bg-white/85 shadow-sm ring-1 ring-slate-200/80",
+                "group/date overflow-hidden rounded-lg border bg-white/88 shadow-sm ring-1 ring-slate-200/80",
                 selectedInGroup && "border-emerald-300 ring-emerald-200",
               )}
             >
@@ -218,7 +290,7 @@ export function ClubAnalysisTabs({
                 className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
                 onClick={(event) => {
                   event.preventDefault();
-                  toggleDateGroup(group.dateKey, !isOpen);
+                  onToggleGroup(group.dateKey, !isOpen);
                 }}
               >
                 <span className="grid size-9 place-items-center rounded-full border bg-white text-muted-foreground">
@@ -229,23 +301,23 @@ export function ClubAnalysisTabs({
                     {group.label}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} - best carry{" "}
+                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} · best carry{" "}
                     {formatMetric(group.bestCarryYd)} yd
                   </span>
                 </span>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open/date:rotate-180" />
               </summary>
               <div className="space-y-2 border-t bg-slate-50/70 p-2 sm:p-3">
                 {group.shots.map((shot) => (
                   <button
                     key={shot.id}
                     type="button"
-                    onClick={() => selectShot(shot.id)}
+                    onClick={() => onSelect(shot.id)}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg bg-white/90 px-4 py-3 text-left text-sm ring-1 ring-slate-200/80 transition-colors hover:bg-white",
-                      selectedShot?.id === shot.id && "ring-2",
+                      selectedShotId === shot.id && "ring-2",
                     )}
-                    style={selectedShot?.id === shot.id ? { color: accent } : undefined}
+                    style={selectedShotId === shot.id ? { color: accent } : undefined}
                   >
                     <span className="grid size-8 place-items-center rounded-full border font-semibold">
                       {shot.shotNumber ?? "-"}
@@ -270,36 +342,7 @@ export function ClubAnalysisTabs({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  accent,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  accent: string;
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex h-14 items-center justify-center gap-2 border-r text-sm font-medium last:border-r-0 sm:text-base",
-        active ? "text-white" : "text-foreground hover:bg-slate-50",
-      )}
-      style={active ? { background: accent } : undefined}
-    >
-      <Icon className="size-4" />
-      {label}
-    </button>
+    </details>
   );
 }
 
@@ -356,7 +399,10 @@ function DispersionPanel({
 
   return (
     <div className="overflow-hidden rounded-xl border bg-[#172f1d] shadow-sm">
-      <svg viewBox="0 0 644 1024" className="h-[620px] w-full max-h-[72vh]">
+      <svg
+        viewBox="0 0 644 1024"
+        className="h-[560px] w-full max-h-[88vh] sm:h-[760px] lg:h-[820px]"
+      >
         <defs>
           <filter id="shotGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -618,8 +664,8 @@ function ClubDataPanel({
       <ClubGraphicCard
         titleLeft="Club path"
         valueLeft={formatMetric(selectedShot?.clubPathDeg ?? null, " deg")}
-        titleRight="Launch dir."
-        valueRight={formatMetric(selectedShot?.launchDirectionDeg ?? null, " deg")}
+        titleRight="Face angle"
+        valueRight={formatMetric(resolveClubFaceAngleDeg(selectedShot ?? {}), " deg")}
         footerLeft="Smash"
         footerLeftValue={formatMetric(selectedShot?.smashFactor ?? null)}
         footerRight="Spin axis"
@@ -797,10 +843,11 @@ function PathGraphic({
 }) {
   const pathDeg = clamp(shot?.clubPathDeg ?? 0, -12, 12);
   const launchDirectionDeg = clamp(shot?.launchDirectionDeg ?? 0, -12, 12);
+  const faceAngleDeg = clamp(resolveClubFaceAngleDeg(shot ?? {}) ?? 0, -12, 12);
   const spinAxisDeg = clamp(shot?.spinAxis ?? shot?.sideCarryYd ?? 0, -45, 45);
   const pathVisualAngle = pathDeg * 2.4;
   const launchVisualAngle = launchDirectionDeg * 2.8;
-  const faceVisualAngle = clamp(launchVisualAngle - pathVisualAngle * 0.35, -28, 28);
+  const faceVisualAngle = faceAngleDeg * 2.8;
   const center = { x: 268, y: 138 };
   const pathLine = centeredLine(center.x, center.y, pathVisualAngle, 370);
   const launchLine = centeredLine(center.x + 12, center.y - 8, launchVisualAngle, 250);
@@ -874,7 +921,7 @@ function PathGraphic({
         path {numberFormatter.format(pathDeg)} deg
       </text>
       <text x="382" y="242" fill="#94a3b8" fontSize="12">
-        launch {numberFormatter.format(launchDirectionDeg)} deg
+        face {numberFormatter.format(faceAngleDeg)} deg
       </text>
     </g>
   );
@@ -1158,16 +1205,72 @@ function GolfBall({ cx, cy, r }: { cx: number; cy: number; r: number }) {
 
 function ShotMetricStrip({ shot, accent }: { shot: AnalysisShot | null; accent: string }) {
   const metrics = [
-    ["Club Speed", formatMetric(shot?.clubSpeedMph ?? null), "mph"],
-    ["Attack Ang.", formatMetric(shot?.attackAngleDeg ?? null), "deg"],
-    ["Ball Speed", formatMetric(shot?.ballSpeedMph ?? null), "mph"],
-    ["Spin Rate", formatMetric(shot?.spinRate ?? null), "rpm"],
-    ["Carry", formatMetric(shot?.carryYd ?? null), "yd"],
-    ["Side", formatSide(shot?.sideCarryYd ?? null), "yd"],
-    ["Launch", formatMetric(shot?.launchAngleDeg ?? null), "deg"],
-    ["Apex", formatMetric(shot?.apexFt ?? null), "ft"],
-    ["Path", formatMetric(shot?.clubPathDeg ?? null), "deg"],
-    ["Smash", formatMetric(shot?.smashFactor ?? null), ""],
+    {
+      label: "Club Speed",
+      value: formatMetric(shot?.clubSpeedMph ?? null),
+      unit: "mph",
+      tone: "sky" as const,
+    },
+    {
+      label: "Attack Ang.",
+      value: formatMetric(shot?.attackAngleDeg ?? null),
+      unit: "deg",
+      tone: angleTone(shot?.attackAngleDeg ?? null, 6, 10),
+    },
+    {
+      label: "Ball Speed",
+      value: formatMetric(shot?.ballSpeedMph ?? null),
+      unit: "mph",
+      tone: "sky" as const,
+    },
+    {
+      label: "Spin Rate",
+      value: formatMetric(shot?.spinRate ?? null),
+      unit: "rpm",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Carry",
+      value: formatMetric(shot?.carryYd ?? null),
+      unit: "yd",
+      tone: "green" as const,
+    },
+    {
+      label: "Side",
+      value: formatSide(shot?.sideCarryYd ?? null),
+      unit: "yd",
+      tone: sideTone(shot?.sideCarryYd ?? null),
+    },
+    {
+      label: "Launch",
+      value: formatMetric(shot?.launchAngleDeg ?? null),
+      unit: "deg",
+      tone: launchTone(shot?.launchAngleDeg ?? null),
+    },
+    {
+      label: "Apex",
+      value: formatMetric(shot?.apexFt ?? null),
+      unit: "ft",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Path",
+      value: formatMetric(shot?.clubPathDeg ?? null),
+      unit: "deg",
+      tone: angleTone(shot?.clubPathDeg ?? null, 4, 7),
+    },
+    {
+      label: "Face",
+      value: formatMetric(resolveClubFaceAngleDeg(shot ?? {})),
+      unit: "deg",
+      tone: angleTone(resolveClubFaceAngleDeg(shot ?? {}), 4, 7),
+    },
+    {
+      label: "Smash",
+      value: formatMetric(shot?.smashFactor ?? null),
+      unit: "",
+      tone: smashTone(shot?.smashFactor ?? null),
+    },
   ];
 
   return (
@@ -1175,18 +1278,15 @@ function ShotMetricStrip({ shot, accent }: { shot: AnalysisShot | null; accent: 
       <div className="flex items-center gap-2 text-sm font-medium" style={{ color: accent }}>
         <BarChart3 className="size-4" />#{shot?.shotNumber ?? "-"}
       </div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {metrics.map(([label, value, unit]) => (
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+        {metrics.map((metric) => (
           <div
-            key={label}
-            className="rounded-lg bg-white/90 p-3 text-center ring-1 ring-slate-200/80"
-            style={{ borderColor: accent }}
+            key={metric.label}
+            className={cn("rounded-lg p-3 text-center ring-1", metricToneClass(metric.tone))}
           >
-            <p className="border-b pb-2 text-sm font-medium" style={{ color: accent }}>
-              {label}
-            </p>
-            <p className="pt-2 text-xl font-semibold tracking-normal">{value}</p>
-            <p className="text-xs text-muted-foreground">{unit}</p>
+            <p className="border-b border-current/15 pb-2 text-sm font-medium">{metric.label}</p>
+            <p className="pt-2 text-xl font-semibold tracking-normal">{metric.value}</p>
+            <p className="text-xs opacity-70">{metric.unit}</p>
           </div>
         ))}
       </div>
@@ -1280,6 +1380,105 @@ function maxMetric(values: Array<number | null>) {
   const numericValues = values.filter((value): value is number => value !== null);
 
   return numericValues.length === 0 ? null : Math.max(...numericValues);
+}
+
+function minMetric(values: Array<number | null>) {
+  const numericValues = values.filter((value): value is number => value !== null);
+
+  return numericValues.length === 0 ? null : Math.min(...numericValues);
+}
+
+function medianMetric(values: Array<number | null>) {
+  const numericValues = values.filter((value): value is number => value !== null);
+
+  if (numericValues.length === 0) {
+    return null;
+  }
+
+  const ordered = numericValues.sort((left, right) => left - right);
+  const midpoint = (ordered.length - 1) / 2;
+  const lower = Math.floor(midpoint);
+  const upper = Math.ceil(midpoint);
+
+  if (lower === upper) {
+    return ordered[lower];
+  }
+
+  return (ordered[lower] + ordered[upper]) / 2;
+}
+
+type MetricTone = "green" | "amber" | "red" | "sky" | "neutral";
+
+function metricToneClass(tone: MetricTone) {
+  if (tone === "green") {
+    return "bg-emerald-50 text-emerald-800 ring-emerald-200";
+  }
+
+  if (tone === "amber") {
+    return "bg-amber-50 text-amber-800 ring-amber-200";
+  }
+
+  if (tone === "red") {
+    return "bg-red-50 text-red-800 ring-red-200";
+  }
+
+  if (tone === "sky") {
+    return "bg-sky-50 text-sky-800 ring-sky-200";
+  }
+
+  return "bg-white/90 text-slate-800 ring-slate-200";
+}
+
+function angleTone(value: number | null, greenLimit: number, amberLimit: number): MetricTone {
+  if (value === null) {
+    return "neutral";
+  }
+
+  const absolute = Math.abs(value);
+
+  if (absolute <= greenLimit) {
+    return "green";
+  }
+
+  return absolute <= amberLimit ? "amber" : "red";
+}
+
+function sideTone(value: number | null): MetricTone {
+  if (value === null) {
+    return "neutral";
+  }
+
+  const absolute = Math.abs(value);
+
+  if (absolute <= 10) {
+    return "green";
+  }
+
+  return absolute <= 25 ? "amber" : "red";
+}
+
+function launchTone(value: number | null): MetricTone {
+  if (value === null) {
+    return "neutral";
+  }
+
+  if (value >= 8 && value <= 30) {
+    return "green";
+  }
+
+  return value >= 4 && value <= 36 ? "amber" : "red";
+}
+
+function smashTone(value: number | null): MetricTone {
+  if (value === null) {
+    return "neutral";
+  }
+
+  if (value >= 1.28) {
+    return "green";
+  }
+
+  return value >= 1.18 ? "amber" : "red";
 }
 
 function formatDate(value: string) {

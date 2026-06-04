@@ -21,6 +21,8 @@ const metricAliases: Record<string, NormalizedMetric> = {
   launchdirection: "launch_direction_deg",
   spinrate: "spin_rate_rpm",
   apex: "apex_feet",
+  faceangle: "face_angle_deg",
+  clubfaceangle: "face_angle_deg",
   smashfactor: "smash_factor",
 };
 

@@ -50,6 +50,7 @@ export const rapsodoProvider: LaunchMonitorProvider = {
           descent_angle_deg: shot.descentAngleDeg ?? undefined,
           attack_angle_deg: shot.attackAngleDeg ?? undefined,
           club_path_deg: shot.clubPathDeg ?? undefined,
+          face_angle_deg: shot.faceAngleDeg ?? undefined,
           smash_factor: shot.smashFactor ?? undefined,
         },
       })),
@@ -74,6 +75,8 @@ export const rapsodoProvider: LaunchMonitorProvider = {
       descentangle: "descent_angle_deg",
       attackangle: "attack_angle_deg",
       clubpath: "club_path_deg",
+      faceangle: "face_angle_deg",
+      clubfaceangle: "face_angle_deg",
       smashfactor: "smash_factor",
     };
     return mappings[key] ?? null;

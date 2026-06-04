@@ -18,7 +18,7 @@ import {
   integerFormatter,
   numberFormatter,
 } from "@/app/dashboard/dashboard-formatters";
-import { buildCoachSummary } from "@/lib/coach";
+import { buildDashboardCoachPreview } from "@/app/dashboard/dashboard-coach-preview";
 import { buildPathTrendTracking, buildWedgeMatrix } from "@/lib/bag-intelligence";
 import { buildCourseDecisionAdvice, getClubDecisionLabel } from "@/lib/course-decision-advice";
 import {
@@ -28,7 +28,6 @@ import {
   isTrackedClubType,
 } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getProgressData } from "@/lib/progress-data";
 import { calculateHandicapSummary, calculateRoundDifferential } from "@/lib/round-handicap";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
@@ -119,6 +118,7 @@ export async function getDashboardData() {
         launchAngleDeg: shots.launchAngleDeg,
         launchDirectionDeg: shots.launchDirectionDeg,
         clubPathDeg: shots.clubPathDeg,
+        faceAngleDeg: shots.faceAngleDeg,
         courseHoleNumber: shots.courseHoleNumber,
         sessionType: sessions.type,
         shotCategory: shots.shotCategory,
@@ -272,8 +272,20 @@ export async function getDashboardData() {
     bagPreview,
     latestRound,
   });
-  const coachData = await getProgressData();
-  const coachCard = buildCoachSummary(coachData.clubs).clubCards[0] ?? null;
+  const coachCard = buildDashboardCoachPreview({
+    clubs: bag.map((club) => ({
+      id: club.id,
+      type: club.type,
+      stock: {
+        coursePlayCarryYd: club.stock.coursePlayCarryYd,
+        confidenceScore: club.stock.confidenceScore,
+        sampleSize: club.stock.sampleSize,
+        dispersionLeftYd: club.stock.dispersionLeftYd,
+        dispersionRightYd: club.stock.dispersionRightYd,
+      },
+    })),
+    pathTrend,
+  });
   const pendingRapsodoSessions = pendingRapsodoRows.map((session) => ({
     ...session,
     title: session.title ?? "Rapsodo session",

@@ -41,6 +41,7 @@ export type TodayPracticeShot = {
   descentAngleDeg: number | null;
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
+  faceAngleDeg: number | null;
 };
 
 export type TodayPracticeSession = {
@@ -168,6 +169,7 @@ const practiceShotSelect = {
   descentAngleDeg: shots.descentAngleDeg,
   attackAngleDeg: shots.attackAngleDeg,
   clubPathDeg: shots.clubPathDeg,
+  faceAngleDeg: shots.faceAngleDeg,
 };
 
 export async function getTodayPracticeData(

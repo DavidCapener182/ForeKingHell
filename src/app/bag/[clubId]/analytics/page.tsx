@@ -222,7 +222,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
         <MetricCard
           label="Delivery"
           value={formatDegrees(analytics.delivery.clubPathAverageDeg)}
-          detail={`Face/path proxy ${formatDegrees(analytics.delivery.facePathProxyAverageDeg)}`}
+          detail={`Face ${formatDegrees(analytics.delivery.faceAngleAverageDeg)}`}
           icon={Radar}
           tone="sky"
         />
@@ -342,7 +342,8 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
             ["Path avg", formatDegrees(analytics.delivery.clubPathAverageDeg)],
             ["Path spread", formatDegrees(analytics.delivery.clubPathSpreadDeg)],
             ["Attack avg", formatDegrees(analytics.delivery.attackAngleAverageDeg)],
-            ["Face/path proxy", formatDegrees(analytics.delivery.facePathProxyAverageDeg)],
+            ["Face angle", formatDegrees(analytics.delivery.faceAngleAverageDeg)],
+            ["Face-to-path", formatDegrees(analytics.delivery.facePathAverageDeg)],
             ["Hook risk", formatRate(analytics.delivery.hookRiskScore)],
             ["Block risk", formatRate(analytics.delivery.blockRiskScore)],
           ]}
@@ -541,6 +542,7 @@ function analyticsShotSelection() {
     apexFt: shots.apexFt,
     attackAngleDeg: shots.attackAngleDeg,
     clubPathDeg: shots.clubPathDeg,
+    faceAngleDeg: shots.faceAngleDeg,
     descentAngleDeg: shots.descentAngleDeg,
     smashFactor: shots.smashFactor,
     spinRate: shots.spinRate,
@@ -568,6 +570,7 @@ type AnalyticsShotRow = {
   apexFt: number | null;
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
+  faceAngleDeg: number | null;
   descentAngleDeg: number | null;
   smashFactor: number | null;
   spinRate: number | null;

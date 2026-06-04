@@ -111,6 +111,7 @@ function shot(clubType: string, totalYd: number): ParsedRapsodoShot {
     sideCarryYd: 0,
     attackAngleDeg: null,
     clubPathDeg: null,
+    faceAngleDeg: null,
     descentAngleDeg: null,
     smashFactor: null,
     spinRate: null,

@@ -39,6 +39,7 @@ describe("parseRapsodoCsv", () => {
       descentAngleDeg: 38,
       attackAngleDeg: -1.2,
       clubPathDeg: 2.1,
+      faceAngleDeg: 1.4,
       clubDataEstType: "Measured",
     });
     expect(result.shots[0].sourceRawJson["Club Type"]).toBe("Driver");
@@ -88,6 +89,21 @@ describe("parseRapsodoCsv", () => {
     expect(result.shots[0].totalYd).toBe(160);
     expect(result.shots[0].apexFt).toBe(90);
     expect(result.shots[0].sideCarryYd).toBe(-10);
+  });
+
+  it("prefers a measured face angle column when the export includes one", () => {
+    const csv = [
+      "Club Type,Launch Angle,Launch Direction,Club Path,Face Angle",
+      "Driver,16.2,-5.6,-5.9,-4.8",
+    ].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shots[0]).toMatchObject({
+      launchDirectionDeg: -5.6,
+      clubPathDeg: -5.9,
+      faceAngleDeg: -4.8,
+    });
   });
 
   it("uses fallback meters when headers do not expose a distance unit", () => {

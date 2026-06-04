@@ -1,4 +1,5 @@
 import { clubSortValue, formatClubType, isShortGameTouchClubType } from "@/lib/club-format";
+import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { calculateStockYardage, selectStockYardageShots } from "@/lib/stock-yardage";
 
 export type ClubAnalyticsShot = {
@@ -17,6 +18,7 @@ export type ClubAnalyticsShot = {
   apexFt: number | null;
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
+  faceAngleDeg?: number | null;
   descentAngleDeg: number | null;
   smashFactor: number | null;
   spinRate?: number | null;
@@ -104,7 +106,8 @@ export type ClubAnalytics = {
     pathSpikeRate: number | null;
     attackAngleAverageDeg: number | null;
     attackAngleSpreadDeg: number | null;
-    facePathProxyAverageDeg: number | null;
+    faceAngleAverageDeg: number | null;
+    facePathAverageDeg: number | null;
     hookRiskScore: number | null;
     blockRiskScore: number | null;
     clubDataAvailableRate: number | null;
@@ -274,6 +277,7 @@ export function calculateClubAnalytics({
   const clubSpeedValues = stockShots.map((shot) => shot.clubSpeedMph).filter(isNumber);
   const smashValues = stockShots.map((shot) => shot.smashFactor).filter(isNumber);
   const pathValues = stockShots.map((shot) => shot.clubPathDeg).filter(isNumber);
+  const faceAngleValues = stockShots.map((shot) => resolveClubFaceAngleDeg(shot)).filter(isNumber);
   const attackValues = stockShots.map((shot) => shot.attackAngleDeg).filter(isNumber);
   const stock = calculateStockYardage(orderedShots, 50, { clubType });
   const family = clubFamily(clubType);
@@ -288,13 +292,7 @@ export function calculateClubAnalytics({
   const estimatedClubDataShots = clubDataShots.filter((shot) =>
     isEstimatedClubData(shot.clubDataEstType),
   );
-  const facePathProxyValues = stockShots
-    .map((shot) =>
-      isNumber(shot.launchDirectionDeg) && isNumber(shot.clubPathDeg)
-        ? shot.launchDirectionDeg - shot.clubPathDeg
-        : null,
-    )
-    .filter(isNumber);
+  const facePathValues = stockShots.map((shot) => calculateFaceToPathDeg(shot)).filter(isNumber);
   const baseline = snapshot("First 30 clean shots", trendShots.slice(0, 30));
   const current = snapshot("Latest 30 clean shots", trendShots.slice(-30));
   const sessionComparison = compareLastTwoSessions(trendShots);
@@ -391,7 +389,8 @@ export function calculateClubAnalytics({
     ),
     attackAngleAverageDeg: roundOne(meanOrNull(attackValues)),
     attackAngleSpreadDeg: roundOne(standardDeviationOrNull(attackValues)),
-    facePathProxyAverageDeg: roundOne(meanOrNull(facePathProxyValues)),
+    faceAngleAverageDeg: roundOne(meanOrNull(faceAngleValues)),
+    facePathAverageDeg: roundOne(meanOrNull(facePathValues)),
     hookRiskScore: riskScore(stockShots, "hook"),
     blockRiskScore: riskScore(stockShots, "block"),
     clubDataAvailableRate: percent(clubDataShots.length, stockShots.length),

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -34,6 +34,7 @@ import {
   DashboardCommandPalette,
   type DashboardCommandRoute,
 } from "@/app/dashboard/dashboard-command-palette";
+import { FacePathClubSelector } from "@/app/dashboard/face-path-club-selector";
 import { Button } from "@/components/ui/button";
 import {
   CompactReadoutGrid,
@@ -1357,6 +1358,23 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function HeroMissionMetric({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-[4rem] shrink-0", className)}>
+      <p className="text-[19px] font-bold leading-6 tracking-normal text-[#111827]">{value}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-normal text-[#667085]">{label}</p>
+    </div>
+  );
+}
+
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
     <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
@@ -1437,13 +1455,23 @@ function DashboardSummaryHero({
   const firstChange = whatChanged[0] ?? null;
   const readiness = calculateRoundReadiness({ bagSummary, pathTrend, coachPreview });
   const driverStatus = getDriverStatus(pathTrend);
+  const driverTrendPoints = pathTrend.points.filter((point) => point.pathDeg !== null).slice(-4);
+  const driverImprovementLabel = formatDriverImprovementLabel(driverTrendPoints);
+  const driverImprovementValue = driverImprovementLabel?.replace("Improved ", "") ?? "Steady";
+  const driverImprovementMetricLabel = driverImprovementLabel ? "Improved" : "Delivery";
+  const latestFaceDeg =
+    [...pathTrend.points].reverse().find((point) => point.faceDeg !== null)?.faceDeg ??
+    pathTrend.recentShots[0]?.faceDeg ??
+    null;
   const scoringZone =
     bagSummary.scoringZones.find((zone) => !zone.isSuggested && zone.fullCarryYd !== null) ??
     bagSummary.scoringZones[0] ??
     null;
   const focusReasons = coachPreview
     ? [
-        coachPreview.reason,
+        driverImprovementLabel
+          ? `${driverImprovementLabel}. Delivery is moving closer to neutral.`
+          : coachPreview.reason,
         `${integerFormatter.format(coachPreview.sampleSize)} stock shots available for this read.`,
         firstChange
           ? `${firstChange.label}: ${firstChange.value}`
@@ -1459,6 +1487,7 @@ function DashboardSummaryHero({
   const expectedGain = coachPreview
     ? readiness.recommended
     : "Unlocks the first reliable practice priority.";
+  const focusSummary = focusReasons.join(" · ");
 
   return (
     <section className="premium-hero relative overflow-hidden rounded-lg">
@@ -1469,74 +1498,93 @@ function DashboardSummaryHero({
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="relative grid gap-5 px-7 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-stretch">
-        <Link
-          href={practiceHref}
-          prefetch={false}
-          className="group flex min-h-full flex-col justify-between rounded-[22px] border border-[#CFE7D6] bg-white/95 p-6 shadow-[0_18px_40px_rgba(8,122,61,0.10)] transition-colors hover:border-[#0F8F4D]"
-        >
+      <div className="relative grid gap-5 px-7 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-start">
+        <div className="rounded-[24px] bg-white/96 p-5 shadow-[0_20px_44px_rgba(8,122,61,0.12)] ring-1 ring-[#E4EFE7]">
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusPill className="bg-[#E8F7EE] text-[#087A3D] ring-[#CFE7D6]">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] px-3 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
+                <Target className="size-3.5" />
                 Today&apos;s focus
-              </StatusPill>
-              <StatusPill tone={coachPreview ? normalizeDashboardTone(coachPreview.tone) : "green"}>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF3] px-3 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
+                <CheckCircle2 className="size-3.5" />
                 {coachPreview ? `${coachPreview.trustIndex}% trust` : "Build baseline"}
-              </StatusPill>
+              </span>
               {latestSession ? (
-                <StatusPill className="bg-[#EAF1FF] text-[#2563EB] ring-[#CFDAFF]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF1FF] px-3 py-1 text-xs font-bold leading-4 text-[#2563EB] ring-1 ring-[#CFDAFF]">
+                  <CalendarDays className="size-3.5" />
                   Latest import {formatDate(latestSession.date)}
-                </StatusPill>
+                </span>
               ) : null}
             </div>
             <h1 className="mt-5 max-w-3xl text-5xl font-bold leading-[3.3rem] tracking-normal text-[#111827] xl:text-[56px] xl:leading-[3.7rem]">
               {practiceTitle}
             </h1>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <MiniMetric
-                label="Trust"
-                value={
-                  coachPreview
-                    ? `${coachPreview.trustIndex}%`
-                    : (dataHealth.metric ?? dataHealth.status)
-                }
-              />
-              <MiniMetric
-                label="Shots"
-                value={
-                  coachPreview
-                    ? integerFormatter.format(coachPreview.sampleSize)
-                    : integerFormatter.format(bagSummary.mappedClubCount)
-                }
-              />
-              <MiniMetric label="Readiness" value={`${readiness.score}%`} />
+            <div className="mt-5 rounded-[18px] bg-[#F8FAF8] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(220,236,224,0.72)]">
+              <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+                <div className="min-w-[10rem] pr-2">
+                  <p className="text-xs font-bold uppercase tracking-normal text-[#667085]">
+                    Current pattern
+                  </p>
+                  <p className="mt-1 text-[28px] font-bold leading-8 tracking-normal text-[#111827]">
+                    {driverStatus.label}
+                  </p>
+                </div>
+                <HeroMissionMetric
+                  label="Trust"
+                  value={
+                    coachPreview
+                      ? `${coachPreview.trustIndex}%`
+                      : (dataHealth.metric ?? dataHealth.status)
+                  }
+                />
+                <HeroMissionMetric label="Round ready" value={`${readiness.score}%`} />
+                <HeroMissionMetric
+                  label={driverImprovementMetricLabel}
+                  value={driverImprovementValue}
+                />
+                <HeroMissionMetric label="Path" value={formatSignedDegrees(driverStatus.pathDeg)} />
+                <HeroMissionMetric label="Face" value={formatSignedDegrees(latestFaceDeg)} />
+                <HeroMissionMetric
+                  label="F-P"
+                  value={formatSignedDegrees(driverStatus.faceToPathDeg)}
+                />
+                <HeroMissionMetric
+                  label="Shots"
+                  value={
+                    coachPreview
+                      ? integerFormatter.format(coachPreview.sampleSize)
+                      : integerFormatter.format(bagSummary.mappedClubCount)
+                  }
+                />
+              </div>
             </div>
-            <div className="mt-5 grid gap-2">
-              {focusReasons.map((reason) => (
-                <p
-                  key={reason}
-                  className="flex gap-2 rounded-lg border border-[#EDF1ED] bg-[#F8FAF8] px-3 py-2 text-sm leading-5 text-[#111827]"
-                >
-                  <Target className="mt-0.5 size-4 shrink-0 text-[#087A3D]" />
-                  <span>{reason}</span>
-                </p>
-              ))}
-            </div>
-            <div className="mt-5 rounded-lg border border-[#CFE7D6] bg-[#F0FAF3] px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
-                Expected gain
-              </p>
-              <p className="mt-1 text-sm font-semibold leading-6 text-[#111827]">{expectedGain}</p>
+            <div className="mt-4 rounded-[16px] bg-[#F0FAF3] px-4 py-3">
+              <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(220px,0.85fr)] xl:items-center">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+                    Expected gain
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[#111827]">
+                    {expectedGain}
+                  </p>
+                </div>
+                <p className="text-xs font-medium leading-5 text-[#526071]">{focusSummary}</p>
+              </div>
             </div>
           </div>
-          <ShotTraceMotif className="mt-5 h-9 w-full text-emerald-700/70" />
-          <span className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-[#087A3D] px-4 text-sm font-semibold text-white transition-colors group-hover:bg-[#065F32]">
+          <FacePathClubSelector pathTrend={pathTrend} className="mt-4" />
+          <Link
+            href={practiceHref}
+            prefetch={false}
+            className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#087A3D] px-5 text-base font-bold text-white shadow-[0_14px_28px_rgba(8,122,61,0.18)] outline-none transition-colors hover:bg-[#065F32] focus-visible:ring-3 focus-visible:ring-[#087A3D]/30"
+          >
             Start practice
             <ArrowRight className="size-4" />
-          </span>
-        </Link>
+          </Link>
+        </div>
 
-        <div className="grid gap-4">
+        <div className="grid content-start gap-4">
           <RoundReadinessCard readiness={readiness} />
           <SinceLastSessionCard insights={whatChanged} />
         </div>
@@ -1565,8 +1613,8 @@ function DashboardSummaryHero({
         />
         <HeroInsightCard
           title="Driver status"
-          value={driverStatus.label}
-          detail={`Path ${formatSignedDegrees(driverStatus.pathDeg)} · F-P ${formatSignedDegrees(
+          value={readiness.driver}
+          detail={`${driverStatus.label} · Path ${formatSignedDegrees(driverStatus.pathDeg)} · F-P ${formatSignedDegrees(
             driverStatus.faceToPathDeg,
           )}`}
           href={pathTrend.clubId ? `/bag/${pathTrend.clubId}` : "/bag"}
@@ -1592,6 +1640,60 @@ function DashboardSummaryHero({
       </div>
     </section>
   );
+}
+
+const DRIVER_PATH_TARGET = { min: 2, max: 5 };
+const DRIVER_FACE_TARGET = { min: 3, max: 5 };
+
+function formatDriverImprovementLabel(points: DashboardData["pathTrend"]["points"]) {
+  const measured = points.filter(
+    (point): point is (typeof points)[number] & { pathDeg: number } =>
+      typeof point.pathDeg === "number" && Number.isFinite(point.pathDeg),
+  );
+
+  if (measured.length < 2) {
+    return null;
+  }
+
+  const first = measured[0].pathDeg;
+  const latest = measured[measured.length - 1].pathDeg;
+  const changeTowardNeutral = Math.abs(first) - Math.abs(latest);
+
+  if (changeTowardNeutral <= 0.05) {
+    return "Holding steady";
+  }
+
+  return `Improved ${formatUnsignedDegrees(changeTowardNeutral)}`;
+}
+
+function formatUnsignedDegrees(value: number) {
+  const rounded = Math.round(Math.abs(value) * 10) / 10;
+
+  return `${numberFormatter.format(rounded)} deg`;
+}
+
+function driverAngleTargetState(
+  value: number | null | undefined,
+  window: { min: number; max: number },
+) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return {
+      label: "Needs data",
+      tone: "slate" as DashboardTone,
+    };
+  }
+
+  if (value >= window.min && value <= window.max) {
+    return {
+      label: "OK",
+      tone: "green" as DashboardTone,
+    };
+  }
+
+  return {
+    label: value > window.max ? "Slightly open" : "Slightly closed",
+    tone: "amber" as DashboardTone,
+  };
 }
 
 function HeroInsightCard({
@@ -1652,6 +1754,10 @@ type RoundReadiness = {
 };
 
 function RoundReadinessCard({ readiness }: { readiness: RoundReadiness }) {
+  const ringStyle = {
+    "--readiness-angle": `${readiness.score * 3.6}deg`,
+  } as CSSProperties;
+
   return (
     <section className="premium-card rounded-lg p-5">
       <div className="flex items-start justify-between gap-4">
@@ -1663,20 +1769,29 @@ function RoundReadinessCard({ readiness }: { readiness: RoundReadiness }) {
         </div>
         <StatusPill tone={readiness.tone}>{readiness.label}</StatusPill>
       </div>
-      <div className="mt-5 flex items-end justify-between gap-4">
-        <p className="text-[42px] font-bold leading-none tracking-normal text-[#111827]">
-          {readiness.score}%
-        </p>
-        <div className="min-w-[9rem] flex-1">
-          <Progress value={readiness.score} />
+      <div className="mt-5 grid items-center gap-4 xl:grid-cols-[10rem_minmax(0,1fr)]">
+        <div
+          className="mx-auto grid size-40 place-items-center rounded-full bg-[conic-gradient(#087A3D_var(--readiness-angle),#E7EFE9_0deg)] p-2.5 shadow-inner xl:mx-0"
+          style={ringStyle}
+        >
+          <div className="grid size-full place-items-center rounded-full bg-white text-center shadow-[inset_0_0_0_1px_rgba(220,236,224,0.85)]">
+            <div>
+              <p className="text-[38px] font-bold leading-none tracking-normal text-[#111827]">
+                {readiness.score}%
+              </p>
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-normal text-[#667085]">
+                Round ready
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <ReadinessRow label="Driver" value={readiness.driver} />
+          <ReadinessRow label="Irons" value={readiness.irons} />
+          <ReadinessRow label="Wedges" value={readiness.wedges} />
         </div>
       </div>
-      <div className="mt-5 grid gap-2">
-        <ReadinessRow label="Driver" value={readiness.driver} />
-        <ReadinessRow label="Irons" value={readiness.irons} />
-        <ReadinessRow label="Wedges" value={readiness.wedges} />
-      </div>
-      <div className="mt-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-3">
+      <div className="mt-4 rounded-[16px] bg-[#F8FAF8] px-3 py-3">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">Recommended</p>
         <p className="mt-1 text-sm font-semibold leading-5 text-[#111827]">
           {readiness.recommended}
@@ -1688,7 +1803,7 @@ function RoundReadinessCard({ readiness }: { readiness: RoundReadiness }) {
 
 function ReadinessRow({ label, value }: { label: string; value: string }) {
   return (
-    <p className="flex items-center justify-between gap-3 rounded-lg border border-[#EDF1ED] bg-white px-3 py-2 text-sm">
+    <p className="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAF8] px-3 py-2.5 text-sm">
       <span className="font-medium text-[#667085]">{label}</span>
       <span className="text-right font-semibold text-[#111827]">{value}</span>
     </p>
@@ -1761,6 +1876,7 @@ function calculateRoundReadiness({
   );
   const label = score >= 85 ? "Ready" : score >= 70 ? "Playable" : "Calibrating";
   const tone: DashboardTone = score >= 85 ? "green" : score >= 70 ? "sky" : "amber";
+  const driverLabel = getRoundReadinessDriverLabel(pathTrend, driverStatus);
   const wedgeLabel = bagSummary.scoringZones.some((zone) => zone.isSuggested)
     ? "Calibrating"
     : wedgeScore >= 75
@@ -1778,11 +1894,37 @@ function calculateRoundReadiness({
     score,
     label,
     tone,
-    driver: driverStatus.label,
+    driver: driverLabel,
     irons: `${bagSummary.trustedClubCount}/${bagSummary.mappedClubCount} trusted`,
     wedges: wedgeLabel,
     recommended,
   };
+}
+
+function getRoundReadinessDriverLabel(
+  pathTrend: DashboardData["pathTrend"],
+  driverStatus: ReturnType<typeof getDriverStatus>,
+) {
+  const latestPoint =
+    [...pathTrend.points].reverse().find((point) => point.pathDeg !== null) ?? null;
+  const latestShot = pathTrend.recentShots[0] ?? null;
+  const faceDeg = latestPoint?.faceDeg ?? latestShot?.faceDeg ?? null;
+  const pathState = driverAngleTargetState(driverStatus.pathDeg, DRIVER_PATH_TARGET);
+  const faceState = driverAngleTargetState(faceDeg, DRIVER_FACE_TARGET);
+
+  if (pathState.tone === "green" && faceState.tone === "green") {
+    return "Path healthy";
+  }
+
+  if (pathState.tone === "green" && faceState.tone === "amber") {
+    return `Face ${faceState.label.toLowerCase()}`;
+  }
+
+  if (pathState.tone === "amber") {
+    return "Path outside window";
+  }
+
+  return driverStatus.label;
 }
 
 function getDriverStatus(pathTrend: DashboardData["pathTrend"]) {
@@ -1868,7 +2010,7 @@ function DriverStatusPanel({ pathTrend }: { pathTrend: DashboardData["pathTrend"
   return (
     <DashboardPanel
       title="Driver status"
-      description="One-glance path and face-to-path proxy from the latest measured driver trend."
+      description="One-glance path and face-to-path from the latest measured driver trend."
       action={
         <Button asChild variant="outline" className="rounded-lg">
           <Link href={pathTrend.clubId ? `/bag/${pathTrend.clubId}` : "/bag"} prefetch={false}>
@@ -2168,38 +2310,41 @@ function LatestPracticeSignalPanel({
           />
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-3">
-          <SignalTile
-            label="Latest session"
-            value={latestSession ? formatDate(latestSession.date) : "No import yet"}
-            detail={
-              latestSession
-                ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
-                : "Import a CSV to start the practice signal."
-            }
-            tone="sky"
-          />
-          <SignalTile
-            label="Your game"
-            value={`${integerFormatter.format(stats.shotCount)} shots`}
-            detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
-            tone="green"
-          />
-          <SignalTile
-            label="Best insight"
-            value={
-              latestRound
-                ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
-                : (firstSignal?.value ?? "Building")
-            }
-            detail={
-              latestRound
-                ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
-                : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
-            }
-            tone={latestRound ? "amber" : (firstSignal?.tone ?? "slate")}
-          />
-        </div>
+        <>
+          <div className="grid gap-3 md:grid-cols-3">
+            <SignalTile
+              label="Latest session"
+              value={latestSession ? formatDate(latestSession.date) : "No import yet"}
+              detail={
+                latestSession
+                  ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
+                  : "Import a CSV to start the practice signal."
+              }
+              tone="sky"
+            />
+            <SignalTile
+              label="Your game"
+              value={`${integerFormatter.format(stats.shotCount)} shots`}
+              detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
+              tone="green"
+            />
+            <SignalTile
+              label="Best insight"
+              value={
+                latestRound
+                  ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
+                  : (firstSignal?.value ?? "Building")
+              }
+              detail={
+                latestRound
+                  ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
+                  : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
+              }
+              tone={latestRound ? "amber" : (firstSignal?.tone ?? "slate")}
+            />
+          </div>
+          <ShotTraceMotif className="mt-4 hidden h-8 w-full md:block" />
+        </>
       )}
       <div className="mt-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3 text-sm leading-6 text-[#667085]">
         <span className="font-semibold text-[#111827]">Data quality:</span>{" "}

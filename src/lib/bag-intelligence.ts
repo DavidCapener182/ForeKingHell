@@ -1,4 +1,5 @@
 import { clubSortValue, formatClubType } from "@/lib/club-format";
+import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
 import type { StockShotRoleSummary } from "@/lib/stock-yardage";
 
@@ -13,6 +14,7 @@ export type BagIntelligenceShot = {
   sideCarryYd: number | null;
   launchDirectionDeg?: number | null;
   clubPathDeg?: number | null;
+  faceAngleDeg?: number | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
   sessionType?: string | null;
@@ -367,17 +369,12 @@ export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendT
       const pathDeg = roundOne(
         average(shotsForMonth.map((shot) => shot.clubPathDeg).filter(isNumber)),
       );
-      const faceProxyValues = shotsForMonth
-        .map((shot) =>
-          isNumber(shot.launchDirectionDeg) && isNumber(shot.clubPathDeg)
-            ? shot.launchDirectionDeg - shot.clubPathDeg
-            : null,
-        )
-        .filter(isNumber);
       const faceDeg = roundOne(
-        average(shotsForMonth.map((shot) => shot.launchDirectionDeg).filter(isNumber)),
+        average(shotsForMonth.map((shot) => resolveClubFaceAngleDeg(shot)).filter(isNumber)),
       );
-      const faceToPathProxyDeg = roundOne(average(faceProxyValues));
+      const faceToPathProxyDeg = roundOne(
+        average(shotsForMonth.map((shot) => calculateFaceToPathDeg(shot)).filter(isNumber)),
+      );
       const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
 
       return {
@@ -1029,9 +1026,11 @@ function buildPathClubSummary(club: BagIntelligenceClub): PathTrendClubSummary |
   }
 
   const pathDeg = roundOne(average(shots.map((shot) => shot.clubPathDeg).filter(isNumber)));
-  const faceDeg = roundOne(average(shots.map((shot) => shot.launchDirectionDeg).filter(isNumber)));
+  const faceDeg = roundOne(
+    average(shots.map((shot) => resolveClubFaceAngleDeg(shot)).filter(isNumber)),
+  );
   const faceToPathProxyDeg = roundOne(
-    average(shots.map((shot) => shotFaceToPathDeg(shot)).filter(isNumber)),
+    average(shots.map((shot) => calculateFaceToPathDeg(shot)).filter(isNumber)),
   );
   const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
 
@@ -1050,8 +1049,8 @@ function buildPathClubSummary(club: BagIntelligenceClub): PathTrendClubSummary |
 
 function buildPathTrendShot(shot: BagIntelligenceShot, index: number): PathTrendShot {
   const pathDeg = roundOne(shot.clubPathDeg);
-  const faceDeg = roundOne(shot.launchDirectionDeg);
-  const faceToPathProxyDeg = roundOne(shotFaceToPathDeg(shot));
+  const faceDeg = roundOne(resolveClubFaceAngleDeg(shot));
+  const faceToPathProxyDeg = roundOne(calculateFaceToPathDeg(shot));
   const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
 
   return {
@@ -1065,14 +1064,6 @@ function buildPathTrendShot(shot: BagIntelligenceShot, index: number): PathTrend
     patternLabel: pattern.label,
     patternDetail: pattern.detail,
   };
-}
-
-function shotFaceToPathDeg(shot: BagIntelligenceShot) {
-  if (!isNumber(shot.launchDirectionDeg) || !isNumber(shot.clubPathDeg)) {
-    return null;
-  }
-
-  return shot.launchDirectionDeg - shot.clubPathDeg;
 }
 
 function usableShots(shots: BagIntelligenceShot[]) {
@@ -1188,6 +1179,7 @@ function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number |
   }
 
   const faceSide = faceToPathDeg <= -1.5 ? "closed" : faceToPathDeg >= 1.5 ? "open" : "square";
+  const curveSeverity = Math.abs(faceToPathDeg) >= 3.5 ? "large" : "small";
   const pathLabel = pathSide === "pull" ? "pull" : pathSide === "push" ? "push" : "straight";
   const faceLabel =
     faceSide === "closed"
@@ -1207,7 +1199,7 @@ function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number |
   if (pathSide === "straight" && faceSide === "open") {
     return {
       code: "F",
-      label: "Straight slice",
+      label: curveSeverity === "large" ? "Straight slice" : "Straight fade",
       detail: `Straight path with ${faceLabel}.`,
     };
   }
@@ -1215,7 +1207,7 @@ function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number |
   if (pathSide === "straight" && faceSide === "closed") {
     return {
       code: "D",
-      label: "Straight draw/hook",
+      label: curveSeverity === "large" ? "Straight hook" : "Straight draw",
       detail: `Straight path with ${faceLabel}.`,
     };
   }
@@ -1231,7 +1223,7 @@ function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number |
   if (pathSide === "push" && faceSide === "open") {
     return {
       code: "I",
-      label: "Push fade/slice",
+      label: curveSeverity === "large" ? "Push slice" : "Push fade",
       detail: `Push path with ${faceLabel}.`,
     };
   }
@@ -1255,14 +1247,14 @@ function classifyFacePathPattern(pathDeg: number | null, faceToPathDeg: number |
   if (faceSide === "open") {
     return {
       code: "C",
-      label: "Pull fade/slice",
+      label: curveSeverity === "large" ? "Pull slice" : "Pull fade",
       detail: `Pull path with ${faceLabel}.`,
     };
   }
 
   return {
     code: "A",
-    label: "Pull draw/hook",
+    label: curveSeverity === "large" ? "Pull hook" : "Pull draw",
     detail: `${pathLabel} path with ${faceLabel}.`,
   };
 }

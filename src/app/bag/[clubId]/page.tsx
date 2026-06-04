@@ -47,8 +47,9 @@ export default async function ClubDetailPage({ params }: PageProps) {
         </Button>
       </div>
 
-      <ClubDetailClient club={club} />
-      <BagFeaturePanel data={featureData} />
+      <ClubDetailClient club={club}>
+        <BagFeaturePanel data={featureData} />
+      </ClubDetailClient>
     </PageShell>
   );
 }
@@ -82,6 +83,7 @@ async function getClubDetail(clubId: string) {
         apexFt: shots.apexFt,
         attackAngleDeg: shots.attackAngleDeg,
         clubPathDeg: shots.clubPathDeg,
+        faceAngleDeg: shots.faceAngleDeg,
         descentAngleDeg: shots.descentAngleDeg,
         smashFactor: shots.smashFactor,
         spinRate: shots.spinRate,
@@ -118,6 +120,7 @@ async function getClubDetail(clubId: string) {
     apexFt: shot.apexFt,
     attackAngleDeg: shot.attackAngleDeg,
     clubPathDeg: shot.clubPathDeg,
+    faceAngleDeg: shot.faceAngleDeg,
     descentAngleDeg: shot.descentAngleDeg,
     smashFactor: shot.smashFactor,
     spinRate: shot.spinRate,

@@ -1716,8 +1716,10 @@ function mobileHeroMetrics(
   activeCategory: CategorySummary | null,
 ) {
   const metrics = heroMetrics(analysis, totalEvents, activeCategory);
+  const filteredMetrics =
+    !activeCategory && metrics.length > 1 ? metrics.slice(1) : metrics;
 
-  return metrics.map((metric) => ({
+  return filteredMetrics.map((metric) => ({
     label: metric.label,
     value: metric.value,
     detail: metric.detail,

@@ -48,6 +48,7 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
         apexFt: shots.apexFt,
         attackAngleDeg: shots.attackAngleDeg,
         clubPathDeg: shots.clubPathDeg,
+        faceAngleDeg: shots.faceAngleDeg,
         descentAngleDeg: shots.descentAngleDeg,
         smashFactor: shots.smashFactor,
         spinRate: shots.spinRate,

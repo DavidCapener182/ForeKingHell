@@ -45,13 +45,13 @@ describe("launch monitor provider adapters", () => {
   it("detects and normalises a TrackMan-style file", async () => {
     const provider = await detectLaunchMonitorProvider({
       fileName: "trackman-export.csv",
-      text: "Club,Carry,Ball Speed,Launch Angle,Spin Rate,Club Path\nDriver,241.8,151.4,12.6,2310,1.8",
+      text: "Club,Carry,Ball Speed,Launch Angle,Spin Rate,Club Path,Face Angle\nDriver,241.8,151.4,12.6,2310,1.8,0.4",
     });
 
     expect(provider?.providerKind).toBe("trackman");
     const session = await provider!.parse({
       fileName: "trackman-export.csv",
-      text: "Club,Carry,Ball Speed,Launch Angle,Spin Rate,Club Path\nDriver,241.8,151.4,12.6,2310,1.8",
+      text: "Club,Carry,Ball Speed,Launch Angle,Spin Rate,Club Path,Face Angle\nDriver,241.8,151.4,12.6,2310,1.8,0.4",
     });
 
     expect(session.shotCount).toBe(1);
@@ -62,6 +62,7 @@ describe("launch monitor provider adapters", () => {
       launch_angle_deg: 12.6,
       spin_rate_rpm: 2310,
       club_path_deg: 1.8,
+      face_angle_deg: 0.4,
     });
   });
 });

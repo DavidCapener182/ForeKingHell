@@ -11,14 +11,12 @@ import {
   Grid3X3,
   Layers3,
   MapPinned,
-  Minus,
   Radar,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
   Trophy,
   Target,
-  TrendingDown,
   TrendingUp,
   Upload,
   Users,
@@ -28,9 +26,8 @@ import { and, asc, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { Button } from "@/components/ui/button";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
+import { FacePathDeliveryChart } from "@/components/visuals/face-path-delivery-chart";
 import { PageArtwork } from "@/components/visuals/page-artwork";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
-import { MobileSummaryHero } from "@/components/visuals/mobile-summary-hero";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CompactReadoutGrid,
@@ -43,7 +40,6 @@ import {
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
-  PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
@@ -101,7 +97,6 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import {
   buildCourseDecisionAdvice,
   getClubDecisionLabel,
-  getClubDecisionTone,
   type ClubDecisionLabel,
   type CourseDecisionAdvice,
 } from "@/lib/course-decision-advice";
@@ -135,6 +130,7 @@ import {
 import { DistanceBenchmarkPanel } from "./distance-benchmark-panel";
 import { PersonalBestCard, type PersonalBestMetric } from "./personal-best-card";
 import { TargetDistanceSelector, type TargetDistanceRow } from "./target-distance-selector";
+import { ClubIntelligencePanel, type ClubIntelligenceItem } from "./club-intelligence-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -229,6 +225,13 @@ export default async function BagPage({ searchParams }: PageProps) {
   const bagDoctorFindings = buildBagDoctorFindings(gappingRows);
   const wedgeRoleClubs = bag.filter(hasWedgeRoleReadout);
   const stockFilterClubs = bag.filter((club) => club.stock.stockExclusionReasons.length > 0);
+  const weakestClub = findWeakestClub(stockConfidenceClubs);
+  const biggestOpportunity = smartBagBuilder.suggestions[0] ?? null;
+  const currentGapRisk = buildCurrentGapRisk(gappingRows);
+  const bagScoreTrend = buildBagScoreTrend(bag, {
+    handicapBand: profile.handicapBand,
+  });
+  const clubIntelligenceItems = buildClubIntelligenceItems(bag);
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
@@ -239,38 +242,37 @@ export default async function BagPage({ searchParams }: PageProps) {
           activeKey="gapping"
           className="-mt-4 text-sm"
           tabs={[
-            { key: "gapping", label: "Gapping", href: "/bag" },
-            { key: "clubs", label: "Clubs", href: "#clubs" },
-            { key: "decisions", label: "Decisions", href: "#decisions" },
+            { key: "gapping", label: "Health", href: "/bag" },
+            { key: "clubs", label: "Clubs", href: "#club-intelligence" },
+            { key: "decisions", label: "Reference", href: "#reference-data" },
             { key: "longest", label: "Longest", href: "/bag/longest" },
           ]}
         />
-        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
         <MobileBentoSummary
           items={[
             {
-              label: "Bag trust",
+              label: "Bag score",
+              value: `${smartBagBuilder.currentScore}%`,
+              detail: smartBagBuilder.scoreLabel,
+              tone: smartBagBuilder.currentScore >= 85 ? "green" : "amber",
+            },
+            {
+              label: "Confidence",
               value: `${averageConfidence}%`,
               detail: `${bag.length} clubs · ${totalShots} shots`,
-              tone: averageConfidence >= 70 ? "green" : "amber",
+              tone: averageConfidence >= 75 ? "green" : "sky",
             },
             {
-              label: "Weak gap",
-              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
-              detail: weakestGap ? workOnText(weakestGap) : "Need carry samples",
-              tone: weakestGap?.targetTone ?? "slate",
+              label: "Opportunity",
+              value: biggestOpportunity?.title ?? "Clean",
+              detail: biggestOpportunity?.detail ?? "No urgent move",
+              tone: biggestOpportunity ? "amber" : "green",
             },
             {
-              label: "Dangerous miss",
-              value: bestClub ? formatBagDangerousMiss(bestClub.stock) : "--",
-              detail: bestClub ? formatClubType(bestClub.type) : "Build a trusted club",
-              tone: bestClub ? "sky" : "slate",
-            },
-            {
-              label: "Best trust",
-              value: bestClub ? formatClubType(bestClub.type) : "--",
-              detail: bestClub ? `${bestClub.stock.confidenceScore}% confidence` : "Need samples",
-              tone: "green",
+              label: "Gap risk",
+              value: currentGapRisk.value,
+              detail: currentGapRisk.detail,
+              tone: currentGapRisk.tone,
             },
           ]}
         />
@@ -404,6 +406,9 @@ export default async function BagPage({ searchParams }: PageProps) {
               summary: `${bag.length} clubs`,
               children: (
                 <div className="grid gap-4">
+                  <NativeListSection title="Target lookup">
+                    <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+                  </NativeListSection>
                   {wedgeRoleClubs.length > 0 ? (
                     <NativeListSection title="Wedge roles">
                       <WedgeRoleCards clubs={wedgeRoleClubs} compact />
@@ -479,333 +484,98 @@ export default async function BagPage({ searchParams }: PageProps) {
       </div>
 
       <div className="hidden sm:contents">
-        <PageHeader
-          eyebrow={<StatusPill>Bag map</StatusPill>}
-          title="Stock yardages"
-          description="Best stock carry, latest reliable form, recommended numbers, dispersion, and trust by club."
-          visual={
-            <PageArtwork variant="stockYardages" alt="" className="h-full min-h-44" priority />
-          }
-          visualSize="wide"
-          actions={
-            <>
-              <Button asChild variant="outline">
-                <Link href="/bag/longest">
-                  <Trophy className="size-4" />
-                  Longest shots
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/achievements">
-                  <Award className="size-4" />
-                  Achievements
-                </Link>
-              </Button>
-            </>
-          }
-          metrics={[
-            {
-              label: "Clubs",
-              value: bag.length.toString(),
-              detail: "Tracked active clubs",
-            },
-            {
-              label: "Shots",
-              value: totalShots.toString(),
-              detail: "Saved launch monitor rows",
-            },
-            {
-              label: "Confidence",
-              value: `${averageConfidence}%`,
-              detail: "Average stock confidence",
-            },
-            {
-              label: "Data trust",
-              value: featureData.dataHealth.metric,
-              detail: featureData.dataHealth.status,
-            },
-          ]}
+        <BagHealthHero
+          bagScore={smartBagBuilder.currentScore}
+          scoreLabel={smartBagBuilder.scoreLabel}
+          confidence={averageConfidence}
+          dataTrust={featureData.dataHealth.metric ?? "--"}
+          dataTrustDetail={featureData.dataHealth.status ?? "Data health building"}
+          shots={totalShots}
+          clubs={bag.length}
+          strongestClub={bestClub}
+          weakestClub={weakestClub}
+          biggestOpportunity={biggestOpportunity}
+          currentGapRisk={currentGapRisk}
+          trend={bagScoreTrend}
         />
 
         <MobileSectionChips
           items={[
-            { label: "Trust", href: "#bag-confidence" },
-            { label: "Levels", href: "#levels" },
-            { label: "PBs", href: "#personal-bests" },
-            { label: "Lower scores", href: "#lower-scores" },
-            { label: "Wedges", href: "#wedge-roles" },
-            { label: "Decisions", href: "#decisions" },
-            { label: "Clubs", href: "#clubs" },
+            { label: "Health", href: "#bag-health" },
+            { label: "Core", href: "#core-intelligence" },
+            { label: "Club", href: "#club-intelligence" },
+            { label: "Analytics", href: "#advanced-analytics" },
+            { label: "Equipment", href: "#equipment-development" },
+            { label: "Reference", href: "#reference-data" },
           ]}
         />
 
         <BagStickySummary rows={gappingRows} />
 
-        <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-
-        <MobileSummaryHero
-          eyebrow={<StatusPill tone="green">Bag readout</StatusPill>}
-          title="Trust the number, then check the gap."
-          description="Start with the best club, weakest ladder gap, and current confidence before opening the full table."
-          metricLabel="Best club"
-          metricValue={bestClub ? formatClubType(bestClub.type) : "--"}
-          visual={
-            <ClubArtwork
-              clubType={bestClub?.type ?? "driver"}
-              brand={bestClub?.brand}
-              model={bestClub?.model}
-              alt=""
-              className="h-20 w-20 rounded-xl"
-              sizes="80px"
-              priority
-            />
-          }
-          action={
-            <Button
-              asChild
-              size="sm"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href="#clubs">Clubs</Link>
-            </Button>
-          }
-        />
-
-        <MobileMetricStrip
-          items={[
-            {
-              label: "Clubs",
-              value: bag.length.toString(),
-              detail: "Active",
-              tone: "green",
-            },
-            {
-              label: "Confidence",
-              value: `${averageConfidence}%`,
-              detail: "Average",
-              tone: "sky",
-            },
-            {
-              label: "Weakest gap",
-              value: weakestGap ? formatClubType(weakestGap.clubType) : "--",
-              detail: weakestGap ? workOnText(weakestGap) : "Need carry samples",
-              tone: weakestGap?.targetTone ?? "amber",
-            },
-          ]}
-        />
-
-        <BagConfidenceLadder
-          rows={gappingRows}
-          maxCarryYd={maxDisplayCarry}
-          findings={bagDoctorFindings}
-        />
-
-        {benchmarkRows.length > 0 ? (
-          <section id="levels" className="scroll-mt-28">
-            <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
-          </section>
-        ) : null}
-
-        <ClubEvolutionPanel clubs={bag} />
-
-        <BagFeaturePanel data={featureData} />
-
-        <section id="personal-bests" className="w-full scroll-mt-28">
-          <PersonalBestCard clubs={bag} initialMetric={personalBestMetric} />
-        </section>
-
-        <section id="lower-scores" className="scroll-mt-28">
-          <LowerScoresFeatureStack
-            smartBagBuilder={smartBagBuilder}
-            wedgeMatrix={wedgeMatrix}
-            pathTrend={pathTrend}
-            shotPatternOverlays={shotPatternOverlays}
-            courseStrategy={courseStrategy}
-            confidenceHeatMaps={confidenceHeatMaps}
-            aiCaddieCards={aiCaddieCards}
-            personalStrokesGained={personalStrokesGained}
+        <section id="core-intelligence" className="grid scroll-mt-28 gap-4">
+          <BagZoneHeader
+            eyebrow="Core bag intelligence"
+            title="How healthy is the bag?"
+            description="Confidence, gapping and movement sit together so the first screen explains the bag rather than sending you club by club."
           />
+          <BagConfidenceLadder
+            rows={gappingRows}
+            maxCarryYd={maxDisplayCarry}
+            findings={bagDoctorFindings}
+          />
+          <ClubEvolutionPanel clubs={bag} />
         </section>
 
-        {wedgeRoleClubs.length > 0 ? (
-          <section id="wedge-roles" className="scroll-mt-28">
-            <WedgeRolePanel clubs={wedgeRoleClubs} />
-          </section>
-        ) : null}
+        <ClubIntelligencePanel
+          clubs={clubIntelligenceItems}
+          initialClubId={bestClub?.id ?? bag[0]?.id}
+        />
 
-        {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
+        <section id="advanced-analytics" className="grid scroll-mt-28 gap-4">
+          <BagZoneHeader
+            eyebrow="Advanced analytics"
+            title="Why does the bag behave like this?"
+            description="The diagnostic modules now live together: confidence windows, face-to-path, pattern overlays and personal strokes gained."
+          />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+            <PathTrendPanel trend={pathTrend} />
+            <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+            <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
+          </div>
+        </section>
 
-        {gappingRows.length > 0 ? (
-          <section id="gapping" className="scroll-mt-28">
-            <CarryGappingTable rows={gappingRows} />
-          </section>
-        ) : null}
+        <section id="equipment-development" className="grid scroll-mt-28 gap-4">
+          <BagZoneHeader
+            eyebrow="Equipment development"
+            title="What should change next?"
+            description="Gap-wedge integration, wedge windows and equipment decisions are grouped as development work, not scattered through the readout."
+          />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            <SmartBagBuilderPanel model={smartBagBuilder} />
+            <WedgeMatrixPanel matrix={wedgeMatrix} />
+          </div>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <AiCaddiePanel cards={aiCaddieCards} />
+            <BagFeaturePanel data={featureData} />
+          </div>
+          {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
+        </section>
 
-        <section id="decisions" className="scroll-mt-28">
+        <section id="reference-data" className="grid scroll-mt-28 gap-4">
+          <BagZoneHeader
+            eyebrow="Reference data"
+            title="Useful detail, kept out of the first read"
+            description="Personal bests, target lookup, benchmarks, gapping tables and course reminders are still here, but they no longer dominate the bag readout."
+          />
+          <PersonalBestSnapshotPanel clubs={bag} />
+          <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+          {benchmarkRows.length > 0 ? (
+            <BenchmarkReferencePanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
+          ) : null}
+          {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
           <CourseDecisionPanel advice={courseAdvice} />
-        </section>
-
-        <section
-          id="clubs"
-          aria-label="Club detail cards"
-          tabIndex={0}
-          className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3"
-        >
-          {bag.map((club) => (
-            <Link
-              key={club.id}
-              href={`/bag/${club.id}`}
-              className="group block min-w-[82vw] md:min-w-0"
-            >
-              <Card className="premium-card h-full transition-colors group-hover:border-emerald-300">
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
-                    <ClubArtwork
-                      clubType={club.type}
-                      brand={club.brand}
-                      model={club.model}
-                      alt=""
-                      className="h-16 w-full shrink-0 rounded-xl sm:h-20"
-                      sizes="112px"
-                    />
-                    <div className="min-w-0 space-y-1 text-right">
-                      <CardDescription className="truncate">{club.brandModel}</CardDescription>
-                      <CardTitle className="text-2xl tracking-normal sm:text-3xl">
-                        {formatClubType(club.type)}
-                      </CardTitle>
-                      <div className="flex justify-end">
-                        <StatusPill tone={getClubDecisionTone(club.decisionLabel)}>
-                          {club.decisionLabel}
-                        </StatusPill>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
-                  <div className="grid grid-cols-[1fr_auto] items-end gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Touch median" : "Recommended"}
-                      </p>
-                      <p className="text-4xl font-semibold tracking-normal sm:text-5xl">
-                        {formatMetric(clubPrimaryCarryYd(club))}
-                        <span className="ml-1 text-lg text-muted-foreground">yd</span>
-                      </p>
-                      {club.stockTrend ? <ShotTrendBadge trend={club.stockTrend} /> : null}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        {club.isShortGameTouch ? "Full stock" : "Best stock"}
-                      </p>
-                      <p className="text-2xl font-semibold tracking-normal sm:text-3xl">
-                        {formatMetric(clubSecondaryCarryYd(club))}
-                      </p>
-                    </div>
-                  </div>
-
-                  <ClubCardSignalStrip club={club} />
-                  <ClubEvolutionStrip club={club} />
-
-                  <div className="hidden sm:block">
-                    <MiniDispersion
-                      shots={club.shots}
-                      accent={club.accent}
-                      carryMedianYd={
-                        club.isShortGameTouch
-                          ? club.touch.carryMedianYd
-                          : club.stock.bestStockCarryYd
-                      }
-                    />
-                  </div>
-
-                  <div className="hidden grid-cols-3 gap-3 text-sm sm:grid">
-                    <Metric
-                      label={club.isShortGameTouch ? "Touch sample" : "Sample"}
-                      value={(club.isShortGameTouch
-                        ? club.touch.sampleSize
-                        : club.stock.sampleSize
-                      ).toString()}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Full best" : "Personal best"}
-                      value={formatMetric(club.stock.personalBestCarryYd)}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Upper touch" : "Latest reliable"}
-                      value={formatMetric(
-                        club.isShortGameTouch
-                          ? club.touch.carryP75Yd
-                          : club.stock.latestReliableCarryYd,
-                      )}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Longest touch" : "Reliable range"}
-                      value={
-                        club.isShortGameTouch
-                          ? formatMetric(club.touch.longestCarryYd)
-                          : formatCarryRange(
-                              club.stock.latestReliableCarryP25Yd,
-                              club.stock.latestReliableCarryP75Yd,
-                            )
-                      }
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Lower touch" : "Ball mph"}
-                      value={formatMetric(
-                        club.isShortGameTouch
-                          ? club.touch.carryP25Yd
-                          : club.stock.averageBallSpeedMph,
-                      )}
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Under 30" : "Launch"}
-                      value={
-                        club.isShortGameTouch
-                          ? club.touch.under30YdCount.toString()
-                          : `${formatMetric(club.stock.averageLaunchAngleDeg)} deg`
-                      }
-                    />
-                    <Metric
-                      label={club.isShortGameTouch ? "Type" : "Side"}
-                      value={
-                        club.isShortGameTouch
-                          ? club.type === "sw"
-                            ? "Touch + stock"
-                            : "Touch"
-                          : `${formatMetric(club.stock.dispersionLeftYd)}L / ${formatMetric(
-                              club.stock.dispersionRightYd,
-                            )}R`
-                      }
-                    />
-                  </div>
-
-                  {club.isShortGameTouch ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                      Round chips and pitches are shown as touch data, not full-swing stock yardage.
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{club.decisionLabel}</span>
-                      <span className="text-muted-foreground">
-                        {club.isShortGameTouch && club.type !== "sw"
-                          ? `${club.touch.sampleSize} shots`
-                          : `${club.stock.confidenceScore}%`}
-                      </span>
-                    </div>
-                    <Progress
-                      value={
-                        club.isShortGameTouch && club.type !== "sw"
-                          ? Math.min(100, (club.touch.sampleSize / 50) * 100)
-                          : club.stock.confidenceScore
-                      }
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
         </section>
 
         {bag.length === 0 ? (
@@ -904,6 +674,10 @@ async function getBag() {
   });
 
   const allClubMemberIds = mergedClubRows.flatMap((club) => club.memberIds);
+  if (allClubMemberIds.length === 0) {
+    return [];
+  }
+
   const personalBestRows =
     allClubMemberIds.length > 0
       ? await db
@@ -960,6 +734,7 @@ async function getBag() {
             descentAngleDeg: shots.descentAngleDeg,
             attackAngleDeg: shots.attackAngleDeg,
             clubPathDeg: shots.clubPathDeg,
+            faceAngleDeg: shots.faceAngleDeg,
             spinRate: shots.spinRate,
             smashFactor: shots.smashFactor,
             spinAxis: shots.spinAxis,
@@ -1098,6 +873,291 @@ type BagDoctorFinding = {
   href?: string;
 };
 
+type BagGapRisk = {
+  label: string;
+  value: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+  href?: string;
+};
+
+type BagScoreTrendPoint = {
+  key: string;
+  label: string;
+  score: number;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+};
+
+function BagHealthHero({
+  bagScore,
+  scoreLabel,
+  confidence,
+  dataTrust,
+  dataTrustDetail,
+  shots,
+  clubs,
+  strongestClub,
+  weakestClub,
+  biggestOpportunity,
+  currentGapRisk,
+  trend,
+}: {
+  bagScore: number;
+  scoreLabel: string;
+  confidence: number;
+  dataTrust: string;
+  dataTrustDetail: string;
+  shots: number;
+  clubs: number;
+  strongestClub: BagClub | null;
+  weakestClub: BagClub | null;
+  biggestOpportunity: SmartBagBuilder["suggestions"][number] | null;
+  currentGapRisk: BagGapRisk;
+  trend: BagScoreTrendPoint[];
+}) {
+  return (
+    <section id="bag-health" className="premium-hero grid scroll-mt-28 gap-4 p-4 lg:p-5">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.52fr)]">
+        <div className="grid gap-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-3xl">
+              <StatusPill tone={bagScore >= 85 ? "green" : bagScore >= 70 ? "sky" : "amber"}>
+                Bag health
+              </StatusPill>
+              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
+                Bag health
+              </h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                How the bag is performing, where the weak points are, and what has changed across
+                the current stock-yardage model.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href="/bag/longest">
+                  <Trophy className="size-4" />
+                  Longest shots
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/achievements">
+                  <Award className="size-4" />
+                  Achievements
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <BagHealthMetric
+              label="Bag score"
+              value={`${bagScore}%`}
+              detail={scoreLabel}
+              tone={bagScore >= 85 ? "green" : bagScore >= 70 ? "sky" : "amber"}
+            />
+            <BagHealthMetric
+              label="Confidence"
+              value={`${confidence}%`}
+              detail={`${clubs} active clubs`}
+              tone={confidence >= 75 ? "green" : confidence >= 60 ? "sky" : "amber"}
+            />
+            <BagHealthMetric
+              label="Data trust"
+              value={dataTrust}
+              detail={dataTrustDetail}
+              tone="sky"
+            />
+            <BagHealthMetric
+              label="Shots"
+              value={shots.toString()}
+              detail="Saved rows"
+              tone="slate"
+            />
+          </div>
+
+          <BagScoreTrendPanel points={trend} currentScore={bagScore} />
+        </div>
+
+        <div className="grid gap-3">
+          <PageArtwork variant="stockYardages" alt="" className="h-48 rounded-lg" priority />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <BagHealthSignal
+              label="Strongest club"
+              value={strongestClub ? formatClubType(strongestClub.type) : "--"}
+              detail={
+                strongestClub
+                  ? `${clubTrustScore(strongestClub)}% trust · ${clubHealthReadout(strongestClub).label}`
+                  : "Need stock samples"
+              }
+              tone="green"
+              href={strongestClub ? `/bag/${strongestClub.id}` : undefined}
+            />
+            <BagHealthSignal
+              label="Weakest club"
+              value={weakestClub ? formatClubType(weakestClub.type) : "--"}
+              detail={
+                weakestClub
+                  ? `${clubTrustScore(weakestClub)}% trust · ${clubCurrentMiss(weakestClub).label}`
+                  : "No weak club yet"
+              }
+              tone={weakestClub ? clubHealthReadout(weakestClub).tone : "slate"}
+              href={weakestClub ? `/bag/${weakestClub.id}` : undefined}
+            />
+            <BagHealthSignal
+              label="Biggest opportunity"
+              value={biggestOpportunity?.title ?? "No urgent move"}
+              detail={
+                biggestOpportunity?.detail ?? "Current equipment setup has no obvious red flag."
+              }
+              tone={biggestOpportunity ? "violet" : "green"}
+            />
+            <BagHealthSignal
+              label="Current gap risk"
+              value={currentGapRisk.value}
+              detail={currentGapRisk.detail}
+              tone={currentGapRisk.tone}
+              href={currentGapRisk.href}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BagHealthMetric({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+}) {
+  return (
+    <div className={`rounded-lg border px-3 py-3 ${intelligenceToneClass(tone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">{label}</p>
+      <p className="mt-2 text-3xl font-semibold leading-none tracking-normal text-slate-950">
+        {value}
+      </p>
+      <p className="mt-2 text-sm leading-5 text-slate-600">{detail}</p>
+    </div>
+  );
+}
+
+function BagHealthSignal({
+  label,
+  value,
+  detail,
+  tone,
+  href,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"] | "violet";
+  href?: string;
+}) {
+  const content = (
+    <div className={`h-full rounded-lg border px-3 py-3 ${bagSignalToneClass(tone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">{label}</p>
+      <p className="mt-2 text-xl font-semibold leading-6 tracking-normal text-slate-950">{value}</p>
+      <p className="mt-2 text-sm leading-5 text-slate-600">{detail}</p>
+    </div>
+  );
+
+  if (!href) {
+    return content;
+  }
+
+  return (
+    <Link href={href} prefetch={false} className="block h-full transition-opacity hover:opacity-90">
+      {content}
+    </Link>
+  );
+}
+
+function BagScoreTrendPanel({
+  points,
+  currentScore,
+}: {
+  points: BagScoreTrendPoint[];
+  currentScore: number;
+}) {
+  const visiblePoints =
+    points.length > 0
+      ? points
+      : [
+          {
+            key: "current",
+            label: "Now",
+            score: currentScore,
+            detail: "Trend building",
+            tone: "slate" as const,
+          },
+        ];
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white/82 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Bag score trend</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Month-end snapshots from the current stock-yardage model.
+          </p>
+        </div>
+        <StatusPill tone={visiblePoints.at(-1)?.tone ?? "slate"}>
+          {visiblePoints.at(-1)?.score ?? currentScore}%
+        </StatusPill>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        {visiblePoints.map((point) => (
+          <div key={point.key} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                {point.label}
+              </span>
+              <span className={`font-semibold ${toneTextClass(point.tone)}`}>{point.score}%</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-white">
+              <span
+                className={`block h-2 rounded-full ${confidenceBarClass(point.tone)}`}
+                style={{ width: `${Math.max(4, Math.min(100, point.score))}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs leading-4 text-muted-foreground">{point.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BagZoneHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="max-w-4xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          {eyebrow}
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">{title}</h2>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 function parsePersonalBestMetric(value: string | string[] | undefined): PersonalBestMetric {
   const rawValue = Array.isArray(value) ? value[0] : value;
 
@@ -1114,6 +1174,14 @@ function maxVisualCarryYd(rows: GappingRow[]) {
 
 function formatCarryYards(carryYd: number | null) {
   return carryYd === null ? "--" : `${formatMetric(carryYd)} yd`;
+}
+
+function compactCarryYards(carryYd: number | null) {
+  return carryYd === null ? "--" : `${Math.round(carryYd)}`;
+}
+
+function compactClubLabel(clubType: string) {
+  return clubType === "driver" ? "D" : formatClubType(clubType);
 }
 
 function clubPrimaryCarryYd(club: BagClub) {
@@ -1236,43 +1304,54 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
   return (
     <DataPanel>
       <SectionHeader
-        title="Full wedge matrix"
-        description="Full, 3/4, and half-shot carry windows for scoring clubs."
+        title="Wedge matrix"
+        description="Full, 3/4, and half-shot carry windows in one compact scoring table."
         action={<Grid3X3 className="size-5 text-amber-600" />}
       />
       <CardContent>
         {matrix.length > 0 ? (
-          <div className="grid gap-3">
-            {matrix.map((club) => (
-              <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-semibold">{club.label}</p>
-                    <p className="text-xs text-muted-foreground">{club.brandModel}</p>
-                  </div>
-                  <StatusPill
-                    tone={club.isSuggested ? "amber" : club.matrixScore >= 70 ? "green" : "sky"}
-                  >
-                    {club.isSuggested ? "Target" : `${club.matrixScore}%`}
-                  </StatusPill>
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {club.rows.map((row) => (
-                    <div
-                      key={row.key}
-                      className="grid grid-cols-[4rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-white/85 px-2 py-1.5 text-xs"
-                    >
-                      <span className="font-semibold">{row.label}</span>
-                      <span className="truncate text-muted-foreground">
-                        {row.detail} {row.sampleSize > 0 ? `${row.sampleSize} shots` : ""}
-                      </span>
-                      <span className="font-semibold">{formatCarryYards(row.carryYd)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <DataTableFrame>
+            <Table className="min-w-[680px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Club</TableHead>
+                  <TableHead className="text-right">Full</TableHead>
+                  <TableHead className="text-right">3/4</TableHead>
+                  <TableHead className="text-right">Half</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {matrix.map((club) => (
+                  <TableRow key={club.id}>
+                    <TableCell>
+                      <div className="grid gap-0.5">
+                        <span className="font-semibold">{club.label}</span>
+                        <span className="max-w-56 truncate text-xs text-muted-foreground">
+                          {club.brandModel}
+                        </span>
+                      </div>
+                    </TableCell>
+                    {club.rows.map((row) => (
+                      <TableCell key={row.key} className="text-right">
+                        <span className="font-semibold">{formatCarryYards(row.carryYd)}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {row.sampleSize > 0 ? `${row.sampleSize} shots` : row.status}
+                        </span>
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right">
+                      <StatusPill
+                        tone={club.isSuggested ? "amber" : club.matrixScore >= 70 ? "green" : "sky"}
+                      >
+                        {club.isSuggested ? "Target" : `${club.matrixScore}%`}
+                      </StatusPill>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
         ) : (
           <EmptyPanelMessage
             title="Wedge matrix building"
@@ -1289,7 +1368,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
     <DataPanel>
       <SectionHeader
         title="Face-to-path trend"
-        description="Red is measured club path. Black is the face/start-line proxy against that path."
+        description="Red is measured club path. Black is measured or calculated face angle against that path."
         action={<Radar className="size-5 text-sky-600" />}
       />
       <CardContent className="grid gap-3">
@@ -1298,23 +1377,49 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
             <p className="text-base font-semibold">{trend.label}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{trend.detail}</p>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              Monthly cards are averages. Recent shots below are individual rows.
+              Club reads show each measured club. Monthly cards are priority-club averages.
             </p>
-            <div className="mt-2 flex flex-wrap gap-3 text-xs font-medium text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <span className="h-0.5 w-5 rounded-full bg-red-600" />
-                Club path
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="h-0.5 w-5 rounded-full bg-slate-950" />
-                Face / start line
-              </span>
-            </div>
           </div>
           <StatusPill tone={pathTrendStatusTone(trend.status)}>
             {pathTrendStatusLabel(trend.status)}
           </StatusPill>
         </div>
+        {trend.clubs.length > 1 ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-sm font-semibold">Club delivery reads</p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {trend.clubs.map((club) => (
+                <Link
+                  key={club.clubId}
+                  href={`/bag/${club.clubId}/analytics`}
+                  prefetch={false}
+                  className="grid gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs transition-colors hover:bg-white hover:shadow-sm"
+                >
+                  <span className="flex items-start justify-between gap-2">
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-950">
+                        {club.label}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {club.patternLabel} · {club.sampleSize} shots
+                      </span>
+                    </span>
+                    <StatusPill tone={facePathPatternTone(club.patternCode)}>
+                      {club.patternCode}
+                    </StatusPill>
+                  </span>
+                  <span className="grid grid-cols-3 gap-1.5 font-semibold">
+                    <span>Path {formatSignedDegrees(club.pathDeg)}</span>
+                    <span>Face {formatSignedDegrees(club.faceDeg)}</span>
+                    <span className="text-emerald-700">
+                      F-P {formatSignedDegrees(club.faceToPathProxyDeg)}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {trend.points.length > 0 ? (
           <div className="grid gap-3">
             {trend.points.map((point) => (
@@ -1332,15 +1437,22 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                     {point.patternCode}
                   </StatusPill>
                 </div>
-                <FacePathDiagram point={point} />
+                <FacePathDeliveryChart
+                  datum={{
+                    label: point.label,
+                    patternLabel: point.patternLabel,
+                    pathDeg: point.pathDeg,
+                    faceDeg: point.faceDeg,
+                    faceToPathDeg: point.faceToPathProxyDeg,
+                    sampleSize: point.sampleSize,
+                  }}
+                  idPrefix={`bag-month-${point.monthKey}`}
+                  className="mt-3"
+                  chartClassName="bg-white"
+                />
                 <p className="mt-2 min-h-8 text-xs leading-4 text-muted-foreground">
                   {point.patternDetail}
                 </p>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                  <DataPair label="Path" value={formatSignedDegrees(point.pathDeg)} />
-                  <DataPair label="Face" value={formatSignedDegrees(point.faceDeg)} />
-                  <DataPair label="F-P" value={formatSignedDegrees(point.faceToPathProxyDeg)} />
-                </div>
               </div>
             ))}
           </div>
@@ -1355,7 +1467,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
             <div>
               <p className="text-sm font-semibold">Recent individual shots</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Same face-to-path picture, one launch-monitor row at a time.
+                Same face-to-path picture, one shot row at a time.
               </p>
             </div>
             <div className="grid gap-3">
@@ -1373,38 +1485,18 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                       {shot.patternCode}
                     </StatusPill>
                   </div>
-                  <FacePathDiagram point={shot} diagramKey={shot.key} />
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-                    <DataPair label="Path" value={formatSignedDegrees(shot.pathDeg)} />
-                    <DataPair label="Face" value={formatSignedDegrees(shot.faceDeg)} />
-                    <DataPair label="F-P" value={formatSignedDegrees(shot.faceToPathProxyDeg)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {trend.clubs.length > 1 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-sm font-semibold">Clubs with path data</p>
-            <div className="mt-3 grid gap-2">
-              {trend.clubs.map((club) => (
-                <div
-                  key={club.clubId}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-md bg-[#F5F6F4] px-3 py-2 text-xs"
-                >
-                  <div>
-                    <p className="font-semibold">{club.label}</p>
-                    <p className="mt-0.5 text-muted-foreground">
-                      {club.patternLabel} · {club.sampleSize} shots
-                    </p>
-                  </div>
-                  <div className="text-right font-semibold">
-                    <p>{formatSignedDegrees(club.pathDeg)}</p>
-                    <p className="mt-0.5 text-muted-foreground">
-                      F-P {formatSignedDegrees(club.faceToPathProxyDeg)}
-                    </p>
-                  </div>
+                  <FacePathDeliveryChart
+                    datum={{
+                      label: shot.label,
+                      patternLabel: shot.patternLabel,
+                      pathDeg: shot.pathDeg,
+                      faceDeg: shot.faceDeg,
+                      faceToPathDeg: shot.faceToPathProxyDeg,
+                    }}
+                    idPrefix={`bag-shot-${shot.key}`}
+                    className="mt-3"
+                    chartClassName="bg-white"
+                  />
                 </div>
               ))}
             </div>
@@ -1544,8 +1636,8 @@ function AiCaddiePanel({ cards }: { cards: AiCaddieCard[] }) {
   return (
     <DataPanel>
       <SectionHeader
-        title="AI caddie"
-        description="Number-led caddie calls from bag, wedge, strategy, and SG evidence."
+        title="Future recommendations"
+        description="Number-led development calls from bag, wedge, strategy, and SG evidence."
         action={<Bot className="size-5 text-emerald-600" />}
       />
       <CardContent>
@@ -1696,27 +1788,20 @@ function BagStickySummary({ rows }: { rows: GappingRow[] }) {
 
   return (
     <section className="sticky top-3 z-20 hidden sm:block">
-      <div className="premium-command-surface flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-950">Mini caddie</p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Driver, fairway, iron and wedge numbers at hand.
-          </p>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-wrap justify-end gap-2">
+      <div className="premium-command-surface flex items-center justify-between gap-3 rounded-lg px-3 py-2">
+        <p className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Mini caddie
+        </p>
+        <div className="flex min-w-0 flex-1 flex-wrap justify-end gap-1.5">
           {summaryRows.map((row) => (
             <Link
               key={row.id}
               href={`/bag/${row.id}`}
               prefetch={false}
-              className="grid min-w-24 rounded-lg border border-slate-200/70 bg-white/85 px-3 py-2 text-sm shadow-sm transition-colors hover:border-emerald-300"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200/70 bg-white/86 px-2.5 text-sm font-semibold shadow-sm transition-colors hover:border-emerald-300"
             >
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {formatClubType(row.clubType)}
-              </span>
-              <span className="mt-0.5 text-lg font-semibold leading-6 tracking-normal text-slate-950">
-                {formatCarryYards(visualCarryYd(row))}
-              </span>
+              <span className="text-muted-foreground">{compactClubLabel(row.clubType)}</span>
+              <span className="text-slate-950">{compactCarryYards(visualCarryYd(row))}</span>
             </Link>
           ))}
         </div>
@@ -2032,6 +2117,230 @@ function buildBagDoctorFindings(rows: GappingRow[]): BagDoctorFinding[] {
   }
 
   return findings.slice(0, 4);
+}
+
+function findWeakestClub(clubs: BagClub[]) {
+  const scoredClubs = clubs
+    .filter((club) => club.rawShotCount > 0)
+    .map((club) => ({ club, score: clubWeaknessScore(club) }))
+    .sort((left, right) => left.score - right.score);
+
+  return scoredClubs[0]?.club ?? null;
+}
+
+function clubWeaknessScore(club: BagClub) {
+  const health = clubHealthReadout(club);
+  const miss = clubCurrentMiss(club);
+  let score = clubTrustScore(club);
+
+  if (health.tone === "pink") {
+    score -= 26;
+  } else if (health.tone === "amber") {
+    score -= 18;
+  } else if (health.tone === "sky") {
+    score -= 6;
+  }
+
+  if (miss.tone === "amber") {
+    score -= 8;
+  } else if (miss.tone === "pink") {
+    score -= 14;
+  }
+
+  if (club.stockTrend?.status === "worse") {
+    score -= 10;
+  }
+
+  return score;
+}
+
+function buildCurrentGapRisk(rows: GappingRow[]): BagGapRisk {
+  const riskyRow =
+    [...rows]
+      .filter((row) => row.gapToNextYd !== null)
+      .sort((left, right) => gapRiskScore(right) - gapRiskScore(left))[0] ?? null;
+
+  if (!riskyRow || gapRiskScore(riskyRow) <= 0) {
+    return {
+      label: "Current gap risk",
+      value: "No urgent gap",
+      detail: "Current recommended carries do not show a high-priority missing window.",
+      tone: "green",
+    };
+  }
+
+  const gap = gapReadout(riskyRow);
+  const value = gapRangeLabel(riskyRow);
+
+  return {
+    label: gap.label,
+    value,
+    detail: `${formatClubType(riskyRow.clubType)} to ${
+      riskyRow.nextClubType ? formatClubType(riskyRow.nextClubType) : "next club"
+    } · ${formatGap(riskyRow.gapToNextYd)}.`,
+    tone: gap.tone,
+    href: `/bag/${riskyRow.id}`,
+  };
+}
+
+function gapRiskScore(row: GappingRow) {
+  if (row.gapToNextYd === null) {
+    return 0;
+  }
+
+  if (isScoringEndGap(gapWindowInput(row)) && row.gapToNextYd > 18) {
+    return 120 + row.gapToNextYd;
+  }
+
+  if (isMissingYardageWindowGap(gapWindowInput(row)) && row.gapToNextYd > 18) {
+    return 80 + row.gapToNextYd;
+  }
+
+  if (row.gapToNextYd < 8) {
+    return isSevereGapCompression(row) ? 70 + (8 - row.gapToNextYd) : 35 + (8 - row.gapToNextYd);
+  }
+
+  return 0;
+}
+
+function gapRangeLabel(row: GappingRow) {
+  if (row.gappingCarryYd === null || row.gapToNextYd === null) {
+    return "--";
+  }
+
+  const shorterCarry = row.gappingCarryYd - row.gapToNextYd;
+  const low = Math.min(shorterCarry, row.gappingCarryYd);
+  const high = Math.max(shorterCarry, row.gappingCarryYd);
+
+  return `${formatMetric(roundOneNumber(low))}-${formatMetric(roundOneNumber(high))} yd`;
+}
+
+function buildBagScoreTrend(
+  bag: BagClub[],
+  options: { handicapBand?: string | null } = {},
+): BagScoreTrendPoint[] {
+  const stockShotsByClub = bag.map((club) => {
+    const { filteredShots } = selectStockYardageShots(club.shots, RECENT_SHOTS_PER_CLUB, {
+      clubType: club.type,
+    });
+
+    return { club, filteredShots };
+  });
+  const months = new Map<string, Date>();
+
+  for (const { filteredShots } of stockShotsByClub) {
+    for (const shot of filteredShots) {
+      const date = shotDate(shot.shotAt);
+
+      if (!date) {
+        continue;
+      }
+
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      months.set(key, new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+  }
+
+  return [...months.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-3)
+    .map(([key, monthDate]) => {
+      const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
+      const snapshotRows = stockShotsByClub
+        .flatMap(({ club, filteredShots }) => {
+          const shotsThroughMonth = filteredShots.filter((shot) => {
+            const shotMonthDate = shotDate(shot.shotAt);
+
+            return shotMonthDate !== null && shotMonthDate <= monthEnd;
+          });
+          const stock = calculateStockYardage(shotsThroughMonth, RECENT_SHOTS_PER_CLUB, {
+            clubType: club.type,
+          });
+
+          if (stock.sampleSize === 0) {
+            return [];
+          }
+
+          if (
+            club.isShortGameTouch &&
+            (stock.bestStockCarryYd ?? 0) < SAND_WEDGE_STOCK_MIN_CARRY_YD
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              clubType: club.type,
+              carryYd: stock.coursePlayCarryYd ?? stock.bestStockCarryYd,
+              confidenceScore: stock.confidenceScore,
+              sampleSize: stock.sampleSize,
+            },
+          ];
+        })
+        .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+      const gappingSnapshots = snapshotRows.map((row, index) => {
+        const next = snapshotRows.slice(index + 1).find((candidate) => candidate.carryYd !== null);
+        const gapToNextYd =
+          row.carryYd !== null && next !== undefined && next.carryYd !== null
+            ? row.carryYd - next.carryYd
+            : null;
+
+        return {
+          ...row,
+          id: row.clubType,
+          nextClubType: next?.clubType ?? null,
+          gapToNextYd: gapToNextYd === null ? null : roundOneNumber(gapToNextYd),
+        };
+      });
+      const confidenceAverage =
+        gappingSnapshots.length === 0
+          ? 0
+          : (averageNumber(gappingSnapshots.map((row) => row.confidenceScore)) ?? 0);
+      const rowsWithTargets = buildPersonalGappingTargets(
+        gappingSnapshots.map((row) => ({
+          id: row.id,
+          clubType: row.clubType,
+          carryYd: row.carryYd,
+          gappingCarryYd: row.carryYd,
+          gapToNextYd: row.gapToNextYd,
+          nextClubType: row.nextClubType,
+          confidenceScore: row.confidenceScore,
+          sampleSize: row.sampleSize,
+        })),
+        { handicapBand: options.handicapBand },
+      );
+      const gapPenalty = rowsWithTargets.reduce((total, row) => {
+        const input = {
+          longerClubType: row.clubType,
+          shorterClubType: row.nextClubType,
+          gapYd: row.gapToNextYd,
+        };
+
+        if (!isMissingYardageWindowGap(input)) {
+          return total;
+        }
+
+        const gap = row.gapToNextYd ?? 0;
+
+        return total + Math.min(isScoringEndGap(input) ? 12 : 8, (gap - 18) / 2);
+      }, 0);
+      const score = clampPercent(Math.round(confidenceAverage - gapPenalty));
+
+      return {
+        key,
+        label: shortMonthFormatter.format(monthDate),
+        score,
+        detail: `${gappingSnapshots.length} clubs · ${gappingSnapshots.reduce(
+          (total, row) => total + row.sampleSize,
+          0,
+        )} stock shots`,
+        tone: score >= 85 ? "green" : score >= 70 ? "sky" : score >= 55 ? "amber" : "pink",
+      } satisfies BagScoreTrendPoint;
+    });
+}
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
 }
 
 function confidenceReadout(row: GappingRow): {
@@ -2575,6 +2884,72 @@ function buildTargetDistanceRows(bag: BagClub[], gappingRows: GappingRow[]): Tar
   return [...stockRows, ...touchRows];
 }
 
+function buildClubIntelligenceItems(bag: BagClub[]): ClubIntelligenceItem[] {
+  return bag.map((club) => {
+    const health = clubHealthReadout(club);
+    const miss = clubCurrentMiss(club);
+    const trend =
+      club.stockTrend === null
+        ? null
+        : {
+            label: stockTrendLabel(club.stockTrend.status),
+            detail: stockTrendDetail(club.stockTrend),
+            tone: stockTrendTone(club.stockTrend.status),
+          };
+    const primaryCarryYd = clubPrimaryCarryYd(club);
+    const secondaryCarryYd = clubSecondaryCarryYd(club);
+    const chartShots = club.shots
+      .flatMap((shot) =>
+        typeof shot.carryYd === "number" && Number.isFinite(shot.carryYd)
+          ? [
+              {
+                carryYd: shot.carryYd,
+                sideCarryYd: isFiniteMetric(shot.sideCarryYd) ? shot.sideCarryYd : null,
+              },
+            ]
+          : [],
+      )
+      .slice(0, 40);
+
+    return {
+      id: club.id,
+      type: club.type,
+      label: formatClubType(club.type),
+      brand: club.brand,
+      model: club.model,
+      brandModel: club.brandModel,
+      accent: club.accent,
+      primaryLabel: club.isShortGameTouch ? "Touch median" : "Recommended",
+      primaryCarryLabel: formatCarryYards(primaryCarryYd),
+      secondaryLabel: club.isShortGameTouch ? "Full stock" : "Best stock",
+      secondaryCarryLabel: formatCarryYards(secondaryCarryYd),
+      bestStockLabel: formatCarryYards(club.stock.bestStockCarryYd),
+      latestReliableLabel: formatCarryYards(club.stock.latestReliableCarryYd),
+      latestReliableRangeLabel:
+        formatCarryRange(
+          club.stock.latestReliableCarryP25Yd,
+          club.stock.latestReliableCarryP75Yd,
+        ) === "--"
+          ? "Range building"
+          : formatCarryRange(
+              club.stock.latestReliableCarryP25Yd,
+              club.stock.latestReliableCarryP75Yd,
+            ),
+      personalBestLabel: formatCarryYards(club.stock.personalBestCarryYd),
+      trustScore: clubTrustScore(club),
+      sampleSize:
+        club.isShortGameTouch && club.type !== "sw" ? club.touch.sampleSize : club.stock.sampleSize,
+      shotCount: club.rawShotCount,
+      decisionLabel: club.decisionLabel,
+      health,
+      miss,
+      trend,
+      carryMedianYd: club.isShortGameTouch ? club.touch.carryMedianYd : club.stock.bestStockCarryYd,
+      shots: chartShots,
+    } satisfies ClubIntelligenceItem;
+  });
+}
+
 function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
   return (
     <DataPanel>
@@ -2596,6 +2971,136 @@ function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
         />
       </CardContent>
     </DataPanel>
+  );
+}
+
+function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
+  const rows = clubs
+    .filter((club) => club.personalBest.carryYd !== null || club.personalBest.totalYd !== null)
+    .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
+
+  return (
+    <DataPanel id="personal-bests" className="scroll-mt-28">
+      <SectionHeader
+        title="Personal bests"
+        description="Compact peak-distance reference without a full-screen bar chart."
+        action={<Trophy className="size-5 text-amber-600" />}
+      />
+      <CardContent>
+        {rows.length > 0 ? (
+          <div
+            aria-label="Personal bests by club"
+            tabIndex={0}
+            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
+          >
+            {rows.map((club) => (
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="grid min-w-32 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-3 transition-colors hover:border-amber-300"
+              >
+                <span className="text-sm font-semibold">{formatClubType(club.type)}</span>
+                <span className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+                  {formatMetric(club.personalBest.carryYd)}
+                  {club.personalBest.carryYd === null ? "" : " yd"}
+                </span>
+                <span className="mt-1 text-xs text-muted-foreground">
+                  Total {formatMetric(club.personalBest.totalYd)}
+                  {club.personalBest.totalYd === null ? "" : " yd"}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EmptyPanelMessage
+            title="Personal bests building"
+            detail="Clean stock-shot imports will unlock carry and total personal bests."
+          />
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function BenchmarkReferencePanel({
+  rows,
+  peerSummary,
+}: {
+  rows: ClubBenchmarkRow[];
+  peerSummary: ClubBenchmarkPeerSummary;
+}) {
+  const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
+  const strongest =
+    [...rowsWithData].sort(
+      (left, right) =>
+        (right.comparison.levelIndex ?? -1) - (left.comparison.levelIndex ?? -1) ||
+        right.comparison.progressPercent - left.comparison.progressPercent,
+    )[0] ?? null;
+  const closestNext =
+    [...rows]
+      .filter(
+        (
+          row,
+        ): row is ClubBenchmarkRow & {
+          comparison: ClubBenchmarkRow["comparison"] & { yardsToNextLevel: number };
+        } => row.comparison.yardsToNextLevel !== null,
+      )
+      .sort(
+        (left, right) => left.comparison.yardsToNextLevel - right.comparison.yardsToNextLevel,
+      )[0] ?? null;
+
+  return (
+    <section id="levels" className="scroll-mt-28">
+      <details className="group">
+        <summary className="premium-card desktop-data-panel cursor-pointer list-none rounded-lg p-4 transition-colors hover:border-sky-300 [&::-webkit-details-marker]:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Gauge className="size-5 text-sky-600" />
+                <h3 className="text-lg font-semibold tracking-normal text-slate-950">
+                  Distance benchmarks
+                </h3>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Strongest match and closest next level stay visible. The full benchmark tables are
+                behind the expansion control.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <StatusPill tone="sky">Expand benchmarks</StatusPill>
+              <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <CompactReadoutGrid
+              columnsClassName="md:grid-cols-2"
+              items={[
+                {
+                  label: "Strongest match",
+                  value: strongest ? formatClubType(strongest.clubType) : "--",
+                  detail: strongest
+                    ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd`
+                    : "Need stock carry samples",
+                  tone: strongest ? "green" : "slate",
+                },
+                {
+                  label: "Closest next level",
+                  value: closestNext ? formatClubType(closestNext.clubType) : "--",
+                  detail: closestNext
+                    ? `${formatMetric(closestNext.comparison.yardsToNextLevel)} yd to ${closestNext.comparison.nextLevel?.label}`
+                    : "No next target yet",
+                  tone: closestNext ? "amber" : "slate",
+                },
+              ]}
+            />
+          </div>
+        </summary>
+        <div className="mt-4">
+          <DistanceBenchmarkPanel rows={rows} peerSummary={peerSummary} />
+        </div>
+      </details>
+    </section>
   );
 }
 
@@ -2643,10 +3148,11 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
   return (
     <Card className="premium-card">
       <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-xl tracking-normal sm:text-2xl">Carry gapping</CardTitle>
+        <CardTitle className="text-xl tracking-normal sm:text-2xl">
+          Carry gapping reference
+        </CardTitle>
         <CardDescription className="hidden sm:block">
-          Recommended is the course number. Best stock, latest reliable, and personal best stay
-          visible by club.
+          Target gap stays visible. The full club table is available when you need the detail.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
@@ -2698,90 +3204,96 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
             ))}
           </MobileDataList>
         </MobileAccordionSection>
-        <div className="hidden sm:block">
-          <DataTableFrame>
-            <Table className="min-w-[1220px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Club</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="text-right">Best stock</TableHead>
-                  <TableHead className="text-right">Latest reliable</TableHead>
-                  <TableHead className="text-right">Recommended</TableHead>
-                  <TableHead className="text-right">Personal best</TableHead>
-                  <TableHead className="text-right">Gap</TableHead>
-                  <TableHead className="text-right">Target</TableHead>
-                  <TableHead className="text-right">Work on</TableHead>
-                  <TableHead className="text-right">Sample</TableHead>
-                  <TableHead className="text-right">Decision</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Link
-                        href={`/bag/${row.id}`}
-                        className="font-semibold text-foreground underline-offset-4 hover:underline"
-                      >
-                        {formatClubType(row.clubType)}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
-                      {row.brandModel}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">
-                      {formatMetric(row.carryYd)}
-                      {row.carryYd === null ? "" : " yd"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">
-                        {formatMetric(row.latestReliableCarryYd)}
-                        {row.latestReliableCarryYd === null ? "" : " yd"}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {formatCarryRange(
-                          row.latestReliableCarryP25Yd,
-                          row.latestReliableCarryP75Yd,
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMetric(row.playNumberYd)}
-                      {row.playNumberYd === null ? "" : " yd"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMetric(row.personalBestCarryYd)}
-                      {row.personalBestCarryYd === null ? "" : " yd"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <GapBadge row={row} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">
-                        {formatMetric(row.targetCarryYd)}
-                        {row.targetCarryYd === null ? "" : " yd"}
-                      </span>
-                      {row.targetPlayNumberYd === null ? null : (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {row.targetPlayNumberYd} play
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <WorkOnBadge row={row} />
-                    </TableCell>
-                    <TableCell className="text-right">{row.sampleSize}</TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-medium">{row.confidenceScore}%</span>
-                      <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
-                    </TableCell>
+        <details className="group hidden sm:block">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-sky-300 [&::-webkit-details-marker]:hidden">
+            <span>Full gapping table</span>
+            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3">
+            <DataTableFrame>
+              <Table className="min-w-[1220px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Club</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead className="text-right">Best stock</TableHead>
+                    <TableHead className="text-right">Latest reliable</TableHead>
+                    <TableHead className="text-right">Recommended</TableHead>
+                    <TableHead className="text-right">Personal best</TableHead>
+                    <TableHead className="text-right">Gap</TableHead>
+                    <TableHead className="text-right">Target</TableHead>
+                    <TableHead className="text-right">Work on</TableHead>
+                    <TableHead className="text-right">Sample</TableHead>
+                    <TableHead className="text-right">Decision</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        <Link
+                          href={`/bag/${row.id}`}
+                          className="font-semibold text-foreground underline-offset-4 hover:underline"
+                        >
+                          {formatClubType(row.clubType)}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                        {row.brandModel}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatMetric(row.carryYd)}
+                        {row.carryYd === null ? "" : " yd"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-medium">
+                          {formatMetric(row.latestReliableCarryYd)}
+                          {row.latestReliableCarryYd === null ? "" : " yd"}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {formatCarryRange(
+                            row.latestReliableCarryP25Yd,
+                            row.latestReliableCarryP75Yd,
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMetric(row.playNumberYd)}
+                        {row.playNumberYd === null ? "" : " yd"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMetric(row.personalBestCarryYd)}
+                        {row.personalBestCarryYd === null ? "" : " yd"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <GapBadge row={row} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-medium">
+                          {formatMetric(row.targetCarryYd)}
+                          {row.targetCarryYd === null ? "" : " yd"}
+                        </span>
+                        {row.targetPlayNumberYd === null ? null : (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {row.targetPlayNumberYd} play
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <WorkOnBadge row={row} />
+                      </TableCell>
+                      <TableCell className="text-right">{row.sampleSize}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-medium">{row.confidenceScore}%</span>
+                        <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </DataTableFrame>
+          </div>
+        </details>
       </CardContent>
     </Card>
   );
@@ -3031,6 +3543,34 @@ function intelligenceToneClass(tone: "green" | "sky" | "amber" | "pink" | "slate
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+function bagSignalToneClass(tone: BagDoctorFinding["tone"] | "violet") {
+  if (tone === "violet") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
+  }
+
+  return intelligenceToneClass(tone);
+}
+
+function toneTextClass(tone: BagDoctorFinding["tone"]) {
+  if (tone === "green") {
+    return "text-emerald-700";
+  }
+
+  if (tone === "sky") {
+    return "text-sky-700";
+  }
+
+  if (tone === "amber") {
+    return "text-amber-800";
+  }
+
+  if (tone === "pink") {
+    return "text-rose-700";
+  }
+
+  return "text-slate-600";
+}
+
 function pathTrendStatusTone(status: PathTrendTracking["status"]) {
   if (status === "neutralising") {
     return "green";
@@ -3083,108 +3623,6 @@ function facePathPatternTone(patternCode: string) {
   return "slate";
 }
 
-function FacePathDiagram({
-  point,
-  diagramKey,
-}: {
-  point: Pick<
-    PathTrendTracking["points"][number],
-    "label" | "patternLabel" | "pathDeg" | "faceDeg"
-  >;
-  diagramKey?: string;
-}) {
-  const markerSuffix = (diagramKey ?? point.label).replace(/[^a-zA-Z0-9_-]/g, "-");
-  const pathLine = facePathLine(point.pathDeg, 92);
-  const faceLine = facePathLine(point.faceDeg, 100);
-
-  return (
-    <svg
-      className="mt-3 h-40 w-full rounded-lg border border-slate-200 bg-[#F5F6F4]"
-      viewBox="0 0 240 150"
-      role="img"
-      aria-label={`${point.label} ${point.patternLabel} face-to-path diagram`}
-    >
-      <defs>
-        <marker
-          id={`path-arrow-${markerSuffix}`}
-          markerHeight="7"
-          markerWidth="7"
-          orient="auto"
-          refX="6"
-          refY="3.5"
-        >
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#dc2626" />
-        </marker>
-        <marker
-          id={`face-arrow-${markerSuffix}`}
-          markerHeight="7"
-          markerWidth="7"
-          orient="auto"
-          refX="6"
-          refY="3.5"
-        >
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#0f172a" />
-        </marker>
-      </defs>
-      <line x1="28" y1="82" x2="216" y2="82" stroke="#94a3b8" strokeDasharray="7 6" />
-      <line x1="206" y1="22" x2="206" y2="132" stroke="#cbd5e1" strokeDasharray="5 7" />
-      <circle cx="206" cy="82" r="5" fill="#fff" stroke="#64748b" strokeWidth="1.5" />
-      {pathLine ? (
-        <line
-          x1={pathLine.x1}
-          y1={pathLine.y1}
-          x2={pathLine.x2}
-          y2={pathLine.y2}
-          stroke="#dc2626"
-          strokeLinecap="round"
-          strokeWidth="7"
-          markerEnd={`url(#path-arrow-${markerSuffix})`}
-          opacity="0.72"
-        />
-      ) : null}
-      {faceLine ? (
-        <line
-          x1={faceLine.x1}
-          y1={faceLine.y1}
-          x2={faceLine.x2}
-          y2={faceLine.y2}
-          stroke="#0f172a"
-          strokeLinecap="round"
-          strokeWidth="4"
-          markerEnd={`url(#face-arrow-${markerSuffix})`}
-        />
-      ) : null}
-      <text x="31" y="34" fill="#475569" fontSize="11" fontWeight="600">
-        Target
-      </text>
-      <text x="127" y="31" fill="#475569" fontSize="11" fontWeight="600">
-        Right / push
-      </text>
-      <text x="127" y="132" fill="#475569" fontSize="11" fontWeight="600">
-        Left / pull
-      </text>
-    </svg>
-  );
-}
-
-function facePathLine(value: number | null, length: number) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return null;
-  }
-
-  const baseX = 206;
-  const baseY = 82;
-  const angle = Math.max(-55, Math.min(55, value));
-  const radians = (angle * Math.PI) / 180;
-
-  return {
-    x1: baseX,
-    y1: baseY,
-    x2: Math.round((baseX - Math.cos(radians) * length) * 10) / 10,
-    y2: Math.round((baseY - Math.sin(radians) * length) * 10) / 10,
-  };
-}
-
 function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) {
   const carryP10 = overlay.carryP10Yd ?? 0;
   const carryP50 = overlay.carryP50Yd ?? carryP10;
@@ -3227,54 +3665,6 @@ function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) 
   );
 }
 
-function MiniDispersion({
-  shots,
-  accent,
-  carryMedianYd,
-}: {
-  shots: StockShot[];
-  accent: string;
-  carryMedianYd: number | null;
-}) {
-  const visibleShots = shots.filter((shot) => shot.carryYd !== null).slice(0, 40);
-  const maxCarry = Math.max(240, ...visibleShots.map((shot) => shot.carryYd ?? 0));
-  const maxSide = Math.max(45, ...visibleShots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)));
-
-  return (
-    <svg viewBox="0 0 360 150" className="h-36 w-full rounded-xl border bg-white/80">
-      <rect x="0" y="0" width="360" height="150" fill="#f9fafb" />
-      {[60, 120, 180, 240].map((yard) => {
-        const y = 140 - (yard / maxCarry) * 120;
-        return (
-          <g key={yard}>
-            <line x1="18" x2="344" y1={y} y2={y} stroke="#e5e7eb" />
-            <text x="22" y={y - 4} fill="#9ca3af" fontSize="10">
-              {yard}
-            </text>
-          </g>
-        );
-      })}
-      <line x1="180" x2="180" y1="10" y2="140" stroke="#e5e7eb" />
-      {carryMedianYd ? (
-        <line
-          x1="18"
-          x2="344"
-          y1={140 - (carryMedianYd / maxCarry) * 120}
-          y2={140 - (carryMedianYd / maxCarry) * 120}
-          stroke={accent}
-          strokeDasharray="5 5"
-          strokeOpacity="0.8"
-        />
-      ) : null}
-      {visibleShots.map((shot, index) => {
-        const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
-        const y = 140 - ((shot.carryYd ?? 0) / maxCarry) * 120;
-        return <circle key={index} cx={x} cy={y} r="4" fill={accent} opacity="0.75" />;
-      })}
-    </svg>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="apple-panel p-3">
@@ -3284,60 +3674,11 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ClubCardSignalStrip({ club }: { club: BagClub }) {
-  const trust = clubTrustScore(club);
-  const health = clubHealthReadout(club);
-  const miss = clubCurrentMiss(club);
-
-  return (
-    <div className="grid gap-2 sm:grid-cols-3">
-      <ClubSignalMetric
-        label="Trust score"
-        value={`${trust}%`}
-        detail={club.isShortGameTouch && club.type !== "sw" ? "touch sample" : "stock confidence"}
-        tone={trust >= 75 ? "green" : trust >= 60 ? "sky" : "amber"}
-      />
-      <ClubSignalMetric
-        label="Current miss"
-        value={miss.label}
-        detail={miss.detail}
-        tone={miss.tone}
-      />
-      <ClubSignalMetric
-        label="Club health"
-        value={health.label}
-        detail={health.detail}
-        tone={health.tone}
-      />
-    </div>
-  );
-}
-
-function ClubSignalMetric({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: BagDoctorFinding["tone"];
-}) {
-  return (
-    <div className={`min-h-24 rounded-lg border px-3 py-2 ${intelligenceToneClass(tone)}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
-      <p className="mt-1 text-base font-semibold leading-5 text-slate-950">{value}</p>
-      <p className="mt-1 line-clamp-2 text-xs leading-4 text-slate-600">{detail}</p>
-    </div>
-  );
-}
-
 function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
   const clubLines = clubs
     .map((club) => ({ club, points: clubEvolutionPoints(club) }))
     .filter((item) => item.points.length > 0)
-    .slice(0, 6);
+    .slice(0, 12);
 
   if (clubLines.length === 0) {
     return null;
@@ -3347,108 +3688,70 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
     <DataPanel>
       <SectionHeader
         title="Club evolution"
-        description="Month-by-month carry movement from clean stock shots."
+        description="Monthly carry deltas from clean stock shots."
         action={<TrendingUp className="size-5 text-emerald-600" />}
       />
       <CardContent>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-[#F5F6F4]">
+          <div className="grid grid-cols-[7rem_minmax(0,1fr)_7rem_8rem] gap-3 border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            <span>Club</span>
+            <span>Last three months</span>
+            <span className="text-right">Change</span>
+            <span className="text-right">Health</span>
+          </div>
           {clubLines.map(({ club, points }) => (
             <Link
               key={club.id}
               href={`/bag/${club.id}`}
               prefetch={false}
-              className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
+              className="grid grid-cols-[7rem_minmax(0,1fr)_7rem_8rem] items-center gap-3 border-b border-slate-200 px-3 py-2 text-sm transition-colors last:border-b-0 hover:bg-white"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold">{formatClubType(club.type)}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {clubHealthReadout(club).label} · {clubTrustScore(club)}% trust
-                  </p>
-                </div>
-                <StatusPill tone={clubEvolutionTone(points)}>
-                  {clubEvolutionDelta(points)}
-                </StatusPill>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <span className="font-semibold">{formatClubType(club.type)}</span>
+              <span className="grid grid-cols-3 gap-2">
                 {points.map((point) => (
-                  <div key={point.key} className="rounded-md bg-white/85 px-2 py-2 text-center">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <span key={point.key} className="rounded-md bg-white/80 px-2 py-1">
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                       {point.label}
-                    </p>
-                    <p className="mt-1 text-lg font-semibold tracking-normal">
-                      {formatMetric(point.carryYd)}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">yd</p>
-                  </div>
+                    </span>
+                    <span className="font-semibold">{formatMetric(point.carryYd)} yd</span>
+                  </span>
                 ))}
-              </div>
+              </span>
+              <span className={`text-right font-semibold ${clubEvolutionTextClass(points)}`}>
+                {clubEvolutionDelta(points)}
+              </span>
+              <span className="text-right">
+                <StatusPill tone={clubHealthReadout(club).tone}>
+                  {clubHealthReadout(club).label}
+                </StatusPill>
+              </span>
             </Link>
           ))}
         </div>
+        <details className="group mt-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-emerald-300 [&::-webkit-details-marker]:hidden">
+            <span>Expand evolution notes</span>
+            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {clubLines.map(({ club, points }) => (
+              <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base font-semibold">{formatClubType(club.type)}</p>
+                  <StatusPill tone={clubEvolutionTone(points)}>
+                    {clubEvolutionDelta(points)}
+                  </StatusPill>
+                </div>
+                <p className="mt-2 text-sm leading-5 text-muted-foreground">
+                  {clubHealthReadout(club).detail}
+                </p>
+              </div>
+            ))}
+          </div>
+        </details>
       </CardContent>
     </DataPanel>
   );
-}
-
-function ClubEvolutionStrip({ club }: { club: BagClub }) {
-  const points = clubEvolutionPoints(club);
-
-  if (points.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Club evolution
-        </p>
-        <span className={`text-xs font-semibold ${clubEvolutionTextClass(points)}`}>
-          {clubEvolutionDelta(points)}
-        </span>
-      </div>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        {points.map((point) => (
-          <div key={point.key} className="rounded-md bg-white/80 px-2 py-1.5 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {point.label}
-            </p>
-            <p className="mt-0.5 text-sm font-semibold">{formatMetric(point.carryYd)} yd</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ShotTrendBadge({ trend }: { trend: StockCarryTrend }) {
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold ${stockTrendToneClass(
-          trend.status,
-        )}`}
-        title={stockTrendTitle(trend)}
-      >
-        <StockTrendIcon status={trend.status} />
-        {stockTrendLabel(trend.status)}
-      </span>
-      <span className="text-xs text-muted-foreground">{stockTrendDetail(trend)}</span>
-    </div>
-  );
-}
-
-function StockTrendIcon({ status }: { status: StockCarryTrend["status"] }) {
-  if (status === "better") {
-    return <TrendingUp className="size-3.5" />;
-  }
-
-  if (status === "worse") {
-    return <TrendingDown className="size-3.5" />;
-  }
-
-  return <Minus className="size-3.5" />;
 }
 
 function stockTrendLabel(status: StockCarryTrend["status"]) {
@@ -3475,30 +3778,20 @@ function stockTrendDetail(trend: StockCarryTrend) {
   return `${formatSignedYards(trend.deltaYd)} vs previous shots`;
 }
 
-function stockTrendTitle(trend: StockCarryTrend) {
-  if (trend.deltaYd === null) {
-    return `${trend.latestSampleSize + trend.previousSampleSize} clean stock shots available`;
-  }
-
-  return `Latest ${trend.latestSampleSize}: ${formatMetric(
-    trend.latestCarryMedianYd,
-  )} yd; previous ${trend.previousSampleSize}: ${formatMetric(trend.previousCarryMedianYd)} yd`;
-}
-
-function stockTrendToneClass(status: StockCarryTrend["status"]) {
+function stockTrendTone(status: StockCarryTrend["status"]): BagDoctorFinding["tone"] {
   if (status === "better") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "green";
   }
 
   if (status === "worse") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "pink";
   }
 
   if (status === "steady") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "sky";
   }
 
-  return "border-slate-200 bg-slate-50 text-slate-600";
+  return "slate";
 }
 
 function clubTrustScore(club: BagClub) {
@@ -3812,21 +4105,6 @@ function formatStockExclusionReasons(reasons: BagClub["stock"]["stockExclusionRe
     .slice(0, 3)
     .map((reason) => `${reason.label}: ${reason.count}`)
     .join(" · ");
-}
-
-function formatBagDangerousMiss(stock: BagClub["stock"]) {
-  const left = stock.dispersionLeftYd ?? 0;
-  const right = stock.dispersionRightYd ?? 0;
-
-  if (left === 0 && right === 0) {
-    return "Needs side data";
-  }
-
-  if (left >= right) {
-    return `${formatMetric(left)} yd left`;
-  }
-
-  return `${formatMetric(right)} yd right`;
 }
 
 function formatSignedYards(value: number) {

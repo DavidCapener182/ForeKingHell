@@ -1367,6 +1367,7 @@ export const shots = pgTable(
     sideCarryYd: doublePrecision("side_carry_yd"),
     attackAngleDeg: doublePrecision("attack_angle_deg"),
     clubPathDeg: doublePrecision("club_path_deg"),
+    faceAngleDeg: doublePrecision("face_angle_deg"),
     descentAngleDeg: doublePrecision("descent_angle_deg"),
     smashFactor: doublePrecision("smash_factor"),
     spinRate: doublePrecision("spin_rate"),

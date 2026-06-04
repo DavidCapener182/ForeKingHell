@@ -17,17 +17,13 @@ import {
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
 import { CoachPracticeFeaturePanel } from "@/components/features/feature-panels";
 import {
-  CompactReadoutGrid,
   DataPanel,
-  MetricCard,
-  MobileAccordionSection,
-  MobileBentoSummary,
   MobileCompanionAccordion,
   MobileCompanionHero,
-  PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
+  type Tone,
 } from "@/components/premium";
 import {
   MobileAppShell,
@@ -41,32 +37,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { PageArtwork } from "@/components/visuals/page-artwork";
-import { formatClubType } from "@/lib/club-format";
 import {
   buildCoachSummary,
   buildCoachDrillChallenges,
   type CoachDrillChallenge,
   type CoachClubCard,
-  type CoachFocusArea,
+  type CoachSummary,
   type CoachTrainingImpact,
 } from "@/lib/coach";
 import { getCoachDrillAwardStatuses, type CoachDrillAwardStatus } from "@/lib/coach-drill-awards";
 import { getProgressData } from "@/lib/progress-data";
 import { buildAiCoachPayload } from "@/lib/ai-coach-summary";
+import type { AiCoachPayload } from "@/lib/ai-coach-summary";
 import { AiCoachCard } from "@/app/coach/ai-coach-card";
 import { CoachChatCard } from "@/app/coach/coach-chat-card";
 import { getActivePlanKeyForUser, planAllowsAiCoach } from "@/lib/billing";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
+import type { ProgressSignal } from "@/lib/progress-summary";
 
 export const dynamic = "force-dynamic";
-
-const numberFormatter = new Intl.NumberFormat("en-GB", {
-  maximumFractionDigits: 1,
-});
 
 export default async function CoachPage() {
   const userId = await requireCurrentUserId();
@@ -194,13 +186,20 @@ export default async function CoachPage() {
               summary: `${coach.clubCards.length} clubs`,
               children: (
                 <NativeListSection
-                  title="Club diagnosis"
-                  description="Every club-specific issue when you need the report."
+                  title="Needs most attention"
+                  description="Top club issues stay here. Open the diagnosis page for the full report."
                 >
                   {coach.clubCards.length > 0 ? (
-                    coach.clubCards.map((card) => (
-                      <CoachClubDiagnosis key={card.clubId} card={card} />
-                    ))
+                    <>
+                      {coach.clubCards.slice(0, 3).map((card) => (
+                        <DiagnosisAttentionRow key={card.clubId} card={card} />
+                      ))}
+                      <Button asChild variant="outline">
+                        <Link href="/coach/diagnosis" prefetch={false}>
+                          Open diagnosis
+                        </Link>
+                      </Button>
+                    </>
                   ) : (
                     <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
                       Import launch-monitor shots to unlock club-by-club coach diagnosis.
@@ -237,60 +236,6 @@ export default async function CoachPage() {
       </div>
 
       <div className="hidden sm:contents">
-        <PageHeader
-          eyebrow={<StatusPill tone={toneForFocus(coach.focusArea)}>Rule-based coach</StatusPill>}
-          title="Coach"
-          description={`${coach.headline} ${coach.subhead}`}
-          visual={<PageArtwork variant="coach" alt="" className="h-full min-h-44" priority />}
-          visualSize="wide"
-          actions={
-            topClub ? (
-              <Button asChild size="lg" className="premium-action rounded-lg">
-                <Link href={`/bag/${topClub.clubId}/analytics`} prefetch={false}>
-                  <Brain className="size-4" />
-                  Open {topClub.clubName}
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild size="lg" className="premium-action rounded-lg">
-                <Link href="/import" prefetch={false}>
-                  <Upload className="size-4" />
-                  Import first session
-                </Link>
-              </Button>
-            )
-          }
-          metrics={[
-            {
-              label: "Next focus",
-              value: topClub?.clubName ?? "--",
-              detail: topClub?.issueLabel ?? "Needs shot data",
-            },
-            {
-              label: "Bag trust",
-              value: `${coach.summary.totals.averageTrust}%`,
-              detail: `${coach.summary.totals.clubs} clubs tracked`,
-            },
-            {
-              label: "Clean shots",
-              value: coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
-              detail: "Used for stock and trend checks",
-            },
-            {
-              label: "Playable rate",
-              value: formatRate(coach.summary.totals.averagePlayableRate),
-              detail: "Average across clubs with side data",
-            },
-            {
-              label: "Data trust",
-              value: featureData.dataHealth.metric,
-              detail: featureData.dataHealth.status,
-            },
-          ]}
-        />
-
-        <CoachPracticeFeaturePanel data={featureData} />
-
         {data.clubs.length === 0 ? (
           <DataPanel>
             <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
@@ -312,192 +257,53 @@ export default async function CoachPage() {
           </DataPanel>
         ) : (
           <>
-            <MobileBentoSummary
-              items={[
-                {
-                  label: "Do this next",
-                  value: topClub
-                    ? `${topClub.clubName}: ${topClub.issueLabel}`
-                    : "Build a baseline",
-                  detail: topClub?.drill ?? "Import enough clean shots for a recommendation.",
-                  href: topClub ? `/bag/${topClub.clubId}/analytics` : "/import",
-                  tone: topClub?.tone ?? "slate",
-                },
-                {
-                  label: "Trust",
-                  value: `${coach.summary.totals.averageTrust}%`,
-                  detail: `${coach.summary.totals.clubs} clubs`,
-                  tone: "green",
-                },
-                {
-                  label: "Clean shots",
-                  value: coach.summary.totals.trackedCleanShots.toLocaleString("en-GB"),
-                  detail: "Tracked",
-                  tone: "sky",
-                },
-                {
-                  label: "Playable",
-                  value: formatRate(coach.summary.totals.averagePlayableRate),
-                  detail: "Average",
-                  tone: "amber",
-                },
-              ]}
+            <CoachPracticeHero
+              coach={coach}
+              topClub={topClub}
+              primaryChallenge={drillChallenges[0] ?? null}
+              primaryStatus={drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined}
             />
-            <section className="hidden gap-4 sm:grid md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                label="Practice priority"
-                value={topClub?.clubName ?? "--"}
-                detail={topClub?.reason ?? "Need more clean data"}
-                href={topClub ? `/bag/${topClub.clubId}/analytics` : undefined}
-                icon={Target}
-                tone={topClub?.tone ?? "slate"}
+
+            <WhatChangedPanel signals={coach.signals} />
+
+            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+              <PracticeSessionBuilder
+                topClub={topClub}
+                drillChallenges={drillChallenges}
+                drillStatuses={drillStatuses}
               />
-              <MetricCard
-                label="Main issue"
-                value={topClub?.issueLabel ?? "--"}
-                detail={topClub?.drill ?? "Build comparable samples first"}
-                icon={Crosshair}
-                tone={toneForFocus(coach.focusArea)}
-              />
-              <MetricCard
-                label="Most trusted"
-                value={
-                  coach.summary.rankings.mostTrusted
-                    ? formatClubType(coach.summary.rankings.mostTrusted.clubType)
-                    : "--"
-                }
-                detail={
-                  coach.summary.rankings.mostTrusted
-                    ? `${coach.summary.rankings.mostTrusted.trustIndex}% trust`
-                    : "Need more clubs"
-                }
-                href={
-                  coach.summary.rankings.mostTrusted
-                    ? `/bag/${coach.summary.rankings.mostTrusted.clubId}/analytics`
-                    : undefined
-                }
-                icon={Gauge}
-                tone="green"
-              />
-              <MetricCard
-                label="Readiness"
-                value={coach.summary.totals.averageTrust >= 70 ? "Playable" : "Building"}
-                detail="Based on trust, sample size, direction, and strike stability."
-                icon={CheckCircle2}
-                tone={coach.summary.totals.averageTrust >= 70 ? "green" : "amber"}
-              />
+              <RoundReadinessPanel coach={coach} featureData={featureData} topClub={topClub} />
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.85fr)] xl:items-start">
-              <DataPanel>
-                <SectionHeader
-                  title="Practice plan"
-                  description="Decision aid first: issue, evidence, drill sequence, and target."
-                  action={<Clock className="size-5 text-emerald-500" />}
-                />
-                <CoachPracticePlan
-                  topClub={topClub}
-                  blocks={coach.sessionPlan}
-                  impacts={coach.trainingImpact.slice(0, 2)}
-                  drillChallenges={drillChallenges}
-                  drillStatuses={drillStatuses}
-                />
-              </DataPanel>
+            <TodaysPlan cards={coach.clubCards} />
 
-              <div className="grid gap-4 xl:sticky xl:top-24">
-                <DataPanel>
-                  <SectionHeader
-                    title="What changed"
-                    description="The strongest movement signals in the current personal baseline."
-                    action={<LineChart className="size-5 text-sky-500" />}
-                  />
-                  <CardContent>
-                    <CompactReadoutGrid
-                      columnsClassName="sm:grid-cols-2"
-                      items={coach.signals.map((signal) => ({
-                        label: signal.label,
-                        value: signal.value,
-                        detail: signal.detail,
-                        tone: signal.tone,
-                        href: signal.clubId ? `/bag/${signal.clubId}/analytics` : "/progress",
-                      }))}
-                    />
-                  </CardContent>
-                </DataPanel>
+            <CoachSummaryPanel
+              coach={coach}
+              impacts={coach.trainingImpact.slice(0, 3)}
+              canUseAiCoach={canUseAiCoach}
+              aiPayload={aiPayload}
+            />
 
+            <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} />
+
+            <DiagnosisPreview cards={coach.clubCards} />
+
+            <details className="group">
+              <summary className="premium-card grid cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+                <span>
+                  <span className="block text-lg font-semibold tracking-normal">
+                    Social comparison
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    Hidden by default so this page stays focused on your game.
+                  </span>
+                </span>
+                <StatusPill tone="amber">Secondary</StatusPill>
+              </summary>
+              <div className="mt-4">
                 <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
-
-                <DataPanel className="hidden sm:flex">
-                  <SectionHeader
-                    title="AI coach note"
-                    description={
-                      canUseAiCoach
-                        ? "Optional AI layer for a sharper plain-English readout."
-                        : "AI coaching is a Pro entitlement."
-                    }
-                    action={<Sparkles className="size-5 text-sky-500" />}
-                  />
-                  {canUseAiCoach ? <AiCoachCard payload={aiPayload} /> : <UpgradeAiCoachCard />}
-                </DataPanel>
-
-                <MobileAccordionSection
-                  title="AI notes"
-                  description="Optional AI readout and chat."
-                  count="2 tools"
-                >
-                  <div className="grid gap-3">
-                    {canUseAiCoach ? (
-                      <>
-                        <AiCoachCard payload={aiPayload} />
-                        <CoachChatCard questionId="coach-question-mobile" />
-                      </>
-                    ) : (
-                      <UpgradeAiCoachCard />
-                    )}
-                  </div>
-                </MobileAccordionSection>
-
-                <DataPanel className="hidden sm:flex">
-                  <SectionHeader
-                    title="AI coach chat"
-                    description={
-                      canUseAiCoach
-                        ? "Ask questions answered from cited SQL context in your personal shot database."
-                        : "Upgrade to Pro for AI coach chat."
-                    }
-                    action={<Sparkles className="size-5 text-emerald-500" />}
-                  />
-                  {canUseAiCoach ? <CoachChatCard /> : <UpgradeAiCoachCard />}
-                </DataPanel>
               </div>
-            </section>
-
-            <MobileAccordionSection
-              title="Club diagnosis"
-              description="All club-specific issues collapsed by default."
-              count={`${coach.clubCards.length} clubs`}
-            >
-              <div className="grid gap-3">
-                {coach.clubCards.map((card) => (
-                  <CoachClubDiagnosis key={card.clubId} card={card} />
-                ))}
-              </div>
-            </MobileAccordionSection>
-
-            <DataPanel className="hidden sm:flex">
-              <SectionHeader
-                title="Club diagnosis"
-                description="For each club: what LM World Tour thinks the issue is, why, and what to practise."
-                action={<Brain className="size-5 text-pink-500" />}
-              />
-              <CardContent>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {coach.clubCards.map((card) => (
-                    <CoachClubDiagnosis key={card.clubId} card={card} />
-                  ))}
-                </div>
-              </CardContent>
-            </DataPanel>
+            </details>
           </>
         )}
       </div>
@@ -552,6 +358,768 @@ function CoachSocialPrompt({
   );
 }
 
+function CoachPracticeHero({
+  coach,
+  topClub,
+  primaryChallenge,
+  primaryStatus,
+}: {
+  coach: CoachSummary;
+  topClub: CoachClubCard | null;
+  primaryChallenge: CoachDrillChallenge | null;
+  primaryStatus?: CoachDrillAwardStatus;
+}) {
+  const trust = topClub?.trustIndex ?? coach.summary.totals.averageTrust;
+  const heroTone = trust >= 80 ? "green" : trust >= 60 ? "amber" : "pink";
+  const focusTitle = topClub
+    ? `${topClub.clubName} ${topClub.issueLabel}`
+    : "Build a clean baseline";
+  const target = practiceTargetFor(topClub, primaryChallenge);
+  const href = topClub ? `/bag/${topClub.clubId}/analytics` : "/import";
+  const shotTarget = primaryChallenge
+    ? `${primaryChallenge.completionTarget} balls`
+    : topClub
+      ? `${topClub.sampleSize} clean shots`
+      : "12 stock shots";
+  const status = primaryChallenge ? (primaryStatus ?? defaultDrillStatus(primaryChallenge)) : null;
+
+  return (
+    <section className="premium-card overflow-hidden rounded-lg border-0 bg-[#F8FAF5] shadow-[0_18px_50px_rgba(31,49,39,0.11)]">
+      <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-7">
+        <div className="grid content-between gap-8">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge className="bg-[#0B7A3B] text-white hover:bg-[#0B7A3B]">
+                Today&apos;s practice
+              </Badge>
+              <StatusPill tone={heroTone}>Trust: {trust}%</StatusPill>
+            </div>
+            <h1 className="mt-5 text-4xl font-semibold tracking-normal text-[#111611] xl:text-5xl">
+              {focusTitle}
+            </h1>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{coach.subhead}</p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <HeroStat label="Expected gain" value={expectedGainFor(topClub)} tone="green" />
+            <HeroStat label="Session" value={shotTarget} tone={topClub?.tone ?? "slate"} />
+            <HeroStat label="Main miss" value={topClub?.usualMiss ?? "Needs data"} tone="amber" />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-emerald-100 bg-white/88 p-4 shadow-[0_12px_35px_rgba(31,49,39,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Target</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{target}</p>
+            </div>
+            <Target className="size-7 text-emerald-700" />
+          </div>
+          <div className="mt-5">
+            <TrustProgress
+              label="Practice trust"
+              value={trust}
+              detail={topClub ? `${topClub.sampleSize} clean stock shots` : "Import stock shots"}
+              tone={heroTone}
+            />
+          </div>
+          {status ? (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <SmallMetric
+                label="Uploaded today"
+                value={`${status.uploadedShotCount}/${status.completionTarget}`}
+              />
+              <SmallMetric label="Win target" value={`${status.winCount}/${status.winTarget}`} />
+            </div>
+          ) : null}
+          <Button asChild className="premium-action mt-5 h-12 w-full rounded-lg text-base">
+            <Link href={href} prefetch={false}>
+              <Crosshair className="size-5" />
+              Start practice
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HeroStat({ label, value, tone }: { label: string; value: string; tone: Tone }) {
+  return (
+    <div className={`rounded-lg border px-4 py-3 ${tonePanelClass(tone)}`}>
+      <p className="text-sm font-medium text-slate-600">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function WhatChangedPanel({ signals }: { signals: ProgressSignal[] }) {
+  const visibleSignals = signals.slice(0, 4);
+
+  if (visibleSignals.length === 0) {
+    return null;
+  }
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="What changed"
+        description="The strongest movement signals since the current personal baseline."
+        action={<LineChart className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
+        {visibleSignals.map((signal) => {
+          const tile = (
+            <div className={`h-full rounded-lg border p-4 ${tonePanelClass(signal.tone)}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-slate-600">{signal.label}</p>
+                  <p className="mt-2 text-2xl font-semibold tracking-normal text-slate-950">
+                    {signal.value}
+                  </p>
+                </div>
+                <span className={`mt-1 size-2.5 rounded-full ${toneDotClass(signal.tone)}`} />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{signal.detail}</p>
+            </div>
+          );
+
+          if (!signal.clubId) {
+            return <div key={`${signal.label}-${signal.value}`}>{tile}</div>;
+          }
+
+          return (
+            <Link
+              key={`${signal.clubId}-${signal.label}`}
+              href={`/bag/${signal.clubId}/analytics`}
+              prefetch={false}
+              className="block transition-transform hover:-translate-y-0.5"
+            >
+              {tile}
+            </Link>
+          );
+        })}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PracticeSessionBuilder({
+  topClub,
+  drillChallenges,
+  drillStatuses,
+}: {
+  topClub: CoachClubCard | null;
+  drillChallenges: CoachDrillChallenge[];
+  drillStatuses: Record<string, CoachDrillAwardStatus>;
+}) {
+  const recommended = drillChallenges[0] ?? null;
+  const status = recommended
+    ? (drillStatuses[recommended.id] ?? defaultDrillStatus(recommended))
+    : null;
+  const progress = status
+    ? Math.min(100, Math.round((status.uploadedShotCount / status.completionTarget) * 100))
+    : 0;
+  const alternatives = drillChallenges.slice(1, 4);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Practice session builder"
+        description="The old practice mode and challenge template now live as one recommended session."
+        action={<StatusPill tone={topClub?.tone ?? "slate"}>Recommended</StatusPill>}
+      />
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className={`rounded-lg border p-5 ${tonePanelClass(topClub?.tone ?? "slate")}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <Badge className="bg-white text-emerald-800 ring-1 ring-emerald-100 hover:bg-white">
+                Recommended
+              </Badge>
+              <h2 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950">
+                {recommended?.title ??
+                  (topClub ? `${topClub.clubName} ${topClub.issueLabel}` : "Baseline builder")}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {recommended?.detail ??
+                  topClub?.drill ??
+                  "Record a clean stock-shot sample before trusting the coach output."}
+              </p>
+            </div>
+            <StatusPill tone={topClub?.tone ?? "slate"}>{expectedTrustGainFor(topClub)}</StatusPill>
+          </div>
+
+          <div className="mt-5 grid gap-2 md:grid-cols-3">
+            <SmallMetric
+              label="Balls"
+              value={recommended ? `${recommended.completionTarget}` : "12"}
+            />
+            <SmallMetric
+              label="Target"
+              value={recommended?.winCondition ?? practiceTargetFor(topClub, null)}
+            />
+            <SmallMetric
+              label="Expected"
+              value={topClub ? expectedTrustGainFor(topClub) : "Build trust"}
+            />
+          </div>
+
+          {status ? (
+            <div className="mt-5">
+              <TrustProgress
+                label="Today"
+                value={progress}
+                detail={`${status.uploadedShotCount}/${status.completionTarget} shots uploaded`}
+                tone={status.completed ? "green" : (topClub?.tone ?? "slate")}
+              />
+            </div>
+          ) : null}
+
+          <Button asChild className="premium-action mt-5 rounded-lg">
+            <Link href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"} prefetch={false}>
+              <Crosshair className="size-4" />
+              Start
+            </Link>
+          </Button>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white/85 p-4">
+          <p className="text-sm font-semibold text-slate-900">Alternatives</p>
+          <div className="mt-3 grid gap-2">
+            {alternatives.length > 0 ? (
+              alternatives.map((challenge) => (
+                <Link
+                  key={challenge.id}
+                  href={`/bag/${challenge.clubId}/analytics`}
+                  prefetch={false}
+                  className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 transition-colors hover:border-emerald-300 hover:bg-emerald-50/60"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{challenge.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {challenge.completionTarget} balls
+                      </p>
+                    </div>
+                    <StatusPill tone={challenge.tone}>{challenge.issueLabel}</StatusPill>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+                Add more clean club samples to unlock alternate practice blocks.
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function RoundReadinessPanel({
+  coach,
+  featureData,
+  topClub,
+}: {
+  coach: CoachSummary;
+  featureData: FeatureIdeasData;
+  topClub: CoachClubCard | null;
+}) {
+  const playableRate = coach.summary.totals.averagePlayableRate;
+  const cleanSampleScore = Math.min(
+    100,
+    Math.round((coach.summary.totals.trackedCleanShots / 120) * 100),
+  );
+  const readinessTone =
+    coach.summary.totals.averageTrust >= 80 && (playableRate ?? 0) >= 75
+      ? "green"
+      : coach.summary.totals.averageTrust >= 60
+        ? "amber"
+        : "pink";
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Round readiness"
+        description="Can this bag readout support on-course decisions today?"
+        action={
+          <StatusPill tone={readinessTone}>
+            {readinessTone === "green" ? "Ready" : "Watch"}
+          </StatusPill>
+        }
+      />
+      <CardContent className="grid gap-4 p-5">
+        <TrustProgress
+          label="Bag trust"
+          value={coach.summary.totals.averageTrust}
+          detail={`${coach.summary.totals.clubs} tracked clubs`}
+          tone={readinessTone}
+        />
+        <TrustProgress
+          label="Playable rate"
+          value={playableRate ?? 0}
+          detail={playableRate === null ? "Needs more scored stock shots" : "Average across clubs"}
+          tone={(playableRate ?? 0) >= 75 ? "green" : (playableRate ?? 0) >= 55 ? "amber" : "pink"}
+        />
+        <TrustProgress
+          label="Data trust"
+          value={featureData.coachConfidence.score}
+          detail={featureData.coachConfidence.detail}
+          tone={featureData.coachConfidence.tone as Tone}
+        />
+        <TrustProgress
+          label="Clean sample"
+          value={cleanSampleScore}
+          detail={`${coach.summary.totals.trackedCleanShots.toLocaleString("en-GB")} stock shots`}
+          tone={cleanSampleScore >= 70 ? "green" : cleanSampleScore >= 40 ? "amber" : "pink"}
+        />
+        <div className="rounded-lg border border-slate-200 bg-white/85 p-3">
+          <p className="text-sm font-semibold">Current watch</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {topClub
+              ? `${topClub.clubName}: ${topClub.reason}`
+              : "Import a clean baseline before trusting round-readiness calls."}
+          </p>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function TodaysPlan({ cards }: { cards: CoachClubCard[] }) {
+  const priority = cards[0] ?? null;
+  const secondary = cards[1] ?? null;
+  const maintenance = cards.slice(2, 4);
+
+  if (!priority) {
+    return null;
+  }
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Today's plan"
+        description="Three decisions instead of a wall of drill cards."
+        action={<Clock className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-4 p-5 xl:grid-cols-[1.15fr_0.95fr_0.95fr]">
+        <PlanLane label="Priority" card={priority} emphasis />
+        <PlanLane label="Secondary" card={secondary} />
+        <div className="rounded-lg border border-slate-200 bg-white/85 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-900">Maintenance</p>
+            <StatusPill tone="green">{maintenance.length || 1} checks</StatusPill>
+          </div>
+          <div className="mt-3 grid gap-3">
+            {maintenance.length > 0 ? (
+              maintenance.map((card) => <PlanMiniCard key={card.clubId} card={card} />)
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-muted-foreground">
+                Finish with two five-ball stock sets and keep the sample comparable.
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PlanLane({
+  label,
+  card,
+  emphasis = false,
+}: {
+  label: string;
+  card: CoachClubCard | null;
+  emphasis?: boolean;
+}) {
+  if (!card) {
+    return (
+      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-muted-foreground">
+        Add another clean club sample to unlock the {label.toLowerCase()} slot.
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/bag/${card.clubId}/analytics`}
+      prefetch={false}
+      className={`rounded-lg border p-4 transition-colors hover:border-emerald-300 ${
+        emphasis ? tonePanelClass(card.tone) : "border-slate-200 bg-white/85"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-600">{label}</p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-normal text-slate-950">
+            {card.clubName} {card.issueLabel}
+          </h3>
+        </div>
+        <StatusPill tone={card.tone}>{card.trustIndex}%</StatusPill>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{card.drill}</p>
+      <div className="mt-4">
+        <TrustProgress
+          label="Trust"
+          value={card.trustIndex}
+          detail={`${card.sampleSize} clean shots`}
+          tone={card.tone}
+        />
+      </div>
+    </Link>
+  );
+}
+
+function PlanMiniCard({ card }: { card: CoachClubCard }) {
+  return (
+    <Link
+      href={`/bag/${card.clubId}/analytics`}
+      prefetch={false}
+      className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 transition-colors hover:border-emerald-300 hover:bg-emerald-50/60"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="font-semibold">{card.clubName}</p>
+          <p className="text-sm text-muted-foreground">{card.issueLabel}</p>
+        </div>
+        <span className="text-lg font-semibold">{card.trustIndex}%</span>
+      </div>
+      <Progress value={card.trustIndex} className={`mt-3 h-2 ${progressToneClass(card.tone)}`} />
+    </Link>
+  );
+}
+
+function CoachSummaryPanel({
+  coach,
+  impacts,
+  canUseAiCoach,
+  aiPayload,
+}: {
+  coach: CoachSummary;
+  impacts: CoachTrainingImpact[];
+  canUseAiCoach: boolean;
+  aiPayload: AiCoachPayload;
+}) {
+  const bullets = coachSummaryBullets(coach, impacts);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Coach summary"
+        description="Plain-English readout from the current club signals."
+        action={<Sparkles className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-5">
+          <p className="text-sm font-semibold text-emerald-900">This week</p>
+          <div className="mt-4 grid gap-3">
+            {bullets.map((bullet) => (
+              <div key={bullet} className="flex gap-3 rounded-lg bg-white/80 p-3">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" />
+                <p className="text-sm leading-6 text-slate-700">{bullet}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <details className="rounded-lg border border-slate-200 bg-white/85">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+            <span>
+              <span className="block text-sm font-semibold">AI coach tools</span>
+              <span className="block text-xs text-muted-foreground">
+                Generate a note or ask from your shot data.
+              </span>
+            </span>
+            <StatusPill tone={canUseAiCoach ? "green" : "amber"}>
+              {canUseAiCoach ? "Available" : "Pro"}
+            </StatusPill>
+          </summary>
+          <div className="grid gap-4 border-t border-slate-200 p-4">
+            {canUseAiCoach ? (
+              <>
+                <AiCoachCard payload={aiPayload} />
+                <CoachChatCard questionId="coach-question-desktop" />
+              </>
+            ) : (
+              <UpgradeAiCoachCard />
+            )}
+          </div>
+        </details>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function RecentSessionFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
+  if (impacts.length === 0) {
+    return null;
+  }
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Recent session feedback"
+        description="The latest comparable-session read, kept short."
+        action={<Gauge className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-3 p-5 lg:grid-cols-2">
+        {impacts.map((impact) => (
+          <ImpactSummaryCard key={impact.clubId} impact={impact} />
+        ))}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function ImpactSummaryCard({ impact }: { impact: CoachTrainingImpact }) {
+  return (
+    <Link
+      href={`/bag/${impact.clubId}/analytics`}
+      prefetch={false}
+      className={`rounded-lg border p-4 transition-colors hover:border-emerald-300 ${tonePanelClass(
+        impact.tone,
+      )}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-lg font-semibold tracking-normal">{impact.clubName}</p>
+            <StatusPill tone={impact.tone}>{impact.issueLabel}</StatusPill>
+          </div>
+          <p className="mt-2 text-sm font-medium text-slate-800">{impact.headline}</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{impact.detail}</p>
+        </div>
+        <StatusPill tone={impact.tone}>{impactLabel(impact.status)}</StatusPill>
+      </div>
+      {impact.metrics.length > 0 ? (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {impact.metrics.slice(0, 4).map((metric) => (
+            <SmallMetric key={metric.label} label={metric.label} value={metric.delta} />
+          ))}
+        </div>
+      ) : null}
+    </Link>
+  );
+}
+
+function DiagnosisPreview({ cards }: { cards: CoachClubCard[] }) {
+  const attention = cards.slice(0, 3);
+
+  if (attention.length === 0) {
+    return null;
+  }
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Needs most attention"
+        description="Full club diagnosis has moved to its own report page."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/coach/diagnosis" prefetch={false}>
+              Open diagnosis page
+            </Link>
+          </Button>
+        }
+      />
+      <CardContent className="grid gap-3 p-5 md:grid-cols-3">
+        {attention.map((card) => (
+          <DiagnosisAttentionRow key={card.clubId} card={card} />
+        ))}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function DiagnosisAttentionRow({ card }: { card: CoachClubCard }) {
+  return (
+    <Link
+      href={`/bag/${card.clubId}/analytics`}
+      prefetch={false}
+      className="rounded-lg border border-slate-200 bg-white/85 p-4 transition-colors hover:border-emerald-300"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xl font-semibold tracking-normal">{card.clubName}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{card.issueLabel}</p>
+        </div>
+        <StatusPill tone={card.tone}>{card.trustIndex}%</StatusPill>
+      </div>
+      <div className="mt-4">
+        <Progress value={card.trustIndex} className={`h-2.5 ${progressToneClass(card.tone)}`} />
+      </div>
+      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{card.reason}</p>
+    </Link>
+  );
+}
+
+function TrustProgress({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  tone: Tone;
+}) {
+  const safeValue = Math.max(0, Math.min(100, Math.round(value)));
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{label}</p>
+          <p className="text-xs text-muted-foreground">{detail}</p>
+        </div>
+        <span className="text-lg font-semibold tracking-normal">{safeValue}%</span>
+      </div>
+      <Progress value={safeValue} className={`h-2.5 ${progressToneClass(tone)}`} />
+    </div>
+  );
+}
+
+function expectedGainFor(card: CoachClubCard | null) {
+  if (!card) {
+    return "Build baseline";
+  }
+
+  const trustGap = Math.max(0, 85 - card.trustIndex);
+  const gain = Math.max(0.2, Math.min(0.9, Math.round((trustGap / 30) * 10) / 10));
+
+  return `+${gain.toFixed(1)} strokes`;
+}
+
+function expectedTrustGainFor(card: CoachClubCard | null) {
+  if (!card) {
+    return "Build trust";
+  }
+
+  const gain = Math.max(4, Math.min(10, Math.round((90 - card.trustIndex) / 4)));
+
+  return `+${gain}% trust`;
+}
+
+function practiceTargetFor(card: CoachClubCard | null, challenge: CoachDrillChallenge | null) {
+  if (challenge) {
+    return challenge.target;
+  }
+
+  if (!card) {
+    return "Record 12 clean stock shots with clear club labels.";
+  }
+
+  if (card.issue === "delivery") {
+    return "Keep path below +5 deg and finish 10 stock shots inside the window.";
+  }
+
+  if (card.issue === "launch") {
+    return `Hit 12 balls inside the ${card.launchWindow.low}-${card.launchWindow.high} deg launch window.`;
+  }
+
+  if (card.issue === "direction") {
+    return "Score 10 stock shots and keep the dangerous miss out of play.";
+  }
+
+  if (card.issue === "strike") {
+    return "Hit 12 balls at 80% speed and keep ball speed stable.";
+  }
+
+  if (card.issue === "distance") {
+    return "Build two five-ball sets and keep each carry window tight.";
+  }
+
+  return "Add 12 clean full-swing stock shots before changing the play number.";
+}
+
+function defaultDrillStatus(challenge: CoachDrillChallenge): CoachDrillAwardStatus {
+  return {
+    uploadedShotCount: 0,
+    completionTarget: challenge.completionTarget,
+    winCount: 0,
+    winTarget: winTargetForChallenge(challenge),
+    completed: false,
+    won: false,
+    completedAwarded: false,
+    wonAwarded: false,
+  };
+}
+
+function coachSummaryBullets(coach: CoachSummary, impacts: CoachTrainingImpact[]) {
+  const bullets: string[] = [];
+  const better = impacts.find((impact) => impact.status === "better");
+  const watch = impacts.find((impact) => impact.status === "worse" || impact.status === "mixed");
+  const topClub = coach.clubCards[0] ?? null;
+  const topSignal = coach.signals[0] ?? null;
+
+  if (better) {
+    const metric = better.metrics[0];
+    bullets.push(
+      metric
+        ? `${better.clubName} improved: ${metric.label.toLowerCase()} moved ${metric.delta}.`
+        : `${better.clubName} improved after the latest comparable session.`,
+    );
+  }
+
+  if (topClub) {
+    bullets.push(
+      `${topClub.clubName} is the strongest practice opportunity at ${topClub.trustIndex}% trust.`,
+    );
+  }
+
+  if (watch) {
+    bullets.push(`${watch.clubName} needs a watch: ${watch.detail}`);
+  } else if (topSignal) {
+    bullets.push(`${topSignal.label}: ${topSignal.value}. ${topSignal.detail}`);
+  }
+
+  bullets.push(
+    `Bag trust is ${coach.summary.totals.averageTrust}% across ${coach.summary.totals.clubs} tracked clubs.`,
+  );
+
+  return bullets.slice(0, 4);
+}
+
+function tonePanelClass(tone: Tone) {
+  const classes: Record<Tone, string> = {
+    green: "border-emerald-200 bg-emerald-50/75",
+    sky: "border-sky-200 bg-sky-50/75",
+    pink: "border-rose-200 bg-rose-50/75",
+    amber: "border-amber-200 bg-amber-50/80",
+    slate: "border-slate-200 bg-slate-50/85",
+  };
+
+  return classes[tone];
+}
+
+function toneDotClass(tone: Tone) {
+  const classes: Record<Tone, string> = {
+    green: "bg-emerald-500",
+    sky: "bg-sky-500",
+    pink: "bg-rose-500",
+    amber: "bg-amber-500",
+    slate: "bg-slate-400",
+  };
+
+  return classes[tone];
+}
+
+function progressToneClass(tone: Tone) {
+  const classes: Record<Tone, string> = {
+    green: "[&_[data-slot=progress-indicator]]:bg-emerald-500",
+    sky: "[&_[data-slot=progress-indicator]]:bg-sky-500",
+    pink: "[&_[data-slot=progress-indicator]]:bg-rose-500",
+    amber: "[&_[data-slot=progress-indicator]]:bg-amber-500",
+    slate: "[&_[data-slot=progress-indicator]]:bg-slate-500",
+  };
+
+  return classes[tone];
+}
+
 function UpgradeAiCoachCard() {
   return (
     <CardContent>
@@ -570,250 +1138,6 @@ function UpgradeAiCoachCard() {
       </div>
     </CardContent>
   );
-}
-
-function CoachPracticePlan({
-  topClub,
-  blocks,
-  impacts,
-  drillChallenges,
-  drillStatuses,
-}: {
-  topClub: CoachClubCard | null;
-  blocks: Array<{
-    title: string;
-    detail: string;
-    duration: string;
-    tone: "green" | "sky" | "pink" | "amber" | "slate";
-  }>;
-  impacts: CoachTrainingImpact[];
-  drillChallenges: CoachDrillChallenge[];
-  drillStatuses: Record<string, CoachDrillAwardStatus>;
-}) {
-  return (
-    <CardContent className="space-y-4">
-      <div className="premium-command-surface rounded-lg p-3 sm:p-4">
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Badge className="bg-background text-primary ring-1 ring-border hover:bg-background">
-                Based on stored shot data
-              </Badge>
-              <h2 className="mt-2 text-lg font-semibold tracking-normal sm:mt-3 sm:text-xl">
-                {topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline first"}
-              </h2>
-            </div>
-            <StatusPill tone={topClub?.tone ?? "slate"}>
-              {topClub ? `${topClub.trustIndex}% trust` : "Needs data"}
-            </StatusPill>
-          </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
-            <SmallMetric label="Main issue" value={topClub?.issueLabel ?? "No priority yet"} />
-            <SmallMetric label="Evidence" value={topClub?.reason ?? "Import more clean shots"} />
-            <SmallMetric
-              label="Target"
-              value={topClub ? targetForCard(topClub) : "Create a 30-shot sample"}
-            />
-          </div>
-        </div>
-      </div>
-
-      <PracticePrescription topClub={topClub} />
-
-      {drillChallenges.length > 0 ? (
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-semibold">Today&apos;s coach drills</p>
-            <p className="text-xs text-muted-foreground">
-              Progress is read from today&apos;s uploaded shots. XP unlocks automatically when the
-              data proves it.
-            </p>
-          </div>
-          <div
-            aria-label="Coach drill challenge cards"
-            tabIndex={0}
-            className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:grid sm:snap-none sm:px-0"
-          >
-            {drillChallenges.map((challenge) => (
-              <div key={challenge.id} className="min-w-[82vw] shrink-0 snap-start sm:min-w-0">
-                <CoachDrillChallengeCard
-                  challenge={challenge}
-                  status={
-                    drillStatuses[challenge.id] ?? {
-                      completed: false,
-                      won: false,
-                    }
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-3">
-        {blocks.slice(0, 1).map((block, index) => (
-          <div key={block.title} className="apple-panel-strong p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <Badge variant="outline">Drill {index + 1}</Badge>
-                <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
-              </div>
-              <StatusPill tone={block.tone}>{block.duration}</StatusPill>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
-          </div>
-        ))}
-        {blocks.length > 1 ? (
-          <MobileAccordionSection
-            title="Full practice plan"
-            description="Remaining drills, collapsed on mobile."
-            count={`${blocks.length - 1} more`}
-          >
-            <div className="grid gap-3">
-              {blocks.slice(1).map((block, index) => (
-                <div key={block.title} className="apple-panel-strong p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <Badge variant="outline">Drill {index + 2}</Badge>
-                      <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
-                    </div>
-                    <StatusPill tone={block.tone}>{block.duration}</StatusPill>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
-                </div>
-              ))}
-            </div>
-          </MobileAccordionSection>
-        ) : null}
-        <div className="hidden gap-3 sm:grid">
-          {blocks.slice(1).map((block, index) => (
-            <div key={block.title} className="apple-panel-strong p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <Badge variant="outline">Drill {index + 2}</Badge>
-                  <h3 className="mt-2 text-lg font-semibold tracking-normal">{block.title}</h3>
-                </div>
-                <StatusPill tone={block.tone}>{block.duration}</StatusPill>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{block.detail}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <MobileAccordionSection
-        title="Evidence"
-        description="Latest session feedback."
-        count={`${impacts.length} items`}
-      >
-        <TrainingFeedback impacts={impacts} />
-      </MobileAccordionSection>
-      <div className="hidden sm:block">
-        <TrainingFeedback impacts={impacts} />
-      </div>
-    </CardContent>
-  );
-}
-
-function PracticePrescription({ topClub }: { topClub: CoachClubCard | null }) {
-  const prescription = practicePrescriptionFor(topClub);
-
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Badge variant="outline">Practice prescription</Badge>
-          <h3 className="mt-2 text-lg font-semibold tracking-normal">{prescription.title}</h3>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">{prescription.detail}</p>
-        </div>
-        <StatusPill tone={topClub?.tone ?? "slate"}>{prescription.duration}</StatusPill>
-      </div>
-
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <SmallMetric label="Pass target" value={prescription.passTarget} />
-        <SmallMetric label="Stop rule" value={prescription.stopRule} />
-        <SmallMetric label="Retest" value={prescription.retest} />
-      </div>
-    </div>
-  );
-}
-
-function practicePrescriptionFor(card: CoachClubCard | null) {
-  if (!card) {
-    return {
-      title: "20-ball baseline builder",
-      detail:
-        "Hit normal stock swings with clear club labels. Keep warm-ups, chips and recovery swings out of the scored set.",
-      duration: "20 balls",
-      passTarget: "20 clean rows saved",
-      stopRule: "Stop after 3 miscoded clubs",
-      retest: "Repeat next session",
-    };
-  }
-
-  if (card.issue === "direction") {
-    return {
-      title: `${card.clubName} start-line gate`,
-      detail: card.drill,
-      duration: "20 balls",
-      passTarget: "14/20 playable",
-      stopRule: "Stop after 5 straight same-side misses",
-      retest: "Re-test in 7 days",
-    };
-  }
-
-  if (card.issue === "launch") {
-    return {
-      title: `${card.clubName} launch window`,
-      detail: card.drill,
-      duration: "20 balls",
-      passTarget: `14/20 inside ${card.launchWindow.low}-${card.launchWindow.high} deg`,
-      stopRule: "Stop after 5 low or high flights in a row",
-      retest: "Compare next import",
-    };
-  }
-
-  if (card.issue === "strike") {
-    return {
-      title: `${card.clubName} strike ladder`,
-      detail: card.drill,
-      duration: "20 balls",
-      passTarget: "14/20 solid strikes",
-      stopRule: "Stop if speed chasing starts",
-      retest: "Repeat after two sessions",
-    };
-  }
-
-  if (card.issue === "delivery") {
-    return {
-      title: `${card.clubName} delivery window`,
-      detail: card.drill,
-      duration: "20 balls",
-      passTarget: "14/20 predictable starts",
-      stopRule: "Stop after 5 path spikes",
-      retest: "Check next comparable import",
-    };
-  }
-
-  if (card.issue === "distance") {
-    return {
-      title: `${card.clubName} carry repeatability`,
-      detail: card.drill,
-      duration: "20 balls",
-      passTarget: "3 sets inside 8 yd",
-      stopRule: "Stop if fatigue widens carry",
-      retest: "Re-test same target",
-    };
-  }
-
-  return {
-    title: `${card.clubName} trust builder`,
-    detail: card.drill,
-    duration: "20 balls",
-    passTarget: "20 clean stock shots",
-    stopRule: "Stop after 3 bad-data tags",
-    retest: "Repeat next range visit",
-  };
 }
 
 function winTargetForChallenge(challenge: CoachDrillChallenge) {
@@ -961,46 +1285,6 @@ function TrainingFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
   );
 }
 
-function CoachClubDiagnosis({ card }: { card: CoachClubCard }) {
-  return (
-    <Link
-      href={`/bag/${card.clubId}/analytics`}
-      prefetch={false}
-      className="apple-panel-strong grid gap-4 p-4 transition-colors hover:border-emerald-300"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold tracking-normal">{card.clubName}</h2>
-            <StatusPill tone={card.tone}>{card.issueLabel}</StatusPill>
-          </div>
-          <p className="mt-1 truncate text-sm text-muted-foreground">{card.brandModel}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-semibold tracking-normal">{card.trustIndex}%</p>
-          <p className="text-xs text-muted-foreground">trust</p>
-        </div>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-4">
-        <SmallMetric label="Stock" value={formatYards(card.stockCarryYd)} />
-        <SmallMetric label="Playable" value={formatRate(card.playableRate)} />
-        <SmallMetric label="Miss" value={card.usualMiss} />
-        <SmallMetric label="Sample" value={`${card.sampleSize} clean`} />
-      </div>
-
-      <div>
-        <Progress value={card.trustIndex} />
-        <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <SmallMetric label="Evidence" value={card.reason} />
-          <SmallMetric label="Drill" value={card.drill} />
-          <SmallMetric label="Retest" value="After two comparable sessions" />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
 function SmallMetric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
@@ -1026,19 +1310,6 @@ function impactLabel(status: CoachTrainingImpact["status"] | undefined) {
   return "Needs data";
 }
 
-function toneForFocus(focus: CoachFocusArea) {
-  const tones: Record<CoachFocusArea, "green" | "sky" | "pink" | "amber" | "slate"> = {
-    distance: "sky",
-    strike: "pink",
-    launch: "amber",
-    direction: "pink",
-    delivery: "amber",
-    data: "slate",
-  };
-
-  return tones[focus];
-}
-
 function targetForCard(card: CoachClubCard) {
   if (card.playableRate !== null) {
     return `Push playable rate above ${Math.min(90, Math.round(card.playableRate) + 10)}%`;
@@ -1049,12 +1320,4 @@ function targetForCard(card: CoachClubCard) {
   }
 
   return "Tighten the primary miss window";
-}
-
-function formatRate(value: number | null) {
-  return value === null ? "--" : `${Math.round(value)}%`;
-}
-
-function formatYards(value: number | null) {
-  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
 }

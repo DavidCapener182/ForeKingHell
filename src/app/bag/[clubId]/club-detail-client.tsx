@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { BarChart3, Brain, Database, Gauge, Target, type LucideIcon } from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
+import {
+  ArrowRight,
+  BarChart3,
+  Brain,
+  CheckCircle2,
+  Database,
+  Gauge,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +31,7 @@ import {
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import {
   calculateStockYardage,
+  type StockYardage,
   type StockShotRole,
   type StockShotRoleSummary,
 } from "@/lib/stock-yardage";
@@ -66,9 +78,38 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
+const STOCK_DECISION_TARGET_SHOTS = 20;
+
+type MetricTone = "green" | "amber" | "red" | "sky" | "neutral";
+type ShortGameTouchSummary = ReturnType<typeof calculateShortGameTouchSummary>;
+type ClubHealth = {
+  label: "Healthy" | "Developing" | "Needs calibration";
+  tone: MetricTone;
+  badgeClassName: string;
+  confidenceDetail: string;
+  statusDetail: string;
+  dataQuality: string;
+  gapping: string;
+  dispersion: string;
+};
+type ClubEvolutionPoint = {
+  key: string;
+  label: string;
+  value: number | null;
+  shotCount: number;
+};
+type MonthChange = {
+  currentLabel: string | null;
+  previousLabel: string | null;
+  carryDeltaYd: number | null;
+  coneDeltaYd: number | null;
+  confidenceDelta: number | null;
+  pathDeltaDeg: number | null;
+};
 
 export function ClubDetailClient({
   club,
+  children,
 }: {
   club: {
     id: string;
@@ -77,10 +118,12 @@ export function ClubDetailClient({
     model: string | null;
     shots: AnalysisShot[];
   };
+  children?: ReactNode;
 }) {
   const accent = clubAccent(club.type);
   const clubModelName = formatClubModelName(club);
   const clubTypeLabel = formatClubType(club.type);
+  const clubIdentityName = formatClubIdentityName(club.type);
   const [shotRange, setShotRange] = useState<ShotRange>("thisMonth");
   const selectedRange =
     RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
@@ -120,6 +163,22 @@ export function ClubDetailClient({
     shotRange !== "all"
       ? `${selectedShots.length}/${orderedShots.length}`
       : selectedShots.length.toString();
+  const recommendedCarry =
+    isShortGameTouch && !isSandWedge ? null : displayRecommendedCarry(stock, isShortGameTouch);
+  const recommendedDetail =
+    stock.coursePlayCarryYd === null ? "Provisional course number" : "Course number";
+  const confidenceValue = isShortGameTouch ? touch.under30YdCount : stock.confidenceScore;
+  const clubRole = clubRoleLabel(club.type, stock, isShortGameTouch);
+  const health = clubHealth(stock, selectedShots, isShortGameTouch);
+  const typicalMiss = typicalMissLabel(selectedShots);
+  const evolution = useMemo(
+    () => buildClubEvolution(orderedShots, club.type),
+    [club.type, orderedShots],
+  );
+  const monthChange = useMemo(
+    () => buildMonthChange(orderedShots, club.type),
+    [club.type, orderedShots],
+  );
 
   return (
     <>
@@ -167,13 +226,23 @@ export function ClubDetailClient({
       <MobileMetricStrip
         items={[
           {
-            label: isShortGameTouch ? "Touch" : "Best",
+            label: isShortGameTouch ? "Touch" : "Recommended",
+            value: formatMetric(isShortGameTouch ? touch.carryMedianYd : recommendedCarry, " yd"),
+            detail: isShortGameTouch ? "Median" : "Play number",
+            tone: "green",
+          },
+          {
+            label: isShortGameTouch ? "Full" : "Best",
             value: formatMetric(
-              isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
+              isShortGameTouch
+                ? isSandWedge
+                  ? stock.bestStockCarryYd
+                  : null
+                : stock.bestStockCarryYd,
               " yd",
             ),
-            detail: isShortGameTouch ? "Median" : "Stock",
-            tone: "green",
+            detail: isShortGameTouch ? "Stock" : "Stock",
+            tone: "sky",
           },
           {
             label: "PB",
@@ -181,27 +250,18 @@ export function ClubDetailClient({
             detail: "Personal best",
             tone: "sky",
           },
-          {
-            label: "Recommended",
-            value: formatMetric(
-              isShortGameTouch && !isSandWedge ? null : stock.coursePlayCarryYd,
-              " yd",
-            ),
-            detail: "Play number",
-            tone: "amber",
-          },
           { label: "Shots", value: shotCount, detail: "Range", tone: "amber" },
           {
-            label: isShortGameTouch ? "Under 30" : "Trust",
+            label: isShortGameTouch ? "Under 30" : "Health",
             value: isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`,
-            detail: "Confidence",
+            detail: health.label,
             tone: "pink",
           },
         ]}
       />
 
-      <header className="premium-hero hidden p-5 sm:block sm:p-7">
-        <div className="space-y-6">
+      <header className="premium-hero hidden p-6 sm:block lg:p-8">
+        <div className="space-y-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
               Club analysis
@@ -217,47 +277,90 @@ export function ClubDetailClient({
             </Button>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_240px] xl:items-stretch">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-2xl space-y-2">
-                <div className="space-y-2">
-                  <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                    {clubModelName}
+          <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start">
+            <div className="space-y-7">
+              <div className="space-y-3">
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {clubModelName === clubTypeLabel ? "Unspecified model" : clubModelName}
+                </p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <h1 className="text-5xl font-semibold tracking-normal text-balance lg:text-6xl">
+                    {clubIdentityName}
                   </h1>
-                  <p className="text-base leading-7 text-muted-foreground">
-                    {clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
-                  </p>
+                  <Badge
+                    className={cn("mb-1 w-fit border px-3 py-1 text-sm", health.badgeClassName)}
+                  >
+                    {health.label}
+                  </Badge>
                 </div>
+                <p className="max-w-2xl text-xl font-medium leading-8 text-[#254434]">{clubRole}</p>
               </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px] xl:min-w-0">
-                <StatTile
-                  label={isShortGameTouch ? "Touch median" : "Best stock"}
-                  value={formatMetric(
-                    isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
-                    " yd",
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <HeroYardage
+                  label={isShortGameTouch ? "Touch median" : "Recommended"}
+                  value={formatWholeYards(
+                    isShortGameTouch ? touch.carryMedianYd : recommendedCarry,
                   )}
-                  icon={Target}
+                  detail={isShortGameTouch ? "Short-game control" : recommendedDetail}
+                  featured
                 />
-                <StatTile
-                  label={isShortGameTouch ? "Full stock" : "Recommended"}
-                  value={formatMetric(
+                <HeroYardage
+                  label={isShortGameTouch ? "Full stock" : "Best stock"}
+                  value={formatWholeYards(
                     isShortGameTouch
                       ? isSandWedge
                         ? stock.bestStockCarryYd
                         : null
-                      : stock.coursePlayCarryYd,
-                    " yd",
+                      : stock.bestStockCarryYd,
                   )}
-                  icon={Gauge}
+                  detail={isShortGameTouch ? "Full swing" : "Clean-sample median"}
                 />
-                <StatTile label="Shots" value={shotCount} icon={Database} />
-                <StatTile
-                  label={isShortGameTouch ? "Under 30" : "Confidence"}
-                  value={
-                    isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`
-                  }
-                  icon={BarChart3}
+                <HeroYardage
+                  label="Personal best"
+                  value={formatWholeYards(stock.personalBestCarryYd)}
+                  detail="Longest clean carry"
                 />
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <HeroTrait
+                  icon={ShieldCheck}
+                  label={isShortGameTouch ? "Touch count" : "Confidence"}
+                  value={isShortGameTouch ? confidenceValue.toString() : `${confidenceValue}%`}
+                  detail={health.confidenceDetail}
+                  tone={health.tone}
+                />
+                <HeroTrait
+                  icon={Target}
+                  label="Typical miss"
+                  value={typicalMiss.label}
+                  detail={typicalMiss.detail}
+                  tone={typicalMiss.tone}
+                />
+                <HeroTrait
+                  icon={CheckCircle2}
+                  label="Current status"
+                  value={health.label}
+                  detail={health.statusDetail}
+                  tone={health.tone}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="rounded-lg bg-[#0B7A3B] px-5 text-white shadow-sm hover:bg-[#064E3B]"
+                >
+                  <a href="#club-shot-history">
+                    Review {selectedShots.length} shot{selectedShots.length === 1 ? "" : "s"}
+                    <ArrowRight className="size-4" />
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="rounded-lg bg-white/70">
+                  <a href="#club-dispersion">Open dispersion</a>
+                </Button>
               </div>
             </div>
             <ClubArtwork
@@ -265,7 +368,9 @@ export function ClubDetailClient({
               brand={club.brand}
               model={club.model}
               alt=""
-              className="hidden h-full min-h-36 xl:block"
+              className="hidden h-44 w-full max-w-60 justify-self-end xl:block"
+              imageClassName="px-6 py-6"
+              showGroundLine={false}
               priority
               sizes="240px"
             />
@@ -273,180 +378,29 @@ export function ClubDetailClient({
         </div>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle className="text-2xl tracking-normal">Stock yardage</CardTitle>
-            <CardDescription>
-              {isShortGameTouch
-                ? isSandWedge
-                  ? "Touch shots stay separate from the full-stock SW carry."
-                  : "Round chips and pitches are separated from full-swing stock yardage."
-                : `Rolling median from ${selectedRange.description}, with MAD outlier filtering.`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div>
-              <p className="text-sm text-muted-foreground">
-                {isShortGameTouch ? "Touch median" : "Best stock carry"}
-              </p>
-              <p className="text-6xl font-semibold tracking-normal">
-                {formatMetric(isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd)}
-                <span className="ml-2 text-lg text-muted-foreground">yd</span>
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <SmallMetric
-                label={isShortGameTouch ? "Full PB" : "Personal best"}
-                value={formatMetric(stock.personalBestCarryYd, " yd")}
-              />
-              {!isShortGameTouch ? (
-                <SmallMetric
-                  label="Recommended"
-                  value={formatMetric(stock.coursePlayCarryYd, " yd")}
-                />
-              ) : null}
-              {!isShortGameTouch ? (
-                <SmallMetric
-                  label="Latest reliable"
-                  value={formatMetric(stock.latestReliableCarryYd, " yd")}
-                />
-              ) : null}
-              {!isShortGameTouch ? (
-                <SmallMetric
-                  label="Latest range"
-                  value={formatRange(
-                    stock.latestReliableCarryP25Yd,
-                    stock.latestReliableCarryP75Yd,
-                  )}
-                />
-              ) : null}
-              <SmallMetric
-                label={isShortGameTouch ? "Lower touch" : "Average"}
-                value={formatMetric(isShortGameTouch ? touch.carryP25Yd : stock.carryMeanYd, " yd")}
-              />
-              <SmallMetric
-                label={isShortGameTouch ? "Upper touch" : "Good carry"}
-                value={formatMetric(isShortGameTouch ? touch.carryP75Yd : stock.carryP75Yd, " yd")}
-              />
-              <SmallMetric
-                label={isShortGameTouch ? "Longest touch" : "Total"}
-                value={formatMetric(
-                  isShortGameTouch ? touch.longestCarryYd : stock.totalMedianYd,
-                  " yd",
-                )}
-              />
-              <SmallMetric label="Left miss" value={formatMetric(stock.dispersionLeftYd, " yd")} />
-              <SmallMetric
-                label={isShortGameTouch ? "Under 30" : "Right miss"}
-                value={
-                  isShortGameTouch
-                    ? touch.under30YdCount.toString()
-                    : formatMetric(stock.dispersionRightYd, " yd")
-                }
-              />
-              <SmallMetric
-                label={isShortGameTouch ? "Full stock" : "Ball speed"}
-                value={
-                  isShortGameTouch
-                    ? isSandWedge
-                      ? formatMetric(stock.bestStockCarryYd, " yd")
-                      : "--"
-                    : formatMetric(stock.averageBallSpeedMph, " mph")
-                }
-              />
-            </div>
-
-            {hasWedgeRoles ? <WedgeRoleSummaryGrid summaries={stock.shotRoleSummaries} /> : null}
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">
-                  {isShortGameTouch
-                    ? isSandWedge
-                      ? "Touch + full stock"
-                      : "Short-game touch"
-                    : stock.label}
-                </span>
-                <span className="text-muted-foreground">
-                  {isShortGameTouch && !isSandWedge
-                    ? `${touch.sampleSize} touch / ${stock.rawSampleSize} total`
-                    : isSandWedge
-                      ? `${touch.sampleSize} touch / ${stock.sampleSize} stock`
-                      : `${stock.sampleSize} clean / ${stock.rawSampleSize} total`}
-                </span>
-              </div>
-              <Progress
-                value={
-                  isShortGameTouch && !isSandWedge
-                    ? Math.min(100, (touch.sampleSize / 50) * 100)
-                    : stock.confidenceScore
-                }
-              />
-            </div>
-            {isShortGameTouch ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
-                {club.type === "sw"
-                  ? "SW stock uses full-role shots from 75 yd and above. Pitch and chip windows stay in touch analysis."
-                  : "Round chips and pitches stay in touch analysis, not best-stock yardage."}
-              </div>
-            ) : null}
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle className="text-2xl tracking-normal">Data health</CardTitle>
-            <CardDescription>
-              {isShortGameTouch
-                ? "Distance-control spread for short-game shots."
-                : "Recommended waits for a stable latest sample before it becomes decision-ready."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <HealthBlock
-              label={isShortGameTouch ? "Touch shots" : "Excluded shots"}
-              value={(isShortGameTouch ? touch.sampleSize : stock.stockExclusionCount).toString()}
-            />
-            <HealthBlock
-              label={isShortGameTouch ? "Full launch" : "Launch average"}
-              value={
-                isShortGameTouch && !isSandWedge
-                  ? "--"
-                  : formatMetric(stock.averageLaunchAngleDeg, " deg")
-              }
-            />
-            <HealthBlock
-              label={isShortGameTouch ? "Touch range" : "Best-stock range"}
-              value={
-                isShortGameTouch
-                  ? `${formatMetric(touch.carryP25Yd)}-${formatMetric(touch.carryP75Yd)} yd`
-                  : formatRange(stock.carryP25Yd, stock.carryP75Yd)
-              }
-            />
-            <HealthBlock label="Last shot" value={latestShotDate} />
-            <div className="apple-panel-strong p-4 sm:col-span-2">
-              <p className="text-sm font-medium text-muted-foreground">Best-stock filter reasons</p>
-              <p className="mt-2 text-sm leading-6 text-foreground">
-                {formatStockExclusionReasons(stock.stockExclusionReasons)}
-              </p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Best Stock is the median of the selected top-20 clean stock sample. Personal Best
-                keeps the single longest clean full-role carry visible without making that the play
-                number.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
       {selectedShots.length > 0 ? (
         <ClubAnalysisTabs
           clubType={club.type}
           clubModelName={clubModelName}
           clubTypeLabel={clubTypeLabel}
           shots={selectedShots}
+          afterDispersion={
+            <>
+              {children}
+              <ClubIntelligence
+                clubType={club.type}
+                isShortGameTouch={isShortGameTouch}
+                isSandWedge={isSandWedge}
+                selectedRange={selectedRange.description}
+                stock={stock}
+                touch={touch}
+                latestShotDate={latestShotDate}
+                health={health}
+              />
+              <ClubDevelopmentPanel evolution={evolution} monthChange={monthChange} />
+              {hasWedgeRoles ? <WedgeRoleSummaryGrid summaries={stock.shotRoleSummaries} /> : null}
+            </>
+          }
         />
       ) : (
         <Card className="premium-card">
@@ -502,40 +456,393 @@ function RangeToggle({
   );
 }
 
-function StatTile({
+function HeroYardage({
   label,
   value,
-  icon: Icon,
+  detail,
+  featured = false,
 }: {
   label: string;
   value: string;
-  icon: LucideIcon;
+  detail: string;
+  featured?: boolean;
 }) {
   return (
-    <div className="apple-panel-strong p-3">
-      <div className="mb-2 flex items-center justify-between text-muted-foreground">
-        <p className="text-xs font-medium">{label}</p>
-        <Icon className="size-4" />
-      </div>
-      <p className="text-2xl font-semibold tracking-normal sm:text-3xl">{value}</p>
+    <div
+      className={cn(
+        "rounded-lg border p-4 shadow-sm",
+        featured
+          ? "border-emerald-200 bg-[#0B7A3B] text-white shadow-emerald-950/10"
+          : "border-white/70 bg-white/72 text-[#111827]",
+      )}
+    >
+      <p
+        className={cn(
+          "text-sm font-semibold",
+          featured ? "text-white/78" : "text-muted-foreground",
+        )}
+      >
+        {label}
+      </p>
+      <p className="mt-2 text-4xl font-semibold tracking-normal">{value}</p>
+      <p className={cn("mt-2 text-sm", featured ? "text-white/76" : "text-muted-foreground")}>
+        {detail}
+      </p>
     </div>
   );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
+function HeroTrait({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail: string;
+  tone: MetricTone;
+}) {
   return (
-    <div className="apple-panel-strong p-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div className={cn("rounded-lg border p-4 shadow-sm", tonePanelClass(tone))}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+        <Icon className={cn("size-4", toneTextClass(tone))} />
+      </div>
+      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function ClubIntelligence({
+  clubType,
+  isShortGameTouch,
+  isSandWedge,
+  selectedRange,
+  stock,
+  touch,
+  latestShotDate,
+  health,
+}: {
+  clubType: string;
+  isShortGameTouch: boolean;
+  isSandWedge: boolean;
+  selectedRange: string;
+  stock: StockYardage;
+  touch: ShortGameTouchSummary;
+  latestShotDate: string;
+  health: ClubHealth;
+}) {
+  const cleanShots = isShortGameTouch && !isSandWedge ? touch.sampleSize : stock.sampleSize;
+  const excludedShots = isShortGameTouch
+    ? Math.max(0, stock.rawSampleSize - touch.sampleSize)
+    : stock.stockExclusionCount;
+  const decisionReady =
+    isShortGameTouch && !isSandWedge
+      ? touch.sampleSize >= 15
+      : stock.sampleSize >= STOCK_DECISION_TARGET_SHOTS &&
+        stock.confidenceScore >= 85 &&
+        stock.coursePlayCarryYd !== null;
+  const needsShots = isShortGameTouch
+    ? Math.max(0, 15 - touch.sampleSize)
+    : Math.max(0, STOCK_DECISION_TARGET_SHOTS - stock.sampleSize);
+  const progressValue = isShortGameTouch
+    ? Math.min(100, (touch.sampleSize / 15) * 100)
+    : stock.confidenceScore;
+  const rangeValue = isShortGameTouch
+    ? `${formatMetric(touch.carryP25Yd)}-${formatMetric(touch.carryP75Yd)} yd`
+    : formatRange(stock.carryP25Yd, stock.carryP75Yd);
+  const recommendedCarry =
+    isShortGameTouch && !isSandWedge ? null : displayRecommendedCarry(stock, isShortGameTouch);
+
+  return (
+    <Card className="premium-card" id="club-intelligence">
+      <CardHeader>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle className="text-2xl tracking-normal">Club Intelligence</CardTitle>
+            <CardDescription>
+              {isShortGameTouch
+                ? "Touch control, full-stock separation and data quality in one read."
+                : `Rolling stock yardage from ${selectedRange}, with health and decision readiness.`}
+            </CardDescription>
+          </div>
+          <Badge className={cn("w-fit border px-3 py-1", health.badgeClassName)}>
+            Club Health: {health.label}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <IntelligenceMetric
+            icon={Target}
+            label={isShortGameTouch ? "Touch median" : "Recommended"}
+            value={formatWholeYards(isShortGameTouch ? touch.carryMedianYd : recommendedCarry)}
+            detail={
+              isShortGameTouch
+                ? "Touch control"
+                : stock.coursePlayCarryYd === null
+                  ? "Provisional"
+                  : "Course number"
+            }
+            tone="green"
+          />
+          <IntelligenceMetric
+            icon={Gauge}
+            label={isShortGameTouch ? "Full stock" : "Best Stock"}
+            value={formatWholeYards(
+              isShortGameTouch
+                ? isSandWedge
+                  ? stock.bestStockCarryYd
+                  : null
+                : stock.bestStockCarryYd,
+            )}
+            detail="Clean median"
+            tone="sky"
+          />
+          <IntelligenceMetric
+            icon={TrendingUp}
+            label="Personal Best"
+            value={formatWholeYards(stock.personalBestCarryYd)}
+            detail="Longest clean carry"
+            tone="neutral"
+          />
+          <IntelligenceMetric
+            icon={BarChart3}
+            label={isShortGameTouch ? "Touch count" : "Confidence"}
+            value={isShortGameTouch ? touch.sampleSize.toString() : `${stock.confidenceScore}%`}
+            detail={health.confidenceDetail}
+            tone={health.tone}
+          />
+          <IntelligenceMetric
+            icon={Database}
+            label="Data Quality"
+            value={health.dataQuality}
+            detail={`${cleanShots} clean · ${excludedShots} excluded`}
+            tone={cleanShots >= 8 ? "green" : cleanShots >= 4 ? "amber" : "red"}
+          />
+          <IntelligenceMetric
+            icon={CheckCircle2}
+            label="Decision Ready"
+            value={decisionReady ? "Yes" : "No"}
+            detail={needsShots > 0 ? `Needs ${needsShots} more clean` : "Ready for play number"}
+            tone={decisionReady ? "green" : "amber"}
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="apple-panel-strong p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+              <span className="font-semibold">
+                {isShortGameTouch ? "Touch + full-stock health" : stock.label}
+              </span>
+              <span className="text-muted-foreground">
+                {cleanShots} clean / {stock.rawSampleSize} total
+              </span>
+            </div>
+            <Progress value={progressValue} className="mt-3" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <DataChip label="Range" value={rangeValue} />
+              <DataChip
+                label={isShortGameTouch ? "Full launch" : "Launch avg"}
+                value={
+                  isShortGameTouch && !isSandWedge
+                    ? "--"
+                    : formatMetric(stock.averageLaunchAngleDeg, " deg")
+                }
+              />
+              <DataChip label="Last shot" value={latestShotDate} />
+              <DataChip
+                label={isShortGameTouch ? "Under 30" : "Ball speed"}
+                value={
+                  isShortGameTouch
+                    ? touch.under30YdCount.toString()
+                    : formatMetric(stock.averageBallSpeedMph, " mph")
+                }
+              />
+            </div>
+          </div>
+
+          <div className="apple-panel-strong p-4">
+            <p className="text-sm font-semibold">Club Health</p>
+            <div className="mt-3 grid gap-2">
+              <HealthRow
+                label="Confidence"
+                value={isShortGameTouch ? "Touch sample" : `${stock.confidenceScore}%`}
+                tone={health.tone}
+              />
+              <HealthRow label="Data quality" value={health.dataQuality} tone={health.tone} />
+              <HealthRow
+                label="Gapping"
+                value={health.gapping}
+                tone={health.gapping === "Good" ? "green" : "amber"}
+              />
+              <HealthRow
+                label="Dispersion"
+                value={health.dispersion}
+                tone={
+                  health.dispersion === "Stable"
+                    ? "green"
+                    : health.dispersion === "Playable"
+                      ? "amber"
+                      : health.dispersion === "Wide"
+                        ? "red"
+                        : "neutral"
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-[#F8FAF6] p-4">
+          <p className="text-sm font-semibold">
+            {isShortGameTouch ? "Role separation" : "Best-stock filter reasons"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {isShortGameTouch
+              ? shortGameStockNote(clubType)
+              : `${formatStockExclusionReasons(stock.stockExclusionReasons)}. Best Stock is the median of the selected top-20 clean stock sample, while Personal Best keeps the single longest clean full-role carry visible without making it the play number.`}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function IntelligenceMetric({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail: string;
+  tone: MetricTone;
+}) {
+  return (
+    <div className={cn("rounded-lg border p-3", tonePanelClass(tone))}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
+        <Icon className={cn("size-4", toneTextClass(tone))} />
+      </div>
+      <p className="mt-3 text-2xl font-semibold tracking-normal">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
+function DataChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/82 p-3 ring-1 ring-slate-200/80">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
     </div>
   );
 }
 
-function HealthBlock({ label, value }: { label: string; value: string }) {
+function HealthRow({ label, value, tone }: { label: string; value: string; tone: MetricTone }) {
   return (
-    <div className="apple-panel-strong p-4">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className={cn("text-sm font-semibold", toneTextClass(tone))}>{value}</span>
+    </div>
+  );
+}
+
+function ClubDevelopmentPanel({
+  evolution,
+  monthChange,
+}: {
+  evolution: ClubEvolutionPoint[];
+  monthChange: MonthChange;
+}) {
+  const maxEvolution = Math.max(1, ...evolution.map((point) => point.value ?? 0));
+
+  return (
+    <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      <Card className="premium-card">
+        <CardHeader>
+          <CardTitle className="text-2xl tracking-normal">Club Evolution</CardTitle>
+          <CardDescription>Monthly stock-carry movement for the selected club.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
+          {evolution.length > 0 ? (
+            evolution.map((point) => (
+              <div key={point.key} className="apple-panel-strong p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold text-muted-foreground">{point.label}</p>
+                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                    {point.shotCount}
+                  </span>
+                </div>
+                <p className="mt-3 text-3xl font-semibold tracking-normal">
+                  {formatWholeYards(point.value)}
+                </p>
+                <div className="mt-4 h-2 rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-[#0B7A3B]"
+                    style={{ width: `${Math.max(8, ((point.value ?? 0) / maxEvolution) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="apple-panel-strong p-4 text-sm text-muted-foreground sm:col-span-3">
+              Monthly evolution appears after this club has dated carry shots.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="premium-card">
+        <CardHeader>
+          <CardTitle className="text-2xl tracking-normal">What Changed?</CardTitle>
+          <CardDescription>
+            {monthChange.previousLabel && monthChange.currentLabel
+              ? `${monthChange.currentLabel} compared with ${monthChange.previousLabel}.`
+              : "Needs another month of shots before a club-only comparison is meaningful."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ChangeMetric
+            label="Carry"
+            value={formatDelta(monthChange.carryDeltaYd, " yd")}
+            tone={deltaTone(monthChange.carryDeltaYd, "higher")}
+          />
+          <ChangeMetric
+            label="Shot cone"
+            value={formatDelta(monthChange.coneDeltaYd, " yd")}
+            tone={deltaTone(monthChange.coneDeltaYd, "lower")}
+          />
+          <ChangeMetric
+            label="Confidence"
+            value={formatDelta(monthChange.confidenceDelta, "%")}
+            tone={deltaTone(monthChange.confidenceDelta, "higher")}
+          />
+          <ChangeMetric
+            label="Path"
+            value={formatDelta(monthChange.pathDeltaDeg, " deg")}
+            tone="sky"
+          />
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function ChangeMetric({ label, value, tone }: { label: string; value: string; tone: MetricTone }) {
+  return (
+    <div className={cn("rounded-lg border p-4", tonePanelClass(tone))}>
+      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className={cn("mt-2 text-3xl font-semibold tracking-normal", toneTextClass(tone))}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -590,6 +897,359 @@ function wedgeRoleLabel(role: StockShotRole) {
   }
 
   return role[0].toUpperCase() + role.slice(1);
+}
+
+function formatClubIdentityName(clubType: string) {
+  const normalized = clubType.toLowerCase();
+
+  if (/^[1-9]i$/.test(normalized)) {
+    return `${normalized[0]} Iron`;
+  }
+
+  if (/^[1-9]w$/.test(normalized)) {
+    return `${normalized[0]} Wood`;
+  }
+
+  if (/^[1-9]h$/.test(normalized)) {
+    return `${normalized[0]} Hybrid`;
+  }
+
+  const wedgeNames: Record<string, string> = {
+    pw: "Pitching Wedge",
+    gw: "Gap Wedge",
+    aw: "Approach Wedge",
+    sw: "Sand Wedge",
+    lw: "Lob Wedge",
+  };
+
+  return wedgeNames[normalized] ?? formatClubType(clubType);
+}
+
+function clubRoleLabel(clubType: string, stock: StockYardage, isShortGameTouch: boolean) {
+  if (isShortGameTouch) {
+    return stock.sampleSize >= 8 ? "Trusted Scoring Touch Club" : "Developing Scoring Club";
+  }
+
+  if (["pw", "gw", "aw", "sw", "lw"].includes(clubType.toLowerCase())) {
+    return stock.confidenceScore >= 70 ? "Trusted Scoring Club" : "Developing Scoring Club";
+  }
+
+  if (/^[6-9]i$/.test(clubType.toLowerCase())) {
+    return stock.confidenceScore >= 70 ? "Trusted Scoring Club" : "Developing Approach Club";
+  }
+
+  if (/^[3-5]i$/.test(clubType.toLowerCase()) || clubType.endsWith("h")) {
+    return stock.confidenceScore >= 70 ? "Trusted Approach Club" : "Developing Approach Club";
+  }
+
+  return stock.confidenceScore >= 70 ? "Trusted Tee Club" : "Developing Distance Club";
+}
+
+function clubHealth(
+  stock: StockYardage,
+  shots: AnalysisShot[],
+  isShortGameTouch: boolean,
+): ClubHealth {
+  const cleanShots = isShortGameTouch
+    ? shots.filter((shot) => shot.carryYd !== null).length
+    : stock.sampleSize;
+  const sideSpread = shotConeWidth(shots);
+  const hasEnoughData = cleanShots >= 8;
+  const confidence = isShortGameTouch
+    ? Math.min(100, Math.round((cleanShots / 15) * 100))
+    : stock.confidenceScore;
+  const label =
+    confidence >= 70 && hasEnoughData
+      ? "Healthy"
+      : confidence >= 40 || cleanShots >= 5
+        ? "Developing"
+        : "Needs calibration";
+  const tone: MetricTone = label === "Healthy" ? "green" : label === "Developing" ? "amber" : "red";
+  const badgeClassName =
+    tone === "green"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : tone === "amber"
+        ? "border-amber-200 bg-amber-50 text-amber-800"
+        : "border-red-200 bg-red-50 text-red-800";
+
+  return {
+    label,
+    tone,
+    badgeClassName,
+    confidenceDetail: isShortGameTouch ? `${cleanShots} touch shots` : `${stock.label} sample`,
+    statusDetail:
+      label === "Healthy"
+        ? "Stable enough to trust"
+        : label === "Developing"
+          ? "Keep building clean shots"
+          : "Needs a fresh baseline",
+    dataQuality: cleanShots >= 12 ? "Strong" : cleanShots >= 8 ? "Good" : "Building",
+    gapping: stock.coursePlayCarryYd === null ? "Check below" : "Good",
+    dispersion:
+      sideSpread === null
+        ? "Building"
+        : sideSpread <= 24
+          ? "Stable"
+          : sideSpread <= 45
+            ? "Playable"
+            : "Wide",
+  };
+}
+
+function typicalMissLabel(shots: AnalysisShot[]) {
+  const sides = numericValues(shots.map((shot) => shot.sideCarryYd));
+  const medianSide = medianNumber(sides);
+
+  if (medianSide === null || Math.abs(medianSide) < 4) {
+    return {
+      label: "Mostly straight",
+      detail: "Median side near target",
+      tone: "green" as const,
+    };
+  }
+
+  const direction = medianSide > 0 ? "push" : "pull";
+  const absoluteSide = Math.abs(medianSide);
+
+  if (absoluteSide < 10) {
+    return {
+      label: `Small ${direction}`,
+      detail: `${formatMetric(absoluteSide, " yd")} median side`,
+      tone: "green" as const,
+    };
+  }
+
+  if (absoluteSide < 22) {
+    return {
+      label: direction === "push" ? "Right miss" : "Left miss",
+      detail: `${formatMetric(absoluteSide, " yd")} median side`,
+      tone: "amber" as const,
+    };
+  }
+
+  return {
+    label: direction === "push" ? "Big right miss" : "Big left miss",
+    detail: `${formatMetric(absoluteSide, " yd")} median side`,
+    tone: "red" as const,
+  };
+}
+
+function buildClubEvolution(shots: AnalysisShot[], clubType: string): ClubEvolutionPoint[] {
+  const groups = shotsByMonth(shots);
+
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .slice(-3)
+    .map(([key, monthShots]) => {
+      const stock = calculateStockYardage(monthShots, monthShots.length, { clubType });
+
+      return {
+        key,
+        label: monthLabel(key),
+        value:
+          stock.bestStockCarryYd ??
+          medianNumber(numericValues(monthShots.map((shot) => shot.carryYd))),
+        shotCount: monthShots.length,
+      };
+    });
+}
+
+function buildMonthChange(shots: AnalysisShot[], clubType: string): MonthChange {
+  const groups = [...shotsByMonth(shots).entries()].sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  const latest = groups.at(-1);
+  const previous = groups.at(-2);
+
+  if (!latest || !previous) {
+    return {
+      currentLabel: latest ? monthLabel(latest[0]) : null,
+      previousLabel: null,
+      carryDeltaYd: null,
+      coneDeltaYd: null,
+      confidenceDelta: null,
+      pathDeltaDeg: null,
+    };
+  }
+
+  const latestStock = calculateStockYardage(latest[1], latest[1].length, { clubType });
+  const previousStock = calculateStockYardage(previous[1], previous[1].length, { clubType });
+
+  return {
+    currentLabel: monthLabel(latest[0]),
+    previousLabel: monthLabel(previous[0]),
+    carryDeltaYd: delta(latestStock.bestStockCarryYd, previousStock.bestStockCarryYd),
+    coneDeltaYd: delta(shotConeWidth(latest[1]), shotConeWidth(previous[1])),
+    confidenceDelta: latestStock.confidenceScore - previousStock.confidenceScore,
+    pathDeltaDeg: delta(
+      averageNumber(numericValues(latest[1].map((shot) => shot.clubPathDeg))),
+      averageNumber(numericValues(previous[1].map((shot) => shot.clubPathDeg))),
+    ),
+  };
+}
+
+function shotsByMonth(shots: AnalysisShot[]) {
+  const groups = new Map<string, AnalysisShot[]>();
+
+  for (const shot of shots) {
+    const date = new Date(shot.shotAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const monthShots = groups.get(key) ?? [];
+    monthShots.push(shot);
+    groups.set(key, monthShots);
+  }
+
+  return groups;
+}
+
+function monthLabel(key: string) {
+  const [year, month] = key.split("-").map(Number);
+
+  return new Intl.DateTimeFormat("en-GB", { month: "short" }).format(
+    new Date(year, (month || 1) - 1, 1),
+  );
+}
+
+function shotConeWidth(shots: AnalysisShot[]) {
+  const sides = numericValues(shots.map((shot) => shot.sideCarryYd));
+
+  if (sides.length === 0) {
+    return null;
+  }
+
+  return roundOne(percentileNumber(sides.map(Math.abs), 0.75) * 2);
+}
+
+function shortGameStockNote(clubType: string) {
+  if (clubType === "sw") {
+    return "SW stock uses full-role shots from 75 yd and above. Pitch and chip windows stay in touch analysis.";
+  }
+
+  return "Round chips and pitches stay in touch analysis, not best-stock yardage.";
+}
+
+function tonePanelClass(tone: MetricTone) {
+  if (tone === "green") {
+    return "border-emerald-200 bg-emerald-50/72";
+  }
+
+  if (tone === "amber") {
+    return "border-amber-200 bg-amber-50/72";
+  }
+
+  if (tone === "red") {
+    return "border-red-200 bg-red-50/72";
+  }
+
+  if (tone === "sky") {
+    return "border-sky-200 bg-sky-50/72";
+  }
+
+  return "border-slate-200 bg-white/78";
+}
+
+function toneTextClass(tone: MetricTone) {
+  if (tone === "green") {
+    return "text-emerald-700";
+  }
+
+  if (tone === "amber") {
+    return "text-amber-700";
+  }
+
+  if (tone === "red") {
+    return "text-red-700";
+  }
+
+  if (tone === "sky") {
+    return "text-sky-700";
+  }
+
+  return "text-slate-700";
+}
+
+function deltaTone(value: number | null, goodDirection: "higher" | "lower"): MetricTone {
+  if (value === null || Math.abs(value) < 0.5) {
+    return "neutral";
+  }
+
+  if (goodDirection === "higher") {
+    return value > 0 ? "green" : "amber";
+  }
+
+  return value < 0 ? "green" : "amber";
+}
+
+function formatWholeYards(value: number | null) {
+  return value === null ? "--" : `${Math.round(value)} yd`;
+}
+
+function displayRecommendedCarry(stock: StockYardage, isShortGameTouch: boolean) {
+  if (stock.coursePlayCarryYd !== null) {
+    return stock.coursePlayCarryYd;
+  }
+
+  if (isShortGameTouch || stock.bestStockCarryYd === null || stock.sampleSize < 5) {
+    return null;
+  }
+
+  return Math.floor(stock.bestStockCarryYd / 5) * 5;
+}
+
+function formatDelta(value: number | null, suffix: string) {
+  if (value === null) {
+    return "--";
+  }
+
+  const rounded = Math.abs(value) >= 10 ? Math.round(value) : Number(value.toFixed(1));
+  const sign = rounded > 0 ? "+" : "";
+
+  return `${sign}${numberFormatter.format(rounded)}${suffix}`;
+}
+
+function delta(current: number | null, previous: number | null) {
+  return current === null || previous === null ? null : roundOne(current - previous);
+}
+
+function numericValues(values: Array<number | null | undefined>) {
+  return values.filter(
+    (value): value is number => typeof value === "number" && Number.isFinite(value),
+  );
+}
+
+function medianNumber(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return percentileNumber(values, 0.5);
+}
+
+function averageNumber(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return roundOne(values.reduce((total, value) => total + value, 0) / values.length);
+}
+
+function percentileNumber(values: number[], percentile: number) {
+  const ordered = [...values].sort((left, right) => left - right);
+  const position = (ordered.length - 1) * percentile;
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+
+  if (lower === upper) {
+    return roundOne(ordered[lower]);
+  }
+
+  const weight = position - lower;
+
+  return roundOne(ordered[lower] * (1 - weight) + ordered[upper] * weight);
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function formatStockExclusionReasons(

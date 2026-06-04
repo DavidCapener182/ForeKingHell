@@ -29,6 +29,7 @@ import {
 
 import { DataPair, DataPanel, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader, MobileTabBar } from "@/components/mobile-sports";
+import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1161,17 +1162,24 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
       ) : null}
       {variant === "target" ? <TargetGridArtwork /> : null}
       {variant === "club" ? (
-        <Image
-          src={
-            isStrikeImage
-              ? "/assets/generated/progress-9i-face-strike.png"
-              : practiceClubImagePath(priority.clubType)
-          }
-          alt=""
-          fill
-          sizes="80px"
-          className={cn(isStrikeImage ? "object-cover" : "object-contain p-1")}
-        />
+        isStrikeImage ? (
+          <Image
+            src="/assets/generated/progress-9i-face-strike.png"
+            alt=""
+            fill
+            sizes="80px"
+            className="object-cover"
+          />
+        ) : (
+          <ClubArtwork
+            clubType={priority.clubType}
+            alt=""
+            className="size-full rounded-full border-0 bg-transparent"
+            imageClassName="px-2 py-2"
+            sizes="80px"
+            showGroundLine={false}
+          />
+        )
       ) : null}
     </span>
   );
@@ -1190,24 +1198,6 @@ function TargetGridArtwork() {
       <circle cx="34" cy="26" r="3" fill="#8ACB75" />
     </svg>
   );
-}
-
-function practiceClubImagePath(clubType: string) {
-  const normalized = clubType.toLowerCase();
-  const known = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
-  const aliases: Record<string, string> = {
-    "3w": "5w",
-    "7w": "5w",
-    "3h": "5i",
-    "4h": "5i",
-    "4i": "5i",
-    gw: "pw",
-    aw: "pw",
-    lw: "sw",
-  };
-  const assetType = known.has(normalized) ? normalized : (aliases[normalized] ?? "7i");
-
-  return `/assets/clubs/panel/${assetType}-side.png`;
 }
 
 function PracticePriorityCompactCard({

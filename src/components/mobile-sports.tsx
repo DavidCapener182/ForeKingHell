@@ -22,6 +22,10 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  MobileTabBar as SharedMobileTabBar,
+  type MobileTab,
+} from "@/components/mobile-tab-bar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -87,12 +91,6 @@ export function MobileIconButton({
   );
 }
 
-export type MobileTab = {
-  key: string;
-  label: string;
-  href: string;
-};
-
 const mobileRouteGroups = {
   dashboard: [
     { key: "today", label: "Latest", href: "/today" },
@@ -148,7 +146,7 @@ export function MobileRouteTabs({
   sticky?: boolean;
 }) {
   return (
-    <MobileTabBar
+    <SharedMobileTabBar
       tabs={mobileRouteGroups[group]}
       activeKey={activeKey}
       className={cn(
@@ -158,6 +156,8 @@ export function MobileRouteTabs({
     />
   );
 }
+
+export const MobileTabBar = SharedMobileTabBar;
 
 export function MobileRouteHeader({
   title,
@@ -186,50 +186,6 @@ export function MobileRouteHeader({
       </header>
       <MobileRouteTabs group={group} activeKey={activeKey} sticky={false} />
     </section>
-  );
-}
-
-export function MobileTabBar({
-  tabs,
-  activeKey,
-  className,
-  ariaLabel,
-}: {
-  tabs: MobileTab[];
-  activeKey: string;
-  className?: string;
-  ariaLabel?: string;
-}) {
-  return (
-    <nav
-      aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
-      tabIndex={0}
-      className={cn(
-        "premium-route-tabs -mx-4 flex min-w-0 gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        className,
-      )}
-    >
-      {tabs.map((tab) => {
-        const active = tab.key === activeKey;
-
-        return (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            prefetch={false}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              active
-                ? "premium-route-tab-active"
-                : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 

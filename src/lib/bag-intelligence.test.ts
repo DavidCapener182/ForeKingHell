@@ -115,12 +115,32 @@ describe("bag intelligence", () => {
       ["Feb", 7],
     ]);
     expect(trend.points[0]).toMatchObject({
-      faceDeg: 16,
-      faceToPathProxyDeg: 3,
+      faceDeg: 16.8,
+      faceToPathProxyDeg: 3.8,
       patternCode: "I",
-      patternLabel: "Push fade/slice",
+      patternLabel: "Push slice",
     });
-    expect(trend.points[0].faceToPathProxyDeg).toBe(3);
+    expect(trend.points[0].faceToPathProxyDeg).toBe(3.8);
+  });
+
+  it("labels a small open face-to-path driver delivery as a push fade", () => {
+    const trend = buildPathTrendTracking([
+      club("driver", 220, {
+        shots: [
+          pathShot("2026-03-01", 4.6, 5, 6.2),
+          pathShot("2026-03-02", 4.6, 5, 6.2),
+          pathShot("2026-03-03", 4.6, 5, 6.2),
+        ],
+      }),
+    ]);
+
+    expect(trend.points[0]).toMatchObject({
+      pathDeg: 4.6,
+      faceDeg: 6.2,
+      faceToPathProxyDeg: 1.6,
+      patternCode: "I",
+      patternLabel: "Push fade",
+    });
   });
 
   it("builds confidence heat maps around the recommended course number", () => {
@@ -200,10 +220,16 @@ function shot(shotAt: string, carryYd: number, shotCategory = "full") {
   };
 }
 
-function pathShot(shotAt: string, clubPathDeg: number, launchDirectionDeg: number) {
+function pathShot(
+  shotAt: string,
+  clubPathDeg: number,
+  launchDirectionDeg: number,
+  faceAngleDeg?: number,
+) {
   return {
     ...shot(shotAt, 220),
     clubPathDeg,
+    faceAngleDeg,
     launchDirectionDeg,
   };
 }

@@ -19,6 +19,7 @@ const columnMappingFields = new Set([
   "descentAngle",
   "attackAngle",
   "clubPath",
+  "faceAngle",
   "clubDataEstType",
   "spinRate",
   "spinAxis",

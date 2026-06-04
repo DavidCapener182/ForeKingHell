@@ -1831,6 +1831,7 @@ function previewShotsForCourse(preview: RapsodoSessionPreview): InferredCourseSh
     sideCarryYd: shot.sideCarryYd,
     attackAngleDeg: null,
     clubPathDeg: null,
+    faceAngleDeg: null,
     descentAngleDeg: null,
     smashFactor: null,
     spinRate: null,

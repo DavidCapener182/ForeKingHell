@@ -1,3 +1,5 @@
+import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
+
 export type DistanceUnit = "meters" | "yards";
 export type DetectedDistanceUnit = DistanceUnit | "unknown";
 
@@ -20,6 +22,7 @@ export type RapsodoColumnField =
   | "descentAngle"
   | "attackAngle"
   | "clubPath"
+  | "faceAngle"
   | "clubDataEstType"
   | "spinRate"
   | "spinAxis"
@@ -45,6 +48,7 @@ export type ParsedRapsodoShot = {
   sideCarryYd: number | null;
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
+  faceAngleDeg: number | null;
   descentAngleDeg: number | null;
   smashFactor: number | null;
   spinRate: number | null;
@@ -105,6 +109,7 @@ const FIELD_ALIASES = {
   descentAngle: ["descentangle", "landingangle"],
   attackAngle: ["attackangle"],
   clubPath: ["clubpath"],
+  faceAngle: ["faceangle", "clubfaceangle"],
   clubDataEstType: ["clubdataesttype", "clubdataestimatedtype"],
   spinRate: ["spinrate", "backspin"],
   spinAxis: ["spinaxis"],
@@ -128,6 +133,7 @@ export const RAPSODO_COLUMN_FIELD_LABELS: Record<RapsodoColumnField, string> = {
   descentAngle: "Descent angle",
   attackAngle: "Attack angle",
   clubPath: "Club path",
+  faceAngle: "Face angle",
   clubDataEstType: "Club data estimate",
   spinRate: "Spin rate",
   spinAxis: "Spin axis",
@@ -166,6 +172,7 @@ const FIELD_HINTS: Record<RapsodoColumnField, string[]> = {
   descentAngle: ["descentangle", "landingangle"],
   attackAngle: ["attackangle", "aoa"],
   clubPath: ["clubpath", "path"],
+  faceAngle: ["faceangle", "clubfaceangle", "face"],
   clubDataEstType: ["clubdataesttype", "clubdataestimatedtype"],
   spinRate: ["spinrate", "backspin", "spin"],
   spinAxis: ["spinaxis"],
@@ -430,6 +437,13 @@ function parseShotRow(
   const clubType = normalizeClubType(clubTypeRaw);
   const clubBrand = nullableText(valueForField(raw, "clubBrand", columnMapping));
   const clubModel = nullableText(valueForField(raw, "clubModel", columnMapping));
+  const launchDirectionDeg = parseNumber(valueForField(raw, "launchDirection", columnMapping));
+  const clubPathDeg = parseNumber(valueForField(raw, "clubPath", columnMapping));
+  const faceAngleDeg = resolveClubFaceAngleDeg({
+    faceAngleDeg: parseNumber(valueForField(raw, "faceAngle", columnMapping)),
+    launchDirectionDeg,
+    clubPathDeg,
+  });
   const warnings: string[] = [];
 
   if (clubType === "unknown") {
@@ -450,11 +464,12 @@ function parseShotRow(
     ballSpeedMph: parseNumber(valueForField(raw, "ballSpeed", columnMapping)),
     clubSpeedMph: parseNumber(valueForField(raw, "clubSpeed", columnMapping)),
     launchAngleDeg: parseNumber(valueForField(raw, "launchAngle", columnMapping)),
-    launchDirectionDeg: parseNumber(valueForField(raw, "launchDirection", columnMapping)),
+    launchDirectionDeg,
     apexFt: parseApexFt(valueForField(raw, "apex", columnMapping), apexUnit),
     sideCarryYd: parseDistanceYd(valueForField(raw, "sideCarry", columnMapping), distanceUnit),
     attackAngleDeg: parseNumber(valueForField(raw, "attackAngle", columnMapping)),
-    clubPathDeg: parseNumber(valueForField(raw, "clubPath", columnMapping)),
+    clubPathDeg,
+    faceAngleDeg,
     descentAngleDeg: parseNumber(valueForField(raw, "descentAngle", columnMapping)),
     smashFactor: parseNumber(valueForField(raw, "smashFactor", columnMapping)),
     spinRate: parseNumber(valueForField(raw, "spinRate", columnMapping)),

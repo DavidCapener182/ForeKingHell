@@ -27,6 +27,7 @@ const metricAliases: Record<string, NormalizedMetric> = {
   attackangle: "attack_angle_deg",
   clubpath: "club_path_deg",
   faceangle: "face_angle_deg",
+  clubfaceangle: "face_angle_deg",
   smashfactor: "smash_factor",
 };
 

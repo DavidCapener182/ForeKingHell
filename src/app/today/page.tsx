@@ -58,6 +58,7 @@ import {
 } from "@/app/today/today-shot-charts";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
+import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
@@ -153,6 +154,7 @@ type DriverHealthSummary = {
   path: number | null;
   targetPath: number;
   startLine: number | null;
+  faceAngle: number | null;
   faceToPath: number | null;
   status: string;
   detail: string;
@@ -1277,10 +1279,11 @@ function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
           <Flag className="size-5" />
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
         <DriverHealthMetric label="Path" value={formatDegrees(summary.path)} />
         <DriverHealthMetric label="Target" value={formatDegrees(summary.targetPath)} />
         <DriverHealthMetric label="Start line" value={formatDegrees(summary.startLine)} />
+        <DriverHealthMetric label="Face angle" value={formatDegrees(summary.faceAngle)} />
         <DriverHealthMetric label="Face-to-path" value={formatDegrees(summary.faceToPath)} />
       </div>
       <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
@@ -3245,8 +3248,12 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
   const startLine = roundOneNumber(
     averageNumbers(driverShots.map((shot) => shot.launchDirectionDeg)),
   );
-  const faceToPath =
-    isNumber(path) && isNumber(startLine) ? roundOneNumber(startLine - path) : null;
+  const faceAngle = roundOneNumber(
+    averageNumbers(driverShots.map((shot) => resolveClubFaceAngleDeg(shot))),
+  );
+  const faceToPath = roundOneNumber(
+    averageNumbers(driverShots.map((shot) => calculateFaceToPathDeg(shot))),
+  );
   const targetPath = 5;
 
   if (driverShots.length === 0) {
@@ -3254,9 +3261,10 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path: null,
       targetPath,
       startLine: null,
+      faceAngle: null,
       faceToPath: null,
       status: "No driver in review",
-      detail: "Add driver shots to see path, start line and draw health here.",
+      detail: "Add driver shots to see path, face angle and draw health here.",
       tone: "slate",
     };
   }
@@ -3266,6 +3274,7 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path: null,
       targetPath,
       startLine,
+      faceAngle,
       faceToPath: null,
       status: "Driver path missing",
       detail: "Driver shots are present, but club-path data was not captured.",
@@ -3282,6 +3291,7 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path,
       targetPath,
       startLine,
+      faceAngle,
       faceToPath,
       status: "Healthy push draw",
       detail: "Path is sitting close to the +5 target window.",
@@ -3294,6 +3304,7 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path,
       targetPath,
       startLine,
+      faceAngle,
       faceToPath,
       status: "Path under target",
       detail: "Driver is not travelling enough from the inside for the target draw.",
@@ -3306,9 +3317,10 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path,
       targetPath,
       startLine,
+      faceAngle,
       faceToPath,
       status: "Face too open",
-      detail: "Path is usable, but the start line is drifting too far right.",
+      detail: "Path is usable, but face angle is drifting too far open.",
       tone: "pink",
     };
   }
@@ -3318,9 +3330,10 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       path,
       targetPath,
       startLine,
+      faceAngle,
       faceToPath,
       status: "Face closing",
-      detail: "Path is present, but start line is closing against it.",
+      detail: "Path is present, but face angle is closing against it.",
       tone: "amber",
     };
   }
@@ -3329,6 +3342,7 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
     path,
     targetPath,
     startLine,
+    faceAngle,
     faceToPath,
     status: "Driver needs a check",
     detail: "Path is outside the target window for the preferred draw pattern.",

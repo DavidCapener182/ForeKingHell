@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
@@ -225,7 +224,6 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                   <ChallengeBadgeImage
                     challenge={featured}
                     className="h-full rounded-none"
-                    priority
                   />
                 }
                 meta={
@@ -242,7 +240,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
             <NativeListSection title={activeTab === "joined" ? "Joined" : "Recommended"}>
               {(activeTab === "joined" ? data.mine : data.challenges)
                 .slice(0, 10)
-                .map((challenge, index) => (
+                .map((challenge) => (
                   <ChallengeCard
                     key={challenge.id}
                     title={challenge.title}
@@ -254,7 +252,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                         ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}`
                         : undefined
                     }
-                    media={<ChallengeBadgeImage challenge={challenge} priority={index === 0} />}
+                    media={<ChallengeBadgeImage challenge={challenge} />}
                     meta={
                       <>
                         <span>{challenge.participantCount} players</span>
@@ -575,42 +573,164 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 function ChallengeBadgeImage({
   challenge,
   className,
-  priority = false,
 }: {
   challenge: Pick<ChallengeListItem, "title" | "templateName">;
   className?: string;
-  priority?: boolean;
 }) {
-  const src = challengeBadgeSrc(challenge);
+  const kind = getChallengeBadgeKind(challenge);
 
   return (
-    <Image
-      src={src}
-      alt=""
-      fill
-      loading={priority ? "eager" : "lazy"}
-      sizes="(min-width: 768px) 280px, calc(100vw - 2rem)"
-      className={`object-cover ${className ?? ""}`}
-    />
+    <div
+      className={cn(
+        "relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.94),rgba(243,246,248,0.98)_52%,rgba(232,238,242,1)_100%)]",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <ChallengeBadgeArtwork kind={kind} />
+    </div>
   );
 }
 
-function challengeBadgeSrc(challenge: Pick<ChallengeListItem, "title" | "templateName">) {
+function getChallengeBadgeKind(challenge: Pick<ChallengeListItem, "title" | "templateName">) {
   const text = `${challenge.title} ${challenge.templateName}`.toLowerCase();
 
   if (text.includes("long") || text.includes("drive")) {
-    return "/assets/challenge-longest-drive.webp";
+    return "long-drive" as const;
   }
 
   if (text.includes("pin") || text.includes("closest")) {
-    return "/assets/challenge-closest-pin.webp";
+    return "closest-pin" as const;
   }
 
   if (text.includes("7") || text.includes("seven") || text.includes("iron")) {
-    return "/assets/challenge-seven-iron-consistency.webp";
+    return "seven-iron" as const;
   }
 
-  return "/assets/challenge-wedge-window.webp";
+  return "wedge-window" as const;
+}
+
+function ChallengeBadgeArtwork({
+  kind,
+}: {
+  kind: "long-drive" | "closest-pin" | "seven-iron" | "wedge-window";
+}) {
+  if (kind === "long-drive") {
+    return <LongestDriveBadgeArtwork />;
+  }
+
+  if (kind === "closest-pin") {
+    return <ClosestPinBadgeArtwork />;
+  }
+
+  if (kind === "seven-iron") {
+    return <SevenIronBadgeArtwork />;
+  }
+
+  return <WedgeWindowBadgeArtwork />;
+}
+
+function LongestDriveBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#DCE7FF" />
+      <path d="M92 622C214 565 330 535 440 536C550 538 639 563 708 612V742H92Z" fill="#8ECF7A" />
+      <path d="M228 742C260 592 319 468 406 370C489 466 550 590 590 742Z" fill="#2D8C54" />
+      <path d="M238 742C272 620 322 523 388 451C451 518 501 616 540 742Z" fill="#6BC36F" opacity="0.55" />
+      <circle cx="244" cy="650" r="10" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="4" />
+      <path d="M248 650C314 558 390 446 476 314C527 236 574 182 618 152" stroke="#F97316" strokeWidth="18" strokeLinecap="round" fill="none" />
+      <path d="M612 140L672 164L610 198Z" fill="#0F172A" />
+      <rect x="82" y="96" width="230" height="74" rx="37" fill="#FFFFFF" opacity="0.94" />
+      <text x="197" y="144" textAnchor="middle" fill="#1E3A8A" fontSize="42" fontWeight="700">
+        Longest drive
+      </text>
+      <text x="618" y="678" textAnchor="end" fill="#1E3A8A" fontSize="116" fontWeight="800">
+        300+
+      </text>
+      <text x="618" y="730" textAnchor="end" fill="#334155" fontSize="42" fontWeight="700">
+        yards challenge
+      </text>
+    </svg>
+  );
+}
+
+function ClosestPinBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#F8F2D7" />
+      <circle cx="400" cy="430" r="214" fill="#D9F3BF" />
+      <circle cx="400" cy="430" r="154" fill="#B5E28D" />
+      <circle cx="400" cy="430" r="96" fill="#FDFDF7" />
+      <circle cx="400" cy="430" r="38" fill="#EAB308" />
+      <path d="M404 250V432" stroke="#475569" strokeWidth="10" strokeLinecap="round" />
+      <path d="M404 252L498 282L404 320Z" fill="#F97316" />
+      <circle cx="400" cy="430" r="14" fill="#0F172A" />
+      <circle cx="276" cy="314" r="8" fill="#F59E0B" opacity="0.6" />
+      <circle cx="544" cy="542" r="8" fill="#F59E0B" opacity="0.6" />
+      <circle cx="520" cy="316" r="8" fill="#F59E0B" opacity="0.6" />
+      <rect x="98" y="98" width="220" height="74" rx="37" fill="#FFFFFF" opacity="0.95" />
+      <text x="208" y="146" textAnchor="middle" fill="#9A6700" fontSize="42" fontWeight="700">
+        Closest pin
+      </text>
+      <text x="400" y="688" textAnchor="middle" fill="#0F172A" fontSize="120" fontWeight="800">
+        3 ft
+      </text>
+      <text x="400" y="736" textAnchor="middle" fill="#475569" fontSize="40" fontWeight="700">
+        landing-circle pressure
+      </text>
+    </svg>
+  );
+}
+
+function SevenIronBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#FCE7F3" />
+      <rect x="154" y="190" width="492" height="372" rx="54" fill="#FFFFFF" opacity="0.92" />
+      <path d="M208 500C287 449 351 424 400 424C449 424 514 449 594 500" stroke="#CBD5E1" strokeWidth="14" strokeLinecap="round" fill="none" />
+      <path d="M226 486C300 438 358 414 400 414C442 414 500 438 574 486" stroke="#EC4899" strokeWidth="10" strokeLinecap="round" fill="none" />
+      <circle cx="346" cy="448" r="12" fill="#EC4899" />
+      <circle cx="386" cy="430" r="12" fill="#EC4899" />
+      <circle cx="423" cy="444" r="12" fill="#EC4899" />
+      <circle cx="459" cy="434" r="12" fill="#EC4899" />
+      <circle cx="400" cy="470" r="14" fill="#0F172A" />
+      <rect x="92" y="98" width="258" height="74" rx="37" fill="#FFFFFF" opacity="0.95" />
+      <text x="221" y="146" textAnchor="middle" fill="#BE185D" fontSize="42" fontWeight="700">
+        7i consistency
+      </text>
+      <text x="400" y="642" textAnchor="middle" fill="#0F172A" fontSize="120" fontWeight="800">
+        12 yd
+      </text>
+      <text x="400" y="694" textAnchor="middle" fill="#475569" fontSize="40" fontWeight="700">
+        carry window spread
+      </text>
+    </svg>
+  );
+}
+
+function WedgeWindowBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#DCFCE7" />
+      <rect x="150" y="182" width="500" height="392" rx="48" fill="#FFFFFF" opacity="0.92" />
+      <path d="M220 468H580" stroke="#CBD5E1" strokeWidth="10" strokeLinecap="round" />
+      <path d="M220 404H580" stroke="#CBD5E1" strokeWidth="10" strokeLinecap="round" />
+      <path d="M220 340H580" stroke="#CBD5E1" strokeWidth="10" strokeLinecap="round" />
+      <rect x="266" y="322" width="270" height="164" rx="28" fill="#BBF7D0" />
+      <path d="M288 456C334 421 373 404 404 404C438 404 476 421 520 456" stroke="#16A34A" strokeWidth="12" strokeLinecap="round" fill="none" />
+      <circle cx="402" cy="404" r="18" fill="#15803D" />
+      <rect x="92" y="98" width="246" height="74" rx="37" fill="#FFFFFF" opacity="0.95" />
+      <text x="215" y="146" textAnchor="middle" fill="#166534" fontSize="42" fontWeight="700">
+        Wedge window
+      </text>
+      <text x="400" y="648" textAnchor="middle" fill="#0F172A" fontSize="120" fontWeight="800">
+        95-110
+      </text>
+      <text x="400" y="698" textAnchor="middle" fill="#475569" fontSize="40" fontWeight="700">
+        target-yardage ladder
+      </text>
+    </svg>
+  );
 }
 
 function MobileDailyCoachDrills({

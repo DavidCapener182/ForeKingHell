@@ -87,6 +87,7 @@ const shotSortMetrics = [
   "apex",
   "attack",
   "path",
+  "face",
   "descent",
   "smash",
 ] as const;
@@ -106,6 +107,7 @@ const shotSortLabels: Record<ShotSortMetric, string> = {
   apex: "Apex",
   attack: "Attack",
   path: "Path",
+  face: "Face angle",
   descent: "Descent",
   smash: "Smash",
 };
@@ -512,6 +514,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                           <DataPair label="Apex" value={formatMetric(shot.apexFt)} />
                           <DataPair label="Attack" value={formatMetric(shot.attackAngleDeg)} />
                           <DataPair label="Path" value={formatMetric(shot.clubPathDeg)} />
+                          <DataPair label="Face" value={formatMetric(shot.faceAngleDeg)} />
                         </div>
                       </details>
                     </MobileDataCard>
@@ -580,6 +583,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                           <dd>{formatMetric(shot.attackAngleDeg)}</dd>
                           <dt>Path</dt>
                           <dd>{formatMetric(shot.clubPathDeg)}</dd>
+                          <dt>Face</dt>
+                          <dd>{formatMetric(shot.faceAngleDeg)}</dd>
                           <dt>Descent</dt>
                           <dd>{formatMetric(shot.descentAngleDeg)}</dd>
                           <dt>Smash</dt>
@@ -793,6 +798,7 @@ async function getShotDatabase(filters: ShotFilters) {
         sideCarryYd: shots.sideCarryYd,
         attackAngleDeg: shots.attackAngleDeg,
         clubPathDeg: shots.clubPathDeg,
+        faceAngleDeg: shots.faceAngleDeg,
         descentAngleDeg: shots.descentAngleDeg,
         smashFactor: shots.smashFactor,
         clubDataEstType: shots.clubDataEstType,
@@ -884,6 +890,8 @@ function shotSortColumn(sort: Exclude<ShotSortMetric, "recent">) {
       return shots.attackAngleDeg;
     case "path":
       return shots.clubPathDeg;
+    case "face":
+      return shots.faceAngleDeg;
     case "descent":
       return shots.descentAngleDeg;
     case "smash":
