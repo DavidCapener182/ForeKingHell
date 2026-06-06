@@ -1,5 +1,6 @@
 import type { RapsodoProviderKind } from "@/lib/rapsodo/cloud-client";
 import type { RapsodoClubChoice, RapsodoClubSuggestion } from "@/lib/rapsodo/club-inference";
+import type { CourseScorecardHole } from "@/lib/course-scorecard";
 import type { DistanceUnit } from "@/lib/rapsodo/parser";
 
 export type RapsodoSessionListItem = {
@@ -44,6 +45,8 @@ export type RapsodoSessionPreview = {
   sessionType: "range" | "round" | "simulator" | "simulated_course";
   sessionDate: string;
   courseName: string;
+  courseScorecard: CourseScorecardHole[];
+  courseScorecardSource: "saved_round" | "course_database" | null;
   warnings: string[];
   shotCount: number;
   rawRowCount: number;

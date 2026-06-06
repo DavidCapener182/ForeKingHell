@@ -51,8 +51,74 @@ describe("buildProgressSummary", () => {
     expect(summary.rankings.mostImproved?.clubType).toBe("driver");
     expect(summary.rankings.mostTrusted?.clubType).toBe("driver");
     expect(summary.practicePlan[0]?.clubType).toBe("5w");
+    expect(summary.rankings.currentForm?.clubType).toBe("driver");
     expect(summary.signals.some((signal) => signal.label.includes("Driver"))).toBe(true);
     expect(summary.journey.some((event) => event.title.includes("Driver"))).toBe(true);
+  });
+
+  it("separates latest-session form from long-term trust", () => {
+    const clubs: ProgressClub[] = [
+      progressClub({
+        clubId: "seven-iron",
+        clubType: "7i",
+        baselineCarry: 139,
+        currentCarry: 140,
+        baselineOffline: 3,
+        currentOffline: 3,
+        currentBallSpeed: 99,
+        launchAngleDeg: 22,
+      }),
+      progressClub({
+        clubId: "nine-iron",
+        clubType: "9i",
+        baselineCarry: 112,
+        currentCarry: 124,
+        baselineOffline: 24,
+        currentOffline: 2,
+        currentBallSpeed: 94,
+        launchAngleDeg: 26,
+      }),
+    ];
+
+    const summary = buildProgressSummary(clubs);
+
+    expect(summary.rankings.mostTrusted?.clubType).toBe("7i");
+    expect(summary.rankings.currentForm?.clubType).toBe("9i");
+  });
+
+  it("prioritises volatile long-game start line over new wedge strike work", () => {
+    const clubs: ProgressClub[] = [
+      progressClub({
+        clubId: "five-wood",
+        clubType: "5w",
+        baselineCarry: 164,
+        currentCarry: 166,
+        baselineOffline: 26,
+        currentOffline: 42,
+        currentBallSpeed: 118,
+        launchAngleDeg: 14,
+        volatile: true,
+      }),
+      progressClub({
+        clubId: "gap-wedge",
+        clubType: "gw",
+        baselineCarry: 82,
+        currentCarry: 84,
+        baselineOffline: 5,
+        currentOffline: 4,
+        currentBallSpeed: 70,
+        launchAngleDeg: 30,
+        smashFactor: 1,
+      }),
+    ];
+
+    const summary = buildProgressSummary(clubs);
+
+    expect(summary.practicePlan[0]?.clubType).toBe("5w");
+    expect(summary.practicePlan[0]?.title).toBe("Stabilise 5W start line");
+    expect(summary.practicePlan.find((priority) => priority.clubType === "gw")?.title).toBe(
+      "Centre GW strike",
+    );
   });
 
   it("creates a baseline-building signal when there is not enough comparison data", () => {
@@ -82,6 +148,8 @@ function progressClub({
   baselineOffline,
   currentOffline,
   currentBallSpeed,
+  launchAngleDeg = 14,
+  smashFactor = 1.44,
   volatile = false,
 }: {
   clubId: string;
@@ -91,6 +159,8 @@ function progressClub({
   baselineOffline: number;
   currentOffline: number;
   currentBallSpeed: number;
+  launchAngleDeg?: number;
+  smashFactor?: number;
   volatile?: boolean;
 }): ProgressClub {
   const baseline = Array.from({ length: 18 }, (_, index) =>
@@ -102,6 +172,8 @@ function progressClub({
       carryYd: baselineCarry + (index % 3),
       sideCarryYd: baselineOffline + (index % 3),
       ballSpeedMph: currentBallSpeed - 5,
+      launchAngleDeg,
+      smashFactor,
     }),
   );
   const current = Array.from({ length: 18 }, (_, index) =>
@@ -113,6 +185,8 @@ function progressClub({
       carryYd: currentCarry + (index % 3),
       sideCarryYd: currentOffline + (volatile ? (index % 2 === 0 ? 18 : -22) : index % 3),
       ballSpeedMph: currentBallSpeed,
+      launchAngleDeg,
+      smashFactor,
     }),
   );
 

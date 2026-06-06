@@ -24,6 +24,7 @@ import {
 } from "@/lib/rapsodo/token-cookie";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { findReusableCourseScorecardForSession } from "@/lib/courses";
 import { type SaveRapsodoImportInput, saveRapsodoImport } from "@/lib/imports/save-rapsodo-import";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { formatClubType } from "@/lib/club-format";
@@ -140,6 +141,7 @@ export async function previewRapsodoSessionAction(
   }
 
   try {
+    const userId = await requireCurrentUserId();
     const client = new RapsodoCloudClient();
     const rawCsvText = await client.exportSessionCsv(stored.token, session);
     const parsed = parseRapsodoCsv(rawCsvText, { fallbackDistanceUnit: "yards" });
@@ -154,11 +156,13 @@ export async function previewRapsodoSessionAction(
     }
 
     const sessionDate = parsed.exportedAtIso ?? session.dateIso ?? new Date().toISOString();
-    const [clubChoices, shotRefs] = await Promise.all([
+    const courseName = session.courseName ?? session.title;
+    const [clubChoices, shotRefs, reusableScorecard] = await Promise.all([
       getRapsodoClubChoices(client, stored.token),
       client
         .listSessionShotRefs(stored.token, session, Math.max(parsed.shots.length + 20, 100))
         .catch(() => []),
+      findReusableCourseScorecardForSession({ userId, courseName }),
     ]);
     const preferredClubKeyByRowNumber = new Map(
       parsed.shots.map((shot) => [
@@ -196,6 +200,8 @@ export async function previewRapsodoSessionAction(
         sessionType: inferRapsodoImportSessionType(session),
         sessionDate,
         courseName: session.courseName ?? "",
+        courseScorecard: reusableScorecard?.holes ?? [],
+        courseScorecardSource: reusableScorecard?.source ?? null,
         warnings: parsed.warnings,
         shotCount: parsed.shotCount,
         rawRowCount: parsed.rawRows.length,

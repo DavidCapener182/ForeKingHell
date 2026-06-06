@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/table";
 import { ballModels, clubEquipmentHistory, clubs, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { clubSortValue, formatClubType } from "@/lib/club-format";
+import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import {
@@ -369,6 +369,8 @@ function CurrentSetupStrip({
           <div key={item.key} className="premium-card grid min-w-[76vw] gap-3 p-3 sm:min-w-0">
             <ClubArtwork
               clubType={primaryClub?.type}
+              brand={primaryClub?.brand}
+              model={primaryClub?.model}
               alt=""
               source="generated-v2"
               className="h-28 rounded-lg"
@@ -512,6 +514,8 @@ function ClubIntelligenceSection({ profiles }: { profiles: ClubProfile[] }) {
             >
               <ClubArtwork
                 clubType={profile.club.type}
+                brand={profile.club.brand}
+                model={profile.club.model}
                 alt=""
                 source="generated-v2"
                 className="h-32 rounded-none border-0 border-b"
@@ -566,6 +570,8 @@ function BagTimelineSection({ profiles }: { profiles: ClubProfile[] }) {
               <div className="flex min-w-0 items-center gap-3">
                 <ClubArtwork
                   clubType={profile.club.type}
+                  brand={profile.club.brand}
+                  model={profile.club.model}
                   alt=""
                   source="generated-v2"
                   className="h-16 w-24 shrink-0 rounded-md"
@@ -880,7 +886,7 @@ async function getEquipmentData() {
     ]),
   );
   const retiredClubs = clubRows
-    .filter((club) => !club.active)
+    .filter((club) => !club.active && isTrackedClubType(club.type))
     .map((club) => ({
       ...club,
       shotCount: shotStatsByClubId.get(club.id)?.shotCount ?? 0,
@@ -892,7 +898,7 @@ async function getEquipmentData() {
       return rightTime - leftTime || left.type.localeCompare(right.type);
     });
   const activeClubs = clubRows
-    .filter((club) => club.active)
+    .filter((club) => club.active && isTrackedClubType(club.type))
     .sort(
       (left, right) =>
         clubSortValue(left.type) - clubSortValue(right.type) ||

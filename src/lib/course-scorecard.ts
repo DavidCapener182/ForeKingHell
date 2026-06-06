@@ -91,6 +91,19 @@ export function parseScorecardText(text: string | string[]): ScorecardParseResul
   return { holes, warnings };
 }
 
+export function formatCourseScorecardText(scorecard: CourseScorecardHole[]) {
+  return scorecard
+    .map((hole) =>
+      [
+        hole.holeNumber,
+        hole.par,
+        hole.yards,
+        ...(hole.name ? [hole.name.replace(/[,\s]+/g, " ").trim()] : []),
+      ].join(", "),
+    )
+    .join("\n");
+}
+
 export function inferCourseShots(
   shots: ParsedRapsodoShot[],
   scorecard: CourseScorecardHole[],

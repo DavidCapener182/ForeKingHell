@@ -102,6 +102,18 @@ export type TrustLadderItem = {
   tone: ProgressTone;
 };
 
+export type CurrentFormSignal = {
+  clubId: string;
+  clubType: string;
+  shotCount: number;
+  score: number;
+  carryDeltaYd: number | null;
+  ballSpeedDeltaMph: number | null;
+  offlineDeltaYd: number | null;
+  latestOfflineAverageYd: number | null;
+  tone: ProgressTone;
+};
+
 export type ProgressSummary = {
   totals: {
     clubs: number;
@@ -124,6 +136,7 @@ export type ProgressSummary = {
     mostImproved: ProgressClubRow | null;
     needsWork: ProgressClubRow | null;
     mostVolatile: ProgressClubRow | null;
+    currentForm: CurrentFormSignal | null;
   };
 };
 
@@ -160,6 +173,7 @@ export function buildProgressSummary(clubs: ProgressClub[]): ProgressSummary {
         clubRows.filter((club) => club.sampleSize >= 3),
         (club) => volatilityScore(findClub(clubs, club.clubId)?.analytics),
       )[0] ?? null,
+    currentForm: buildCurrentFormSignal(clubs, clubRows),
   };
 
   return {
@@ -402,6 +416,46 @@ function buildBestSignal(rows: ProgressClubRow[]): BestSignal | null {
   return null;
 }
 
+function buildCurrentFormSignal(
+  clubs: ProgressClub[],
+  rows: ProgressClubRow[],
+): CurrentFormSignal | null {
+  const rowById = new Map(rows.map((row) => [row.clubId, row]));
+  const candidates = clubs
+    .map((club) => {
+      const row = rowById.get(club.clubId);
+      const latest = club.analytics.progress.latestSession;
+
+      if (!row || !latest || latest.shotCount < 3) {
+        return null;
+      }
+
+      const score = currentFormScore(club.clubType, row, club.analytics);
+      const offlineDeltaYd = club.analytics.progress.lastSessionDelta?.offlineDeltaYd ?? null;
+      const signal: CurrentFormSignal = {
+        clubId: club.clubId,
+        clubType: club.clubType,
+        shotCount: latest.shotCount,
+        score,
+        carryDeltaYd: club.analytics.progress.lastSessionDelta?.carryDeltaYd ?? null,
+        ballSpeedDeltaMph: club.analytics.progress.lastSessionDelta?.ballSpeedDeltaMph ?? null,
+        offlineDeltaYd,
+        latestOfflineAverageYd: latest.absoluteOfflineAverageYd,
+        tone:
+          score >= 58 || (isNumber(offlineDeltaYd) && offlineDeltaYd <= -2)
+            ? "green"
+            : score >= 46
+              ? "sky"
+              : "slate",
+      };
+
+      return signal;
+    })
+    .filter((candidate): candidate is CurrentFormSignal => candidate !== null);
+
+  return sortBy(candidates, (candidate) => candidate.score)[0] ?? null;
+}
+
 function buildCoachSummaryGroups(
   clubs: ProgressClub[],
   rows: ProgressClubRow[],
@@ -521,14 +575,23 @@ function buildPracticePlan(clubs: ProgressClub[]): PracticePriority[] {
       const trustGap = 100 - analytics.consistency.clubTrustIndex;
       const launchGap = 100 - (analytics.launch.launchWindowScore ?? 60);
       const strikeGap = 100 - (analytics.strike.highSmashRate ?? 55);
-      const dataPenalty = analytics.sample.stockShots < 10 ? 12 : 0;
+      const directionRisk = directionRiskScore(club.clubType, analytics);
+      const dataPenalty =
+        analytics.sample.stockShots < 10 ? 12 : analytics.sample.stockShots < 18 ? 4 : 0;
+      const longGameDirectionBoost = isLongGameClub(club.clubType)
+        ? directionRisk * 0.2
+        : directionRisk * 0.06;
+      const newScoringWedgeAdjustment =
+        isScoringWedgeClub(club.clubType) && analytics.sample.stockShots < 18 ? -8 : 0;
       const score =
-        trustGap * 0.34 +
-        bigMissRate * 0.24 +
+        trustGap * 0.3 +
+        bigMissRate * 0.28 +
         playableGap * 0.2 +
-        launchGap * 0.12 +
-        strikeGap * 0.1 +
-        dataPenalty;
+        launchGap * 0.1 +
+        strikeGap * 0.08 +
+        longGameDirectionBoost +
+        dataPenalty +
+        newScoringWedgeAdjustment;
 
       return {
         clubId: club.clubId,
@@ -536,7 +599,7 @@ function buildPracticePlan(clubs: ProgressClub[]): PracticePriority[] {
         title: practiceTitle(club.clubType, analytics),
         reason: practiceReason(analytics),
         drill: analytics.practice.drill,
-        score: Math.round(score),
+        score: Math.max(0, Math.round(score)),
         priorityLabel: priorityLabel(score),
         tone: score >= 62 ? "amber" : score >= 46 ? "amber" : score >= 34 ? "sky" : "green",
       } satisfies PracticePriority;
@@ -708,9 +771,98 @@ function volatilityScore(analytics: ClubAnalytics | undefined) {
   );
 }
 
+function currentFormScore(clubType: string, row: ProgressClubRow, analytics: ClubAnalytics) {
+  const latest = analytics.progress.latestSession;
+
+  if (!latest) {
+    return 0;
+  }
+
+  const targetOffline = currentFormOfflineTarget(clubType);
+  const latestOffline =
+    latest.absoluteOfflineAverageYd ?? analytics.accuracy.absoluteOfflineAverageYd;
+  const offlineScore = isNumber(latestOffline)
+    ? Math.max(0, targetOffline - latestOffline) * 0.55 -
+      Math.max(0, latestOffline - targetOffline) * 0.45
+    : 0;
+  const carryDelta = analytics.progress.lastSessionDelta?.carryDeltaYd ?? 0;
+  const speedDelta = analytics.progress.lastSessionDelta?.ballSpeedDeltaMph ?? 0;
+  const offlineDelta = analytics.progress.lastSessionDelta?.offlineDeltaYd ?? 0;
+  const playableScore = (analytics.accuracy.playableShotRate ?? 50) * 0.15;
+  const sampleScore = Math.min(latest.shotCount, 12) * 1.4;
+  const trustScore = row.trustIndex * 0.22;
+
+  return Math.round(
+    sampleScore +
+      trustScore +
+      playableScore +
+      offlineScore +
+      carryDelta * 0.8 +
+      speedDelta * 1.4 -
+      offlineDelta * 1.2,
+  );
+}
+
+function currentFormOfflineTarget(clubType: string) {
+  const family = progressClubFamily(clubType);
+
+  if (family === "driver") {
+    return 32;
+  }
+
+  if (family === "wood" || family === "hybrid") {
+    return 26;
+  }
+
+  if (family === "wedge") {
+    return 13;
+  }
+
+  return 19;
+}
+
+function directionRiskScore(clubType: string, analytics: ClubAnalytics) {
+  const family = progressClubFamily(clubType);
+  const bigMissRate = analytics.accuracy.bigMissRate ?? 0;
+  const playableGap = 100 - (analytics.accuracy.playableShotRate ?? 50);
+  const startLineRisk = scoreFromRaw(analytics.accuracy.startLineStdDevDeg ?? 0, 7);
+  const coneLimit =
+    family === "driver"
+      ? 82
+      : family === "wood" || family === "hybrid"
+        ? 66
+        : family === "wedge"
+          ? 32
+          : 46;
+  const coneRisk = scoreFromRaw(analytics.accuracy.shotConeWidthYd ?? 0, coneLimit);
+
+  return Math.max(bigMissRate, playableGap, startLineRisk, coneRisk);
+}
+
+function hasStartLinePriority(clubType: string, analytics: ClubAnalytics) {
+  if (!isLongGameClub(clubType)) {
+    return false;
+  }
+
+  return (
+    (analytics.accuracy.bigMissRate ?? 0) >= 24 || directionRiskScore(clubType, analytics) >= 52
+  );
+}
+
 function practiceReason(analytics: ClubAnalytics) {
   if (analytics.sample.stockShots < 10) {
     return "Needs more clean full-shot data before strong conclusions.";
+  }
+
+  if (hasStartLinePriority(analytics.clubType, analytics)) {
+    const shotCone = analytics.accuracy.shotConeWidthYd;
+    const bigMissRate = analytics.accuracy.bigMissRate;
+
+    if (isNumber(shotCone) && isNumber(bigMissRate)) {
+      return `Shot cone is ${Math.round(shotCone)} yd and big miss rate is ${Math.round(bigMissRate)}%. Start line is the first priority.`;
+    }
+
+    return "Start line is the most volatile current signal.";
   }
 
   if ((analytics.accuracy.bigMissRate ?? 0) >= 30) {
@@ -738,7 +890,7 @@ function practiceTitle(clubType: string, analytics: ClubAnalytics) {
     return `Build ${club} baseline`;
   }
 
-  if ((analytics.accuracy.bigMissRate ?? 0) >= 30) {
+  if ((analytics.accuracy.bigMissRate ?? 0) >= 30 || hasStartLinePriority(clubType, analytics)) {
     return `Stabilise ${club} start line`;
   }
 
@@ -782,6 +934,47 @@ function trustLabel(value: number) {
   }
 
   return "Needs work";
+}
+
+function progressClubFamily(clubType: string) {
+  const normalized = clubType.toLowerCase();
+
+  if (normalized === "driver") {
+    return "driver";
+  }
+
+  if (/^[1-9]w$/.test(normalized)) {
+    return "wood";
+  }
+
+  if (/^[1-9]h$/.test(normalized)) {
+    return "hybrid";
+  }
+
+  if (["pw", "gw", "aw", "sw", "lw", "wedge"].includes(normalized)) {
+    return "wedge";
+  }
+
+  return "iron";
+}
+
+function isLongGameClub(clubType: string) {
+  const normalized = clubType.toLowerCase();
+
+  return (
+    normalized === "driver" ||
+    /^[1-9]w$/.test(normalized) ||
+    /^[1-9]h$/.test(normalized) ||
+    ["2i", "3i", "4i", "5i"].includes(normalized)
+  );
+}
+
+function isScoringWedgeClub(clubType: string) {
+  return ["pw", "gw", "aw", "sw", "lw", "wedge"].includes(clubType.toLowerCase());
+}
+
+function scoreFromRaw(value: number, worstExpected: number) {
+  return Math.round(Math.max(0, Math.min(1, value / worstExpected)) * 100);
 }
 
 function journeyDateForClub(clubs: ProgressClub[], clubId: string) {

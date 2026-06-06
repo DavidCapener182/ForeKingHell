@@ -86,6 +86,7 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const MIN_CONFIDENT_CLUB_SHOTS = 5;
 
 type MetricUnit = "yd" | "mph" | "deg" | "ft" | "ratio";
 type HighlightDirection = "higher" | "lower";
@@ -135,6 +136,12 @@ type WhatChangedItem = {
   priority: number;
 };
 
+type VerdictReasonItem = {
+  label: string;
+  value: string;
+  tone: ReviewTone;
+};
+
 type SessionImpactItem = {
   clubLabel: string;
   value: number | null;
@@ -142,11 +149,11 @@ type SessionImpactItem = {
   tone: ReviewTone;
 };
 
-type ConfidenceChangeItem = {
+type ConfidenceMeterItem = {
   clubLabel: string;
-  previous: number | null;
-  current: number | null;
-  delta: number | null;
+  score: number | null;
+  label: string;
+  reason: string;
   tone: ReviewTone;
 };
 
@@ -213,7 +220,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <MobileRouteTabs group="dashboard" activeKey="today" />
         <MobileStatusAction
           label="Latest practice"
-          value={data.overall.title}
+          value={heroVerdictTitle(data)}
           detail={reviewNarrative(data)}
           action={
             <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
@@ -592,6 +599,7 @@ function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
   const score = practiceScoreSummary(data);
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
+  const storyChips = verdictStoryChips(data);
 
   return (
     <section
@@ -604,7 +612,7 @@ function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
             Session verdict
           </p>
           <h2 className="mt-1 text-3xl font-semibold leading-8 tracking-normal text-[#050505]">
-            {data.overall.title}
+            {heroVerdictTitle(data)}
           </h2>
         </div>
         <div className="shrink-0 rounded-lg border border-[#DDE7DF] bg-[#F5F9F6] px-3 py-2 text-right">
@@ -616,6 +624,16 @@ function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
           </p>
           <p className="text-[11px] font-medium text-[#6B7280]">/100</p>
         </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {storyChips.slice(0, 3).map((chip) => (
+          <MobileVerdictMetric
+            key={`${chip.label}-${chip.value}`}
+            label={chip.label}
+            value={chip.value}
+            tone={chip.tone}
+          />
+        ))}
       </div>
       <div className="grid grid-cols-3 gap-2">
         <MobileVerdictMetric
@@ -1032,8 +1050,9 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
   const reliable = reliableClubComparison(data.clubComparisons);
   const changes = whatChangedItems(data);
   const impact = sessionImpactItems(data);
-  const confidence = confidenceChangeItems(data);
+  const confidence = confidenceMeterItems(data);
   const driver = driverHealthSummary(data);
+  const storyChips = verdictStoryChips(data);
 
   return (
     <section className="overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-6 shadow-sm lg:p-8">
@@ -1046,8 +1065,15 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
             </span>
           </div>
           <h1 className="mt-4 max-w-4xl text-6xl font-semibold uppercase leading-[1.02] tracking-normal text-slate-950 xl:text-7xl">
-            {data.overall.title}
+            {heroVerdictTitle(data)}
           </h1>
+          {storyChips.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {storyChips.map((chip) => (
+                <VerdictReasonChip key={`${chip.label}-${chip.value}`} item={chip} />
+              ))}
+            </div>
+          ) : null}
           <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-700 xl:text-lg">
             {reviewNarrative(data)}
           </p>
@@ -1108,7 +1134,7 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
 
       <div className="mt-3 grid gap-3 xl:grid-cols-2">
         <SessionImpactCard items={impact} />
-        <ConfidenceChangeCard items={confidence} />
+        <ConfidenceMeterCard items={confidence} />
       </div>
 
       <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
@@ -1281,7 +1307,7 @@ function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
         <DriverHealthMetric label="Path" value={formatDegrees(summary.path)} />
-        <DriverHealthMetric label="Target" value={formatDegrees(summary.targetPath)} />
+        <DriverHealthMetric label="Normal" value={formatDegrees(summary.targetPath)} />
         <DriverHealthMetric label="Start line" value={formatDegrees(summary.startLine)} />
         <DriverHealthMetric label="Face angle" value={formatDegrees(summary.faceAngle)} />
         <DriverHealthMetric label="Face-to-path" value={formatDegrees(summary.faceToPath)} />
@@ -1315,10 +1341,10 @@ function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-            Session impact
+            Session value
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
-            Strokes saved / lost
+            Estimated strokes effect
           </h2>
         </div>
         <span className={`rounded-full px-3 py-1 text-sm font-semibold ${reviewStatusClass(tone)}`}>
@@ -1348,22 +1374,23 @@ function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
         )}
       </div>
       <p className="mt-3 text-xs font-medium leading-5 text-muted-foreground">
-        Estimated from carry, dispersion, playable rate and consistency deltas.
+        Estimated from carry, dispersion, playable rate and consistency. Use it directionally, not
+        as a handicap calculation.
       </p>
     </div>
   );
 }
 
-function ConfidenceChangeCard({ items }: { items: ConfidenceChangeItem[] }) {
+function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-            Confidence change
+            Confidence meter
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
-            Club confidence
+            Which clubs can you trust?
           </h2>
         </div>
         <ShieldCheck className="size-5 text-emerald-700" />
@@ -1377,21 +1404,26 @@ function ConfidenceChangeCard({ items }: { items: ConfidenceChangeItem[] }) {
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="font-semibold text-slate-950">{item.clubLabel}</p>
-                <p className={`text-sm font-semibold ${impactValueClass(item.tone)}`}>
-                  {confidenceRangeText(item)}
-                </p>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${reviewStatusClass(
+                    item.tone,
+                  )}`}
+                >
+                  {item.label}
+                </span>
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
                 <span
                   className={`block h-full rounded-full ${rateBarClass(item.tone)}`}
-                  style={{ width: `${clamp(item.current ?? 0, 0, 100)}%` }}
+                  style={{ width: `${clamp(item.score ?? 0, 0, 100)}%` }}
                 />
               </div>
+              <p className="mt-2 text-xs font-medium leading-4 text-slate-600">{item.reason}</p>
             </div>
           ))
         ) : (
           <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-sm font-medium text-slate-600">
-            Confidence appears once comparable clubs exist.
+            Confidence appears once this review has club-level shot data.
           </div>
         )}
       </div>
@@ -1408,6 +1440,19 @@ function HeroScopePill({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
+function VerdictReasonChip({ item }: { item: VerdictReasonItem }) {
+  return (
+    <span
+      className={`inline-flex min-h-9 items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold shadow-sm ${reviewStatusClass(
+        item.tone,
+      )}`}
+    >
+      <span>{item.label}</span>
+      <span className="font-medium opacity-80">{item.value}</span>
+    </span>
+  );
+}
+
 function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
   return (
     <div className="relative min-h-[180px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-3 text-white shadow-sm sm:min-h-[280px] sm:p-4">
@@ -1415,24 +1460,31 @@ function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
       <div className="relative z-10 flex h-full flex-col justify-end">
         <div className="w-full rounded-lg border border-white/15 bg-white/95 px-3 py-2 text-slate-950 shadow-sm">
           {shot ? (
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <p className="truncate text-[11px] font-semibold uppercase tracking-normal text-slate-700">
-                  Shot of the day
-                </p>
-                <Crosshair className="size-3.5 shrink-0 text-sky-600" />
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-normal text-slate-700">
+                    Shot of the day
+                  </p>
+                  <Crosshair className="size-3.5 shrink-0 text-sky-600" />
+                </div>
+                <h3 className="min-w-0 truncate text-lg font-semibold leading-tight tracking-normal">
+                  {bestShotTitle(shot)}
+                </h3>
               </div>
-              <h3 className="min-w-0 truncate text-lg font-semibold leading-tight tracking-normal">
-                {bestShotTitle(shot)}
-              </h3>
-              <p className="text-xs font-medium leading-4 text-slate-700">
-                {formatYards(shot.totalYd)} total
+              <p className="rounded-md border border-sky-100 bg-sky-50 px-2 py-1 text-xs font-semibold leading-4 text-sky-900">
+                {shotOfDayReason(shot)}
               </p>
-              <ShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-              <p className="text-xs font-medium leading-4 text-slate-700">
-                {formatYards(shot.carryYd)} carry
-              </p>
-              <ShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
+                <p className="text-xs font-medium leading-4 text-slate-700">
+                  {formatYards(shot.totalYd)} total
+                </p>
+                <ShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+                <p className="text-xs font-medium leading-4 text-slate-700">
+                  {formatYards(shot.carryYd)} carry
+                </p>
+                <ShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
+              </div>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
@@ -1910,7 +1962,7 @@ function ClubPerformancePanel({
         title="Club performance"
         description={clubPerformanceNarrative(data)}
         action={
-          <StatusPill tone={verdictTone(data.overall.verdict)}>{data.overall.title}</StatusPill>
+          <StatusPill tone={verdictTone(data.overall.verdict)}>{heroVerdictTitle(data)}</StatusPill>
         }
       />
       <CardContent className="space-y-4">
@@ -1934,8 +1986,8 @@ function ClubPerformancePanel({
                   title={comparison.clubLabel}
                   subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
                   action={
-                    <Badge className={verdictBadgeClass(comparison.verdict)}>
-                      {verdictLabel(comparison.verdict)}
+                    <Badge className={clubComparisonBadgeClass(comparison)}>
+                      {clubComparisonCallLabel(comparison)}
                     </Badge>
                   }
                 >
@@ -1967,7 +2019,7 @@ function ClubPerformancePanel({
                     )}
                   />
                   <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
-                    {comparison.summary}
+                    {clubComparisonSignalText(comparison)}
                   </p>
                 </MobileDataCard>
               ))}
@@ -2650,8 +2702,8 @@ function ClubComparisonRow({
         {comparison.clubLabel}
       </TableCell>
       <TableCell className="px-2">
-        <Badge className={verdictBadgeClass(comparison.verdict)}>
-          {verdictLabel(comparison.verdict)}
+        <Badge className={clubComparisonBadgeClass(comparison)}>
+          {clubComparisonCallLabel(comparison)}
         </Badge>
       </TableCell>
       <TableCell className="px-2 text-right">
@@ -2713,6 +2765,10 @@ function formatDeltaPair(
 }
 
 function buildSignalLines(comparison: ClubDayComparison) {
+  if (isLowSampleComparison(comparison)) {
+    return [clubComparisonSignalText(comparison)];
+  }
+
   const parts = [
     isNumber(comparison.offlineDeltaYd) ? offlineDeltaText(comparison.offlineDeltaYd) : null,
     isNumber(comparison.straightRateDelta)
@@ -2728,6 +2784,32 @@ function buildSignalLines(comparison: ClubDayComparison) {
   }
 
   return [comparison.summary];
+}
+
+function isLowSampleComparison(comparison: ClubDayComparison) {
+  return comparison.today.shotCount < MIN_CONFIDENT_CLUB_SHOTS;
+}
+
+function clubComparisonCallLabel(comparison: ClubDayComparison) {
+  return isLowSampleComparison(comparison) ? "Low confidence" : verdictLabel(comparison.verdict);
+}
+
+function clubComparisonBadgeClass(comparison: ClubDayComparison) {
+  if (isLowSampleComparison(comparison)) {
+    return "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100";
+  }
+
+  return verdictBadgeClass(comparison.verdict);
+}
+
+function clubComparisonSignalText(comparison: ClubDayComparison) {
+  if (!isLowSampleComparison(comparison)) {
+    return comparison.summary;
+  }
+
+  const shots = integerFormatter.format(comparison.today.shotCount);
+  const noun = comparison.today.shotCount === 1 ? "shot" : "shots";
+  return `${shots} current ${noun}. Retest before calling ${comparison.clubLabel} better or worse.`;
 }
 
 function MetricDeltaCell({
@@ -2961,6 +3043,59 @@ function shotPatternInsight(data: TodayPracticeData) {
   ].filter(Boolean) as string[];
 
   return `${sentenceJoin(parts)}.`;
+}
+
+function heroVerdictTitle(data: TodayPracticeData) {
+  if (data.overall.verdict === "better") return "Better than baseline";
+  if (data.overall.verdict === "worse") return "Behind baseline";
+  if (data.overall.verdict === "mixed") return "Mixed session";
+  return data.overall.title;
+}
+
+function verdictStoryChips(data: TodayPracticeData): VerdictReasonItem[] {
+  const { playableRateDelta, offlineDeltaYd, carryDeltaYd } = data.overall;
+  const chips: VerdictReasonItem[] = [];
+
+  if (isNumber(playableRateDelta)) {
+    chips.push({
+      label:
+        playableRateDelta > 1
+          ? "More playable"
+          : playableRateDelta < -1
+            ? "Less playable"
+            : "Playable held",
+      value: deltaText(playableRateDelta, "pp", true),
+      tone: playableKpiTone(playableRateDelta),
+    });
+  }
+
+  if (isNumber(offlineDeltaYd)) {
+    chips.push({
+      label: offlineDeltaYd < -1 ? "Straighter" : offlineDeltaYd > 1 ? "Wider" : "Accuracy held",
+      value: offlineDeltaText(offlineDeltaYd),
+      tone: offlineKpiTone(offlineDeltaYd),
+    });
+  }
+
+  if (isNumber(carryDeltaYd)) {
+    chips.push({
+      label:
+        carryDeltaYd > 1
+          ? "Longer"
+          : carryDeltaYd < -1 && Math.abs(carryDeltaYd) <= 5
+            ? "Slightly shorter"
+            : carryDeltaYd < -1
+              ? "Shorter"
+              : "Carry held",
+      value: deltaText(carryDeltaYd, "yd", true),
+      tone:
+        carryDeltaYd < -1 && Math.abs(carryDeltaYd) <= 5
+          ? "amber"
+          : deltaTone(carryDeltaYd, "higher"),
+    });
+  }
+
+  return chips;
 }
 
 function reviewNarrative(data: TodayPracticeData) {
@@ -3217,7 +3352,7 @@ function impactDetail(comparison: ClubDayComparison) {
   return signals.slice(0, 2).join(" / ") || comparison.summary;
 }
 
-function confidenceChangeItems(data: TodayPracticeData): ConfidenceChangeItem[] {
+function confidenceMeterItems(data: TodayPracticeData): ConfidenceMeterItem[] {
   const storyComparisons = uniqueComparisons([
     bestClubComparison(data.clubComparisons),
     reliableClubComparison(data.clubComparisons),
@@ -3227,19 +3362,65 @@ function confidenceChangeItems(data: TodayPracticeData): ConfidenceChangeItem[] 
     storyComparisons.length > 0 ? storyComparisons : data.clubComparisons.slice(0, 3);
 
   return comparisons.map((comparison) => {
-    const previous =
-      comparison.previous.shotCount > 0 ? snapshotConfidence(comparison.previous) : null;
-    const current = comparison.today.shotCount > 0 ? snapshotConfidence(comparison.today) : null;
-    const delta = isNumber(current) && isNumber(previous) ? current - previous : null;
+    const score = comparison.today.shotCount > 0 ? snapshotConfidence(comparison.today) : null;
+    const readout = confidenceMeterReadout(comparison, score);
 
     return {
       clubLabel: comparison.clubLabel,
-      previous,
-      current,
-      delta,
-      tone: deltaTone(delta, "higher"),
+      score,
+      label: readout.label,
+      reason: readout.reason,
+      tone: readout.tone,
     };
   });
+}
+
+function confidenceMeterReadout(
+  comparison: ClubDayComparison,
+  score: number | null,
+): { label: string; reason: string; tone: ReviewTone } {
+  const shotCount = comparison.today.shotCount;
+  const reason = `${integerFormatter.format(shotCount)} shots / ${formatRate(
+    comparison.today.playableRate,
+  )} playable / ${formatYards(comparison.today.offlineAverageYd)} offline`;
+
+  if (!isNumber(score)) {
+    return {
+      label: "Building",
+      reason,
+      tone: "slate",
+    };
+  }
+
+  if (shotCount < 5) {
+    return {
+      label: "Low confidence",
+      reason,
+      tone: score >= 65 ? "amber" : "pink",
+    };
+  }
+
+  if (score >= 78) {
+    return {
+      label: "High confidence",
+      reason,
+      tone: "green",
+    };
+  }
+
+  if (score >= 62) {
+    return {
+      label: "Medium confidence",
+      reason,
+      tone: "sky",
+    };
+  }
+
+  return {
+    label: "Low confidence",
+    reason,
+    tone: "pink",
+  };
 }
 
 function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
@@ -3294,7 +3475,7 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       faceAngle,
       faceToPath,
       status: "Healthy push draw",
-      detail: "Path is sitting close to the +5 target window.",
+      detail: "Path is sitting close to your normal draw window.",
       tone: "green",
     };
   }
@@ -3306,8 +3487,9 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath,
-      status: "Path under target",
-      detail: "Driver is not travelling enough from the inside for the target draw.",
+      status: "Path outside normal range",
+      detail:
+        "Current path is outside the normal draw window. Check recent driver sessions before adding more inside path.",
       tone: "amber",
     };
   }
@@ -3345,7 +3527,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
     faceAngle,
     faceToPath,
     status: "Driver needs a check",
-    detail: "Path is outside the target window for the preferred draw pattern.",
+    detail:
+      "Current path is outside the normal draw window. Treat this as a check, not a reason to chase a bigger draw.",
     tone: "amber",
   };
 }
@@ -3388,15 +3571,20 @@ function uniqueComparisons(items: Array<ClubDayComparison | null>) {
 }
 
 function bestClubComparison(comparisons: ClubDayComparison[]) {
-  return [...comparisons].sort(compareBestClub)[0] ?? null;
+  return comparisonConfidencePool(comparisons).sort(compareBestClub)[0] ?? null;
 }
 
 function needsWorkComparison(comparisons: ClubDayComparison[]) {
-  return [...comparisons].sort(compareNeedsWork)[0] ?? null;
+  return comparisonConfidencePool(comparisons).sort(compareNeedsWork)[0] ?? null;
 }
 
 function reliableClubComparison(comparisons: ClubDayComparison[]) {
-  return [...comparisons].sort(compareReliableClub)[0] ?? null;
+  return comparisonConfidencePool(comparisons).sort(compareReliableClub)[0] ?? null;
+}
+
+function comparisonConfidencePool(comparisons: ClubDayComparison[]) {
+  const confident = comparisons.filter((comparison) => !isLowSampleComparison(comparison));
+  return confident.length > 0 ? [...confident] : [...comparisons];
 }
 
 function compareBestClub(left: ClubDayComparison, right: ClubDayComparison) {
@@ -3563,6 +3751,13 @@ function clubRowTone(
   bestClubType: string | null,
   focusClubType: string | null,
 ) {
+  if (isLowSampleComparison(comparison)) {
+    return {
+      rowClass: "bg-slate-50/70 text-slate-500 hover:bg-slate-50",
+      stickyClass: "bg-slate-50 text-slate-600",
+    };
+  }
+
   if (comparison.clubType === focusClubType) {
     return {
       rowClass: "bg-amber-50/45 hover:bg-amber-50",
@@ -3711,6 +3906,24 @@ function offlineDeltaText(value: number | null) {
     : `${numberFormatter.format(value)} yd wider`;
 }
 
+function shotOfDayReason(shot: TodayPracticeShot) {
+  const offline = isNumber(shot.sideCarryYd) ? Math.abs(shot.sideCarryYd) : null;
+
+  if (isNumber(offline) && offline <= 3) {
+    return `Closest to target: ${formatOfflineYards(shot.sideCarryYd)}.`;
+  }
+
+  if (isNumber(offline) && offline <= 10) {
+    return `Best executed shot: ${formatOfflineYards(shot.sideCarryYd)}.`;
+  }
+
+  if (isNumber(shot.launchDirectionDeg) && Math.abs(shot.launchDirectionDeg) <= 3.5) {
+    return `Best start line: ${formatDegrees(shot.launchDirectionDeg)}.`;
+  }
+
+  return "Best executed shot from the selected review.";
+}
+
 function bestShotTitle(shot: TodayPracticeShot | undefined) {
   if (!shot) return "--";
   return `${formatClubType(shot.clubType)} ${shot.shotNumber ? `#${shot.shotNumber}` : ""}`;
@@ -3789,18 +4002,6 @@ function formatDegrees(value: number | null) {
 
 function formatNumber(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
-}
-
-function confidenceRangeText(item: ConfidenceChangeItem) {
-  if (!isNumber(item.current)) {
-    return "--";
-  }
-
-  if (!isNumber(item.previous)) {
-    return `${item.current}% baseline`;
-  }
-
-  return `${item.previous}% to ${item.current}% (${deltaText(item.delta, "pp", true)})`;
 }
 
 function formatShotCategory(value: string | null) {

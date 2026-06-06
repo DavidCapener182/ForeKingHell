@@ -12,7 +12,6 @@ import {
   Gauge,
   HelpCircle,
   LineChart,
-  ListChecks,
   Bookmark,
   MessageSquare,
   ShieldCheck,
@@ -49,6 +48,7 @@ import {
   buildProgressSummary,
   type BestSignal,
   type CoachSummaryGroup,
+  type CurrentFormSignal,
   type DataGap,
   type JourneyEvent,
   type PracticePriority,
@@ -339,7 +339,8 @@ function ProgressHeroMetric({
 }
 
 function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: ProgressSummary }) {
-  const bestClub = summary.rankings.mostTrusted ?? summary.rankings.mostImproved;
+  const longTermTrust = summary.rankings.mostTrusted ?? summary.rankings.mostImproved;
+  const currentForm = summary.rankings.currentForm;
   const weakestSignal = summary.rankings.needsWork;
   const topPriority = summary.practicePlan[0];
   const sessionsLabel = weeklySessionsLabel(data.weeklyRecap);
@@ -392,14 +393,28 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <WeeklyRecapCard
-          label="Best club"
-          value={bestClub ? formatClubType(bestClub.clubType) : data.weeklyRecap.bestClub}
+          label="Long-term trust"
+          value={longTermTrust ? formatClubType(longTermTrust.clubType) : data.weeklyRecap.bestClub}
           detail={
-            bestClub ? bestClubDetail(bestClub, summary) : "Keep building clean stock-shot samples"
+            longTermTrust
+              ? longTermTrustDetail(longTermTrust, summary)
+              : "Keep building clean stock-shot samples"
           }
-          href={bestClub ? `/bag/${bestClub.clubId}/analytics` : undefined}
+          href={longTermTrust ? `/bag/${longTermTrust.clubId}/analytics` : undefined}
           tone="green"
           icon={Trophy}
+        />
+        <WeeklyRecapCard
+          label="Current form"
+          value={currentForm ? formatClubType(currentForm.clubType) : "Needs sample"}
+          detail={
+            currentForm
+              ? currentFormDetail(currentForm)
+              : "Latest-session form appears after 3+ clean shots"
+          }
+          href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
+          tone={currentForm?.tone ?? "slate"}
+          icon={Sparkles}
         />
         <WeeklyRecapCard
           label="Weakest signal"
@@ -412,14 +427,6 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
           href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
           tone="amber"
           icon={TrendingDown}
-        />
-        <WeeklyRecapCard
-          label="New PBs & achievements"
-          value="View PBs & achievements"
-          detail="PB details live in the achievements shelf."
-          href="/achievements"
-          tone="sky"
-          icon={ShieldCheck}
         />
         <WeeklyRecapCard
           label="Next goal"
@@ -653,6 +660,7 @@ function ProgressSignalsPanel({
   const mostReliable = summary.rankings.mostTrusted;
   const strongestImprovement = strongestImprovementRow(summary);
   const mostVolatile = summary.rankings.mostVolatile;
+  const currentForm = summary.rankings.currentForm;
 
   return (
     <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
@@ -687,7 +695,7 @@ function ProgressSignalsPanel({
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SignalSummaryCard
-          label="Most reliable"
+          label="Long-term trust"
           value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
           detail={
             mostReliable
@@ -697,6 +705,14 @@ function ProgressSignalsPanel({
           href={mostReliable ? `/bag/${mostReliable.clubId}/analytics` : undefined}
           icon={Gauge}
           tone="sky"
+        />
+        <SignalSummaryCard
+          label="Current form"
+          value={currentForm ? formatClubType(currentForm.clubType) : "--"}
+          detail={currentForm ? currentFormDetail(currentForm) : "Need latest-session clean shots"}
+          href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
+          icon={Sparkles}
+          tone={currentForm?.tone ?? "slate"}
         />
         <SignalSummaryCard
           label="Strongest improvement"
@@ -709,14 +725,6 @@ function ProgressSignalsPanel({
           href={strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined}
           icon={TrendingUp}
           tone="green"
-        />
-        <SignalSummaryCard
-          label="Needs attention"
-          value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
-          detail={mainConcern ? "Lowest trust club with usable data" : "No weak signal yet"}
-          href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
-          icon={ListChecks}
-          tone="amber"
         />
         <SignalSummaryCard
           label="Most volatile"
@@ -1615,35 +1623,62 @@ function weeklySessionsLabel(weeklyRecap: FeatureIdeasData["weeklyRecap"]) {
 }
 
 function weeklyReadout(summary: ProgressSummary) {
-  const bestClub = summary.rankings.mostTrusted ?? summary.rankings.mostImproved;
+  const trusted = summary.rankings.mostTrusted;
+  const currentForm = summary.rankings.currentForm;
   const bestSignal = summary.bestSignal;
   const dataGap = summary.dataGaps[0];
   const needsWork = summary.rankings.needsWork;
 
-  if (bestClub && bestSignal && dataGap) {
-    return `${formatClubType(bestClub.clubType)} remains the strongest club, ${bestSignal.value.replace(/\.$/, "")}, and ${formatClubType(dataGap.clubType)} still needs a clean stock baseline.`;
+  if (trusted && currentForm && trusted.clubId !== currentForm.clubId) {
+    return `${formatClubType(trusted.clubType)} is the long-term trust leader; ${formatClubType(currentForm.clubType)} has the latest-session form. ${bestSignal ? bestSignal.value.replace(/\.$/, "") : "Keep the next block comparable"}.`;
   }
 
-  if (bestClub && needsWork) {
-    return `${formatClubType(bestClub.clubType)} remains the strongest club, while ${formatClubType(needsWork.clubType)} still needs attention.`;
+  if (trusted && bestSignal && dataGap) {
+    return `${formatClubType(trusted.clubType)} remains the long-term trust leader, ${bestSignal.value.replace(/\.$/, "")}, and ${formatClubType(dataGap.clubType)} still needs a clean stock baseline.`;
+  }
+
+  if (trusted && needsWork) {
+    return `${formatClubType(trusted.clubType)} remains the long-term trust leader, while ${formatClubType(needsWork.clubType)} still needs attention.`;
   }
 
   return "Keep building comparable stock-shot samples so the strongest club, weakest signal and next practice target separate clearly.";
 }
 
-function bestClubDetail(row: ProgressClubRow, summary: ProgressSummary) {
+function longTermTrustDetail(row: ProgressClubRow, summary: ProgressSummary) {
   const isMostTrusted = row.clubId === summary.rankings.mostTrusted?.clubId;
   const isBestMovement = row.clubId === summary.rankings.mostImproved?.clubId;
 
   if (isMostTrusted && isBestMovement) {
-    return "Most trusted and strongest movement";
+    return "Long-term trust leader and strongest movement";
   }
 
   if (isMostTrusted) {
-    return `${row.trustIndex}% trust · ${row.sampleSize} clean shots`;
+    return `${row.trustIndex}% trust · ${row.sampleSize} clean shots · all-data baseline`;
   }
 
   return improvementDetail(row);
+}
+
+function currentFormDetail(signal: CurrentFormSignal) {
+  const parts = [`Latest session: ${signal.shotCount} clean shots`];
+
+  if (isMeaningful(signal.offlineDeltaYd, 0.5)) {
+    parts.push(
+      `offline ${Math.abs(signal.offlineDeltaYd)} yd ${
+        signal.offlineDeltaYd <= 0 ? "tighter" : "wider"
+      }`,
+    );
+  } else if (signal.latestOfflineAverageYd !== null) {
+    parts.push(`${numberFormatter.format(signal.latestOfflineAverageYd)} yd offline avg`);
+  }
+
+  if (isMeaningful(signal.carryDeltaYd, 0.5)) {
+    parts.push(`carry ${formatSigned(signal.carryDeltaYd)} yd`);
+  } else if (isMeaningful(signal.ballSpeedDeltaMph, 0.3)) {
+    parts.push(`ball speed ${formatSigned(signal.ballSpeedDeltaMph)} mph`);
+  }
+
+  return parts.join(" · ");
 }
 
 function nextGoalDetail(priority: PracticePriority | undefined) {

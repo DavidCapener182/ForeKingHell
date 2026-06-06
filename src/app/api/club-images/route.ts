@@ -5,7 +5,6 @@ import {
   brandLogoIconUrls,
   brandPreferredLogoImageUrls,
   buildBrandLogoSearchQuery,
-  buildClubProductImageSearchQuery,
   clubArtworkPath,
   rankBrandLogoSearchCandidates,
 } from "@/lib/club-images";
@@ -28,7 +27,6 @@ export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const clubType = requestUrl.searchParams.get("type");
   const brand = requestUrl.searchParams.get("brand");
-  const model = requestUrl.searchParams.get("model");
   const fallback =
     safeFallbackPath(requestUrl.searchParams.get("fallback")) ?? clubArtworkPath(clubType);
 
@@ -43,19 +41,7 @@ export async function GET(request: Request) {
           return response;
         }
       }
-    }
 
-    const productQuery = buildClubProductImageSearchQuery({ type: clubType, brand, model });
-
-    if (productQuery) {
-      const response = await imageResponseFromSearch(productQuery, "product");
-
-      if (response) {
-        return response;
-      }
-    }
-
-    if (hasBrand) {
       const brandLogoQuery = buildBrandLogoSearchQuery(brand);
 
       if (brandLogoQuery) {
@@ -77,15 +63,15 @@ export async function GET(request: Request) {
       }
     }
   } catch {
-    return redirectToFallback(requestUrl, fallback);
+    return redirectToFallback(requestUrl, fallback, brand);
   }
 
-  return redirectToFallback(requestUrl, fallback);
+  return redirectToFallback(requestUrl, fallback, brand);
 }
 
 async function imageResponseFromSearch(
   query: string,
-  source: "product" | "brand-logo",
+  source: "brand-logo",
   rankCandidates?: ImageSearchRanker,
 ) {
   const candidates = rankCandidates
@@ -120,10 +106,24 @@ function safeFallbackPath(value: string | null) {
   return value;
 }
 
-function redirectToFallback(requestUrl: URL, fallback: string) {
+function redirectToFallback(requestUrl: URL, fallback: string, brand: string | null) {
+  const brandLogoUrl = brandLogoFallbackUrl(brand);
+
+  if (brandLogoUrl) {
+    const response = NextResponse.redirect(brandLogoUrl, 307);
+    response.headers.set("Cache-Control", IMAGE_CACHE_CONTROL);
+    response.headers.set("X-Club-Image-Source", "brand-logo-fallback");
+
+    return response;
+  }
+
   const response = NextResponse.redirect(new URL(fallback, requestUrl), 307);
   response.headers.set("Cache-Control", IMAGE_CACHE_CONTROL);
   response.headers.set("X-Club-Image-Source", "generated-fallback");
 
   return response;
+}
+
+function brandLogoFallbackUrl(brand: string | null) {
+  return brandPreferredLogoImageUrls(brand)[0] ?? brandLogoIconUrls(brand)[0] ?? null;
 }

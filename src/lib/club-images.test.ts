@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   brandPreferredLogoImageUrls,
   brandLogoIconUrls,
-  buildClubProductImageSearchQuery,
   clubImageRoutePath,
   rankBrandLogoSearchCandidates,
 } from "@/lib/club-images";
@@ -39,7 +38,7 @@ describe("club image helpers", () => {
     expect(routePath).toContain("/api/club-images?");
     expect(routePath).toContain("brand=PING");
     expect(routePath).toContain("model=i530");
-    expect(routePath).toContain("v=4");
+    expect(routePath).toContain("v=9");
   });
 
   it("uses a wordmark logo override for Titleist spelling variants", () => {
@@ -80,50 +79,16 @@ describe("club image helpers", () => {
     );
   });
 
-  it("builds a product image query from brand, model, and club", () => {
-    expect(
-      buildClubProductImageSearchQuery({
-        type: "driver",
-        brand: "TaylorMade",
-        model: "Qi10",
-      }),
-    ).toBe("TaylorMade Qi10 driver golf club product image");
-  });
+  it("keeps branded club imagery on the logo resolver", () => {
+    const routePath = clubImageRoutePath({
+      type: "driver",
+      brand: "TaylorMade",
+      model: "Qi10",
+      fallback: "/assets/clubs/panel/driver-side.png",
+    });
 
-  it("expands compact iron and wedge club codes for product search", () => {
-    expect(
-      buildClubProductImageSearchQuery({
-        type: "6i",
-        brand: "TaylorMade",
-        model: "Qi",
-      }),
-    ).toBe("TaylorMade Qi 6 iron golf club product image");
-
-    expect(
-      buildClubProductImageSearchQuery({
-        type: "sw",
-        brand: "MacGreggor",
-        model: "Sand Wedge",
-      }),
-    ).toBe("MacGreggor Sand Wedge sand wedge golf club product image");
-  });
-
-  it("uses the supplied user club brand and model for non-TaylorMade products", () => {
-    expect(
-      buildClubProductImageSearchQuery({
-        type: "7i",
-        brand: "PING",
-        model: "i530",
-      }),
-    ).toBe("PING i530 7 iron golf club product image");
-
-    expect(
-      buildClubProductImageSearchQuery({
-        type: "driver",
-        brand: "Titleist",
-        model: "GT3",
-      }),
-    ).toBe("Titleist GT3 driver golf club product image");
+    expect(routePath).toContain("brand=TaylorMade");
+    expect(routePath).toContain("model=Qi10");
   });
 });
 

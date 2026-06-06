@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 
-import { courses, holes, teeSets, users } from "@/db/schema";
+import { courses, holes, sessions, teeSets, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
   BOOTLE_GOLF_COURSE,
@@ -23,6 +23,14 @@ export type ScorecardCourseHole = {
   holeNumber: number;
   par: number;
   yards: number;
+  name: string | null;
+};
+
+export type ReusableCourseScorecard = {
+  courseName: string;
+  teeSetId: string | null;
+  source: "saved_round" | "course_database";
+  holes: ScorecardCourseHole[];
 };
 
 const TPC_WHITE_YARDAGES = [
@@ -75,6 +83,112 @@ export function canonicalKnownCourseNameForSession(courseName: string | null | u
   }
 
   return null;
+}
+
+export async function findReusableCourseScorecardForSession({
+  userId,
+  courseName,
+}: {
+  userId: string;
+  courseName: string | null | undefined;
+}): Promise<ReusableCourseScorecard | null> {
+  const nameCandidates = reusableCourseNameCandidates(courseName);
+
+  if (nameCandidates.length === 0) {
+    return null;
+  }
+
+  const db = getDb();
+  const sessionNameMatches = nameCandidates.map(
+    (name) => sql`lower(${sessions.courseName}) = ${name}`,
+  );
+  const recentScorecards = await db
+    .select({
+      courseName: sessions.courseName,
+      teeSetId: sessions.teeSetId,
+      scorecardJson: sessions.scorecardJson,
+    })
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        sessionNameMatches.length === 1 ? sessionNameMatches[0] : or(...sessionNameMatches),
+      ),
+    )
+    .orderBy(desc(sessions.date), desc(sessions.createdAt))
+    .limit(20);
+
+  for (const row of recentScorecards) {
+    const scorecardHoles = reusableHolesFromScorecardJson(row.scorecardJson);
+
+    if (isReusableScorecard(scorecardHoles)) {
+      return {
+        courseName: row.courseName ?? courseName?.trim() ?? "",
+        teeSetId: row.teeSetId,
+        source: "saved_round",
+        holes: scorecardHoles,
+      };
+    }
+  }
+
+  const courseNameMatches = nameCandidates.map((name) => sql`lower(${courses.name}) = ${name}`);
+  const courseRows = await db
+    .select({
+      courseName: courses.name,
+      teeSetId: teeSets.id,
+      holeNumber: holes.holeNumber,
+      par: holes.par,
+      yards: holes.yards,
+    })
+    .from(courses)
+    .innerJoin(teeSets, eq(teeSets.courseId, courses.id))
+    .innerJoin(holes, eq(holes.teeSetId, teeSets.id))
+    .where(
+      and(
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+        courseNameMatches.length === 1 ? courseNameMatches[0] : or(...courseNameMatches),
+      ),
+    )
+    .orderBy(asc(courses.name), asc(teeSets.name), asc(holes.holeNumber));
+  const scorecardsByTeeSet = new Map<
+    string,
+    {
+      courseName: string;
+      teeSetId: string;
+      holes: ScorecardCourseHole[];
+    }
+  >();
+
+  for (const row of courseRows) {
+    const existing = scorecardsByTeeSet.get(row.teeSetId) ?? {
+      courseName: row.courseName,
+      teeSetId: row.teeSetId,
+      holes: [],
+    };
+
+    existing.holes.push({
+      holeNumber: row.holeNumber,
+      par: row.par,
+      yards: row.yards,
+      name: null,
+    });
+    scorecardsByTeeSet.set(row.teeSetId, existing);
+  }
+
+  const scorecards = [...scorecardsByTeeSet.values()];
+  const selectedScorecard =
+    scorecards.find((scorecard) => isReusableScorecard(scorecard.holes)) ??
+    scorecards.find((scorecard) => scorecard.holes.length > 0);
+
+  if (!selectedScorecard) {
+    return null;
+  }
+
+  return {
+    ...selectedScorecard,
+    source: "course_database",
+    holes: selectedScorecard.holes.sort((left, right) => left.holeNumber - right.holeNumber),
+  };
 }
 
 export async function ensureCourseForSession({
@@ -493,4 +607,76 @@ function manualScorecardExternalId(userId: string, courseName: string) {
     .slice(0, 80);
 
   return `rapsodo-scorecard-${userId}-${slug || "course"}`;
+}
+
+function reusableCourseNameCandidates(courseName: string | null | undefined) {
+  const rawName = courseName?.trim();
+  const canonicalName = canonicalKnownCourseNameForSession(rawName);
+
+  return Array.from(
+    new Set(
+      [rawName, canonicalName]
+        .filter((name): name is string => Boolean(name))
+        .map((name) => name.toLowerCase()),
+    ),
+  );
+}
+
+function reusableHolesFromScorecardJson(scorecardJson: unknown): ScorecardCourseHole[] {
+  if (!Array.isArray(scorecardJson)) {
+    return [];
+  }
+
+  return scorecardJson
+    .map((hole): ScorecardCourseHole | null => {
+      if (!hole || typeof hole !== "object") {
+        return null;
+      }
+
+      const row = hole as Record<string, unknown>;
+      const holeNumber = reusablePositiveInteger(row.holeNumber);
+      const par = reusablePositiveInteger(row.par);
+      const yards = reusablePositiveInteger(row.yards);
+
+      if (
+        holeNumber === null ||
+        holeNumber < 1 ||
+        holeNumber > 18 ||
+        par === null ||
+        par < 3 ||
+        par > 6 ||
+        yards === null ||
+        yards < 50 ||
+        yards > 800
+      ) {
+        return null;
+      }
+
+      return {
+        holeNumber,
+        par,
+        yards,
+        name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : null,
+      };
+    })
+    .filter((hole): hole is ScorecardCourseHole => hole !== null)
+    .sort((left, right) => left.holeNumber - right.holeNumber);
+}
+
+function reusablePositiveInteger(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const rounded = Math.floor(value);
+  return rounded > 0 ? rounded : null;
+}
+
+function isReusableScorecard(scorecardHoles: ScorecardCourseHole[]) {
+  if (scorecardHoles.length !== 9 && scorecardHoles.length !== 18) {
+    return false;
+  }
+
+  const uniqueHoleNumbers = new Set(scorecardHoles.map((hole) => hole.holeNumber));
+  return uniqueHoleNumbers.size === scorecardHoles.length;
 }

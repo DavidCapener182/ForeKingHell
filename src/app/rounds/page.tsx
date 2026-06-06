@@ -555,6 +555,18 @@ function toWorkspaceRound(
     statusLabel:
       round.shotCount > 0 ? "Shot-linked · SG eligible" : "Scorecard only · add shot data",
     holeResults,
+    scorecardHoles: (round.scorecardJson ?? [])
+      .slice()
+      .sort((left, right) => left.holeNumber - right.holeNumber)
+      .map((hole) => ({
+        holeNumber: hole.holeNumber,
+        par: hole.par,
+        yards: hole.yards,
+        score: hole.score ?? null,
+        putts: hole.putts ?? null,
+        penalties: hole.penalties ?? null,
+        shotCount: hole.csvShotCount ?? null,
+      })),
   };
 }
 

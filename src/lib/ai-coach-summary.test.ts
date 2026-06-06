@@ -98,6 +98,7 @@ function fakeCoachSummary() {
         mostImproved: null,
         needsWork: null,
         mostVolatile: null,
+        currentForm: null,
       },
     },
   } as CoachSummary;

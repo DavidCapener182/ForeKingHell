@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { ChevronRight, Flag, Search } from "lucide-react";
 
+import { CourseScorecardSvg, type CourseScorecardSvgHole } from "@/components/course-scorecard-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ export type RoundsWorkspaceRound = {
   rowDataLabel: string;
   statusLabel: string;
   holeResults: string[];
+  scorecardHoles: CourseScorecardSvgHole[];
 };
 
 type RoundFilter = "all" | "real" | "simulator" | "scorecard-only" | "shot-linked";
@@ -280,6 +282,20 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               <h2 className="mt-1 text-2xl font-semibold tracking-normal">{roundTitle(round)}</h2>
               <p className="mt-2 text-3xl font-semibold tracking-normal">{round.scoreSummary}</p>
             </div>
+
+            {round.scorecardHoles.length > 0 ? (
+              <CourseScorecardSvg
+                courseName={roundTitle(round)}
+                holes={round.scorecardHoles}
+                playerName="ForeKingHell"
+                showPenalties={round.scorecardHoles.some(
+                  (hole) => typeof hole.penalties === "number" && hole.penalties > 0,
+                )}
+                showShotCounts={round.shotCount > 0}
+                subtitle={`${round.dateLabel} · ${round.typeLabel}`}
+                variant="compact"
+              />
+            ) : null}
 
             <div className="grid gap-2">
               <RoundMetric label="Score" value={formatInteger(round.totalScore)} />

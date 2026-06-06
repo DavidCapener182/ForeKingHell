@@ -39,6 +39,7 @@ import {
   syncRapsodoShotClubsAction,
 } from "@/app/rapsodo/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
+import { CourseScorecardSvg } from "@/components/course-scorecard-svg";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  formatCourseScorecardText,
   type InferredCourseShot,
   inferCourseShots,
   inferCourseShotsFromHoleShotCounts,
@@ -69,6 +71,10 @@ import {
 } from "@/lib/course-scorecard";
 import type { RapsodoShotOverride } from "@/lib/imports/save-rapsodo-import";
 import type { RapsodoClubChoice } from "@/lib/rapsodo/club-inference";
+import {
+  buildCourseHoleScoringRows,
+  summarizeCourseHoleScoring,
+} from "@/lib/rapsodo/course-scoring";
 import type { RapsodoSessionListItem, RapsodoSessionPreview } from "@/lib/rapsodo/sync-types";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +87,10 @@ type ConnectionStatus = {
 type Notice =
   | { kind: "idle" }
   | { kind: "success"; title: string; message: string; sessionId?: string | null }
+  | { kind: "error"; title: string; message: string };
+type SaveStatus =
+  | { kind: "saving"; title: string; message: string }
+  | { kind: "success"; title: string; message: string; sessionId: string | null }
   | { kind: "error"; title: string; message: string };
 type SaveConfirmation = {
   id: string;
@@ -118,6 +128,7 @@ export function RapsodoSyncClient({
   const router = useRouter();
   const [status, setStatus] = useState(initialStatus);
   const [notice, setNotice] = useState<Notice>({ kind: "idle" });
+  const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
   const [saveConfirmation, setSaveConfirmation] = useState<SaveConfirmation | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -176,6 +187,16 @@ export function RapsodoSyncClient({
   }, [preview]);
 
   const scorecard = useMemo(() => parseScorecardText(scorecardText), [scorecardText]);
+  const savedCourseScorecardText = useMemo(
+    () =>
+      preview?.courseScorecard.length ? formatCourseScorecardText(preview.courseScorecard) : "",
+    [preview],
+  );
+  const usingSavedCourseScorecard = Boolean(
+    savedCourseScorecardText && scorecardText.trim() === savedCourseScorecardText.trim(),
+  );
+  const scorecardTotalPar = scorecard.holes.reduce((total, hole) => total + hole.par, 0);
+  const scorecardTotalYards = scorecard.holes.reduce((total, hole) => total + hole.yards, 0);
   const isCoursePreview = preview?.sessionType === "simulated_course";
   const autoCourseInference = useMemo(() => {
     if (!preview || !isCoursePreview || scorecard.holes.length === 0) {
@@ -217,6 +238,46 @@ export function RapsodoSyncClient({
     0,
   );
   const courseShotOnlyImport = isCoursePreview && courseImportMode === "shot_only";
+  const courseHoleScoring = useMemo(() => {
+    if (!courseInference) {
+      return [];
+    }
+
+    return buildCourseHoleScoringRows(
+      courseInference.holes.map((hole) => ({
+        holeNumber: hole.holeNumber,
+        shotCount: hole.shots.length,
+      })),
+      holeReview,
+    );
+  }, [courseInference, holeReview]);
+  const courseScoringSummary = useMemo(
+    () => summarizeCourseHoleScoring(courseHoleScoring),
+    [courseHoleScoring],
+  );
+  const courseScorecardSvgHoles = useMemo(() => {
+    const scoringByHole = new Map(courseHoleScoring.map((row) => [row.holeNumber, row]));
+    const shotCountByHole = new Map(
+      courseHoleShotCounts.map((hole) => [hole.holeNumber, hole.shotCount]),
+    );
+
+    return scorecard.holes.map((hole) => {
+      const review = holeReview[hole.holeNumber] ?? {};
+      const scoring = scoringByHole.get(hole.holeNumber);
+
+      return {
+        holeNumber: hole.holeNumber,
+        par: hole.par,
+        yards: hole.yards,
+        score: review.score ?? null,
+        putts: scoring?.putts ?? null,
+        penalties: scoring?.penalties ?? review.penalties ?? null,
+        shotCount: shotCountByHole.get(hole.holeNumber) ?? null,
+      };
+    });
+  }, [courseHoleScoring, courseHoleShotCounts, holeReview, scorecard.holes]);
+  const scoredRoundNeedsScores = Boolean(isCoursePreview && !courseShotOnlyImport);
+  const scoredRoundReady = !scoredRoundNeedsScores || courseScoringSummary.isComplete;
   const everyShotHasClub =
     preview?.shots.every((shot) => {
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]);
@@ -227,7 +288,8 @@ export function RapsodoSyncClient({
     courseShotOnlyImport ||
     (scorecard.holes.length > 0 &&
       assignedCourseShots === preview?.shotCount &&
-      courseName.trim().length > 0);
+      courseName.trim().length > 0 &&
+      scoredRoundReady);
   const newSessionCount = availableSessions.filter((session) => session.isNew).length;
   const rapsodoWritebackRows = useMemo(() => {
     if (!preview) {
@@ -257,7 +319,37 @@ export function RapsodoSyncClient({
         .length,
     };
   }, [choicesByKey, preview, selectedClubByRow]);
-  const canSave = Boolean(preview && everyShotHasClub && courseReady && !isPending);
+  const previewSyncSession = useMemo(() => {
+    if (!preview) {
+      return null;
+    }
+
+    return sessions.find((session) => isSameRapsodoSession(session, preview.session)) ?? null;
+  }, [preview, sessions]);
+  const importedPreviewSessionId = previewSyncSession?.importedSessionId ?? null;
+  const previewAlreadyImported = Boolean(importedPreviewSessionId);
+  const importedPreviewStatus: SaveStatus | null = importedPreviewSessionId
+    ? {
+        kind: "success",
+        title: "Session already imported",
+        message: previewSyncSession?.lastImportedAt
+          ? `Imported ${formatDateTime(previewSyncSession.lastImportedAt)}. It is hidden from the R-Cloud inbox so you do not save it twice.`
+          : "This R-Cloud session is already linked in LM World Tour and hidden from the R-Cloud inbox.",
+        sessionId: importedPreviewSessionId,
+      }
+    : null;
+  const visibleSaveStatus = saveStatus ?? importedPreviewStatus;
+  const isSavingPreview = saveStatus?.kind === "saving";
+  const saveButtonLabel = previewAlreadyImported
+    ? "Imported"
+    : isSavingPreview
+      ? loadingLabel === "Updating Rapsodo clubs"
+        ? "Updating Rapsodo"
+        : "Importing session"
+      : "Save confirmed shots";
+  const canSave = Boolean(
+    preview && everyShotHasClub && courseReady && !isPending && !previewAlreadyImported,
+  );
   const mobileSteps = useMemo(
     () => [
       { id: "connect" as const, label: "Connect" },
@@ -411,6 +503,8 @@ export function RapsodoSyncClient({
 
   function previewSession(session: RapsodoSessionListItem) {
     setNotice({ kind: "idle" });
+    setSaveStatus(null);
+    setSaveConfirmation(null);
     setLoadingLabel("Exporting CSV");
     startTransition(async () => {
       const result = await previewRapsodoSessionAction(session);
@@ -424,9 +518,13 @@ export function RapsodoSyncClient({
       setPreview(result.data);
       setMobileStep("preview");
       setCourseName(result.data.courseName || result.data.session.title);
-      setScorecardText("");
+      setScorecardText(
+        result.data.courseScorecard.length > 0
+          ? formatCourseScorecardText(result.data.courseScorecard)
+          : "",
+      );
       setHoleReview({});
-      setCourseImportMode("shot_only");
+      setCourseImportMode(result.data.courseScorecard.length > 0 ? "scored_round" : "shot_only");
       setClubSelectionMode("recommendations");
       setUpdateRapsodoClubs(false);
       setSelectedClubByRow(selectionByMode(result.data, "recommendations"));
@@ -459,6 +557,13 @@ export function RapsodoSyncClient({
     }
 
     setNotice({ kind: "idle" });
+    setSaveStatus({
+      kind: "saving",
+      title: updateRapsodoClubs ? "Updating Rapsodo clubs" : "Saving confirmed shots",
+      message: updateRapsodoClubs
+        ? `Updating ${rapsodoWritebackRows.updatableCount} Rapsodo club match${rapsodoWritebackRows.updatableCount === 1 ? "" : "es"} first, then importing ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"}. Keep this page open.`
+        : `Importing ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour. Keep this page open.`,
+    });
     const shotOverrides = preview.shots.map((shot): RapsodoShotOverride => {
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]) ?? shot.suggestion.choice;
       return {
@@ -469,36 +574,24 @@ export function RapsodoSyncClient({
       };
     });
 
-    const courseHoleScoring =
-      isCoursePreview && !courseShotOnlyImport && courseInference
-        ? courseInference.holes.map((hole) => {
-            const review = holeReview[hole.holeNumber];
-            return {
-              holeNumber: hole.holeNumber,
-              csvShotCount: hole.shots.length,
-              putts: review?.putts ?? null,
-              penalties: review?.penalties ?? null,
-              score: review?.score ?? null,
-            };
-          })
-        : undefined;
+    const courseHoleScoringForImport =
+      isCoursePreview && !courseShotOnlyImport ? courseHoleScoring : undefined;
 
-    setLoadingLabel("Saving shots");
+    setLoadingLabel(updateRapsodoClubs ? "Updating Rapsodo clubs" : "Saving shots");
     startTransition(async () => {
       let writebackMessage = "";
 
       if (updateRapsodoClubs) {
         if (rapsodoWritebackRows.updatableCount === 0) {
+          const errorStatus = {
+            kind: "error" as const,
+            title: "Rapsodo update unavailable",
+            message:
+              "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with LM World Tour recommendations or update Rapsodo manually first.",
+          };
           setLoadingLabel(null);
-          showNotice(
-            {
-              kind: "error",
-              title: "Rapsodo update unavailable",
-              message:
-                "R-Cloud did not expose enough shot and bag club IDs to update Rapsodo. Save with LM World Tour recommendations or update Rapsodo manually first.",
-            },
-            { scroll: true },
-          );
+          setSaveStatus(errorStatus);
+          showNotice(errorStatus, { scroll: true });
           return;
         }
 
@@ -508,11 +601,14 @@ export function RapsodoSyncClient({
         });
 
         if (!writebackResult.ok) {
+          const errorStatus = {
+            kind: "error" as const,
+            title: "Rapsodo update failed",
+            message: writebackResult.message,
+          };
           setLoadingLabel(null);
-          showNotice(
-            { kind: "error", title: "Rapsodo update failed", message: writebackResult.message },
-            { scroll: true },
-          );
+          setSaveStatus(errorStatus);
+          showNotice(errorStatus, { scroll: true });
           return;
         }
 
@@ -520,6 +616,12 @@ export function RapsodoSyncClient({
           writebackResult.data.updated > 0
             ? ` Updated ${writebackResult.data.updated} club${writebackResult.data.updated === 1 ? "" : "s"} in Rapsodo first.`
             : " Rapsodo did not expose any updateable shot IDs, so only LM World Tour was saved.";
+        setLoadingLabel("Saving shots");
+        setSaveStatus({
+          kind: "saving",
+          title: "Saving confirmed shots",
+          message: `Rapsodo club update finished. Saving ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour now.`,
+        });
       }
 
       const resolvedCourseName = (
@@ -542,7 +644,7 @@ export function RapsodoSyncClient({
           courseScorecardText: isCoursePreview && !courseShotOnlyImport ? scorecardText : undefined,
           courseHoleShotCounts:
             isCoursePreview && !courseShotOnlyImport ? courseHoleShotCounts : undefined,
-          courseHoleScoring,
+          courseHoleScoring: courseHoleScoringForImport,
           shotOverrides,
           notes: courseShotOnlyImport
             ? `Shot-only Rapsodo course import from ${resolvedCourseName}. Scorecard detail was not saved yet.`
@@ -552,18 +654,24 @@ export function RapsodoSyncClient({
       setLoadingLabel(null);
 
       if (!result.ok) {
-        showNotice(
-          { kind: "error", title: "Import failed", message: result.message },
-          { scroll: true },
-        );
+        const errorStatus = {
+          kind: "error" as const,
+          title: "Import failed",
+          message: result.message,
+        };
+        setSaveStatus(errorStatus);
+        showNotice(errorStatus, { scroll: true });
         return;
       }
 
       if (!result.data.ok) {
-        showNotice(
-          { kind: "error", title: "Import failed", message: result.data.message },
-          { scroll: true },
-        );
+        const errorStatus = {
+          kind: "error" as const,
+          title: "Import failed",
+          message: result.data.message,
+        };
+        setSaveStatus(errorStatus);
+        showNotice(errorStatus, { scroll: true });
         return;
       }
 
@@ -581,6 +689,12 @@ export function RapsodoSyncClient({
             }${writebackMessage}`,
         sessionId: result.data.sessionId,
       };
+      setSaveStatus({
+        kind: "success",
+        title: saveNotice.title,
+        message: saveNotice.message,
+        sessionId: result.data.sessionId,
+      });
       showNotice(saveNotice, { scroll: true });
       setSaveConfirmation({
         id: `${Date.now()}-${result.data.sessionId}`,
@@ -687,9 +801,21 @@ export function RapsodoSyncClient({
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { title: "Pull latest sessions", detail: "Find waiting R-Cloud exports.", icon: CloudUpload },
-                { title: "Confirm clubs", detail: "Map Rapsodo labels before save.", icon: ShieldCheck },
-                { title: "Update bag + coach", detail: "Refresh trust and drill signals.", icon: Sparkles },
+                {
+                  title: "Pull latest sessions",
+                  detail: "Find waiting R-Cloud exports.",
+                  icon: CloudUpload,
+                },
+                {
+                  title: "Confirm clubs",
+                  detail: "Map Rapsodo labels before save.",
+                  icon: ShieldCheck,
+                },
+                {
+                  title: "Update bag + coach",
+                  detail: "Refresh trust and drill signals.",
+                  icon: Sparkles,
+                },
               ].map((item) => (
                 <div key={item.title} className="rounded-xl border bg-white/80 p-3">
                   <item.icon className="size-5 text-emerald-700" />
@@ -812,10 +938,7 @@ export function RapsodoSyncClient({
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <Card
-            className={cn(
-              "premium-card",
-              showMobileConnectionCard ? "flex" : "hidden sm:flex",
-            )}
+            className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden sm:flex")}
           >
             <CardHeader>
               <CardTitle>Connection</CardTitle>
@@ -923,18 +1046,14 @@ export function RapsodoSyncClient({
             </CardContent>
           </Card>
 
-          <Card
-            className={cn(
-              "premium-card",
-              showMobileSessionsCard ? "flex" : "hidden sm:flex",
-            )}
-          >
+          <Card className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden sm:flex")}>
             <CardHeader>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <CardTitle>Remote sessions</CardTitle>
                   <CardDescription>
-                    Choose a session, export its CSV, then review before saving.
+                    Choose a session, export its CSV, then review before saving. Imported sessions
+                    are hidden from this inbox.
                   </CardDescription>
                 </div>
                 <select
@@ -982,7 +1101,7 @@ export function RapsodoSyncClient({
                 ) : (
                   <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
                     {status.connected
-                      ? "No unimported R-Cloud sessions found for these dates."
+                      ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
                       : "Sign in to load sessions."}
                   </div>
                 )}
@@ -1052,7 +1171,7 @@ export function RapsodoSyncClient({
                       <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                           {status.connected
-                            ? "No unimported R-Cloud sessions found for these dates."
+                            ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
                             : "Sign in to load sessions."}
                         </TableCell>
                       </TableRow>
@@ -1116,16 +1235,19 @@ export function RapsodoSyncClient({
                     disabled={!canSave}
                     className="premium-action"
                   >
-                    {loadingLabel === "Saving shots" ? (
+                    {isSavingPreview ? (
                       <Loader2 className="size-4 animate-spin" />
+                    ) : previewAlreadyImported ? (
+                      <CheckCircle2 className="size-4" />
                     ) : (
                       <Upload className="size-4" />
                     )}
-                    Save confirmed shots
+                    {saveButtonLabel}
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {visibleSaveStatus ? <SaveStatusPanel status={visibleSaveStatus} /> : null}
                 <div
                   className={cn(
                     "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
@@ -1378,18 +1500,36 @@ export function RapsodoSyncClient({
                     </div>
                   ) : (
                     <>
-                      <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
+                      <div
+                        className={cn(
+                          "grid gap-3",
+                          usingSavedCourseScorecard ? "" : "lg:grid-cols-[0.8fr_1.2fr]",
+                        )}
+                      >
                         <Input
                           value={courseName}
                           placeholder="Course name"
                           onChange={(event) => setCourseName(event.target.value)}
                         />
-                        <textarea
-                          className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                          placeholder="Hole, par, yards"
-                          value={scorecardText}
-                          onChange={(event) => setScorecardText(event.target.value)}
-                        />
+                        {usingSavedCourseScorecard ? (
+                          <div className="premium-command-surface rounded-lg px-3 py-2 text-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-medium">
+                                {scorecard.holes.length} saved holes
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                par {scorecardTotalPar}, {scorecardTotalYards} yards
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <textarea
+                            className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            placeholder="Hole, par, yards"
+                            value={scorecardText}
+                            onChange={(event) => setScorecardText(event.target.value)}
+                          />
+                        )}
                       </div>
                       <div className="premium-command-surface rounded-lg p-3 text-sm">
                         {scorecard.holes.length === 0 ? (
@@ -1397,10 +1537,31 @@ export function RapsodoSyncClient({
                             Add scorecard rows before saving this course session.
                           </p>
                         ) : (
-                          <p>
-                            {assignedCourseShots}/{preview.shotCount} shots assigned across{" "}
-                            {scorecard.holes.length} holes.
-                          </p>
+                          <div className="space-y-1">
+                            <p>
+                              {assignedCourseShots}/{preview.shotCount} shots assigned across{" "}
+                              {scorecard.holes.length} holes.
+                            </p>
+                            {scoredRoundNeedsScores ? (
+                              <>
+                                <p className="text-xs text-muted-foreground">
+                                  {courseScoringSummary.scoreCount}/{courseScoringSummary.holeCount}{" "}
+                                  scores · derived {courseScoringSummary.puttCount}/
+                                  {courseScoringSummary.holeCount} putts
+                                  {courseScoringSummary.isComplete &&
+                                  courseScoringSummary.totalScore !== null &&
+                                  courseScoringSummary.totalPutts !== null
+                                    ? ` · total ${courseScoringSummary.totalScore}, ${courseScoringSummary.totalPutts} putts`
+                                    : ""}
+                                </p>
+                                {!courseScoringSummary.isComplete ? (
+                                  <p className="text-xs font-medium text-amber-700">
+                                    Enter a score for every hole before saving as a scored round.
+                                  </p>
+                                ) : null}
+                              </>
+                            ) : null}
+                          </div>
                         )}
                         {scorecard.warnings.length > 0 ? (
                           <p className="mt-2 text-amber-700">{scorecard.warnings.join(" ")}</p>
@@ -1409,71 +1570,28 @@ export function RapsodoSyncClient({
                     </>
                   )}
                   {courseImportMode === "scored_round" && scorecard.holes.length > 0 ? (
-                    <div className="rounded-lg border">
-                      <Table className="text-xs">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="h-8 px-2">Hole</TableHead>
-                            <TableHead className="h-8 px-2 text-right">Shots</TableHead>
-                            <TableHead className="h-8 px-2 text-right">Score</TableHead>
-                            <TableHead className="h-8 px-2 text-right">Putts</TableHead>
-                            <TableHead className="h-8 px-2 text-right">Pen</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {scorecard.holes.map((hole) => {
-                            const autoShotCount =
-                              autoCourseInference?.holes.find(
-                                (autoHole) => autoHole.holeNumber === hole.holeNumber,
-                              )?.shots.length ?? 0;
-                            const review = holeReview[hole.holeNumber] ?? {};
-
-                            return (
-                              <TableRow key={hole.holeNumber}>
-                                <TableCell className="px-2 py-1.5">
-                                  {hole.holeNumber}
-                                  <span className="ml-1 text-xs text-muted-foreground">
-                                    par {hole.par}, {hole.yards}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="px-2 py-1.5">
-                                  <NumberInput
-                                    value={review.shotCount ?? autoShotCount}
-                                    onChange={(value) =>
-                                      updateHoleReview(hole.holeNumber, { shotCount: value })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell className="px-2 py-1.5">
-                                  <NumberInput
-                                    value={review.score ?? null}
-                                    onChange={(value) =>
-                                      updateHoleReview(hole.holeNumber, { score: value })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell className="px-2 py-1.5">
-                                  <NumberInput
-                                    value={review.putts ?? null}
-                                    onChange={(value) =>
-                                      updateHoleReview(hole.holeNumber, { putts: value })
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell className="px-2 py-1.5">
-                                  <NumberInput
-                                    value={review.penalties ?? null}
-                                    onChange={(value) =>
-                                      updateHoleReview(hole.holeNumber, { penalties: value })
-                                    }
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                    <CourseScorecardSvg
+                      courseName={courseName.trim() || preview.courseName || "Course scorecard"}
+                      editable
+                      holes={courseScorecardSvgHoles}
+                      onPenaltiesChange={(holeNumber, value) =>
+                        updateHoleReview(holeNumber, { penalties: value })
+                      }
+                      onScoreChange={(holeNumber, value) =>
+                        updateHoleReview(holeNumber, { score: value })
+                      }
+                      onShotCountChange={(holeNumber, value) =>
+                        updateHoleReview(holeNumber, { shotCount: value })
+                      }
+                      playerName="ForeKingHell"
+                      showPenalties
+                      showShotCounts
+                      subtitle={
+                        usingSavedCourseScorecard
+                          ? "Saved course card · enter scores"
+                          : "Manual card · enter scores"
+                      }
+                    />
                   ) : null}
                 </CardContent>
               </Card>
@@ -1502,8 +1620,14 @@ export function RapsodoSyncClient({
                   onClick={savePreview}
                   className="premium-action rounded-lg"
                 >
-                  <Upload className="size-4" />
-                  Import selected sessions
+                  {isSavingPreview ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : previewAlreadyImported ? (
+                    <CheckCircle2 className="size-4" />
+                  ) : (
+                    <Upload className="size-4" />
+                  )}
+                  {saveButtonLabel}
                 </Button>
               ) : (
                 <Button
@@ -1551,6 +1675,62 @@ export function RapsodoSyncClient({
       });
     }
   }
+}
+
+function SaveStatusPanel({ status }: { status: SaveStatus }) {
+  return (
+    <div
+      role={status.kind === "error" ? "alert" : "status"}
+      aria-live="polite"
+      aria-atomic="true"
+      className={cn(
+        "grid gap-3 rounded-lg border px-3 py-3 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center",
+        status.kind === "error"
+          ? "border-destructive/30 bg-destructive/5 text-destructive"
+          : status.kind === "success"
+            ? "border-emerald-300 bg-emerald-50/70 text-emerald-950"
+            : "border-amber-300 bg-amber-50/70 text-amber-950",
+      )}
+    >
+      <div
+        className={cn(
+          "grid size-9 place-items-center rounded-[8px]",
+          status.kind === "error"
+            ? "bg-destructive/10"
+            : status.kind === "success"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-amber-100 text-amber-700",
+        )}
+      >
+        {status.kind === "saving" ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : status.kind === "error" ? (
+          <AlertCircle className="size-4" />
+        ) : (
+          <CheckCircle2 className="size-4" />
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="font-semibold">{status.title}</p>
+        <p
+          className={cn(
+            "mt-0.5 text-xs leading-5",
+            status.kind === "error" ? "text-destructive/90" : "text-muted-foreground",
+          )}
+        >
+          {status.message}
+        </p>
+      </div>
+      {status.kind === "success" && status.sessionId ? (
+        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+          <Link href={`/shots?sessionId=${encodeURIComponent(status.sessionId)}`}>
+            <Database className="size-4" />
+            View saved shots
+          </Link>
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
 function SaveConfirmationToast({
@@ -1791,26 +1971,6 @@ function CompactSummaryTile({ label, value }: { label: string; value: string }) 
   );
 }
 
-function NumberInput({
-  value,
-  onChange,
-}: {
-  value: number | null;
-  onChange: (value: number | null) => void;
-}) {
-  return (
-    <Input
-      type="number"
-      min={0}
-      className="ml-auto h-8 w-16 text-right"
-      value={value ?? ""}
-      onChange={(event) =>
-        onChange(event.target.value === "" ? null : Math.max(0, Number(event.target.value)))
-      }
-    />
-  );
-}
-
 function previewShotsForCourse(preview: RapsodoSessionPreview): InferredCourseShot["sourceShot"][] {
   return preview.shots.map((shot) => ({
     rowNumber: shot.rowNumber,
@@ -1850,6 +2010,15 @@ function isCourseSession(session: RapsodoSessionListItem) {
     .join(" ")
     .toLowerCase()
     .includes("course");
+}
+
+function isSameRapsodoSession(
+  left: Pick<RapsodoSessionListItem, "providerKind" | "providerSessionId">,
+  right: Pick<RapsodoSessionListItem, "providerKind" | "providerSessionId">,
+) {
+  return (
+    left.providerKind === right.providerKind && left.providerSessionId === right.providerSessionId
+  );
 }
 
 function sessionTimestamp(session: RapsodoSessionListItem) {

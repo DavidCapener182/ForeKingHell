@@ -1,4 +1,3 @@
-import { formatClubType } from "@/lib/club-format";
 import type { GoogleImageCandidate } from "@/lib/google-image-search";
 
 type ClubArtworkView = "side" | "top";
@@ -16,7 +15,7 @@ export type BrandLogoSearchCandidate = Pick<
 >;
 
 const knownClubArt = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
-const CLUB_IMAGE_ROUTE_VERSION = "4";
+const CLUB_IMAGE_ROUTE_VERSION = "9";
 
 const clubArtAliases: Record<string, string> = {
   "3w": "5w",
@@ -92,7 +91,6 @@ const poorBrandLogoTerms = [
   "pro v1",
   "product",
 ];
-
 export function clubArtworkPath(
   clubType: string | null | undefined,
   view: ClubArtworkView = "side",
@@ -126,18 +124,6 @@ export function clubImageRoutePath({
   params.set("v", CLUB_IMAGE_ROUTE_VERSION);
 
   return `/api/club-images?${params.toString()}`;
-}
-
-export function buildClubProductImageSearchQuery({ type, brand, model }: ClubImageInput) {
-  const parts = [normalizePart(brand), normalizePart(model), formatSearchClubType(type)].filter(
-    (part): part is string => Boolean(part),
-  );
-
-  if (parts.length < 2) {
-    return null;
-  }
-
-  return `${parts.join(" ")} golf club product image`;
 }
 
 export function buildBrandLogoSearchQuery(brand: string | null | undefined) {
@@ -299,43 +285,6 @@ export function scoreBrandLogoSearchCandidate(
   return score;
 }
 
-function formatSearchClubType(value: string | null | undefined) {
-  const normalized = normalizePart(value);
-
-  if (!normalized) {
-    return null;
-  }
-
-  if (normalized === "driver") {
-    return "driver";
-  }
-
-  const wood = normalized.match(/^([1-9])w$/);
-  if (wood) {
-    return `${wood[1]} wood`;
-  }
-
-  const hybrid = normalized.match(/^([1-9])h$/);
-  if (hybrid) {
-    return `${hybrid[1]} hybrid`;
-  }
-
-  const iron = normalized.match(/^([1-9])i$/);
-  if (iron) {
-    return `${iron[1]} iron`;
-  }
-
-  const wedges: Record<string, string> = {
-    pw: "pitching wedge",
-    gw: "gap wedge",
-    aw: "approach wedge",
-    sw: "sand wedge",
-    lw: "lob wedge",
-  };
-
-  return wedges[normalized] ?? formatClubType(normalized).toLowerCase();
-}
-
 function addSearchParam(params: URLSearchParams, key: string, value: string | null | undefined) {
   const normalized = normalizePart(value);
 
@@ -353,12 +302,9 @@ function brandLookupKeys(brand: string | null | undefined) {
 
   const compact = compactBrandKey(normalized);
 
-  return [
-    normalized,
-    compact,
-    brandLogoAliases[normalized],
-    brandLogoAliases[compact],
-  ].filter((key): key is string => Boolean(key));
+  return [normalized, compact, brandLogoAliases[normalized], brandLogoAliases[compact]].filter(
+    (key): key is string => Boolean(key),
+  );
 }
 
 function canonicalBrandKey(brand: string | null | undefined) {

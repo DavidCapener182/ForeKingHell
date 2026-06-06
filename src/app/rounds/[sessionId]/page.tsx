@@ -11,6 +11,7 @@ import {
   updateRoundHoleAction,
   updateShotClubAction,
 } from "@/app/rounds/actions";
+import { CourseScorecardSvg } from "@/components/course-scorecard-svg";
 import { OfflineRoundEditForm } from "@/components/offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -449,6 +450,27 @@ export default async function RoundDetailPage({ params }: PageProps) {
       ) : null}
 
       <section id="scorecard" className="grid scroll-mt-28 gap-3">
+        {round.holes.length > 0 ? (
+          <CourseScorecardSvg
+            courseName={round.session.courseName ?? round.session.fileName ?? "Round scorecard"}
+            holes={round.holes.map((hole) => ({
+              holeNumber: hole.holeNumber,
+              par: hole.par,
+              yards: hole.yards,
+              score: hole.score,
+              putts: hole.putts,
+              penalties: hole.penalties,
+              shotCount: hole.shots.length > 0 ? hole.shots.length : null,
+            }))}
+            playerName="ForeKingHell"
+            showPenalties={round.holes.some(
+              (hole) => typeof hole.penalties === "number" && hole.penalties > 0,
+            )}
+            showShotCounts={hasClubData}
+            subtitle={`${formatDate(round.session.date)} · ${formatSessionType(round.session.type)}`}
+          />
+        ) : null}
+
         <ReviewAccordion
           title="Hole-by-hole scorecard"
           description={

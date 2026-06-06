@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatCourseScorecardText,
   inferCourseShots,
   inferCourseShotsFromHoleShotCounts,
   parseScorecardText,
@@ -31,6 +32,19 @@ describe("parseScorecardText", () => {
     const result = parseScorecardText("1,4,423\\n2,5,532");
 
     expect(result.holes.map((hole) => hole.holeNumber)).toEqual([1, 2]);
+  });
+
+  it("formats stored scorecard holes back into parser-safe rows", () => {
+    const text = formatCourseScorecardText([
+      { holeNumber: 1, par: 5, yards: 549, name: "Opening, left" },
+      { holeNumber: 2, par: 3, yards: 199, name: null },
+    ]);
+
+    expect(text).toBe("1, 5, 549, Opening left\n2, 3, 199");
+    expect(parseScorecardText(text).holes).toEqual([
+      { holeNumber: 1, par: 5, yards: 549, name: "Opening left" },
+      { holeNumber: 2, par: 3, yards: 199, name: null },
+    ]);
   });
 });
 
