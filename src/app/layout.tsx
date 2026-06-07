@@ -10,7 +10,8 @@ import { adminUsers, userProfiles, users, xpLedger } from "@/db/schema";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 import { getDb } from "@/db/client";
-import { getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
+import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
+import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -103,13 +104,15 @@ async function getAppShellData(): Promise<AppShellData> {
 
   if (!process.env.DATABASE_URL?.trim()) {
     return defaultAppShellData(achievementNotifications, {
-      displayName: fallbackProfileLabel(user.name, user.email),
+      displayName: profileLabelFromIdentity(user.name, user.email),
       username: "",
       avatarUrl: null,
     });
   }
 
   try {
+    await ensureUserProfile(user);
+
     const db = getDb();
     const [account, xpRow, admin] = await Promise.all([
       db
@@ -140,7 +143,7 @@ async function getAppShellData(): Promise<AppShellData> {
 
     const accountRow = account[0];
     const profileLabel =
-      cleanProfileValue(accountRow?.displayName) ?? fallbackProfileLabel(user.name, user.email);
+      cleanProfileLabel(accountRow?.displayName) ?? profileLabelFromIdentity(user.name, user.email);
 
     return {
       totalXp: Number(xpRow[0]?.totalXp ?? 0),
@@ -156,13 +159,13 @@ async function getAppShellData(): Promise<AppShellData> {
       isAdmin: Boolean(admin[0]),
       mobileNavProfile: {
         displayName: profileLabel,
-        username: cleanProfileValue(accountRow?.username) ?? "",
+        username: cleanProfileLabel(accountRow?.username) ?? "",
         avatarUrl: accountRow?.avatarUrl ?? null,
       },
     };
   } catch {
     return defaultAppShellData(achievementNotifications, {
-      displayName: fallbackProfileLabel(user.name, user.email),
+      displayName: profileLabelFromIdentity(user.name, user.email),
       username: "",
       avatarUrl: null,
     });
@@ -180,15 +183,6 @@ function defaultAppShellData(
     isAdmin: false,
     mobileNavProfile,
   };
-}
-
-function fallbackProfileLabel(name: string | null, email: string | null) {
-  return cleanProfileValue(name) ?? cleanProfileValue(email?.split("@")[0]) ?? "Profile";
-}
-
-function cleanProfileValue(value: string | null | undefined) {
-  const cleaned = value?.trim();
-  return cleaned ? cleaned : null;
 }
 
 function PlausibleScript() {

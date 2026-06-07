@@ -25,11 +25,13 @@ import {
 } from "@/components/ui/table";
 import {
   benchmarkDisplayProgressPercent,
-  type ClubBenchmarkLevelKey,
+  getClubBenchmarkMetricLevels,
+  getClubBenchmarkTourReference,
   type ClubBenchmarkMetricKey,
   type ClubBenchmarkPeerComparison,
   type ClubBenchmarkPeerSummary,
   type ClubBenchmarkRow,
+  type InferredClubBenchmarkMetricLevel,
 } from "@/lib/club-benchmarks";
 import { formatClubType } from "@/lib/club-format";
 
@@ -45,30 +47,14 @@ type MetricDefinition = {
   comparisonMode: MetricComparisonMode;
 };
 
-type TourMetricValues = Partial<Record<ClubBenchmarkMetricKey, number>>;
-
-type TourReference = {
-  pga?: TourMetricValues;
-  lpga?: TourMetricValues;
-  pgaLabel?: string;
-  lpgaLabel?: string;
-};
-
-type InferredMetricLevel = {
-  key: ClubBenchmarkLevelKey;
-  label: string;
-  shortLabel: string;
-  value: number;
-};
-
 type MetricLevelComparison = {
   row: ClubBenchmarkRow;
-  levels: InferredMetricLevel[];
+  levels: InferredClubBenchmarkMetricLevel[];
   actual: number | null;
   levelLabel: string;
   levelKey: ClubBenchmarkRow["comparison"]["levelKey"];
   levelIndex: number | null;
-  nextLevel: InferredMetricLevel | null;
+  nextLevel: InferredClubBenchmarkMetricLevel | null;
   gapToNext: number | null;
   progressPercent: number;
   tourAnchorLabel: string;
@@ -141,79 +127,6 @@ const METRICS: MetricDefinition[] = [
     comparisonMode: "higher",
   },
 ];
-
-const TOUR_REFERENCES: Record<string, TourReference> = {
-  driver: {
-    pgaLabel: "Driver",
-    lpgaLabel: "Driver",
-    pga: tourValues(113, 167, 1.48, 2686, 32, 38, 275),
-    lpga: tourValues(94, 140, 1.48, 2611, 25, 37, 218),
-  },
-  "3w": {
-    pgaLabel: "3-wood",
-    lpgaLabel: "3-wood",
-    pga: tourValues(107, 158, 1.48, 3655, 30, 43, 243),
-    lpga: tourValues(90, 132, 1.48, 2704, 23, 39, 195),
-  },
-  "5w": {
-    pgaLabel: "5-wood",
-    lpgaLabel: "5-wood",
-    pga: tourValues(103, 152, 1.47, 4350, 31, 47, 230),
-    lpga: tourValues(88, 128, 1.47, 4501, 26, 43, 185),
-  },
-  hybrid: {
-    pgaLabel: "Hybrid 15-18",
-    lpgaLabel: "7-wood",
-    pga: tourValues(100, 146, 1.46, 4437, 29, 47, 225),
-    lpga: tourValues(85, 123, 1.46, 4693, 25, 46, 174),
-  },
-  "3i": {
-    pgaLabel: "3 iron",
-    pga: tourValues(98, 142, 1.45, 4630, 27, 46, 212),
-  },
-  "4i": {
-    pgaLabel: "4 iron",
-    lpgaLabel: "4 iron",
-    pga: tourValues(96, 137, 1.43, 4836, 28, 48, 203),
-    lpga: tourValues(80, 116, 1.45, 4801, 24, 43, 169),
-  },
-  "5i": {
-    pgaLabel: "5 iron",
-    lpgaLabel: "5 iron",
-    pga: tourValues(94, 132, 1.41, 5361, 31, 49, 194),
-    lpga: tourValues(79, 112, 1.43, 5081, 23, 45, 161),
-  },
-  "6i": {
-    pgaLabel: "6 iron",
-    lpgaLabel: "6 iron",
-    pga: tourValues(92, 127, 1.38, 6231, 30, 50, 183),
-    lpga: tourValues(78, 109, 1.41, 5943, 25, 46, 152),
-  },
-  "7i": {
-    pgaLabel: "7 iron",
-    lpgaLabel: "7 iron",
-    pga: tourValues(90, 120, 1.33, 7097, 32, 50, 172),
-    lpga: tourValues(76, 104, 1.38, 6699, 26, 47, 141),
-  },
-  "8i": {
-    pgaLabel: "8 iron",
-    lpgaLabel: "8 iron",
-    pga: tourValues(87, 115, 1.32, 7998, 31, 50, 160),
-    lpga: tourValues(74, 100, 1.33, 7494, 25, 47, 130),
-  },
-  "9i": {
-    pgaLabel: "9 iron",
-    lpgaLabel: "9 iron",
-    pga: tourValues(85, 109, 1.28, 8647, 30, 51, 148),
-    lpga: tourValues(72, 93, 1.32, 7589, 26, 47, 119),
-  },
-  pw: {
-    pgaLabel: "PW",
-    lpgaLabel: "PW",
-    pga: tourValues(83, 102, 1.23, 9304, 29, 52, 136),
-    lpga: tourValues(70, 86, 1.28, 8403, 23, 48, 107),
-  },
-};
 
 const COMPARISON_METRICS = METRICS.filter((metric) => metric.key !== "carryYd");
 const PEER_TAB_VALUE = "peers";
@@ -920,7 +833,7 @@ function MetricLevelMeter({
 
 function metricMeterMarkerPercent(
   comparison: MetricLevelComparison,
-  levels: InferredMetricLevel[],
+  levels: InferredClubBenchmarkMetricLevel[],
 ) {
   if (comparison.actual === null) {
     return null;
@@ -1176,7 +1089,7 @@ function closestNextMetricMatch(comparisons: MetricLevelComparison[]) {
       (
         comparison,
       ): comparison is MetricLevelComparison & {
-        nextLevel: InferredMetricLevel;
+        nextLevel: InferredClubBenchmarkMetricLevel;
         gapToNext: number;
       } => comparison.nextLevel !== null && comparison.gapToNext !== null,
     )
@@ -1222,28 +1135,15 @@ function metricLevelComparison(
 }
 
 function buildMetricLevels(row: ClubBenchmarkRow, metric: MetricDefinition) {
-  const tourValue = tourReferenceValue(row, metric.key);
-  const tourCarry = row.comparison.benchmark.levels.at(-1)?.yards;
-
-  if (!isNumber(tourValue) || !isNumber(tourCarry) || tourCarry <= 0) {
-    return null;
-  }
-
-  return row.comparison.benchmark.levels.map((level) => ({
-    key: level.key,
-    label: level.label,
-    shortLabel: level.shortLabel,
-    value: inferredMetricLevelValue(
-      metric,
-      row.comparison.benchmark.clubType,
-      tourValue,
-      level.yards / tourCarry,
-    ),
-  }));
+  return getClubBenchmarkMetricLevels(
+    row.comparison.benchmark.clubType,
+    metric.key,
+    metric.precision,
+  );
 }
 
 function classifyMetricLevel(
-  levels: InferredMetricLevel[],
+  levels: InferredClubBenchmarkMetricLevel[],
   actual: number | null,
   metric: MetricDefinition,
 ): Omit<MetricLevelComparison, "row" | "levels" | "actual" | "tourAnchorLabel"> {
@@ -1314,31 +1214,7 @@ function classifyMetricLevel(
   };
 }
 
-function inferredMetricLevelValue(
-  metric: MetricDefinition,
-  clubType: string,
-  tourValue: number,
-  carryRatio: number,
-) {
-  const ratio = clamp(carryRatio, 0.35, 1);
-
-  switch (metric.key) {
-    case "clubSpeedMph":
-    case "ballSpeedMph":
-      return roundTo(tourValue * Math.sqrt(ratio), metric.precision);
-    case "smashFactor":
-      return roundTo(1 + (tourValue - 1) * (0.55 + 0.45 * ratio), metric.precision);
-    case "spinRate":
-      return roundTo(tourValue * Math.pow(ratio, 0.5), metric.precision);
-    case "maxHeightYd":
-    case "landAngleDeg":
-      return roundTo(tourValue * Math.pow(ratio, 0.35), metric.precision);
-    default:
-      return roundTo(tourValue, metric.precision);
-  }
-}
-
-function metricDisplayProgressPercent(levels: InferredMetricLevel[], actual: number) {
+function metricDisplayProgressPercent(levels: InferredClubBenchmarkMetricLevel[], actual: number) {
   const first = levels[0];
   const final = levels[levels.length - 1];
   const ascending = final.value >= first.value;
@@ -1461,14 +1337,8 @@ function metricReferenceText(comparison: MetricLevelComparison, metric: MetricDe
   )}`;
 }
 
-function tourReferenceValue(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey) {
-  const reference = referenceFor(row);
-
-  return reference?.pga?.[metric] ?? reference?.lpga?.[metric] ?? null;
-}
-
 function tourAnchorText(row: ClubBenchmarkRow, metric: MetricDefinition) {
-  const reference = referenceFor(row);
+  const reference = getClubBenchmarkTourReference(row.comparison.benchmark.clubType);
   const pgaValue = reference?.pga?.[metric.key];
   const lpgaValue = reference?.lpga?.[metric.key];
 
@@ -1489,36 +1359,12 @@ function tourAnchorText(row: ClubBenchmarkRow, metric: MetricDefinition) {
   return "No tour anchor";
 }
 
-function referenceFor(row: ClubBenchmarkRow) {
-  return TOUR_REFERENCES[row.comparison.benchmark.clubType];
-}
-
 function actualMetricValue(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey) {
   if (metric === "carryYd") {
     return row.carryYd;
   }
 
   return row.metrics?.[metric] ?? null;
-}
-
-function tourValues(
-  clubSpeedMph: number,
-  ballSpeedMph: number,
-  smashFactor: number,
-  spinRate: number,
-  maxHeightYd: number,
-  landAngleDeg: number,
-  carryYd: number,
-): TourMetricValues {
-  return {
-    carryYd,
-    clubSpeedMph,
-    ballSpeedMph,
-    smashFactor,
-    spinRate,
-    maxHeightYd,
-    landAngleDeg,
-  };
 }
 
 function formatMetric(value: number | null) {
@@ -1536,12 +1382,6 @@ function formatMetricValue(value: number | null | undefined, metric: MetricDefin
   });
 
   return metric.unit ? `${formatted} ${metric.unit}` : formatted;
-}
-
-function roundTo(value: number, precision: number) {
-  const factor = 10 ** precision;
-
-  return Math.round(value * factor) / factor;
 }
 
 function clamp(value: number, min: number, max: number) {

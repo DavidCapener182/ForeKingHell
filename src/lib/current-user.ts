@@ -8,6 +8,11 @@ import { cache } from "react";
 
 import { userProfiles, users } from "@/db/schema";
 import { getDb } from "@/db/client";
+import {
+  cleanProfileLabel,
+  isSharedDatabaseArtifact,
+  profileLabelFromIdentity,
+} from "@/lib/profile-label";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
 import type { ThemePreference } from "@/lib/user-settings";
 
@@ -108,8 +113,7 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
 ) {
   const db = getDb();
   const now = new Date();
-  const fallbackName =
-    safeDisplayName(name) ?? displayNameFromEmail(email) ?? "LM World Tour Player";
+  const fallbackName = profileLabelFromIdentity(name, email, "LM World Tour Player");
 
   await db
     .insert(users)
@@ -178,15 +182,16 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
 
 function normalizeAuthUser(user: User): CurrentUser {
   const metadata = user.user_metadata ?? {};
-  const name =
+  const email = user.email ?? null;
+  const metadataName =
     stringMetadata(metadata.name) ??
     stringMetadata(metadata.full_name) ??
     stringMetadata(metadata.display_name);
 
   return {
     id: user.id,
-    email: user.email ?? null,
-    name,
+    email,
+    name: profileLabelFromIdentity(metadataName, email, null),
   };
 }
 
@@ -218,13 +223,16 @@ async function getPlaywrightCookieUser(): Promise<CurrentUser | null> {
       return null;
     }
 
+    const email = typeof claims.email === "string" ? claims.email : null;
+    const metadataName =
+      stringMetadata(claims.user_metadata?.name) ??
+      stringMetadata(claims.user_metadata?.full_name) ??
+      stringMetadata(claims.user_metadata?.display_name);
+
     return {
       id: claims.sub,
-      email: typeof claims.email === "string" ? claims.email : null,
-      name:
-        stringMetadata(claims.user_metadata?.name) ??
-        stringMetadata(claims.user_metadata?.full_name) ??
-        stringMetadata(claims.user_metadata?.display_name),
+      email,
+      name: profileLabelFromIdentity(metadataName, email, null),
     };
   } catch {
     return null;
@@ -329,19 +337,9 @@ function normalizeUsername(value: string) {
 }
 
 function safeDisplayName(value: string | null | undefined) {
-  const cleaned = stringMetadata(value);
-  return cleaned && !isSharedDatabaseArtifact(cleaned) ? cleaned : null;
-}
-
-function displayNameFromEmail(email: string | null | undefined) {
-  const localPart = email?.split("@")[0]?.trim();
-  return localPart && !isSharedDatabaseArtifact(localPart) ? localPart : null;
+  return cleanProfileLabel(value);
 }
 
 function shouldRepairStoredUsername(value: string | null | undefined) {
   return !value?.trim() || isSharedDatabaseArtifact(value);
-}
-
-function isSharedDatabaseArtifact(value: string) {
-  return /\bincert\b/i.test(value);
 }

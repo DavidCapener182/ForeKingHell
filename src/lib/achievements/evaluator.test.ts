@@ -7,7 +7,13 @@ import {
   evaluateRoundScorecardAchievements,
 } from "./evaluator";
 import { ACHIEVEMENTS } from "./registry";
-import type { AchievementSession, AchievementShot, RoundScorecardHole } from "./types";
+import type {
+  AchievementSession,
+  AchievementShot,
+  AchievementSpeedTrainingGoal,
+  AchievementSpeedTrainingSession,
+  RoundScorecardHole,
+} from "./types";
 
 const sessionDate = new Date("2026-05-01T12:00:00.000Z");
 
@@ -402,6 +408,95 @@ describe("Rapsodo achievement evaluation", () => {
       benchmarkAverageLevel: 2,
     });
   });
+
+  it("unlocks speed training goals, target hits, reps, and driver speed ladders", () => {
+    const result = evaluateAllAchievementCandidates({
+      sessions: [],
+      shots: [],
+      clubs: [
+        { id: "driver-club", type: "driver", active: true },
+        { id: "fivewood-club", type: "5w", active: true },
+        { id: "seveniron-club", type: "7i", active: true },
+        { id: "nineiron-club", type: "9i", active: true },
+      ],
+      stockYardages: [],
+      speedTrainingGoals: [
+        speedGoal("goal-driver", "driver-club", "driver", 95),
+        speedGoal("goal-7i", "seveniron-club", "7i", 75),
+        speedGoal("goal-5w", "fivewood-club", "5w", 80),
+      ],
+      speedTrainingSessions: [
+        speedSession({
+          id: "speed-1",
+          clubId: "driver-club",
+          clubType: "driver",
+          sessionDate: new Date("2026-05-01T12:00:00.000Z"),
+          avgSpeedMph: 88,
+          maxSpeedMph: 92,
+          swingCount: 25,
+        }),
+        speedSession({
+          id: "speed-2",
+          clubId: "driver-club",
+          clubType: "driver",
+          sessionDate: new Date("2026-05-02T12:00:00.000Z"),
+          avgSpeedMph: 96,
+          maxSpeedMph: 101,
+          swingCount: 25,
+        }),
+        speedSession({
+          id: "speed-3",
+          clubId: "seveniron-club",
+          clubType: "7i",
+          sessionDate: new Date("2026-05-03T12:00:00.000Z"),
+          avgSpeedMph: 78,
+          maxSpeedMph: 82,
+          swingCount: 25,
+        }),
+        speedSession({
+          id: "speed-4",
+          clubId: "fivewood-club",
+          clubType: "5w",
+          sessionDate: new Date("2026-05-04T12:00:00.000Z"),
+          avgSpeedMph: 82,
+          maxSpeedMph: 87,
+          swingCount: 25,
+        }),
+        speedSession({
+          id: "speed-5",
+          clubId: "nineiron-club",
+          clubType: "9i",
+          sessionDate: new Date("2026-05-05T12:00:00.000Z"),
+          avgSpeedMph: 70,
+          maxSpeedMph: 73,
+          targetSpeedMph: 75,
+          swingCount: 25,
+        }),
+      ],
+    });
+    const ids = achievementIds(result.unlocks);
+    const driverTargetHit = result.unlocks.find(
+      (unlock) => unlock.achievementId === "driver_speed_target_hit",
+    );
+
+    expect(ids).toContain("first_speed_session");
+    expect(ids).toContain("speed_sessions_5");
+    expect(ids).toContain("speed_reps_100");
+    expect(ids).toContain("speed_target_set");
+    expect(ids).toContain("three_club_speed_targets");
+    expect(ids).toContain("speed_target_hit");
+    expect(ids).toContain("driver_speed_target_hit");
+    expect(ids).toContain("three_club_speed_targets_hit");
+    expect(ids).toContain("driver_training_speed_90");
+    expect(ids).toContain("driver_training_speed_95");
+    expect(ids).not.toContain("driver_training_speed_100");
+    expect(driverTargetHit?.metadata).toMatchObject({
+      speedSessionId: "speed-2",
+      clubType: "driver",
+      avgSpeedMph: 96,
+      targetSpeedMph: 95,
+    });
+  });
 });
 
 describe("round achievement evaluation", () => {
@@ -577,5 +672,45 @@ function stock(
     dispersionLeftYd: 8,
     dispersionRightYd: 8,
     confidenceScore: confidence,
+  };
+}
+
+function speedSession(
+  overrides: Partial<AchievementSpeedTrainingSession>,
+): AchievementSpeedTrainingSession {
+  return {
+    id: "speed-session",
+    source: "manual",
+    sessionDate,
+    title: "Speed session",
+    clubId: null,
+    clubType: null,
+    implementKind: "club",
+    implementLabel: "Speed club",
+    speedSystem: null,
+    handedness: "dominant",
+    swingCount: 10,
+    minSpeedMph: null,
+    avgSpeedMph: null,
+    maxSpeedMph: null,
+    targetSpeedMph: null,
+    ...overrides,
+  };
+}
+
+function speedGoal(
+  id: string,
+  clubId: string | null,
+  clubType: string | null,
+  targetSpeedMph: number,
+): AchievementSpeedTrainingGoal {
+  return {
+    id,
+    goalKey: clubId ? `club:${clubId}` : "driver_global",
+    clubId,
+    clubType,
+    targetSpeedMph,
+    targetDate: null,
+    notes: null,
   };
 }

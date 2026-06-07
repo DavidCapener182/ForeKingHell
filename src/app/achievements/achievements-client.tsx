@@ -58,6 +58,7 @@ const categoryLabels: Record<string, string> = {
   consistency: "Consistency",
   coach: "Coach",
   progress: "Progress",
+  speed: "Speed",
   mileage: "Mileage",
   scoring: "Scoring",
   putting: "Putting",
@@ -1256,6 +1257,10 @@ function sourceLabel(kind: NonNullable<AchievementView["source"]>["kind"]) {
 
   if (kind === "progress") {
     return "Progress source";
+  }
+
+  if (kind === "speed") {
+    return "Speed session";
   }
 
   return "Source data";

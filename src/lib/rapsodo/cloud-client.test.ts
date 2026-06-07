@@ -268,6 +268,89 @@ describe("RapsodoCloudClient", () => {
     ]);
   });
 
+  it("lists speed sessions from the dry-swing endpoint", async () => {
+    const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      expect(input.toString()).toBe(
+        "https://rapsodo.test/drySwing/sessions?skip=0&take=20&minDate=2026-06-01&maxDate=2026-06-30",
+      );
+      expect((init?.headers as Record<string, string>).authorization).toBe("mlm-token");
+
+      return jsonResponse({
+        session: [
+          {
+            id: 101919,
+            sessionStartDate: "2026-06-07T14:37:00Z",
+            count: 15,
+            lowestSwingSpeed: 32.633,
+            avgSwingSpeed: 36.21,
+            maxSwingSpeed: 38.89,
+            clubId: 0,
+          },
+        ],
+      });
+    });
+
+    const sessions = await new RapsodoCloudClient({
+      apiBaseUrl: "https://rapsodo.test",
+      fetchFn: fetchFn as unknown as typeof fetch,
+    }).listSpeedSessions("mlm-token", {
+      take: 20,
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+    });
+
+    expect(sessions).toEqual([
+      expect.objectContaining({
+        providerKind: "speed",
+        providerSessionId: "101919",
+        swingCount: 15,
+        minSpeedMph: expect.closeTo(73, 0),
+        avgSpeedMph: expect.closeTo(81, 0),
+        maxSpeedMph: expect.closeTo(87, 0),
+        speedSystem: "No system",
+      }),
+    ]);
+  });
+
+  it("lists speed swing detail and exports speed CSV from dry-swing detail endpoints", async () => {
+    const seenUrls: string[] = [];
+    const fetchFn = vi.fn(async (input: string | URL | Request) => {
+      const url = input.toString();
+      seenUrls.push(url);
+
+      if (url.endsWith("/details/export")) {
+        return textResponse("Swing Number,Club Speed\n1,73");
+      }
+
+      return jsonResponse({
+        data: [
+          { drySwingId: "swing-1", swingNumber: 1, clubSpeed: 32.633 },
+          { localId: "swing-2", swingNumber: "2", clubSpeedMph: 81 },
+        ],
+      });
+    });
+    const client = new RapsodoCloudClient({
+      apiBaseUrl: "https://rapsodo.test",
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+
+    await expect(client.listSpeedSessionSwings("mlm-token", "101919", 200)).resolves.toEqual([
+      expect.objectContaining({
+        rapsodoSwingId: "swing-1",
+        swingNumber: 1,
+        clubSpeedMph: expect.closeTo(73, 0),
+      }),
+      expect.objectContaining({ rapsodoSwingId: "swing-2", swingNumber: 2, clubSpeedMph: 81 }),
+    ]);
+    await expect(client.exportSpeedSessionCsv("mlm-token", "101919")).resolves.toContain(
+      "Club Speed",
+    );
+    expect(seenUrls).toEqual([
+      "https://rapsodo.test/drySwing/101919/details?skip=0&take=200",
+      "https://rapsodo.test/drySwing/101919/details/export",
+    ]);
+  });
+
   it("lists and normalizes Rapsodo bag clubs", async () => {
     const fetchFn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       expect(input.toString()).toBe("https://rapsodo.test/bag/v2/default");

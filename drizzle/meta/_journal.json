@@ -197,6 +197,13 @@
       "when": 1780572518000,
       "tag": "0027_shot_face_angle",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1780832400000,
+      "tag": "0028_speed_training",
+      "breakpoints": true
     }
   ]
 }

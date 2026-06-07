@@ -12,6 +12,7 @@ export type AchievementCategory =
   | "consistency"
   | "coach"
   | "progress"
+  | "speed"
   | "mileage"
   | "scoring"
   | "putting"
@@ -25,6 +26,7 @@ export type AchievementTriggerType =
   | "stockYardage"
   | "rollingWindow"
   | "progress"
+  | "speedTraining"
   | "roundScorecard";
 
 export type Achievement = {
@@ -132,6 +134,34 @@ export type AchievementStockYardage = {
   dispersionLeftYd: number | null;
   dispersionRightYd: number | null;
   confidenceScore: number | null;
+};
+
+export type AchievementSpeedTrainingSession = {
+  id: string;
+  source: string;
+  sessionDate: Date;
+  title: string | null;
+  clubId: string | null;
+  clubType: string | null;
+  implementKind: string;
+  implementLabel: string | null;
+  speedSystem: string | null;
+  handedness: string;
+  swingCount: number;
+  minSpeedMph: number | null;
+  avgSpeedMph: number | null;
+  maxSpeedMph: number | null;
+  targetSpeedMph: number | null;
+};
+
+export type AchievementSpeedTrainingGoal = {
+  id: string;
+  goalKey: string;
+  clubId: string | null;
+  clubType: string | null;
+  targetSpeedMph: number;
+  targetDate: string | null;
+  notes: string | null;
 };
 
 export type AchievementEvaluationResult = {

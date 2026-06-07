@@ -32,6 +32,10 @@ const securityAdvisorMigration = readFileSync(
   join(process.cwd(), "drizzle/0026_security_advisor_hardening.sql"),
   "utf8",
 );
+const speedTrainingMigration = readFileSync(
+  join(process.cwd(), "drizzle/0028_speed_training.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -283,5 +287,24 @@ describe("RLS migration", () => {
     expect(securityAdvisorMigration).toContain(
       "ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC",
     );
+  });
+
+  it("keeps speed training sessions, swings, and goals user-owned behind RLS", () => {
+    for (const table of [
+      "fkh_speed_training_sessions",
+      "fkh_speed_training_swings",
+      "fkh_speed_training_goals",
+    ]) {
+      expect(speedTrainingMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+    }
+
+    expect(speedTrainingMigration).toContain(
+      'CREATE POLICY "fkh_speed_training_sessions_owner_all"',
+    );
+    expect(speedTrainingMigration).toContain('CREATE POLICY "fkh_speed_training_swings_owner_all"');
+    expect(speedTrainingMigration).toContain('CREATE POLICY "fkh_speed_training_goals_owner_all"');
+    expect(speedTrainingMigration).toContain('"user_id" = auth.uid()');
+    expect(speedTrainingMigration).toContain('session_row."id" = "speed_session_id"');
+    expect(speedTrainingMigration).toContain('session_row."user_id" = auth.uid()');
   });
 });

@@ -116,6 +116,8 @@ import {
 } from "@/lib/club-format";
 import { ensureCurrentSocialProfile, getBlockedUserIds, getFriendIds } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-training-data";
+import { formatSpeed } from "@/lib/speed-training";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import {
   SAND_WEDGE_STOCK_MIN_CARRY_YD,
@@ -166,15 +168,15 @@ const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
-  const [bag, profile, challengeData, featureData, personalStrokesGainedEvents] = await Promise.all(
-    [
+  const [bag, profile, challengeData, featureData, personalStrokesGainedEvents, speedSummary] =
+    await Promise.all([
       getBag(),
       ensureCurrentSocialProfile(),
       getBagChallengeData(),
       getFeatureIdeasData(),
       getPersonalStrokesGainedEvents(),
-    ],
-  );
+      getBagSpeedSummary(),
+    ]);
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
   });
@@ -499,6 +501,8 @@ export default async function BagPage({ searchParams }: PageProps) {
           trend={bagScoreTrend}
         />
 
+        {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
+
         <MobileSectionChips
           items={[
             { label: "Health", href: "#bag-health" },
@@ -615,6 +619,17 @@ async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {
   } catch (error) {
     console.error("[bag] Challenge data unavailable", error);
     return { active: [] };
+  }
+}
+
+async function getBagSpeedSummary(): Promise<SpeedCentreSummary | null> {
+  try {
+    const userId = await requireCurrentUserId();
+    const data = await getSpeedCoachCardData(userId);
+    return data.summary;
+  } catch (error) {
+    console.error("[bag] Speed summary unavailable", error);
+    return null;
   }
 }
 
@@ -890,6 +905,49 @@ type BagScoreTrendPoint = {
   detail: string;
   tone: BagDoctorFinding["tone"];
 };
+
+function BagSpeedPotentialPanel({ summary }: { summary: SpeedCentreSummary }) {
+  const carryGain = summary.carryProjection.carryGainYd;
+  const projectedCarry =
+    summary.carryProjection.targetCarryYd === null
+      ? "Set target"
+      : formatProjectedCarry(summary.carryProjection.targetCarryYd, carryGain);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Speed potential"
+        description="Read-only speed projection from Speed Centre; bag recommendations stay unchanged."
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/speed" prefetch={false}>
+              <Gauge className="size-4" />
+              Speed Centre
+            </Link>
+          </Button>
+        }
+      />
+      <div className="grid gap-3 p-4 md:grid-cols-4">
+        <DataPair label="Driver speed" value={formatSpeed(summary.currentSpeedMph)} />
+        <DataPair label="Target speed" value={formatSpeed(summary.targetSpeedMph)} />
+        <DataPair
+          label="Current carry"
+          value={formatCarryYards(summary.carryProjection.currentCarryYd)}
+        />
+        <DataPair label="Projected carry" value={projectedCarry} />
+      </div>
+    </DataPanel>
+  );
+}
+
+function formatProjectedCarry(targetCarryYd: number, carryGainYd: number | null) {
+  const gainSuffix =
+    carryGainYd === null
+      ? ""
+      : ` (${carryGainYd >= 0 ? "+" : ""}${numberFormatter.format(carryGainYd)} yd)`;
+
+  return `${formatCarryYards(targetCarryYd)}${gainSuffix}`;
+}
 
 function BagHealthHero({
   bagScore,

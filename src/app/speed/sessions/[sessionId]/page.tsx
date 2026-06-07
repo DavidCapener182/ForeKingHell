@@ -1,0 +1,343 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { ComponentProps, ReactNode } from "react";
+import { ArrowLeft, Gauge, Save, Trash2 } from "lucide-react";
+
+import { deleteSpeedSessionAction, updateSpeedSessionAction } from "@/app/speed/actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  DataPanel,
+  EmptyState,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { getSpeedSessionDetailPageData } from "@/lib/speed-training-data";
+import { formatSpeed, formatSpeedCompact } from "@/lib/speed-training";
+import { cn } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
+
+type PageProps = {
+  params: Promise<{
+    sessionId: string;
+  }>;
+  searchParams?: Promise<{
+    speed_saved?: string | string[];
+  }>;
+};
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+export default async function SpeedSessionPage({ params, searchParams }: PageProps) {
+  const { sessionId } = await params;
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const userId = await requireCurrentUserId();
+  const data = await getSpeedSessionDetailPageData(userId, sessionId);
+
+  if (!data) {
+    notFound();
+  }
+
+  const saved = firstSearchParam(resolvedSearchParams.speed_saved);
+
+  return (
+    <PageShell>
+      <PageHeader
+        eyebrow={<StatusPill tone="sky">Speed session</StatusPill>}
+        title={data.session.title ?? data.session.implementLabel}
+        description={`${data.session.implementLabel} · ${formatDate(data.session.sessionDateIso)}`}
+        metrics={[
+          {
+            label: "Average",
+            value: formatSpeed(data.session.avgSpeedMph),
+            detail: `${data.session.swingCount} swings`,
+          },
+          {
+            label: "Best",
+            value: formatSpeed(data.swingSummary.bestSwingMph),
+            detail: "Fastest swing",
+          },
+          {
+            label: "Best 3",
+            value: formatSpeed(data.swingSummary.bestThreeAvgMph),
+            detail: "Peak quality",
+          },
+          {
+            label: "Finish",
+            value: formatSpeed(data.swingSummary.lastFiveAvgMph),
+            detail: data.swingSummary.trendLabel,
+          },
+        ]}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/speed" prefetch={false}>
+              <ArrowLeft aria-hidden="true" />
+              Speed Centre
+            </Link>
+          </Button>
+        }
+      />
+
+      {saved ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
+          Speed session updated.
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <DataPanel>
+          <SectionHeader
+            title="Swing detail"
+            description="Warm-up, peak speed, and late-session drop-off."
+            action={<StatusPill tone="green">{data.swingSummary.trendLabel}</StatusPill>}
+          />
+          <div className="grid gap-4 p-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <MetricCard label="Best swing" value={formatSpeed(data.swingSummary.bestSwingMph)} />
+              <MetricCard
+                label="Best 3 avg"
+                value={formatSpeed(data.swingSummary.bestThreeAvgMph)}
+              />
+              <MetricCard label="First 5" value={formatSpeed(data.swingSummary.firstFiveAvgMph)} />
+              <MetricCard label="Last 5" value={formatSpeed(data.swingSummary.lastFiveAvgMph)} />
+              <MetricCard label="Late change" value={formatGap(data.swingSummary.warmupGainMph)} />
+            </div>
+
+            {data.swings.length === 0 ? (
+              <EmptyState
+                icon={<Gauge className="size-5" aria-hidden="true" />}
+                title="No individual swings"
+                description="This session only has summary numbers. Paste the swing readings below to rebuild detail."
+              />
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {data.swings.map((swing) => (
+                  <div
+                    key={swing.id}
+                    className="grid grid-cols-[52px_1fr] items-center gap-3 rounded-lg border border-border/70 bg-white/65 px-3 py-2"
+                  >
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-700">
+                      #{swing.swingNumber}
+                    </span>
+                    <span className="text-lg font-semibold tabular-nums text-slate-950">
+                      {formatSpeedCompact(swing.clubSpeedMph)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DataPanel>
+
+        <div className="grid gap-4">
+          <DataPanel>
+            <SectionHeader
+              title="Edit session"
+              description="Correct club, implement, side, target, or readings."
+              action={<Save className="size-4 text-primary" aria-hidden="true" />}
+            />
+            <form action={updateSpeedSessionAction} className="grid gap-4 p-4">
+              <input type="hidden" name="sessionId" value={data.session.id} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Date">
+                  <Input
+                    name="sessionDate"
+                    type="date"
+                    defaultValue={dateInputValue(data.session.sessionDateIso)}
+                  />
+                </Field>
+                <Field label="Title">
+                  <Input name="title" defaultValue={data.session.title ?? ""} />
+                </Field>
+                <Field label="Implement">
+                  <NativeSelect name="implementKind" defaultValue={data.session.implementKind}>
+                    <option value="club">Golf club</option>
+                    <option value="speed_stick">Speed stick</option>
+                    <option value="weighted_club">Weighted club</option>
+                    <option value="other">Other</option>
+                  </NativeSelect>
+                </Field>
+                <Field label="Side">
+                  <NativeSelect name="handedness" defaultValue={data.session.handedness}>
+                    <option value="dominant">Dominant side</option>
+                    <option value="non_dominant">Non-dominant side</option>
+                    <option value="both">Both sides</option>
+                  </NativeSelect>
+                </Field>
+                <Field label="Speed system">
+                  <NativeSelect name="speedSystem" defaultValue={data.session.speedSystem ?? ""}>
+                    <option value="">Standard club speed</option>
+                    <option value="R-Speed">R-Speed</option>
+                    <option value="Light speed stick">Light speed stick</option>
+                    <option value="Medium speed stick">Medium speed stick</option>
+                    <option value="Heavy speed stick">Heavy speed stick</option>
+                    <option value="Stack">Stack</option>
+                    <option value="Other">Other</option>
+                  </NativeSelect>
+                </Field>
+                <Field label="Target">
+                  <Input
+                    name="targetSpeedMph"
+                    inputMode="decimal"
+                    defaultValue={numberInputValue(data.session.targetSpeedMph)}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Club used">
+                <NativeSelect name="clubId" defaultValue={data.session.clubId ?? ""}>
+                  <option value="">Not in bag / speed stick</option>
+                  {data.clubOptions.map((club) => (
+                    <option key={club.id} value={club.id}>
+                      {club.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+
+              <Field label="Implement label">
+                <Input name="implementLabel" defaultValue={data.session.implementLabel} />
+              </Field>
+
+              <Field label="Swing speeds">
+                <Textarea
+                  name="speedReadings"
+                  rows={8}
+                  defaultValue={data.swings.map((swing) => swing.clubSpeedMph).join("\n")}
+                />
+              </Field>
+
+              <div className="grid gap-3 sm:grid-cols-4">
+                <Field label="Min">
+                  <Input
+                    name="minSpeedMph"
+                    inputMode="decimal"
+                    defaultValue={numberInputValue(data.session.minSpeedMph)}
+                  />
+                </Field>
+                <Field label="Average">
+                  <Input
+                    name="avgSpeedMph"
+                    inputMode="decimal"
+                    defaultValue={numberInputValue(data.session.avgSpeedMph)}
+                  />
+                </Field>
+                <Field label="Max">
+                  <Input
+                    name="maxSpeedMph"
+                    inputMode="decimal"
+                    defaultValue={numberInputValue(data.session.maxSpeedMph)}
+                  />
+                </Field>
+                <Field label="Count">
+                  <Input
+                    name="swingCount"
+                    inputMode="numeric"
+                    defaultValue={String(data.session.swingCount)}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Notes">
+                <Input name="notes" defaultValue={data.session.notes ?? ""} />
+              </Field>
+
+              <Button type="submit" className="w-full sm:w-fit">
+                <Save aria-hidden="true" />
+                Save changes
+              </Button>
+            </form>
+          </DataPanel>
+
+          <DataPanel>
+            <SectionHeader
+              title="Delete session"
+              description="Remove this session and all swing readings."
+              action={<Trash2 className="size-4 text-destructive" aria-hidden="true" />}
+            />
+            <form action={deleteSpeedSessionAction} className="p-4">
+              <input type="hidden" name="sessionId" value={data.session.id} />
+              <Button type="submit" variant="destructive">
+                <Trash2 aria-hidden="true" />
+                Delete session
+              </Button>
+            </form>
+          </DataPanel>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-white/65 p-3">
+      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-1.5 text-sm font-medium text-slate-950">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
+  return (
+    <select
+      className={cn(
+        "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </select>
+  );
+}
+
+function formatDate(value: string | null) {
+  if (!value) {
+    return "Date unknown";
+  }
+
+  return dateFormatter.format(new Date(value));
+}
+
+function formatGap(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} mph`;
+}
+
+function firstSearchParam(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw || null;
+}
+
+function dateInputValue(value: string) {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function numberInputValue(value: number | null) {
+  return value === null ? "" : String(value);
+}

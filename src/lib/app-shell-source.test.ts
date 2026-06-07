@@ -13,4 +13,13 @@ describe("app shell account data", () => {
     expect(source).not.toContain("Promise.race");
     expect(source).not.toContain("appShellDataTimeoutMs");
   });
+
+  it("repairs and sanitizes authenticated profile labels before rendering the shell", () => {
+    const source = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+
+    expect(source).toContain("await ensureUserProfile(user);");
+    expect(source).toContain("cleanProfileLabel(accountRow?.displayName)");
+    expect(source).toContain("profileLabelFromIdentity(user.name, user.email)");
+    expect(source).not.toContain("fallbackProfileLabel");
+  });
 });

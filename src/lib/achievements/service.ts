@@ -7,6 +7,8 @@ import {
   clubs,
   sessions,
   shots,
+  speedTrainingGoals,
+  speedTrainingSessions,
   stockYardages,
   userAchievements,
   users,
@@ -29,6 +31,8 @@ import type {
   AchievementProgressCandidate,
   AchievementSession,
   AchievementShot,
+  AchievementSpeedTrainingGoal,
+  AchievementSpeedTrainingSession,
   AchievementStockYardage,
   AchievementTier,
   AchievementTriggerType,
@@ -43,7 +47,7 @@ export type AchievementSourceStat = {
 };
 
 export type AchievementSourceView = {
-  kind: "shot" | "round" | "session" | "stock" | "progress" | "unknown";
+  kind: "shot" | "round" | "session" | "stock" | "progress" | "speed" | "unknown";
   title: string;
   detail: string;
   occurredAt: string | null;
@@ -178,11 +182,23 @@ export async function syncAchievementsForUser(userId: string) {
   }
 
   const db = getDb();
-  const [[shotCount], [sessionCount], [achievementCount]] = await Promise.all([
-    db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
-    db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
-    db.select({ value: count() }).from(userAchievements).where(eq(userAchievements.userId, userId)),
-  ]);
+  const [[shotCount], [sessionCount], [speedSessionCount], [speedGoalCount], [achievementCount]] =
+    await Promise.all([
+      db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
+      db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
+      db
+        .select({ value: count() })
+        .from(speedTrainingSessions)
+        .where(eq(speedTrainingSessions.userId, userId)),
+      db
+        .select({ value: count() })
+        .from(speedTrainingGoals)
+        .where(eq(speedTrainingGoals.userId, userId)),
+      db
+        .select({ value: count() })
+        .from(userAchievements)
+        .where(eq(userAchievements.userId, userId)),
+    ]);
 
   await db
     .insert(achievementSyncState)
@@ -195,6 +211,8 @@ export async function syncAchievementsForUser(userId: string) {
       lastAchievementCount: achievementCount?.value ?? 0,
       metadataJson: {
         registryCount: ACHIEVEMENTS.length,
+        speedSessionCount: speedSessionCount?.value ?? 0,
+        speedGoalCount: speedGoalCount?.value ?? 0,
       },
     })
     .onConflictDoUpdate({
@@ -207,6 +225,8 @@ export async function syncAchievementsForUser(userId: string) {
         lastAchievementCount: achievementCount?.value ?? 0,
         metadataJson: {
           registryCount: ACHIEVEMENTS.length,
+          speedSessionCount: speedSessionCount?.value ?? 0,
+          speedGoalCount: speedGoalCount?.value ?? 0,
         },
       },
     });
@@ -253,14 +273,25 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
   const [
     [shotCount],
     [sessionCount],
+    [speedSessionCount],
+    [speedGoalCount],
     unlockRows,
     progressRows,
     [xpTotalRow],
     clubTypeRows,
+    speedClubTypeRows,
     [syncState],
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
+    db
+      .select({ value: count() })
+      .from(speedTrainingSessions)
+      .where(eq(speedTrainingSessions.userId, userId)),
+    db
+      .select({ value: count() })
+      .from(speedTrainingGoals)
+      .where(eq(speedTrainingGoals.userId, userId)),
     db
       .select({
         achievementId: userAchievements.achievementId,
@@ -299,9 +330,18 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
       .groupBy(shots.clubType),
     db
       .select({
+        clubType: clubs.type,
+      })
+      .from(speedTrainingSessions)
+      .innerJoin(clubs, eq(speedTrainingSessions.clubId, clubs.id))
+      .where(eq(speedTrainingSessions.userId, userId))
+      .groupBy(clubs.type),
+    db
+      .select({
         registryVersion: achievementSyncState.registryVersion,
         lastShotCount: achievementSyncState.lastShotCount,
         lastSessionCount: achievementSyncState.lastSessionCount,
+        metadataJson: achievementSyncState.metadataJson,
       })
       .from(achievementSyncState)
       .where(eq(achievementSyncState.userId, userId))
@@ -331,9 +371,10 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
     });
   const progressByAchievementId = new Map(progressRows.map((row) => [row.achievementId, row]));
   const totalXp = Number(xpTotalRow?.totalXp ?? 0);
-  const trackedClubTypes = clubTypeRows
+  const trackedClubTypes = [...clubTypeRows, ...speedClubTypeRows]
     .map((row) => row.clubType)
     .filter((clubType): clubType is string => isTrackedClubType(clubType))
+    .filter((clubType, index, clubTypes) => clubTypes.indexOf(clubType) === index)
     .sort((left, right) => clubSortValue(left) - clubSortValue(right));
   const trackedClubTypeSet = new Set(trackedClubTypes);
   const visibleAchievementRegistry = ACHIEVEMENTS.filter((achievement) =>
@@ -407,7 +448,10 @@ export async function getAchievementPageData(userId?: string): Promise<Achieveme
       !syncState ||
       syncState.registryVersion !== ACHIEVEMENT_REGISTRY_VERSION ||
       syncState.lastShotCount !== (shotCount?.value ?? 0) ||
-      syncState.lastSessionCount !== (sessionCount?.value ?? 0),
+      syncState.lastSessionCount !== (sessionCount?.value ?? 0) ||
+      numberFromMetadata(syncState.metadataJson, "speedSessionCount") !==
+        (speedSessionCount?.value ?? 0) ||
+      numberFromMetadata(syncState.metadataJson, "speedGoalCount") !== (speedGoalCount?.value ?? 0),
     recentUnlocks: sortedUnlockedAchievements.slice(0, 10),
     achievements: achievementViews,
     trackedClubTypes,
@@ -498,6 +542,7 @@ function achievementCategoryFromMetadata(value: unknown): AchievementCategory {
     value === "consistency" ||
     value === "coach" ||
     value === "progress" ||
+    value === "speed" ||
     value === "mileage" ||
     value === "scoring" ||
     value === "putting" ||
@@ -518,6 +563,7 @@ function achievementTriggerTypeFromMetadata(value: unknown): AchievementTriggerT
     value === "stockYardage" ||
     value === "rollingWindow" ||
     value === "progress" ||
+    value === "speedTraining" ||
     value === "roundScorecard"
   ) {
     return value;
@@ -620,6 +666,10 @@ function buildAchievementSourceView(
     }
   }
 
+  if (achievement.triggerType === "speedTraining" && metadataStats.length > 0) {
+    return buildSpeedTrainingSourceView(unlock, metadataStats);
+  }
+
   if (metadataStats.length > 0) {
     const kind =
       achievement.triggerType === "progress"
@@ -644,6 +694,32 @@ function buildAchievementSourceView(
   }
 
   return null;
+}
+
+function buildSpeedTrainingSourceView(
+  unlock: AchievementUnlockRow,
+  metadataStats: AchievementSourceStat[],
+): AchievementSourceView {
+  const metadata = unlock.metadataJson;
+  const title =
+    formatText(metadata?.speedSessionTitle) ??
+    formatText(metadata?.implementLabel) ??
+    formatText(metadata?.clubName) ??
+    (metadata?.speedGoalId ? "Speed target" : null) ??
+    "Speed Centre session";
+  const occurredAt =
+    typeof metadata?.speedSessionDateIso === "string" && metadata.speedSessionDateIso
+      ? metadata.speedSessionDateIso
+      : unlock.lastUnlockedAt.toISOString();
+
+  return {
+    kind: "speed",
+    title,
+    detail: `Speed Centre · ${formatIsoDate(occurredAt)}`,
+    occurredAt,
+    href: "/speed",
+    stats: metadataStats.slice(0, 7),
+  };
 }
 
 function buildShotSourceView(
@@ -745,6 +821,11 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Putts", formatInteger(metadata.putts)),
     stat("Birdies", formatInteger(metadata.birdies)),
     stat("Shots", formatInteger(metadata.shotCount)),
+    stat("Sessions", formatInteger(metadata.speedSessionCount)),
+    stat("Swings", formatInteger(metadata.swingCount ?? metadata.totalSwings)),
+    stat("Targets", formatInteger(metadata.speedTargetCount)),
+    stat("Club targets", formatInteger(metadata.clubTargetCount)),
+    stat("Targets hit", formatInteger(metadata.targetHitClubCount)),
     stat("Sample", formatInteger(metadata.sampleSize)),
     stat("Target", formatInteger(metadata.targetShots)),
     stat("Threshold", formatMetricValue(metadata.targetValue)),
@@ -763,6 +844,10 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Side", formatSignedYards(metadata.sideCarryYd)),
     stat("Offline", formatYards(metadata.offlineYd)),
     stat("Ball speed", formatMph(metadata.ballSpeedMph)),
+    stat("Avg speed", formatMph(metadata.avgSpeedMph ?? metadata.bestSpeedMph)),
+    stat("Max speed", formatMph(metadata.maxSpeedMph)),
+    stat("Min speed", formatMph(metadata.minSpeedMph)),
+    stat("Target speed", formatMph(metadata.targetSpeedMph)),
     stat("Carry spread", formatYards(metadata.carrySpreadYd)),
     stat("Total spread", formatYards(metadata.totalSpreadYd)),
     stat("Avg offline", formatYards(metadata.offlineAverageYd)),
@@ -778,6 +863,7 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
     stat("Attack", formatSignedDegrees(metadata.attackAngleDeg)),
     stat("Smash", formatDecimal(metadata.smashFactor, 2)),
     stat("Rate", formatPercent(metadata.fairwayRate ?? metadata.girRate ?? metadata.scrambleRate)),
+    stat("Target rate", formatPercent(metadata.targetRatio)),
     stat("Improvement", formatPercent(metadata.improvementPercent)),
     stat("Value", formatMetricValue(metadata.value)),
   ];
@@ -847,6 +933,16 @@ function formatDate(value: Date) {
     month: "short",
     year: "numeric",
   }).format(value);
+}
+
+function formatIsoDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Recorded";
+  }
+
+  return formatDate(date);
 }
 
 function formatYards(value: unknown) {
@@ -936,7 +1032,8 @@ function roundOne(value: number) {
 
 async function loadAchievementContext(userId: string) {
   const db = getDb();
-  const [sessionRows, shotRows, clubRows, stockRows] = await Promise.all([
+  const [sessionRows, shotRows, clubRows, stockRows, speedSessionRows, speedGoalRows] =
+    await Promise.all([
     db
       .select({
         id: sessions.id,
@@ -1003,7 +1100,43 @@ async function loadAchievementContext(userId: string) {
       .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
       .where(eq(stockYardages.userId, userId))
       .orderBy(stockYardages.calculatedAt),
-  ]);
+    db
+      .select({
+        id: speedTrainingSessions.id,
+        source: speedTrainingSessions.source,
+        sessionDate: speedTrainingSessions.sessionDate,
+        title: speedTrainingSessions.title,
+        clubId: speedTrainingSessions.clubId,
+        clubType: clubs.type,
+        implementKind: speedTrainingSessions.implementKind,
+        implementLabel: speedTrainingSessions.implementLabel,
+        speedSystem: speedTrainingSessions.speedSystem,
+        handedness: speedTrainingSessions.handedness,
+        swingCount: speedTrainingSessions.swingCount,
+        minSpeedMph: speedTrainingSessions.minSpeedMph,
+        avgSpeedMph: speedTrainingSessions.avgSpeedMph,
+        maxSpeedMph: speedTrainingSessions.maxSpeedMph,
+        targetSpeedMph: speedTrainingSessions.targetSpeedMph,
+      })
+      .from(speedTrainingSessions)
+      .leftJoin(clubs, eq(speedTrainingSessions.clubId, clubs.id))
+      .where(eq(speedTrainingSessions.userId, userId))
+      .orderBy(speedTrainingSessions.sessionDate),
+    db
+      .select({
+        id: speedTrainingGoals.id,
+        goalKey: speedTrainingGoals.goalKey,
+        clubId: speedTrainingGoals.clubId,
+        clubType: clubs.type,
+        targetSpeedMph: speedTrainingGoals.targetSpeedMph,
+        targetDate: speedTrainingGoals.targetDate,
+        notes: speedTrainingGoals.notes,
+      })
+      .from(speedTrainingGoals)
+      .leftJoin(clubs, eq(speedTrainingGoals.clubId, clubs.id))
+      .where(eq(speedTrainingGoals.userId, userId))
+      .orderBy(speedTrainingGoals.goalKey),
+    ]);
 
   return {
     sessions: sessionRows satisfies AchievementSession[],
@@ -1012,6 +1145,12 @@ async function loadAchievementContext(userId: string) {
     stockYardages: stockRows.filter(
       (stock) => isTrackedClubType(stock.clubType) && !isShortGameTouchClubType(stock.clubType),
     ) satisfies AchievementStockYardage[],
+    speedTrainingSessions: speedSessionRows.filter(
+      (session) => !session.clubType || isTrackedClubType(session.clubType),
+    ) satisfies AchievementSpeedTrainingSession[],
+    speedTrainingGoals: speedGoalRows.filter(
+      (goal) => !goal.clubType || isTrackedClubType(goal.clubType),
+    ) satisfies AchievementSpeedTrainingGoal[],
   };
 }
 
@@ -1330,6 +1469,34 @@ function progressLabelFromMetadata(
 
   if (metadata && typeof metadata.improvementPercent === "number") {
     return `${formatNumber(metadata.improvementPercent)}%`;
+  }
+
+  if (metadata && typeof metadata.bestSpeedMph === "number") {
+    return `${formatNumber(metadata.bestSpeedMph)} / ${formatNumber(targetValue)} mph`;
+  }
+
+  if (metadata && typeof metadata.targetRatio === "number") {
+    return `${formatNumber(metadata.targetRatio * 100)}% of target`;
+  }
+
+  if (metadata && typeof metadata.avgSpeedMph === "number") {
+    return `${formatNumber(metadata.avgSpeedMph)} / ${formatNumber(targetValue)} mph`;
+  }
+
+  if (metadata && typeof metadata.totalSwings === "number") {
+    return `${formatNumber(metadata.totalSwings)} / ${formatNumber(targetValue)} swings`;
+  }
+
+  if (metadata && typeof metadata.speedSessionCount === "number") {
+    return `${formatNumber(metadata.speedSessionCount)} / ${formatNumber(targetValue)} sessions`;
+  }
+
+  if (metadata && typeof metadata.clubTargetCount === "number") {
+    return `${formatNumber(metadata.clubTargetCount)} / ${formatNumber(targetValue)} clubs`;
+  }
+
+  if (metadata && typeof metadata.targetHitClubCount === "number") {
+    return `${formatNumber(metadata.targetHitClubCount)} / ${formatNumber(targetValue)} clubs hit`;
   }
 
   if (metadata && typeof metadata.benchmarkAverageLevel === "number") {

@@ -14,6 +14,26 @@ export type RapsodoCloudSession = {
   raw: Record<string, unknown>;
 };
 
+export type RapsodoSpeedSession = {
+  providerKind: "speed";
+  providerSessionId: string;
+  title: string;
+  dateIso: string | null;
+  swingCount: number | null;
+  minSpeedMph: number | null;
+  avgSpeedMph: number | null;
+  maxSpeedMph: number | null;
+  speedSystem: string | null;
+  raw: Record<string, unknown>;
+};
+
+export type RapsodoSpeedSwing = {
+  rapsodoSwingId: string | null;
+  swingNumber: number;
+  clubSpeedMph: number;
+  raw: Record<string, unknown>;
+};
+
 export type RapsodoBagClub = {
   rapsodoClubId: string;
   clubType: string;
@@ -161,6 +181,49 @@ export class RapsodoCloudClient {
         : `session/${encodeURIComponent(session.providerSessionId)}/details/export`;
 
     return this.requestText(path, { method: "GET" }, token);
+  }
+
+  async listSpeedSessions(
+    token: string,
+    options: { take?: number; startDate?: string | null; endDate?: string | null } = {},
+  ): Promise<RapsodoSpeedSession[]> {
+    const params = sessionListParams({
+      skip: 0,
+      take: options.take ?? DEFAULT_TAKE,
+      startDate: options.startDate,
+      endDate: options.endDate,
+      dateParamNames: ["minDate", "maxDate"],
+    });
+    const payload = await this.requestJson<unknown>(
+      `drySwing/sessions?${params}`,
+      { method: "GET" },
+      token,
+    );
+    const rows = firstArray(payload, ["session", "sessions", "data", "items", "rows"]);
+
+    return rows.map(normalizeSpeedSession).filter(isRapsodoSpeedSession);
+  }
+
+  async listSpeedSessionSwings(
+    token: string,
+    providerSessionId: string,
+    take = 500,
+  ): Promise<RapsodoSpeedSwing[]> {
+    const payload = await this.requestJson<unknown>(
+      `drySwing/${encodeURIComponent(providerSessionId)}/details?skip=0&take=${take}`,
+      { method: "GET" },
+      token,
+    );
+
+    return speedDetailRows(payload).map(normalizeSpeedSwing).filter(isRapsodoSpeedSwing);
+  }
+
+  async exportSpeedSessionCsv(token: string, providerSessionId: string): Promise<string> {
+    return this.requestText(
+      `drySwing/${encodeURIComponent(providerSessionId)}/details/export`,
+      { method: "GET" },
+      token,
+    );
   }
 
   async listBagClubs(token: string): Promise<RapsodoBagClub[]> {
@@ -509,6 +572,70 @@ function normalizeBagClub(value: unknown): RapsodoBagClub | null {
   };
 }
 
+function normalizeSpeedSession(value: unknown): RapsodoSpeedSession | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const providerSessionId = stringValue(value, ["id", "_id", "drySwingId", "sessionId"]);
+
+  if (!providerSessionId) {
+    return null;
+  }
+
+  const dateIso = dateIsoValue(value, [
+    "sessionStartDate",
+    "startDate",
+    "createdAt",
+    "date",
+    "sessionDate",
+  ]);
+  const title = stringValue(value, ["customName", "name", "title", "sessionName"]) ?? "R-Speed";
+
+  return {
+    providerKind: "speed",
+    providerSessionId,
+    title,
+    dateIso,
+    swingCount: numberValue(value, ["count", "swingCount", "swingsCount", "totalSwings"]),
+    minSpeedMph: speedMphValue(value, ["lowestSwingSpeed", "minSpeed", "minClubSpeed"]),
+    avgSpeedMph: speedMphValue(value, ["avgSwingSpeed", "averageSpeed", "avgClubSpeed"]),
+    maxSpeedMph: speedMphValue(value, ["maxSwingSpeed", "maxSpeed", "maxClubSpeed"]),
+    speedSystem:
+      stringValue(value, ["speedSystem", "speedSystemName", "system"]) ??
+      speedSystemLabel(numberValue(value, ["clubId", "speedSystemId"])),
+    raw: value,
+  };
+}
+
+function normalizeSpeedSwing(value: unknown, sequenceIndex: number): RapsodoSpeedSwing | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const clubSpeedMph = speedMphValue(value, ["clubSpeed", "club_speed", "clubSpeedMph", "speed"]);
+
+  if (clubSpeedMph === null) {
+    return null;
+  }
+
+  return {
+    rapsodoSwingId: stringValue(value, ["drySwingId", "localId", "localID", "id", "_id"]),
+    swingNumber:
+      numberValue(value, ["swingNumber", "swingNo", "swing", "shotNumber"]) ?? sequenceIndex + 1,
+    clubSpeedMph,
+    raw: value,
+  };
+}
+
+function isRapsodoSpeedSession(value: RapsodoSpeedSession | null): value is RapsodoSpeedSession {
+  return value !== null;
+}
+
+function isRapsodoSpeedSwing(value: RapsodoSpeedSwing | null): value is RapsodoSpeedSwing {
+  return value !== null;
+}
+
 function isRapsodoBagClub(value: RapsodoBagClub | null): value is RapsodoBagClub {
   return value !== null;
 }
@@ -552,6 +679,27 @@ function shotDetailRows(value: unknown): unknown[] {
 
   if (isRecord(shots)) {
     return Object.values(shots).flatMap((entry) => (Array.isArray(entry) ? entry : []));
+  }
+
+  return [];
+}
+
+function speedDetailRows(value: unknown): unknown[] {
+  const rows = firstArray(value, ["swings", "drySwings", "data", "items", "rows"]);
+
+  if (rows.length > 0) {
+    return rows;
+  }
+
+  const record = recordValue(value, "data") ?? (isRecord(value) ? value : null);
+  const swings = record?.swings ?? record?.drySwings;
+
+  if (Array.isArray(swings)) {
+    return swings;
+  }
+
+  if (isRecord(swings)) {
+    return Object.values(swings).flatMap((entry) => (Array.isArray(entry) ? entry : []));
   }
 
   return [];
@@ -641,6 +789,41 @@ function numberValue(value: unknown, keys: string[]) {
   }
 
   return null;
+}
+
+function speedMphValue(value: unknown, keys: string[]) {
+  const rawSpeed = numberValue(value, keys);
+
+  if (rawSpeed === null) {
+    return null;
+  }
+
+  return normalizeSpeedToMph(rawSpeed);
+}
+
+function normalizeSpeedToMph(value: number) {
+  if (value > 0 && value < 70) {
+    return value * 2.2369362921;
+  }
+
+  return value;
+}
+
+function speedSystemLabel(value: number | null) {
+  switch (value) {
+    case 0:
+      return "No system";
+    case 1:
+      return "Other";
+    case 2:
+      return "The Stack";
+    case 3:
+      return "Rypstick";
+    case 4:
+      return "SuperSpeed";
+    default:
+      return null;
+  }
 }
 
 function dateIsoValue(value: unknown, keys: string[]) {

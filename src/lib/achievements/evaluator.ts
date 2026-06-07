@@ -24,6 +24,8 @@ import type {
   AchievementProgressCandidate,
   AchievementSession,
   AchievementShot,
+  AchievementSpeedTrainingGoal,
+  AchievementSpeedTrainingSession,
   AchievementStockYardage,
   AchievementUnlockCandidate,
   RoundScorecardHole,
@@ -34,6 +36,8 @@ export type AchievementEvaluationContext = {
   shots: AchievementShot[];
   clubs: AchievementClub[];
   stockYardages: AchievementStockYardage[];
+  speedTrainingSessions?: AchievementSpeedTrainingSession[];
+  speedTrainingGoals?: AchievementSpeedTrainingGoal[];
 };
 
 const IRON_PATTERN = /^[4-9]i$/;
@@ -82,6 +86,7 @@ export function evaluateAllAchievementCandidates(
   evaluateGeneratedClubMileageSamples(collector, shotsByClubType);
   evaluateGeneratedClubPersonalBests(collector, shotsByClubType);
   evaluateStockAndGapping(collector, context.clubs, latestStockByClubId);
+  evaluateSpeedTraining(collector, context.speedTrainingSessions ?? [], context.speedTrainingGoals ?? []);
   evaluateProgress(collector, trackedShots, trackedStocks);
 
   return {
@@ -1387,6 +1392,402 @@ function metadataForBenchmarkBag(
     benchmarkClubCount,
     benchmarkAverageLevel: roundMetricValue(benchmarkAverageLevel),
   };
+}
+
+function evaluateSpeedTraining(
+  collector: Collector,
+  speedTrainingSessions: AchievementSpeedTrainingSession[],
+  speedTrainingGoals: AchievementSpeedTrainingGoal[],
+) {
+  const sortedSessions = sortSpeedTrainingSessions(speedTrainingSessions).filter(
+    (session) =>
+      session.swingCount > 0 ||
+      session.avgSpeedMph !== null ||
+      session.maxSpeedMph !== null ||
+      session.targetSpeedMph !== null,
+  );
+  const goalTargetClubTypes = uniqueSpeedGoalClubTypes(speedTrainingGoals);
+  const targetEntries = sortedSessions
+    .map((session) => speedTargetEntryForSession(session, speedTrainingGoals))
+    .filter((entry): entry is SpeedTargetEntry => Boolean(entry));
+  const sessionTargetClubTypes = uniqueSpeedClubTypes(targetEntries.map((entry) => entry.session));
+  const sessionCount = sortedSessions.length;
+  const totalSwings = sortedSessions.reduce((total, session) => total + session.swingCount, 0);
+  const explicitTargetSessions = sortedSessions.filter((session) => isNumber(session.targetSpeedMph));
+  const targetClubTypes = [...new Set([...goalTargetClubTypes, ...sessionTargetClubTypes])];
+  const targetHitEntries = targetEntries.filter(
+    (entry) => isNumber(entry.session.avgSpeedMph) && entry.session.avgSpeedMph >= entry.targetSpeedMph,
+  );
+  const targetHitClubTypes = uniqueSpeedClubTypes(targetHitEntries.map((entry) => entry.session));
+  const targetCount = speedTrainingGoals.length + explicitTargetSessions.length;
+
+  collector.progressCandidate("first_speed_session", Math.min(sessionCount, 1), 1);
+  collector.progressCandidate("speed_sessions_5", Math.min(sessionCount, 5), 5, {
+    speedSessionCount: sessionCount,
+  });
+  collector.progressCandidate("speed_sessions_10", Math.min(sessionCount, 10), 10, {
+    speedSessionCount: sessionCount,
+  });
+  collector.progressCandidate("speed_reps_100", Math.min(totalSwings, 100), 100, {
+    totalSwings,
+  });
+  collector.progressCandidate("speed_reps_250", Math.min(totalSwings, 250), 250, {
+    totalSwings,
+  });
+  collector.progressCandidate("speed_target_set", Math.min(targetCount, 1), 1, {
+    speedTargetCount: targetCount,
+  });
+  collector.progressCandidate(
+    "club_speed_target_set",
+    Math.min(targetClubTypes.length, 1),
+    1,
+    { clubTargetCount: targetClubTypes.length },
+  );
+  collector.progressCandidate(
+    "three_club_speed_targets",
+    Math.min(targetClubTypes.length, 3),
+    3,
+    { clubTargetCount: targetClubTypes.length },
+  );
+  collector.progressCandidate(
+    "five_club_speed_targets",
+    Math.min(targetClubTypes.length, 5),
+    5,
+    { clubTargetCount: targetClubTypes.length },
+  );
+  collector.progressCandidate(
+    "three_club_speed_targets_hit",
+    Math.min(targetHitClubTypes.length, 3),
+    3,
+    { targetHitClubCount: targetHitClubTypes.length },
+  );
+
+  const bestTargetRatio = bestSpeedTargetRatio(targetEntries);
+  if (bestTargetRatio) {
+    collector.progressCandidate(
+      "speed_target_hit",
+      Math.min(bestTargetRatio.ratio, 1),
+      1,
+      metadataForSpeedTrainingSession(bestTargetRatio.session, {
+        targetSpeedMph: bestTargetRatio.targetSpeedMph,
+        targetRatio: roundMetricValue(bestTargetRatio.ratio),
+      }),
+    );
+  }
+
+  const driverTargetEntries = targetEntries.filter((entry) => entry.session.clubType === "driver");
+  const bestDriverTargetRatio = bestSpeedTargetRatio(driverTargetEntries);
+  if (bestDriverTargetRatio) {
+    collector.progressCandidate(
+      "driver_speed_target_hit",
+      Math.min(bestDriverTargetRatio.ratio, 1),
+      1,
+      metadataForSpeedTrainingSession(bestDriverTargetRatio.session, {
+        targetSpeedMph: bestDriverTargetRatio.targetSpeedMph,
+        targetRatio: roundMetricValue(bestDriverTargetRatio.ratio),
+      }),
+    );
+  }
+
+  maybeUnlockSpeedSessionCount(collector, sortedSessions, "first_speed_session", 1);
+  maybeUnlockSpeedSessionCount(collector, sortedSessions, "speed_sessions_5", 5);
+  maybeUnlockSpeedSessionCount(collector, sortedSessions, "speed_sessions_10", 10);
+  maybeUnlockSpeedReps(collector, sortedSessions, "speed_reps_100", 100);
+  maybeUnlockSpeedReps(collector, sortedSessions, "speed_reps_250", 250);
+
+  if (explicitTargetSessions[0]) {
+    collector.unlock("speed_target_set", speedTrainingSource(explicitTargetSessions[0]));
+  } else if (speedTrainingGoals[0]) {
+    collector.unlock("speed_target_set", speedTrainingGoalSource(speedTrainingGoals[0]));
+  }
+
+  const firstClubTargetSession = explicitTargetSessions.find((session) => session.clubType);
+  const firstClubTargetGoal = speedTrainingGoals.find((goal) => goal.clubType);
+
+  if (firstClubTargetSession) {
+    collector.unlock("club_speed_target_set", speedTrainingSource(firstClubTargetSession));
+  } else if (firstClubTargetGoal) {
+    collector.unlock("club_speed_target_set", speedTrainingGoalSource(firstClubTargetGoal));
+  }
+
+  maybeUnlockDistinctClubSpeedTarget(collector, targetClubTypes, "three_club_speed_targets", 3);
+  maybeUnlockDistinctClubSpeedTarget(collector, targetClubTypes, "five_club_speed_targets", 5);
+
+  if (targetHitEntries[0]) {
+    collector.unlock(
+      "speed_target_hit",
+      speedTrainingSource(targetHitEntries[0].session, {
+        targetSpeedMph: targetHitEntries[0].targetSpeedMph,
+      }),
+    );
+  }
+
+  const firstDriverTargetHit = targetHitEntries.find((entry) => entry.session.clubType === "driver");
+  if (firstDriverTargetHit) {
+    collector.unlock(
+      "driver_speed_target_hit",
+      speedTrainingSource(firstDriverTargetHit.session, {
+        targetSpeedMph: firstDriverTargetHit.targetSpeedMph,
+      }),
+    );
+  }
+
+  maybeUnlockDistinctClubSpeedTarget(
+    collector,
+    targetHitClubTypes,
+    "three_club_speed_targets_hit",
+    3,
+    { targetHitClubCount: targetHitClubTypes.length },
+  );
+
+  evaluateDriverSpeedTrainingThresholds(collector, sortedSessions);
+}
+
+function maybeUnlockSpeedSessionCount(
+  collector: Collector,
+  sortedSessions: AchievementSpeedTrainingSession[],
+  achievementId: string,
+  targetCount: number,
+) {
+  if (sortedSessions.length < targetCount) {
+    return;
+  }
+
+  const thresholdSession = sortedSessions[targetCount - 1];
+
+  if (!thresholdSession) {
+    return;
+  }
+
+  collector.unlock(achievementId, {
+    ...speedTrainingSource(thresholdSession),
+    metadata: metadataForSpeedTrainingSession(thresholdSession, {
+      speedSessionCount: targetCount,
+    }),
+  });
+}
+
+function maybeUnlockSpeedReps(
+  collector: Collector,
+  sortedSessions: AchievementSpeedTrainingSession[],
+  achievementId: string,
+  targetSwings: number,
+) {
+  let totalSwings = 0;
+
+  for (const session of sortedSessions) {
+    totalSwings += session.swingCount;
+
+    if (totalSwings < targetSwings) {
+      continue;
+    }
+
+    collector.unlock(achievementId, {
+      ...speedTrainingSource(session),
+      metadata: metadataForSpeedTrainingSession(session, {
+        totalSwings,
+        targetSwings,
+      }),
+    });
+    return;
+  }
+}
+
+function maybeUnlockDistinctClubSpeedTarget(
+  collector: Collector,
+  clubTypes: string[],
+  achievementId: string,
+  targetClubCount: number,
+  extraMetadata: Record<string, unknown> = {},
+) {
+  if (clubTypes.length >= targetClubCount) {
+    collector.unlock(achievementId, {
+      metadata: {
+        clubTargetCount: clubTypes.length,
+        ...extraMetadata,
+      },
+    });
+  }
+}
+
+function evaluateDriverSpeedTrainingThresholds(
+  collector: Collector,
+  sortedSessions: AchievementSpeedTrainingSession[],
+) {
+  const driverSessions = sortedSessions.filter(
+    (session) => session.clubType === "driver" && isNumber(session.avgSpeedMph),
+  );
+  const bestDriverAverage = maxNumber(driverSessions.map((session) => session.avgSpeedMph));
+
+  for (const target of [
+    { achievementId: "driver_training_speed_90", speedMph: 90 },
+    { achievementId: "driver_training_speed_95", speedMph: 95 },
+    { achievementId: "driver_training_speed_100", speedMph: 100 },
+  ]) {
+    collector.progressCandidate(
+      target.achievementId,
+      Math.min(Math.max(bestDriverAverage ?? 0, 0), target.speedMph),
+      target.speedMph,
+      { bestSpeedMph: bestDriverAverage },
+    );
+
+    const thresholdSession = driverSessions.find(
+      (session) => (session.avgSpeedMph ?? 0) >= target.speedMph,
+    );
+
+    if (!thresholdSession) {
+      continue;
+    }
+
+    collector.unlock(target.achievementId, {
+      ...speedTrainingSource(thresholdSession),
+      metadata: metadataForSpeedTrainingSession(thresholdSession, {
+        bestSpeedMph: thresholdSession.avgSpeedMph,
+      }),
+    });
+  }
+}
+
+type SpeedTargetEntry = {
+  session: AchievementSpeedTrainingSession;
+  targetSpeedMph: number;
+};
+
+function bestSpeedTargetRatio(entries: SpeedTargetEntry[]) {
+  return entries.reduce<{
+    session: AchievementSpeedTrainingSession;
+    targetSpeedMph: number;
+    ratio: number;
+  } | null>((best, entry) => {
+    if (!isNumber(entry.session.avgSpeedMph)) {
+      return best;
+    }
+
+    const ratio = entry.session.avgSpeedMph / entry.targetSpeedMph;
+
+    if (!best || ratio > best.ratio) {
+      return {
+        session: entry.session,
+        targetSpeedMph: entry.targetSpeedMph,
+        ratio,
+      };
+    }
+
+    return best;
+  }, null);
+}
+
+function uniqueSpeedClubTypes(sessions: AchievementSpeedTrainingSession[]) {
+  return [
+    ...new Set(
+      sessions
+        .map((session) => session.clubType)
+        .filter((clubType): clubType is string => Boolean(clubType)),
+    ),
+  ];
+}
+
+function uniqueSpeedGoalClubTypes(goals: AchievementSpeedTrainingGoal[]) {
+  return [
+    ...new Set(
+      goals
+        .map((goal) => goal.clubType)
+        .filter((clubType): clubType is string => Boolean(clubType)),
+    ),
+  ];
+}
+
+function speedTargetEntryForSession(
+  session: AchievementSpeedTrainingSession,
+  goals: AchievementSpeedTrainingGoal[],
+): SpeedTargetEntry | null {
+  const targetSpeedMph =
+    session.targetSpeedMph ?? speedGoalTargetForSession(session, goals)?.targetSpeedMph ?? null;
+
+  if (!isNumber(targetSpeedMph)) {
+    return null;
+  }
+
+  return {
+    session,
+    targetSpeedMph,
+  };
+}
+
+function speedGoalTargetForSession(
+  session: AchievementSpeedTrainingSession,
+  goals: AchievementSpeedTrainingGoal[],
+) {
+  if (!session.clubType) {
+    return null;
+  }
+
+  return (
+    goals.find((goal) => goal.clubId === session.clubId && goal.clubId !== null) ??
+    goals.find((goal) => goal.clubType === session.clubType && goal.clubId !== null) ??
+    (session.clubType === "driver" ? goals.find((goal) => goal.goalKey === "driver_global") : null)
+  );
+}
+
+function speedTrainingSource(
+  session: AchievementSpeedTrainingSession,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    unlockedAt: session.sessionDate,
+    metadata: metadataForSpeedTrainingSession(session, extra),
+  };
+}
+
+function speedTrainingGoalSource(goal: AchievementSpeedTrainingGoal) {
+  return {
+    metadata: metadataForSpeedTrainingGoal(goal),
+  };
+}
+
+function metadataForSpeedTrainingSession(
+  session: AchievementSpeedTrainingSession,
+  extra: Record<string, unknown> = {},
+) {
+  return {
+    speedSessionId: session.id,
+    speedSessionTitle: session.title,
+    speedSessionDateIso: session.sessionDate.toISOString(),
+    speedSource: session.source,
+    clubName: session.clubType ? formatClubType(session.clubType) : null,
+    clubType: session.clubType,
+    implementLabel: session.implementLabel,
+    implementKind: session.implementKind,
+    speedSystem: session.speedSystem,
+    handedness: session.handedness,
+    swingCount: session.swingCount,
+    minSpeedMph: session.minSpeedMph,
+    avgSpeedMph: session.avgSpeedMph,
+    maxSpeedMph: session.maxSpeedMph,
+    targetSpeedMph: session.targetSpeedMph,
+    ...extra,
+  };
+}
+
+function metadataForSpeedTrainingGoal(goal: AchievementSpeedTrainingGoal) {
+  return {
+    speedGoalId: goal.id,
+    speedGoalKey: goal.goalKey,
+    clubName: goal.clubType ? formatClubType(goal.clubType) : null,
+    clubType: goal.clubType,
+    targetSpeedMph: goal.targetSpeedMph,
+    targetDate: goal.targetDate,
+  };
+}
+
+function sortSpeedTrainingSessions(sessions: AchievementSpeedTrainingSession[]) {
+  return [...sessions].sort((left, right) => {
+    if (left.sessionDate.getTime() !== right.sessionDate.getTime()) {
+      return left.sessionDate.getTime() - right.sessionDate.getTime();
+    }
+
+    return left.id.localeCompare(right.id);
+  });
 }
 
 function evaluateProgress(

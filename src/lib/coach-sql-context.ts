@@ -1,6 +1,13 @@
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 
-import { clubs, sessions, shots, stockYardages, strokesGainedShotEvents } from "@/db/schema";
+import {
+  clubs,
+  sessions,
+  shots,
+  speedTrainingSessions,
+  stockYardages,
+  strokesGainedShotEvents,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { summarizeStrokesGainedByCategory } from "@/lib/strokes-gained";
@@ -27,7 +34,15 @@ export async function buildCoachSqlContext(
   question: string,
 ): Promise<CoachSqlContext> {
   const db = getDb();
-  const [clubRows, stockRows, recentShotRows, roundRows, strokesGainedRows] = await Promise.all([
+  const [
+    clubRows,
+    stockRows,
+    recentShotRows,
+    roundRows,
+    strokesGainedRows,
+    speedRows,
+    driverSpeedRows,
+  ] = await Promise.all([
     db
       .select({
         id: clubs.id,
@@ -63,6 +78,7 @@ export async function buildCoachSqlContext(
         totalYd: shots.totalYd,
         sideCarryYd: shots.sideCarryYd,
         launchAngleDeg: shots.launchAngleDeg,
+        clubSpeedMph: shots.clubSpeedMph,
         ballSpeedMph: shots.ballSpeedMph,
         shotCategory: shots.shotCategory,
         fileName: sessions.fileName,
@@ -100,6 +116,32 @@ export async function buildCoachSqlContext(
       .where(eq(strokesGainedShotEvents.userId, userId))
       .orderBy(desc(strokesGainedShotEvents.createdAt))
       .limit(80),
+    db
+      .select({
+        id: speedTrainingSessions.id,
+        sessionDate: speedTrainingSessions.sessionDate,
+        implementKind: speedTrainingSessions.implementKind,
+        implementLabel: speedTrainingSessions.implementLabel,
+        swingCount: speedTrainingSessions.swingCount,
+        avgSpeedMph: speedTrainingSessions.avgSpeedMph,
+        maxSpeedMph: speedTrainingSessions.maxSpeedMph,
+        targetSpeedMph: speedTrainingSessions.targetSpeedMph,
+      })
+      .from(speedTrainingSessions)
+      .where(eq(speedTrainingSessions.userId, userId))
+      .orderBy(desc(speedTrainingSessions.sessionDate))
+      .limit(8),
+    db
+      .select({
+        shotAt: shots.shotAt,
+        clubSpeedMph: shots.clubSpeedMph,
+      })
+      .from(shots)
+      .where(
+        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), isNotNull(shots.clubSpeedMph)),
+      )
+      .orderBy(desc(shots.shotAt))
+      .limit(200),
   ]);
   const clubLabelById = new Map(
     clubRows.map((club) => [
@@ -125,7 +167,7 @@ export async function buildCoachSqlContext(
       detail: `${formatNumber(shot.carryYd)} carry, ${formatNumber(shot.sideCarryYd)} side`,
       href: `/shots?sessionId=${shot.sessionId}`,
     });
-    return `${index + 1}. ${formatClubType(shot.clubType)} ${shot.shotCategory}: ${formatNumber(shot.carryYd)} carry, ${formatNumber(shot.totalYd)} total, ${formatNumber(shot.sideCarryYd)} side, ${formatNumber(shot.launchAngleDeg)} launch, ${formatNumber(shot.ballSpeedMph)} ball mph (${shot.courseName ?? shot.fileName ?? "session"}).`;
+    return `${index + 1}. ${formatClubType(shot.clubType)} ${shot.shotCategory}: ${formatNumber(shot.carryYd)} carry, ${formatNumber(shot.totalYd)} total, ${formatNumber(shot.sideCarryYd)} side, ${formatNumber(shot.launchAngleDeg)} launch, ${formatNumber(shot.clubSpeedMph)} club mph, ${formatNumber(shot.ballSpeedMph)} ball mph (${shot.courseName ?? shot.fileName ?? "session"}).`;
   });
   const roundLines = roundRows.map((round, index) => {
     const totalScore =
@@ -150,6 +192,35 @@ export async function buildCoachSqlContext(
       return `${index + 1}. ${summary.category}: ${formatNumber(summary.total)} total, ${formatNumber(summary.average)} average, ${summary.sampleSize} events.`;
     },
   );
+  const speedLines = speedRows.map((row, index) => {
+    const label = row.implementLabel ?? labelForSpeedImplement(row.implementKind);
+    citations.push({
+      id: `speed-${row.id}`,
+      label: `${label} speed session`,
+      detail: `${formatNumber(row.avgSpeedMph)} avg, ${formatNumber(row.maxSpeedMph)} max`,
+      href: "/speed",
+    });
+    return `${index + 1}. ${label}: ${formatNumber(row.avgSpeedMph)} mph average, ${formatNumber(row.maxSpeedMph)} mph max, ${row.swingCount} swings, target ${formatNumber(row.targetSpeedMph)} mph.`;
+  });
+  const driverSpeeds = driverSpeedRows
+    .map((row) => row.clubSpeedMph)
+    .filter((value): value is number => value !== null);
+  const driverLast20AvgMph = average(driverSpeeds.slice(0, 20));
+  const driverPbMph = driverSpeeds.length > 0 ? Math.max(...driverSpeeds) : null;
+  const latestDrySpeedMph = speedRows[0]?.avgSpeedMph ?? null;
+  const dryVsBallGapMph =
+    latestDrySpeedMph !== null && driverLast20AvgMph !== null
+      ? latestDrySpeedMph - driverLast20AvgMph
+      : null;
+
+  if (driverLast20AvgMph !== null || latestDrySpeedMph !== null) {
+    citations.push({
+      id: "speed-driver-current",
+      label: "Driver speed context",
+      detail: `${formatNumber(driverLast20AvgMph)} with-ball avg, ${formatNumber(latestDrySpeedMph)} dry avg`,
+      href: "/speed",
+    });
+  }
 
   return {
     question,
@@ -167,6 +238,14 @@ export async function buildCoachSqlContext(
       strokesGainedLines.length
         ? `Strokes gained:\n${strokesGainedLines.join("\n")}`
         : "Strokes gained: no event rows available.",
+      speedLines.length || driverLast20AvgMph !== null
+        ? `Speed Centre:\n${[
+            `Driver with-ball: ${formatNumber(driverLast20AvgMph)} mph last-20 average, ${formatNumber(driverPbMph)} mph personal best.`,
+            `Latest dry speed session: ${formatNumber(latestDrySpeedMph)} mph average.`,
+            `Dry minus with-ball gap: ${formatNumber(dryVsBallGapMph)} mph.`,
+            ...speedLines,
+          ].join("\n")}`
+        : "Speed Centre: no speed training sessions logged.",
     ].join("\n\n"),
   };
 }
@@ -183,4 +262,25 @@ function dedupeCitations(citations: CoachSqlCitation[]) {
 
 function formatNumber(value: number | null) {
   return typeof value === "number" ? numberFormatter.format(value) : "--";
+}
+
+function average(values: number[]) {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function labelForSpeedImplement(kind: string) {
+  switch (kind) {
+    case "speed_stick":
+      return "Speed stick";
+    case "weighted_club":
+      return "Weighted club";
+    case "club":
+      return "Golf club";
+    default:
+      return "Speed implement";
+  }
 }

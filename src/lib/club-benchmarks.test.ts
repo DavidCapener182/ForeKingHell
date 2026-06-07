@@ -5,7 +5,9 @@ import {
   benchmarkLevelProgressPercent,
   buildClubBenchmarkRows,
   compareClubCarryToBenchmark,
+  getClubBenchmarkMetricLevels,
   getClubDistanceBenchmark,
+  getClubSpeedBenchmarkTarget,
 } from "@/lib/club-benchmarks";
 
 describe("club distance benchmarks", () => {
@@ -75,5 +77,43 @@ describe("club distance benchmarks", () => {
 
     expect(displayProgress).toBeGreaterThan(25);
     expect(displayProgress).toBeLessThan(50);
+  });
+
+  it("infers club speed benchmark levels from the same carry ladder", () => {
+    const levels = getClubBenchmarkMetricLevels("7i", "clubSpeedMph", 1);
+
+    expect(levels?.map((level) => [level.key, level.value])).toEqual([
+      ["beginner", 69.4],
+      ["average", 78.3],
+      ["good", 81],
+      ["advanced", 85],
+      ["tour", 90],
+    ]);
+  });
+
+  it("picks the next club speed benchmark as the system target", () => {
+    const target = getClubSpeedBenchmarkTarget("7i", 78.9);
+
+    expect(target).toMatchObject({
+      targetSpeedMph: 81,
+      targetLevelKey: "good",
+      targetLevelLabel: "Good",
+      currentLevelKey: "average",
+      currentLevelLabel: "Average",
+      gapMph: 2.1,
+    });
+  });
+
+  it("advances the system target after the current benchmark is reached", () => {
+    const target = getClubSpeedBenchmarkTarget("7i", 81);
+
+    expect(target).toMatchObject({
+      targetSpeedMph: 85,
+      targetLevelKey: "advanced",
+      targetLevelLabel: "Advanced",
+      currentLevelKey: "good",
+      currentLevelLabel: "Good",
+      gapMph: 4,
+    });
   });
 });

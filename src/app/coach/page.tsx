@@ -57,16 +57,19 @@ import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges"
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
 import type { ProgressSignal } from "@/lib/progress-summary";
+import { formatSpeed } from "@/lib/speed-training";
+import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-training-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoachPage() {
   const userId = await requireCurrentUserId();
-  const [data, activePlanKey, challengeData, featureData] = await Promise.all([
+  const [data, activePlanKey, challengeData, featureData, speedCoachData] = await Promise.all([
     getProgressData(userId),
     getActivePlanKeyForUser(userId),
     getChallengesPageData(),
     getFeatureIdeasData(),
+    getSpeedCoachCardData(userId),
   ]);
   const coach = buildCoachSummary(data.clubs);
   const topClub = coach.clubCards[0] ?? null;
@@ -266,6 +269,8 @@ export default async function CoachPage() {
 
             <WhatChangedPanel signals={coach.signals} />
 
+            <AthleticDevelopmentCoachCard summary={speedCoachData.summary} />
+
             <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
               <PracticeSessionBuilder
                 topClub={topClub}
@@ -352,6 +357,77 @@ function CoachSocialPrompt({
               Tournament prep
             </Link>
           </Button>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function AthleticDevelopmentCoachCard({ summary }: { summary: SpeedCentreSummary }) {
+  const targetGap =
+    summary.currentSpeedMph !== null && summary.targetSpeedMph !== null
+      ? summary.targetSpeedMph - summary.currentSpeedMph
+      : null;
+  const forecast = formatCoachForecast(summary);
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Athletic Development"
+        description="Speed work, with-ball transfer, and weekly prescription."
+        action={
+          <Button asChild variant="outline">
+            <Link href="/speed" prefetch={false}>
+              <Gauge className="size-4" />
+              Speed Centre
+            </Link>
+          </Button>
+        }
+      />
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-3 md:grid-cols-4">
+          <HeroStat
+            label="Driver current"
+            value={formatSpeed(summary.currentSpeedMph)}
+            tone="sky"
+          />
+          <HeroStat label="Target" value={formatSpeed(summary.targetSpeedMph)} tone="green" />
+          <HeroStat
+            label="Gap"
+            value={targetGap === null ? "Set target" : formatCoachGap(targetGap)}
+            tone={coachSpeedGapTone(targetGap)}
+          />
+          <HeroStat label="Forecast" value={forecast} tone="slate" />
+        </div>
+        <div className="rounded-lg border border-emerald-100 bg-white/85 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">
+                {summary.prescription.headline}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {summary.prescription.recommendation}
+              </p>
+            </div>
+            <StatusPill tone={summary.prescription.priority === "High" ? "amber" : "green"}>
+              {summary.prescription.priority}
+            </StatusPill>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <SmallMetric
+              label="With ball"
+              value={formatSpeed(summary.shotSpeed.last20DriverAvgMph)}
+            />
+            <SmallMetric label="Dry avg" value={formatSpeed(summary.trainingCurrentSpeedMph)} />
+            <SmallMetric label="Transfer" value={summary.transferInsight.status} />
+            <SmallMetric
+              label="Smash"
+              value={formatCoachNumber(summary.driverEfficiency.smashFactor)}
+            />
+          </div>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            {summary.transferInsight.coachMessage}
+          </p>
         </div>
       </CardContent>
     </DataPanel>
@@ -1106,6 +1182,71 @@ function toneDotClass(tone: Tone) {
   };
 
   return classes[tone];
+}
+
+function coachSpeedGapTone(value: number | null): Tone {
+  if (value === null) {
+    return "slate";
+  }
+
+  if (value <= 3) {
+    return "green";
+  }
+
+  if (value <= 6) {
+    return "amber";
+  }
+
+  return "pink";
+}
+
+function formatCoachForecast(summary: SpeedCentreSummary) {
+  if (summary.forecast.status === "needs_more_sessions") {
+    return "Need trend";
+  }
+
+  if (summary.forecast.status === "flat") {
+    return "Trend flat";
+  }
+
+  if (summary.forecast.targetEtaIso !== null && summary.targetSpeedMph !== null) {
+    return `${formatSpeed(summary.targetSpeedMph)} by ${formatCoachMonth(summary.forecast.targetEtaIso)}`;
+  }
+
+  if (summary.forecast.forecastSpeedMph === null) {
+    return "Need trend";
+  }
+
+  if (summary.currentSpeedMph !== null) {
+    const forecastGain = summary.forecast.forecastSpeedMph - summary.currentSpeedMph;
+
+    if (Math.abs(forecastGain) >= 0.1) {
+      return `${formatCoachGap(forecastGain)} in 90 days`;
+    }
+  }
+
+  return `${formatSpeed(summary.forecast.forecastSpeedMph)} in 90 days`;
+}
+
+function formatCoachGap(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+
+  if (Math.abs(rounded) < 0.1) {
+    return "0.0 mph";
+  }
+
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} mph`;
+}
+
+function formatCoachNumber(value: number | null) {
+  return typeof value === "number" ? value.toFixed(2) : "No data";
+}
+
+function formatCoachMonth(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function progressToneClass(tone: Tone) {

@@ -39,6 +39,31 @@ export type ClubBenchmarkMetricKey =
 
 export type ClubBenchmarkMetricValues = Partial<Record<ClubBenchmarkMetricKey, number | null>>;
 
+export type ClubBenchmarkTourMetricValues = Partial<Record<ClubBenchmarkMetricKey, number>>;
+
+export type ClubBenchmarkTourReference = {
+  pga?: ClubBenchmarkTourMetricValues;
+  lpga?: ClubBenchmarkTourMetricValues;
+  pgaLabel?: string;
+  lpgaLabel?: string;
+};
+
+export type InferredClubBenchmarkMetricLevel = {
+  key: ClubBenchmarkLevelKey;
+  label: string;
+  shortLabel: string;
+  value: number;
+};
+
+export type ClubSpeedBenchmarkTarget = {
+  targetSpeedMph: number;
+  targetLevelKey: ClubBenchmarkLevelKey;
+  targetLevelLabel: string;
+  currentLevelKey: ClubBenchmarkLevelKey | "building" | "tour-plus" | "no-data";
+  currentLevelLabel: string;
+  gapMph: number | null;
+};
+
 export type ClubBenchmarkPeerComparison = {
   clubType: string;
   metricKey: ClubBenchmarkMetricKey;
@@ -100,6 +125,79 @@ const BENCHMARK_VALUES: Record<string, Record<ClubBenchmarkLevelKey, number>> = 
 
 const LEVEL_ORDER: ClubBenchmarkLevelKey[] = ["beginner", "average", "good", "advanced", "tour"];
 
+const TOUR_REFERENCES: Record<string, ClubBenchmarkTourReference> = {
+  driver: {
+    pgaLabel: "Driver",
+    lpgaLabel: "Driver",
+    pga: tourValues(113, 167, 1.48, 2686, 32, 38, 275),
+    lpga: tourValues(94, 140, 1.48, 2611, 25, 37, 218),
+  },
+  "3w": {
+    pgaLabel: "3-wood",
+    lpgaLabel: "3-wood",
+    pga: tourValues(107, 158, 1.48, 3655, 30, 43, 243),
+    lpga: tourValues(90, 132, 1.48, 2704, 23, 39, 195),
+  },
+  "5w": {
+    pgaLabel: "5-wood",
+    lpgaLabel: "5-wood",
+    pga: tourValues(103, 152, 1.47, 4350, 31, 47, 230),
+    lpga: tourValues(88, 128, 1.47, 4501, 26, 43, 185),
+  },
+  hybrid: {
+    pgaLabel: "Hybrid 15-18",
+    lpgaLabel: "7-wood",
+    pga: tourValues(100, 146, 1.46, 4437, 29, 47, 225),
+    lpga: tourValues(85, 123, 1.46, 4693, 25, 46, 174),
+  },
+  "3i": {
+    pgaLabel: "3 iron",
+    pga: tourValues(98, 142, 1.45, 4630, 27, 46, 212),
+  },
+  "4i": {
+    pgaLabel: "4 iron",
+    lpgaLabel: "4 iron",
+    pga: tourValues(96, 137, 1.43, 4836, 28, 48, 203),
+    lpga: tourValues(80, 116, 1.45, 4801, 24, 43, 169),
+  },
+  "5i": {
+    pgaLabel: "5 iron",
+    lpgaLabel: "5 iron",
+    pga: tourValues(94, 132, 1.41, 5361, 31, 49, 194),
+    lpga: tourValues(79, 112, 1.43, 5081, 23, 45, 161),
+  },
+  "6i": {
+    pgaLabel: "6 iron",
+    lpgaLabel: "6 iron",
+    pga: tourValues(92, 127, 1.38, 6231, 30, 50, 183),
+    lpga: tourValues(78, 109, 1.41, 5943, 25, 46, 152),
+  },
+  "7i": {
+    pgaLabel: "7 iron",
+    lpgaLabel: "7 iron",
+    pga: tourValues(90, 120, 1.33, 7097, 32, 50, 172),
+    lpga: tourValues(76, 104, 1.38, 6699, 26, 47, 141),
+  },
+  "8i": {
+    pgaLabel: "8 iron",
+    lpgaLabel: "8 iron",
+    pga: tourValues(87, 115, 1.32, 7998, 31, 50, 160),
+    lpga: tourValues(74, 100, 1.33, 7494, 25, 47, 130),
+  },
+  "9i": {
+    pgaLabel: "9 iron",
+    lpgaLabel: "9 iron",
+    pga: tourValues(85, 109, 1.28, 8647, 30, 51, 148),
+    lpga: tourValues(72, 93, 1.32, 7589, 26, 47, 119),
+  },
+  pw: {
+    pgaLabel: "PW",
+    lpgaLabel: "PW",
+    pga: tourValues(83, 102, 1.23, 9304, 29, 52, 136),
+    lpga: tourValues(70, 86, 1.28, 8403, 23, 48, 107),
+  },
+};
+
 export function getClubDistanceBenchmark(clubType: string): ClubDistanceBenchmark | null {
   const benchmarkClubType = benchmarkClubTypeFor(clubType);
   const values = BENCHMARK_VALUES[benchmarkClubType];
@@ -117,6 +215,92 @@ export function getClubDistanceBenchmark(clubType: string): ClubDistanceBenchmar
       shortLabel: LEVEL_LABELS[key].shortLabel,
       yards: values[key],
     })),
+  };
+}
+
+export function getClubBenchmarkTourReference(clubType: string): ClubBenchmarkTourReference | null {
+  return TOUR_REFERENCES[benchmarkClubTypeFor(clubType)] ?? null;
+}
+
+export function getClubBenchmarkMetricLevels(
+  clubType: string,
+  metricKey: ClubBenchmarkMetricKey,
+  precision = 1,
+): InferredClubBenchmarkMetricLevel[] | null {
+  const benchmark = getClubDistanceBenchmark(clubType);
+  const reference = getClubBenchmarkTourReference(clubType);
+  const tourValue = reference?.pga?.[metricKey] ?? reference?.lpga?.[metricKey] ?? null;
+  const tourCarry = benchmark?.levels.at(-1)?.yards ?? null;
+
+  if (
+    !benchmark ||
+    typeof tourValue !== "number" ||
+    typeof tourCarry !== "number" ||
+    !Number.isFinite(tourValue) ||
+    !Number.isFinite(tourCarry) ||
+    tourCarry <= 0
+  ) {
+    return null;
+  }
+
+  return benchmark.levels.map((level) => ({
+    key: level.key,
+    label: level.label,
+    shortLabel: level.shortLabel,
+    value: inferredBenchmarkMetricLevelValue(
+      metricKey,
+      tourValue,
+      level.yards / tourCarry,
+      precision,
+    ),
+  }));
+}
+
+export function getClubSpeedBenchmarkTarget(
+  clubType: string,
+  currentSpeedMph: number | null,
+): ClubSpeedBenchmarkTarget | null {
+  const levels = getClubBenchmarkMetricLevels(clubType, "clubSpeedMph", 1);
+
+  if (!levels || levels.length === 0) {
+    return null;
+  }
+
+  if (currentSpeedMph === null || !Number.isFinite(currentSpeedMph)) {
+    const averageLevel = levels.find((level) => level.key === "average") ?? levels[0];
+
+    return {
+      targetSpeedMph: averageLevel.value,
+      targetLevelKey: averageLevel.key,
+      targetLevelLabel: averageLevel.label,
+      currentLevelKey: "no-data",
+      currentLevelLabel: "Needs data",
+      gapMph: null,
+    };
+  }
+
+  const tolerance = 0.05;
+  const nextLevel = levels.find((level) => currentSpeedMph < level.value - tolerance) ?? null;
+  const achievedLevel =
+    [...levels].reverse().find((level) => currentSpeedMph >= level.value - tolerance) ?? null;
+  const topLevel = levels[levels.length - 1];
+  const targetLevel = nextLevel ?? topLevel;
+
+  return {
+    targetSpeedMph: targetLevel.value,
+    targetLevelKey: targetLevel.key,
+    targetLevelLabel: targetLevel.label,
+    currentLevelKey: nextLevel
+      ? (achievedLevel?.key ?? "building")
+      : currentSpeedMph > topLevel.value + tolerance
+        ? "tour-plus"
+        : topLevel.key,
+    currentLevelLabel: nextLevel
+      ? (achievedLevel?.label ?? "Building")
+      : currentSpeedMph > topLevel.value + tolerance
+        ? "Tour+"
+        : topLevel.label,
+    gapMph: nextLevel ? roundTo(nextLevel.value - currentSpeedMph, 1) : 0,
   };
 }
 
@@ -237,8 +421,57 @@ function benchmarkClubTypeFor(clubType: string) {
   return clubType;
 }
 
+function inferredBenchmarkMetricLevelValue(
+  metricKey: ClubBenchmarkMetricKey,
+  tourValue: number,
+  carryRatio: number,
+  precision: number,
+) {
+  const ratio = clamp(carryRatio, 0.35, 1);
+
+  switch (metricKey) {
+    case "clubSpeedMph":
+    case "ballSpeedMph":
+      return roundTo(tourValue * Math.sqrt(ratio), precision);
+    case "smashFactor":
+      return roundTo(1 + (tourValue - 1) * (0.55 + 0.45 * ratio), precision);
+    case "spinRate":
+      return roundTo(tourValue * Math.pow(ratio, 0.5), precision);
+    case "maxHeightYd":
+    case "landAngleDeg":
+      return roundTo(tourValue * Math.pow(ratio, 0.35), precision);
+    default:
+      return roundTo(tourValue, precision);
+  }
+}
+
+function tourValues(
+  clubSpeedMph: number,
+  ballSpeedMph: number,
+  smashFactor: number,
+  spinRate: number,
+  maxHeightYd: number,
+  landAngleDeg: number,
+  carryYd: number,
+): ClubBenchmarkTourMetricValues {
+  return {
+    carryYd,
+    clubSpeedMph,
+    ballSpeedMph,
+    smashFactor,
+    spinRate,
+    maxHeightYd,
+    landAngleDeg,
+  };
+}
+
 function roundOne(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function roundTo(value: number, precision: number) {
+  const factor = 10 ** precision;
+  return Math.round(value * factor) / factor;
 }
 
 function clamp(value: number, min: number, max: number) {

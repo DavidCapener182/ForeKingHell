@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -1652,6 +1653,95 @@ export const rapsodoSyncSessions = pgTable(
   ],
 );
 
+export const speedTrainingSessions = pgTable(
+  "fkh_speed_training_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: varchar("source", { length: 40 }).notNull().default("manual"),
+    providerKind: varchar("provider_kind", { length: 40 }),
+    providerSessionId: varchar("provider_session_id", { length: 180 }),
+    sessionDate: timestamp("session_date", { withTimezone: true }).notNull(),
+    title: varchar("title", { length: 180 }),
+    clubId: uuid("club_id").references(() => clubs.id, { onDelete: "set null" }),
+    implementKind: varchar("implement_kind", { length: 40 }).notNull().default("club"),
+    implementLabel: varchar("implement_label", { length: 160 }),
+    speedSystem: varchar("speed_system", { length: 80 }),
+    handedness: varchar("handedness", { length: 40 }).notNull().default("dominant"),
+    swingCount: integer("swing_count").notNull().default(0),
+    minSpeedMph: doublePrecision("min_speed_mph"),
+    avgSpeedMph: doublePrecision("avg_speed_mph"),
+    maxSpeedMph: doublePrecision("max_speed_mph"),
+    targetSpeedMph: doublePrecision("target_speed_mph"),
+    rawExportHash: varchar("raw_export_hash", { length: 64 }),
+    notes: text("notes"),
+    rawMetadataJson: jsonb("raw_metadata_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_speed_training_sessions_user_date_idx").on(table.userId, table.sessionDate),
+    index("fkh_speed_training_sessions_user_source_idx").on(table.userId, table.source),
+    uniqueIndex("fkh_speed_training_sessions_provider_idx").on(
+      table.userId,
+      table.providerKind,
+      table.providerSessionId,
+    ),
+  ],
+);
+
+export const speedTrainingSwings = pgTable(
+  "fkh_speed_training_swings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    speedSessionId: uuid("speed_session_id")
+      .notNull()
+      .references(() => speedTrainingSessions.id, { onDelete: "cascade" }),
+    swingNumber: integer("swing_number").notNull(),
+    clubSpeedMph: doublePrecision("club_speed_mph").notNull(),
+    swingSide: varchar("swing_side", { length: 40 }),
+    sourceRawJson: jsonb("source_raw_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_speed_training_swings_session_number_idx").on(
+      table.speedSessionId,
+      table.swingNumber,
+    ),
+    index("fkh_speed_training_swings_user_session_idx").on(table.userId, table.speedSessionId),
+    index("fkh_speed_training_swings_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const speedTrainingGoals = pgTable(
+  "fkh_speed_training_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    goalKey: varchar("goal_key", { length: 96 }).notNull(),
+    clubId: uuid("club_id").references(() => clubs.id, { onDelete: "cascade" }),
+    targetSpeedMph: doublePrecision("target_speed_mph").notNull(),
+    targetDate: date("target_date"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_speed_training_goals_user_key_idx").on(table.userId, table.goalKey),
+    index("fkh_speed_training_goals_user_club_idx").on(table.userId, table.clubId),
+  ],
+);
+
 export const courseProviderAliases = pgTable(
   "fkh_course_provider_aliases",
   {
@@ -2357,6 +2447,9 @@ export type NewXpLedger = typeof xpLedger.$inferInsert;
 export type NewAchievementProgress = typeof achievementProgress.$inferInsert;
 export type NewAchievementSyncState = typeof achievementSyncState.$inferInsert;
 export type NewRapsodoSyncSession = typeof rapsodoSyncSessions.$inferInsert;
+export type NewSpeedTrainingSession = typeof speedTrainingSessions.$inferInsert;
+export type NewSpeedTrainingSwing = typeof speedTrainingSwings.$inferInsert;
+export type NewSpeedTrainingGoal = typeof speedTrainingGoals.$inferInsert;
 export type NewCourseProviderAlias = typeof courseProviderAliases.$inferInsert;
 export type NewCourseRecordCategory = typeof courseRecordCategories.$inferInsert;
 export type NewCourseRecord = typeof courseRecords.$inferInsert;
