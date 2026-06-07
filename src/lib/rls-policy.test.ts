@@ -36,6 +36,10 @@ const speedTrainingMigration = readFileSync(
   join(process.cwd(), "drizzle/0028_speed_training.sql"),
   "utf8",
 );
+const aiPlatformMigration = readFileSync(
+  join(process.cwd(), "drizzle/0029_ai_platform.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -306,5 +310,16 @@ describe("RLS migration", () => {
     expect(speedTrainingMigration).toContain('"user_id" = auth.uid()');
     expect(speedTrainingMigration).toContain('session_row."id" = "speed_session_id"');
     expect(speedTrainingMigration).toContain('session_row."user_id" = auth.uid()');
+  });
+
+  it("keeps AI usage and generation cache user-owned behind RLS", () => {
+    for (const table of ["fkh_ai_usage_events", "fkh_ai_generation_cache"]) {
+      expect(aiPlatformMigration).toContain(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+    }
+
+    expect(aiPlatformMigration).toContain('CREATE POLICY "fkh_ai_usage_events_owner_all"');
+    expect(aiPlatformMigration).toContain('CREATE POLICY "fkh_ai_generation_cache_owner_all"');
+    expect(aiPlatformMigration).toContain('"user_id" = auth.uid()');
+    expect(aiPlatformMigration).toContain("'ai_monthly_credits'");
   });
 });

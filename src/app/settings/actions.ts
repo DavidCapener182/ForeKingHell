@@ -9,7 +9,9 @@ import {
   accountMemberships,
   achievementProgress,
   achievementSyncState,
+  aiGenerationCache,
   aiSocialSummaries,
+  aiUsageEvents,
   ballModels,
   billingCustomers,
   challengeAttempts,
@@ -269,6 +271,8 @@ export async function deleteAccountDataAction(formData: FormData) {
     await tx
       .delete(moderationEvents)
       .where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId)));
+    await tx.delete(aiGenerationCache).where(eq(aiGenerationCache.userId, userId));
+    await tx.delete(aiUsageEvents).where(eq(aiUsageEvents.userId, userId));
     await tx.delete(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId));
     await tx.delete(importJobs).where(eq(importJobs.userId, userId));
     await tx.delete(importSourceFiles).where(eq(importSourceFiles.userId, userId));

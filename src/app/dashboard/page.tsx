@@ -478,7 +478,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         commandRoutes={toDashboardCommandRoutes(mobileRouteCards)}
       />
 
-      <div className="hidden flex-col gap-8 sm:flex">
+      <div className="hidden flex-col gap-5 sm:flex">
         <DashboardSummaryHero
           latestSession={latestSession}
           bestClub={bestClub}
@@ -495,58 +495,77 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
-          <div className="flex min-w-0 flex-col gap-7">
-            {metrics.length > 0 ? <PerformanceSnapshot metrics={metrics} /> : null}
+        <DashboardBentoGrid>
+          {metrics.length > 0 ? (
+            <DashboardBentoItem span={8}>
+              <PerformanceSnapshot metrics={metrics} className="h-full" />
+            </DashboardBentoItem>
+          ) : null}
+          <DashboardBentoItem span={4}>
+            <DriverStatusPanel pathTrend={data.pathTrend} className="h-full" />
+          </DashboardBentoItem>
 
-            {pinnedDashboardSections.has("coach") ? (
+          {pinnedDashboardSections.has("coach") ? (
+            <DashboardBentoItem span={8}>
               <PracticeRecommendationCard
                 coachPreview={data.coachPreview}
                 primaryAction={primaryAction}
                 primaryActionLabel={primaryActionLabel}
               />
-            ) : null}
+            </DashboardBentoItem>
+          ) : null}
+          <DashboardBentoItem span={4}>
+            <ScoringZonePanel bagSummary={data.bagSummary} className="h-full" />
+          </DashboardBentoItem>
 
-            <CourseDecisionPanel items={data.courseAdvice} />
-
-            {pinnedDashboardSections.has("bag") ? (
-              <div id="bag" className="scroll-mt-28">
-                <BagConfidencePanel
-                  clubs={data.bagPreview}
-                  bagSummary={data.bagSummary}
-                  bagAlert={featureData.bagAlerts[0] ?? null}
-                />
-              </div>
-            ) : null}
-
-            <ActionCentrePanel data={featureData} layout="dashboard" />
-          </div>
-
-          <section className="flex min-w-0 flex-col gap-6">
-            <DriverStatusPanel pathTrend={data.pathTrend} />
-
-            <ScoringZonePanel bagSummary={data.bagSummary} />
-
+          <DashboardBentoItem span={8}>
+            <CourseDecisionPanel items={data.courseAdvice} className="h-full" />
+          </DashboardBentoItem>
+          <DashboardBentoItem span={4}>
             <LatestPracticeSignalPanel
               compact
               latestSession={latestSession}
               stats={data.stats}
               firstSignal={firstSignal}
               latestRound={data.latestRound}
+              className="h-full"
             />
+          </DashboardBentoItem>
 
-            {pinnedDashboardSections.has("rounds") ? (
-              <LatestRoundPanel latestRound={data.latestRound} />
-            ) : null}
+          {pinnedDashboardSections.has("bag") ? (
+            <DashboardBentoItem
+              id="bag"
+              span={pinnedDashboardSections.has("rounds") ? 8 : 12}
+              className="scroll-mt-28"
+            >
+              <BagConfidencePanel
+                clubs={data.bagPreview}
+                bagSummary={data.bagSummary}
+                bagAlert={featureData.bagAlerts[0] ?? null}
+                className="h-full"
+              />
+            </DashboardBentoItem>
+          ) : null}
+          {pinnedDashboardSections.has("rounds") ? (
+            <DashboardBentoItem span={pinnedDashboardSections.has("bag") ? 4 : 12}>
+              <LatestRoundPanel latestRound={data.latestRound} className="h-full" />
+            </DashboardBentoItem>
+          ) : null}
 
-            <DashboardSocialPulse social={social} compact />
-
-            <QuickActions
-              routes={routeCards}
-              commandRoutes={toDashboardCommandRoutes(routeCards)}
-            />
-          </section>
-        </div>
+          <DashboardBentoItem span={8} className="[&>[data-slot=card]]:h-full">
+            <ActionCentrePanel data={featureData} layout="dashboard" />
+          </DashboardBentoItem>
+          <DashboardBentoItem span={4}>
+            <div className="grid h-full auto-rows-fr gap-5">
+              <DashboardSocialPulse social={social} compact className="h-full" />
+              <QuickActions
+                routes={routeCards}
+                commandRoutes={toDashboardCommandRoutes(routeCards)}
+                className="h-full"
+              />
+            </div>
+          </DashboardBentoItem>
+        </DashboardBentoGrid>
 
         <TodayCommandBrief
           latestSession={latestSession}
@@ -583,6 +602,41 @@ type DashboardMetric = {
   icon: LucideIcon;
   tone: DashboardTone;
 };
+
+type DashboardBentoSpan = 4 | 8 | 12;
+
+function dashboardBentoSpan(span: DashboardBentoSpan): CSSProperties {
+  return { gridColumn: `span ${span} / span ${span}` };
+}
+
+function DashboardBentoGrid({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="grid auto-rows-auto items-stretch gap-5"
+      style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DashboardBentoItem({
+  children,
+  className,
+  id,
+  span,
+}: {
+  children: ReactNode;
+  className?: string;
+  id?: string;
+  span: DashboardBentoSpan;
+}) {
+  return (
+    <div id={id} className={cn("min-w-0 h-full", className)} style={dashboardBentoSpan(span)}>
+      {children}
+    </div>
+  );
+}
 
 function DashboardTodayCompanionHero({
   inbox,
@@ -1402,7 +1456,10 @@ function DashboardPanel({
   className?: string;
 }) {
   return (
-    <section id={id} className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
+    <section
+      id={id}
+      className={cn("premium-card flex h-full scroll-mt-28 flex-col rounded-lg", className)}
+    >
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-6 py-5">
         <div className="min-w-0">
           <h2 className="text-[20px] font-semibold leading-7 tracking-normal text-foreground">
@@ -1414,7 +1471,7 @@ function DashboardPanel({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className="px-6 py-5">{children}</div>
+      <div className="flex-1 px-6 py-5">{children}</div>
     </section>
   );
 }
@@ -1498,8 +1555,8 @@ function DashboardSummaryHero({
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="relative grid gap-5 px-7 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-start">
-        <div className="rounded-[24px] bg-white/96 p-5 shadow-[0_20px_44px_rgba(8,122,61,0.12)] ring-1 ring-[#E4EFE7]">
+      <div className="relative grid gap-5 px-7 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-stretch">
+        <div className="h-full rounded-[24px] bg-white/96 p-5 shadow-[0_20px_44px_rgba(8,122,61,0.12)] ring-1 ring-[#E4EFE7]">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] px-3 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
@@ -1573,24 +1630,29 @@ function DashboardSummaryHero({
               </div>
             </div>
           </div>
-          <FacePathClubSelector pathTrend={pathTrend} className="mt-4" />
-          <Link
-            href={practiceHref}
-            prefetch={false}
-            className="mt-4 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#087A3D] px-5 text-base font-bold text-white shadow-[0_14px_28px_rgba(8,122,61,0.18)] outline-none transition-colors hover:bg-[#065F32] focus-visible:ring-3 focus-visible:ring-[#087A3D]/30"
-          >
-            Start practice
-            <ArrowRight className="size-4" />
-          </Link>
+          <FacePathClubSelector
+            pathTrend={pathTrend}
+            className="mt-4"
+            action={
+              <Link
+                href={practiceHref}
+                prefetch={false}
+                className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl bg-[#087A3D] px-5 text-sm font-bold text-white shadow-[0_14px_28px_rgba(8,122,61,0.18)] outline-none transition-colors hover:bg-[#065F32] focus-visible:ring-3 focus-visible:ring-[#087A3D]/30"
+              >
+                Start practice
+                <ArrowRight className="size-4" />
+              </Link>
+            }
+          />
         </div>
 
-        <div className="grid content-start gap-4">
+        <div className="grid self-start gap-4">
           <RoundReadinessCard readiness={readiness} />
           <SinceLastSessionCard insights={whatChanged} />
         </div>
       </div>
 
-      <div className="relative grid gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-4">
+      <div className="relative grid auto-rows-fr gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-4">
         <HeroInsightCard
           title="Current form"
           value={scoringCeiling}
@@ -1718,7 +1780,7 @@ function HeroInsightCard({
       href={href}
       prefetch={false}
       className={cn(
-        "group premium-rail-card block rounded-lg p-4 transition-colors",
+        "group premium-rail-card block h-full rounded-lg p-4 transition-colors",
         primary
           ? "border-[#CFE7D6] shadow-[0_12px_30px_rgba(8,122,61,0.08)] hover:border-[#0F8F4D]"
           : "hover:border-[#CFE7D6]",
@@ -1753,13 +1815,19 @@ type RoundReadiness = {
   recommended: string;
 };
 
-function RoundReadinessCard({ readiness }: { readiness: RoundReadiness }) {
+function RoundReadinessCard({
+  readiness,
+  className,
+}: {
+  readiness: RoundReadiness;
+  className?: string;
+}) {
   const ringStyle = {
     "--readiness-angle": `${readiness.score * 3.6}deg`,
   } as CSSProperties;
 
   return (
-    <section className="premium-card rounded-lg p-5">
+    <section className={cn("premium-card rounded-lg p-5", className)}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold leading-5 text-[#111827]">Round readiness</p>
@@ -1810,9 +1878,15 @@ function ReadinessRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SinceLastSessionCard({ insights }: { insights: DashboardInsight[] }) {
+function SinceLastSessionCard({
+  insights,
+  className,
+}: {
+  insights: DashboardInsight[];
+  className?: string;
+}) {
   return (
-    <section className="premium-card rounded-lg p-5">
+    <section className={cn("premium-card rounded-lg p-5", className)}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold leading-5 text-[#111827]">Since last session</p>
@@ -2001,7 +2075,13 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function DriverStatusPanel({ pathTrend }: { pathTrend: DashboardData["pathTrend"] }) {
+function DriverStatusPanel({
+  pathTrend,
+  className,
+}: {
+  pathTrend: DashboardData["pathTrend"];
+  className?: string;
+}) {
   const status = getDriverStatus(pathTrend);
   const latestPoint =
     [...pathTrend.points].reverse().find((point) => point.pathDeg !== null) ?? null;
@@ -2009,6 +2089,7 @@ function DriverStatusPanel({ pathTrend }: { pathTrend: DashboardData["pathTrend"
 
   return (
     <DashboardPanel
+      className={className}
       title="Driver status"
       description="One-glance path and face-to-path from the latest measured driver trend."
       action={
@@ -2046,68 +2127,82 @@ function DriverStatusPanel({ pathTrend }: { pathTrend: DashboardData["pathTrend"
   );
 }
 
-function ScoringZonePanel({ bagSummary }: { bagSummary: DashboardData["bagSummary"] }) {
+function ScoringZonePanel({
+  bagSummary,
+  className,
+}: {
+  bagSummary: DashboardData["bagSummary"];
+  className?: string;
+}) {
   const zones = bagSummary.scoringZones.slice(0, 3);
 
   return (
-    <DashboardPanel
-      title="Scoring zones"
-      description="Full wedge anchors and measured partial windows."
-      action={
-        <Button asChild variant="outline" className="rounded-lg">
+    <section className={cn("premium-card flex flex-col rounded-lg", className)}>
+      <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="text-[19px] font-semibold leading-6 tracking-normal text-foreground">
+            Scoring zones
+          </h2>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+            Full wedge anchors and measured partial windows.
+          </p>
+          {zones.length > 0 ? (
+            <span className="mt-1.5 inline-flex min-h-6 items-center rounded-full border border-[#DFE7DF] bg-[#F8FAF8] px-2.5 text-xs font-semibold leading-4 text-[#111827]">
+              {bagSummary.scoringStatus}
+            </span>
+          ) : null}
+        </div>
+        <Button asChild variant="outline" className="h-8 rounded-lg px-2.5 text-xs">
           <Link href="/bag#wedge-roles" prefetch={false}>
             <Target className="size-4" />
             Wedges
           </Link>
         </Button>
-      }
-    >
-      {zones.length > 0 ? (
-        <div className="grid gap-3">
-          <p className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-2.5 text-sm font-semibold leading-5 text-[#111827]">
-            {bagSummary.scoringStatus}
-          </p>
-          {zones.map((zone) => (
-            <Link
-              key={zone.id}
-              href="/bag#wedge-roles"
-              prefetch={false}
-              className="grid gap-3 rounded-lg border border-[#DFE7DF] bg-white px-3 py-3 transition-colors hover:border-[#0F8F4D] hover:bg-[#F8FAF8]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold leading-5 text-[#111827]">{zone.label}</p>
-                  <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-[#667085]">
-                    {zone.isSuggested ? "Suggested gap" : `${zone.matrixScore}% matrix`}
+      </div>
+      <div className="flex-1 px-4 py-3">
+        {zones.length > 0 ? (
+          <div className="grid h-full auto-rows-fr gap-2.5">
+            {zones.map((zone) => (
+              <Link
+                key={zone.id}
+                href="/bag#wedge-roles"
+                prefetch={false}
+                className="grid h-full content-center gap-2.5 rounded-lg border border-[#DFE7DF] bg-white px-3 py-2.5 transition-colors hover:border-[#0F8F4D] hover:bg-[#F8FAF8]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold leading-5 text-[#111827]">{zone.label}</p>
+                    <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-[#667085]">
+                      {zone.isSuggested ? "Suggested gap" : `${zone.matrixScore}% matrix`}
+                    </p>
+                  </div>
+                  <p className="text-lg font-bold leading-6 tracking-normal text-[#111827]">
+                    {formatYards(zone.fullCarryYd)}
                   </p>
                 </div>
-                <p className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
-                  {formatYards(zone.fullCarryYd)}
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {zone.rows.map((row) => (
-                  <span
-                    key={`${zone.id}-${row.key}`}
-                    className={cn(
-                      "rounded-lg px-2 py-2 text-center text-xs font-semibold leading-4",
-                      toneSoftClass(normalizeDashboardTone(row.tone)),
-                    )}
-                  >
-                    <span className="block">{row.label}</span>
-                    <span className="block">{formatYards(row.carryYd)}</span>
-                  </span>
-                ))}
-              </div>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-3 text-sm leading-5 text-[#667085]">
-          Add PW, GW/AW, SW or LW shots to build the scoring-zone matrix.
-        </p>
-      )}
-    </DashboardPanel>
+                <div className="grid grid-cols-3 gap-2">
+                  {zone.rows.map((row) => (
+                    <span
+                      key={`${zone.id}-${row.key}`}
+                      className={cn(
+                        "rounded-md px-2 py-1.5 text-center text-xs font-semibold leading-4",
+                        toneSoftClass(normalizeDashboardTone(row.tone)),
+                      )}
+                    >
+                      {row.label} <span className="font-bold">{formatYards(row.carryYd)}</span>
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-3 py-3 text-sm leading-5 text-[#667085]">
+            Add PW, GW/AW, SW or LW shots to build the scoring-zone matrix.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -2620,7 +2715,7 @@ function PerformanceSnapshot({
   className?: string;
 }) {
   return (
-    <section className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
+    <section className={cn("premium-card h-full scroll-mt-28 rounded-lg", className)}>
       <div className="flex items-start gap-4 px-5 py-5">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
           <BarChart3 className="size-6" />
@@ -2636,7 +2731,7 @@ function PerformanceSnapshot({
       </div>
       <div
         className={cn(
-          "grid gap-4 px-5 pb-5",
+          "grid auto-rows-fr gap-4 px-5 pb-5",
           paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4",
         )}
       >
@@ -2649,7 +2744,7 @@ function PerformanceSnapshot({
               href={metric.href}
               prefetch={false}
               className={cn(
-                "group premium-rail-card flex min-w-0 flex-col rounded-lg p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
+                "group premium-rail-card flex h-full min-w-0 flex-col rounded-lg p-4 transition-colors hover:border-[#CFE7D6] hover:bg-[#F8FAF8]",
                 paired ? "min-h-[190px]" : "min-h-[220px]",
               )}
             >
@@ -2696,10 +2791,12 @@ function BagConfidencePanel({
   clubs,
   bagSummary,
   bagAlert,
+  className,
 }: {
   clubs: DashboardData["bagPreview"];
   bagSummary: DashboardData["bagSummary"];
   bagAlert: FeatureIdeasData["bagAlerts"][number] | null;
+  className?: string;
 }) {
   const trustedClubs = [...clubs]
     .sort((left, right) => {
@@ -2717,6 +2814,7 @@ function BagConfidencePanel({
 
   return (
     <DashboardPanel
+      className={className}
       title="Bag confidence"
       description="The most important bag signals without turning the dashboard into the full bag page."
       action={
@@ -2730,7 +2828,7 @@ function BagConfidencePanel({
     >
       {clubs.length > 0 ? (
         <div className="grid gap-5">
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="grid auto-rows-fr gap-3 xl:grid-cols-2">
             {bagSummary.mostTrusted ? (
               <BagCaddieCard title="Most trusted club" club={bagSummary.mostTrusted} tone="green" />
             ) : null}
@@ -2805,7 +2903,7 @@ function BagCaddieCard({
       href={`/bag/${club.id}`}
       prefetch={false}
       className={cn(
-        "grid gap-3 rounded-lg border px-4 py-4 transition-colors hover:bg-white",
+        "grid h-full gap-3 rounded-lg border px-4 py-4 transition-colors hover:bg-white",
         tone === "green"
           ? "border-[#CFE7D6] bg-[#F0FAF3] hover:border-[#0F8F4D]"
           : "border-[#F1C36D] bg-[#FFF8E7] hover:border-[#B87500]",
@@ -3141,10 +3239,17 @@ function HoleResultStrip({
   );
 }
 
-function CourseDecisionPanel({ items }: { items: DashboardData["courseAdvice"] }) {
+function CourseDecisionPanel({
+  items,
+  className,
+}: {
+  items: DashboardData["courseAdvice"];
+  className?: string;
+}) {
   return (
     <DashboardPanel
       id="decisions"
+      className={className}
       title="On-course decisions"
       description="Course-number reminders from the current bag map."
       action={
@@ -3156,14 +3261,14 @@ function CourseDecisionPanel({ items }: { items: DashboardData["courseAdvice"] }
         </Button>
       }
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-4">
         {items.map((item, index) => (
           <Link
             key={item.label}
             href={item.clubId ? `/bag/${item.clubId}` : "/bag"}
             prefetch={false}
             className={cn(
-              "group min-w-0 rounded-lg border border-[#DFE7DF] bg-white px-4 py-4 transition-colors hover:border-[#0F8F4D] hover:bg-[#F8FAF8]",
+              "group h-full min-w-0 rounded-lg border border-[#DFE7DF] bg-white px-4 py-4 transition-colors hover:border-[#0F8F4D] hover:bg-[#F8FAF8]",
               index === 0 ? "xl:border-[#CFE7D6]" : "",
             )}
           >
@@ -3361,9 +3466,11 @@ function SocialStatLink({
 function QuickActions({
   routes,
   commandRoutes,
+  className,
 }: {
   routes: DashboardRoute[];
   commandRoutes: DashboardCommandRoute[];
+  className?: string;
 }) {
   const primaryRoutes = routes.slice(0, 6);
   const secondaryRoutes = routes.slice(6);
@@ -3393,6 +3500,7 @@ function QuickActions({
   return (
     <DashboardPanel
       id="tools"
+      className={className}
       title="Quick actions"
       description="Icon shortcuts for import, practice, shots, bag and rounds."
     >

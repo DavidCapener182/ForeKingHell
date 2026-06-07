@@ -36,6 +36,8 @@ import {
   weeklyRecaps,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { generateAiJson } from "@/lib/ai/client";
+import { recapSchema } from "@/lib/ai/schemas";
 import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
@@ -805,6 +807,7 @@ export async function saveCurrentWeeklyRecap() {
   const week = currentWeekWindow(new Date());
   const now = new Date();
   const generated = await generateWeeklyRecapCopy({
+    userId,
     weeklyRecap: featureData.weeklyRecap,
     coachConfidence: featureData.coachConfidence,
     importQuality: featureData.importQuality,
@@ -1622,6 +1625,7 @@ function buildWeeklyRecap({
 }
 
 async function generateWeeklyRecapCopy(input: {
+  userId: string;
   weeklyRecap: ReturnType<typeof buildWeeklyRecap>;
   coachConfidence: ReturnType<typeof buildCoachConfidence>;
   importQuality: ReturnType<typeof buildImportQuality>;
@@ -1637,12 +1641,6 @@ async function generateWeeklyRecapCopy(input: {
     watchOut: input.weeklyRecap.weakestSignal,
     generatedFrom: "rules-v2",
   };
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    return { ...fallback, generatedFrom: "rules-v2-missing-openai-key" };
-  }
-
   const payload = {
     productName: "LM World Tour",
     weeklyRecap: input.weeklyRecap,
@@ -1655,37 +1653,31 @@ async function generateWeeklyRecapCopy(input: {
   };
 
   try {
-    const upstream = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${apiKey}`,
-        "content-type": "application/json",
+    const result = await generateAiJson({
+      userId: input.userId,
+      featureKey: "weekly_recap",
+      schemaName: "weekly_recap",
+      schema: recapSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: buildWeeklyRecapPrompt(payload),
+            },
+          ],
+        },
+      ],
+      cachePayload: payload,
+      metadataJson: {
+        bagAlertCount: input.bagAlerts.length,
+        tournamentChecklistCount: input.tournamentChecklist.length,
       },
-      body: JSON.stringify({
-        model:
-          process.env.OPENAI_WEEKLY_RECAP_MODEL ?? process.env.OPENAI_COACH_MODEL ?? "gpt-4.1-mini",
-        input: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: buildWeeklyRecapPrompt(payload),
-              },
-            ],
-          },
-        ],
-        max_output_tokens: 750,
-      }),
     });
-    const responsePayload = (await upstream.json().catch(() => null)) as unknown;
 
-    if (!upstream.ok) {
-      return { ...fallback, generatedFrom: "rules-v2-openai-error" };
-    }
-
-    const parsed = parseWeeklyRecapResponse(readResponseText(responsePayload));
-    return { ...parsed, generatedFrom: "openai-responses" };
+    const parsed = parseWeeklyRecapResponse(JSON.stringify(result.output));
+    return { ...parsed, generatedFrom: result.cached ? "openai-cache" : "openai-responses" };
   } catch {
     return { ...fallback, generatedFrom: "rules-v2-openai-error" };
   }
@@ -2360,38 +2352,6 @@ function providerLabel(provider: string) {
   return provider.slice(0, 1).toUpperCase() + provider.slice(1);
 }
 
-function readResponseText(payload: unknown) {
-  if (isRecord(payload) && typeof payload.output_text === "string") {
-    return payload.output_text;
-  }
-
-  if (!isRecord(payload) || !Array.isArray(payload.output)) {
-    throw new Error("OpenAI response did not include text.");
-  }
-
-  const chunks: string[] = [];
-
-  for (const item of payload.output) {
-    if (!isRecord(item) || !Array.isArray(item.content)) {
-      continue;
-    }
-
-    for (const content of item.content) {
-      if (isRecord(content) && typeof content.text === "string") {
-        chunks.push(content.text);
-      }
-    }
-  }
-
-  const text = chunks.join("\n").trim();
-
-  if (!text) {
-    throw new Error("OpenAI response did not include text.");
-  }
-
-  return text;
-}
-
 function extractJson(text: string) {
   const trimmed = text
     .trim()
@@ -2417,10 +2377,6 @@ function arrayOfStringsFromRecord(value: Record<string, unknown>, key: string) {
   return Array.isArray(item)
     ? item.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
     : [];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function normaliseCourseName(value: string) {

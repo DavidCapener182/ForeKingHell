@@ -27,7 +27,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
 
   return (
-    <PageShell size="7xl">
+    <PageShell size="full">
       <MobileRouteHeader title="Platform" group="platform" activeKey="billing" />
 
       <header className="premium-hero p-3 sm:p-5">
@@ -79,7 +79,9 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               plan={plan}
               active={plan.key === data.activePlanKey}
               stripeConfigured={data.stripeConfigured}
-              limits={data.planLimits.filter((limit) => limit.planKey === plan.key).slice(0, 4)}
+              limits={planLimitsForDisplay(
+                data.planLimits.filter((limit) => limit.planKey === plan.key),
+              )}
             />
           ))}
         </section>
@@ -280,7 +282,8 @@ function label(value: string) {
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+    .join(" ")
+    .replace(/\bAi\b/g, "AI");
 }
 
 function limitValue(value: Record<string, unknown>) {
@@ -297,6 +300,22 @@ function limitValue(value: Record<string, unknown>) {
   }
 
   return "Included";
+}
+
+function planLimitsForDisplay<T extends { limitKey: string }>(limits: T[]) {
+  const priority = new Map([
+    ["ai_monthly_credits", 0],
+    ["ai_scorecard_extracts_monthly", 1],
+    ["ai_daily_chat_messages", 2],
+    ["max_monthly_imports", 3],
+    ["max_private_challenges", 4],
+  ]);
+
+  return [...limits]
+    .sort(
+      (left, right) => (priority.get(left.limitKey) ?? 99) - (priority.get(right.limitKey) ?? 99),
+    )
+    .slice(0, 5);
 }
 
 function planLabel(plans: BillingPlan[], value: string) {

@@ -721,6 +721,68 @@ export const planLimits = pgTable(
   (table) => [uniqueIndex("fkh_plan_limits_plan_key_idx").on(table.planKey, table.limitKey)],
 );
 
+export const aiUsageEvents = pgTable(
+  "fkh_ai_usage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    featureKey: varchar("feature_key", { length: 80 }).notNull(),
+    planKeySnapshot: varchar("plan_key_snapshot", { length: 40 }).notNull(),
+    model: varchar("model", { length: 80 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("success"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    aiCredits: integer("ai_credits").notNull().default(0),
+    requestHash: varchar("request_hash", { length: 64 }),
+    responseId: varchar("response_id", { length: 120 }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_ai_usage_events_user_feature_created_idx").on(
+      table.userId,
+      table.featureKey,
+      table.createdAt,
+    ),
+    index("fkh_ai_usage_events_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_ai_usage_events_request_hash_idx").on(table.requestHash),
+  ],
+);
+
+export const aiGenerationCache = pgTable(
+  "fkh_ai_generation_cache",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    featureKey: varchar("feature_key", { length: 80 }).notNull(),
+    requestHash: varchar("request_hash", { length: 64 }).notNull(),
+    model: varchar("model", { length: 80 }).notNull(),
+    responseJson: jsonb("response_json").$type<Record<string, unknown>>().notNull().default({}),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_ai_generation_cache_user_feature_hash_model_idx").on(
+      table.userId,
+      table.featureKey,
+      table.requestHash,
+      table.model,
+    ),
+    index("fkh_ai_generation_cache_user_feature_created_idx").on(
+      table.userId,
+      table.featureKey,
+      table.createdAt,
+    ),
+    index("fkh_ai_generation_cache_expires_idx").on(table.expiresAt),
+  ],
+);
+
 export const sponsors = pgTable(
   "fkh_sponsors",
   {
@@ -2415,6 +2477,8 @@ export type NewSubscription = typeof subscriptions.$inferInsert;
 export type NewEntitlement = typeof entitlements.$inferInsert;
 export type NewUsageEvent = typeof usageEvents.$inferInsert;
 export type NewPlanLimit = typeof planLimits.$inferInsert;
+export type NewAiUsageEvent = typeof aiUsageEvents.$inferInsert;
+export type NewAiGenerationCache = typeof aiGenerationCache.$inferInsert;
 export type NewSponsor = typeof sponsors.$inferInsert;
 export type NewChallengeReward = typeof challengeRewards.$inferInsert;
 export type NewPartnerOffer = typeof partnerOffers.$inferInsert;

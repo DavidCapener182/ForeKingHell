@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { aiSocialSummaries, feedItems, moderationEvents, socialReports } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { generateAiJson } from "@/lib/ai/client";
+import { socialCaptionSchema } from "@/lib/ai/schemas";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { ensureSocialProfileForUser, parseVisibility, type SocialVisibility } from "@/lib/social";
 
@@ -57,26 +59,111 @@ export async function generateSocialSummary(input: {
     .where(eq(feedItems.userId, userId))
     .orderBy(desc(feedItems.createdAt))
     .limit(8);
-  const headline = headlineForSummary(input.summaryType, profile.displayName);
-  const body = bodyForSummary(input.summaryType, recentFeed);
+  const fallbackHeadline = headlineForSummary(input.summaryType, profile.displayName);
+  const fallbackBody = bodyForSummary(input.summaryType, recentFeed);
+  const generated = await generateAiSocialSummaryCopy({
+    userId,
+    summaryType: input.summaryType,
+    displayName: profile.displayName,
+    fallbackHeadline,
+    fallbackBody,
+    recentFeed: recentFeed.map((item) => ({
+      type: item.itemType,
+      headline: item.headline,
+      context: item.context,
+      metricLabel: item.metricLabel,
+      metricValue: item.metricValue,
+      createdAt: item.createdAt,
+    })),
+  });
 
   await getDb()
     .insert(aiSocialSummaries)
     .values({
       userId,
       summaryType: input.summaryType,
-      headline,
-      body,
+      headline: generated.headline.slice(0, 220),
+      body: generated.body,
       evidenceJson: {
         feedItemIds: recentFeed.map((item) => item.id),
-        generatedFrom: "rules-v1",
+        generatedFrom: generated.generatedFrom,
       },
       visibility: parseVisibility(input.visibility, "private"),
-      model: "rules-v1",
+      model: generated.model,
       updatedAt: new Date(),
     });
 
   revalidateSocialIntelligence();
+}
+
+async function generateAiSocialSummaryCopy(input: {
+  userId: string;
+  summaryType: string;
+  displayName: string;
+  fallbackHeadline: string;
+  fallbackBody: string;
+  recentFeed: Array<Record<string, unknown>>;
+}) {
+  const fallback = {
+    headline: input.fallbackHeadline,
+    body: input.fallbackBody,
+    generatedFrom: "rules-v1",
+    model: "rules-v1",
+  };
+  const context = {
+    subjectType: input.summaryType,
+    tone: "golf recap, natural, opt-in sharing",
+    facts: {
+      displayName: input.displayName,
+      recentFeed: input.recentFeed,
+      fallbackHeadline: input.fallbackHeadline,
+      fallbackBody: input.fallbackBody,
+    },
+  };
+
+  try {
+    const result = await generateAiJson<{
+      headline: string;
+      caption: string;
+      shortCaption: string;
+      hashtags: string[];
+      safetyNote: string;
+    }>({
+      userId: input.userId,
+      featureKey: "social_caption",
+      schemaName: "social_caption",
+      schema: socialCaptionSchema,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Write a private ForeKingHell social recap summary from this JSON only.
+Do not auto-post and do not make unverifiable handicap, record, or competition claims.
+
+Data:
+${JSON.stringify(context, null, 2)}`,
+            },
+          ],
+        },
+      ],
+      cachePayload: context,
+      metadataJson: {
+        summaryType: input.summaryType,
+        feedItemCount: input.recentFeed.length,
+      },
+    });
+
+    return {
+      headline: result.output.headline,
+      body: result.output.caption,
+      generatedFrom: result.cached ? "openai-cache" : "openai-responses",
+      model: result.model,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 export async function reportSocialTarget(input: {

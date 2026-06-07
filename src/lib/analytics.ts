@@ -1,5 +1,6 @@
 export type PlausibleEventName =
   | "AI Coach Generated"
+  | "AI Data Chat Generated"
   | "Import Saved"
   | "Import Started"
   | "Import Queued Offline"

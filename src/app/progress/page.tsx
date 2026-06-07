@@ -79,6 +79,47 @@ export default async function ProgressPage() {
 
   return (
     <PageShell>
+      <style>{`
+        @media (min-width: 1024px) {
+          .progress-bento-grid {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            align-items: stretch;
+          }
+
+          .progress-bento-item {
+            min-width: 0;
+            height: 100%;
+          }
+
+          .progress-bento-item > * {
+            height: 100%;
+          }
+
+          .progress-span-3 {
+            grid-column: span 3 / span 3;
+          }
+
+          .progress-span-5 {
+            grid-column: span 5 / span 5;
+          }
+
+          .progress-span-6 {
+            grid-column: span 6 / span 6;
+          }
+
+          .progress-span-7 {
+            grid-column: span 7 / span 7;
+          }
+
+          .progress-span-9 {
+            grid-column: span 9 / span 9;
+          }
+
+          .progress-span-12 {
+            grid-column: span 12 / span 12;
+          }
+        }
+      `}</style>
       <MobileRouteHeader title="Dashboard" group="dashboard" activeKey="progress" />
       <MobileTabBar
         activeKey="overview"
@@ -187,31 +228,51 @@ export default async function ProgressPage() {
       ) : (
         <>
           <MobileProgressFirstCard summary={summary} />
-          <WeeklyRecapPanel data={featureData} summary={summary} />
-          <ComparisonBar summary={summary} />
-          <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
-
-          <ProgressTrendsPanel summary={summary} />
-
-          <PracticePlanPanel priorities={summary.practicePlan} />
-          <CoachReadoutPanel
-            signal={summary.bestSignal}
-            groups={summary.coachSummary}
-            gaps={summary.dataGaps}
-          />
-
-          <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_330px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
-            <BagMovementPanel rows={summary.clubRows} />
-            <TrustLadderPanel items={summary.trustLadder} />
-          </section>
-
-          <div id="journey" className="scroll-mt-28">
-            <JourneyPanel events={summary.journey} />
+          <div className="progress-bento-grid grid gap-4 lg:gap-5">
+            <ProgressBentoItem span={12}>
+              <WeeklyRecapPanel data={featureData} summary={summary} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={12}>
+              <ComparisonBar summary={summary} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={6}>
+              <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={6}>
+              <ProgressTrendsPanel summary={summary} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={6}>
+              <PracticePlanPanel priorities={summary.practicePlan} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={6}>
+              <CoachReadoutPanel
+                signal={summary.bestSignal}
+                groups={summary.coachSummary}
+                gaps={summary.dataGaps}
+              />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={9}>
+              <BagMovementPanel rows={summary.clubRows} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={3}>
+              <TrustLadderPanel items={summary.trustLadder} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={12}>
+              <div id="journey" className="h-full scroll-mt-28">
+                <JourneyPanel events={summary.journey} />
+              </div>
+            </ProgressBentoItem>
           </div>
         </>
       )}
     </PageShell>
   );
+}
+
+type ProgressSpan = 3 | 5 | 6 | 7 | 9 | 12;
+
+function ProgressBentoItem({ span, children }: { span: ProgressSpan; children: ReactNode }) {
+  return <div className={`progress-bento-item progress-span-${span}`}>{children}</div>;
 }
 
 function ProgressHeroPanel({
@@ -347,7 +408,7 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
   const weeklyRead = weeklyReadout(summary);
 
   return (
-    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
@@ -375,89 +436,93 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3">
-        <WeeklyRecapNotice
-          icon={TrendingUp}
-          text={`${sessionsLabel} in this week's sample. Keep the next goal tight and measurable.`}
-        />
-        <WeeklyRecapNotice
-          icon={Sparkles}
-          text={
-            <>
-              <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
-              {weeklyRead}
-            </>
-          }
-        />
-      </div>
+      <div className="mt-4 grid flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
+        <div className="grid gap-3">
+          <div className="grid gap-2 lg:grid-cols-2">
+            <WeeklyRecapNotice
+              icon={TrendingUp}
+              text={`${sessionsLabel} in this week's sample. Keep the next goal tight and measurable.`}
+            />
+            <WeeklyRecapNotice
+              icon={Sparkles}
+              text={
+                <>
+                  <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
+                  {weeklyRead}
+                </>
+              }
+            />
+          </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <WeeklyRecapCard
-          label="Long-term trust"
-          value={longTermTrust ? formatClubType(longTermTrust.clubType) : data.weeklyRecap.bestClub}
-          detail={
-            longTermTrust
-              ? longTermTrustDetail(longTermTrust, summary)
-              : "Keep building clean stock-shot samples"
-          }
-          href={longTermTrust ? `/bag/${longTermTrust.clubId}/analytics` : undefined}
-          tone="green"
-          icon={Trophy}
-        />
-        <WeeklyRecapCard
-          label="Current form"
-          value={currentForm ? formatClubType(currentForm.clubType) : "Needs sample"}
-          detail={
-            currentForm
-              ? currentFormDetail(currentForm)
-              : "Latest-session form appears after 3+ clean shots"
-          }
-          href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
-          tone={currentForm?.tone ?? "slate"}
-          icon={Sparkles}
-        />
-        <WeeklyRecapCard
-          label="Weakest signal"
-          value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
-          detail={
-            weakestSignal
-              ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
-              : "Review the next clean baseline"
-          }
-          href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
-          tone="amber"
-          icon={TrendingDown}
-        />
-        <WeeklyRecapCard
-          label="Next goal"
-          value={topPriority?.title ?? "Build next baseline"}
-          detail={nextGoalDetail(topPriority)}
-          href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
-          tone={topPriority?.tone ?? "slate"}
-          icon={Target}
-        />
-      </div>
-
-      <div className="mt-5 rounded-xl border border-[#DFE7DF] bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[#111827]">Practice plan calendar</p>
-          <span className="rounded-full border border-[#E5E7EB] bg-slate-50 px-3 py-1 text-sm font-semibold text-[#475467]">
-            {data.practiceCalendar.length} planned
-          </span>
+          <div className="grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <WeeklyRecapCard
+              label="Long-term trust"
+              value={
+                longTermTrust ? formatClubType(longTermTrust.clubType) : data.weeklyRecap.bestClub
+              }
+              detail={
+                longTermTrust
+                  ? longTermTrustDetail(longTermTrust, summary)
+                  : "Keep building clean stock-shot samples"
+              }
+              href={longTermTrust ? `/bag/${longTermTrust.clubId}/analytics` : undefined}
+              tone="green"
+              icon={Trophy}
+            />
+            <WeeklyRecapCard
+              label="Current form"
+              value={currentForm ? formatClubType(currentForm.clubType) : "Needs sample"}
+              detail={
+                currentForm
+                  ? currentFormDetail(currentForm)
+                  : "Latest-session form appears after 3+ clean shots"
+              }
+              href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
+              tone={currentForm?.tone ?? "slate"}
+              icon={Sparkles}
+            />
+            <WeeklyRecapCard
+              label="Weakest signal"
+              value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
+              detail={
+                weakestSignal
+                  ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
+                  : "Review the next clean baseline"
+              }
+              href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
+              tone="amber"
+              icon={TrendingDown}
+            />
+            <WeeklyRecapCard
+              label="Next goal"
+              value={topPriority?.title ?? "Build next baseline"}
+              detail={nextGoalDetail(topPriority)}
+              href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
+              tone={topPriority?.tone ?? "slate"}
+              icon={Target}
+            />
+          </div>
         </div>
-        <div
-          aria-label="Practice plan calendar"
-          tabIndex={0}
-          className="mt-4 flex gap-3 overflow-x-auto pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {data.practiceCalendar.slice(0, 4).map((item, index) => (
-            <div
-              key={`${item.title}-${item.date.toISOString()}`}
-              className="flex min-w-0 shrink-0 items-center gap-3"
-            >
-              <div className="grid min-w-64 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-xl border border-[#E5E7EB] bg-white px-4 py-3">
-                <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
-                  <CalendarDays className="size-5" />
+
+        <div className="rounded-xl border border-[#DFE7DF] bg-white p-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-[#111827]">Practice plan calendar</p>
+            <span className="rounded-full border border-[#E5E7EB] bg-slate-50 px-3 py-1 text-sm font-semibold text-[#475467]">
+              {data.practiceCalendar.length} planned
+            </span>
+          </div>
+          <div
+            aria-label="Practice plan calendar"
+            tabIndex={0}
+            className="mt-3 grid gap-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {data.practiceCalendar.slice(0, 4).map((item) => (
+              <div
+                key={`${item.title}-${item.date.toISOString()}`}
+                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5"
+              >
+                <span className="grid size-9 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+                  <CalendarDays className="size-4" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">
@@ -468,11 +533,8 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
                   </span>
                 </span>
               </div>
-              {index < Math.min(data.practiceCalendar.length, 4) - 1 ? (
-                <ArrowRight className="size-5 shrink-0 text-slate-400" />
-              ) : null}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -670,7 +732,7 @@ function ProgressSignalsPanel({
         description="The clearest gains, risks and priorities from the current comparison."
         tone="green"
       />
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         <LargeSignalCard
           icon={TrendingUp}
           label="Best movement"
@@ -693,7 +755,7 @@ function ProgressSignalsPanel({
           tone="amber"
         />
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
         <SignalSummaryCard
           label="Long-term trust"
           value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
@@ -835,7 +897,7 @@ function LargeSignalCard({
   );
 
   return href ? (
-    <Link href={href} prefetch={false} className="block">
+    <Link href={href} prefetch={false} className="block h-full">
       {content}
     </Link>
   ) : (
@@ -904,7 +966,7 @@ function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
   return (
     <section
       id="trends"
-      className="scroll-mt-28 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6"
+      className="flex h-full scroll-mt-28 flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6"
     >
       <ProgressSectionHeader
         icon={LineChart}
@@ -912,7 +974,7 @@ function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
         description="Movement from the first clean baseline to the latest clean baseline."
         tone="sky"
       />
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-5 grid flex-1 auto-rows-fr gap-3 md:grid-cols-2">
         {summary.trends.map((trend) => (
           <TrendCard key={trend.label} trend={trend} summary={summary} />
         ))}
@@ -923,7 +985,7 @@ function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
 
 function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: ProgressSummary }) {
   return (
-    <div className="flex min-h-48 flex-col rounded-xl border border-[#DFE7DF] bg-white p-4">
+    <div className="flex h-full min-h-44 flex-col rounded-xl border border-[#DFE7DF] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-bold uppercase tracking-[0.16em] text-[#667085]">
@@ -1025,21 +1087,37 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
 }
 
 function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
-  const [topPriority, ...secondaryPriorities] = priorities;
+  const [topPriority] = priorities;
+  const visiblePriorityCount = Math.min(priorities.length, 5);
 
   return (
-    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       {topPriority ? (
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(380px,0.95fr)]">
+        <div className="grid min-h-0 items-start gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
           <PracticePriorityFeatureCard priority={topPriority} />
-          <div className="grid gap-3">
-            {secondaryPriorities.map((priority, index) => (
-              <PracticePriorityCompactCard
-                key={priority.clubId}
-                priority={priority}
-                index={index + 2}
-              />
-            ))}
+          <div className="flex min-h-0 flex-col rounded-xl border border-[#DFE7DF] bg-slate-50/40 p-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#111827]">Ranked priorities</p>
+                <p className="text-xs leading-5 text-[#667085]">
+                  Priority 1 starts the queue. Scroll for the rest.
+                </p>
+              </div>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#475467]">
+                {visiblePriorityCount} visible / {priorities.length}
+              </span>
+            </div>
+            <div className="min-h-0 max-h-[31rem] overflow-y-auto pr-1 [scrollbar-gutter:stable]">
+              <div className="grid gap-2.5">
+                {priorities.map((priority, index) => (
+                  <PracticePriorityCompactCard
+                    key={priority.clubId}
+                    priority={priority}
+                    index={index + 1}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ) : (
@@ -1057,7 +1135,7 @@ function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">
-            Priority 1
+            Priority 1 focus
           </Badge>
           <h2 className="mt-3 text-2xl font-bold leading-tight tracking-normal text-[#111827]">
             {priority.title}
@@ -1072,18 +1150,23 @@ function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority 
           {priority.priorityLabel}
         </span>
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1fr)]">
+      <div className="mt-4 grid gap-3">
         <PracticeHeroArtwork />
-        <div className="grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <PracticeInfoBlock icon={HelpCircle} label="Why" text={practiceReasonCopy(priority)} />
           <PracticeInfoBlock icon={ClipboardCheck} label="Task" text={priority.drill} />
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#111827]">
-          Coach score
-          <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-semibold">
-            {priority.score}
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+        <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#111827]">
+          <span className="flex items-center gap-2 font-medium">
+            Coach score
+            <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-semibold">
+              {priority.score}
+            </span>
+          </span>
+          <span className="mt-1 block text-xs leading-4 text-[#667085]">
+            Higher means practice this sooner.
           </span>
         </span>
         <Button
@@ -1102,7 +1185,7 @@ function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority 
 
 function PracticeHeroArtwork() {
   return (
-    <div className="relative min-h-48 overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50">
+    <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50">
       <Image
         src="/assets/generated/progress-practice-green.png"
         alt=""
@@ -1126,7 +1209,7 @@ function PracticeInfoBlock({
   text: string;
 }) {
   return (
-    <div className="grid min-h-24 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-[#DFE7DF] bg-white p-4">
+    <div className="grid min-h-24 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-[#DFE7DF] bg-white p-3">
       <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
         <Icon className="size-4" />
       </span>
@@ -1155,14 +1238,14 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
   const isStrikeImage = priority.title.toLowerCase().includes("strike");
 
   return (
-    <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
+    <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
       {variant === "course" ? (
         <>
           <Image
             src="/assets/generated/progress-practice-green.png"
             alt=""
             fill
-            sizes="80px"
+            sizes="40px"
             className="object-cover"
           />
           <span className="absolute inset-0 bg-emerald-950/5" />
@@ -1175,7 +1258,7 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
             src="/assets/generated/progress-9i-face-strike.png"
             alt=""
             fill
-            sizes="80px"
+            sizes="40px"
             className="object-cover"
           />
         ) : (
@@ -1184,7 +1267,7 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
             alt=""
             className="size-full rounded-full border-0 bg-transparent"
             imageClassName="px-2 py-2"
-            sizes="80px"
+            sizes="40px"
             showGroundLine={false}
           />
         )
@@ -1219,31 +1302,38 @@ function PracticePriorityCompactCard({
     <Link
       href={`/bag/${priority.clubId}/analytics`}
       prefetch={false}
-      className="grid min-h-36 grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-emerald-300"
+      className={cn(
+        "grid min-h-[5.25rem] grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 rounded-xl border p-2.5 transition-colors hover:border-emerald-300",
+        index === 1 ? "border-emerald-200 bg-emerald-50/60" : "border-[#DFE7DF] bg-white",
+      )}
     >
       <PracticePriorityThumb priority={priority} index={index} />
       <div className="min-w-0">
-        <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant="outline" className="bg-white">
             Priority {index}
           </Badge>
           <span
             className={cn(
-              "rounded-full border px-3 py-1 text-sm font-semibold",
+              "rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4",
               priorityLabelClass(priority.tone),
             )}
           >
             {priority.priorityLabel}
           </span>
         </div>
-        <h2 className="mt-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">
+        <h2 className="mt-1 line-clamp-1 text-sm font-bold leading-5 tracking-normal text-[#111827]">
           {priority.title}
         </h2>
-        <p className="mt-2 text-sm leading-5 text-[#667085]">{practiceReasonCopy(priority)}</p>
-        <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700">
-          <Target className="size-4" />
-          Open
-        </p>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-xs leading-5 text-[#667085]">
+            {practiceReasonCopy(priority)}
+          </p>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700">
+            <Target className="size-4" />
+            {priority.score}
+          </span>
+        </div>
       </div>
     </Link>
   );
@@ -1259,7 +1349,7 @@ function CoachReadoutPanel({
   gaps: DataGap[];
 }) {
   return (
-    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -1277,7 +1367,7 @@ function CoachReadoutPanel({
         </div>
         <CheckCircle2 className="mt-1 size-5 shrink-0 text-emerald-600" />
       </div>
-      <div className="mt-5 grid gap-4">
+      <div className="mt-5 grid flex-1 gap-4">
         {signal ? (
           <BestSignalBanner signal={signal} />
         ) : (
@@ -1285,9 +1375,12 @@ function CoachReadoutPanel({
             No best signal has separated yet. Keep importing comparable stock-shot sessions.
           </div>
         )}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {groups.map((group) => (
-            <div key={group.title} className="min-w-0">
+            <div
+              key={group.title}
+              className={cn("min-w-0", group.title === "Data gaps" ? "md:col-span-2" : "")}
+            >
               <div className="mb-3 flex items-center gap-2">
                 <span
                   className={cn("size-2.5 rounded-full ring-4", compactToneClasses[group.tone])}
@@ -1417,7 +1510,7 @@ function BestSignalBanner({ signal }: { signal: BestSignal }) {
 
 function BagMovementPanel({ rows }: { rows: ProgressClubRow[] }) {
   return (
-    <DataPanel>
+    <DataPanel className="h-full">
       <SectionHeader
         title="Bag movement"
         description={bagMovementSummary(rows)}
@@ -1498,13 +1591,13 @@ function MovementPills({ row }: { row: ProgressClubRow }) {
 
 function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
   return (
-    <DataPanel className="xl:sticky xl:top-4">
+    <DataPanel className="h-full">
       <SectionHeader
         title="Trust ladder"
         description="Trust considers distance, direction, strike quality, and clean-shot sample depth."
         action={<Gauge className="size-5 text-emerald-600" />}
       />
-      <CardContent className="space-y-2">
+      <CardContent className="grid gap-2">
         {items.map((item) => (
           <Link
             key={item.clubId}
@@ -1532,20 +1625,20 @@ function JourneyPanel({ events }: { events: JourneyEvent[] }) {
   const visibleEvents = events.slice(0, 4);
 
   return (
-    <DataPanel>
+    <DataPanel className="h-full">
       <SectionHeader
         title="Journey"
         description="Recent milestones and notable movement from the current data."
         action={<StatusPill tone="slate">Latest 4</StatusPill>}
       />
       <CardContent>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid auto-rows-fr gap-3 md:grid-cols-2">
           {visibleEvents.map((event, index) => (
             <Link
               key={`${event.title}-${index}`}
               href={`/bag/${event.clubId}/analytics`}
               prefetch={false}
-              className="relative block rounded-lg border border-slate-200 bg-white p-3 hover:border-emerald-300"
+              className="relative block h-full rounded-lg border border-slate-200 bg-white p-3 hover:border-emerald-300"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <StatusPill tone="slate">

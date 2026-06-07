@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -282,33 +282,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         </NativeListSection>
       </MobileAppShell>
 
-      <div className="hidden sm:contents">
-        <div className="flex items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowRight className="size-4 rotate-180" />
-              Dashboard
-            </Link>
-          </Button>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href={shotDatabaseHref} prefetch={false}>
-                <Database className="size-4" />
-                View shot rows
-              </Link>
-            </Button>
-            <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import CSV
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <TodayReviewHero data={data} />
-        <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-      </div>
+      <TodayDesktopDashboard
+        data={data}
+        challenges={challengeData.active}
+        shotDatabaseHref={shotDatabaseHref}
+        chartShots={chartShots}
+        chartClubStatuses={chartClubStatuses}
+        chartPatternInsight={chartPatternInsight}
+        comparisons={sortedClubComparisons}
+        clubSort={clubSort}
+        activeFilterChips={activeFilterChips}
+      />
 
       <MobileSectionChips
         items={[
@@ -358,79 +342,35 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <ActiveFilterChips items={activeFilterChips} />
       </div>
 
-      <section
-        id="scope"
-        className="hidden scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-3 py-2 shadow-sm sm:block"
-      >
-        <form className="grid gap-2 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
-          <div className="hidden pb-2 pr-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground md:block">
-            Filters
-          </div>
-          <TodayScopeFields data={data} />
-          <Button
-            type="submit"
-            className="h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-          >
-            Apply
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            className="h-9 rounded-lg text-muted-foreground hover:text-slate-950"
-          >
-            <Link href="/today" prefetch={false}>
-              Reset
-            </Link>
-          </Button>
-        </form>
-      </section>
-
-      {data.shots.length > 0 ? (
-        <section id="focus" className="hidden scroll-mt-28 sm:block">
-          <TodayPracticePrescription data={data} />
-        </section>
-      ) : null}
-
       {data.shots.length === 0 ? (
         <EmptyToday />
       ) : (
         <>
-          <section id="charts" className="scroll-mt-28">
-            <div className="sm:hidden">
-              <MobileAccordionSection
-                title="Charts"
-                count={`${integerFormatter.format(chartShots.length)} shots`}
-                description="Dispersion and trajectory stay available without pushing the prescription down."
-              >
-                <TodayShotCharts
-                  shots={chartShots}
-                  clubStatuses={chartClubStatuses}
-                  patternInsight={chartPatternInsight}
-                />
-              </MobileAccordionSection>
-            </div>
-            <div className="hidden sm:block">
+          <section id="charts" className="scroll-mt-28 sm:hidden">
+            <MobileAccordionSection
+              title="Charts"
+              count={`${integerFormatter.format(chartShots.length)} shots`}
+              description="Dispersion and trajectory stay available without pushing the prescription down."
+            >
               <TodayShotCharts
                 shots={chartShots}
                 clubStatuses={chartClubStatuses}
                 patternInsight={chartPatternInsight}
               />
-            </div>
+            </MobileAccordionSection>
           </section>
 
-          <section id="clubs" className="scroll-mt-28">
+          <section id="clubs" className="scroll-mt-28 sm:hidden">
             <ClubPerformancePanel data={data} comparisons={sortedClubComparisons} sort={clubSort} />
           </section>
 
-          <section id="pbs" className="scroll-mt-28">
+          <section id="pbs" className="scroll-mt-28 sm:hidden">
             <TodayHighlightsPanel
               stats={data.clubStats}
               shots={data.shots}
               bestStraightShots={data.bestStraightShots}
             />
           </section>
-
-          <TodaySocialLine data={data} challenges={challengeData.active} />
 
           <MobileAccordionSection
             title="Latest practice shot list"
@@ -453,101 +393,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               ))}
             </MobileDataList>
           </MobileAccordionSection>
-
-          <DataPanel id="shots" className="hidden scroll-mt-28 overflow-hidden sm:block">
-            <details className="group">
-              <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
-                <div>
-                  <h2 className="text-lg font-semibold tracking-normal">Raw shot list</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {integerFormatter.format(data.shots.length)} selected shots · inspect source
-                    rows and shot-level details.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <StatusPill tone="slate">
-                    {integerFormatter.format(data.shots.length)} shots
-                  </StatusPill>
-                  <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
-                </div>
-              </summary>
-              <CardContent>
-                <DataTableFrame
-                  mobile={
-                    <MobileDataList>
-                      {data.shots.map((shot) => (
-                        <MobileDataCard
-                          key={shot.id}
-                          title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
-                          subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                          action={
-                            <Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>
-                          }
-                        >
-                          <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
-                          <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                          <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
-                          <DataPair label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-                          <DataPair label="Launch" value={formatDegrees(shot.launchAngleDeg)} />
-                          <DataPair label="Ball" value={formatMph(shot.ballSpeedMph)} />
-                          <DataPair label="Smash" value={formatNumber(shot.smashFactor)} />
-                        </MobileDataCard>
-                      ))}
-                    </MobileDataList>
-                  }
-                >
-                  <Table className="min-w-[1040px]">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Session</TableHead>
-                        <TableHead className="text-right">Shot</TableHead>
-                        <TableHead>Club</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Carry</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                        <TableHead className="text-right">Side</TableHead>
-                        <TableHead className="text-right">Start</TableHead>
-                        <TableHead className="text-right">Launch</TableHead>
-                        <TableHead className="text-right">Ball</TableHead>
-                        <TableHead className="text-right">Smash</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {data.shots.map((shot) => (
-                        <TableRow key={shot.id}>
-                          <TableCell className="max-w-52 truncate">
-                            {shot.fileName ?? shot.courseName ?? "Session"}
-                          </TableCell>
-                          <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
-                          <TableCell className="font-medium">
-                            {formatClubType(shot.clubType)}
-                          </TableCell>
-                          <TableCell>{formatShotCategory(shot.shotCategory)}</TableCell>
-                          <TableCell className="text-right">{formatYards(shot.carryYd)}</TableCell>
-                          <TableCell className="text-right">{formatYards(shot.totalYd)}</TableCell>
-                          <TableCell className="text-right">
-                            {formatSignedYards(shot.sideCarryYd)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatDegrees(shot.launchDirectionDeg)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatDegrees(shot.launchAngleDeg)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatMph(shot.ballSpeedMph)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatNumber(shot.smashFactor)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </DataTableFrame>
-              </CardContent>
-            </details>
-          </DataPanel>
         </>
       )}
     </PageShell>
@@ -651,6 +496,190 @@ function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
   );
 }
 
+type TodayBentoSpan = 4 | 5 | 6 | 7 | 8 | 12;
+
+function todayBentoSpan(span: TodayBentoSpan): CSSProperties {
+  return { gridColumn: `span ${span} / span ${span}` };
+}
+
+function TodayBentoItem({
+  children,
+  className = "",
+  id,
+  span,
+}: {
+  children: ReactNode;
+  className?: string;
+  id?: string;
+  span: TodayBentoSpan;
+}) {
+  return (
+    <div id={id} className={`min-w-0 h-full ${className}`} style={todayBentoSpan(span)}>
+      {children}
+    </div>
+  );
+}
+
+function TodayDesktopDashboard({
+  data,
+  challenges,
+  shotDatabaseHref,
+  chartShots,
+  chartClubStatuses,
+  chartPatternInsight,
+  comparisons,
+  clubSort,
+  activeFilterChips,
+}: {
+  data: TodayPracticeData;
+  challenges: ChallengeListItem[];
+  shotDatabaseHref: string;
+  chartShots: TodayChartShot[];
+  chartClubStatuses: TodayChartClubStatus[];
+  chartPatternInsight: string;
+  comparisons: ClubDayComparison[];
+  clubSort: ClubSort;
+  activeFilterChips: { label: string; href: string }[];
+}) {
+  const hasShots = data.shots.length > 0;
+
+  return (
+    <div
+      className="hidden auto-rows-auto items-stretch gap-4 sm:grid lg:gap-5"
+      style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+    >
+      <div className="flex items-center justify-between gap-4" style={todayBentoSpan(12)}>
+        <Button asChild variant="ghost" className="px-0">
+          <Link href="/dashboard" prefetch={false}>
+            <ArrowRight className="size-4 rotate-180" />
+            Dashboard
+          </Link>
+        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href={shotDatabaseHref} prefetch={false}>
+              <Database className="size-4" />
+              View shot rows
+            </Link>
+          </Button>
+          <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <TodayBentoItem span={8}>
+        <TodayVerdictHero data={data} />
+      </TodayBentoItem>
+      <TodayBentoItem span={4}>
+        <TodayScoreStack data={data} />
+      </TodayBentoItem>
+
+      <TodayBentoItem span={7}>
+        <WhatChangedCard items={whatChangedItems(data)} />
+      </TodayBentoItem>
+      <TodayBentoItem span={5}>
+        <DriverHealthCard summary={driverHealthSummary(data)} />
+      </TodayBentoItem>
+      <TodayBentoItem span={12}>
+        <SessionSignalStrip data={data} />
+      </TodayBentoItem>
+      <TodayBentoItem span={12}>
+        <TodayKpiStrip data={data} />
+      </TodayBentoItem>
+
+      {hasShots ? (
+        <TodayBentoItem id="focus" span={6} className="scroll-mt-28">
+          <TodayPracticePrescription data={data} />
+        </TodayBentoItem>
+      ) : null}
+      <TodayBentoItem span={hasShots ? 6 : 12} className="scroll-mt-28">
+        <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+      </TodayBentoItem>
+
+      <TodayBentoItem span={12}>
+        <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
+      </TodayBentoItem>
+
+      {hasShots ? (
+        <>
+          <TodayBentoItem id="charts" span={12} className="scroll-mt-28">
+            <TodayShotCharts
+              shots={chartShots}
+              clubStatuses={chartClubStatuses}
+              patternInsight={chartPatternInsight}
+            />
+          </TodayBentoItem>
+          <TodayBentoItem id="clubs" span={12} className="scroll-mt-28">
+            <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
+          </TodayBentoItem>
+          <TodayBentoItem id="pbs" span={12} className="scroll-mt-28">
+            <TodayHighlightsPanel
+              stats={data.clubStats}
+              shots={data.shots}
+              bestStraightShots={data.bestStraightShots}
+            />
+          </TodayBentoItem>
+          <TodayBentoItem span={12}>
+            <div className="grid h-full items-stretch gap-4 lg:grid-cols-2">
+              <TodaySocialLine data={data} challenges={challenges} className="h-full" />
+              <TodayRawShotListPanel
+                data={data}
+                shotDatabaseHref={shotDatabaseHref}
+                className="h-full"
+              />
+            </div>
+          </TodayBentoItem>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function TodayDesktopFilterBar({
+  data,
+  activeFilterChips,
+  className = "",
+}: {
+  data: TodayPracticeData;
+  activeFilterChips: { label: string; href: string }[];
+  className?: string;
+}) {
+  return (
+    <section
+      id="scope"
+      className={`scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-3 py-2 shadow-sm ${className}`}
+    >
+      <form className="grid gap-2 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
+        <div className="hidden pb-2 pr-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground md:block">
+          Filters
+        </div>
+        <TodayScopeFields data={data} />
+        <Button type="submit" className="h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          Apply
+        </Button>
+        <Button
+          asChild
+          variant="ghost"
+          className="h-9 rounded-lg text-muted-foreground hover:text-slate-950"
+        >
+          <Link href="/today" prefetch={false}>
+            Reset
+          </Link>
+        </Button>
+      </form>
+      {activeFilterChips.length > 0 ? (
+        <div className="mt-2">
+          <ActiveFilterChips items={activeFilterChips} />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function MobileVerdictMetric({
   label,
   value,
@@ -733,48 +762,113 @@ function TodayPracticeModePanel({
       icon: "share",
     },
   ];
+  const currentStep = steps[0];
+  const nextStep = steps[1];
+  const readyCount = steps.filter((step) => step.status === "ready").length;
+  const progress = Math.round((readyCount / steps.length) * 100);
 
   return (
-    <DataPanel className="border-[#d9ded8] bg-white shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:px-5 lg:py-5">
-        <div className="flex min-w-0 gap-3">
-          <PracticeCardIllustration kind="target" tone="green" size="sm" />
-          <div className="min-w-0">
-            <h2 className="text-2xl font-semibold leading-tight tracking-normal text-slate-950">
-              Practice mode
-            </h2>
-            <p className="mt-1 max-w-5xl text-sm font-medium leading-5 text-slate-600 sm:text-base">
-              Turn the latest review into a short loop: do the drill, capture the next shots, then
-              compare the result before sharing anything.
-            </p>
+    <DataPanel className="h-full gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="grid gap-3 p-3 lg:p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex min-w-0 gap-3">
+            <PracticeCardIllustration kind="target" tone="green" size="sm" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#0B7A3B]">
+                Practice mode
+              </p>
+              <h2 className="mt-1 text-xl font-semibold leading-tight tracking-normal text-slate-950">
+                Current loop
+              </h2>
+              <p className="mt-1 text-sm font-medium leading-5 text-slate-600">
+                Drill, capture the next shots, then compare before sharing.
+              </p>
+            </div>
+          </div>
+          <Button
+            asChild
+            className="h-10 rounded-lg bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(11,122,59,0.18)] hover:bg-[#064E3B]"
+          >
+            <Link href={hasShots ? "/coach" : "/import"} prefetch={false}>
+              {hasShots ? "Start drill" : "Import shots"}
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </div>
+
+        <div className="grid gap-2 xl:grid-cols-2">
+          <PracticeLoopRow label="Current drill" step={currentStep} index={0} />
+          <PracticeLoopRow label="Next action" step={nextStep} index={1} />
+        </div>
+
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-950">
+            <span>Progress</span>
+            <span>{readyCount}/5 ready</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+            <span
+              className="block h-full rounded-full bg-emerald-500"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
-        <Button
-          asChild
-          className="h-11 rounded-lg bg-[#0B7A3B] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(11,122,59,0.22)] hover:bg-[#064E3B]"
-        >
-          <Link href={hasShots ? "/coach" : "/import"} prefetch={false}>
-            {hasShots ? "Start drill" : "Import shots"}
-            <ArrowRight className="size-4" />
-          </Link>
-        </Button>
-      </div>
-      <div className="grid gap-2.5 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-5 lg:px-5 lg:pb-5">
-        {steps.map((step, index) => {
-          const card = <PracticeStepCard step={step} index={index} />;
 
-          return step.href ? (
-            <Link key={step.title} href={step.href} prefetch={false} className="block h-full">
-              {card}
-            </Link>
-          ) : (
-            <div key={step.title} className="h-full">
-              {card}
-            </div>
-          );
-        })}
+        <details className="group rounded-lg border border-slate-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+            <span>Full 5-step workflow</span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="grid gap-2 border-t border-slate-100 p-3">
+            {steps.map((step, index) => {
+              const card = <PracticeStepCard step={step} index={index} />;
+
+              return step.href ? (
+                <Link key={step.title} href={step.href} prefetch={false} className="block">
+                  {card}
+                </Link>
+              ) : (
+                <div key={step.title}>{card}</div>
+              );
+            })}
+          </div>
+        </details>
       </div>
     </DataPanel>
+  );
+}
+
+function PracticeLoopRow({
+  label,
+  step,
+  index,
+}: {
+  label: string;
+  step: PracticeFlowStep;
+  index: number;
+}) {
+  const content = (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm">
+      <span className={practiceStepNumberClass(step.status)}>{index + 1}</span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </span>
+        <span className="mt-0.5 block truncate font-semibold text-slate-950">{step.title}</span>
+        <span className="mt-0.5 block line-clamp-2 text-xs leading-4 text-slate-600">
+          {step.detail}
+        </span>
+      </span>
+      <PracticeStepStatus status={step.status} />
+    </div>
+  );
+
+  return step.href ? (
+    <Link href={step.href} prefetch={false} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
   );
 }
 
@@ -784,7 +878,7 @@ function PracticeStepCard({ step, index }: { step: PracticeFlowStep; index: numb
 
   return (
     <article
-      className={`grid h-full min-h-32 content-start gap-3 rounded-lg border bg-white p-3 text-sm transition-colors hover:border-emerald-200 ${practiceStepCardClass(
+      className={`grid min-h-24 content-start gap-2 rounded-lg border bg-white p-3 text-sm transition-colors hover:border-emerald-200 ${practiceStepCardClass(
         step.status,
       )}`}
     >
@@ -1039,7 +1133,13 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
   );
 }
 
-function TodayReviewHero({ data }: { data: TodayPracticeData }) {
+function TodayVerdictHero({
+  data,
+  className = "",
+}: {
+  data: TodayPracticeData;
+  className?: string;
+}) {
   const selectedClubs = selectedClubCount(data);
   const bestShot = data.bestStraightShots[0];
   const scope = sessionScopeLabel(data);
@@ -1047,130 +1147,142 @@ function TodayReviewHero({ data }: { data: TodayPracticeData }) {
   const score = practiceScoreSummary(data);
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
-  const reliable = reliableClubComparison(data.clubComparisons);
-  const changes = whatChangedItems(data);
-  const impact = sessionImpactItems(data);
-  const confidence = confidenceMeterItems(data);
-  const driver = driverHealthSummary(data);
   const storyChips = verdictStoryChips(data);
 
   return (
-    <section className="overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-6 shadow-sm lg:p-8">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-              {data.dateLabel}
-            </span>
-          </div>
-          <h1 className="mt-4 max-w-4xl text-6xl font-semibold uppercase leading-[1.02] tracking-normal text-slate-950 xl:text-7xl">
-            {heroVerdictTitle(data)}
-          </h1>
-          {storyChips.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {storyChips.map((chip) => (
-                <VerdictReasonChip key={`${chip.label}-${chip.value}`} item={chip} />
-              ))}
-            </div>
-          ) : null}
-          <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-700 xl:text-lg">
-            {reviewNarrative(data)}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {integerFormatter.format(data.shots.length)} shots /{" "}
-            {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} /{" "}
-            {scope}
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
-            <HeroScopePill
-              label={`${integerFormatter.format(data.comparisonShots.length)} comparison`}
-              value="Baseline"
-            />
-            <HeroScopePill
-              label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
-              value="Shot of the day"
-            />
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
-            <VerdictStoryCard
-              label="Strength"
-              value={best?.clubLabel ?? score.strong}
-              detail={best ? `${formatRate(best.today.playableRate)} playable` : "Building signal"}
-              tone="green"
-              icon={<ShieldCheck className="size-4" />}
-            />
-            <VerdictStoryCard
-              label="Weakness"
-              value={work?.clubLabel ?? score.weak}
-              detail={
-                work ? `${formatYards(work.today.offlineAverageYd)} offline` : "No clear drag"
-              }
-              tone="pink"
-              icon={<Target className="size-4" />}
-            />
-            <VerdictStoryCard
-              label="Recommendation"
-              value={score.recommendation}
-              detail={`Start with ${focus.clubText}`}
-              tone="amber"
-              icon={<Dumbbell className="size-4" />}
-            />
-          </div>
+    <section
+      className={`h-full overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6 ${className}`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
+        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+          {data.dateLabel}
+        </span>
+      </div>
+      <h1 className="mt-3 max-w-4xl text-5xl font-semibold uppercase leading-[1.02] tracking-normal text-slate-950 xl:text-6xl">
+        {heroVerdictTitle(data)}
+      </h1>
+      {storyChips.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {storyChips.map((chip) => (
+            <VerdictReasonChip key={`${chip.label}-${chip.value}`} item={chip} />
+          ))}
         </div>
-
-        <div className="grid gap-3">
-          <PracticeScoreHeroCard score={score} reliable={reliable} />
-          <HeroShotSpotlight shot={bestShot} />
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
-        <WhatChangedCard items={changes} />
-        <DriverHealthCard summary={driver} />
-      </div>
-
-      <div className="mt-3 grid gap-3 xl:grid-cols-2">
-        <SessionImpactCard items={impact} />
-        <ConfidenceMeterCard items={confidence} />
-      </div>
-
-      <div className="mt-5 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-        <ReviewKpi
-          icon={<Crosshair className="size-4" />}
-          label="Offline"
-          value={formatYards(data.overall.today.offlineAverageYd)}
-          detail={offlineDeltaText(data.overall.offlineDeltaYd)}
-          status={offlineStatus(data.overall.offlineDeltaYd)}
-          tone={offlineKpiTone(data.overall.offlineDeltaYd)}
+      ) : null}
+      <p className="mt-3 max-w-3xl text-base font-medium leading-6 text-slate-700">
+        {reviewNarrative(data)}
+      </p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {integerFormatter.format(data.shots.length)} shots /{" "}
+        {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} / {scope}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
+        <HeroScopePill
+          label={`${integerFormatter.format(data.comparisonShots.length)} comparison`}
+          value="Baseline"
         />
-        <ReviewKpi
-          icon={<Gauge className="size-4" />}
-          label="Straight rate"
-          value={formatRate(data.overall.today.straightRate)}
-          detail={deltaText(data.overall.straightRateDelta, "pp", true)}
-          status={rateStatus(data.overall.straightRateDelta)}
-          tone={deltaTone(data.overall.straightRateDelta, "higher")}
+        <HeroScopePill
+          label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
+          value="Shot of the day"
         />
-        <ReviewKpi
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <VerdictStoryCard
+          label="Strength"
+          value={best?.clubLabel ?? score.strong}
+          detail={best ? `${formatRate(best.today.playableRate)} playable` : "Building signal"}
+          tone="green"
           icon={<ShieldCheck className="size-4" />}
-          label="Playable"
-          value={formatRate(data.overall.today.playableRate)}
-          detail={deltaText(data.overall.playableRateDelta, "pp", true)}
-          status={rateStatus(data.overall.playableRateDelta, "Solid")}
-          tone={playableKpiTone(data.overall.playableRateDelta)}
         />
-        <ReviewKpi
-          icon={<Route className="size-4" />}
-          label="Carry"
-          value={formatYards(data.overall.today.carryAverageYd)}
-          detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
-          status={carryStatus(data.overall.carryDeltaYd)}
-          tone={deltaTone(data.overall.carryDeltaYd, "higher")}
+        <VerdictStoryCard
+          label="Weakness"
+          value={work?.clubLabel ?? score.weak}
+          detail={work ? `${formatYards(work.today.offlineAverageYd)} offline` : "No clear drag"}
+          tone="pink"
+          icon={<Target className="size-4" />}
+        />
+        <VerdictStoryCard
+          label="Recommendation"
+          value={score.recommendation}
+          detail={`Start with ${focus.clubText}`}
+          tone="amber"
+          icon={<Dumbbell className="size-4" />}
         />
       </div>
+    </section>
+  );
+}
+
+function TodayScoreStack({
+  data,
+  className = "",
+}: {
+  data: TodayPracticeData;
+  className?: string;
+}) {
+  return (
+    <section className={`grid min-w-0 gap-4 lg:h-full lg:grid-rows-[auto_1fr] ${className}`}>
+      <PracticeScoreHeroCard
+        score={practiceScoreSummary(data)}
+        reliable={reliableClubComparison(data.clubComparisons)}
+      />
+      <HeroShotSpotlight shot={data.bestStraightShots[0]} />
+    </section>
+  );
+}
+
+function TodayKpiStrip({ data, className = "" }: { data: TodayPracticeData; className?: string }) {
+  return (
+    <section className={`grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-4 ${className}`}>
+      <ReviewKpi
+        icon={<Crosshair className="size-4" />}
+        label="Offline"
+        value={formatYards(data.overall.today.offlineAverageYd)}
+        detail={offlineDeltaText(data.overall.offlineDeltaYd)}
+        status={offlineStatus(data.overall.offlineDeltaYd)}
+        tone={offlineKpiTone(data.overall.offlineDeltaYd)}
+      />
+      <ReviewKpi
+        icon={<Gauge className="size-4" />}
+        label="Straight rate"
+        value={formatRate(data.overall.today.straightRate)}
+        detail={deltaText(data.overall.straightRateDelta, "pp", true)}
+        status={rateStatus(data.overall.straightRateDelta)}
+        tone={deltaTone(data.overall.straightRateDelta, "higher")}
+      />
+      <ReviewKpi
+        icon={<ShieldCheck className="size-4" />}
+        label="Playable"
+        value={formatRate(data.overall.today.playableRate)}
+        detail={deltaText(data.overall.playableRateDelta, "pp", true)}
+        status={rateStatus(data.overall.playableRateDelta, "Solid")}
+        tone={playableKpiTone(data.overall.playableRateDelta)}
+      />
+      <ReviewKpi
+        icon={<Route className="size-4" />}
+        label="Carry"
+        value={formatYards(data.overall.today.carryAverageYd)}
+        detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
+        status={carryStatus(data.overall.carryDeltaYd)}
+        tone={deltaTone(data.overall.carryDeltaYd, "higher")}
+      />
+    </section>
+  );
+}
+
+function SessionSignalStrip({
+  data,
+  className = "",
+}: {
+  data: TodayPracticeData;
+  className?: string;
+}) {
+  return (
+    <section className={`grid items-stretch gap-3 xl:grid-cols-2 ${className}`}>
+      <SessionImpactCard items={sessionImpactItems(data)} />
+      <ConfidenceMeterCard items={confidenceMeterItems(data)} />
     </section>
   );
 }
@@ -1189,14 +1301,14 @@ function VerdictStoryCard({
   icon: ReactNode;
 }) {
   return (
-    <div className={`min-h-32 rounded-lg border px-3.5 py-3 shadow-sm ${verdictCardClass(tone)}`}>
+    <div className={`min-h-28 rounded-lg border px-3 py-2.5 shadow-sm ${verdictCardClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
         <span className={`grid size-8 place-items-center rounded-full ${reviewIconClass(tone)}`}>
           {icon}
         </span>
       </div>
-      <p className="mt-3 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+      <p className="mt-2 text-xl font-semibold leading-tight tracking-normal text-slate-950">
         {value}
       </p>
       <p className="mt-1 text-sm font-medium leading-5 text-slate-700">{detail}</p>
@@ -1212,7 +1324,7 @@ function PracticeScoreHeroCard({
   reliable: ClubDayComparison | null;
 }) {
   return (
-    <div className={`rounded-lg border px-4 py-4 shadow-sm ${verdictCardClass(score.tone)}`}>
+    <div className={`rounded-lg border px-4 py-3 shadow-sm ${verdictCardClass(score.tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
@@ -1226,13 +1338,13 @@ function PracticeScoreHeroCard({
           <Gauge className="size-5" />
         </span>
       </div>
-      <div className="mt-4 flex items-end gap-2">
-        <p className="text-6xl font-semibold leading-none tracking-normal text-slate-950">
+      <div className="mt-3 flex items-end gap-2">
+        <p className="text-5xl font-semibold leading-none tracking-normal text-slate-950">
           {score.score}
         </p>
         <p className="pb-1 text-xl font-semibold text-slate-500">/100</p>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         <ScoreMiniMetric label="Strong" value={score.strong} />
         <ScoreMiniMetric label="Weak" value={score.weak} />
         <ScoreMiniMetric label="Trend" value={score.trend} />
@@ -1255,9 +1367,17 @@ function ScoreMiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function WhatChangedCard({ items }: { items: WhatChangedItem[] }) {
+function WhatChangedCard({
+  items,
+  className = "",
+}: {
+  items: WhatChangedItem[];
+  className?: string;
+}) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      className={`h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm ${className}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
@@ -1273,10 +1393,10 @@ function WhatChangedCard({ items }: { items: WhatChangedItem[] }) {
         {items.map((item) => (
           <div
             key={`${item.label}-${item.value}`}
-            className={`rounded-lg border px-3 py-2.5 ${verdictCardClass(item.tone)}`}
+            className={`rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
           >
             <p className="text-sm font-semibold text-slate-950">{item.label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+            <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
               {item.value}
             </p>
             <p className="mt-1 text-xs font-medium leading-4 text-slate-600">{item.detail}</p>
@@ -1287,9 +1407,17 @@ function WhatChangedCard({ items }: { items: WhatChangedItem[] }) {
   );
 }
 
-function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
+function DriverHealthCard({
+  summary,
+  className = "",
+}: {
+  summary: DriverHealthSummary;
+  className?: string;
+}) {
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${verdictCardClass(summary.tone)}`}>
+    <div
+      className={`h-full rounded-lg border p-3 shadow-sm ${verdictCardClass(summary.tone)} ${className}`}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
@@ -1305,7 +1433,7 @@ function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
           <Flag className="size-5" />
         </span>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-2 xl:grid-cols-5">
         <DriverHealthMetric label="Path" value={formatDegrees(summary.path)} />
         <DriverHealthMetric label="Normal" value={formatDegrees(summary.targetPath)} />
         <DriverHealthMetric label="Start line" value={formatDegrees(summary.startLine)} />
@@ -1321,11 +1449,11 @@ function DriverHealthCard({ summary }: { summary: DriverHealthSummary }) {
 
 function DriverHealthMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/60 bg-white/65 px-3 py-2">
+    <div className="rounded-lg border border-white/60 bg-white/65 px-2.5 py-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">{value}</p>
+      <p className="mt-1 text-base font-semibold tabular-nums text-slate-950">{value}</p>
     </div>
   );
 }
@@ -1335,15 +1463,16 @@ function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
   const net =
     values.length > 0 ? roundOneNumber(values.reduce((total, value) => total + value, 0)) : null;
   const tone = deltaTone(net, "higher");
+  const visibleItems = items.slice(0, 3);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
             Session value
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+          <h2 className="mt-1 text-lg font-semibold tracking-normal text-slate-950">
             Estimated strokes effect
           </h2>
         </div>
@@ -1351,16 +1480,18 @@ function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
           Net {formatSignedDecimal(net)}
         </span>
       </div>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
         {items.length > 0 ? (
-          items.map((item) => (
+          visibleItems.map((item) => (
             <div
               key={item.clubLabel}
               className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
             >
               <div className="min-w-0">
                 <p className="font-semibold text-slate-950">{item.clubLabel}</p>
-                <p className="mt-0.5 text-xs font-medium text-slate-600">{item.detail}</p>
+                <p className="mt-0.5 line-clamp-2 text-xs font-medium text-slate-600">
+                  {item.detail}
+                </p>
               </div>
               <p className={`text-lg font-semibold tabular-nums ${impactValueClass(item.tone)}`}>
                 {formatSignedDecimal(item.value)}
@@ -1373,31 +1504,35 @@ function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
           </div>
         )}
       </div>
-      <p className="mt-3 text-xs font-medium leading-5 text-muted-foreground">
-        Estimated from carry, dispersion, playable rate and consistency. Use it directionally, not
-        as a handicap calculation.
+      <p className="mt-2 text-xs font-medium leading-5 text-muted-foreground">
+        Estimated from carry, dispersion, playable rate and consistency. Use directionally.
+        {items.length > visibleItems.length
+          ? ` ${items.length - visibleItems.length} more in club performance.`
+          : ""}
       </p>
     </div>
   );
 }
 
 function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
+  const visibleItems = items.slice(0, 3);
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
             Confidence meter
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+          <h2 className="mt-1 text-lg font-semibold tracking-normal text-slate-950">
             Which clubs can you trust?
           </h2>
         </div>
         <ShieldCheck className="size-5 text-emerald-700" />
       </div>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
         {items.length > 0 ? (
-          items.map((item) => (
+          visibleItems.map((item) => (
             <div
               key={item.clubLabel}
               className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
@@ -1418,7 +1553,9 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
                   style={{ width: `${clamp(item.score ?? 0, 0, 100)}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs font-medium leading-4 text-slate-600">{item.reason}</p>
+              <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-slate-600">
+                {item.reason}
+              </p>
             </div>
           ))
         ) : (
@@ -1427,6 +1564,11 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
           </div>
         )}
       </div>
+      {items.length > visibleItems.length ? (
+        <p className="mt-2 text-xs font-medium leading-5 text-muted-foreground">
+          {items.length - visibleItems.length} more club trust reads below.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1455,43 +1597,39 @@ function VerdictReasonChip({ item }: { item: VerdictReasonItem }) {
 
 function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
   return (
-    <div className="relative min-h-[180px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-3 text-white shadow-sm sm:min-h-[280px] sm:p-4">
-      <HeroFairwayVisual shot={shot} />
-      <div className="relative z-10 flex h-full flex-col justify-end">
-        <div className="w-full rounded-lg border border-white/15 bg-white/95 px-3 py-2 text-slate-950 shadow-sm">
-          {shot ? (
+    <div className="grid h-full min-h-[190px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-2 text-white shadow-sm lg:min-h-[220px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="flex h-full flex-col justify-between gap-3 rounded-md border border-white/15 bg-white/95 px-3 py-3 text-slate-950 shadow-sm">
+        {shot ? (
+          <>
             <div className="grid gap-2">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-normal text-slate-700">
-                    Shot of the day
-                  </p>
-                  <Crosshair className="size-3.5 shrink-0 text-sky-600" />
-                </div>
-                <h3 className="min-w-0 truncate text-lg font-semibold leading-tight tracking-normal">
-                  {bestShotTitle(shot)}
-                </h3>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <p className="truncate text-[11px] font-semibold uppercase tracking-normal text-slate-700">
+                  Shot of the day
+                </p>
+                <Crosshair className="size-3.5 shrink-0 text-sky-600" />
               </div>
+              <h3 className="text-xl font-semibold leading-tight tracking-normal">
+                {bestShotTitle(shot)}
+              </h3>
               <p className="rounded-md border border-sky-100 bg-sky-50 px-2 py-1 text-xs font-semibold leading-4 text-sky-900">
                 {shotOfDayReason(shot)}
               </p>
-              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-5 gap-y-1">
-                <p className="text-xs font-medium leading-4 text-slate-700">
-                  {formatYards(shot.totalYd)} total
-                </p>
-                <ShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-                <p className="text-xs font-medium leading-4 text-slate-700">
-                  {formatYards(shot.carryYd)} carry
-                </p>
-                <ShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
-              </div>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Directional shot data will spotlight the best strike here.
-            </p>
-          )}
-        </div>
+            <div className="grid grid-cols-2 gap-2">
+              <ShotMetric label="Total" value={formatYards(shot.totalYd)} />
+              <ShotMetric label="Carry" value={formatYards(shot.carryYd)} />
+              <ShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
+              <ShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Directional shot data will spotlight the best strike here.
+          </p>
+        )}
+      </div>
+      <div className="relative min-h-44 overflow-hidden rounded-md border border-white/10 bg-emerald-950 lg:min-h-0">
+        <HeroFairwayVisual shot={shot} />
       </div>
     </div>
   );
@@ -1499,9 +1637,11 @@ function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
 
 function ShotMetric({ label, value }: { label: string; value: string }) {
   return (
-    <dl className="inline-flex min-w-0 items-baseline gap-2 text-xs">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="truncate font-semibold tabular-nums text-slate-950">{value}</dd>
+    <dl className="min-w-0 rounded-md border border-slate-100 bg-slate-50/80 px-2 py-1.5 text-xs">
+      <dt className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-0.5 truncate font-semibold tabular-nums text-slate-950">{value}</dd>
     </dl>
   );
 }
@@ -1841,7 +1981,7 @@ function ReviewKpi({
   tone: "green" | "sky" | "pink" | "amber" | "slate";
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
+    <div className="h-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <span className={`grid size-7 place-items-center rounded-full ${reviewIconClass(tone)}`}>
@@ -1855,7 +1995,7 @@ function ReviewKpi({
           {status}
         </span>
       </div>
-      <p className="mt-2 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+      <p className="mt-2 text-xl font-semibold leading-tight tracking-normal text-slate-950">
         {value}
       </p>
       <p className={reviewDeltaClass(tone)}>{detail}</p>
@@ -1867,15 +2007,15 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
   const focus = practiceFocus(data);
 
   return (
-    <DataPanel className="border-[#d9ded8] bg-white shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between lg:px-5 lg:py-5">
+    <DataPanel className="h-full gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between lg:px-4">
         <div className="flex min-w-0 gap-3">
           <PracticeCardIllustration kind="target" tone="green" size="sm" />
           <div className="min-w-0">
-            <h2 className="text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+            <h2 className="text-xl font-semibold leading-tight tracking-normal text-slate-950">
               Latest practice prescription
             </h2>
-            <p className="mt-1 text-sm font-medium leading-5 text-slate-600 sm:text-base">
+            <p className="mt-1 text-sm font-medium leading-5 text-slate-600">
               A simple drill target from the session pattern.
             </p>
           </div>
@@ -1885,7 +2025,7 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
             asChild
             size="sm"
             variant="outline"
-            className="h-10 rounded-lg border-[#0B7A3B] bg-white px-4 text-sm font-semibold text-[#0B7A3B] shadow-sm hover:bg-emerald-50 hover:text-[#064E3B]"
+            className="h-9 rounded-lg border-[#0B7A3B] bg-white px-3 text-sm font-semibold text-[#0B7A3B] shadow-sm hover:bg-emerald-50 hover:text-[#064E3B]"
           >
             <Link href="/coach" prefetch={false}>
               <Dumbbell className="size-4" />
@@ -1894,8 +2034,8 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
           </Button>
         </div>
       </div>
-      <CardContent className="pt-0">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <CardContent className="flex-1 px-3 pb-3 pt-0 lg:px-4">
+        <div className="grid h-full auto-rows-fr gap-2 md:grid-cols-2">
           <PrescriptionBlock label="Problem" value={focus.problem} tone="pink" icon="alert" />
           <PrescriptionBlock
             label="Cause to check"
@@ -1934,14 +2074,14 @@ function PrescriptionBlock({
 }) {
   return (
     <div
-      className={`flex min-h-32 items-center gap-3 rounded-lg border px-3.5 py-4 shadow-[0_8px_22px_rgba(15,23,42,0.035)] ${prescriptionToneClass(
+      className={`flex min-h-24 items-center gap-3 rounded-lg border px-3 py-2.5 shadow-[0_8px_22px_rgba(15,23,42,0.035)] ${prescriptionToneClass(
         tone,
       )}`}
     >
-      <PracticeCardIllustration kind={icon} tone={tone} size="lg" />
+      <PracticeCardIllustration kind={icon} tone={tone} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold uppercase tracking-[0.08em]">{label}</p>
-        <p className="mt-2 text-sm font-medium leading-5 text-slate-950">{value}</p>
+        <p className="mt-1.5 text-sm font-medium leading-5 text-slate-950">{value}</p>
       </div>
     </div>
   );
@@ -1965,7 +2105,7 @@ function ClubPerformancePanel({
           <StatusPill tone={verdictTone(data.overall.verdict)}>{heroVerdictTitle(data)}</StatusPill>
         }
       />
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <ClubPerformanceSummaryCards data={data} />
         <div className="flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium leading-5 text-emerald-950">
@@ -2029,14 +2169,14 @@ function ClubPerformancePanel({
           <Table className="w-full" containerClassName="overflow-x-visible">
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 z-10 bg-white px-2">Club</TableHead>
-                <TableHead className="px-2">Call</TableHead>
-                <TableHead className="px-2 text-right">Shots</TableHead>
-                <TableHead className="px-2 text-right">Carry</TableHead>
-                <TableHead className="px-2 text-right">Offline</TableHead>
-                <TableHead className="px-2 text-right">Straight</TableHead>
-                <TableHead className="px-2 text-right">Playable</TableHead>
-                <TableHead className="max-w-[11rem] whitespace-normal px-2">Signal</TableHead>
+                <TableHead className="sticky left-0 z-10 h-8 bg-white px-2">Club</TableHead>
+                <TableHead className="h-8 px-2">Call</TableHead>
+                <TableHead className="h-8 px-2 text-right">Shots</TableHead>
+                <TableHead className="h-8 px-2 text-right">Carry</TableHead>
+                <TableHead className="h-8 px-2 text-right">Offline</TableHead>
+                <TableHead className="h-8 px-2 text-right">Straight</TableHead>
+                <TableHead className="h-8 px-2 text-right">Playable</TableHead>
+                <TableHead className="h-8 max-w-[11rem] whitespace-normal px-2">Signal</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2103,7 +2243,7 @@ function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
   const reliable = reliableClubComparison(data.clubComparisons);
 
   return (
-    <div className="grid gap-3 md:grid-cols-3">
+    <div className="grid gap-2 md:grid-cols-3">
       <ClubSummaryCard
         label="Best this review"
         comparison={best}
@@ -2138,14 +2278,14 @@ function ClubSummaryCard({
   tone: "green" | "pink" | "sky";
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         <span className={`grid size-8 place-items-center rounded-full ${summaryIconClass(tone)}`}>
           {icon}
         </span>
       </div>
-      <p className="mt-3 text-2xl font-semibold tracking-normal text-slate-950">
+      <p className="mt-2 text-xl font-semibold tracking-normal text-slate-950">
         {comparison?.clubLabel ?? "--"}
       </p>
       <p className="mt-1 text-sm text-slate-700">
@@ -2242,7 +2382,7 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
 
 function EmptyToday() {
   return (
-    <DataPanel>
+    <DataPanel className="h-full">
       <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
         <CalendarDays className="size-9 text-emerald-500" />
         <div>
@@ -2263,9 +2403,11 @@ function EmptyToday() {
 }
 
 function TodaySocialLine({
+  className = "",
   data,
   challenges,
 }: {
+  className?: string;
   data: TodayPracticeData;
   challenges: ChallengeListItem[];
 }) {
@@ -2279,7 +2421,7 @@ function TodaySocialLine({
   const challenge = findRelevantChallenge(challenges, bestClubType);
 
   return (
-    <section className="rounded-xl border bg-white p-3 shadow-sm">
+    <section className={`rounded-xl border bg-white p-3 shadow-sm ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Compare this session</p>
@@ -2314,6 +2456,98 @@ function TodaySocialLine({
   );
 }
 
+function TodayRawShotListPanel({
+  className = "",
+  data,
+  shotDatabaseHref,
+}: {
+  className?: string;
+  data: TodayPracticeData;
+  shotDatabaseHref: string;
+}) {
+  return (
+    <section
+      id="shots"
+      className={`scroll-mt-28 rounded-xl border bg-white p-3 shadow-sm ${className}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Raw shot list</p>
+          <p className="mt-1 text-sm font-medium text-slate-800">
+            {integerFormatter.format(data.shots.length)} selected shots ready for source-row review.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href={shotDatabaseHref} prefetch={false}>
+            <Database className="size-4" />
+            View rows
+          </Link>
+        </Button>
+      </div>
+      <details className="group mt-2 rounded-lg border border-slate-200 bg-slate-50/55">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-slate-800 [&::-webkit-details-marker]:hidden">
+          <span>Preview table</span>
+          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-slate-200 p-3">
+          <DataTableFrame>
+            <Table className="min-w-[1040px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Session</TableHead>
+                  <TableHead className="text-right">Shot</TableHead>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Carry</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Side</TableHead>
+                  <TableHead className="text-right">Start</TableHead>
+                  <TableHead className="text-right">Launch</TableHead>
+                  <TableHead className="text-right">Ball</TableHead>
+                  <TableHead className="text-right">Smash</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.shots.map((shot) => (
+                  <TableRow key={shot.id}>
+                    <TableCell className="max-w-52 truncate py-1.5">
+                      {shot.fileName ?? shot.courseName ?? "Session"}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">{shot.shotNumber ?? "--"}</TableCell>
+                    <TableCell className="py-1.5 font-medium">
+                      {formatClubType(shot.clubType)}
+                    </TableCell>
+                    <TableCell className="py-1.5">
+                      {formatShotCategory(shot.shotCategory)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">{formatYards(shot.carryYd)}</TableCell>
+                    <TableCell className="py-1.5 text-right">{formatYards(shot.totalYd)}</TableCell>
+                    <TableCell className="py-1.5 text-right">
+                      {formatSignedYards(shot.sideCarryYd)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">
+                      {formatDegrees(shot.launchDirectionDeg)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">
+                      {formatDegrees(shot.launchAngleDeg)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">
+                      {formatMph(shot.ballSpeedMph)}
+                    </TableCell>
+                    <TableCell className="py-1.5 text-right">
+                      {formatNumber(shot.smashFactor)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
+      </details>
+    </section>
+  );
+}
+
 function TodayHighlightsPanel({
   stats,
   shots,
@@ -2336,67 +2570,77 @@ function TodayHighlightsPanel({
         description={`${records.length} PB moments · ${closeCalls.length} close to PB`}
         action={<Trophy className="size-5 text-amber-600" />}
       />
-      <CardContent className="space-y-4">
+      <CardContent>
         {stats.length === 0 || highlights.length === 0 ? (
-          <div className="apple-panel p-4 text-sm text-muted-foreground">
+          <div className="apple-panel p-3 text-sm text-muted-foreground">
             No PBs or close calls for this selection.
           </div>
         ) : (
-          <div className="space-y-5">
-            {records.length > 0 ? (
-              <HighlightGroup title="PB moments" highlights={records.slice(0, 6)} />
-            ) : (
-              <div className="apple-panel p-4 text-sm text-muted-foreground">
-                No PBs in this selection yet.
-              </div>
-            )}
-
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
-                    Shot of the day
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Best single shot by offline and start line.
-                  </p>
-                </div>
-                <Crosshair className="size-4 text-sky-600" />
-              </div>
-              {bestShot ? (
-                <div className="max-w-xl">
-                  <StraightShotCard shot={bestShot} featured />
-                </div>
+          <div className="grid items-stretch gap-3 lg:grid-cols-12">
+            <div className="h-full lg:col-span-8">
+              {records.length > 0 ? (
+                <HighlightGroup title="PB moments" highlights={records.slice(0, 6)} />
               ) : (
-                <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">
-                  No directional shot data for this selection.
+                <div className="apple-panel p-3 text-sm text-muted-foreground">
+                  No PBs in this selection yet.
                 </div>
               )}
-            </section>
+            </div>
 
-            {closeCalls.length > 0 ? (
-              <details className="group rounded-lg border border-amber-100 bg-amber-50/35">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-                  <span>
-                    <span className="block text-sm font-semibold text-amber-950">Close to PB</span>
-                    <span className="block text-xs text-amber-800">
-                      {bestNearMiss
-                        ? `${closeCalls.length} near misses. Best: ${bestNearMiss.clubLabel} ${bestNearMiss.metricLabel.toLowerCase()}, ${bestNearMiss.detail}`
-                        : `${closeCalls.length} near misses`}
-                    </span>
-                  </span>
-                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
-                    View all
-                    <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                  </span>
-                </summary>
-                <div className="grid gap-2 border-t border-amber-100 p-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {closeCalls.map((highlight) => (
-                    <HighlightCard key={highlight.id} highlight={highlight} />
-                  ))}
+            <aside className="grid h-full grid-rows-[1fr_auto] gap-3 lg:col-span-4">
+              <section className="flex h-full flex-col gap-2 rounded-lg border border-sky-100 bg-sky-50/45 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
+                      Shot of the day
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Best single shot by offline and start line.
+                    </p>
+                  </div>
+                  <Crosshair className="size-4 text-sky-600" />
                 </div>
-              </details>
-            ) : null}
+                {bestShot ? (
+                  <StraightShotCard shot={bestShot} featured />
+                ) : (
+                  <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">
+                    No directional shot data for this selection.
+                  </div>
+                )}
+              </section>
+
+              <div>
+                {closeCalls.length > 0 ? (
+                  <details className="group rounded-lg border border-amber-100 bg-amber-50/35">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+                      <span>
+                        <span className="block text-sm font-semibold text-amber-950">
+                          Close to PB
+                        </span>
+                        <span className="block text-xs text-amber-800">
+                          {bestNearMiss
+                            ? `${closeCalls.length} near misses. Best: ${bestNearMiss.clubLabel} ${bestNearMiss.metricLabel.toLowerCase()}, ${bestNearMiss.detail}`
+                            : `${closeCalls.length} near misses`}
+                        </span>
+                      </span>
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
+                        View all
+                        <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                      </span>
+                    </summary>
+                    <div className="grid gap-2 border-t border-amber-100 p-3">
+                      {closeCalls.map((highlight) => (
+                        <HighlightCard key={highlight.id} highlight={highlight} />
+                      ))}
+                    </div>
+                  </details>
+                ) : (
+                  <div className="rounded-lg border border-amber-100 bg-amber-50/35 px-3 py-2.5 text-sm text-amber-900">
+                    No close-to-PB calls for this selection.
+                  </div>
+                )}
+              </div>
+            </aside>
           </div>
         )}
       </CardContent>
@@ -2405,8 +2649,15 @@ function TodayHighlightsPanel({
 }
 
 function HighlightGroup({ title, highlights }: { title: string; highlights: ClubHighlight[] }) {
+  const gridClass =
+    title === "Close to PB"
+      ? "grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-3"
+      : highlights.length <= 4
+        ? "grid auto-rows-fr gap-3 md:grid-cols-2"
+        : "grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-3";
+
   return (
-    <section className="space-y-2">
+    <section className="h-full space-y-2">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
           {title}
@@ -2415,13 +2666,7 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
           {highlights.length}
         </Badge>
       </div>
-      <div
-        className={
-          title === "Close to PB"
-            ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-            : "grid gap-3 md:grid-cols-2 xl:grid-cols-3"
-        }
-      >
+      <div className={gridClass}>
         {highlights.map((highlight) => (
           <HighlightCard key={highlight.id} highlight={highlight} />
         ))}
@@ -2437,7 +2682,7 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
 
   if (close) {
     return (
-      <div className="flex min-h-28 items-center gap-3 rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
+      <div className="flex h-full min-h-24 items-center gap-3 rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="border-amber-200 bg-white/70 text-amber-800">
@@ -2463,7 +2708,7 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
           brand={highlight.clubBrand}
           model={highlight.clubModel}
           alt={imageAlt}
-          className="h-20 min-h-0 w-24 shrink-0 border-0 bg-transparent"
+          className="h-16 min-h-0 w-20 shrink-0 border-0 bg-transparent"
           imageClassName="px-1 py-1"
           sizes="88px"
         />
@@ -2472,7 +2717,7 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
   }
 
   return (
-    <div className="flex min-h-32 items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
+    <div className="flex h-full min-h-28 items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
           <Badge variant="outline" className="border-emerald-200 bg-white/70 text-emerald-700">
@@ -2494,7 +2739,7 @@ function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
         brand={highlight.clubBrand}
         model={highlight.clubModel}
         alt={imageAlt}
-        className="h-24 min-h-0 w-28 shrink-0 border-0 bg-transparent sm:w-32"
+        className="h-20 min-h-0 w-24 shrink-0 border-0 bg-transparent sm:w-28"
         imageClassName="px-1 py-1"
         sizes="120px"
       />
@@ -2698,15 +2943,15 @@ function ClubComparisonRow({
 
   return (
     <TableRow className={rowTone.rowClass} data-club-hover={comparison.clubType}>
-      <TableCell className={`sticky left-0 z-10 px-2 font-medium ${rowTone.stickyClass}`}>
+      <TableCell className={`sticky left-0 z-10 px-2 py-1.5 font-medium ${rowTone.stickyClass}`}>
         {comparison.clubLabel}
       </TableCell>
-      <TableCell className="px-2">
+      <TableCell className="px-2 py-1.5">
         <Badge className={clubComparisonBadgeClass(comparison)}>
           {clubComparisonCallLabel(comparison)}
         </Badge>
       </TableCell>
-      <TableCell className="px-2 text-right">
+      <TableCell className="px-2 py-1.5 text-right">
         {comparison.today.shotCount}
         <span className="text-muted-foreground">/{comparison.previous.shotCount}</span>
       </TableCell>
@@ -2735,7 +2980,7 @@ function ClubComparisonRow({
         metric="playable"
       />
       <TableCell
-        className="max-w-[10.5rem] whitespace-normal px-2 align-top text-sm leading-snug text-muted-foreground"
+        className="max-w-[10.5rem] whitespace-normal px-2 py-1.5 align-top text-sm leading-snug text-muted-foreground"
         title={comparison.summary}
       >
         {signalLines.map((line, index) => (
@@ -2824,7 +3069,7 @@ function MetricDeltaCell({
   direction: "higher" | "lower";
 }) {
   return (
-    <TableCell className="px-2 text-right whitespace-normal">
+    <TableCell className="whitespace-normal px-2 py-1.5 text-right">
       <div className="font-medium">{formatYards(value)}</div>
       <div className={deltaClass(delta, direction)}>{deltaText(delta, unit, true)}</div>
     </TableCell>
@@ -2845,7 +3090,7 @@ function RateDeltaCell({
   const tone = rateValueTone(value, metric);
 
   return (
-    <TableCell className="px-2 text-right whitespace-normal">
+    <TableCell className="whitespace-normal px-2 py-1.5 text-right">
       <div className="font-medium">{formatRate(value)}</div>
       <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
         <span

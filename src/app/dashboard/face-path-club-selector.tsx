@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import {
   FacePathDeliveryChart,
@@ -8,6 +8,7 @@ import {
   type FacePathDeliveryDatum,
 } from "@/components/visuals/face-path-delivery-chart";
 import type { PathTrendTracking } from "@/lib/bag-intelligence";
+import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
 import { cn } from "@/lib/utils";
 
 type DeliveryClubOption = FacePathDeliveryDatum & {
@@ -18,23 +19,19 @@ type DeliveryClubOption = FacePathDeliveryDatum & {
   isPriorityClub: boolean;
 };
 
-const DRIVER_PATH_TARGET = { label: "Path target", min: 2, max: 5 };
-const DRIVER_FACE_TARGET = { label: "Face target", min: 3, max: 5 };
-
 export function FacePathClubSelector({
   pathTrend,
+  action,
   className,
 }: {
   pathTrend: PathTrendTracking;
+  action?: ReactNode;
   className?: string;
 }) {
   const clubs = useMemo(() => buildDeliveryClubOptions(pathTrend), [pathTrend]);
   const [selectedClubId, setSelectedClubId] = useState(clubs[0]?.clubId ?? "");
   const selected = clubs.find((club) => club.clubId === selectedClubId) ?? clubs[0] ?? null;
-  const targetWindow =
-    selected?.clubType.toLowerCase() === "driver"
-      ? { path: DRIVER_PATH_TARGET, face: DRIVER_FACE_TARGET }
-      : undefined;
+  const targetWindow = selected ? benchmarkDeliveryTargetWindow(selected.clubType) : null;
 
   if (!selected) {
     return (
@@ -56,8 +53,8 @@ export function FacePathClubSelector({
         className,
       )}
     >
-      <div className="grid gap-3 2xl:grid-cols-[minmax(220px,0.72fr)_minmax(360px,1.28fr)] 2xl:items-center">
-        <div className="grid gap-2">
+      <div className="grid gap-3 2xl:grid-cols-[minmax(220px,0.72fr)_minmax(360px,1.28fr)] 2xl:items-stretch">
+        <div className="grid h-full gap-2">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-normal text-[#087A3D]">
@@ -105,7 +102,11 @@ export function FacePathClubSelector({
           <div className="grid grid-cols-3 gap-1.5 text-xs font-bold leading-4">
             <MetricPill label="Path" value={formatSignedDegrees(selected.pathDeg)} />
             <MetricPill label="Face" value={formatSignedDegrees(selected.faceDeg)} />
-            <MetricPill label="F-P" value={formatSignedDegrees(selected.faceToPathDeg)} tone="green" />
+            <MetricPill
+              label="F-P"
+              value={formatSignedDegrees(selected.faceToPathDeg)}
+              tone="green"
+            />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#667085] 2xl:block 2xl:space-y-1">
@@ -116,13 +117,15 @@ export function FacePathClubSelector({
             </span>
             <span className="block">{selected.patternCode} pattern classification</span>
           </div>
+
+          {action ? <div className="pt-1 2xl:mt-auto">{action}</div> : null}
         </div>
 
         <FacePathDeliveryChart
           datum={selected}
           idPrefix={`dashboard-${selected.clubId}`}
           chartClassName="bg-white"
-          targetWindow={targetWindow}
+          targetWindow={targetWindow ?? undefined}
         />
       </div>
     </div>
@@ -205,4 +208,93 @@ function buildDeliveryClubOptions(pathTrend: PathTrendTracking): DeliveryClubOpt
 
       return right.sampleSize - left.sampleSize;
     });
+}
+
+function benchmarkDeliveryTargetWindow(clubType: string) {
+  const benchmark = getClubDistanceBenchmark(clubType);
+
+  if (!benchmark) {
+    return null;
+  }
+
+  const targetLevel = deliveryTargetLevel(benchmark.clubType);
+  const benchmarkLevel = benchmark.levels.find((level) => level.key === targetLevel);
+  const labelPrefix = benchmarkLevel?.shortLabel ?? "Good";
+
+  if (benchmark.clubType === "driver") {
+    return {
+      path: { label: `${labelPrefix} path`, min: 2, max: 5 },
+      face: { label: `${labelPrefix} face`, min: 3, max: 5 },
+    };
+  }
+
+  const centre = deliveryWindowCentre(benchmark.clubType);
+  const radius = deliveryWindowRadius(targetLevel, benchmark.clubType);
+
+  return {
+    path: {
+      label: `${labelPrefix} path`,
+      min: roundOne(centre.path - radius.path),
+      max: roundOne(centre.path + radius.path),
+    },
+    face: {
+      label: `${labelPrefix} face`,
+      min: roundOne(centre.face - radius.face),
+      max: roundOne(centre.face + radius.face),
+    },
+  };
+}
+
+function deliveryTargetLevel(clubType: string): ClubBenchmarkLevelKey {
+  if (isScoringClub(clubType)) {
+    return "advanced";
+  }
+
+  return "good";
+}
+
+function deliveryWindowCentre(clubType: string) {
+  if (/^[1-9][wh]$/.test(clubType) || clubType === "hybrid") {
+    return { path: 1.5, face: 1.5 };
+  }
+
+  return { path: 0, face: 0 };
+}
+
+function deliveryWindowRadius(level: ClubBenchmarkLevelKey, clubType: string) {
+  const base =
+    level === "tour"
+      ? { path: 1, face: 1 }
+      : level === "advanced"
+        ? { path: 2, face: 2 }
+        : level === "good"
+          ? { path: 3, face: 3 }
+          : level === "average"
+            ? { path: 4.5, face: 4.5 }
+            : { path: 6, face: 6 };
+
+  if (/^[1-9][wh]$/.test(clubType) || clubType === "hybrid") {
+    return { path: Math.max(2, base.path - 0.5), face: Math.max(2, base.face - 0.5) };
+  }
+
+  return base;
+}
+
+function isScoringClub(clubType: string) {
+  if (
+    clubType === "pw" ||
+    clubType === "gw" ||
+    clubType === "aw" ||
+    clubType === "sw" ||
+    clubType === "lw"
+  ) {
+    return true;
+  }
+
+  const iron = clubType.match(/^([1-9])i$/);
+  return iron ? Number(iron[1]) >= 8 : false;
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
 }

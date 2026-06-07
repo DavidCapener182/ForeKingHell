@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowLeft,
   Award,
@@ -8,6 +9,7 @@ import {
   Crosshair,
   Gauge,
   LineChart,
+  MessageCircle,
   Sparkles,
   Target,
   Trophy,
@@ -59,6 +61,7 @@ import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas"
 import type { ProgressSignal } from "@/lib/progress-summary";
 import { formatSpeed } from "@/lib/speed-training";
 import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-training-data";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +88,17 @@ export default async function CoachPage() {
   return (
     <PageShell>
       <CoachDrillAutoSync enabled={shouldSyncDrillAwards} />
+      <style>{`
+        @media (min-width: 640px) {
+          .coach-ai-grid-item {
+            grid-column: span 6 / span 6;
+          }
+
+          .coach-ai-grid-item:has(details[open]) {
+            grid-column: span 12 / span 12;
+          }
+        }
+      `}</style>
       <MobileAppShell>
         <MobileTopBar title="Improve" />
         <MobileRouteTabs group="improve" activeKey="coach" />
@@ -238,26 +252,12 @@ export default async function CoachPage() {
         </div>
       </div>
 
-      <div className="hidden sm:contents">
+      <div
+        className="hidden auto-rows-auto items-stretch gap-4 sm:grid lg:gap-5"
+        style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+      >
         {data.clubs.length === 0 ? (
-          <DataPanel>
-            <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-              <Brain className="size-10 text-emerald-500" />
-              <div>
-                <p className="text-xl font-semibold">Coach is waiting for data</p>
-                <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Import launch-monitor shots and LM World Tour will turn club data into distance,
-                  strike, launch, direction, and delivery recommendations.
-                </p>
-              </div>
-              <Button asChild>
-                <Link href="/import" prefetch={false}>
-                  <Upload className="size-4" />
-                  Import data
-                </Link>
-              </Button>
-            </CardContent>
-          </DataPanel>
+          <CompactCoachEmptyState />
         ) : (
           <>
             <CoachPracticeHero
@@ -267,34 +267,38 @@ export default async function CoachPage() {
               primaryStatus={drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined}
             />
 
-            <WhatChangedPanel signals={coach.signals} />
+            <WhatChangedPanel signals={coach.signals} span={6} />
 
-            <AthleticDevelopmentCoachCard summary={speedCoachData.summary} />
+            <AthleticDevelopmentCoachCard summary={speedCoachData.summary} span={6} />
 
-            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
-              <PracticeSessionBuilder
-                topClub={topClub}
-                drillChallenges={drillChallenges}
-                drillStatuses={drillStatuses}
-              />
-              <RoundReadinessPanel coach={coach} featureData={featureData} topClub={topClub} />
-            </section>
-
-            <TodaysPlan cards={coach.clubCards} />
-
-            <CoachSummaryPanel
+            <PracticeSessionBuilder
+              topClub={topClub}
+              drillChallenges={drillChallenges}
+              drillStatuses={drillStatuses}
+              span={7}
+            />
+            <RoundReadinessPanel
               coach={coach}
-              impacts={coach.trainingImpact.slice(0, 3)}
-              canUseAiCoach={canUseAiCoach}
-              aiPayload={aiPayload}
+              featureData={featureData}
+              topClub={topClub}
+              span={5}
             />
 
-            <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} />
+            <TodaysPlan cards={coach.clubCards} span={8} />
 
-            <DiagnosisPreview cards={coach.clubCards} />
+            <CoachSummaryPanel coach={coach} impacts={coach.trainingImpact.slice(0, 3)} span={4} />
+            <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} span={6} />
 
-            <details className="group">
-              <summary className="premium-card grid cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+            <DiagnosisPreview cards={coach.clubCards} span={6} />
+
+            <AiCoachToolsPanel
+              canUseAiCoach={canUseAiCoach}
+              aiPayload={aiPayload}
+              className="coach-ai-grid-item"
+            />
+
+            <details className="group min-w-0" style={bentoSpan(6)}>
+              <summary className="premium-card grid h-full cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
                 <span>
                   <span className="block text-lg font-semibold tracking-normal">
                     Social comparison
@@ -313,6 +317,102 @@ export default async function CoachPage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+type BentoSpan = 4 | 5 | 6 | 7 | 8 | 12;
+
+function bentoSpan(span: BentoSpan): CSSProperties {
+  return { gridColumn: `span ${span} / span ${span}` };
+}
+
+function CoachBentoPanel({
+  children,
+  className,
+  span,
+}: {
+  children: ReactNode;
+  className?: string;
+  span?: BentoSpan;
+}) {
+  return (
+    <div className={cn("min-w-0 h-full", className)} style={span ? bentoSpan(span) : undefined}>
+      <DataPanel className="h-full gap-0 py-0">{children}</DataPanel>
+    </div>
+  );
+}
+
+function CompactPanelHeader({
+  title,
+  description,
+  action,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-border/70 bg-white/35 px-4 py-2.5">
+      <div className="min-w-0">
+        <p className="text-base font-semibold tracking-normal text-[#111611]">{title}</p>
+        {description ? (
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+function CompactStatusCard({
+  title,
+  detail,
+  action,
+  className,
+}: {
+  title: ReactNode;
+  detail: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-lg border border-dashed border-slate-200 bg-slate-50/80 p-3 text-sm",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-slate-900">{title}</p>
+          <p className="mt-1 leading-5 text-muted-foreground">{detail}</p>
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function CompactCoachEmptyState() {
+  return (
+    <CoachBentoPanel span={6}>
+      <CardContent className="grid gap-4 p-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+        <Brain className="size-8 text-emerald-600" />
+        <div className="min-w-0">
+          <p className="text-lg font-semibold">Coach is waiting for data</p>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Import launch-monitor shots and LM World Tour will turn club data into distance, strike,
+            launch, direction, and delivery recommendations.
+          </p>
+        </div>
+        <Button asChild className="w-fit">
+          <Link href="/import" prefetch={false}>
+            <Upload className="size-4" />
+            Import data
+          </Link>
+        </Button>
+      </CardContent>
+    </CoachBentoPanel>
   );
 }
 
@@ -363,20 +463,29 @@ function CoachSocialPrompt({
   );
 }
 
-function AthleticDevelopmentCoachCard({ summary }: { summary: SpeedCentreSummary }) {
+function AthleticDevelopmentCoachCard({
+  summary,
+  className,
+  span,
+}: {
+  summary: SpeedCentreSummary;
+  className?: string;
+  span?: BentoSpan;
+}) {
   const targetGap =
     summary.currentSpeedMph !== null && summary.targetSpeedMph !== null
       ? summary.targetSpeedMph - summary.currentSpeedMph
       : null;
   const forecast = formatCoachForecast(summary);
+  const needsForecastTrend = forecast === "Need trend";
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Athletic Development"
         description="Speed work, with-ball transfer, and weekly prescription."
         action={
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-8 px-2.5 text-xs">
             <Link href="/speed" prefetch={false}>
               <Gauge className="size-4" />
               Speed Centre
@@ -384,36 +493,46 @@ function AthleticDevelopmentCoachCard({ summary }: { summary: SpeedCentreSummary
           </Button>
         }
       />
-      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-3 md:grid-cols-4">
-          <HeroStat
+      <CardContent className="grid gap-3 p-3">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <CompactStatTile
             label="Driver current"
             value={formatSpeed(summary.currentSpeedMph)}
             tone="sky"
           />
-          <HeroStat label="Target" value={formatSpeed(summary.targetSpeedMph)} tone="green" />
-          <HeroStat
+          <CompactStatTile
+            label="Target"
+            value={formatSpeed(summary.targetSpeedMph)}
+            tone="green"
+          />
+          <CompactStatTile
             label="Gap"
             value={targetGap === null ? "Set target" : formatCoachGap(targetGap)}
             tone={coachSpeedGapTone(targetGap)}
           />
-          <HeroStat label="Forecast" value={forecast} tone="slate" />
+          <CompactStatTile label="Forecast" value={forecast} tone="slate" />
         </div>
-        <div className="rounded-lg border border-emerald-100 bg-white/85 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
+        <div className="rounded-lg border border-emerald-100 bg-white/85 p-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-950">
                 {summary.prescription.headline}
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-1 text-sm leading-6 text-slate-600">
                 {summary.prescription.recommendation}
               </p>
+              {needsForecastTrend ? (
+                <p className="mt-2 rounded-md border border-amber-200 bg-amber-50/70 px-2 py-1.5 text-xs font-medium text-amber-900">
+                  Forecast needs a trend. Log another speed session before trusting a 90-day
+                  projection.
+                </p>
+              ) : null}
             </div>
             <StatusPill tone={summary.prescription.priority === "High" ? "amber" : "green"}>
               {summary.prescription.priority}
             </StatusPill>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-4">
             <SmallMetric
               label="With ball"
               value={formatSpeed(summary.shotSpeed.last20DriverAvgMph)}
@@ -425,12 +544,12 @@ function AthleticDevelopmentCoachCard({ summary }: { summary: SpeedCentreSummary
               value={formatCoachNumber(summary.driverEfficiency.smashFactor)}
             />
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 border-t border-slate-200 pt-3 text-sm leading-6 text-slate-600">
             {summary.transferInsight.coachMessage}
           </p>
         </div>
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
@@ -460,9 +579,12 @@ function CoachPracticeHero({
   const status = primaryChallenge ? (primaryStatus ?? defaultDrillStatus(primaryChallenge)) : null;
 
   return (
-    <section className="premium-card overflow-hidden rounded-lg border-0 bg-[#F8FAF5] shadow-[0_18px_50px_rgba(31,49,39,0.11)]">
-      <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-7">
-        <div className="grid content-between gap-8">
+    <>
+      <section
+        className="premium-card min-w-0 h-full overflow-hidden rounded-lg border-0 bg-[#F8FAF5] shadow-[0_18px_50px_rgba(31,49,39,0.11)]"
+        style={bentoSpan(8)}
+      >
+        <div className="grid gap-5 p-5 lg:p-6">
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <Badge className="bg-[#0B7A3B] text-white hover:bg-[#0B7A3B]">
@@ -470,113 +592,159 @@ function CoachPracticeHero({
               </Badge>
               <StatusPill tone={heroTone}>Trust: {trust}%</StatusPill>
             </div>
-            <h1 className="mt-5 text-4xl font-semibold tracking-normal text-[#111611] xl:text-5xl">
+            <h1 className="mt-4 text-4xl font-semibold tracking-normal text-[#111611] xl:text-5xl">
               {focusTitle}
             </h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">{coach.subhead}</p>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-3">
             <HeroStat label="Expected gain" value={expectedGainFor(topClub)} tone="green" />
             <HeroStat label="Session" value={shotTarget} tone={topClub?.tone ?? "slate"} />
             <HeroStat label="Main miss" value={topClub?.usualMiss ?? "Needs data"} tone="amber" />
           </div>
         </div>
+      </section>
+      <PracticeTrustPanel
+        target={target}
+        trust={trust}
+        detail={topClub ? `${topClub.sampleSize} clean stock shots` : "Import stock shots"}
+        tone={heroTone}
+        status={status}
+        href={href}
+      />
+    </>
+  );
+}
 
-        <div className="rounded-lg border border-emerald-100 bg-white/88 p-4 shadow-[0_12px_35px_rgba(31,49,39,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Target</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">{target}</p>
-            </div>
-            <Target className="size-7 text-emerald-700" />
-          </div>
-          <div className="mt-5">
-            <TrustProgress
-              label="Practice trust"
-              value={trust}
-              detail={topClub ? `${topClub.sampleSize} clean stock shots` : "Import stock shots"}
-              tone={heroTone}
-            />
-          </div>
-          {status ? (
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <SmallMetric
-                label="Uploaded today"
-                value={`${status.uploadedShotCount}/${status.completionTarget}`}
-              />
-              <SmallMetric label="Win target" value={`${status.winCount}/${status.winTarget}`} />
-            </div>
-          ) : null}
-          <Button asChild className="premium-action mt-5 h-12 w-full rounded-lg text-base">
-            <Link href={href} prefetch={false}>
-              <Crosshair className="size-5" />
-              Start practice
-            </Link>
-          </Button>
+function PracticeTrustPanel({
+  target,
+  trust,
+  detail,
+  tone,
+  status,
+  href,
+}: {
+  target: string;
+  trust: number;
+  detail: string;
+  tone: Tone;
+  status: CoachDrillAwardStatus | null;
+  href: string;
+}) {
+  return (
+    <CoachBentoPanel span={4}>
+      <CompactPanelHeader
+        title="Target"
+        description="Practice trust and today's drill state."
+        action={<Target className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-3 p-3">
+        <div className="rounded-lg border border-emerald-100 bg-white/88 p-3">
+          <p className="text-sm leading-6 text-slate-600">{target}</p>
         </div>
-      </div>
-    </section>
+        <TrustProgress label="Practice trust" value={trust} detail={detail} tone={tone} />
+        {status ? (
+          <div className="grid grid-cols-2 gap-2">
+            <SmallMetric
+              label="Uploaded today"
+              value={`${status.uploadedShotCount}/${status.completionTarget}`}
+            />
+            <SmallMetric label="Win target" value={`${status.winCount}/${status.winTarget}`} />
+          </div>
+        ) : null}
+        <Button asChild className="premium-action h-11 w-full rounded-lg">
+          <Link href={href} prefetch={false}>
+            <Crosshair className="size-4" />
+            Start practice
+          </Link>
+        </Button>
+      </CardContent>
+    </CoachBentoPanel>
   );
 }
 
 function HeroStat({ label, value, tone }: { label: string; value: string; tone: Tone }) {
   return (
-    <div className={`rounded-lg border px-4 py-3 ${tonePanelClass(tone)}`}>
+    <div className={`rounded-lg border px-3 py-2.5 ${tonePanelClass(tone)}`}>
       <p className="text-sm font-medium text-slate-600">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">{value}</p>
+      <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">{value}</p>
     </div>
   );
 }
 
-function WhatChangedPanel({ signals }: { signals: ProgressSignal[] }) {
+function CompactStatTile({ label, value, tone }: { label: string; value: string; tone: Tone }) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${tonePanelClass(tone)}`}>
+      <p className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-base font-semibold tracking-normal text-slate-950">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function WhatChangedPanel({
+  signals,
+  className,
+  span,
+}: {
+  signals: ProgressSignal[];
+  className?: string;
+  span?: BentoSpan;
+}) {
   const visibleSignals = signals.slice(0, 4);
 
-  if (visibleSignals.length === 0) {
-    return null;
-  }
-
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="What changed"
         description="The strongest movement signals since the current personal baseline."
         action={<LineChart className="size-5 text-emerald-700" />}
       />
-      <CardContent className="grid gap-3 p-5 md:grid-cols-2 xl:grid-cols-4">
-        {visibleSignals.map((signal) => {
-          const tile = (
-            <div className={`h-full rounded-lg border p-4 ${tonePanelClass(signal.tone)}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">{signal.label}</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-normal text-slate-950">
-                    {signal.value}
-                  </p>
+      <CardContent className="grid flex-1 auto-rows-fr gap-3 p-3 md:grid-cols-2">
+        {visibleSignals.length > 0 ? (
+          visibleSignals.map((signal) => {
+            const tile = (
+              <div className={`h-full rounded-lg border p-3 ${tonePanelClass(signal.tone)}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600">{signal.label}</p>
+                    <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+                      {signal.value}
+                    </p>
+                  </div>
+                  <span className={`mt-1 size-2.5 rounded-full ${toneDotClass(signal.tone)}`} />
                 </div>
-                <span className={`mt-1 size-2.5 rounded-full ${toneDotClass(signal.tone)}`} />
+                <p className="mt-2 text-sm leading-6 text-slate-600">{signal.detail}</p>
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{signal.detail}</p>
-            </div>
-          );
+            );
 
-          if (!signal.clubId) {
-            return <div key={`${signal.label}-${signal.value}`}>{tile}</div>;
-          }
+            if (!signal.clubId) {
+              return <div key={`${signal.label}-${signal.value}`}>{tile}</div>;
+            }
 
-          return (
-            <Link
-              key={`${signal.clubId}-${signal.label}`}
-              href={`/bag/${signal.clubId}/analytics`}
-              prefetch={false}
-              className="block transition-transform hover:-translate-y-0.5"
-            >
-              {tile}
-            </Link>
-          );
-        })}
+            return (
+              <Link
+                key={`${signal.clubId}-${signal.label}`}
+                href={`/bag/${signal.clubId}/analytics`}
+                prefetch={false}
+                className="block h-full transition-transform hover:-translate-y-0.5"
+              >
+                {tile}
+              </Link>
+            );
+          })
+        ) : (
+          <div className="md:col-span-2">
+            <CompactStatusCard
+              title="No strong movement yet"
+              detail="Import another comparable session to surface meaningful baseline changes."
+            />
+          </div>
+        )}
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
@@ -584,10 +752,14 @@ function PracticeSessionBuilder({
   topClub,
   drillChallenges,
   drillStatuses,
+  className,
+  span,
 }: {
   topClub: CoachClubCard | null;
   drillChallenges: CoachDrillChallenge[];
   drillStatuses: Record<string, CoachDrillAwardStatus>;
+  className?: string;
+  span?: BentoSpan;
 }) {
   const recommended = drillChallenges[0] ?? null;
   const status = recommended
@@ -599,20 +771,20 @@ function PracticeSessionBuilder({
   const alternatives = drillChallenges.slice(1, 4);
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Practice session builder"
         description="The old practice mode and challenge template now live as one recommended session."
         action={<StatusPill tone={topClub?.tone ?? "slate"}>Recommended</StatusPill>}
       />
-      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className={`rounded-lg border p-5 ${tonePanelClass(topClub?.tone ?? "slate")}`}>
+      <CardContent className="grid gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className={`rounded-lg border p-4 ${tonePanelClass(topClub?.tone ?? "slate")}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <Badge className="bg-white text-emerald-800 ring-1 ring-emerald-100 hover:bg-white">
                 Recommended
               </Badge>
-              <h2 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950">
+              <h2 className="mt-2 text-xl font-semibold tracking-normal text-slate-950">
                 {recommended?.title ??
                   (topClub ? `${topClub.clubName} ${topClub.issueLabel}` : "Baseline builder")}
               </h2>
@@ -625,7 +797,7 @@ function PracticeSessionBuilder({
             <StatusPill tone={topClub?.tone ?? "slate"}>{expectedTrustGainFor(topClub)}</StatusPill>
           </div>
 
-          <div className="mt-5 grid gap-2 md:grid-cols-3">
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
             <SmallMetric
               label="Balls"
               value={recommended ? `${recommended.completionTarget}` : "12"}
@@ -641,7 +813,7 @@ function PracticeSessionBuilder({
           </div>
 
           {status ? (
-            <div className="mt-5">
+            <div className="mt-4">
               <TrustProgress
                 label="Today"
                 value={progress}
@@ -651,7 +823,7 @@ function PracticeSessionBuilder({
             </div>
           ) : null}
 
-          <Button asChild className="premium-action mt-5 rounded-lg">
+          <Button asChild className="premium-action mt-4 rounded-lg">
             <Link href={topClub ? `/bag/${topClub.clubId}/analytics` : "/import"} prefetch={false}>
               <Crosshair className="size-4" />
               Start
@@ -659,7 +831,7 @@ function PracticeSessionBuilder({
           </Button>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white/85 p-4">
+        <div className="rounded-lg border border-slate-200 bg-white/85 p-3">
           <p className="text-sm font-semibold text-slate-900">Alternatives</p>
           <div className="mt-3 grid gap-2">
             {alternatives.length > 0 ? (
@@ -689,7 +861,7 @@ function PracticeSessionBuilder({
           </div>
         </div>
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
@@ -697,10 +869,14 @@ function RoundReadinessPanel({
   coach,
   featureData,
   topClub,
+  className,
+  span,
 }: {
   coach: CoachSummary;
   featureData: FeatureIdeasData;
   topClub: CoachClubCard | null;
+  className?: string;
+  span?: BentoSpan;
 }) {
   const playableRate = coach.summary.totals.averagePlayableRate;
   const cleanSampleScore = Math.min(
@@ -715,8 +891,8 @@ function RoundReadinessPanel({
         : "pink";
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Round readiness"
         description="Can this bag readout support on-course decisions today?"
         action={
@@ -725,7 +901,7 @@ function RoundReadinessPanel({
           </StatusPill>
         }
       />
-      <CardContent className="grid gap-4 p-5">
+      <CardContent className="grid gap-3 p-3">
         <TrustProgress
           label="Bag trust"
           value={coach.summary.totals.averageTrust}
@@ -759,30 +935,52 @@ function RoundReadinessPanel({
           </p>
         </div>
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
-function TodaysPlan({ cards }: { cards: CoachClubCard[] }) {
+function TodaysPlan({
+  cards,
+  className,
+  span,
+}: {
+  cards: CoachClubCard[];
+  className?: string;
+  span?: BentoSpan;
+}) {
   const priority = cards[0] ?? null;
   const secondary = cards[1] ?? null;
   const maintenance = cards.slice(2, 4);
 
   if (!priority) {
-    return null;
+    return (
+      <CoachBentoPanel className={className} span={span}>
+        <CompactPanelHeader
+          title="Today's plan"
+          description="Three decisions instead of a wall of drill cards."
+          action={<Clock className="size-5 text-emerald-700" />}
+        />
+        <CardContent className="p-3">
+          <CompactStatusCard
+            title="Plan needs a baseline"
+            detail="Import clean stock shots to unlock priority, secondary, and maintenance work."
+          />
+        </CardContent>
+      </CoachBentoPanel>
+    );
   }
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Today's plan"
         description="Three decisions instead of a wall of drill cards."
         action={<Clock className="size-5 text-emerald-700" />}
       />
-      <CardContent className="grid gap-4 p-5 xl:grid-cols-[1.15fr_0.95fr_0.95fr]">
+      <CardContent className="grid gap-3 p-3 xl:grid-cols-[1.15fr_0.95fr_0.95fr]">
         <PlanLane label="Priority" card={priority} emphasis />
         <PlanLane label="Secondary" card={secondary} />
-        <div className="rounded-lg border border-slate-200 bg-white/85 p-4">
+        <div className="rounded-lg border border-slate-200 bg-white/85 p-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-slate-900">Maintenance</p>
             <StatusPill tone="green">{maintenance.length || 1} checks</StatusPill>
@@ -798,7 +996,7 @@ function TodaysPlan({ cards }: { cards: CoachClubCard[] }) {
           </div>
         </div>
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
@@ -871,27 +1069,27 @@ function PlanMiniCard({ card }: { card: CoachClubCard }) {
 function CoachSummaryPanel({
   coach,
   impacts,
-  canUseAiCoach,
-  aiPayload,
+  className,
+  span,
 }: {
   coach: CoachSummary;
   impacts: CoachTrainingImpact[];
-  canUseAiCoach: boolean;
-  aiPayload: AiCoachPayload;
+  className?: string;
+  span?: BentoSpan;
 }) {
   const bullets = coachSummaryBullets(coach, impacts);
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Coach summary"
         description="Plain-English readout from the current club signals."
         action={<Sparkles className="size-5 text-emerald-700" />}
       />
-      <CardContent className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-5">
+      <CardContent className="p-3">
+        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-3">
           <p className="text-sm font-semibold text-emerald-900">This week</p>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-3 grid gap-2">
             {bullets.map((bullet) => (
               <div key={bullet} className="flex gap-3 rounded-lg bg-white/80 p-3">
                 <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-700" />
@@ -900,53 +1098,115 @@ function CoachSummaryPanel({
             ))}
           </div>
         </div>
-
-        <details className="rounded-lg border border-slate-200 bg-white/85">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-            <span>
-              <span className="block text-sm font-semibold">AI coach tools</span>
-              <span className="block text-xs text-muted-foreground">
-                Generate a note or ask from your shot data.
-              </span>
-            </span>
-            <StatusPill tone={canUseAiCoach ? "green" : "amber"}>
-              {canUseAiCoach ? "Available" : "Pro"}
-            </StatusPill>
-          </summary>
-          <div className="grid gap-4 border-t border-slate-200 p-4">
-            {canUseAiCoach ? (
-              <>
-                <AiCoachCard payload={aiPayload} />
-                <CoachChatCard questionId="coach-question-desktop" />
-              </>
-            ) : (
-              <UpgradeAiCoachCard />
-            )}
-          </div>
-        </details>
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
   );
 }
 
-function RecentSessionFeedback({ impacts }: { impacts: CoachTrainingImpact[] }) {
-  if (impacts.length === 0) {
-    return null;
-  }
+function AiCoachToolsPanel({
+  canUseAiCoach,
+  aiPayload,
+  className,
+  span,
+}: {
+  canUseAiCoach: boolean;
+  aiPayload: AiCoachPayload;
+  className?: string;
+  span?: BentoSpan;
+}) {
+  return (
+    <CoachBentoPanel className={className} span={span}>
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-emerald-50/35 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="block text-base font-semibold tracking-normal">AI coach tools</span>
+            <span className="block text-xs leading-5 text-muted-foreground">
+              Generate note / Ask coach
+            </span>
+          </span>
+          <StatusPill tone={canUseAiCoach ? "green" : "amber"}>
+            {canUseAiCoach ? "Available" : "Pro"}
+          </StatusPill>
+        </summary>
+        <div className="grid gap-3 border-t border-slate-200 p-3 [&>[data-slot=card-content]]:px-0">
+          {canUseAiCoach ? (
+            <>
+              <AiCoachCard payload={aiPayload} />
+              <CoachChatCard questionId="coach-question-desktop" />
+              <Button asChild variant="outline" className="w-fit">
+                <Link href="/data-chat" prefetch={false}>
+                  <MessageCircle className="size-4" />
+                  Open Data Chat
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <UpgradeAiCoachCard />
+          )}
+        </div>
+      </details>
+    </CoachBentoPanel>
+  );
+}
+
+function RecentSessionFeedback({
+  impacts,
+  className,
+  span,
+}: {
+  impacts: CoachTrainingImpact[];
+  className?: string;
+  span?: BentoSpan;
+}) {
+  const compactMissingData =
+    impacts.length > 0 &&
+    impacts.every(
+      (impact) =>
+        impact.status === "needs-data" || impact.headline === "Needs one more comparable session",
+    );
 
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Recent session feedback"
         description="The latest comparable-session read, kept short."
         action={<Gauge className="size-5 text-emerald-700" />}
       />
-      <CardContent className="grid gap-3 p-5 lg:grid-cols-2">
-        {impacts.map((impact) => (
-          <ImpactSummaryCard key={impact.clubId} impact={impact} />
-        ))}
+      <CardContent className="grid gap-2 p-3">
+        {impacts.length === 0 ? (
+          <CompactStatusCard
+            title="No comparable feedback yet"
+            detail="Import another clean session to judge whether the practice block helped."
+          />
+        ) : compactMissingData ? (
+          impacts.map((impact) => <CompactImpactStatusCard key={impact.clubId} impact={impact} />)
+        ) : (
+          impacts.map((impact) => <ImpactSummaryCard key={impact.clubId} impact={impact} />)
+        )}
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
+  );
+}
+
+function CompactImpactStatusCard({ impact }: { impact: CoachTrainingImpact }) {
+  return (
+    <Link
+      href={`/bag/${impact.clubId}/analytics`}
+      prefetch={false}
+      className="rounded-lg border border-slate-200 bg-white/85 p-3 transition-colors hover:border-emerald-300"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold text-slate-950">{impact.clubName}</p>
+            <StatusPill tone={impact.tone}>{impact.issueLabel}</StatusPill>
+          </div>
+          <p className="mt-2 text-sm font-medium text-slate-800">{impact.headline}</p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{impact.detail}</p>
+        </div>
+        <StatusPill tone="slate">Needs data</StatusPill>
+      </div>
+    </Link>
   );
 }
 
@@ -955,7 +1215,7 @@ function ImpactSummaryCard({ impact }: { impact: CoachTrainingImpact }) {
     <Link
       href={`/bag/${impact.clubId}/analytics`}
       prefetch={false}
-      className={`rounded-lg border p-4 transition-colors hover:border-emerald-300 ${tonePanelClass(
+      className={`rounded-lg border p-3 transition-colors hover:border-emerald-300 ${tonePanelClass(
         impact.tone,
       )}`}
     >
@@ -971,7 +1231,7 @@ function ImpactSummaryCard({ impact }: { impact: CoachTrainingImpact }) {
         <StatusPill tone={impact.tone}>{impactLabel(impact.status)}</StatusPill>
       </div>
       {impact.metrics.length > 0 ? (
-        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {impact.metrics.slice(0, 4).map((metric) => (
             <SmallMetric key={metric.label} label={metric.label} value={metric.delta} />
           ))}
@@ -981,32 +1241,68 @@ function ImpactSummaryCard({ impact }: { impact: CoachTrainingImpact }) {
   );
 }
 
-function DiagnosisPreview({ cards }: { cards: CoachClubCard[] }) {
+function DiagnosisPreview({
+  cards,
+  className,
+  span,
+}: {
+  cards: CoachClubCard[];
+  className?: string;
+  span?: BentoSpan;
+}) {
   const attention = cards.slice(0, 3);
 
-  if (attention.length === 0) {
-    return null;
-  }
-
   return (
-    <DataPanel>
-      <SectionHeader
+    <CoachBentoPanel className={className} span={span}>
+      <CompactPanelHeader
         title="Needs most attention"
         description="Full club diagnosis has moved to its own report page."
         action={
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-8 px-2.5 text-xs">
             <Link href="/coach/diagnosis" prefetch={false}>
               Open diagnosis page
             </Link>
           </Button>
         }
       />
-      <CardContent className="grid gap-3 p-5 md:grid-cols-3">
-        {attention.map((card) => (
-          <DiagnosisAttentionRow key={card.clubId} card={card} />
-        ))}
+      <CardContent className="grid gap-2 p-3">
+        {attention.length > 0 ? (
+          attention.map((card) => <CompactDiagnosisCard key={card.clubId} card={card} />)
+        ) : (
+          <CompactStatusCard
+            title="No diagnosis yet"
+            detail="Import launch-monitor shots to unlock club-by-club coach diagnosis."
+          />
+        )}
       </CardContent>
-    </DataPanel>
+    </CoachBentoPanel>
+  );
+}
+
+function CompactDiagnosisCard({ card }: { card: CoachClubCard }) {
+  return (
+    <Link
+      href={`/bag/${card.clubId}/analytics`}
+      prefetch={false}
+      className="rounded-lg border border-slate-200 bg-white/85 p-3 transition-colors hover:border-emerald-300"
+    >
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-semibold tracking-normal text-slate-950">{card.clubName}</p>
+            <StatusPill tone={card.tone}>{card.issueLabel}</StatusPill>
+          </div>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">{card.reason}</p>
+        </div>
+        <div>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Trust</span>
+            <span className="text-sm font-semibold">{card.trustIndex}%</span>
+          </div>
+          <Progress value={card.trustIndex} className={`h-2 ${progressToneClass(card.tone)}`} />
+        </div>
+      </div>
+    </Link>
   );
 }
 

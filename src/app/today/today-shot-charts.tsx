@@ -141,8 +141,8 @@ export function TodayShotCharts({
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
 
   return (
-    <Card className="premium-card today-shot-pattern-card">
-      <CardHeader>
+    <Card size="sm" className="premium-card today-shot-pattern-card">
+      <CardHeader className="pb-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <CardTitle>Shot patterns</CardTitle>
@@ -154,7 +154,7 @@ export function TodayShotCharts({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent className="space-y-4">
         <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 text-sm font-medium leading-5 text-emerald-950">
           Pattern detected: {patternInsight}
         </div>
@@ -270,12 +270,13 @@ export function TodayShotCharts({
           ) : null}
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.9fr)]">
+        <div className="grid items-start gap-4 lg:grid-cols-2">
           <ChartPanel
             title="Dispersion"
             detail="Primary diagnostic: carry landing by left-right miss."
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} />}
+            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <DispersionChart shots={visibleShots} />
           </ChartPanel>
@@ -288,6 +289,7 @@ export function TodayShotCharts({
             }
             empty={!visibleShots.some(hasTrajectoryData)}
             footer={<TrajectoryInsightCards shots={visibleShots} />}
+            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <TrajectoryChart shots={visibleShots} view={trajectoryView} />
           </ChartPanel>
@@ -303,16 +305,20 @@ function ChartPanel({
   detail,
   empty,
   footer,
+  className,
+  chartClassName,
   children,
 }: {
   title: string;
   detail: string;
   empty: boolean;
   footer?: ReactNode;
+  className?: string;
+  chartClassName?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="apple-panel min-w-0 p-4">
+    <div className={cn("apple-panel flex h-full min-w-0 flex-col p-3", className)}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">{title}</h2>
@@ -320,12 +326,12 @@ function ChartPanel({
         </div>
       </div>
       {empty ? (
-        <div className="apple-panel-strong grid min-h-36 place-items-center text-sm text-muted-foreground sm:min-h-[18rem]">
+        <div className="apple-panel-strong grid min-h-32 flex-1 place-items-center px-3 text-sm text-muted-foreground">
           No chartable shots for the visible clubs.
         </div>
       ) : (
-        <div className="grid gap-3">
-          <ChartFrame>{children}</ChartFrame>
+        <div className="flex flex-1 flex-col gap-3">
+          <ChartFrame className={chartClassName}>{children}</ChartFrame>
           {footer}
         </div>
       )}

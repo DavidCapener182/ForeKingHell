@@ -204,6 +204,13 @@
       "when": 1780832400000,
       "tag": "0028_speed_training",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780862400000,
+      "tag": "0029_ai_platform",
+      "breakpoints": true
     }
   ]
 }

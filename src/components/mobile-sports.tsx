@@ -22,10 +22,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import {
-  MobileTabBar as SharedMobileTabBar,
-  type MobileTab,
-} from "@/components/mobile-tab-bar";
+import { MobileTabBar as SharedMobileTabBar, type MobileTab } from "@/components/mobile-tab-bar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +111,7 @@ const mobileRouteGroups = {
   ],
   improve: [
     { key: "coach", label: "Coach", href: "/coach" },
+    { key: "data-chat", label: "Data Chat", href: "/data-chat" },
     { key: "achievements", label: "Achievements", href: "/achievements" },
     { key: "settings", label: "Settings", href: "/settings" },
   ],
@@ -203,7 +201,9 @@ export function MobileStatusAction({
   return (
     <section className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 rounded-lg p-4">
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {label}
+        </p>
         <p className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground">
           {value}
         </p>

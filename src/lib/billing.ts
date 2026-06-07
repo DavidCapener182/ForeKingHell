@@ -30,6 +30,34 @@ export type BillingPlan = {
   internal?: boolean;
 };
 
+const defaultAiPlanLimitValues = {
+  free: [
+    ["ai_monthly_credits", { value: 0 }],
+    ["ai_daily_chat_messages", { value: 0 }],
+    ["ai_scorecard_extracts_monthly", { value: 0 }],
+  ],
+  plus: [
+    ["ai_monthly_credits", { value: 10 }],
+    ["ai_daily_chat_messages", { value: 0 }],
+    ["ai_scorecard_extracts_monthly", { value: 2 }],
+  ],
+  pro: [
+    ["ai_monthly_credits", { value: 100 }],
+    ["ai_daily_chat_messages", { value: 30 }],
+    ["ai_scorecard_extracts_monthly", { value: 10 }],
+  ],
+  coach: [
+    ["ai_monthly_credits", { value: 300 }],
+    ["ai_daily_chat_messages", { value: 60 }],
+    ["ai_scorecard_extracts_monthly", { value: 25 }],
+  ],
+  full: [
+    ["ai_monthly_credits", { value: 1000, label: "Internal safety cap" }],
+    ["ai_daily_chat_messages", { value: 100 }],
+    ["ai_scorecard_extracts_monthly", { value: 50 }],
+  ],
+} as const satisfies Record<PlanKey, ReadonlyArray<readonly [string, Record<string, unknown>]>>;
+
 export const lifetimeFullEntitlements = [
   ["lifetime_full", { value: true }],
   ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
@@ -40,6 +68,9 @@ export const lifetimeFullEntitlements = [
   ["private_friend_tournaments", { value: true }],
   ["host_major_tournaments", { value: true }],
   ["can_use_ai_coach", { value: true }],
+  ["ai_monthly_credits", { value: 1000, label: "Internal safety cap" }],
+  ["ai_daily_chat_messages", { value: 100 }],
+  ["ai_scorecard_extracts_monthly", { value: 50 }],
   ["advanced_reports", { value: true }],
   ["friend_comparison_insights", { value: true }],
   ["challenge_analytics", { value: true }],
@@ -83,7 +114,7 @@ export const billingPlans: BillingPlan[] = [
       "Private course record boards",
       "Private friend tournaments",
       "Advanced leaderboards",
-      "Custom share cards",
+      "10 AI credits for recaps, captions and scorecards",
     ],
     priceEnv: {
       monthly: "STRIPE_PLUS_MONTHLY_PRICE_ID",
@@ -100,6 +131,8 @@ export const billingPlans: BillingPlan[] = [
       "AI coaching, tournament prep, record strategy and advanced verification analytics.",
     features: [
       "AI coach",
+      "Data Chat from your golf history",
+      "100 AI credits per month",
       "AI tournament prep",
       "AI record strategy",
       "Advanced verification analytics",
@@ -119,6 +152,8 @@ export const billingPlans: BillingPlan[] = [
     description: "Host leagues, major-style tournaments, player groups and evidence review.",
     features: [
       "Host leagues",
+      "300 pooled AI credits",
+      "Player data chat and summaries",
       "Major-style tournaments",
       "Evidence review queue",
       "Player seats",
@@ -139,6 +174,8 @@ export const billingPlans: BillingPlan[] = [
     features: [
       "Unlimited imports",
       "AI coach",
+      "Data Chat",
+      "Internal AI safety cap",
       "Major-style tournaments",
       "All provider adapters",
       "Admin operations",
@@ -189,9 +226,28 @@ export async function getBillingPageData() {
     activePlanKey,
     latestSubscription,
     entitlements: entitlementRows,
-    planLimits: limitRows,
+    planLimits: withDefaultAiPlanLimits(limitRows),
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
   };
+}
+
+function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {
+  const existing = new Set(rows.map((row) => `${row.planKey}:${row.limitKey}`));
+  const now = new Date();
+  const defaults = billingPlans.flatMap((plan) =>
+    defaultAiPlanLimitValues[plan.key]
+      .filter(([limitKey]) => !existing.has(`${plan.key}:${limitKey}`))
+      .map(([limitKey, limitValueJson]) => ({
+        id: `default-${plan.key}-${limitKey}`,
+        planKey: plan.key,
+        limitKey,
+        limitValueJson,
+        createdAt: now,
+        updatedAt: now,
+      })),
+  );
+
+  return [...rows, ...defaults];
 }
 
 export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> {

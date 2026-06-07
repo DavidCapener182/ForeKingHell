@@ -13,6 +13,7 @@ import {
   GitCompareArrows,
   LineChart,
   MapPinned,
+  MessageCircle,
   Radio,
   Settings,
   ShieldAlert,
@@ -202,6 +203,12 @@ export const navGroups: AppNavGroup[] = [
         isActive: (pathname) => pathname.startsWith("/coach"),
       },
       {
+        href: "/data-chat",
+        label: "Data Chat",
+        icon: MessageCircle,
+        isActive: (pathname) => pathname.startsWith("/data-chat"),
+      },
+      {
         href: "/achievements",
         label: "Achievements",
         icon: Award,
@@ -291,6 +298,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
     icon: Brain,
     isActive: (pathname) =>
       pathname.startsWith("/coach") ||
+      pathname.startsWith("/data-chat") ||
       pathname.startsWith("/achievements") ||
       pathname.startsWith("/settings"),
   },

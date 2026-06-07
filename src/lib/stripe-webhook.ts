@@ -82,12 +82,18 @@ const planEntitlements = {
     ["max_friend_groups", { value: 1 }],
     ["max_private_challenges", { value: 0 }],
     ["can_use_ai_coach", { value: false }],
+    ["ai_monthly_credits", { value: 0 }],
+    ["ai_daily_chat_messages", { value: 0 }],
+    ["ai_scorecard_extracts_monthly", { value: 0 }],
   ],
   plus: [
     ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
     ["max_friend_groups", { value: 8 }],
     ["max_private_challenges", { value: 999999, label: "Unlimited" }],
     ["advanced_reports", { value: true }],
+    ["ai_monthly_credits", { value: 10 }],
+    ["ai_daily_chat_messages", { value: 0 }],
+    ["ai_scorecard_extracts_monthly", { value: 2 }],
   ],
   pro: [
     ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
@@ -99,6 +105,9 @@ const planEntitlements = {
     ["challenge_analytics", { value: true }],
     ["device_import_square", { value: true }],
     ["device_import_trackman", { value: true }],
+    ["ai_monthly_credits", { value: 100 }],
+    ["ai_daily_chat_messages", { value: 30 }],
+    ["ai_scorecard_extracts_monthly", { value: 10 }],
   ],
   coach: [
     ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
@@ -112,6 +121,9 @@ const planEntitlements = {
     ["device_import_trackman", { value: true }],
     ["coach_dashboard", { value: true }],
     ["max_player_seats", { value: 25 }],
+    ["ai_monthly_credits", { value: 300 }],
+    ["ai_daily_chat_messages", { value: 60 }],
+    ["ai_scorecard_extracts_monthly", { value: 25 }],
   ],
   full: [
     ["lifetime_full", { value: true }],
@@ -127,6 +139,9 @@ const planEntitlements = {
     ["device_import_square", { value: true }],
     ["device_import_trackman", { value: true }],
     ["admin_operations", { value: true }],
+    ["ai_monthly_credits", { value: 1000, label: "Internal safety cap" }],
+    ["ai_daily_chat_messages", { value: 100 }],
+    ["ai_scorecard_extracts_monthly", { value: 50 }],
   ],
 } as const satisfies Record<PlanKey, ReadonlyArray<readonly [string, Record<string, unknown>]>>;
 

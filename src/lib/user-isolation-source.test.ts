@@ -133,13 +133,17 @@ describe("user isolation source guards", () => {
       "reportedUserId",
     ]);
     expectAll(exportRoute, [
+      "aiGenerationCache",
       "aiSocialSummaries",
+      "aiUsageEvents",
       "billingCustomers",
       "groupMemberships",
       "providerSessions",
       "socialReports",
     ]);
     expectAll(settingsActions, [
+      "await tx.delete(aiGenerationCache).where(eq(aiGenerationCache.userId, userId));",
+      "await tx.delete(aiUsageEvents).where(eq(aiUsageEvents.userId, userId));",
       "await tx.delete(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId));",
       "await tx.delete(providerSessions).where(eq(providerSessions.userId, userId));",
       "await tx.delete(groupMemberships).where(eq(groupMemberships.userId, userId));",
@@ -151,6 +155,11 @@ describe("user isolation source guards", () => {
 
   it("requires auth in app API routes that handle private data or external lookups", () => {
     for (const path of [
+      "src/app/api/ai/challenge-copy/route.ts",
+      "src/app/api/ai/course-strategy/route.ts",
+      "src/app/api/ai/data-chat/route.ts",
+      "src/app/api/ai/practice-recap/route.ts",
+      "src/app/api/ai/social-caption/route.ts",
       "src/app/api/coach/chat/route.ts",
       "src/app/api/coach/summary/route.ts",
       "src/app/api/courses/osm/holes/route.ts",

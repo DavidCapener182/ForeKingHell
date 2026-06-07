@@ -95,7 +95,7 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
                   : "sky"
             }
           />
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <AiEvidenceTile label="Recommendation" value={summary.recommendation} />
             <AiEvidenceTile label="Evidence" value={summary.evidence} />
             <AiEvidenceTile label="Confidence" value={summary.confidence} />
@@ -122,11 +122,11 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
 
 function AiEvidenceTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold leading-5">{value}</p>
+      <p className="mt-1 break-words text-sm font-semibold leading-5">{value}</p>
     </div>
   );
 }

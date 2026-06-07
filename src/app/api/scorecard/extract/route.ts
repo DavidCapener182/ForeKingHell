@@ -5,6 +5,8 @@ import {
   rejectOversizedRequest,
   rateLimitRequest,
 } from "@/lib/api-protection";
+import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
+import { scorecardExtractionSchema } from "@/lib/ai/schemas";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
 import { createScorecardProofToken } from "@/lib/scorecard-proof-token";
@@ -72,15 +74,6 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    return NextResponse.json(
-      { message: "OPENAI_API_KEY is required for scorecard image extraction." },
-      { status: 500 },
-    );
-  }
-
   const body = (await request.json().catch(() => null)) as { imageDataUrl?: unknown } | null;
   const imageDataUrl = typeof body?.imageDataUrl === "string" ? body.imageDataUrl : "";
 
@@ -93,15 +86,13 @@ export async function POST(request: NextRequest) {
     return imageSizeRejection;
   }
 
-  const upstream = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_SCORECARD_MODEL ?? "gpt-4.1-mini",
-      input: [
+  try {
+    const result = await generateAiJson({
+      userId,
+      featureKey: "scorecard_extract",
+      schemaName: "scorecard_extraction",
+      schema: scorecardExtractionSchema,
+      messages: [
         {
           role: "user",
           content: [
@@ -110,23 +101,11 @@ export async function POST(request: NextRequest) {
           ],
         },
       ],
-      max_output_tokens: 2200,
-    }),
-  });
-
-  const payload = (await upstream.json().catch(() => null)) as unknown;
-
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { message: readOpenAiError(payload) ?? "OpenAI scorecard extraction failed." },
-      { status: upstream.status },
-    );
-  }
-
-  try {
-    const text = readResponseText(payload);
-    const parsed = parseJsonObject(text);
-    const scorecard = normalizeExtractedScorecard(parsed);
+      metadataJson: {
+        estimatedImageBytes: estimateDataUrlBytes(imageDataUrl),
+      },
+    });
+    const scorecard = normalizeExtractedScorecard(result.output);
 
     if (scorecard.holes.length === 0) {
       return NextResponse.json(
@@ -143,73 +122,22 @@ export async function POST(request: NextRequest) {
       dateIso: scorecard.dateIso,
     });
 
-    return NextResponse.json({ scorecard, proofToken });
+    return NextResponse.json({
+      scorecard,
+      proofToken,
+      confidence:
+        typeof result.output.confidence === "string" ? result.output.confidence : "medium",
+      generatedAt: result.generatedAt,
+      creditsCharged: result.creditsCharged,
+      creditsRemaining: result.creditsRemaining,
+    });
   } catch (error) {
-    return NextResponse.json(
-      {
-        message:
-          error instanceof Error ? error.message : "Could not parse the extracted scorecard JSON.",
-      },
-      { status: 422 },
-    );
+    const { body, status } = aiErrorPayload(error);
+    return NextResponse.json(body, { status });
   }
 }
 
-function readResponseText(payload: unknown) {
-  if (isRecord(payload) && typeof payload.output_text === "string") {
-    return payload.output_text;
-  }
-
-  if (!isRecord(payload) || !Array.isArray(payload.output)) {
-    throw new Error("OpenAI response did not include extracted text.");
-  }
-
-  const chunks: string[] = [];
-
-  for (const item of payload.output) {
-    if (!isRecord(item) || !Array.isArray(item.content)) {
-      continue;
-    }
-
-    for (const content of item.content) {
-      if (isRecord(content) && typeof content.text === "string") {
-        chunks.push(content.text);
-      }
-    }
-  }
-
-  const text = chunks.join("\n").trim();
-
-  if (!text) {
-    throw new Error("OpenAI response did not include extracted text.");
-  }
-
-  return text;
-}
-
-function parseJsonObject(text: string) {
-  const trimmed = text
-    .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "");
-  const jsonText = trimmed.startsWith("{") ? trimmed : trimmed.match(/\{[\s\S]*\}/)?.[0];
-
-  if (!jsonText) {
-    throw new Error("Scorecard extraction did not return JSON.");
-  }
-
-  return JSON.parse(jsonText) as unknown;
-}
-
-function readOpenAiError(payload: unknown) {
-  if (!isRecord(payload) || !isRecord(payload.error)) {
-    return null;
-  }
-
-  return typeof payload.error.message === "string" ? payload.error.message : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+function estimateDataUrlBytes(dataUrl: string) {
+  const base64 = dataUrl.split(",", 2)[1] ?? "";
+  return Math.ceil((base64.length * 3) / 4);
 }

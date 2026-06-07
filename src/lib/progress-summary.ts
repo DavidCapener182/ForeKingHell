@@ -3,6 +3,8 @@ import type { ClubAnalytics } from "@/lib/club-analytics";
 
 type ProgressTone = "green" | "sky" | "pink" | "amber" | "slate";
 
+const MAX_PRACTICE_PRIORITIES = 7;
+
 export type ProgressClub = {
   clubId: string;
   clubType: string;
@@ -605,7 +607,7 @@ function buildPracticePlan(clubs: ProgressClub[]): PracticePriority[] {
       } satisfies PracticePriority;
     })
     .sort((left, right) => right.score - left.score)
-    .slice(0, 4);
+    .slice(0, MAX_PRACTICE_PRIORITIES);
 }
 
 function buildDataGaps(rows: ProgressClubRow[]): DataGap[] {
