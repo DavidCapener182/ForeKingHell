@@ -5,7 +5,9 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
+  pgView,
   text,
   timestamp,
   uniqueIndex,
@@ -1804,6 +1806,59 @@ export const speedTrainingGoals = pgTable(
   ],
 );
 
+export const golfTrainingSessions = pgTable(
+  "fkh_golf_training_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: varchar("source_type", { length: 40 }).notNull().default("manual"),
+    sourceId: varchar("source_id", { length: 220 }),
+    title: varchar("title", { length: 180 }).notNull(),
+    sessionDate: date("session_date").notNull(),
+    durationMinutes: integer("duration_minutes"),
+    holesPlayed: integer("holes_played"),
+    totalSwings: integer("total_swings"),
+    fullSwings: integer("full_swings"),
+    shortGameSwings: integer("short_game_swings"),
+    puttingSwings: integer("putting_swings"),
+    walked: boolean("walked"),
+    usedCart: boolean("used_cart"),
+    competition: boolean("competition").notNull().default(false),
+    rpe: integer("rpe").notNull(),
+    mentalPressure: integer("mental_pressure"),
+    physicalDemand: integer("physical_demand"),
+    sessionLoad: numeric("session_load", { precision: 10, scale: 0, mode: "number" }).notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_golf_training_sessions_user_date_idx").on(table.userId, table.sessionDate),
+    index("fkh_golf_training_sessions_source_idx").on(table.sourceType, table.sourceId),
+    uniqueIndex("fkh_golf_training_sessions_user_source_unique_idx").on(
+      table.userId,
+      table.sourceType,
+      table.sourceId,
+    ),
+  ],
+);
+
+export const golfTrainingDailyLoad = pgView("fkh_golf_training_daily_load", {
+  userId: uuid("user_id").notNull(),
+  date: date("date").notNull(),
+  totalSessionLoad: numeric("total_session_load", {
+    precision: 12,
+    scale: 0,
+    mode: "number",
+  }).notNull(),
+  sessionCount: integer("session_count").notNull(),
+  totalMinutes: integer("total_minutes").notNull(),
+  totalSwings: integer("total_swings").notNull(),
+  holesPlayed: integer("holes_played").notNull(),
+}).existing();
+
 export const courseProviderAliases = pgTable(
   "fkh_course_provider_aliases",
   {
@@ -2514,6 +2569,7 @@ export type NewRapsodoSyncSession = typeof rapsodoSyncSessions.$inferInsert;
 export type NewSpeedTrainingSession = typeof speedTrainingSessions.$inferInsert;
 export type NewSpeedTrainingSwing = typeof speedTrainingSwings.$inferInsert;
 export type NewSpeedTrainingGoal = typeof speedTrainingGoals.$inferInsert;
+export type NewGolfTrainingSession = typeof golfTrainingSessions.$inferInsert;
 export type NewCourseProviderAlias = typeof courseProviderAliases.$inferInsert;
 export type NewCourseRecordCategory = typeof courseRecordCategories.$inferInsert;
 export type NewCourseRecord = typeof courseRecords.$inferInsert;

@@ -126,6 +126,12 @@ export const navGroups: AppNavGroup[] = [
         isActive: (pathname) => pathname.startsWith("/speed"),
       },
       {
+        href: "/stats/training-over-time",
+        label: "Training Load",
+        icon: LineChart,
+        isActive: (pathname) => pathname.startsWith("/stats/training-over-time"),
+      },
+      {
         href: "/equipment",
         label: "Equipment",
         icon: Wrench,
@@ -287,6 +293,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
     isActive: (pathname) =>
       pathname.startsWith("/bag") ||
       pathname.startsWith("/speed") ||
+      pathname.startsWith("/stats/training-over-time") ||
       pathname.startsWith("/shots") ||
       pathname.startsWith("/compare") ||
       pathname.startsWith("/equipment") ||

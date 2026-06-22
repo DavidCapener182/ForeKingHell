@@ -114,6 +114,7 @@ import {
   isShortGameTouchClubType,
   isTrackedClubType,
 } from "@/lib/club-format";
+import { buildClubEvolutionRows, type ClubEvolutionMeasuredPoint } from "@/lib/club-evolution";
 import { ensureCurrentSocialProfile, getBlockedUserIds, getFriendIds } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-training-data";
@@ -164,6 +165,7 @@ type PageProps = {
 
 const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
 const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
+const EVOLUTION_SHOTS_PER_CLUB = 1200;
 
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
@@ -733,7 +735,7 @@ async function getBag() {
 
   const clubData = await Promise.all(
     mergedClubRows.map(async (club) => {
-      const [recentShots, [shotCount]] = await Promise.all([
+      const [recentShots, evolutionShots, [shotCount]] = await Promise.all([
         db
           .select({
             id: shots.id,
@@ -772,6 +774,43 @@ async function getBag() {
           .orderBy(desc(shots.shotAt))
           .limit(RECENT_SHOTS_PER_CLUB),
         db
+          .select({
+            id: shots.id,
+            clubId: shots.clubId,
+            shotNumber: shots.shotNumber,
+            shotAt: shots.shotAt,
+            carryYd: shots.carryYd,
+            totalYd: shots.totalYd,
+            sideCarryYd: shots.sideCarryYd,
+            ballSpeedMph: shots.ballSpeedMph,
+            clubSpeedMph: shots.clubSpeedMph,
+            launchAngleDeg: shots.launchAngleDeg,
+            launchDirectionDeg: shots.launchDirectionDeg,
+            apexFt: shots.apexFt,
+            descentAngleDeg: shots.descentAngleDeg,
+            attackAngleDeg: shots.attackAngleDeg,
+            clubPathDeg: shots.clubPathDeg,
+            faceAngleDeg: shots.faceAngleDeg,
+            spinRate: shots.spinRate,
+            smashFactor: shots.smashFactor,
+            spinAxis: shots.spinAxis,
+            courseHoleNumber: shots.courseHoleNumber,
+            sessionType: sessions.type,
+            shotCategory: shots.shotCategory,
+            qualityTag: shots.qualityTag,
+          })
+          .from(shots)
+          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+          .where(
+            and(
+              eq(shots.userId, userId),
+              eq(sessions.userId, userId),
+              inArray(shots.clubId, club.memberIds),
+            ),
+          )
+          .orderBy(desc(shots.shotAt))
+          .limit(EVOLUTION_SHOTS_PER_CLUB),
+        db
           .select({ value: count() })
           .from(shots)
           .where(and(eq(shots.userId, userId), inArray(shots.clubId, club.memberIds))),
@@ -780,6 +819,7 @@ async function getBag() {
       return {
         club,
         recentShots,
+        evolutionShots,
         personalBestRows: club.memberIds.flatMap((clubId) =>
           personalBestByClubId.get(clubId) ? [personalBestByClubId.get(clubId)!] : [],
         ),
@@ -790,7 +830,7 @@ async function getBag() {
 
   return clubData
     .filter(({ club }) => isTrackedClubType(club.type))
-    .map(({ club, recentShots, personalBestRows, rawShotCount }) => {
+    .map(({ club, recentShots, evolutionShots, personalBestRows, rawShotCount }) => {
       const accent = clubAccent(club.type);
       const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
       const isShortGameTouch = isShortGameTouchClubType(club.type);
@@ -827,6 +867,7 @@ async function getBag() {
         decisionLabel,
         rawShotCount,
         shots: recentShots,
+        evolutionShots,
         personalBest,
         touch,
         stock,
@@ -3672,10 +3713,17 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
-  const clubLines = clubs
-    .map((club) => ({ club, points: clubEvolutionPoints(club) }))
-    .filter((item) => item.points.length > 0)
-    .slice(0, 12);
+  const clubLines = buildClubEvolutionRows(
+    clubs.map((club) => ({
+      ...club,
+      shots: club.evolutionShots,
+    })),
+    {
+      maxShots: RECENT_SHOTS_PER_CLUB,
+      monthCount: 3,
+      monthFormatter: shortMonthFormatter,
+    },
+  ).slice(0, 12);
 
   if (clubLines.length === 0) {
     return null;
@@ -3696,7 +3744,7 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
             <span className="text-right">Change</span>
             <span className="text-right">Health</span>
           </div>
-          {clubLines.map(({ club, points }) => (
+          {clubLines.map(({ club, measuredPoints, points }) => (
             <Link
               key={club.id}
               href={`/bag/${club.id}`}
@@ -3706,16 +3754,25 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
               <span className="font-semibold">{formatClubType(club.type)}</span>
               <span className="grid grid-cols-3 gap-2">
                 {points.map((point) => (
-                  <span key={point.key} className="rounded-md bg-white/80 px-2 py-1">
+                  <span
+                    key={point.key}
+                    className={`rounded-md px-2 py-1 ${
+                      point.carryYd === null ? "bg-white/45 text-muted-foreground" : "bg-white/80"
+                    }`}
+                  >
                     <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                       {point.label}
                     </span>
-                    <span className="font-semibold">{formatMetric(point.carryYd)} yd</span>
+                    <span className="font-semibold">
+                      {point.carryYd === null ? "No shots" : `${formatMetric(point.carryYd)} yd`}
+                    </span>
                   </span>
                 ))}
               </span>
-              <span className={`text-right font-semibold ${clubEvolutionTextClass(points)}`}>
-                {clubEvolutionDelta(points)}
+              <span
+                className={`text-right font-semibold ${clubEvolutionTextClass(measuredPoints)}`}
+              >
+                {clubEvolutionDelta(measuredPoints)}
               </span>
               <span className="text-right">
                 <StatusPill tone={clubHealthReadout(club).tone}>
@@ -3731,12 +3788,12 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
             <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {clubLines.map(({ club, points }) => (
+            {clubLines.map(({ club, measuredPoints }) => (
               <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-base font-semibold">{formatClubType(club.type)}</p>
-                  <StatusPill tone={clubEvolutionTone(points)}>
-                    {clubEvolutionDelta(points)}
+                  <StatusPill tone={clubEvolutionTone(measuredPoints)}>
+                    {clubEvolutionDelta(measuredPoints)}
                   </StatusPill>
                 </div>
                 <p className="mt-2 text-sm leading-5 text-muted-foreground">
@@ -3902,48 +3959,7 @@ function clubCurrentMiss(club: BagClub): {
   };
 }
 
-function clubEvolutionPoints(club: BagClub) {
-  const { filteredShots } = selectStockYardageShots(club.shots, RECENT_SHOTS_PER_CLUB, {
-    clubType: club.type,
-  });
-  const grouped = new Map<string, { label: string; values: number[] }>();
-
-  for (const shot of filteredShots) {
-    if (!isFiniteMetric(shot.carryYd)) {
-      continue;
-    }
-
-    const date = shotDate(shot.shotAt);
-
-    if (!date) {
-      continue;
-    }
-
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    const current = grouped.get(key) ?? {
-      label: shortMonthFormatter.format(date),
-      values: [],
-    };
-    current.values.push(shot.carryYd);
-    grouped.set(key, current);
-  }
-
-  const points = [...grouped.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, group]) => ({
-      key,
-      label: group.label,
-      carryYd: roundOne(percentile(group.values, 0.5)),
-    }))
-    .filter((point): point is { key: string; label: string; carryYd: number } =>
-      isFiniteMetric(point.carryYd),
-    )
-    .slice(-3);
-
-  return points.length >= 2 ? points : [];
-}
-
-function clubEvolutionDelta(points: Array<{ carryYd: number }>) {
+function clubEvolutionDelta(points: ClubEvolutionMeasuredPoint[]) {
   if (points.length < 2) {
     return "Building";
   }
@@ -3957,7 +3973,7 @@ function clubEvolutionDelta(points: Array<{ carryYd: number }>) {
   return formatSignedYards(delta);
 }
 
-function clubEvolutionTone(points: Array<{ carryYd: number }>): BagDoctorFinding["tone"] {
+function clubEvolutionTone(points: ClubEvolutionMeasuredPoint[]): BagDoctorFinding["tone"] {
   if (points.length < 2) {
     return "slate";
   }
@@ -3975,7 +3991,7 @@ function clubEvolutionTone(points: Array<{ carryYd: number }>): BagDoctorFinding
   return "sky";
 }
 
-function clubEvolutionTextClass(points: Array<{ carryYd: number }>) {
+function clubEvolutionTextClass(points: ClubEvolutionMeasuredPoint[]) {
   const tone = clubEvolutionTone(points);
 
   if (tone === "green") {

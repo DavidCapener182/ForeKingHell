@@ -40,6 +40,10 @@ const aiPlatformMigration = readFileSync(
   join(process.cwd(), "drizzle/0029_ai_platform.sql"),
   "utf8",
 );
+const trainingOverTimeMigration = readFileSync(
+  join(process.cwd(), "drizzle/0030_training_over_time.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -321,5 +325,16 @@ describe("RLS migration", () => {
     expect(aiPlatformMigration).toContain('CREATE POLICY "fkh_ai_generation_cache_owner_all"');
     expect(aiPlatformMigration).toContain('"user_id" = auth.uid()');
     expect(aiPlatformMigration).toContain("'ai_monthly_credits'");
+  });
+
+  it("keeps golf training load sessions user-owned behind RLS", () => {
+    expect(trainingOverTimeMigration).toContain(
+      'ALTER TABLE "fkh_golf_training_sessions" ENABLE ROW LEVEL SECURITY',
+    );
+    expect(trainingOverTimeMigration).toContain(
+      'CREATE POLICY "fkh_golf_training_sessions_owner_all"',
+    );
+    expect(trainingOverTimeMigration).toContain('"user_id" = auth.uid()');
+    expect(trainingOverTimeMigration).toContain("WITH (security_invoker = true)");
   });
 });

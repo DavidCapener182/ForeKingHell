@@ -5,6 +5,7 @@ import { and, asc, desc, eq, gte, isNotNull } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   clubs,
+  sessions as practiceSessions,
   shots,
   speedTrainingGoals,
   speedTrainingSessions,
@@ -50,6 +51,23 @@ export type SpeedCentreSession = {
   maxSpeedMph: number | null;
   targetSpeedMph: number | null;
   notes: string | null;
+};
+
+export type SpeedShotSession = {
+  id: string;
+  sessionId: string;
+  sessionDateIso: string;
+  source: string;
+  sessionType: string;
+  fileName: string | null;
+  clubId: string;
+  clubType: string;
+  clubLabel: string;
+  shotCount: number;
+  minSpeedMph: number | null;
+  avgSpeedMph: number | null;
+  maxSpeedMph: number | null;
+  latestShotAtIso: string | null;
 };
 
 export type SpeedTrendPoint = {
@@ -141,6 +159,8 @@ export type ClubSpeedRow = {
   shotLast20AvgMph: number | null;
   shotThirtyDayAvgMph: number | null;
   shotPbMph: number | null;
+  latestShotSessionAvgMph: number | null;
+  latestShotSessionGapToPbMph: number | null;
   shotSampleSize: number;
   latestShotAtIso: string | null;
   transferGapMph: number | null;
@@ -206,6 +226,7 @@ export type SpeedCentrePageData = {
   clubOptions: SpeedClubOption[];
   goals: SpeedGoal[];
   sessions: SpeedCentreSession[];
+  shotSessions: SpeedShotSession[];
   clubSpeedRows: ClubSpeedRow[];
   trend: SpeedTrendPoint[];
   rolling: SpeedRollingSummary;
@@ -310,10 +331,14 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       .where(
         and(eq(shots.userId, userId), eq(shots.clubType, "driver"), isNotNull(shots.clubSpeedMph)),
       )
-      .orderBy(desc(shots.shotAt))
-      .limit(200),
+      .orderBy(desc(shots.shotAt)),
     db
       .select({
+        sessionId: shots.sessionId,
+        sessionDate: practiceSessions.date,
+        sessionType: practiceSessions.type,
+        sessionSource: practiceSessions.source,
+        fileName: practiceSessions.fileName,
         clubId: shots.clubId,
         clubType: shots.clubType,
         brand: clubs.brand,
@@ -323,9 +348,16 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       })
       .from(shots)
       .innerJoin(clubs, eq(shots.clubId, clubs.id))
-      .where(and(eq(shots.userId, userId), eq(clubs.active, true), isNotNull(shots.clubSpeedMph)))
-      .orderBy(desc(shots.shotAt))
-      .limit(1000),
+      .innerJoin(practiceSessions, eq(shots.sessionId, practiceSessions.id))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          eq(practiceSessions.userId, userId),
+          eq(clubs.active, true),
+          isNotNull(shots.clubSpeedMph),
+        ),
+      )
+      .orderBy(desc(shots.shotAt)),
     db
       .select({
         clubId: stockYardages.clubId,
@@ -400,6 +432,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     clubOptions,
     goals,
     sessions,
+    shotSessions: buildShotSpeedSessions(trackedAllClubShotRows),
     clubSpeedRows: buildClubSpeedRows(trackedClubRows, sessions, trackedAllClubShotRows),
     trend: buildTrendPoints(sessions),
     rolling: buildRollingSummary(sessions),
@@ -482,8 +515,7 @@ export async function getSpeedCoachCardData(userId: string) {
             isNotNull(shots.clubSpeedMph),
           ),
         )
-        .orderBy(desc(shots.shotAt))
-        .limit(200),
+        .orderBy(desc(shots.shotAt)),
       db
         .select({
           clubType: clubs.type,
@@ -783,9 +815,7 @@ function buildSpeedCentreSummary(
     sessions.find((session) => session.targetSpeedMph !== null)?.targetSpeedMph ??
     null;
   const targetSpeedMph =
-    targetGoal?.targetSpeedMph ??
-    benchmarkTarget?.targetSpeedMph ??
-    sessionTargetSpeedMph;
+    targetGoal?.targetSpeedMph ?? benchmarkTarget?.targetSpeedMph ?? sessionTargetSpeedMph;
   const trainingPersonalBestMph = maxOrNull(
     sessions
       .map((session) => session.maxSpeedMph)
@@ -1319,6 +1349,61 @@ function buildShotSpeedSummary(
   };
 }
 
+function buildShotSpeedSessions(
+  shotRows: Array<{
+    sessionId: string;
+    sessionDate: Date;
+    sessionType: string;
+    sessionSource: string;
+    fileName: string | null;
+    clubId: string;
+    clubType: string;
+    brand: string | null;
+    model: string | null;
+    shotAt: Date;
+    clubSpeedMph: number | null;
+  }>,
+): SpeedShotSession[] {
+  const grouped = groupByKey(shotRows, (shot) => `${shot.sessionId}:${shot.clubId}`);
+
+  return [...grouped.values()]
+    .map((rows) => {
+      const first = rows[0];
+      const speeds = rows
+        .map((shot) => shot.clubSpeedMph)
+        .filter((value): value is number => value !== null);
+      const latestShotAt = rows.reduce<Date | null>((latest, shot) => {
+        return !latest || shot.shotAt.getTime() > latest.getTime() ? shot.shotAt : latest;
+      }, null);
+
+      return {
+        id: `${first.sessionId}:${first.clubId}`,
+        sessionId: first.sessionId,
+        sessionDateIso: first.sessionDate.toISOString(),
+        source: first.sessionSource,
+        sessionType: first.sessionType,
+        fileName: first.fileName,
+        clubId: first.clubId,
+        clubType: first.clubType,
+        clubLabel: `${formatClubType(first.clubType)} - ${formatClubModelName({
+          type: first.clubType,
+          brand: first.brand,
+          model: first.model,
+        })}`,
+        shotCount: speeds.length,
+        minSpeedMph: speeds.length > 0 ? Math.min(...speeds) : null,
+        avgSpeedMph: average(speeds),
+        maxSpeedMph: maxOrNull(speeds),
+        latestShotAtIso: latestShotAt?.toISOString() ?? null,
+      };
+    })
+    .filter((session) => session.shotCount > 0)
+    .sort(
+      (left, right) =>
+        new Date(right.sessionDateIso).getTime() - new Date(left.sessionDateIso).getTime(),
+    );
+}
+
 function buildClubSpeedRows(
   clubRows: Array<{
     id: string;
@@ -1328,6 +1413,7 @@ function buildClubSpeedRows(
   }>,
   sessions: SpeedCentreSession[],
   shotRows: Array<{
+    sessionId: string;
     clubId: string;
     clubType: string;
     brand: string | null;
@@ -1378,7 +1464,7 @@ function buildClubSpeedRow(input: {
   clubType: string;
   clubLabel: string;
   sessions: SpeedCentreSession[];
-  shots: Array<{ shotAt: Date; clubSpeedMph: number | null }>;
+  shots: Array<{ sessionId: string; shotAt: Date; clubSpeedMph: number | null }>;
   thirtyDaysAgo: number;
 }): ClubSpeedRow {
   const sortedSessions = [...input.sessions].sort(
@@ -1395,8 +1481,18 @@ function buildClubSpeedRow(input: {
     .filter((shot) => shot.shotAt.getTime() >= input.thirtyDaysAgo)
     .map((shot) => shot.clubSpeedMph)
     .filter((value): value is number => value !== null);
+  const latestShotSessionId = sortedShots[0]?.sessionId ?? null;
+  const latestShotSessionSpeeds =
+    latestShotSessionId === null
+      ? []
+      : sortedShots
+          .filter((shot) => shot.sessionId === latestShotSessionId)
+          .map((shot) => shot.clubSpeedMph)
+          .filter((value): value is number => value !== null);
   const trainingAvgMph = sortedSessions[0]?.avgSpeedMph ?? null;
   const shotLast20AvgMph = average(shotSpeeds.slice(0, 20));
+  const shotPbMph = maxOrNull(shotSpeeds);
+  const latestShotSessionAvgMph = average(latestShotSessionSpeeds);
   const benchmarkTarget = getClubSpeedBenchmarkTarget(
     input.clubType,
     shotLast20AvgMph ?? trainingAvgMph,
@@ -1422,7 +1518,12 @@ function buildClubSpeedRow(input: {
     trainingSwingCount: sortedSessions.reduce((total, session) => total + session.swingCount, 0),
     shotLast20AvgMph,
     shotThirtyDayAvgMph: average(thirtyDayShotSpeeds),
-    shotPbMph: maxOrNull(shotSpeeds),
+    shotPbMph,
+    latestShotSessionAvgMph,
+    latestShotSessionGapToPbMph:
+      latestShotSessionAvgMph !== null && shotPbMph !== null
+        ? roundOneDecimal(latestShotSessionAvgMph - shotPbMph)
+        : null,
     shotSampleSize: shotSpeeds.length,
     latestShotAtIso: sortedShots[0]?.shotAt.toISOString() ?? null,
     transferGapMph,

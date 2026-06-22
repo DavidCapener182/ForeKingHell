@@ -35,10 +35,12 @@ import {
   getSpeedCentrePageData,
   type ClubSpeedRow,
   type FutureBagProjectionRow,
+  type ShotSpeedSummary,
   type SpeedCarryProjection,
   type SpeedCentreSession,
   type SpeedGoal,
   type SpeedMonthPoint,
+  type SpeedShotSession,
   type SpeedSideSummary,
   type SpeedTransferInsight,
   type SpeedTrendPoint,
@@ -94,6 +96,20 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
   const selectedRolling = selectedClub?.rolling ?? data.rolling;
   const selectedPrescription = selectedClub?.prescription ?? summary.prescription;
   const selectedCarryProjection = selectedClub?.carryProjection ?? summary.carryProjection;
+  const selectedShotReadout = selectedClub
+    ? buildSelectedShotReadout(selectedClub)
+    : buildDriverShotReadout(summary.shotSpeed);
+  const selectedShotSessions =
+    selectedClub?.row.clubId === null
+      ? []
+      : selectedClub
+        ? data.shotSessions.filter((session) => session.clubId === selectedClub.row.clubId)
+        : data.shotSessions;
+  const selectedTrainingSessions = selectedClub ? selectedClub.sessions : data.sessions;
+  const recentSpeedEvidenceRows = buildRecentSpeedEvidenceRows(
+    selectedTrainingSessions,
+    selectedShotSessions,
+  );
   const selectedSpeedMilestones =
     selectedClub?.speedMilestones ??
     buildSpeedMilestones({
@@ -102,7 +118,8 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
       carryProjection: summary.carryProjection,
     });
   const selectedSpeedTimeline =
-    selectedClub?.speedTimeline ?? buildSpeedTimeline(summary.currentSpeedMph, summary.targetSpeedMph);
+    selectedClub?.speedTimeline ??
+    buildSpeedTimeline(summary.currentSpeedMph, summary.targetSpeedMph);
   const hasSelectedSpeedTrend = selectedTrend.length >= 2;
 
   return (
@@ -110,7 +127,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
       <PageHeader
         eyebrow={<StatusPill tone="sky">Speed Centre</StatusPill>}
         title="Athletic speed tracking"
-        description="Track no-ball speed swings separately from shot performance so speed work does not distort bag numbers. No-ball means a training swing where you do not hit a ball."
+        description="Uploaded range shots feed with-ball speed, PBs, and projections. No-ball speed sessions stay separate so speed work does not distort bag numbers."
         metrics={[
           {
             label: "Playing speed",
@@ -130,7 +147,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
           {
             label: "With ball",
             value: formatSpeed(summary.shotSpeed.last20DriverAvgMph),
-            detail: "Driver benchmark",
+            detail: "Uploaded driver shots",
           },
         ]}
         actions={
@@ -336,11 +353,11 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
         <DataPanel>
           <SectionHeader
-            title="Speed trend"
+            title={selectedClub ? `${selectedClub.shortLabel} speed evidence` : "Speed evidence"}
             description={
               selectedClub
-                ? `No-ball ${selectedClub.shortLabel} sessions over time, kept separate from shot sessions.`
-                : "No-ball training averages over time, kept separate from shot sessions."
+                ? `No-ball ${selectedClub.shortLabel} training stays separate from uploaded with-ball range shots.`
+                : "No-ball training stays separate from uploaded with-ball driver shots."
             }
             action={
               <StatusPill tone={selectedPrescription.priority === "High" ? "amber" : "sky"}>
@@ -374,6 +391,10 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                 headline={selectedPrescription.headline}
                 recommendation={selectedPrescription.recommendation}
                 goal={selectedPrescription.goal}
+              />
+              <RangeShotSpeedCard
+                readout={selectedShotReadout}
+                sessionCount={selectedShotSessions.length}
               />
               <div className="grid gap-2">
                 <DataPair label="Forecast basis" value={forecastText(selectedTrend)} />
@@ -499,9 +520,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
               {numberFormatter.format(selectedCarryProjection.yardsPerMph)} carry yards per mph.
             </div>
             <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-              {selectedClub
-                ? selectedPotentialFocus(selectedClub)
-                : summary.driverEfficiency.focus}
+              {selectedClub ? selectedPotentialFocus(selectedClub) : summary.driverEfficiency.focus}
             </div>
             {selectedSpeedMilestones.length > 0 ? (
               <div className="rounded-lg border border-border/70 bg-white/65 p-3">
@@ -521,9 +540,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                         <p className="text-sm font-semibold tabular-nums text-slate-950">
                           {formatMilestoneSpeed(milestone.speedMph)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {milestone.label}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{milestone.label}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold tabular-nums text-slate-950">
@@ -539,8 +556,9 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
               </div>
             ) : null}
             <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-              Actual with-ball shots feed this page as a read-only comparison. Speed Centre
-              sessions do not write back into shots, bag yardages, or stock gapping.
+              Uploaded with-ball range shots feed playing speed, PBs, carry potential, and club
+              comparisons. Speed Centre sessions do not write back into shots, bag yardages, or
+              stock gapping.
             </div>
           </div>
         </DataPanel>
@@ -565,15 +583,17 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
               </StatusPill>
             }
           />
-            <div className="grid gap-3 p-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 p-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <PotentialMetric
                 label="Current"
                 value={formatSpeed(selectedClub?.currentSpeedMph ?? summary.currentSpeedMph)}
               />
               <PotentialMetric
                 label="No-ball avg"
-                value={formatSpeed(selectedClub?.row.trainingAvgMph ?? summary.trainingCurrentSpeedMph)}
+                value={formatSpeed(
+                  selectedClub?.row.trainingAvgMph ?? summary.trainingCurrentSpeedMph,
+                )}
               />
               <PotentialMetric
                 label="Target"
@@ -595,7 +615,9 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
               <div className="grid gap-2">
                 <DataPair
                   label="Strike efficiency"
-                  value={strikeEfficiencyLabel(selectedClub?.transferInsight ?? summary.transferInsight)}
+                  value={strikeEfficiencyLabel(
+                    selectedClub?.transferInsight ?? summary.transferInsight,
+                  )}
                 />
                 <DataPair
                   label="No-ball to with-ball"
@@ -691,8 +713,8 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                     summary.sideSummary.sideBalancePercent) === null
                 }
                 needsOverspeed={
-                  (selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio) ===
-                  null
+                  (selectedClub?.sideSummary.overspeedRatio ??
+                    summary.sideSummary.overspeedRatio) === null
                 }
               />
             ) : null}
@@ -885,39 +907,49 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
           <DataPanel>
             <SectionHeader
               title="Recent sessions"
-              description="Manual and future synced speed work."
+              description="No-ball speed work plus imported shot sessions with club speed."
               action={<Activity className="size-4 text-primary" aria-hidden="true" />}
             />
             <div className="grid gap-2 p-4">
-              {data.sessions.length === 0 ? (
+              {recentSpeedEvidenceRows.length === 0 ? (
                 <EmptyState
                   icon={<Gauge className="size-5" aria-hidden="true" />}
-                  title="No speed sessions yet"
-                  description="Add the R-Speed readings from the Rapsodo app to create your first baseline."
+                  title="No speed evidence yet"
+                  description="Import shots with club speed or add a no-ball speed session to build the speed history."
                 />
               ) : (
-                data.sessions.slice(0, 10).map((session) => (
+                recentSpeedEvidenceRows.map((session) => (
                   <div
-                    key={session.id}
+                    key={session.key}
                     className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-3 md:grid-cols-[minmax(0,1fr)_repeat(4,88px)_auto]"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-950">
-                        {session.implementLabel}
+                        {session.title}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(session.sessionDateIso)} · {session.swingCount} swings ·{" "}
-                        {session.source === "manual" ? "Manual" : "R-Cloud"}
+                        {formatDate(session.dateIso)} · {session.countLabel} · {session.sourceLabel}
                       </p>
                     </div>
                     <MetricCell label="Avg" value={formatSpeedCompact(session.avgSpeedMph)} />
                     <MetricCell label="Max" value={formatSpeedCompact(session.maxSpeedMph)} />
                     <MetricCell label="Min" value={formatSpeedCompact(session.minSpeedMph)} />
-                    <MetricCell label="Target" value={formatSpeedCompact(session.targetSpeedMph)} />
+                    <MetricCell
+                      label={session.kind === "shot" ? "Type" : "Target"}
+                      value={
+                        session.kind === "shot"
+                          ? "With ball"
+                          : formatSpeedCompact(session.targetSpeedMph)
+                      }
+                    />
                     <Button asChild variant="outline" size="sm" className="self-center">
-                      <Link href={`/speed/sessions/${session.id}`} prefetch={false}>
-                        <Pencil aria-hidden="true" />
-                        Edit
+                      <Link href={session.href} prefetch={false}>
+                        {session.kind === "shot" ? (
+                          <Gauge aria-hidden="true" />
+                        ) : (
+                          <Pencil aria-hidden="true" />
+                        )}
+                        {session.kind === "shot" ? "View shots" : "Edit"}
                       </Link>
                     </Button>
                   </div>
@@ -941,16 +973,15 @@ function SpeedTrendStarterCard({
   personalBestMph: number | null;
 }) {
   const sessionsNeeded = Math.max(0, 2 - sessionCount);
-  const sessionNeedCopy =
-    sessionsNeeded === 1 ? "Need 1 more" : `Need ${sessionsNeeded} sessions`;
+  const sessionNeedCopy = sessionsNeeded === 1 ? "Need 1 more" : `Need ${sessionsNeeded} sessions`;
 
   return (
     <div className="rounded-lg border border-border/70 bg-white/65 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Speed Trend</p>
+          <p className="text-sm font-semibold text-slate-950">No-ball training trend</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {sessionCount} {sessionCount === 1 ? "session" : "sessions"} recorded
+            {sessionCount} no-ball {sessionCount === 1 ? "session" : "sessions"} recorded
           </p>
         </div>
         <StatusPill tone="amber">{sessionNeedCopy}</StatusPill>
@@ -960,13 +991,17 @@ function SpeedTrendStarterCard({
         <PotentialMetric label="Personal best" value={formatSpeed(personalBestMph)} />
         <PotentialMetric
           label="Next target"
-          value={currentAverageMph === null ? "Log session" : `Beat ${formatSpeedCompact(currentAverageMph)}`}
+          value={
+            currentAverageMph === null
+              ? "Log session"
+              : `Beat ${formatSpeedCompact(currentAverageMph)}`
+          }
         />
       </div>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">
         {sessionsNeeded <= 1
-          ? "Add one more speed session and this switches from a baseline card to the trend graph."
-          : "Log two speed sessions and this switches from a baseline card to the trend graph."}
+          ? "Add one more no-ball speed session and this switches from a baseline card to the trend graph."
+          : "Log two no-ball speed sessions and this switches from a baseline card to the trend graph."}
       </p>
     </div>
   );
@@ -989,6 +1024,42 @@ function SpeedPrescriptionCard({
       </div>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{recommendation}</p>
       <p className="mt-2 text-sm font-medium text-slate-950">{goal}</p>
+    </div>
+  );
+}
+
+function RangeShotSpeedCard({
+  readout,
+  sessionCount,
+}: {
+  readout: ShotSpeedReadout;
+  sessionCount: number;
+}) {
+  const hasShots = readout.sampleSize > 0;
+
+  return (
+    <div className="rounded-lg border border-border/70 bg-white/65 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Gauge className="size-4 text-primary" aria-hidden="true" />
+          <p className="text-sm font-semibold text-slate-950">With-ball shot speed</p>
+        </div>
+        <StatusPill tone={hasShots ? "green" : "amber"}>
+          {hasShots ? `${readout.sampleSize} shots · ${sessionCount} sessions` : "No shots"}
+        </StatusPill>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        {hasShots
+          ? `${readout.label} shots from previous imports are feeding playing speed and projections.`
+          : `Upload ${readout.label.toLowerCase()} shots with club speed to build the with-ball side.`}
+      </p>
+      <div className="mt-3 grid gap-2">
+        <DataPair label="Previous sessions" value={String(sessionCount)} />
+        <DataPair label="Shot L20" value={formatSpeed(readout.last20AvgMph)} />
+        <DataPair label="30-day shot avg" value={formatSpeed(readout.thirtyDayAvgMph)} />
+        <DataPair label="Shot PB" value={formatSpeed(readout.personalBestMph)} />
+        <DataPair label="Latest shot" value={formatLatestShotDate(readout.latestShotAtIso)} />
+      </div>
     </div>
   );
 }
@@ -1203,7 +1274,7 @@ function ClubSpeedRowCard({ row }: { row: ClubSpeedRow }) {
   const hasShots = row.shotSampleSize > 0;
 
   return (
-    <div className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-3 lg:grid-cols-[minmax(0,1fr)_repeat(7,minmax(78px,108px))]">
+    <div className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-3 lg:grid-cols-[minmax(0,1fr)_repeat(9,minmax(78px,108px))]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold text-slate-950">{row.clubLabel}</p>
@@ -1227,22 +1298,15 @@ function ClubSpeedRowCard({ row }: { row: ClubSpeedRow }) {
       <MetricCell label="No-ball avg" value={formatSpeedCompact(row.trainingAvgMph)} />
       <MetricCell label="No-ball PB" value={formatSpeedCompact(row.trainingPbMph)} />
       <MetricCell label="Shot L20" value={formatSpeedCompact(row.shotLast20AvgMph)} />
+      <MetricCell label="Latest avg" value={formatSpeedCompact(row.latestShotSessionAvgMph)} />
+      <MetricCell label="Vs shot PB" value={formatShotPbGap(row.latestShotSessionGapToPbMph)} />
       <MetricCell label="No-ball gap" value={formatClubTransferGap(row)} />
       <MetricCell label="Shot PB" value={formatSpeedCompact(row.shotPbMph)} />
       <MetricCell
         label={systemTargetLabel(row)}
         value={formatSpeedCompact(row.benchmarkTarget?.targetSpeedMph)}
       />
-      <MetricCell
-        label="Last"
-        value={
-          row.trainingLastSessionIso
-            ? formatShortDate(row.trainingLastSessionIso)
-            : row.latestShotAtIso
-              ? formatShortDate(row.latestShotAtIso)
-              : "-"
-        }
-      />
+      <MetricCell label="Last" value={formatLatestClubSpeedDate(row)} />
     </div>
   );
 }
@@ -1340,6 +1404,23 @@ function formatShortDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatLatestShotDate(value: string | null) {
+  return value ? formatShortDate(value) : "No shot-speed samples";
+}
+
+function formatLatestClubSpeedDate(row: ClubSpeedRow) {
+  const latestIso = latestIsoDate([row.trainingLastSessionIso, row.latestShotAtIso]);
+  return latestIso ? formatShortDate(latestIso) : "-";
+}
+
+function latestIsoDate(values: Array<string | null>) {
+  return (
+    values
+      .filter((value): value is string => Boolean(value))
+      .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ?? null
+  );
+}
+
 function formatTrainingToShotGap(trainingSpeed: number | null, shotSpeed: number | null) {
   if (!trainingSpeed || !shotSpeed) {
     return "Need no-ball and with-ball";
@@ -1366,6 +1447,10 @@ function formatClubTransferGap(row: ClubSpeedRow) {
   }
 
   return "Needs speed data";
+}
+
+function formatShotPbGap(value: number | null) {
+  return value === null ? "-" : formatGap(value);
 }
 
 function transferStatusLabel(row: ClubSpeedRow) {
@@ -1512,6 +1597,29 @@ type SelectedRollingSummary = {
   monthlyPoints: SpeedMonthPoint[];
 };
 
+type ShotSpeedReadout = {
+  label: string;
+  last20AvgMph: number | null;
+  thirtyDayAvgMph: number | null;
+  personalBestMph: number | null;
+  sampleSize: number;
+  latestShotAtIso: string | null;
+};
+
+type RecentSpeedEvidenceRow = {
+  key: string;
+  kind: "training" | "shot";
+  title: string;
+  dateIso: string;
+  countLabel: string;
+  sourceLabel: string;
+  avgSpeedMph: number | null;
+  maxSpeedMph: number | null;
+  minSpeedMph: number | null;
+  targetSpeedMph: number | null;
+  href: string;
+};
+
 type SelectedClubContext = {
   row: ClubSpeedRow;
   shortLabel: string;
@@ -1591,6 +1699,82 @@ function buildSelectedClubContext(input: {
   };
 }
 
+function buildDriverShotReadout(shotSpeed: ShotSpeedSummary): ShotSpeedReadout {
+  return {
+    label: "Driver",
+    last20AvgMph: shotSpeed.last20DriverAvgMph,
+    thirtyDayAvgMph: shotSpeed.thirtyDayDriverAvgMph,
+    personalBestMph: shotSpeed.personalBestDriverMph,
+    sampleSize: shotSpeed.sampleSize,
+    latestShotAtIso: shotSpeed.latestShotAtIso,
+  };
+}
+
+function buildSelectedShotReadout(context: SelectedClubContext): ShotSpeedReadout {
+  return {
+    label: context.shortLabel,
+    last20AvgMph: context.row.shotLast20AvgMph,
+    thirtyDayAvgMph: context.row.shotThirtyDayAvgMph,
+    personalBestMph: context.row.shotPbMph,
+    sampleSize: context.row.shotSampleSize,
+    latestShotAtIso: context.row.latestShotAtIso,
+  };
+}
+
+function buildRecentSpeedEvidenceRows(
+  sessions: SpeedCentreSession[],
+  shotSessions: SpeedShotSession[],
+): RecentSpeedEvidenceRow[] {
+  const trainingRows: RecentSpeedEvidenceRow[] = sessions.map((session) => ({
+    key: `training:${session.id}`,
+    kind: "training",
+    title: session.implementLabel,
+    dateIso: session.sessionDateIso,
+    countLabel: `${session.swingCount} swings`,
+    sourceLabel: session.source === "manual" ? "No-ball manual" : "No-ball R-Cloud",
+    avgSpeedMph: session.avgSpeedMph,
+    maxSpeedMph: session.maxSpeedMph,
+    minSpeedMph: session.minSpeedMph,
+    targetSpeedMph: session.targetSpeedMph,
+    href: `/speed/sessions/${session.id}`,
+  }));
+  const shotRows: RecentSpeedEvidenceRow[] = shotSessions.map((session) => ({
+    key: `shot:${session.id}`,
+    kind: "shot",
+    title: session.clubLabel,
+    dateIso: session.sessionDateIso,
+    countLabel: `${session.shotCount} shots`,
+    sourceLabel: `${formatSessionSource(session.source)} · ${formatSessionType(
+      session.sessionType,
+    )}`,
+    avgSpeedMph: session.avgSpeedMph,
+    maxSpeedMph: session.maxSpeedMph,
+    minSpeedMph: session.minSpeedMph,
+    targetSpeedMph: null,
+    href: `/shots?sessionId=${encodeURIComponent(session.sessionId)}`,
+  }));
+
+  return [...trainingRows, ...shotRows]
+    .sort((left, right) => new Date(right.dateIso).getTime() - new Date(left.dateIso).getTime())
+    .slice(0, 12);
+}
+
+function formatSessionSource(value: string) {
+  return value.toLowerCase() === "rapsodo" ? "Rapsodo" : titleCase(value);
+}
+
+function formatSessionType(value: string) {
+  return titleCase(value.replace(/_/g, " "));
+}
+
+function titleCase(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => `${word.slice(0, 1).toUpperCase()}${word.slice(1).toLowerCase()}`)
+    .join(" ");
+}
+
 function sessionsForClub(sessions: SpeedCentreSession[], clubId: string | null) {
   return sessions.filter((session) =>
     clubId === null ? session.clubId === null : session.clubId === clubId,
@@ -1605,10 +1789,7 @@ function shortClubLabel(row: ClubSpeedRow) {
   return row.clubLabel.split(" - ")[0] ?? row.clubLabel;
 }
 
-function selectedCurrentClubSpeed(
-  row: ClubSpeedRow,
-  projection: FutureBagProjectionRow | null,
-) {
+function selectedCurrentClubSpeed(row: ClubSpeedRow, projection: FutureBagProjectionRow | null) {
   return row.shotLast20AvgMph ?? projection?.currentClubSpeedMph ?? row.trainingAvgMph;
 }
 
@@ -1824,7 +2005,9 @@ function buildSelectedSideSummary(sessions: SpeedCentreSession[]): SpeedSideSumm
   const dominantAvgMph = average(avgSessionSpeeds(dominant));
   const nonDominantAvgMph = average(avgSessionSpeeds(nonDominant));
   const overspeedMaxMph = maxOrNull(maxSessionSpeeds(overspeed));
-  const gamerMaxMph = maxOrNull(maxSessionSpeeds(sessions.filter((session) => session.implementKind === "club")));
+  const gamerMaxMph = maxOrNull(
+    maxSessionSpeeds(sessions.filter((session) => session.implementKind === "club")),
+  );
 
   return {
     dominantAvgMph,
@@ -1838,7 +2021,9 @@ function buildSelectedSideSummary(sessions: SpeedCentreSession[]): SpeedSideSumm
     overspeedAvgMph: average(avgSessionSpeeds(overspeed)),
     overspeedMaxMph,
     overspeedRatio:
-      overspeedMaxMph && gamerMaxMph ? Math.round((overspeedMaxMph / gamerMaxMph) * 100) / 100 : null,
+      overspeedMaxMph && gamerMaxMph
+        ? Math.round((overspeedMaxMph / gamerMaxMph) * 100) / 100
+        : null,
   };
 }
 
@@ -1865,8 +2050,7 @@ function buildSelectedSpeedMilestones(input: {
 
   const currentSpeedMph = input.currentSpeedMph;
   const projection = input.projection;
-  const targetCandidate =
-    input.targetSpeedMph === null ? null : Math.round(input.targetSpeedMph);
+  const targetCandidate = input.targetSpeedMph === null ? null : Math.round(input.targetSpeedMph);
   const generatedSpeeds = uniqueNumbers([
     targetCandidate,
     Math.ceil(currentSpeedMph + 2),
@@ -1882,8 +2066,7 @@ function buildSelectedSpeedMilestones(input: {
       const projectedCarryYd = Math.max(
         0,
         Math.round(
-          projection.currentCarryYd +
-            projection.carryGainPerMph * (speed - currentSpeedMph),
+          projection.currentCarryYd + projection.carryGainPerMph * (speed - currentSpeedMph),
         ),
       );
 
@@ -1912,7 +2095,10 @@ function selectedPotentialFocus(context: SelectedClubContext) {
     return `No-ball ${context.shortLabel} speed is logged. Add shot-speed samples before treating the carry projection as reliable.`;
   }
 
-  if (context.transferInsight.ratioPercent !== null && context.transferInsight.ratioPercent >= 105) {
+  if (
+    context.transferInsight.ratioPercent !== null &&
+    context.transferInsight.ratioPercent >= 105
+  ) {
     return `With-ball ${context.shortLabel} speed is already ahead of the no-ball baseline, so use playing speed as the reference for now.`;
   }
 
@@ -1984,8 +2170,7 @@ function buildSpeedMilestones(input: {
   const currentSpeedMph = input.currentSpeedMph;
   const currentCarryYd = input.carryProjection.currentCarryYd;
   const yardsPerMph = input.carryProjection.yardsPerMph;
-  const targetCandidate =
-    input.targetSpeedMph === null ? null : Math.round(input.targetSpeedMph);
+  const targetCandidate = input.targetSpeedMph === null ? null : Math.round(input.targetSpeedMph);
   const preferredSpeeds = uniqueNumbers([92, 95, targetCandidate, 100]).filter(
     (speed) => speed > currentSpeedMph + 0.2,
   );
@@ -2007,9 +2192,7 @@ function buildSpeedMilestones(input: {
     }
   }
 
-  const sortedMilestoneSpeeds = selectedSpeeds
-    .sort((left, right) => left - right)
-    .slice(0, 4);
+  const sortedMilestoneSpeeds = selectedSpeeds.sort((left, right) => left - right).slice(0, 4);
 
   return sortedMilestoneSpeeds.map((speed) => {
     const projectedCarryYd = Math.round(speed * yardsPerMph);

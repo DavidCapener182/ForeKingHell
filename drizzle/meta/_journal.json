@@ -211,6 +211,13 @@
       "when": 1780862400000,
       "tag": "0029_ai_platform",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782157456000,
+      "tag": "0030_training_over_time",
+      "breakpoints": true
     }
   ]
 }
