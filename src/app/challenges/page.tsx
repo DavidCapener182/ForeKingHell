@@ -574,7 +574,7 @@ function ChallengeBadgeImage({
   challenge,
   className,
 }: {
-  challenge: Pick<ChallengeListItem, "title" | "templateName">;
+  challenge: Pick<ChallengeListItem, "title" | "templateName" | "templateSlug">;
   className?: string;
 }) {
   const kind = getChallengeBadgeKind(challenge);
@@ -592,7 +592,25 @@ function ChallengeBadgeImage({
   );
 }
 
-function getChallengeBadgeKind(challenge: Pick<ChallengeListItem, "title" | "templateName">) {
+function getChallengeBadgeKind(
+  challenge: Pick<ChallengeListItem, "title" | "templateName" | "templateSlug">,
+) {
+  switch (challenge.templateSlug) {
+    case "longest-drive":
+      return "long-drive" as const;
+    case "closest-to-pin":
+      return "closest-pin" as const;
+    case "7i-consistency":
+      return "seven-iron" as const;
+    case "wedge-window":
+    case "wedge-ladder":
+      return "wedge-window" as const;
+    case "straightest-drive":
+      return "straightest-drive" as const;
+    case "monthly-practice-streak":
+      return "practice-streak" as const;
+  }
+
   const text = `${challenge.title} ${challenge.templateName}`.toLowerCase();
 
   if (text.includes("long") || text.includes("drive")) {
@@ -607,13 +625,20 @@ function getChallengeBadgeKind(challenge: Pick<ChallengeListItem, "title" | "tem
     return "seven-iron" as const;
   }
 
-  return "wedge-window" as const;
+  return "generic" as const;
 }
 
 function ChallengeBadgeArtwork({
   kind,
 }: {
-  kind: "long-drive" | "closest-pin" | "seven-iron" | "wedge-window";
+  kind:
+    | "long-drive"
+    | "closest-pin"
+    | "seven-iron"
+    | "wedge-window"
+    | "straightest-drive"
+    | "practice-streak"
+    | "generic";
 }) {
   if (kind === "long-drive") {
     return <LongestDriveBadgeArtwork />;
@@ -625,6 +650,18 @@ function ChallengeBadgeArtwork({
 
   if (kind === "seven-iron") {
     return <SevenIronBadgeArtwork />;
+  }
+
+  if (kind === "straightest-drive") {
+    return <StraightestDriveBadgeArtwork />;
+  }
+
+  if (kind === "practice-streak") {
+    return <PracticeStreakBadgeArtwork />;
+  }
+
+  if (kind === "generic") {
+    return <GenericChallengeBadgeArtwork />;
   }
 
   return <WedgeWindowBadgeArtwork />;
@@ -728,6 +765,63 @@ function WedgeWindowBadgeArtwork() {
       </text>
       <text x="400" y="698" textAnchor="middle" fill="#475569" fontSize="40" fontWeight="700">
         target-yardage ladder
+      </text>
+    </svg>
+  );
+}
+
+function StraightestDriveBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#DBF0FF" />
+      <path d="M96 632C214 574 335 544 460 546C563 547 645 568 704 610V742H96Z" fill="#8DD38A" />
+      <path d="M392 118L454 118L430 590L370 590Z" fill="#0F766E" />
+      <path d="M425 134C511 182 578 255 625 353" stroke="#38BDF8" strokeWidth="26" strokeLinecap="round" fill="none" />
+      <path d="M423 148C423 264 423 376 423 510" stroke="#FFFFFF" strokeWidth="16" strokeLinecap="round" strokeDasharray="10 20" fill="none" opacity="0.95" />
+      <circle cx="423" cy="530" r="20" fill="#FFFFFF" stroke="#0F172A" strokeWidth="6" />
+      <circle cx="423" cy="530" r="8" fill="#0F172A" />
+      <rect x="166" y="160" width="182" height="60" rx="30" fill="#FFFFFF" opacity="0.92" />
+      <text x="257" y="198" fill="#0F172A" fontSize="34" fontWeight="700" textAnchor="middle">
+        Straight
+      </text>
+    </svg>
+  );
+}
+
+function PracticeStreakBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#F4F7E8" />
+      <path d="M108 612C198 560 309 532 440 532C558 532 645 559 704 610V742H108Z" fill="#A7D86D" />
+      <rect x="168" y="178" width="466" height="310" rx="34" fill="#FFFFFF" stroke="#D9E4CF" strokeWidth="10" />
+      <rect x="206" y="230" width="92" height="72" rx="18" fill="#E8F7EE" />
+      <rect x="314" y="230" width="92" height="72" rx="18" fill="#FEF3C7" />
+      <rect x="422" y="230" width="92" height="72" rx="18" fill="#E0F2FE" />
+      <rect x="530" y="230" width="66" height="72" rx="18" fill="#FDE68A" />
+      <rect x="206" y="320" width="92" height="72" rx="18" fill="#E0F2FE" />
+      <rect x="314" y="320" width="92" height="72" rx="18" fill="#E8F7EE" />
+      <rect x="422" y="320" width="92" height="72" rx="18" fill="#FEF3C7" />
+      <rect x="530" y="320" width="66" height="72" rx="18" fill="#E8F7EE" />
+      <path d="M237 502C287 458 351 428 430 414C494 402 555 404 612 420" stroke="#0B7A3B" strokeWidth="24" strokeLinecap="round" fill="none" />
+      <circle cx="612" cy="420" r="20" fill="#FFFFFF" stroke="#0B7A3B" strokeWidth="8" />
+      <text x="400" y="574" fill="#365314" fontSize="40" fontWeight="700" textAnchor="middle">
+        Practice streak
+      </text>
+    </svg>
+  );
+}
+
+function GenericChallengeBadgeArtwork() {
+  return (
+    <svg viewBox="0 0 800 800" className="h-full w-full">
+      <rect width="800" height="800" rx="132" fill="#EEF2F6" />
+      <path d="M104 620C195 570 310 540 445 540C563 540 649 564 704 610V742H104Z" fill="#9AD284" />
+      <circle cx="400" cy="338" r="134" fill="#FFFFFF" stroke="#CBD5E1" strokeWidth="12" />
+      <path d="M400 238L427 298H493L440 337L460 400L400 364L340 400L360 337L307 298H373Z" fill="#F59E0B" />
+      <path d="M262 520C302 480 349 459 404 456C459 454 509 472 554 512" stroke="#0F172A" strokeWidth="24" strokeLinecap="round" fill="none" opacity="0.16" />
+      <rect x="236" y="152" width="328" height="54" rx="27" fill="#FFFFFF" opacity="0.92" />
+      <text x="400" y="188" fill="#0F172A" fontSize="30" fontWeight="700" textAnchor="middle">
+        Challenge board
       </text>
     </svg>
   );

@@ -127,14 +127,22 @@ export function PageArtwork({
       )}
       aria-hidden={alt === ""}
     >
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        loading={priority ? "eager" : "lazy"}
-        sizes={sizes}
-        className={cn("object-cover opacity-80 saturate-[0.92]", resolvedTreatment, imageClassName)}
-      />
+      {isInlineArtworkVariant(variant) ? (
+        <InlinePageArtwork variant={variant} className={cn("absolute inset-0", imageClassName)} />
+      ) : (
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          loading={priority ? "eager" : "lazy"}
+          sizes={sizes}
+          className={cn(
+            "object-cover opacity-80 saturate-[0.92]",
+            resolvedTreatment,
+            imageClassName,
+          )}
+        />
+      )}
       <div className={cn("absolute inset-0 bg-gradient-to-br", overlayByVariant[variant])} />
     </div>
   );
@@ -164,20 +172,100 @@ export function MobileVisualCard({
         className,
       )}
     >
-      <Image
-        src={src}
-        alt=""
-        fill
-        sizes="calc(100vw - 2rem)"
-        className={cn(
-          "object-cover",
-          resolvedTreatment,
-          "opacity-10 saturate-[0.82] sm:opacity-20",
-        )}
-      />
+      {isInlineArtworkVariant(variant) ? (
+        <InlinePageArtwork variant={variant} className="absolute inset-0 opacity-40" />
+      ) : (
+        <Image
+          src={src}
+          alt=""
+          fill
+          sizes="calc(100vw - 2rem)"
+          className={cn(
+            "object-cover",
+            resolvedTreatment,
+            "opacity-10 saturate-[0.82] sm:opacity-20",
+          )}
+        />
+      )}
       <div className={cn("absolute inset-0 bg-gradient-to-br", overlayByVariant[variant])} />
       {children ? <div className="relative">{children}</div> : null}
     </div>
+  );
+}
+
+function isInlineArtworkVariant(variant: PageArtworkVariant) {
+  return variant === "progress" || variant === "stockYardages";
+}
+
+function InlinePageArtwork({
+  variant,
+  className,
+}: {
+  variant: PageArtworkVariant;
+  className?: string;
+}) {
+  if (variant === "progress") {
+    return (
+      <svg viewBox="0 0 1600 900" className={cn("h-full w-full", className)} aria-hidden="true">
+        <rect width="1600" height="900" fill="#EFF7F0" />
+        <rect x="86" y="100" width="1428" height="700" rx="60" fill="#F8FCF8" stroke="#D6E7D8" strokeWidth="10" />
+        <path d="M148 664C260 612 404 578 581 563C735 548 859 506 954 436C1049 366 1137 284 1219 190" stroke="#0B7A3B" strokeWidth="32" strokeLinecap="round" fill="none" />
+        <path d="M1230 194L1204 245L1272 233" stroke="#0B7A3B" strokeWidth="28" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <rect x="202" y="212" width="238" height="120" rx="30" fill="#E8F7EE" />
+        <rect x="476" y="274" width="238" height="120" rx="30" fill="#DBF0FF" />
+        <rect x="760" y="224" width="238" height="120" rx="30" fill="#FEF3C7" />
+        <rect x="1038" y="156" width="266" height="144" rx="34" fill="#FFFFFF" stroke="#CFE7D6" strokeWidth="8" />
+        <text x="321" y="284" fill="#0B7A3B" fontSize="52" fontWeight="700" textAnchor="middle">
+          Trust
+        </text>
+        <text x="595" y="346" fill="#0369A1" fontSize="52" fontWeight="700" textAnchor="middle">
+          Carry
+        </text>
+        <text x="879" y="296" fill="#B45309" fontSize="52" fontWeight="700" textAnchor="middle">
+          Strike
+        </text>
+        <text x="1170" y="218" fill="#111827" fontSize="38" fontWeight="700" textAnchor="middle">
+          Improving
+        </text>
+        <text x="1170" y="266" fill="#4B5563" fontSize="34" fontWeight="600" textAnchor="middle">
+          but uneven
+        </text>
+        <g opacity="0.94">
+          <circle cx="340" cy="646" r="18" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="6" />
+          <circle cx="653" cy="568" r="18" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="6" />
+          <circle cx="934" cy="439" r="18" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="6" />
+          <circle cx="1206" cy="214" r="18" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="6" />
+        </g>
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 1600 900" className={cn("h-full w-full", className)} aria-hidden="true">
+      <rect width="1600" height="900" fill="#F5F8EF" />
+      <path d="M0 770C154 690 341 648 560 644C781 640 989 670 1184 736C1320 782 1458 804 1600 800V900H0Z" fill="#B9DB8F" />
+      <path d="M0 702C195 610 419 566 673 568C905 571 1112 622 1295 720C1390 770 1492 801 1600 812V900H0Z" fill="#8FC86F" opacity="0.94" />
+      <circle cx="1130" cy="370" r="176" fill="#FCFEFA" stroke="#D6E7D8" strokeWidth="14" />
+      <circle cx="1130" cy="370" r="124" fill="none" stroke="#C7D7C8" strokeWidth="10" />
+      <circle cx="1130" cy="370" r="72" fill="none" stroke="#A7BBA9" strokeWidth="10" />
+      <circle cx="1130" cy="370" r="18" fill="#0B7A3B" />
+      <rect x="162" y="174" width="262" height="150" rx="30" fill="#FFFFFF" stroke="#D7E3D8" strokeWidth="8" />
+      <rect x="204" y="228" width="150" height="18" rx="9" fill="#0B7A3B" opacity="0.88" />
+      <rect x="204" y="266" width="92" height="18" rx="9" fill="#94A3B8" opacity="0.72" />
+      <text x="294" y="215" fill="#111827" fontSize="38" fontWeight="700" textAnchor="middle">
+        Stock
+      </text>
+      <path d="M470 662C610 585 748 523 886 474" stroke="#111827" strokeWidth="18" strokeLinecap="round" fill="none" opacity="0.78" />
+      <path d="M855 447L908 468L871 510" stroke="#111827" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" fill="none" opacity="0.78" />
+      <circle cx="470" cy="662" r="16" fill="#FFFFFF" stroke="#111827" strokeWidth="6" />
+      <circle cx="886" cy="474" r="16" fill="#FFFFFF" stroke="#0B7A3B" strokeWidth="6" />
+      <text x="1028" y="164" fill="#111827" fontSize="54" fontWeight="700">
+        Yardage windows
+      </text>
+      <text x="1028" y="228" fill="#4B5563" fontSize="34" fontWeight="600">
+        carry, play number, target fit
+      </text>
+    </svg>
   );
 }
 

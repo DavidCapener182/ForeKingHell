@@ -1241,13 +1241,7 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
     <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
       {variant === "course" ? (
         <>
-          <Image
-            src="/assets/generated/progress-practice-green.png"
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
-          />
+          <PracticeGreenThumbArtwork />
           <span className="absolute inset-0 bg-emerald-950/5" />
         </>
       ) : null}
@@ -1273,6 +1267,20 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
         )
       ) : null}
     </span>
+  );
+}
+
+function PracticeGreenThumbArtwork() {
+  return (
+    <svg viewBox="0 0 80 80" className="absolute inset-0 h-full w-full" aria-hidden="true">
+      <rect width="80" height="80" fill="#EAF7EE" />
+      <path d="M0 61C14 54 30 50 49 49C61 48 71 50 80 55V80H0Z" fill="#8FC86F" />
+      <path d="M0 53C14 44 33 39 58 39C67 39 75 40 80 42V69H0Z" fill="#B7DE8B" />
+      <ellipse cx="48" cy="43" rx="21" ry="11" fill="#DDF3C4" />
+      <path d="M49 24V42" stroke="#0B7A3B" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M49 24C54 26 59 29 63 33C57 34 53 36 49 39Z" fill="#EF4444" />
+      <circle cx="35" cy="43" r="2.4" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="1.2" />
+    </svg>
   );
 }
 
