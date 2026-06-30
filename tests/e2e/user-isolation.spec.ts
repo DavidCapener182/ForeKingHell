@@ -54,7 +54,7 @@ test.describe("cross-user isolation", () => {
     const data = fixture!;
 
     await page.goto("/bag");
-    await expectPageReady(page, /Stock yardages/i);
+    await expectPageReady(page, /Bag health|Bag score trend|Strongest club/i);
     await expect(page.locator("body")).not.toContainText(data.otherClubBrand);
 
     await page.goto("/rounds");

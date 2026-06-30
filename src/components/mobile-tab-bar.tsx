@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -24,15 +24,47 @@ export function MobileTabBar({
 }) {
   const navRef = useRef<HTMLElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const nav = navRef.current;
-    const activeTab = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav) {
+      return;
+    }
 
-    activeTab?.scrollIntoView({
-      behavior: "auto",
-      block: "nearest",
-      inline: "center",
+    const centerActiveTab = () => {
+      const activeTab = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!activeTab) {
+        return;
+      }
+
+      const targetLeft = Math.max(
+        0,
+        Math.min(
+          activeTab.offsetLeft - (nav.clientWidth - activeTab.clientWidth) / 2,
+          nav.scrollWidth - nav.clientWidth,
+        ),
+      );
+
+      nav.scrollTo({
+        left: targetLeft,
+        behavior: "auto",
+      });
+    };
+
+    const frame = requestAnimationFrame(() => {
+      centerActiveTab();
+      requestAnimationFrame(centerActiveTab);
     });
+    const timeoutId = window.setTimeout(centerActiveTab, 150);
+    const fontReady = document.fonts?.ready.then(centerActiveTab);
+
+    window.addEventListener("resize", centerActiveTab);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("resize", centerActiveTab);
+      void fontReady;
+    };
   }, [activeKey, tabs]);
 
   return (

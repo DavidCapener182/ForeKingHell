@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -19,51 +19,55 @@ export type ProgressData = {
 export async function getProgressData(userId?: string): Promise<ProgressData> {
   const db = getDb();
   userId ??= await requireCurrentUserId();
-  const [clubRows, shotRows] = await Promise.all([
-    db
-      .select({
-        id: clubs.id,
-        type: clubs.type,
-        brand: clubs.brand,
-        model: clubs.model,
-      })
-      .from(clubs)
-      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
-      .orderBy(asc(clubs.type)),
-    db
-      .select({
-        id: shots.id,
-        clubId: shots.clubId,
-        clubType: shots.clubType,
-        sessionId: shots.sessionId,
-        shotNumber: shots.shotNumber,
-        shotAt: shots.shotAt,
-        carryYd: shots.carryYd,
-        totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
-        ballSpeedMph: shots.ballSpeedMph,
-        clubSpeedMph: shots.clubSpeedMph,
-        launchAngleDeg: shots.launchAngleDeg,
-        launchDirectionDeg: shots.launchDirectionDeg,
-        apexFt: shots.apexFt,
-        attackAngleDeg: shots.attackAngleDeg,
-        clubPathDeg: shots.clubPathDeg,
-        faceAngleDeg: shots.faceAngleDeg,
-        descentAngleDeg: shots.descentAngleDeg,
-        smashFactor: shots.smashFactor,
-        spinRate: shots.spinRate,
-        spinAxis: shots.spinAxis,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-        clubDataEstType: shots.clubDataEstType,
-        courseHoleNumber: shots.courseHoleNumber,
-        sessionType: sessions.type,
-      })
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
-      .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
-  ]);
+  const clubRows = await db
+    .select({
+      id: clubs.id,
+      type: clubs.type,
+      brand: clubs.brand,
+      model: clubs.model,
+    })
+    .from(clubs)
+    .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
+    .orderBy(asc(clubs.type));
+
+  if (clubRows.length === 0) {
+    return { clubs: [] };
+  }
+
+  const clubIds = clubRows.map((club) => club.id);
+  const shotRows = await db
+    .select({
+      id: shots.id,
+      clubId: shots.clubId,
+      clubType: shots.clubType,
+      sessionId: shots.sessionId,
+      shotNumber: shots.shotNumber,
+      shotAt: shots.shotAt,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: shots.sideCarryYd,
+      ballSpeedMph: shots.ballSpeedMph,
+      clubSpeedMph: shots.clubSpeedMph,
+      launchAngleDeg: shots.launchAngleDeg,
+      launchDirectionDeg: shots.launchDirectionDeg,
+      apexFt: shots.apexFt,
+      attackAngleDeg: shots.attackAngleDeg,
+      clubPathDeg: shots.clubPathDeg,
+      faceAngleDeg: shots.faceAngleDeg,
+      descentAngleDeg: shots.descentAngleDeg,
+      smashFactor: shots.smashFactor,
+      spinRate: shots.spinRate,
+      spinAxis: shots.spinAxis,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
+      clubDataEstType: shots.clubDataEstType,
+      courseHoleNumber: shots.courseHoleNumber,
+      sessionType: sessions.type,
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .where(and(eq(shots.userId, userId), inArray(shots.clubId, clubIds)))
+    .orderBy(desc(shots.shotAt), desc(shots.shotNumber));
   const trackedClubs = clubRows.filter((club) => isTrackedClubType(club.type));
   const shotsByClubId = new Map<string, typeof shotRows>();
 

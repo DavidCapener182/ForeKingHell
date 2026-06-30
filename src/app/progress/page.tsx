@@ -79,47 +79,6 @@ export default async function ProgressPage() {
 
   return (
     <PageShell>
-      <style>{`
-        @media (min-width: 1024px) {
-          .progress-bento-grid {
-            grid-template-columns: repeat(12, minmax(0, 1fr));
-            align-items: stretch;
-          }
-
-          .progress-bento-item {
-            min-width: 0;
-            height: 100%;
-          }
-
-          .progress-bento-item > * {
-            height: 100%;
-          }
-
-          .progress-span-3 {
-            grid-column: span 3 / span 3;
-          }
-
-          .progress-span-5 {
-            grid-column: span 5 / span 5;
-          }
-
-          .progress-span-6 {
-            grid-column: span 6 / span 6;
-          }
-
-          .progress-span-7 {
-            grid-column: span 7 / span 7;
-          }
-
-          .progress-span-9 {
-            grid-column: span 9 / span 9;
-          }
-
-          .progress-span-12 {
-            grid-column: span 12 / span 12;
-          }
-        }
-      `}</style>
       <MobileRouteHeader title="Dashboard" group="dashboard" activeKey="progress" />
       <MobileTabBar
         activeKey="overview"
@@ -228,7 +187,7 @@ export default async function ProgressPage() {
       ) : (
         <>
           <MobileProgressFirstCard summary={summary} />
-          <div className="progress-bento-grid grid gap-4 lg:gap-5">
+          <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
             <ProgressBentoItem span={12}>
               <WeeklyRecapPanel data={featureData} summary={summary} />
             </ProgressBentoItem>
@@ -272,7 +231,11 @@ export default async function ProgressPage() {
 type ProgressSpan = 3 | 5 | 6 | 7 | 9 | 12;
 
 function ProgressBentoItem({ span, children }: { span: ProgressSpan; children: ReactNode }) {
-  return <div className={`progress-bento-item progress-span-${span}`}>{children}</div>;
+  return (
+    <div className={`progress-bento-item progress-span-${span} min-w-0 max-w-full overflow-x-clip`}>
+      {children}
+    </div>
+  );
 }
 
 function ProgressHeroPanel({

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -231,21 +231,7 @@ export async function getTodayPracticeData(
   ];
   const previousRows =
     comparisonClubTypes.length > 0
-      ? await db
-          .select(practiceShotSelect)
-          .from(shots)
-          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .innerJoin(clubs, eq(shots.clubId, clubs.id))
-          .where(
-            and(
-              eq(shots.userId, userId),
-              eq(sessions.userId, userId),
-              eq(clubs.userId, userId),
-              lt(shots.shotAt, bounds.start),
-              inArray(shots.clubType, comparisonClubTypes),
-            ),
-          )
-          .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
+      ? await fetchPreviousPracticeRows(db, userId, bounds.start, comparisonClubTypes)
       : [];
   const previousShotRows = toShotRows(previousRows);
 
@@ -279,6 +265,67 @@ async function fetchPracticeRowsForBounds(
       ),
     )
     .orderBy(asc(sessions.date), asc(sessions.fileName), asc(shots.shotNumber));
+}
+
+async function fetchPreviousPracticeRows(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  before: Date,
+  clubTypes: string[],
+) {
+  const rankedPreviousShots = db
+    .select({
+      ...practiceShotSelect,
+      clubRank: sql<number>`row_number() over (
+        partition by ${shots.clubType}
+        order by ${shots.shotAt} desc, ${shots.shotNumber} desc nulls last
+      )`.as("club_rank"),
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .innerJoin(clubs, eq(shots.clubId, clubs.id))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(sessions.userId, userId),
+        eq(clubs.userId, userId),
+        lt(shots.shotAt, before),
+        inArray(shots.clubType, clubTypes),
+      ),
+    )
+    .as("ranked_previous_shots");
+
+  return db
+    .select({
+      id: rankedPreviousShots.id,
+      sessionId: rankedPreviousShots.sessionId,
+      fileName: rankedPreviousShots.fileName,
+      sessionType: rankedPreviousShots.sessionType,
+      courseName: rankedPreviousShots.courseName,
+      sessionDate: rankedPreviousShots.sessionDate,
+      shotAt: rankedPreviousShots.shotAt,
+      shotNumber: rankedPreviousShots.shotNumber,
+      clubType: rankedPreviousShots.clubType,
+      clubBrand: rankedPreviousShots.clubBrand,
+      clubModel: rankedPreviousShots.clubModel,
+      shotCategory: rankedPreviousShots.shotCategory,
+      carryYd: rankedPreviousShots.carryYd,
+      totalYd: rankedPreviousShots.totalYd,
+      sideCarryYd: rankedPreviousShots.sideCarryYd,
+      launchDirectionDeg: rankedPreviousShots.launchDirectionDeg,
+      launchAngleDeg: rankedPreviousShots.launchAngleDeg,
+      ballSpeedMph: rankedPreviousShots.ballSpeedMph,
+      clubSpeedMph: rankedPreviousShots.clubSpeedMph,
+      smashFactor: rankedPreviousShots.smashFactor,
+      apexFt: rankedPreviousShots.apexFt,
+      descentAngleDeg: rankedPreviousShots.descentAngleDeg,
+      attackAngleDeg: rankedPreviousShots.attackAngleDeg,
+      clubPathDeg: rankedPreviousShots.clubPathDeg,
+      faceAngleDeg: rankedPreviousShots.faceAngleDeg,
+    })
+    .from(rankedPreviousShots)
+    .where(lte(rankedPreviousShots.clubRank, PREVIOUS_SHOT_LIMIT_PER_CLUB))
+    .orderBy(desc(rankedPreviousShots.shotAt), desc(rankedPreviousShots.shotNumber));
 }
 
 async function findSessionDateKey(db: ReturnType<typeof getDb>, userId: string, sessionId: string) {

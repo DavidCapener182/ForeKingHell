@@ -58,7 +58,7 @@ export function MobileNav({
     <>
       <header
         aria-label="Mobile app bar"
-        className="premium-mobile-bar fixed inset-x-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] border-b px-4 pt-[env(safe-area-inset-top)] sm:hidden"
+        className="premium-mobile-bar fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full border-b px-4 pt-[env(safe-area-inset-top)] sm:hidden"
       >
         <div className="relative flex h-[3.25rem] items-center">
           <Sheet>
@@ -149,7 +149,10 @@ export function MobileNav({
         </div>
       </header>
 
-      <nav aria-label="Mobile primary" className="fixed inset-x-0 bottom-0 z-40 sm:hidden">
+      <nav
+        aria-label="Mobile primary"
+        className="fixed bottom-0 left-0 z-40 w-dvw max-w-full sm:hidden"
+      >
         <div className="premium-mobile-bar grid grid-cols-5 border-t px-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-1.5">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;

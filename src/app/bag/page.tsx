@@ -21,7 +21,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { and, asc, count, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
@@ -167,6 +167,33 @@ const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
 const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
 const EVOLUTION_SHOTS_PER_CLUB = 1200;
 
+const bagShotSelect = {
+  id: shots.id,
+  clubId: shots.clubId,
+  clubType: shots.clubType,
+  shotNumber: shots.shotNumber,
+  shotAt: shots.shotAt,
+  carryYd: shots.carryYd,
+  totalYd: shots.totalYd,
+  sideCarryYd: shots.sideCarryYd,
+  ballSpeedMph: shots.ballSpeedMph,
+  clubSpeedMph: shots.clubSpeedMph,
+  launchAngleDeg: shots.launchAngleDeg,
+  launchDirectionDeg: shots.launchDirectionDeg,
+  apexFt: shots.apexFt,
+  descentAngleDeg: shots.descentAngleDeg,
+  attackAngleDeg: shots.attackAngleDeg,
+  clubPathDeg: shots.clubPathDeg,
+  faceAngleDeg: shots.faceAngleDeg,
+  spinRate: shots.spinRate,
+  smashFactor: shots.smashFactor,
+  spinAxis: shots.spinAxis,
+  courseHoleNumber: shots.courseHoleNumber,
+  sessionType: sessions.type,
+  shotCategory: shots.shotCategory,
+  qualityTag: shots.qualityTag,
+};
+
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
@@ -238,7 +265,7 @@ export default async function BagPage({ searchParams }: PageProps) {
   const clubIntelligenceItems = buildClubIntelligenceItems(bag);
 
   return (
-    <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
+    <PageShell contentClassName="overflow-x-clip pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
       <MobileAppShell>
         <MobileTopBar title="Analyse" />
         <MobileRouteTabs group="analyse" activeKey="bag" />
@@ -733,100 +760,102 @@ async function getBag() {
     });
   }
 
-  const clubData = await Promise.all(
-    mergedClubRows.map(async (club) => {
-      const [recentShots, evolutionShots, [shotCount]] = await Promise.all([
-        db
-          .select({
-            id: shots.id,
-            clubId: shots.clubId,
-            shotNumber: shots.shotNumber,
-            shotAt: shots.shotAt,
-            carryYd: shots.carryYd,
-            totalYd: shots.totalYd,
-            sideCarryYd: shots.sideCarryYd,
-            ballSpeedMph: shots.ballSpeedMph,
-            clubSpeedMph: shots.clubSpeedMph,
-            launchAngleDeg: shots.launchAngleDeg,
-            launchDirectionDeg: shots.launchDirectionDeg,
-            apexFt: shots.apexFt,
-            descentAngleDeg: shots.descentAngleDeg,
-            attackAngleDeg: shots.attackAngleDeg,
-            clubPathDeg: shots.clubPathDeg,
-            faceAngleDeg: shots.faceAngleDeg,
-            spinRate: shots.spinRate,
-            smashFactor: shots.smashFactor,
-            spinAxis: shots.spinAxis,
-            courseHoleNumber: shots.courseHoleNumber,
-            sessionType: sessions.type,
-            shotCategory: shots.shotCategory,
-            qualityTag: shots.qualityTag,
-          })
-          .from(shots)
-          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .where(
-            and(
-              eq(shots.userId, userId),
-              eq(sessions.userId, userId),
-              inArray(shots.clubId, club.memberIds),
-            ),
-          )
-          .orderBy(desc(shots.shotAt))
-          .limit(RECENT_SHOTS_PER_CLUB),
-        db
-          .select({
-            id: shots.id,
-            clubId: shots.clubId,
-            shotNumber: shots.shotNumber,
-            shotAt: shots.shotAt,
-            carryYd: shots.carryYd,
-            totalYd: shots.totalYd,
-            sideCarryYd: shots.sideCarryYd,
-            ballSpeedMph: shots.ballSpeedMph,
-            clubSpeedMph: shots.clubSpeedMph,
-            launchAngleDeg: shots.launchAngleDeg,
-            launchDirectionDeg: shots.launchDirectionDeg,
-            apexFt: shots.apexFt,
-            descentAngleDeg: shots.descentAngleDeg,
-            attackAngleDeg: shots.attackAngleDeg,
-            clubPathDeg: shots.clubPathDeg,
-            faceAngleDeg: shots.faceAngleDeg,
-            spinRate: shots.spinRate,
-            smashFactor: shots.smashFactor,
-            spinAxis: shots.spinAxis,
-            courseHoleNumber: shots.courseHoleNumber,
-            sessionType: sessions.type,
-            shotCategory: shots.shotCategory,
-            qualityTag: shots.qualityTag,
-          })
-          .from(shots)
-          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .where(
-            and(
-              eq(shots.userId, userId),
-              eq(sessions.userId, userId),
-              inArray(shots.clubId, club.memberIds),
-            ),
-          )
-          .orderBy(desc(shots.shotAt))
-          .limit(EVOLUTION_SHOTS_PER_CLUB),
-        db
-          .select({ value: count() })
-          .from(shots)
-          .where(and(eq(shots.userId, userId), inArray(shots.clubId, club.memberIds))),
-      ]);
+  const rankedClubShots = db
+    .select({
+      ...bagShotSelect,
+      clubRank: sql<number>`row_number() over (
+        partition by ${shots.clubType}
+        order by ${shots.shotAt} desc, ${shots.shotNumber} desc nulls last
+      )`.as("club_rank"),
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(sessions.userId, userId),
+        inArray(shots.clubId, allClubMemberIds),
+      ),
+    )
+    .as("ranked_club_shots");
 
-      return {
-        club,
-        recentShots,
-        evolutionShots,
-        personalBestRows: club.memberIds.flatMap((clubId) =>
-          personalBestByClubId.get(clubId) ? [personalBestByClubId.get(clubId)!] : [],
-        ),
-        rawShotCount: shotCount?.value ?? 0,
-      };
-    }),
-  );
+  const rankedBagShotSelect = {
+    id: rankedClubShots.id,
+    clubId: rankedClubShots.clubId,
+    clubType: rankedClubShots.clubType,
+    shotNumber: rankedClubShots.shotNumber,
+    shotAt: rankedClubShots.shotAt,
+    carryYd: rankedClubShots.carryYd,
+    totalYd: rankedClubShots.totalYd,
+    sideCarryYd: rankedClubShots.sideCarryYd,
+    ballSpeedMph: rankedClubShots.ballSpeedMph,
+    clubSpeedMph: rankedClubShots.clubSpeedMph,
+    launchAngleDeg: rankedClubShots.launchAngleDeg,
+    launchDirectionDeg: rankedClubShots.launchDirectionDeg,
+    apexFt: rankedClubShots.apexFt,
+    descentAngleDeg: rankedClubShots.descentAngleDeg,
+    attackAngleDeg: rankedClubShots.attackAngleDeg,
+    clubPathDeg: rankedClubShots.clubPathDeg,
+    faceAngleDeg: rankedClubShots.faceAngleDeg,
+    spinRate: rankedClubShots.spinRate,
+    smashFactor: rankedClubShots.smashFactor,
+    spinAxis: rankedClubShots.spinAxis,
+    courseHoleNumber: rankedClubShots.courseHoleNumber,
+    sessionType: rankedClubShots.sessionType,
+    shotCategory: rankedClubShots.shotCategory,
+    qualityTag: rankedClubShots.qualityTag,
+  };
+
+  const [recentShotRows, evolutionShotRows, shotCountRows] = await Promise.all([
+    db
+      .select({
+        ...rankedBagShotSelect,
+      })
+      .from(rankedClubShots)
+      .where(lte(rankedClubShots.clubRank, RECENT_SHOTS_PER_CLUB))
+      .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber)),
+    db
+      .select({
+        ...rankedBagShotSelect,
+      })
+      .from(rankedClubShots)
+      .where(lte(rankedClubShots.clubRank, EVOLUTION_SHOTS_PER_CLUB))
+      .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber)),
+    db
+      .select({
+        clubType: shots.clubType,
+        value: count(),
+      })
+      .from(shots)
+      .where(and(eq(shots.userId, userId), inArray(shots.clubId, allClubMemberIds)))
+      .groupBy(shots.clubType),
+  ]);
+
+  const recentShotsByClubType = new Map<string, typeof recentShotRows>();
+  for (const shot of recentShotRows) {
+    const existing = recentShotsByClubType.get(shot.clubType) ?? [];
+    existing.push(shot);
+    recentShotsByClubType.set(shot.clubType, existing);
+  }
+
+  const evolutionShotsByClubType = new Map<string, typeof evolutionShotRows>();
+  for (const shot of evolutionShotRows) {
+    const existing = evolutionShotsByClubType.get(shot.clubType) ?? [];
+    existing.push(shot);
+    evolutionShotsByClubType.set(shot.clubType, existing);
+  }
+
+  const shotCountByClubType = new Map(shotCountRows.map((row) => [row.clubType, row.value]));
+
+  const clubData = mergedClubRows.map((club) => ({
+    club,
+    recentShots: recentShotsByClubType.get(club.type) ?? [],
+    evolutionShots: evolutionShotsByClubType.get(club.type) ?? [],
+    personalBestRows: club.memberIds.flatMap((clubId) =>
+      personalBestByClubId.get(clubId) ? [personalBestByClubId.get(clubId)!] : [],
+    ),
+    rawShotCount: shotCountByClubType.get(club.type) ?? 0,
+  }));
 
   return clubData
     .filter(({ club }) => isTrackedClubType(club.type))
@@ -1993,93 +2022,95 @@ function BagConfidenceLadder({
   return (
     <section
       id="bag-confidence"
-      className="grid scroll-mt-28 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
+      className="grid scroll-mt-28 gap-4 overflow-x-clip xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
     >
-      <DataPanel>
+      <DataPanel className="overflow-x-clip">
         <SectionHeader
           title="Bag confidence ladder"
           description="Recommended is the primary course number. Best Stock stays visible as potential."
           action={<Gauge className="size-5 text-emerald-600" />}
         />
         <CardContent>
-          <div
-            aria-label="Bag confidence ladder"
-            tabIndex={0}
-            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
-          >
-            {rows.map((row) => {
-              const confidence = confidenceReadout(row);
-              const gap = gapReadout(row);
-              const visualCarry = visualCarryYd(row);
+          <div className="max-w-full overflow-hidden">
+            <div
+              aria-label="Bag confidence ladder"
+              tabIndex={0}
+              className="-mx-4 flex max-w-full gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
+            >
+              {rows.map((row) => {
+                const confidence = confidenceReadout(row);
+                const gap = gapReadout(row);
+                const visualCarry = visualCarryYd(row);
 
-              return (
-                <Link
-                  key={row.id}
-                  href={`/bag/${row.id}`}
-                  prefetch={false}
-                  className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-emerald-300"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-xs text-muted-foreground">{row.brandModel}</p>
-                        <p className="mt-1 text-lg font-semibold tracking-normal">
-                          {formatClubType(row.clubType)}
-                        </p>
+                return (
+                  <Link
+                    key={row.id}
+                    href={`/bag/${row.id}`}
+                    prefetch={false}
+                    className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-emerald-300"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs text-muted-foreground">{row.brandModel}</p>
+                          <p className="mt-1 text-lg font-semibold tracking-normal">
+                            {formatClubType(row.clubType)}
+                          </p>
+                        </div>
+                        <StatusPill tone={confidence.tone}>{confidence.label}</StatusPill>
                       </div>
-                      <StatusPill tone={confidence.tone}>{confidence.label}</StatusPill>
-                    </div>
 
-                    <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                      {row.playNumberYd === null ? "Best stock" : "Recommended"}
-                    </p>
-                    <p className="mt-1 text-3xl font-semibold tracking-normal">
-                      {formatCarryYards(visualCarry)}
-                    </p>
-                    <div className="mt-3 h-2 rounded-full bg-slate-100">
-                      <span
-                        className="block h-2 rounded-full bg-[#0B7A3B]"
-                        style={{
-                          width: `${carryWidthPercent(visualCarry, maxCarryYd)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2 text-xs">
-                    <div className="rounded-md bg-[#F5F6F4] px-2 py-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-muted-foreground">Trust</span>
-                        <span className="font-semibold">{row.confidenceScore}%</span>
-                      </div>
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
+                      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                        {row.playNumberYd === null ? "Best stock" : "Recommended"}
+                      </p>
+                      <p className="mt-1 text-3xl font-semibold tracking-normal">
+                        {formatCarryYards(visualCarry)}
+                      </p>
+                      <div className="mt-3 h-2 rounded-full bg-slate-100">
                         <span
-                          className={`block h-full rounded-full ${confidenceBarClass(
-                            confidence.tone,
-                          )}`}
-                          style={{ width: `${Math.max(5, Math.min(100, row.confidenceScore))}%` }}
+                          className="block h-2 rounded-full bg-[#0B7A3B]"
+                          style={{
+                            width: `${carryWidthPercent(visualCarry, maxCarryYd)}%`,
+                          }}
                         />
                       </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
-                      <span className="text-muted-foreground">
-                        {row.playNumberYd === null ? "Recommended" : "Best stock"}
-                      </span>
-                      <span className="font-semibold">
-                        {row.playNumberYd === null ? "--" : formatCarryYards(row.carryYd)}
-                      </span>
+
+                    <div className="grid gap-2 text-xs">
+                      <div className="rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">Trust</span>
+                          <span className="font-semibold">{row.confidenceScore}%</span>
+                        </div>
+                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
+                          <span
+                            className={`block h-full rounded-full ${confidenceBarClass(
+                              confidence.tone,
+                            )}`}
+                            style={{ width: `${Math.max(5, Math.min(100, row.confidenceScore))}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                        <span className="text-muted-foreground">
+                          {row.playNumberYd === null ? "Recommended" : "Best stock"}
+                        </span>
+                        <span className="font-semibold">
+                          {row.playNumberYd === null ? "--" : formatCarryYards(row.carryYd)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                        <span className="text-muted-foreground">Course gap</span>
+                        <span className="font-semibold">{gap.value}</span>
+                      </div>
+                      <StatusPill tone={gap.tone} className="max-w-full justify-center truncate">
+                        {gap.label}
+                      </StatusPill>
                     </div>
-                    <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
-                      <span className="text-muted-foreground">Course gap</span>
-                      <span className="font-semibold">{gap.value}</span>
-                    </div>
-                    <StatusPill tone={gap.tone} className="max-w-full justify-center truncate">
-                      {gap.label}
-                    </StatusPill>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </DataPanel>
@@ -3085,7 +3116,7 @@ function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
 
   return (
-    <DataPanel id="personal-bests" className="scroll-mt-28">
+    <DataPanel id="personal-bests" className="scroll-mt-28 overflow-x-clip">
       <SectionHeader
         title="Personal bests"
         description="Compact peak-distance reference without a full-screen bar chart."
@@ -3093,29 +3124,31 @@ function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
       />
       <CardContent>
         {rows.length > 0 ? (
-          <div
-            aria-label="Personal bests by club"
-            tabIndex={0}
-            className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
-          >
-            {rows.map((club) => (
-              <Link
-                key={club.id}
-                href={`/bag/${club.id}`}
-                prefetch={false}
-                className="grid min-w-32 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-3 transition-colors hover:border-amber-300"
-              >
-                <span className="text-sm font-semibold">{formatClubType(club.type)}</span>
-                <span className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
-                  {formatMetric(club.personalBest.carryYd)}
-                  {club.personalBest.carryYd === null ? "" : " yd"}
-                </span>
-                <span className="mt-1 text-xs text-muted-foreground">
-                  Total {formatMetric(club.personalBest.totalYd)}
-                  {club.personalBest.totalYd === null ? "" : " yd"}
-                </span>
-              </Link>
-            ))}
+          <div className="max-w-full overflow-hidden">
+            <div
+              aria-label="Personal bests by club"
+              tabIndex={0}
+              className="-mx-4 flex max-w-full gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
+            >
+              {rows.map((club) => (
+                <Link
+                  key={club.id}
+                  href={`/bag/${club.id}`}
+                  prefetch={false}
+                  className="grid min-w-32 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-3 transition-colors hover:border-amber-300"
+                >
+                  <span className="text-sm font-semibold">{formatClubType(club.type)}</span>
+                  <span className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+                    {formatMetric(club.personalBest.carryYd)}
+                    {club.personalBest.carryYd === null ? "" : " yd"}
+                  </span>
+                  <span className="mt-1 text-xs text-muted-foreground">
+                    Total {formatMetric(club.personalBest.totalYd)}
+                    {club.personalBest.totalYd === null ? "" : " yd"}
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         ) : (
           <EmptyPanelMessage

@@ -28,7 +28,7 @@ test.describe("mobile density screenshots", () => {
         { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
         { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
         { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
-        { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+        { name: "bag", path: "/bag", text: /Bag health|Bag confidence ladder|Bag score trend/i },
         { name: "equipment", path: "/equipment", text: /Equipment/i },
         { name: "coach", path: "/coach", text: /Coach/i },
         { name: "progress", path: "/progress", text: /Progress/i },
@@ -71,7 +71,7 @@ test.describe("mobile density screenshots", () => {
     { name: "course-records", path: "/course-records", text: /Course records|Course Champion/i },
     { name: "challenges", path: "/challenges", text: /Challenges/i },
     { name: "tournaments", path: "/tournaments", text: /Tournaments|Daily, weekly/i },
-    { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+    { name: "bag", path: "/bag", text: /Bag health|Bag confidence ladder|Bag score trend/i },
     { name: "equipment", path: "/equipment", text: /Equipment/i },
     { name: "coach", path: "/coach", text: /Coach/i },
     { name: "profile", path: "/profile", text: /Profile|You/i },
@@ -133,7 +133,7 @@ test.describe("mobile density screenshots", () => {
 
       if (
         (await gotoRouteOrSkip(page, "/bag", false)) &&
-        (await expectReadyOrSkip(page, /Stock yardages|Gapping ladder|Bag/i, false))
+        (await expectReadyOrSkip(page, /Bag health|Bag confidence ladder|Bag score trend/i, false))
       ) {
         const clubHref = await firstHref(page, 'a[href^="/bag/"]', /^\/bag\/(?!longest$)[^/]+$/);
         if (clubHref) {

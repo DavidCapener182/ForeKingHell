@@ -12,7 +12,7 @@ test.describe("visual spacing audit", () => {
     { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
     { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
     { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
-    { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+    { name: "bag", path: "/bag", text: /Bag health|Bag confidence ladder|Bag score trend/i },
     { name: "coach", path: "/coach", text: /Coach/i },
     { name: "progress", path: "/progress", text: /Progress/i },
     { name: "rounds", path: "/rounds", text: /Rounds/i },

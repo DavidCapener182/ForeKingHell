@@ -349,6 +349,46 @@ html[data-theme="dark"] {
       inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
 
+  @media (min-width: 1024px) {
+    .progress-bento-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      align-items: stretch;
+    }
+
+    .progress-bento-item {
+      min-width: 0;
+      height: 100%;
+    }
+
+    .progress-bento-item > * {
+      height: 100%;
+    }
+
+    .progress-span-3 {
+      grid-column: span 3 / span 3;
+    }
+
+    .progress-span-5 {
+      grid-column: span 5 / span 5;
+    }
+
+    .progress-span-6 {
+      grid-column: span 6 / span 6;
+    }
+
+    .progress-span-7 {
+      grid-column: span 7 / span 7;
+    }
+
+    .progress-span-9 {
+      grid-column: span 9 / span 9;
+    }
+
+    .progress-span-12 {
+      grid-column: span 12 / span 12;
+    }
+  }
+
   .mobile-nav-primary-active,
   .mobile-nav-drawer-active {
     color: #fffdf4 !important;

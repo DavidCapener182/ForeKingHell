@@ -10,7 +10,7 @@ test.describe("authenticated app flows", () => {
   const routes = [
     { path: "/dashboard", text: /Dashboard|Sessions|Shots/i },
     { path: "/shots", text: /Shot explorer/i },
-    { path: "/bag", text: /Stock yardages/i },
+    { path: "/bag", text: /Bag health|Bag score trend|Strongest club/i },
     { path: "/rounds/new", text: /Add Round/i },
     { path: "/handicap", text: /Handicap/i },
     { path: "/coach", text: /Coach/i },
@@ -98,7 +98,7 @@ test.describe("authenticated app flows", () => {
 
 async function gotoAppRoute(page: Page, path: string) {
   try {
-    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+    await page.goto(path, { waitUntil: "domcontentloaded", timeout: 60_000 });
   } catch (error) {
     const message = String(error);
     if (
@@ -107,6 +107,8 @@ async function gotoAppRoute(page: Page, path: string) {
     ) {
       throw error;
     }
-    await page.goto(path, { waitUntil: "commit", timeout: 60_000 });
+    await page.goto(path, { waitUntil: "domcontentloaded", timeout: 60_000 });
   }
+
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
 }

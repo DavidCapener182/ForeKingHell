@@ -93,7 +93,7 @@ const mobileRouteGroups = {
     { key: "today", label: "Latest", href: "/today" },
     { key: "dashboard", label: "Dashboard", href: "/dashboard" },
     { key: "progress", label: "Progress", href: "/progress" },
-    { key: "strokes", label: "Strokes gained", href: "/strokes-gained" },
+    { key: "strokes", label: "Strokes", href: "/strokes-gained" },
   ],
   play: [
     { key: "rounds", label: "Rounds", href: "/rounds" },
