@@ -15,6 +15,7 @@ import {
   MapPinned,
   MessageCircle,
   Radio,
+  Radar,
   Settings,
   ShieldAlert,
   ShieldCheck,
@@ -118,6 +119,12 @@ export const navGroups: AppNavGroup[] = [
         label: "Bag",
         icon: Target,
         isActive: (pathname) => pathname.startsWith("/bag"),
+      },
+      {
+        href: "/simulator-lab",
+        label: "Simulator Lab",
+        icon: Radar,
+        isActive: (pathname) => pathname.startsWith("/simulator-lab"),
       },
       {
         href: "/speed",

@@ -19,7 +19,7 @@ import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getGroupDetailData } from "@/lib/groups";
+import { getGroupDetailData, type GroupDetailData } from "@/lib/groups";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
+});
+const weekDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
 });
 
 const groupTabs = [
@@ -61,7 +65,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
   }
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
         <section className="grid gap-4">
           <header className="premium-hero overflow-hidden">
@@ -120,6 +124,11 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </a>
             ))}
           </nav>
+
+          <section id="leaderboard" className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <SquadLeaderboardPanel rivalry={data.rivalry} />
+            <WeeklyRivalryPanel rivalry={data.rivalry} />
+          </section>
 
           {data.canPost ? (
             <section id="feed" className="premium-card p-4">
@@ -183,22 +192,6 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                 </article>
               ))
             )}
-          </section>
-
-          <section id="leaderboard" className="premium-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Group leaderboard</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Use linked records, tournaments and challenge boards for group-scoped competition.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/leaderboard" prefetch={false}>
-                  Open leaderboards
-                </Link>
-              </Button>
-            </div>
           </section>
 
           <section id="records" className="premium-card p-4">
@@ -391,6 +384,116 @@ function SideMetric({ icon, label, value }: { icon: ReactNode; label: string; va
       </span>
       <span className="font-semibold tracking-normal">{value}</span>
     </div>
+  );
+}
+
+type RivalryData = GroupDetailData["rivalry"];
+
+function SquadLeaderboardPanel({ rivalry }: { rivalry: RivalryData }) {
+  const leader = rivalry.standings[0] ?? null;
+
+  return (
+    <section className="premium-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">Squad leaderboard</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {weekDateFormatter.format(rivalry.startsAt)} -{" "}
+            {weekDateFormatter.format(rivalry.endsAt)} · {rivalry.periodKey}
+          </p>
+        </div>
+        <StatusPill tone={leader ? "green" : "slate"}>{rivalry.sourceLabel}</StatusPill>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {rivalry.standings.length > 0 ? (
+          rivalry.standings.slice(0, 6).map((standing, index) => (
+            <div
+              key={standing.userId}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border bg-[#F5F6F4] px-3 py-2"
+            >
+              <span className="grid size-8 place-items-center rounded-full bg-white text-sm font-semibold">
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                {standing.username ? (
+                  <Link
+                    href={`/profile/${standing.username}`}
+                    prefetch={false}
+                    className="truncate text-sm font-semibold hover:underline"
+                  >
+                    {standing.displayName}
+                  </Link>
+                ) : (
+                  <p className="truncate text-sm font-semibold">{standing.displayName}</p>
+                )}
+                <p className="truncate text-xs text-muted-foreground">{standing.summary}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-semibold tracking-normal">{standing.points}</p>
+                <p className="text-xs text-muted-foreground">pts</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            No active members yet.
+          </p>
+        )}
+      </div>
+      <div className="mt-3 flex justify-end">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/leaderboard" prefetch={false}>
+            Open leaderboards
+          </Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function WeeklyRivalryPanel({ rivalry }: { rivalry: RivalryData }) {
+  return (
+    <section className="premium-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">{rivalry.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Head-to-head pairings from current squad points.
+          </p>
+        </div>
+        <StatusPill tone="amber">{rivalry.pairings.length} matches</StatusPill>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {rivalry.pairings.length > 0 ? (
+          rivalry.pairings.slice(0, 4).map((pairing) => (
+            <div
+              key={`${pairing.userAId}:${pairing.userBId ?? "bye"}`}
+              className="rounded-lg border border-amber-100 bg-amber-50/70 p-3"
+            >
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 text-sm">
+                <p className="truncate font-semibold">{pairing.userALabel}</p>
+                <span className="rounded-full bg-white px-2 py-1 text-xs text-muted-foreground">
+                  vs
+                </span>
+                <p className="truncate text-right font-semibold">{pairing.userBLabel}</p>
+              </div>
+              <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <p className="text-2xl font-semibold tracking-normal">{pairing.userAScore}</p>
+                <Trophy className="size-4 text-amber-700" />
+                <p className="text-right text-2xl font-semibold tracking-normal">
+                  {pairing.userBScore ?? "--"}
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{pairing.summary}</p>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+            Add members and scored rounds to generate pairings.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 

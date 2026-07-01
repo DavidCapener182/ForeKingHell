@@ -11,6 +11,7 @@ export const aiFeatureKeys = [
   "practice_recap",
   "course_strategy",
   "social_caption",
+  "session_roast",
   "challenge_copy",
   "coach_player_summary",
 ] as const;
@@ -106,6 +107,16 @@ export const aiFeatures = {
     modelEnvKey: "OPENAI_FAST_MODEL",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 550,
+    cacheTtlMs: 24 * hourMs,
+  },
+  session_roast: {
+    key: "session_roast",
+    label: "AI session roast",
+    minimumPlan: "plus",
+    creditCost: 1,
+    modelEnvKey: "OPENAI_FAST_MODEL",
+    fallbackModel: "gpt-4.1-mini",
+    maxOutputTokens: 420,
     cacheTtlMs: 24 * hourMs,
   },
   challenge_copy: {

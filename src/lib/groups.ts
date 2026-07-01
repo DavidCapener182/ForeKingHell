@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
@@ -11,6 +11,9 @@ import {
   groupMemberships,
   groupPosts,
   groups,
+  leaderboardSnapshots,
+  rivalryWindows,
+  sessions,
   userProfiles,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -21,6 +24,15 @@ import {
   parseVisibility,
   type SocialVisibility,
 } from "@/lib/social";
+import {
+  buildRivalryPairings,
+  buildRivalryStandings,
+  endOfIsoWeek,
+  startOfIsoWeek,
+  weekPeriodKey,
+  type RivalryPairingSummary,
+  type RivalryStanding,
+} from "@/lib/rivalries";
 
 export const groupTypes = [
   "friends",
@@ -81,6 +93,16 @@ export type GroupDetailData = {
     displayName: string;
     avatarUrl: string | null;
   }>;
+  rivalry: {
+    title: string;
+    periodKey: string;
+    startsAt: Date;
+    endsAt: Date;
+    sourceLabel: string;
+    snapshotAt: Date | null;
+    standings: RivalryStanding[];
+    pairings: RivalryPairingSummary[];
+  };
   canPost: boolean;
 };
 
@@ -180,6 +202,22 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
   const viewerMembership = memberships.find(
     (membership) => membership.userId === userId && membership.status === "active",
   );
+  const members = memberships
+    .map((membership) => {
+      const profile = memberProfileMap.get(membership.userId);
+
+      return profile
+        ? {
+            userId: membership.userId,
+            role: membership.role,
+            username: profile.username,
+            displayName: profile.displayName,
+            avatarUrl: profile.avatarUrl,
+          }
+        : null;
+    })
+    .filter((member): member is NonNullable<typeof member> => Boolean(member));
+  const rivalry = await getCurrentGroupRivalry(group.id, members);
 
   return {
     group: {
@@ -208,21 +246,8 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
       status: challenge.status,
       templateName: challenge.templateName ?? "Challenge",
     })),
-    members: memberships
-      .map((membership) => {
-        const profile = memberProfileMap.get(membership.userId);
-
-        return profile
-          ? {
-              userId: membership.userId,
-              role: membership.role,
-              username: profile.username,
-              displayName: profile.displayName,
-              avatarUrl: profile.avatarUrl,
-            }
-          : null;
-      })
-      .filter((member): member is NonNullable<typeof member> => Boolean(member)),
+    members,
+    rivalry,
     canPost: group.ownerUserId === userId || Boolean(viewerMembership),
   };
 }
@@ -405,6 +430,78 @@ async function hydrateGroupList(
     viewerRole: membershipMap.get(group.id)?.role ?? null,
     inviteCode: group.inviteCode,
   }));
+}
+
+async function getCurrentGroupRivalry(
+  groupId: string,
+  members: GroupDetailData["members"],
+): Promise<GroupDetailData["rivalry"]> {
+  const now = new Date();
+  const startsAt = startOfIsoWeek(now);
+  const endsAt = endOfIsoWeek(now);
+  const periodKey = weekPeriodKey(now);
+  const memberIds = members.map((member) => member.userId);
+  const db = getDb();
+  const [roundRows, latestSnapshot, activeWindow] = await Promise.all([
+    memberIds.length > 0
+      ? db
+          .select({
+            userId: sessions.userId,
+            date: sessions.date,
+            scorecardJson: sessions.scorecardJson,
+          })
+          .from(sessions)
+          .where(
+            and(
+              inArray(sessions.userId, memberIds),
+              gte(sessions.date, startsAt),
+              lte(sessions.date, endsAt),
+              or(eq(sessions.playContext, "on_course"), eq(sessions.type, "real_round")),
+            ),
+          )
+          .orderBy(desc(sessions.date))
+          .limit(200)
+      : Promise.resolve([]),
+    db
+      .select()
+      .from(leaderboardSnapshots)
+      .where(
+        and(
+          eq(leaderboardSnapshots.groupId, groupId),
+          eq(leaderboardSnapshots.snapshotType, "weekly_rivalry"),
+          eq(leaderboardSnapshots.periodKey, periodKey),
+        ),
+      )
+      .orderBy(desc(leaderboardSnapshots.calculatedAt))
+      .limit(1),
+    db
+      .select()
+      .from(rivalryWindows)
+      .where(
+        and(
+          eq(rivalryWindows.groupId, groupId),
+          eq(rivalryWindows.periodKey, periodKey),
+          eq(rivalryWindows.status, "active"),
+        ),
+      )
+      .orderBy(desc(rivalryWindows.createdAt))
+      .limit(1),
+  ]);
+  const standings = buildRivalryStandings({
+    members,
+    rounds: roundRows,
+  });
+
+  return {
+    title: activeWindow[0]?.title ?? "Weekly rivalry",
+    periodKey,
+    startsAt,
+    endsAt,
+    sourceLabel: latestSnapshot[0] ? "Live week + saved snapshot" : "Live week",
+    snapshotAt: latestSnapshot[0]?.calculatedAt ?? null,
+    standings,
+    pairings: buildRivalryPairings(standings),
+  };
 }
 
 async function getGroupInvitePreview(

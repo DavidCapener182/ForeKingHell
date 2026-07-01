@@ -58,6 +58,7 @@ export function parseGenericLaunchMonitorCsv(
       const clubRaw = cellByHeader(row, normalisedHeaders, ["club", "clubtype", "clubname"]);
 
       return {
+        rowNumber: headerIndex + index + 2,
         shotNumber:
           numberFromCell(cellByHeader(row, normalisedHeaders, ["shot", "shotnumber", "shotno"])) ??
           index + 1,

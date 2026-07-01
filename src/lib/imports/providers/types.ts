@@ -23,6 +23,7 @@ export type NormalizedMetric =
   | "smash_factor";
 
 export type NormalizedShot = {
+  rowNumber?: number;
   shotNumber: number | null;
   clubRaw: string | null;
   clubType: string;

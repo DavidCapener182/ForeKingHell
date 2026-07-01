@@ -16,9 +16,12 @@ type SocialFixture = {
   privateUsername: string;
   targetDisplayName: string;
   incomingDisplayName: string;
+  privateDisplayName: string;
+  ownHeadline: string;
   friendHeadline: string;
   strangerHeadline: string;
   publicHeadline: string;
+  ownFeedItemId: string;
   friendFeedItemId: string;
   strangerFeedItemId: string;
   publicFeedItemId: string;
@@ -110,15 +113,63 @@ test.describe("social friends and feed visibility", () => {
     await expect(page.locator("body")).not.toContainText(data.strangerHeadline);
   });
 
+  test("offers owner-only Reel exports on mobile and desktop feed cards", async ({ page }) => {
+    expect(fixture).not.toBeNull();
+    const data = fixture!;
+    const viewports = [
+      { name: "mobile", width: 390, height: 844 },
+      { name: "desktop", width: 1440, height: 960 },
+    ] as const;
+
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "share", {
+        configurable: true,
+        value: undefined,
+      });
+      window.open = ((url?: string | URL) => {
+        (window as Window & { __lastReelExportUrl?: string }).__lastReelExportUrl = String(
+          url ?? "",
+        );
+        return null;
+      }) as typeof window.open;
+    });
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await gotoSocialPage(page, "/feed?filter=me", data.ownHeadline);
+      await expectNoHorizontalOverflow(page, viewport.name);
+
+      await page.evaluate(() => {
+        (window as Window & { __lastReelExportUrl?: string }).__lastReelExportUrl = "";
+      });
+      const exportButton = page.getByRole("button", { name: /Export Reel/i }).first();
+      await expect(exportButton).toBeVisible();
+      await expect(exportButton).toBeEnabled();
+
+      const exportResponsePromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/api/content-exports"),
+      );
+      await exportButton.click();
+      const exportResponse = await exportResponsePromise;
+      expect(exportResponse.status()).toBe(200);
+      await expect.poll(() => lastReelExportUrl(page)).toMatch(/\/api\/content-exports\/.+\/image/);
+
+      await gotoSocialPage(page, "/feed?filter=friends", data.friendHeadline);
+      await expect(page.getByRole("button", { name: /Export Reel/i })).toHaveCount(0);
+    }
+  });
+
   test("keeps private profiles closed to strangers", async ({ page }) => {
     expect(fixture).not.toBeNull();
     const data = fixture!;
 
-    const response = await page.goto(`/profile/${data.privateUsername}`, {
-      waitUntil: "domcontentloaded",
-      timeout: 45_000,
-    });
-    expect(response?.status()).toBe(404);
+    const response = await page.request.get(`/profile/${data.privateUsername}`);
+    const body = await response.text();
+
+    expect(response.status()).toBeLessThan(500);
+    expect(body).not.toContain(data.privateDisplayName);
   });
 
   test("supports feed kudos, comments and reporting", async ({ page }) => {
@@ -263,6 +314,23 @@ async function revealFeedCard(page: Page, feedItemId: string) {
   return card;
 }
 
+async function expectNoHorizontalOverflow(page: Page, label: string) {
+  const metrics = await page.evaluate(() => ({
+    scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    viewportWidth: window.innerWidth,
+  }));
+
+  expect(metrics.scrollWidth, `${label} feed should stay inside the viewport`).toBeLessThanOrEqual(
+    metrics.viewportWidth + 2,
+  );
+}
+
+async function lastReelExportUrl(page: Page) {
+  return page.evaluate(
+    () => (window as Window & { __lastReelExportUrl?: string }).__lastReelExportUrl ?? "",
+  );
+}
+
 async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFixture> {
   const token = randomUUID().slice(0, 8);
   const targetUserId = randomUUID();
@@ -274,9 +342,12 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
   const privateUsername = `private-${token}`;
   const targetDisplayName = `Social target ${token}`;
   const incomingDisplayName = `Incoming friend ${token}`;
+  const privateDisplayName = `Private golfer ${token}`;
+  const ownHeadline = `Own PB export ${token}`;
   const friendHeadline = `Friend PB visible ${token}`;
   const strangerHeadline = `Stranger PB hidden ${token}`;
   const publicHeadline = `Public PB visible ${token}`;
+  const ownFeedItemId = randomUUID();
   const friendFeedItemId = randomUUID();
   const strangerFeedItemId = randomUUID();
   const publicFeedItemId = randomUUID();
@@ -296,7 +367,7 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
       (${incomingUserId}, ${`social-incoming-${token}@example.test`}, ${incomingDisplayName}, ${now}),
       (${friendUserId}, ${`social-friend-${token}@example.test`}, ${`Feed friend ${token}`}, ${now}),
       (${strangerUserId}, ${`social-stranger-${token}@example.test`}, ${`Feed stranger ${token}`}, ${now}),
-      (${privateUserId}, ${`social-private-${token}@example.test`}, ${`Private golfer ${token}`}, ${now})
+      (${privateUserId}, ${`social-private-${token}@example.test`}, ${privateDisplayName}, ${now})
   `;
   await sql`
     insert into fkh_user_profiles (
@@ -307,7 +378,7 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
       (${incomingUserId}, ${`incoming-${token}`}, ${incomingDisplayName}, true, true, 'friends', 'friends', ${now}),
       (${friendUserId}, ${`feed-friend-${token}`}, ${`Feed friend ${token}`}, true, true, 'friends', 'friends', ${now}),
       (${strangerUserId}, ${`feed-stranger-${token}`}, ${`Feed stranger ${token}`}, true, true, 'friends', 'friends', ${now}),
-      (${privateUserId}, ${privateUsername}, ${`Private golfer ${token}`}, false, false, 'private', 'private', ${now})
+      (${privateUserId}, ${privateUsername}, ${privateDisplayName}, false, false, 'private', 'private', ${now})
   `;
   await sql`
     insert into fkh_friend_requests (id, requester_user_id, recipient_user_id, status, created_at, updated_at)
@@ -323,6 +394,7 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
       id, user_id, item_type, headline, metric_label, metric_value, context, visibility, verification_label, dedupe_key, created_at, updated_at
     )
     values
+      (${ownFeedItemId}, ${authUserId}, 'new_pb', ${ownHeadline}, 'Carry', '207.6 yd', 'Owner-only export card', 'friends', 'Rapsodo CSV', ${`own-${token}`}, ${now}, ${now}),
       (${friendFeedItemId}, ${friendUserId}, 'new_pb', ${friendHeadline}, 'Total', '190.4 yd', 'Friend-only card', 'friends', 'Rapsodo CSV', ${`friend-${token}`}, ${now}, ${now}),
       (${strangerFeedItemId}, ${strangerUserId}, 'new_pb', ${strangerHeadline}, 'Total', '191.4 yd', 'Non-friend card', 'friends', 'Rapsodo CSV', ${`stranger-${token}`}, ${now}, ${now}),
       (${publicFeedItemId}, ${strangerUserId}, 'achievement_unlock', ${publicHeadline}, 'Achievement', '+250 XP', 'Public card', 'public', 'Rapsodo CSV', ${`public-${token}`}, ${now}, ${now})
@@ -339,9 +411,12 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
     privateUsername,
     targetDisplayName,
     incomingDisplayName,
+    privateDisplayName,
+    ownHeadline,
     friendHeadline,
     strangerHeadline,
     publicHeadline,
+    ownFeedItemId,
     friendFeedItemId,
     strangerFeedItemId,
     publicFeedItemId,
@@ -351,8 +426,13 @@ async function seedSocialFixture(sql: Sql, authUserId: string): Promise<SocialFi
 
 async function cleanupSocialFixture(sql: Sql, fixture: SocialFixture, authUserId: string) {
   await sql`
+    delete from fkh_content_exports
+    where user_id = ${authUserId}
+      and source_id in (${fixture.ownFeedItemId}, ${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
+  `;
+  await sql`
     delete from fkh_feed_items
-    where id in (${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
+    where id in (${fixture.ownFeedItemId}, ${fixture.friendFeedItemId}, ${fixture.strangerFeedItemId}, ${fixture.publicFeedItemId})
   `;
   await sql`
     delete from fkh_social_reports

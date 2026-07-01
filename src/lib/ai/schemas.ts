@@ -168,6 +168,18 @@ export const socialCaptionSchema = {
   },
 } satisfies JsonSchema;
 
+export const sessionRoastSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["headline", "roast", "shortCaption", "safetyNote"],
+  properties: {
+    headline: { type: "string" },
+    roast: { type: "string" },
+    shortCaption: { type: "string" },
+    safetyNote: { type: "string" },
+  },
+} satisfies JsonSchema;
+
 export const challengeCopySchema = {
   type: "object",
   additionalProperties: false,

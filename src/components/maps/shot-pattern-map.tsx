@@ -11,7 +11,12 @@ import {
   type CourseFeature,
   type LandingClassificationSummary,
 } from "@/lib/course-feature-classification";
-import type { LatLngPoint } from "@/lib/geo/yard-projection";
+import {
+  YARDS_TO_METERS,
+  destinationPoint,
+  pointAlongGeometry,
+  type LatLngPoint,
+} from "@/lib/geo/yard-projection";
 import type {
   ProjectedShotPatternPoint,
   ProjectedShotPatternResult,
@@ -36,6 +41,11 @@ import type {
   ShotPatternHoleOption,
   ShotPatternTeeSetOption,
 } from "@/lib/shot-pattern-overlay-data";
+import {
+  buildDangerHeatSummary,
+  buildDispersionEllipse,
+  type DispersionEllipse,
+} from "@/lib/shot-pattern-signature";
 import { ShotPatternSummaryDrawer } from "@/components/maps/shot-pattern-summary-drawer";
 
 type ShotPatternApiData = {
@@ -259,6 +269,20 @@ export function ShotPatternMap({
       ]),
     );
   }, [courseFeatures, displayProjection.points]);
+  const dispersionEllipse = useMemo(
+    () => buildDispersionEllipse(displayProjection.points),
+    [displayProjection.points],
+  );
+  const dangerHeat = useMemo(
+    () =>
+      buildDangerHeatSummary(
+        displayProjection.points.map((point) => ({
+          ...point,
+          surface: projectedPointSurfaces.get(point.id) ?? "unavailable",
+        })),
+      ),
+    [displayProjection.points, projectedPointSurfaces],
+  );
   const targetLine = useMemo(
     () =>
       selectedHole && data
@@ -514,7 +538,24 @@ export function ShotPatternMap({
     const includedPoints = displayProjection.points.filter((point) => point.included);
     const excludedPoints = displayProjection.points.filter((point) => !point.included);
 
-    if (showEnvelope) {
+    if (showEnvelope && dispersionEllipse) {
+      const ellipse = ellipseLatLngPoints(dispersionEllipse, selectedHole.geometry, playingHoleYards);
+
+      if (ellipse.length >= 8) {
+        L.polygon(ellipse, {
+          color: "#7ee0a3",
+          fillColor: dangerHeat.riskScore >= 45 ? "#f59e0b" : "#2c93d4",
+          fillOpacity: dangerHeat.riskScore >= 45 ? 0.2 : 0.16,
+          opacity: 0.9,
+          weight: 2.5,
+          dashArray: "10 7",
+        })
+          .bindTooltip(
+            `Dispersion ellipse · ${dispersionEllipse.sampleSize} shots · ${dangerHeat.riskScore}% trouble heat`,
+          )
+          .addTo(layers);
+      }
+    } else if (showEnvelope) {
       const hull = convexHull(includedPoints.map((point) => point.latLng));
 
       if (hull.length >= 3) {
@@ -526,6 +567,25 @@ export function ShotPatternMap({
           fillOpacity: hasMappedSurfaceColours ? 0.1 : 0.18,
           opacity: 0.72,
           weight: 2,
+        }).addTo(layers);
+      }
+    }
+
+    if (showEnvelope && projectedPointSurfaces.size > 0 && dangerHeat.troubleCount > 0) {
+      for (const point of includedPoints) {
+        const surface = projectedPointSurfaces.get(point.id);
+
+        if (surface !== "trouble") {
+          continue;
+        }
+
+        L.circleMarker(point.latLng, {
+          radius: 15,
+          color: "#ef4444",
+          fillColor: "#ef4444",
+          fillOpacity: 0.16,
+          opacity: 0.34,
+          weight: 1,
         }).addTo(layers);
       }
     }
@@ -708,6 +768,8 @@ export function ShotPatternMap({
     }
   }, [
     displayProjection.points,
+    dispersionEllipse,
+    dangerHeat,
     leaflet,
     selectedHole,
     showDots,
@@ -1210,6 +1272,12 @@ function HoleVectorFallback({
   const bounds = localBounds(allPoints);
   const centerline = hole.geometry.map((point) => toSvgPoint(point, bounds));
   const isOverlay = variant === "overlay";
+  const dispersionEllipse = buildDispersionEllipse(projectedPoints);
+  const dispersionEllipsePoints = dispersionEllipse
+    ? ellipseLatLngPoints(dispersionEllipse, hole.geometry, playingHoleYards).map((point) =>
+        toSvgPoint(point, bounds),
+      )
+    : [];
 
   return (
     <div
@@ -1255,6 +1323,17 @@ function HoleVectorFallback({
           strokeLinecap="round"
           opacity={isOverlay ? "0.82" : "1"}
         />
+        {dispersionEllipsePoints.length >= 8 ? (
+          <polygon
+            points={pointsAttr(dispersionEllipsePoints)}
+            fill="#2c93d4"
+            fillOpacity={isOverlay ? "0.12" : "0.2"}
+            stroke="#7ee0a3"
+            strokeWidth={isOverlay ? "3" : "4"}
+            strokeDasharray="12 8"
+            opacity={isOverlay ? "0.86" : "1"}
+          />
+        ) : null}
         {targetLine?.aimOffsetYd && hole.geometry[0] ? (
           <g>
             <line
@@ -1463,6 +1542,30 @@ function HoleVectorFallback({
   );
 }
 
+function ellipseLatLngPoints(
+  ellipse: DispersionEllipse,
+  holeGeometry: LatLngPoint[],
+  holeYards: number,
+) {
+  if (holeGeometry.length < 2 || holeYards <= 0) {
+    return [];
+  }
+
+  const points: LatLngPoint[] = [];
+
+  for (let index = 0; index < 64; index += 1) {
+    const angle = (index / 64) * Math.PI * 2;
+    const forwardYd = ellipse.centerForwardYd + Math.cos(angle) * ellipse.radiusForwardYd;
+    const sideYd = ellipse.centerSideYd + Math.sin(angle) * ellipse.radiusSideYd;
+    const projection = pointAlongGeometry(holeGeometry, Math.max(0, forwardYd) / holeYards);
+    const sideBearing = projection.bearingDeg + (sideYd >= 0 ? 90 : -90);
+
+    points.push(destinationPoint(projection.point, sideBearing, Math.abs(sideYd) * YARDS_TO_METERS));
+  }
+
+  return points;
+}
+
 function localBounds(points: LatLngPoint[]) {
   const lats = points.map((point) => point[0]);
   const lngs = points.map((point) => point[1]);
@@ -1499,13 +1602,17 @@ function toSvgPoint(point: LatLngPoint, bounds: ReturnType<typeof localBounds>) 
   const height = bounds.maxLat - bounds.minLat || 1;
 
   return {
-    x: 64 + ((point[1] - bounds.minLng) / width) * 772,
-    y: 64 + ((bounds.maxLat - point[0]) / height) * 432,
+    x: roundSvgCoordinate(64 + ((point[1] - bounds.minLng) / width) * 772),
+    y: roundSvgCoordinate(64 + ((bounds.maxLat - point[0]) / height) * 432),
   };
 }
 
 function pointsAttr(points: Array<{ x: number; y: number }>) {
   return points.map((point) => `${point.x},${point.y}`).join(" ");
+}
+
+function roundSvgCoordinate(value: number) {
+  return Math.round(value * 1000) / 1000;
 }
 
 function convexHull(points: LatLngPoint[]) {

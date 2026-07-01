@@ -21,6 +21,7 @@ import {
   Upload,
   UserRound,
   Users,
+  Wind,
   type LucideIcon,
 } from "lucide-react";
 
@@ -530,6 +531,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               latestRound={data.latestRound}
               className="h-full"
             />
+          </DashboardBentoItem>
+          <DashboardBentoItem span={4}>
+            <EnvironmentBaselinePanel summary={data.playContextSummary} className="h-full" />
+          </DashboardBentoItem>
+          <DashboardBentoItem span={8}>
+            <PlaysLikeAdjustmentPanel playsLike={data.playsLike} className="h-full" />
           </DashboardBentoItem>
 
           {pinnedDashboardSections.has("bag") ? (
@@ -2452,6 +2459,173 @@ function LatestPracticeSignalPanel({
           : firstSignal
             ? `${firstSignal.label.toLowerCase()} · ${firstSignal.value}.`
             : "No major movement yet."}
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function EnvironmentBaselinePanel({
+  summary,
+  className,
+}: {
+  summary: DashboardData["playContextSummary"];
+  className?: string;
+}) {
+  const rows = summary.rows.length > 0 ? summary.rows : [summary.dominant];
+
+  return (
+    <DashboardPanel
+      id="environment-baseline"
+      className={className}
+      title="Environment baseline"
+      description="Separates simulator, bay, and on-course evidence before yardage calls."
+      action={
+        <StatusPill tone={summary.outdoorReady ? "green" : "amber"}>
+          {summary.dominant.label}
+        </StatusPill>
+      }
+    >
+      <div className="grid gap-3">
+        <div className="rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+            Yardage truth
+          </p>
+          <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+            {summary.outdoorReady ? "Course-backed" : "Bay-backed"}
+          </p>
+          <p className="mt-1 text-sm leading-5 text-[#667085]">{summary.recommendation}</p>
+        </div>
+        <div className="grid gap-2">
+          {rows.slice(0, 3).map((row) => (
+            <p
+              key={row.context}
+              className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-white/70 px-3 py-2.5 text-sm"
+            >
+              <span className="min-w-0">
+                <span className="block font-semibold text-[#111827]">{row.label}</span>
+                <span className="block text-xs text-[#667085]">{row.evidenceLabel}</span>
+              </span>
+              <span className="shrink-0 text-right font-bold text-[#111827]">
+                {integerFormatter.format(row.shots)}
+                <span className="ml-1 text-xs font-medium text-[#667085]">shots</span>
+              </span>
+            </p>
+          ))}
+        </div>
+        <Link
+          href="/bag"
+          prefetch={false}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[#CFE1D2] bg-white px-3 text-sm font-semibold text-[#087A3D] transition-colors hover:bg-[#F0FAF3]"
+        >
+          Review bag split
+          <ArrowRight className="size-4" />
+        </Link>
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function PlaysLikeAdjustmentPanel({
+  playsLike,
+  className,
+}: {
+  playsLike: DashboardData["playsLike"];
+  className?: string;
+}) {
+  const rows = playsLike.rows.slice(0, 3);
+  const sourceBadge =
+    playsLike.sourceKind === "live"
+      ? "Live weather"
+      : playsLike.sourceKind === "cache"
+        ? "Cached weather"
+        : "Session weather";
+  const conditionDetails = [
+    typeof playsLike.conditions.temperatureC === "number"
+      ? `${numberFormatter.format(playsLike.conditions.temperatureC)} C`
+      : null,
+    typeof playsLike.conditions.windSpeedMph === "number"
+      ? `${numberFormatter.format(playsLike.conditions.windSpeedMph)} mph${playsLike.conditions.windDirectionLabel ? ` ${playsLike.conditions.windDirectionLabel}` : ""}`
+      : null,
+    typeof playsLike.elevationM === "number"
+      ? `${integerFormatter.format(Math.round(playsLike.elevationM))} m`
+      : null,
+    typeof playsLike.conditions.humidityPct === "number"
+      ? `${integerFormatter.format(Math.round(playsLike.conditions.humidityPct))}% humidity`
+      : null,
+  ].filter(Boolean);
+
+  return (
+    <DashboardPanel
+      id="plays-like"
+      className={className}
+      title="Plays-like yardage"
+      description="Temperature, wind, humidity and elevation adjustments layered onto trusted stock calls."
+      action={
+        <StatusPill tone={playsLike.measuredInputs > 0 ? "sky" : "slate"}>
+          {playsLike.measuredInputs > 0 ? sourceBadge : "Neutral"}
+        </StatusPill>
+      }
+    >
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+        <div className="rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
+          <div className="flex items-center gap-2 text-[#087A3D]">
+            <Wind className="size-5" />
+            <p className="text-xs font-bold uppercase tracking-[0.12em]">Current read</p>
+          </div>
+          <p className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+            {playsLike.summary}
+          </p>
+          <p className="mt-2 text-sm leading-5 text-[#667085]">
+            Source: {playsLike.sourceLabel}. Inputs captured: {playsLike.measuredInputs}/4.
+          </p>
+          {conditionDetails.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {conditionDetails.map((detail) => (
+                <span
+                  key={detail}
+                  className="rounded-full border border-[#CFE1D2] bg-white px-2 py-1 text-xs font-semibold text-[#375041]"
+                >
+                  {detail}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div className="grid gap-2">
+          {rows.length > 0 ? (
+            rows.map((row) => (
+              <Link
+                key={row.clubId}
+                href={`/bag/${row.clubId}`}
+                prefetch={false}
+                className="group grid gap-2 rounded-lg border border-border/70 bg-white/75 px-3 py-3 transition-colors hover:border-[#CFE7D6] hover:bg-white"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold leading-5 text-[#111827]">{row.label}</p>
+                    <p className="text-xs text-[#667085]">
+                      {integerFormatter.format(row.sampleSize)} shots · {row.confidenceScore}% trust
+                    </p>
+                  </div>
+                  <p className="text-right text-xl font-bold leading-6 text-[#111827]">
+                    {formatYards(row.playsLikeYards)}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-xs text-[#667085]">
+                  <span>Stock {formatYards(row.baseYards)}</span>
+                  <span className="font-semibold text-[#087A3D]">
+                    {row.deltaYards > 0 ? "+" : ""}
+                    {numberFormatter.format(row.deltaYards)} yd
+                  </span>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="grid min-h-32 place-items-center rounded-lg border border-dashed border-[#CFE1D2] bg-white/60 p-4 text-center text-sm leading-6 text-[#667085]">
+              Import trusted stock shots before plays-like calls appear.
+            </div>
+          )}
+        </div>
       </div>
     </DashboardPanel>
   );

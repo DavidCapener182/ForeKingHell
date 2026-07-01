@@ -160,7 +160,7 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
   const activeFilterChips = buildActiveFilterChips(filters, filterOptions.sessions);
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <MobileRouteHeader title="Dashboard" group="dashboard" activeKey="strokes" />
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -214,6 +214,10 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
         categoryTotal={analysis.categoryTotal}
         pendingCount={analysis.pendingCount}
       />
+
+      <GainLossWaterfall categories={analysis.categories} />
+
+      <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
 
       <MainScoringLeak
         summary={activeCategory ?? analysis.weakestCategory}
@@ -769,6 +773,99 @@ function categoryVisual(category: string) {
   }
 
   return { iconTileClassName: "border-slate-200 bg-slate-100 text-slate-600" };
+}
+
+function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
+  const calculated = categories.filter((category) => typeof category.total === "number");
+  const values = calculated.map((category) => category.total ?? 0);
+  const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
+  const barWidth = calculated.length > 0 ? 680 / calculated.length : 680;
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Gain/loss waterfall"
+        description="How each category moves the round total before the table evidence."
+        action={<Sigma className="size-5 text-emerald-700" />}
+      />
+      <CardContent>
+        {calculated.length > 0 ? (
+          <div className="overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
+            <svg viewBox="0 0 760 260" role="img" aria-label="Strokes gained waterfall" className="h-64 w-full">
+              <line x1="40" x2="720" y1="130" y2="130" stroke="#B8C8B7" strokeWidth="2" />
+              {calculated.map((category, index) => {
+                const value = category.total ?? 0;
+                const height = Math.max(8, (Math.abs(value) / maxAbs) * 82);
+                const x = 48 + index * barWidth;
+                const y = value >= 0 ? 130 - height : 130;
+                const fill = value >= 0 ? "#087A3D" : "#DC2626";
+
+                return (
+                  <g key={category.category}>
+                    <rect x={x} y={y} width={Math.max(48, barWidth - 28)} height={height} rx="10" fill={fill} opacity="0.9" />
+                    <text x={x + Math.max(48, barWidth - 28) / 2} y={value >= 0 ? y - 12 : y + height + 24} textAnchor="middle" fill="#111827" fontSize="22" fontWeight="800">
+                      {formatSg(value)}
+                    </text>
+                    <text x={x + Math.max(48, barWidth - 28) / 2} y="232" textAnchor="middle" fill="#667085" fontSize="18" fontWeight="700">
+                      {category.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-[#DDE8DE] bg-[#F8FAF8] p-6 text-center text-sm leading-6 text-muted-foreground">
+            Add calculated strokes-gained events to draw the gain/loss waterfall.
+          </div>
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null }) {
+  const title = summary ? `${summary.label}: practice this first` : "Practice this first";
+  const total = summary?.total ?? null;
+  const hasCalculatedSignal = total !== null && (summary?.sampleSize ?? 0) > 0;
+
+  return (
+    <DataPanel>
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)_auto] lg:items-center">
+        <div>
+          <StatusPill tone={total !== null && total < 0 ? "pink" : "amber"}>
+            Scoring priority
+          </StatusPill>
+          <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+            {title}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#667085]">
+            {practiceRecommendation(summary?.category)}
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <DataPair
+            label="SG total"
+            value={total === null ? "--" : formatSg(total)}
+          />
+          <DataPair
+            label="Sample"
+            value={summary ? integerFormatter.format(summary.sampleSize) : "--"}
+          />
+          <DataPair
+            label="Confidence"
+            value={hasCalculatedSignal ? "Actionable" : "Building"}
+          />
+        </div>
+        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Link href="/coach#more-drills" prefetch={false}>
+            <Target className="size-4" />
+            Start drill
+          </Link>
+        </Button>
+      </CardContent>
+    </DataPanel>
+  );
 }
 
 function MainScoringLeak({

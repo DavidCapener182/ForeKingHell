@@ -25,6 +25,7 @@ import {
   type CourseSessionLink,
 } from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { inferPlayContext } from "@/lib/play-context";
 import { recordImportFeedItems } from "@/lib/social";
 import {
   type CourseInferenceResult,
@@ -35,7 +36,6 @@ import {
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import {
   type DistanceUnit,
-  type ParseRapsodoCsvResult,
   type ParsedRapsodoRawRow,
   type ParsedRapsodoShot,
   type RapsodoColumnMapping,
@@ -43,8 +43,12 @@ import {
   buildClubKey,
   formatClubType,
   normalizeClubType,
-  parseRapsodoCsv,
 } from "@/lib/rapsodo/parser";
+import {
+  parseLaunchMonitorImportCsv,
+  type ParsedLaunchMonitorImportResult,
+} from "@/lib/imports/normalized-import";
+import type { LaunchMonitorProviderKind } from "@/lib/imports/providers";
 import {
   DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
   buildStrokesGainedEventsFromCourseShots,
@@ -71,7 +75,7 @@ export type SaveRapsodoImportInput = {
   rawCsvText: string;
   fileName: string;
   fileSizeBytes: number;
-  source: "rapsodo";
+  source: LaunchMonitorProviderKind;
   sessionType: "range" | "round" | "simulator" | "simulated_course";
   sessionDate: string;
   distanceUnit: DistanceUnit;
@@ -151,11 +155,20 @@ const SHORT_WEDGE_CLUB_TYPES = new Set(["sw", "lw", "wedge"]);
 export async function saveRapsodoImport(
   input: SaveRapsodoImportInput,
 ): Promise<SaveRapsodoImportResult> {
+  return saveLaunchMonitorImport(input);
+}
+
+export async function saveLaunchMonitorImport(
+  input: SaveRapsodoImportInput,
+): Promise<SaveRapsodoImportResult> {
   const startedAt = Date.now();
   try {
     const userId = await requireCurrentUserId();
     const validatedInput = validateInput(input);
-    const parsed = parseRapsodoCsv(validatedInput.rawCsvText, {
+    const parsed = await parseLaunchMonitorImportCsv({
+      rawCsvText: validatedInput.rawCsvText,
+      fileName: validatedInput.fileName,
+      source: validatedInput.source,
       fallbackDistanceUnit: validatedInput.distanceUnit,
       columnMapping: validatedInput.columnMapping,
     });
@@ -225,7 +238,7 @@ export async function saveRapsodoImport(
       parsedShotCount: parsed.shots.length,
       warningCount: parsed.warnings.length + (coursePlan?.warnings.length ?? 0),
       duplicate: result.skipped,
-      parseVersion: "rapsodo-v1",
+      parseVersion: `${validatedInput.source}-v1`,
       source: validatedInput.source,
       offlineReplay: false,
       durationMs: Date.now() - startedAt,
@@ -284,10 +297,13 @@ export async function saveRapsodoImportBatch(
 
   const parsedInputs: Array<{
     input: SaveRapsodoImportInput;
-    parsed: ParseRapsodoCsvResult;
+    parsed: ParsedLaunchMonitorImportResult;
   }> = [];
   for (const input of validatedInputs) {
-    const parsed = parseRapsodoCsv(input.rawCsvText, {
+    const parsed = await parseLaunchMonitorImportCsv({
+      rawCsvText: input.rawCsvText,
+      fileName: input.fileName,
+      source: input.source,
       fallbackDistanceUnit: input.distanceUnit,
       columnMapping: input.columnMapping,
     });
@@ -364,6 +380,11 @@ async function persistImport(
   const now = new Date();
   const sessionDate = parseSessionDate(input.sessionDate);
   const rawCsvHash = hashRawCsv(input.rawCsvText);
+  const playContext = inferPlayContext({
+    sessionType: input.sessionType,
+    source: input.source,
+    title: input.fileName,
+  });
   const uniqueClubKeys = new Set(input.shots.map((shot) => shot.clubKey));
   const courseShotByRowNumber = new Map(
     (input.coursePlan?.shots ?? []).map((shot) => [shot.sourceShot.rowNumber, shot]),
@@ -403,6 +424,8 @@ async function persistImport(
           userId,
           sessionId: existingImport.id,
           source: input.source,
+          parseVersion: `${input.source}-v1`,
+          playContext,
           fileName: input.fileName,
           fileSizeBytes: input.fileSizeBytes,
           rawCsvHash,
@@ -430,6 +453,7 @@ async function persistImport(
         userId,
         source: input.source,
         type: input.sessionType,
+        playContext,
         date: sessionDate,
         courseId: input.courseLink.courseId,
         teeSetId: input.courseLink.teeSetId,
@@ -451,6 +475,8 @@ async function persistImport(
         userId,
         sessionId: session.id,
         source: input.source,
+        parseVersion: `${input.source}-v1`,
+        playContext,
         fileName: input.fileName,
         fileSizeBytes: input.fileSizeBytes,
         rawCsvHash,
@@ -472,6 +498,7 @@ async function persistImport(
           sessionId: session.id,
           rowNumber: row.rowNumber,
           rowType: row.rowType,
+          playContext,
           sourceRawJson: row.sourceRawJson,
         })),
       );
@@ -537,6 +564,7 @@ async function persistImport(
           userId,
           sessionId: session.id,
           clubId: clubIdByKey.get(shot.clubKey) ?? "",
+          playContext,
           shotAt: sessionDate,
           clubType: shot.clubType,
           shotNumber: shot.shotNumber,
@@ -625,6 +653,7 @@ async function persistImport(
           ballSpeedMph: shots.ballSpeedMph,
           launchAngleDeg: shots.launchAngleDeg,
           courseHoleNumber: shots.courseHoleNumber,
+          playContext: shots.playContext,
           sessionType: sessions.type,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
@@ -640,6 +669,7 @@ async function persistImport(
         await tx.insert(stockYardages).values({
           userId,
           clubId,
+          playContext,
           sampleSize: stock.sampleSize,
           carryMedianYd: stock.carryMedianYd,
           carryMeanYd: stock.carryMeanYd,
@@ -757,8 +787,8 @@ function logImportTelemetry(event: string, payload: Record<string, unknown>) {
 }
 
 function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
-  if (input.source !== "rapsodo") {
-    throw new Error("Only Rapsodo CSV imports are supported in this slice.");
+  if (!["rapsodo", "square", "trackman"].includes(input.source)) {
+    throw new Error("Launch monitor source is invalid.");
   }
 
   if (!["range", "round", "simulator", "simulated_course"].includes(input.sessionType)) {
@@ -786,7 +816,7 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
 
   return {
     ...input,
-    fileName: input.fileName.trim().slice(0, 260) || "rapsodo-import.csv",
+    fileName: input.fileName.trim().slice(0, 260) || `${input.source}-import.csv`,
     fileSizeBytes: Number.isFinite(input.fileSizeBytes) ? Math.max(0, input.fileSizeBytes) : 0,
     columnMapping: sanitizeColumnMapping(input.columnMapping),
     courseName: input.courseName?.trim().slice(0, 180),
@@ -798,7 +828,10 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
   };
 }
 
-function validateParsedImport(input: SaveRapsodoImportInput, parsed: ParseRapsodoCsvResult) {
+function validateParsedImport(
+  input: SaveRapsodoImportInput,
+  parsed: ParsedLaunchMonitorImportResult,
+) {
   if (parsed.rawRows.length > MAX_IMPORT_CSV_ROWS) {
     throw new Error(
       `This file has too many rows. Split it into smaller session exports. Maximum row count is ${MAX_IMPORT_CSV_ROWS.toLocaleString(
@@ -822,7 +855,7 @@ function validateParsedImport(input: SaveRapsodoImportInput, parsed: ParseRapsod
     rawRowCount: parsed.rawRows.length,
     parsedShotCount: parsed.shots.length,
     warningCount: parsed.warnings.length,
-    parseVersion: "rapsodo-v1",
+    parseVersion: `${input.source}-v1`,
     source: input.source,
   });
 }

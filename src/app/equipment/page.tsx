@@ -17,10 +17,12 @@ import {
 } from "lucide-react";
 
 import {
+  captureEquipmentSnapshotAction,
   createBallModelAction,
   retireClubAction,
   saveEquipmentHistoryAction,
 } from "@/app/equipment/actions";
+import { BagOrderForm, type BagOrderClubItem } from "@/app/equipment/bag-order-form";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -50,7 +52,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ballModels, clubEquipmentHistory, clubs, shots } from "@/db/schema";
+import { ballModels, clubEquipmentHistory, clubs, equipmentSnapshots, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -62,6 +64,7 @@ import {
   type StockShot,
   type StockYardage,
 } from "@/lib/stock-yardage";
+import { normalizeBagOrder, type EquipmentSnapshotItem } from "@/lib/witb-snapshots";
 
 export const dynamic = "force-dynamic";
 
@@ -154,11 +157,9 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       {params?.saved ? (
         <Alert>
           <CircleDot className="size-4" />
-          <AlertTitle>{params.saved === "retired" ? "Club retired" : "Equipment saved"}</AlertTitle>
+          <AlertTitle>{equipmentSavedTitle(params.saved)}</AlertTitle>
           <AlertDescription>
-            {params.saved === "retired"
-              ? "The club is hidden from the active bag, but its historic shots remain available for comparison."
-              : "The setup is now part of your bag intelligence and future before/after comparisons."}
+            {equipmentSavedDescription(params.saved)}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -193,6 +194,10 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       />
 
       <CurrentSetupStrip setup={intelligence.setup} ballModel={data.ballModels[0] ?? null} />
+      <VisualBagSlotsSection
+        clubs={buildBagOrderItems(intelligence.activeProfiles)}
+        snapshots={data.snapshots}
+      />
       <CurrentBagScorePanel intelligence={intelligence} />
       <BagFeaturePanel data={featureData} />
       <ClubIntelligenceSection profiles={intelligence.activeProfiles} />
@@ -408,6 +413,86 @@ function CurrentSetupStrip({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function VisualBagSlotsSection({
+  clubs,
+  snapshots,
+}: {
+  clubs: BagOrderClubItem[];
+  snapshots: EquipmentSnapshotRow[];
+}) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Visual bag slots"
+        description="Order the current bag like it sits on course, then capture setup snapshots for before/after yardage reads."
+        action={<StatusPill tone="green">{clubs.length} active</StatusPill>}
+      />
+      <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <BagOrderForm clubs={clubs} />
+        <div className="grid content-start gap-3">
+          <form
+            action={captureEquipmentSnapshotAction}
+            className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-3"
+          >
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
+              <Button
+                type="submit"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                <Save className="size-4" />
+                Capture
+              </Button>
+            </div>
+          </form>
+
+          <div className="grid gap-2">
+            {snapshots.length > 0 ? (
+              snapshots.slice(0, 4).map((snapshot) => (
+                <div
+                  key={snapshot.id}
+                  className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold tracking-normal">{snapshot.label}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {compactDateFormatter.format(snapshot.capturedAt)}
+                      </p>
+                    </div>
+                    <StatusPill tone="sky">{snapshot.items.length} clubs</StatusPill>
+                  </div>
+                  <div className="mt-3 grid gap-1.5">
+                    {snapshot.items.slice(0, 4).map((item) => (
+                      <div
+                        key={`${snapshot.id}-${item.clubId}`}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        <span className="min-w-0 truncate text-muted-foreground">
+                          {item.label} · {item.brandModel}
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                          {item.carryYd === null
+                            ? "--"
+                            : `${integerFormatter.format(item.carryYd)}y`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                Capture the current setup before a fitting, shaft change or new wedge build.
+              </p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </DataPanel>
   );
 }
 
@@ -822,7 +907,8 @@ function RetireClubForm({ club, compact = false }: { club: ActiveClub; compact?:
 async function getEquipmentData() {
   const userId = await requireCurrentUserId();
   const db = getDb();
-  const [clubRows, ballRows, historyRows, shotCountRows, recentShotRows] = await Promise.all([
+  const [clubRows, ballRows, historyRows, shotCountRows, recentShotRows, snapshotRows] =
+    await Promise.all([
     db.select().from(clubs).where(eq(clubs.userId, userId)),
     db
       .select()
@@ -877,6 +963,12 @@ async function getEquipmentData() {
       .where(eq(shots.userId, userId))
       .orderBy(desc(shots.shotAt))
       .limit(1600),
+    db
+      .select()
+      .from(equipmentSnapshots)
+      .where(eq(equipmentSnapshots.userId, userId))
+      .orderBy(desc(equipmentSnapshots.capturedAt))
+      .limit(6),
   ]);
 
   const shotStatsByClubId = new Map(
@@ -897,14 +989,9 @@ async function getEquipmentData() {
       const rightTime = right.lastShotAt instanceof Date ? right.lastShotAt.getTime() : 0;
       return rightTime - leftTime || left.type.localeCompare(right.type);
     });
-  const activeClubs = clubRows
-    .filter((club) => club.active && isTrackedClubType(club.type))
-    .sort(
-      (left, right) =>
-        clubSortValue(left.type) - clubSortValue(right.type) ||
-        (left.brand ?? "").localeCompare(right.brand ?? "") ||
-        (left.model ?? "").localeCompare(right.model ?? ""),
-    );
+  const activeClubs = normalizeBagOrder(
+    clubRows.filter((club) => club.active && isTrackedClubType(club.type)),
+  );
 
   return {
     clubs: clubRows,
@@ -912,6 +999,10 @@ async function getEquipmentData() {
     retiredClubs,
     ballModels: ballRows,
     history: historyRows,
+    snapshots: snapshotRows.map((snapshot) => ({
+      ...snapshot,
+      items: parseEquipmentSnapshotItems(snapshot.snapshotJson),
+    })),
     recentShotRows,
     shotStatsByClubId,
   };
@@ -920,6 +1011,7 @@ async function getEquipmentData() {
 type ActiveClub = Awaited<ReturnType<typeof getEquipmentData>>["activeClubs"][number];
 type RetiredClub = Awaited<ReturnType<typeof getEquipmentData>>["retiredClubs"][number];
 type EquipmentData = Awaited<ReturnType<typeof getEquipmentData>>;
+type EquipmentSnapshotRow = EquipmentData["snapshots"][number];
 type EquipmentShotRow = EquipmentData["recentShotRows"][number];
 type EquipmentSignal = {
   label: string;
@@ -970,6 +1062,72 @@ type BuilderScenario = {
   tone: Tone;
 };
 type EquipmentIntelligence = ReturnType<typeof buildEquipmentIntelligence>;
+
+function buildBagOrderItems(profiles: ClubProfile[]): BagOrderClubItem[] {
+  return profiles.map((profile) => ({
+    id: profile.club.id,
+    type: profile.club.type,
+    label: formatClubType(profile.club.type),
+    brandModel: profile.equipmentName,
+    bagSection: profile.club.bagSection,
+    bagPosition: profile.club.bagPosition,
+    confidence: profile.confidence,
+    carryLabel: profile.carryLabel,
+  }));
+}
+
+function parseEquipmentSnapshotItems(
+  value: Array<Record<string, unknown>>,
+): EquipmentSnapshotItem[] {
+  return value.flatMap((item) => {
+    const clubId = typeof item.clubId === "string" ? item.clubId : "";
+    const label = typeof item.label === "string" ? item.label : "";
+    const section = typeof item.section === "string" ? item.section : "main";
+    const position = typeof item.position === "number" ? item.position : 100;
+    const brandModel = typeof item.brandModel === "string" ? item.brandModel : "Unknown setup";
+    const confidence = typeof item.confidence === "number" ? item.confidence : null;
+    const carryYd = typeof item.carryYd === "number" ? item.carryYd : null;
+
+    if (!clubId || !label) {
+      return [];
+    }
+
+    return [
+      {
+        clubId,
+        label,
+        section,
+        position,
+        brandModel,
+        confidence,
+        carryYd,
+      },
+    ];
+  });
+}
+
+function equipmentSavedTitle(saved: string) {
+  if (saved === "retired") return "Club retired";
+  if (saved === "bag-order") return "Bag order saved";
+  if (saved === "snapshot") return "Bag snapshot captured";
+  return "Equipment saved";
+}
+
+function equipmentSavedDescription(saved: string) {
+  if (saved === "retired") {
+    return "The club is hidden from the active bag, but its historic shots remain available for comparison.";
+  }
+
+  if (saved === "bag-order") {
+    return "Your bag slots now match the current setup across equipment, bag and dashboard reads.";
+  }
+
+  if (saved === "snapshot") {
+    return "The current bag state is saved for future before/after comparisons.";
+  }
+
+  return "The setup is now part of your bag intelligence and future before/after comparisons.";
+}
 
 function buildEquipmentIntelligence(data: EquipmentData) {
   const shotsByClubId = groupShotsByClubId(data.recentShotRows);

@@ -8,6 +8,7 @@ export type StockShot = {
   ballSpeedMph?: number | null;
   launchAngleDeg?: number | null;
   courseHoleNumber?: number | null;
+  playContext?: string | null;
   sessionType?: string | null;
   shotCategory?: string | null;
   qualityTag?: string | null;

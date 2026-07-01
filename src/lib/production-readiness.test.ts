@@ -48,6 +48,7 @@ describe("production readiness gate", () => {
     for (const route of [
       "src/app/api/coach/chat/route.ts",
       "src/app/api/coach/summary/route.ts",
+      "src/app/api/ai/session-roast/route.ts",
       "src/app/api/scorecard/extract/route.ts",
     ]) {
       const source = readFileSync(join(root, route), "utf8");

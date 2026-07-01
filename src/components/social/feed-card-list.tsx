@@ -39,6 +39,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
+import { ReelExportButton } from "@/components/social/reel-export-button";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { socialVisibilityOptions, type FeedItemView } from "@/lib/social";
@@ -243,6 +244,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
               Share latest
             </Link>
           </Button>
+          {firstItem.viewerCanManage ? <ReelExportButton feedItemId={firstItem.id} /> : null}
         </div>
       </CardContent>
     </Card>
@@ -349,6 +351,7 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
               </Link>
             </Button>
             <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
+            {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
             {item.proofUrl ? (
               <Button asChild variant="ghost" size="sm">
                 <Link href={item.proofUrl} prefetch={false}>
@@ -686,6 +689,16 @@ function titleCase(value: string) {
 }
 
 function feedTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    rivalry_win: "Rivalry Win",
+    squad_streak: "Squad Streak",
+    weekly_pb: "Weekly PB",
+  };
+
+  if (labels[value]) {
+    return labels[value];
+  }
+
   return value
     .split("_")
     .map((part) => titleCase(part))
@@ -693,7 +706,7 @@ function feedTypeLabel(value: string) {
 }
 
 function isPbFeedType(type: string) {
-  return type === "new_pb" || type === "longest_drive";
+  return type === "new_pb" || type === "longest_drive" || type === "weekly_pb";
 }
 
 type FeedDayGroup = {
@@ -765,10 +778,13 @@ function pluralFeedTypeLabel(type: string, count: number) {
     level_up: ["level up", "level ups"],
     longest_drive: ["longest drive", "longest drives"],
     new_pb: ["PB", "PBs"],
+    rivalry_win: ["rivalry win", "rivalry wins"],
     round_completed: ["round", "rounds"],
+    squad_streak: ["squad streak", "squad streaks"],
     tournament_created: ["tournament", "tournaments"],
     tournament_joined: ["tournament entry", "tournament entries"],
     tournament_round_submitted: ["tournament round", "tournament rounds"],
+    weekly_pb: ["weekly PB", "weekly PBs"],
   };
   const fallback = feedTypeLabel(type).toLowerCase();
   const [single, plural] = labels[type] ?? [fallback, `${fallback}s`];

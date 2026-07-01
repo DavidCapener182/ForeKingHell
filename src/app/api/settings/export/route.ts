@@ -19,8 +19,10 @@ import {
   challenges,
   clubEquipmentHistory,
   clubs,
+  contentExports,
   courses,
   entitlements,
+  equipmentSnapshots,
   feedCommentReactions,
   feedComments,
   feedItems,
@@ -38,12 +40,15 @@ import {
   importMappings,
   importRows,
   importSourceFiles,
+  leaderboardSnapshots,
   moderationEvents,
   offerClicks,
   partnerOffers,
   providerAccounts,
   providerSessions,
   rapsodoSyncSessions,
+  rivalryPairings,
+  rivalryWindows,
   sessions,
   shareLinks,
   shots,
@@ -59,6 +64,7 @@ import {
   userFollows,
   userProfiles,
   users,
+  weatherSnapshots,
   xpLedger,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -91,6 +97,9 @@ export async function GET() {
     syncStateRows,
     rapsodoRows,
     shareLinkRows,
+    contentExportRows,
+    weatherSnapshotRows,
+    equipmentSnapshotRows,
     membershipRows,
     invitationRows,
     socialProfileRows,
@@ -147,6 +156,9 @@ export async function GET() {
     db.select().from(achievementSyncState).where(eq(achievementSyncState.userId, userId)),
     db.select().from(rapsodoSyncSessions).where(eq(rapsodoSyncSessions.userId, userId)),
     db.select().from(shareLinks).where(eq(shareLinks.userId, userId)),
+    db.select().from(contentExports).where(eq(contentExports.userId, userId)),
+    db.select().from(weatherSnapshots).where(eq(weatherSnapshots.userId, userId)),
+    db.select().from(equipmentSnapshots).where(eq(equipmentSnapshots.userId, userId)),
     db.select().from(accountMemberships).where(orOwnerOrMember(userId)),
     db.select().from(accountInvitations).where(eq(accountInvitations.ownerUserId, userId)),
     db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
@@ -229,6 +241,9 @@ export async function GET() {
     ownedGroupInviteRows,
     ownedGroupPostRows,
     ownedGroupChallengeLinkRows,
+    rivalryWindowRows,
+    rivalryPairingRows,
+    leaderboardSnapshotRows,
     challengeRewardRows,
     sponsorChallengeRewardRows,
     partnerOfferRows,
@@ -251,6 +266,18 @@ export async function GET() {
                 .select()
                 .from(groupChallengeLinks)
                 .where(inArray(groupChallengeLinks.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(rivalryWindows).where(inArray(rivalryWindows.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(rivalryPairings).where(inArray(rivalryPairings.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db
+                .select()
+                .from(leaderboardSnapshots)
+                .where(inArray(leaderboardSnapshots.groupId, groupIds))
             : Promise.resolve([]),
           challengeIds.length > 0
             ? db
@@ -285,6 +312,18 @@ export async function GET() {
                 .select()
                 .from(groupChallengeLinks)
                 .where(inArray(groupChallengeLinks.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(rivalryWindows).where(inArray(rivalryWindows.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db.select().from(rivalryPairings).where(inArray(rivalryPairings.groupId, groupIds))
+            : Promise.resolve([]),
+          groupIds.length > 0
+            ? db
+                .select()
+                .from(leaderboardSnapshots)
+                .where(inArray(leaderboardSnapshots.groupId, groupIds))
             : Promise.resolve([]),
           challengeIds.length > 0
             ? db
@@ -323,6 +362,9 @@ export async function GET() {
       achievementSyncState: syncStateRows,
       rapsodoSyncSessions: rapsodoRows,
       shareLinks: shareLinkRows,
+      contentExports: contentExportRows,
+      weatherSnapshots: weatherSnapshotRows,
+      equipmentSnapshots: equipmentSnapshotRows,
       accountMemberships: membershipRows,
       accountInvitations: invitationRows,
       socialProfile: socialProfileRows[0] ?? null,
@@ -346,6 +388,9 @@ export async function GET() {
       groupInvites: uniqueById([...groupInviteRows, ...ownedGroupInviteRows]),
       groupPosts: uniqueById([...groupPostRows, ...ownedGroupPostRows]),
       groupChallengeLinks: uniqueById([...groupChallengeLinkRows, ...ownedGroupChallengeLinkRows]),
+      rivalryWindows: rivalryWindowRows,
+      rivalryPairings: rivalryPairingRows,
+      leaderboardSnapshots: leaderboardSnapshotRows,
       billingCustomers: billingCustomerRows,
       subscriptions: subscriptionRows,
       entitlements: entitlementRows,

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Fragment, useMemo, useState } from "react";
@@ -33,6 +34,7 @@ const TARGET_PRESETS = [120, 150, 175, 200, 300];
 const MIN_TARGET_YD = 40;
 const MAX_TARGET_YD = 650;
 const STEP_YD = 5;
+const TARGET_DISTANCE_IMAGE_SRC = "/assets/generated/target-distance-fairway-panel.png";
 type PlayableTargetRow = TargetDistanceRow & {
   carryYd: number;
   playNumberYd: number;
@@ -464,7 +466,14 @@ export function TargetDistanceSelector({
         </div>
 
         <div className="relative hidden min-h-[620px] overflow-hidden rounded-2xl border border-[#DDE5DF] bg-emerald-50 shadow-sm sm:block">
-          <TargetDistanceBackdrop />
+          <Image
+            src={TARGET_DISTANCE_IMAGE_SRC}
+            alt=""
+            fill
+            priority={false}
+            sizes="(min-width: 1280px) 460px, (min-width: 768px) 42vw, 100vw"
+            className="scale-[1.03] object-cover object-center"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-white/92 via-white/76 to-white/0" />
           <div className="absolute inset-x-0 top-0 h-[390px] bg-white/72 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
           <div className="relative z-10 flex min-h-[620px] flex-col p-7">
@@ -809,25 +818,5 @@ export function TargetDistanceSelector({
         </div>
       </CardContent>
     </DataPanel>
-  );
-}
-
-function TargetDistanceBackdrop() {
-  return (
-    <svg viewBox="0 0 1200 1400" className="absolute inset-0 h-full w-full" aria-hidden="true">
-      <rect width="1200" height="1400" fill="#EAF7EE" />
-      <path d="M0 1210C135 1126 284 1071 448 1046C592 1024 728 1027 856 1056C998 1089 1113 1149 1200 1233V1400H0Z" fill="#8FC86F" />
-      <path d="M36 1318C143 1200 252 1099 363 1016C493 920 615 852 729 812C818 781 911 762 1006 756C1071 753 1135 759 1200 774V1400H36Z" fill="#B7DE8B" opacity="0.95" />
-      <path d="M143 1329C239 1194 339 1078 443 982C554 878 661 794 765 729C838 684 921 657 1014 648C1077 642 1139 647 1200 662V1400H143Z" fill="#DDF3C4" opacity="0.92" />
-      <path d="M257 1266C344 1135 435 1018 530 915C622 815 708 739 788 688C843 653 900 629 959 616C1034 599 1114 605 1200 633" fill="none" stroke="#6FAE56" strokeWidth="60" strokeLinecap="round" />
-      <path d="M319 1260C404 1138 493 1030 588 937C669 857 745 794 818 749C867 718 916 697 965 688C1044 672 1122 682 1200 720" fill="none" stroke="#F8FCF8" strokeWidth="46" strokeLinecap="round" />
-      <ellipse cx="924" cy="646" rx="124" ry="68" fill="#EEF7D7" />
-      <ellipse cx="924" cy="646" rx="83" ry="43" fill="none" stroke="#C9DCA8" strokeWidth="8" />
-      <circle cx="924" cy="646" r="10" fill="#0B7A3B" />
-      <path d="M924 530V646" stroke="#0B7A3B" strokeWidth="10" strokeLinecap="round" />
-      <path d="M924 530C960 543 994 567 1018 595C980 603 949 617 924 639Z" fill="#EF4444" />
-      <circle cx="544" cy="1043" r="10" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="4" />
-      <circle cx="679" cy="881" r="10" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="4" />
-    </svg>
   );
 }

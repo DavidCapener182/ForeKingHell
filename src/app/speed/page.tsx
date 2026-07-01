@@ -51,6 +51,7 @@ import {
   formatSpeed,
   formatSpeedCompact,
 } from "@/lib/speed-training";
+import { buildSpeedChartSignature } from "@/lib/speed-chart-signature";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -374,7 +375,19 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
             )}
           >
             {hasSelectedSpeedTrend ? (
-              <SpeedTrendChart points={selectedTrend} />
+              <SpeedTrendChart
+                points={selectedTrend}
+                targetSpeedMph={selectedClub?.target.value ?? summary.targetSpeedMph}
+                personalBestMph={
+                  selectedClub
+                    ? maxOrNull(
+                        [selectedClub.row.trainingPbMph, selectedClub.row.shotPbMph].filter(
+                          (value): value is number => value !== null,
+                        ),
+                      )
+                    : summary.personalBestMph
+                }
+              />
             ) : (
               <SpeedTrendStarterCard
                 sessionCount={selectedClub?.sessions.length ?? data.sessions.length}
@@ -1184,7 +1197,15 @@ function RCloudConnectCard() {
   );
 }
 
-function SpeedTrendChart({ points }: { points: SpeedTrendPoint[] }) {
+function SpeedTrendChart({
+  points,
+  targetSpeedMph,
+  personalBestMph,
+}: {
+  points: SpeedTrendPoint[];
+  targetSpeedMph: number | null;
+  personalBestMph: number | null;
+}) {
   if (points.length < 2) {
     return (
       <div className="flex min-h-[260px] items-center justify-center rounded-lg border border-border/70 bg-white/65">
@@ -1197,17 +1218,31 @@ function SpeedTrendChart({ points }: { points: SpeedTrendPoint[] }) {
     );
   }
 
-  const values = points.map((point) => point.value);
+  const signature = buildSpeedChartSignature({ points, targetSpeedMph, personalBestMph });
+  const values = [
+    ...points.map((point) => point.value),
+    signature.targetBand?.low,
+    signature.targetBand?.high,
+    signature.personalBest?.value,
+  ].filter((value): value is number => typeof value === "number");
   const min = Math.min(...values) - 2;
   const max = Math.max(...values) + 2;
   const range = Math.max(1, max - min);
+  const valueToY = (value: number) => 88 - ((value - min) / range) * 72;
   const svgPoints = points
     .map((point, index) => {
       const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-      const y = 88 - ((point.value - min) / range) * 72;
+      const y = valueToY(point.value);
       return `${x},${y}`;
     })
     .join(" ");
+  const targetBandTop =
+    signature.targetBand === null ? null : valueToY(signature.targetBand.high);
+  const targetBandBottom =
+    signature.targetBand === null ? null : valueToY(signature.targetBand.low);
+  const ghostY = signature.ghostAverage === null ? null : valueToY(signature.ghostAverage);
+  const pbY =
+    signature.personalBest === null ? null : valueToY(signature.personalBest.value);
 
   return (
     <div className="rounded-lg border border-border/70 bg-[#111611] p-4 text-white">
@@ -1228,6 +1263,39 @@ function SpeedTrendChart({ points }: { points: SpeedTrendPoint[] }) {
       >
         <line x1="0" y1="88" x2="100" y2="88" stroke="rgba(255,255,255,0.35)" strokeWidth="0.6" />
         <line x1="0" y1="16" x2="100" y2="16" stroke="rgba(255,255,255,0.12)" strokeWidth="0.4" />
+        {targetBandTop !== null && targetBandBottom !== null ? (
+          <g>
+            <rect
+              x="0"
+              y={targetBandTop}
+              width="100"
+              height={Math.max(1, targetBandBottom - targetBandTop)}
+              fill="#FACC15"
+              opacity="0.14"
+            />
+            <line
+              x1="0"
+              y1={valueToY(signature.targetBand!.target)}
+              x2="100"
+              y2={valueToY(signature.targetBand!.target)}
+              stroke="#FACC15"
+              strokeWidth="0.8"
+              strokeDasharray="4 3"
+            />
+          </g>
+        ) : null}
+        {ghostY !== null ? (
+          <line
+            x1="0"
+            y1={ghostY}
+            x2="100"
+            y2={ghostY}
+            stroke="#93C5FD"
+            strokeWidth="1"
+            strokeDasharray="8 5"
+            opacity="0.72"
+          />
+        ) : null}
         <polyline
           points={svgPoints}
           fill="none"
@@ -1239,7 +1307,7 @@ function SpeedTrendChart({ points }: { points: SpeedTrendPoint[] }) {
         />
         {points.map((point, index) => {
           const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
-          const y = 88 - ((point.value - min) / range) * 72;
+          const y = valueToY(point.value);
           return (
             <g key={`${point.label}-${point.value}`}>
               <circle cx={x} cy={y} r="2.2" fill="#F8FAFC" />
@@ -1264,6 +1332,20 @@ function SpeedTrendChart({ points }: { points: SpeedTrendPoint[] }) {
             </g>
           );
         })}
+        {pbY !== null ? (
+          <g>
+            <circle cx="100" cy={pbY} r="4.4" fill="#FACC15" opacity="0.22" />
+            <circle cx="100" cy={pbY} r="2.3" fill="#FACC15" />
+            <text
+              x="98"
+              y={Math.max(10, pbY - 6)}
+              textAnchor="end"
+              className="fill-yellow-200 text-[4px] font-bold"
+            >
+              PB {Math.round(signature.personalBest!.value)}
+            </text>
+          </g>
+        ) : null}
       </svg>
     </div>
   );

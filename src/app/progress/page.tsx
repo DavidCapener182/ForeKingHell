@@ -192,6 +192,9 @@ export default async function ProgressPage() {
               <WeeklyRecapPanel data={featureData} summary={summary} />
             </ProgressBentoItem>
             <ProgressBentoItem span={12}>
+              <ProgressRoadmapPanel summary={summary} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={12}>
               <ComparisonBar summary={summary} />
             </ProgressBentoItem>
             <ProgressBentoItem span={6}>
@@ -569,6 +572,70 @@ function WeeklyRecapCard({
     </Link>
   ) : (
     content
+  );
+}
+
+function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
+  const roadmapItems = buildRoadmapItems(summary);
+
+  return (
+    <section className="premium-card overflow-hidden rounded-lg">
+      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#E8F7EE] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+            <Sparkles className="size-4" />
+            This week
+          </div>
+          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-[#111827]">
+            {roadmapGoalLabel(summary)}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#667085]">
+            Three actions from shot pattern, trust, and movement data. Finish these before chasing
+            more chart detail.
+          </p>
+          <div className="mt-5 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            <DataPair label="Average trust" value={`${summary.totals.averageTrust}%`} />
+            <DataPair
+              label="Clean shots"
+              value={integerFormatter.format(summary.totals.trackedCleanShots)}
+            />
+            <DataPair
+              label="Playable rate"
+              value={
+                summary.totals.averagePlayableRate === null
+                  ? "--"
+                  : `${numberFormatter.format(summary.totals.averagePlayableRate)}%`
+              }
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-3">
+          {roadmapItems.map((item, index) => (
+            <Link
+              key={`${item.title}-${index}`}
+              href={item.href}
+              prefetch={false}
+              className="group grid min-h-[13rem] grid-rows-[auto_1fr_auto] rounded-lg border border-[#DDE8DE] bg-white/80 p-4 transition-colors hover:border-[#CFE7D6] hover:bg-white"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+                    Priority {index + 1}
+                  </p>
+                  <p className="mt-2 text-lg font-bold leading-6 text-[#111827]">{item.title}</p>
+                </div>
+                <StatusPill tone={item.tone}>{item.label}</StatusPill>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-[#667085]">{item.detail}</p>
+              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
+                {item.action}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1204,7 +1271,13 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
     <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
       {variant === "course" ? (
         <>
-          <PracticeGreenThumbArtwork />
+          <Image
+            src="/assets/generated/progress-practice-green.png"
+            alt=""
+            fill
+            sizes="40px"
+            className="object-cover"
+          />
           <span className="absolute inset-0 bg-emerald-950/5" />
         </>
       ) : null}
@@ -1230,20 +1303,6 @@ function PracticePriorityThumb({ priority, index }: { priority: PracticePriority
         )
       ) : null}
     </span>
-  );
-}
-
-function PracticeGreenThumbArtwork() {
-  return (
-    <svg viewBox="0 0 80 80" className="absolute inset-0 h-full w-full" aria-hidden="true">
-      <rect width="80" height="80" fill="#EAF7EE" />
-      <path d="M0 61C14 54 30 50 49 49C61 48 71 50 80 55V80H0Z" fill="#8FC86F" />
-      <path d="M0 53C14 44 33 39 58 39C67 39 75 40 80 42V69H0Z" fill="#B7DE8B" />
-      <ellipse cx="48" cy="43" rx="21" ry="11" fill="#DDF3C4" />
-      <path d="M49 24V42" stroke="#0B7A3B" strokeWidth="3.5" strokeLinecap="round" />
-      <path d="M49 24C54 26 59 29 63 33C57 34 53 36 49 39Z" fill="#EF4444" />
-      <circle cx="35" cy="43" r="2.4" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="1.2" />
-    </svg>
   );
 }
 
@@ -1755,6 +1814,71 @@ function nextGoalDetail(priority: PracticePriority | undefined) {
   }
 
   return priority.reason;
+}
+
+type RoadmapItem = {
+  title: string;
+  detail: string;
+  label: string;
+  action: string;
+  href: string;
+  tone: Tone;
+};
+
+function buildRoadmapItems(summary: ProgressSummary): RoadmapItem[] {
+  const items: RoadmapItem[] = summary.practicePlan.slice(0, 3).map((priority) => ({
+    title: priority.title,
+    detail: priority.reason,
+    label: priority.priorityLabel.replace(" priority", ""),
+    action: "Start drill",
+    href: `/bag/${priority.clubId}/analytics`,
+    tone: priority.tone,
+  }));
+
+  const weakClub = summary.rankings.needsWork;
+  if (items.length < 3 && weakClub) {
+    items.push({
+      title: `${formatClubType(weakClub.clubType)} trust rebuild`,
+      detail: `${weakClub.trustIndex}% trust with ${weakClub.primaryMiss.toLowerCase()} as the main miss pattern.`,
+      label: "Leak",
+      action: "Review club",
+      href: `/bag/${weakClub.clubId}/analytics`,
+      tone: "amber",
+    });
+  }
+
+  const dataGap = summary.dataGaps[0];
+  if (items.length < 3 && dataGap) {
+    items.push({
+      title: `${formatClubType(dataGap.clubType)} data gap`,
+      detail: dataGap.detail,
+      label: "Sample",
+      action: "Fill gap",
+      href: `/bag/${dataGap.clubId}/analytics`,
+      tone: "slate",
+    });
+  }
+
+  while (items.length < 3) {
+    items.push({
+      title: "Build next baseline",
+      detail: "Import a comparable session so the roadmap can rank the next practice job.",
+      label: "Data",
+      action: "Import CSV",
+      href: "/import",
+      tone: "slate",
+    });
+  }
+
+  return items.slice(0, 3);
+}
+
+function roadmapGoalLabel(summary: ProgressSummary) {
+  if ((summary.totals.averagePlayableRate ?? 0) >= 72 && summary.totals.averageTrust >= 78) {
+    return "Scratch roadmap";
+  }
+
+  return "Break 80 roadmap";
 }
 
 function practiceReasonCopy(priority: PracticePriority) {

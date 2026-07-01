@@ -886,8 +886,11 @@ function pluralFeedTypeLabel(type: string, count: number) {
     level_up: ["level up", "level ups"],
     longest_drive: ["longest drive", "longest drives"],
     new_pb: ["PB", "PBs"],
+    rivalry_win: ["rivalry win", "rivalry wins"],
     round_completed: ["round", "rounds"],
+    squad_streak: ["squad streak", "squad streaks"],
     status_update: ["status update", "status updates"],
+    weekly_pb: ["weekly PB", "weekly PBs"],
   };
   const fallback = feedTypeLabel(type).toLowerCase();
   const [single, plural] = labels[type] ?? [fallback, `${fallback}s`];
@@ -896,6 +899,16 @@ function pluralFeedTypeLabel(type: string, count: number) {
 }
 
 function feedTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    rivalry_win: "Rivalry Win",
+    squad_streak: "Squad Streak",
+    weekly_pb: "Weekly PB",
+  };
+
+  if (labels[value]) {
+    return labels[value];
+  }
+
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

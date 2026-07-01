@@ -4,10 +4,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { ballModels, clubEquipmentHistory, clubs } from "@/db/schema";
+import { ballModels, clubEquipmentHistory, clubs, equipmentSnapshots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { normalizeEquipmentHistory } from "@/lib/equipment-history";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { buildEquipmentSnapshotPayload } from "@/lib/witb-snapshots";
 
 export async function createBallModelAction(formData: FormData) {
   const userId = await requireCurrentUserId();
@@ -143,6 +144,81 @@ export async function retireClubAction(formData: FormData) {
   redirect("/equipment?saved=retired");
 }
 
+export async function saveBagOrderAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  const clubIds = formData
+    .getAll("clubId")
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => value.trim());
+
+  if (clubIds.length === 0) {
+    throw new Error("No clubs supplied for bag order.");
+  }
+
+  const db = getDb();
+  const ownedClubs = await db
+    .select({ id: clubs.id })
+    .from(clubs)
+    .where(eq(clubs.userId, userId));
+  const ownedClubIds = new Set(ownedClubs.map((club) => club.id));
+  const uniqueClubIds = [...new Set(clubIds)];
+
+  if (uniqueClubIds.some((clubId) => !ownedClubIds.has(clubId))) {
+    throw new Error("Club not found for this account.");
+  }
+
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    for (const clubId of uniqueClubIds) {
+      await tx
+        .update(clubs)
+        .set({
+          bagSection: cleanBagSection(formData.get(`bagSection:${clubId}`)),
+          bagPosition: cleanBagPosition(formData.get(`bagPosition:${clubId}`)),
+          updatedAt: now,
+        })
+        .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
+    }
+  });
+
+  revalidateEquipmentSurfaces();
+  redirect("/equipment?saved=bag-order");
+}
+
+export async function captureEquipmentSnapshotAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  const label = nullableString(formData, "label") ?? "Bag snapshot";
+  const db = getDb();
+  const activeClubs = await db
+    .select({
+      id: clubs.id,
+      type: clubs.type,
+      brand: clubs.brand,
+      model: clubs.model,
+      bagSection: clubs.bagSection,
+      bagPosition: clubs.bagPosition,
+    })
+    .from(clubs)
+    .where(and(eq(clubs.userId, userId), eq(clubs.active, true)));
+
+  await db.insert(equipmentSnapshots).values({
+    userId,
+    label,
+    snapshotJson: buildEquipmentSnapshotPayload(activeClubs),
+    capturedAt: new Date(),
+  });
+
+  revalidateEquipmentSurfaces();
+  redirect("/equipment?saved=snapshot");
+}
+
+function revalidateEquipmentSurfaces() {
+  revalidatePath("/equipment");
+  revalidatePath("/bag");
+  revalidatePath("/dashboard");
+}
+
 function requiredString(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -167,4 +243,24 @@ function nullableNumber(formData: FormData, key: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function cleanBagSection(value: FormDataEntryValue | null) {
+  if (typeof value !== "string") {
+    return "main";
+  }
+
+  const section = value.trim().toLowerCase();
+  return ["driver", "woods", "irons", "wedges", "putter", "main"].includes(section)
+    ? section
+    : "main";
+}
+
+function cleanBagPosition(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) {
+    return 100;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, Math.min(999, Math.round(parsed))) : 100;
 }

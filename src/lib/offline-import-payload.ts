@@ -2,6 +2,7 @@ import type { SaveRapsodoImportInput } from "@/lib/imports/save-rapsodo-import";
 
 const sessionTypes = new Set(["range", "round", "simulator", "simulated_course"]);
 const distanceUnits = new Set(["yards", "meters"]);
+const importSources = new Set(["rapsodo", "square", "trackman"]);
 const columnMappingFields = new Set([
   "shotNumber",
   "clubType",
@@ -54,7 +55,9 @@ function parseImportInput(value: unknown): SaveRapsodoImportInput | null {
   const rawCsvText = stringValue(value.rawCsvText);
   const fileName = stringValue(value.fileName);
   const fileSizeBytes = numberValue(value.fileSizeBytes);
-  const source = value.source === "rapsodo" ? "rapsodo" : null;
+  const source = importSources.has(stringValue(value.source) ?? "")
+    ? (value.source as SaveRapsodoImportInput["source"])
+    : null;
   const sessionType = sessionTypes.has(stringValue(value.sessionType) ?? "")
     ? (value.sessionType as SaveRapsodoImportInput["sessionType"])
     : null;

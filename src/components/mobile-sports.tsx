@@ -105,6 +105,7 @@ const mobileRouteGroups = {
   analyse: [
     { key: "compare", label: "Compare", href: "/compare" },
     { key: "bag", label: "Bag", href: "/bag" },
+    { key: "simulator-lab", label: "Lab", href: "/simulator-lab" },
     { key: "speed", label: "Speed", href: "/speed" },
     { key: "training", label: "Training", href: "/stats/training-over-time" },
     { key: "equipment", label: "Equipment", href: "/equipment" },

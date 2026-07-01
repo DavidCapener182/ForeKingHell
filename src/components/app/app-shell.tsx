@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, Upload, UserRound, Zap } from "lucide-react";
+import { LogOut, Sun, Upload, UserRound, Zap } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { MobileNav, type MobileNavProfile, getProfileInitials } from "@/components/app/mobile-nav";
@@ -132,6 +132,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
 
         <SidebarSeparator />
         <SidebarFooter className="border-t border-sidebar-border bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]">
+          <SunlightModeButton />
           <Button asChild className="premium-action w-full justify-start rounded-lg">
             <Link href="/import">
               <Upload className="size-4" />
@@ -161,6 +162,39 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         {children}
       </div>
     </SidebarProvider>
+  );
+}
+
+function SunlightModeButton() {
+  const [enabled, setEnabled] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("fkh:sunlight-mode") === "true",
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.sunlight = enabled ? "true" : "false";
+  }, [enabled]);
+
+  function toggleSunlightMode() {
+    const next = !enabled;
+    setEnabled(next);
+    window.localStorage.setItem("fkh:sunlight-mode", String(next));
+    document.documentElement.dataset.sunlight = next ? "true" : "false";
+  }
+
+  return (
+    <Button
+      type="button"
+      variant={enabled ? "default" : "outline"}
+      className="w-full justify-start rounded-lg"
+      onClick={toggleSunlightMode}
+      aria-pressed={enabled}
+      data-haptic="strong"
+    >
+      <Sun className="size-4" />
+      <span className="group-data-[collapsible=icon]:hidden">Sunlight mode</span>
+    </Button>
   );
 }
 

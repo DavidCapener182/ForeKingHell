@@ -20,7 +20,7 @@ export const users = pgTable("fkh_users", {
   email: varchar("email", { length: 320 }),
   name: varchar("name", { length: 160 }),
   preferredUnits: varchar("preferred_units", { length: 16 }).notNull().default("yards"),
-  theme: varchar("theme", { length: 16 }).notNull().default("system"),
+  theme: varchar("theme", { length: 16 }).notNull().default("light"),
   tableDensity: varchar("table_density", { length: 16 }).notNull().default("comfortable"),
   dashboardPins: jsonb("dashboard_pins").$type<string[]>().notNull().default([]),
   privacySettingsJson: jsonb("privacy_settings_json")
@@ -135,6 +135,27 @@ export const userProfiles = pgTable(
     uniqueIndex("fkh_user_profiles_username_idx").on(table.username),
     index("fkh_user_profiles_public_idx").on(table.publicProfile),
     index("fkh_user_profiles_leaderboard_idx").on(table.leaderboardVisibility),
+  ],
+);
+
+export const userIdentityLinks = pgTable(
+  "fkh_user_identity_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    canonicalUserId: uuid("canonical_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    linkedUserId: uuid("linked_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    linkType: varchar("link_type", { length: 32 }).notNull().default("manual"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_user_identity_links_linked_idx").on(table.linkedUserId),
+    index("fkh_user_identity_links_canonical_status_idx").on(table.canonicalUserId, table.status),
   ],
 );
 
@@ -618,6 +639,88 @@ export const groupChallengeLinks = pgTable(
       table.challengeId,
     ),
     index("fkh_group_challenge_links_challenge_idx").on(table.challengeId),
+  ],
+);
+
+export const rivalryWindows = pgTable(
+  "fkh_rivalry_windows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 180 }).notNull(),
+    periodKey: varchar("period_key", { length: 40 }).notNull(),
+    metricKey: varchar("metric_key", { length: 40 }).notNull().default("net_score"),
+    status: varchar("status", { length: 24 }).notNull().default("active"),
+    settingsJson: jsonb("settings_json").$type<Record<string, unknown>>().notNull().default({}),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_rivalry_windows_group_status_idx").on(table.groupId, table.status),
+    index("fkh_rivalry_windows_period_idx").on(table.periodKey),
+  ],
+);
+
+export const rivalryPairings = pgTable(
+  "fkh_rivalry_pairings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    windowId: uuid("window_id")
+      .notNull()
+      .references(() => rivalryWindows.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userAId: uuid("user_a_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userBId: uuid("user_b_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userAScore: doublePrecision("user_a_score"),
+    userBScore: doublePrecision("user_b_score"),
+    winnerUserId: uuid("winner_user_id").references(() => users.id, { onDelete: "set null" }),
+    summaryJson: jsonb("summary_json").$type<Record<string, unknown>>().notNull().default({}),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_rivalry_pairings_window_idx").on(table.windowId),
+    index("fkh_rivalry_pairings_group_idx").on(table.groupId),
+    index("fkh_rivalry_pairings_players_idx").on(table.userAId, table.userBId),
+  ],
+);
+
+export const leaderboardSnapshots = pgTable(
+  "fkh_leaderboard_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    windowId: uuid("window_id").references(() => rivalryWindows.id, { onDelete: "set null" }),
+    snapshotType: varchar("snapshot_type", { length: 40 }).notNull().default("weekly_rivalry"),
+    periodKey: varchar("period_key", { length: 40 }).notNull(),
+    standingsJson: jsonb("standings_json")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    summaryJson: jsonb("summary_json").$type<Record<string, unknown>>().notNull().default({}),
+    calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_leaderboard_snapshots_group_period_idx").on(table.groupId, table.periodKey),
+    index("fkh_leaderboard_snapshots_window_idx").on(table.windowId),
   ],
 );
 
@@ -1151,6 +1254,35 @@ export const shareLinks = pgTable(
   ],
 );
 
+export const contentExports = pgTable(
+  "fkh_content_exports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: varchar("source_type", { length: 60 }).notNull(),
+    sourceId: varchar("source_id", { length: 220 }).notNull(),
+    templateKey: varchar("template_key", { length: 80 }).notNull().default("reel_pb_v1"),
+    platform: varchar("platform", { length: 24 }).notNull().default("reel"),
+    format: varchar("format", { length: 24 }).notNull().default("png_9x16"),
+    status: varchar("status", { length: 32 }).notNull().default("ready"),
+    snapshotJson: jsonb("snapshot_json").$type<Record<string, unknown>>().notNull().default({}),
+    renderConfigJson: jsonb("render_config_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    storagePath: text("storage_path"),
+    lastRenderedAt: timestamp("last_rendered_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_content_exports_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_content_exports_source_idx").on(table.sourceType, table.sourceId),
+  ],
+);
+
 export const clubs = pgTable(
   "fkh_clubs",
   {
@@ -1162,6 +1294,8 @@ export const clubs = pgTable(
     brand: varchar("brand", { length: 120 }),
     model: varchar("model", { length: 160 }),
     normalizedClubKey: varchar("normalized_club_key", { length: 260 }).notNull(),
+    bagSection: varchar("bag_section", { length: 40 }).notNull().default("main"),
+    bagPosition: integer("bag_position").notNull().default(100),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1169,6 +1303,7 @@ export const clubs = pgTable(
   (table) => [
     uniqueIndex("fkh_clubs_user_normalized_key_idx").on(table.userId, table.normalizedClubKey),
     index("fkh_clubs_user_type_idx").on(table.userId, table.type),
+    index("fkh_clubs_user_bag_order_idx").on(table.userId, table.bagSection, table.bagPosition),
   ],
 );
 
@@ -1292,6 +1427,34 @@ export const courseFeatures = pgTable(
   ],
 );
 
+export const weatherSnapshots = pgTable(
+  "fkh_weather_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
+    provider: varchar("provider", { length: 60 }).notNull().default("open_meteo"),
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
+    elevationM: doublePrecision("elevation_m"),
+    conditionsJson: jsonb("conditions_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    sourceJson: jsonb("source_json").$type<Record<string, unknown>>().notNull().default({}),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_weather_snapshots_user_course_idx").on(table.userId, table.courseId),
+    index("fkh_weather_snapshots_user_expires_idx").on(table.userId, table.expiresAt),
+  ],
+);
+
 export const sessions = pgTable(
   "fkh_sessions",
   {
@@ -1301,6 +1464,7 @@ export const sessions = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     source: varchar("source", { length: 40 }).notNull(),
     type: varchar("type", { length: 40 }).notNull(),
+    playContext: varchar("play_context", { length: 32 }).notNull().default("unknown"),
     date: timestamp("date", { withTimezone: true }).notNull(),
     courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
     teeSetId: uuid("tee_set_id").references(() => teeSets.id, { onDelete: "set null" }),
@@ -1347,6 +1511,7 @@ export const sessions = pgTable(
   (table) => [
     index("fkh_sessions_user_date_idx").on(table.userId, table.date),
     index("fkh_sessions_user_source_idx").on(table.userId, table.source),
+    index("fkh_sessions_user_context_date_idx").on(table.userId, table.playContext, table.date),
     index("fkh_sessions_user_type_date_idx").on(table.userId, table.type, table.date),
     index("fkh_sessions_type_date_idx").on(table.type, table.date),
     uniqueIndex("fkh_sessions_user_source_raw_hash_idx").on(
@@ -1369,11 +1534,13 @@ export const importRows = pgTable(
       .references(() => sessions.id, { onDelete: "cascade" }),
     rowNumber: integer("row_number").notNull(),
     rowType: varchar("row_type", { length: 40 }).notNull(),
+    playContext: varchar("play_context", { length: 32 }).notNull().default("unknown"),
     sourceRawJson: jsonb("source_raw_json").$type<Record<string, string>>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("fkh_import_rows_user_session_idx").on(table.userId, table.sessionId),
+    index("fkh_import_rows_user_context_idx").on(table.userId, table.playContext),
     index("fkh_import_rows_row_type_idx").on(table.rowType),
   ],
 );
@@ -1387,6 +1554,7 @@ export const importFiles = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
     source: varchar("source", { length: 40 }).notNull(),
+    playContext: varchar("play_context", { length: 32 }).notNull().default("unknown"),
     fileName: varchar("file_name", { length: 260 }).notNull(),
     fileSizeBytes: integer("file_size_bytes"),
     rawCsvHash: varchar("raw_csv_hash", { length: 64 }).notNull(),
@@ -1401,6 +1569,11 @@ export const importFiles = pgTable(
   (table) => [
     uniqueIndex("fkh_import_files_user_hash_idx").on(table.userId, table.rawCsvHash),
     index("fkh_import_files_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_import_files_user_context_created_idx").on(
+      table.userId,
+      table.playContext,
+      table.createdAt,
+    ),
     index("fkh_import_files_session_idx").on(table.sessionId),
     index("fkh_import_files_duplicate_idx").on(table.duplicateOfFileId),
   ],
@@ -1419,6 +1592,7 @@ export const shots = pgTable(
     clubId: uuid("club_id")
       .notNull()
       .references(() => clubs.id, { onDelete: "restrict" }),
+    playContext: varchar("play_context", { length: 32 }).notNull().default("unknown"),
     shotAt: timestamp("shot_at", { withTimezone: true }).notNull(),
     clubType: varchar("club_type", { length: 40 }).notNull(),
     shotNumber: integer("shot_number"),
@@ -1452,6 +1626,7 @@ export const shots = pgTable(
   (table) => [
     index("fkh_shots_user_session_idx").on(table.userId, table.sessionId),
     index("fkh_shots_user_club_idx").on(table.userId, table.clubId),
+    index("fkh_shots_user_context_club_idx").on(table.userId, table.playContext, table.clubId),
     index("fkh_shots_user_shot_at_idx").on(table.userId, table.shotAt),
     index("fkh_shots_user_category_idx").on(table.userId, table.shotCategory),
     index("fkh_shots_user_session_hole_idx").on(
@@ -1475,6 +1650,7 @@ export const stockYardages = pgTable(
     clubId: uuid("club_id")
       .notNull()
       .references(() => clubs.id, { onDelete: "cascade" }),
+    playContext: varchar("play_context", { length: 32 }).notNull().default("unknown"),
     calculatedAt: timestamp("calculated_at", { withTimezone: true }).notNull().defaultNow(),
     sampleSize: integer("sample_size").notNull(),
     carryMedianYd: doublePrecision("carry_median_yd"),
@@ -1490,6 +1666,11 @@ export const stockYardages = pgTable(
   },
   (table) => [
     index("fkh_stock_yardages_user_club_idx").on(table.userId, table.clubId),
+    index("fkh_stock_yardages_user_context_club_idx").on(
+      table.userId,
+      table.playContext,
+      table.clubId,
+    ),
     index("fkh_stock_yardages_calculated_at_idx").on(table.calculatedAt),
   ],
 );
@@ -1537,6 +1718,26 @@ export const clubEquipmentHistory = pgTable(
   (table) => [
     index("fkh_club_equipment_user_club_idx").on(table.userId, table.clubId),
     index("fkh_club_equipment_effective_idx").on(table.clubId, table.effectiveFrom),
+  ],
+);
+
+export const equipmentSnapshots = pgTable(
+  "fkh_equipment_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 160 }).notNull(),
+    snapshotJson: jsonb("snapshot_json")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_equipment_snapshots_user_captured_idx").on(table.userId, table.capturedAt),
   ],
 );
 
@@ -2507,6 +2708,7 @@ export type NewUser = typeof users.$inferInsert;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type NewAdminAuditLog = typeof adminAuditLog.$inferInsert;
 export type NewUserProfile = typeof userProfiles.$inferInsert;
+export type NewUserIdentityLink = typeof userIdentityLinks.$inferInsert;
 export type NewFriendRequest = typeof friendRequests.$inferInsert;
 export type NewFriendship = typeof friendships.$inferInsert;
 export type NewUserBlock = typeof userBlocks.$inferInsert;
@@ -2527,6 +2729,9 @@ export type NewGroupMembership = typeof groupMemberships.$inferInsert;
 export type NewGroupInvite = typeof groupInvites.$inferInsert;
 export type NewGroupPost = typeof groupPosts.$inferInsert;
 export type NewGroupChallengeLink = typeof groupChallengeLinks.$inferInsert;
+export type NewRivalryWindow = typeof rivalryWindows.$inferInsert;
+export type NewRivalryPairing = typeof rivalryPairings.$inferInsert;
+export type NewLeaderboardSnapshot = typeof leaderboardSnapshots.$inferInsert;
 export type NewBillingCustomer = typeof billingCustomers.$inferInsert;
 export type NewSubscription = typeof subscriptions.$inferInsert;
 export type NewEntitlement = typeof entitlements.$inferInsert;
@@ -2549,6 +2754,7 @@ export type NewModerationEvent = typeof moderationEvents.$inferInsert;
 export type NewAccountMembership = typeof accountMemberships.$inferInsert;
 export type NewAccountInvitation = typeof accountInvitations.$inferInsert;
 export type NewShareLink = typeof shareLinks.$inferInsert;
+export type NewContentExport = typeof contentExports.$inferInsert;
 export type NewClub = typeof clubs.$inferInsert;
 export type NewSession = typeof sessions.$inferInsert;
 export type NewShot = typeof shots.$inferInsert;
@@ -2557,8 +2763,10 @@ export type NewImportFile = typeof importFiles.$inferInsert;
 export type NewCourse = typeof courses.$inferInsert;
 export type NewTeeSet = typeof teeSets.$inferInsert;
 export type NewHole = typeof holes.$inferInsert;
+export type NewWeatherSnapshot = typeof weatherSnapshots.$inferInsert;
 export type NewBallModel = typeof ballModels.$inferInsert;
 export type NewClubEquipmentHistory = typeof clubEquipmentHistory.$inferInsert;
+export type NewEquipmentSnapshot = typeof equipmentSnapshots.$inferInsert;
 export type NewStrokesGainedBaseline = typeof strokesGainedBaselines.$inferInsert;
 export type NewStrokesGainedShotEvent = typeof strokesGainedShotEvents.$inferInsert;
 export type NewUserAchievement = typeof userAchievements.$inferInsert;

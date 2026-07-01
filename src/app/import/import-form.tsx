@@ -61,7 +61,6 @@ import { ColumnMappingPanel } from "@/app/import/column-mapping-panel";
 import {
   type DistanceUnit,
   type RapsodoColumnMapping,
-  parseRapsodoCsv,
 } from "@/lib/rapsodo/parser";
 import type {
   LongestShotNotification,
@@ -582,28 +581,23 @@ export function ImportForm({
   }
 
   function buildImportInputs(): SaveRapsodoImportInput[] {
-    return uploadedFiles
-      .map((file) => ({
-        ...file,
-        parsed: parseRapsodoCsv(file.rawCsvText, {
-          fallbackDistanceUnit: distanceUnit,
-          columnMapping,
-        }),
-      }))
-      .map((file) => ({
-        rawCsvText: file.rawCsvText,
-        fileName: file.fileName,
-        fileSizeBytes: file.fileSizeBytes,
-        source: "rapsodo" as const,
-        sessionType,
-        sessionDate: file.parsed.exportedAtIso ?? sessionDate,
-        distanceUnit,
-        columnMapping: hasColumnMapping(columnMapping) ? columnMapping : undefined,
-        courseName: isCourseUpload ? courseName : undefined,
-        courseScorecardText: isCourseUpload ? scorecardText : undefined,
-        courseHoleShotCounts: isCourseUpload ? courseHoleShotCounts : undefined,
-        courseHoleScoring: isCourseUpload ? courseHoleScoring : undefined,
-      }));
+    return parsedFiles.map((file) => ({
+      rawCsvText: file.rawCsvText,
+      fileName: file.fileName,
+      fileSizeBytes: file.fileSizeBytes,
+      source: file.parsed.source,
+      sessionType,
+      sessionDate: file.parsed.exportedAtIso ?? sessionDate,
+      distanceUnit,
+      columnMapping:
+        file.parsed.source === "rapsodo" && hasColumnMapping(columnMapping)
+          ? columnMapping
+          : undefined,
+      courseName: isCourseUpload ? courseName : undefined,
+      courseScorecardText: isCourseUpload ? scorecardText : undefined,
+      courseHoleShotCounts: isCourseUpload ? courseHoleShotCounts : undefined,
+      courseHoleScoring: isCourseUpload ? courseHoleScoring : undefined,
+    }));
   }
 
   async function queueImportBatch(inputs: SaveRapsodoImportInput[]) {

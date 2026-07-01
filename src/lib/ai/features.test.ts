@@ -21,6 +21,7 @@ describe("AI feature policy", () => {
   it("allows Plus only on light AI features", () => {
     expect(planAllowsAiFeature("plus", "weekly_recap")).toBe(true);
     expect(planAllowsAiFeature("plus", "social_caption")).toBe(true);
+    expect(planAllowsAiFeature("plus", "session_roast")).toBe(true);
     expect(planAllowsAiFeature("plus", "scorecard_extract")).toBe(true);
     expect(planAllowsAiFeature("plus", "coach_chat")).toBe(false);
     expect(planAllowsAiFeature("plus", "data_chat")).toBe(false);
@@ -42,6 +43,7 @@ describe("AI feature policy", () => {
     vi.stubEnv("OPENAI_COACH_MODEL", "coach-model");
 
     expect(resolveAiModel("social_caption")).toBe("fast-model");
+    expect(resolveAiModel("session_roast")).toBe("fast-model");
     expect(resolveAiModel("coach_summary")).toBe("coach-model");
 
     vi.stubEnv("OPENAI_WEEKLY_RECAP_MODEL", "weekly-model");

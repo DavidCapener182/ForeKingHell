@@ -37,8 +37,15 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 
 function parseAllowedDevOrigins(value: string | undefined) {
-  return (value ?? "")
+  const configuredOrigins = (value ?? "")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  return Array.from(
+    new Set([
+      "127.0.0.1",
+      ...configuredOrigins,
+    ]),
+  );
 }

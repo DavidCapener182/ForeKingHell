@@ -1,12 +1,12 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { userProfiles, users } from "@/db/schema";
+import { userIdentityLinks, userProfiles, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
   cleanProfileLabel,
@@ -20,6 +20,7 @@ export type CurrentUser = {
   id: string;
   email: string | null;
   name: string | null;
+  authUserId?: string;
 };
 
 export type CurrentUserPreferences = {
@@ -30,11 +31,11 @@ export type CurrentUserPreferences = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "system",
+  theme: "light",
   tableDensity: "comfortable",
 };
 
-export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
+const getCurrentAuthUser = cache(async function getCurrentAuthUser(): Promise<CurrentUser | null> {
   const playwrightUser = await getPlaywrightCookieUser();
   if (playwrightUser) {
     return playwrightUser;
@@ -55,6 +56,21 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   }
 
   return normalizeAuthUser(user);
+});
+
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
+  const authUser = await getCurrentAuthUser();
+
+  if (!authUser) {
+    return null;
+  }
+
+  if (!process.env.DATABASE_URL?.trim()) {
+    return authUser;
+  }
+
+  await ensureUserProfile(authUser);
+  return resolveLinkedCurrentUser(authUser);
 });
 
 export async function getOptionalCurrentUserId() {
@@ -84,7 +100,6 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
   const [profile] = await getDb()
     .select({
       preferredUnits: users.preferredUnits,
-      theme: users.theme,
       tableDensity: users.tableDensity,
     })
     .from(users)
@@ -93,13 +108,9 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 
   return {
     preferredUnits: profile?.preferredUnits === "metres" ? "metres" : "yards",
-    theme: normalizeTheme(profile?.theme),
+    theme: "light",
     tableDensity: profile?.tableDensity === "compact" ? "compact" : "comfortable",
   };
-}
-
-function normalizeTheme(value: string | null | undefined): ThemePreference {
-  return value === "dark" || value === "light" ? value : "system";
 }
 
 export async function ensureUserProfile(user: CurrentUser) {
@@ -179,6 +190,35 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
       .where(eq(userProfiles.userId, userId));
   }
 });
+
+async function resolveLinkedCurrentUser(authUser: CurrentUser): Promise<CurrentUser> {
+  const [linkedUser] = await getDb()
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+    })
+    .from(userIdentityLinks)
+    .innerJoin(users, eq(users.id, userIdentityLinks.canonicalUserId))
+    .where(
+      and(
+        eq(userIdentityLinks.linkedUserId, authUser.id),
+        eq(userIdentityLinks.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  if (!linkedUser || linkedUser.id === authUser.id) {
+    return authUser;
+  }
+
+  return {
+    id: linkedUser.id,
+    email: linkedUser.email ?? authUser.email,
+    name: cleanProfileLabel(linkedUser.name) ?? authUser.name,
+    authUserId: authUser.id,
+  };
+}
 
 function normalizeAuthUser(user: User): CurrentUser {
   const metadata = user.user_metadata ?? {};

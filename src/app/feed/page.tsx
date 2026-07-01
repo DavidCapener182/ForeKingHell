@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
+import { ReelExportButton } from "@/components/social/reel-export-button";
 import { SocialFeaturePanel } from "@/components/features/feature-panels";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import {
@@ -66,10 +67,10 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const comments = data.items.reduce((total, item) => total + item.commentCount, 0);
   const feedXp = data.items.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0);
   const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
-  const pbCount = data.items.filter(
-    (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
+  const pbCount = data.items.filter((item) => isPbFeedType(item.itemType)).length;
+  const challengeCount = data.items.filter(
+    (item) => item.itemType.startsWith("challenge_") || item.itemType === "rivalry_win",
   ).length;
-  const challengeCount = data.items.filter((item) => item.itemType.startsWith("challenge_")).length;
   const recordCount = data.items.filter((item) => item.itemType.startsWith("course_record")).length;
   const tournamentCount = data.items.filter((item) =>
     item.itemType.startsWith("tournament"),
@@ -183,6 +184,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                   }
                   reactionCount={item.reactionCount}
                   commentCount={item.commentCount}
+                  action={
+                    item.viewerCanManage ? (
+                      <ReelExportButton feedItemId={item.id} compact />
+                    ) : undefined
+                  }
                   media={
                     <PageArtwork
                       variant={artworkVariant}
@@ -622,6 +628,16 @@ function artworkForFeedType(type: string) {
 }
 
 function feedTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    rivalry_win: "Rivalry Win",
+    squad_streak: "Squad Streak",
+    weekly_pb: "Weekly PB",
+  };
+
+  if (labels[value]) {
+    return labels[value];
+  }
+
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -637,15 +653,15 @@ function filterFeedItems(
     case "friends":
       return items.filter((item) => item.userId !== viewerUserId);
     case "pbs":
-      return items.filter(
-        (item) => item.itemType === "new_pb" || item.itemType === "longest_drive",
-      );
+      return items.filter((item) => isPbFeedType(item.itemType));
     case "achievements":
       return items.filter(
         (item) => item.itemType === "achievement_unlock" || item.itemType === "level_up",
       );
     case "challenges":
-      return items.filter((item) => item.itemType.startsWith("challenge_"));
+      return items.filter(
+        (item) => item.itemType.startsWith("challenge_") || item.itemType === "rivalry_win",
+      );
     case "records":
       return items.filter((item) => item.itemType.startsWith("course_record"));
     case "tournaments":
@@ -657,6 +673,10 @@ function filterFeedItems(
     default:
       return items;
   }
+}
+
+function isPbFeedType(type: string) {
+  return type === "new_pb" || type === "longest_drive" || type === "weekly_pb";
 }
 
 function feedItemAvatarUrl(

@@ -60,9 +60,27 @@ type ShotRow = Pick<
   | "ballSpeedMph"
   | "launchAngleDeg"
 >;
-type ClubRow = typeof clubs.$inferSelect;
-type StockRow = typeof stockYardages.$inferSelect;
-type SessionRow = typeof sessions.$inferSelect;
+type ClubRow = Pick<typeof clubs.$inferSelect, "id" | "type" | "brand" | "model" | "active">;
+type StockRow = Pick<
+  typeof stockYardages.$inferSelect,
+  | "clubId"
+  | "calculatedAt"
+  | "carryMedianYd"
+  | "confidenceScore"
+  | "recommendedPlayNumberYd"
+>;
+type SessionRow = Pick<
+  typeof sessions.$inferSelect,
+  | "id"
+  | "type"
+  | "date"
+  | "courseId"
+  | "teeSetId"
+  | "location"
+  | "courseName"
+  | "scorecardJson"
+  | "rawCsvHash"
+>;
 type FeaturePreferenceRow = typeof userFeaturePreferences.$inferSelect;
 type FriendTargetOption = {
   userId: string;
@@ -151,7 +169,13 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1),
     selectFeaturePreferenceRows(db, userId),
     db
-      .select()
+      .select({
+        id: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        active: clubs.active,
+      })
       .from(clubs)
       .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
       .orderBy(clubs.type),
@@ -171,39 +195,71 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
       .orderBy(desc(shots.shotAt))
       .limit(FEATURE_SHOT_SAMPLE_LIMIT),
     db
-      .select()
+      .select({
+        clubId: stockYardages.clubId,
+        calculatedAt: stockYardages.calculatedAt,
+        carryMedianYd: stockYardages.carryMedianYd,
+        confidenceScore: stockYardages.confidenceScore,
+        recommendedPlayNumberYd: stockYardages.recommendedPlayNumberYd,
+      })
       .from(stockYardages)
       .where(eq(stockYardages.userId, userId))
       .orderBy(desc(stockYardages.calculatedAt))
       .limit(120),
     db
-      .select()
+      .select({
+        id: sessions.id,
+        type: sessions.type,
+        date: sessions.date,
+        courseId: sessions.courseId,
+        teeSetId: sessions.teeSetId,
+        location: sessions.location,
+        courseName: sessions.courseName,
+        scorecardJson: sessions.scorecardJson,
+        rawCsvHash: sessions.rawCsvHash,
+      })
       .from(sessions)
       .where(eq(sessions.userId, userId))
       .orderBy(desc(sessions.date))
       .limit(120),
     db
-      .select()
+      .select({
+        source: importFiles.source,
+        status: importFiles.status,
+        duplicateOfFileId: importFiles.duplicateOfFileId,
+        createdAt: importFiles.createdAt,
+      })
       .from(importFiles)
       .where(eq(importFiles.userId, userId))
       .orderBy(desc(importFiles.createdAt))
       .limit(40),
     db
-      .select()
+      .select({
+        providerKind: importJobs.providerKind,
+        status: importJobs.status,
+        errorMessage: importJobs.errorMessage,
+        createdAt: importJobs.createdAt,
+      })
       .from(importJobs)
       .where(eq(importJobs.userId, userId))
       .orderBy(desc(importJobs.createdAt))
       .limit(40),
     optionalFeatureRows(
       db
-        .select()
+        .select({
+          providerKind: providerAccounts.providerKind,
+          updatedAt: providerAccounts.updatedAt,
+        })
         .from(providerAccounts)
         .where(eq(providerAccounts.userId, userId))
         .orderBy(desc(providerAccounts.updatedAt)),
     ),
     optionalFeatureRows(
       db
-        .select()
+        .select({
+          providerKind: providerSessions.providerKind,
+          lastSeenAt: providerSessions.lastSeenAt,
+        })
         .from(providerSessions)
         .where(eq(providerSessions.userId, userId))
         .orderBy(desc(providerSessions.lastSeenAt))
@@ -1021,8 +1077,18 @@ function defaultFeaturePreferences(userId: string): FeaturePreferenceRow {
 }
 
 function buildImportQuality(
-  files: Array<typeof importFiles.$inferSelect>,
-  jobs: Array<typeof importJobs.$inferSelect>,
+  files: Array<{
+    source: string;
+    status: string;
+    duplicateOfFileId: string | null;
+    createdAt: Date;
+  }>,
+  jobs: Array<{
+    providerKind: string;
+    status: string;
+    errorMessage: string | null;
+    createdAt: Date;
+  }>,
   shotRows: ShotRow[],
   clubRows: ClubRow[],
   sessionRows: SessionRow[],
@@ -1272,10 +1338,20 @@ function buildDataHealth({
 }
 
 function buildProviderHealth(
-  accounts: Array<typeof providerAccounts.$inferSelect>,
-  providerSessionRows: Array<typeof providerSessions.$inferSelect>,
-  jobs: Array<typeof importJobs.$inferSelect>,
-  files: Array<typeof importFiles.$inferSelect>,
+  accounts: Array<{ providerKind: string; updatedAt: Date }>,
+  providerSessionRows: Array<{ providerKind: string; lastSeenAt: Date }>,
+  jobs: Array<{
+    providerKind: string;
+    status: string;
+    errorMessage: string | null;
+    createdAt: Date;
+  }>,
+  files: Array<{
+    source: string;
+    status: string;
+    duplicateOfFileId: string | null;
+    createdAt: Date;
+  }>,
 ): FeatureInsight[] {
   const providers = ["rapsodo", "square", "trackman", "manual_csv"];
 

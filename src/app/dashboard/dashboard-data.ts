@@ -4,6 +4,7 @@ import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import {
   clubs,
+  courses,
   importRows,
   rapsodoSyncSessions,
   sessions,
@@ -28,11 +29,21 @@ import {
   isTrackedClubType,
 } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { calculatePlaysLikeYards, parsePlaysLikeConditions } from "@/lib/plays-like";
 import { calculateHandicapSummary, calculateRoundDifferential } from "@/lib/round-handicap";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
+import {
+  playContextEvidenceLabel,
+  playContextLabel,
+  type PlayContext,
+} from "@/lib/play-context";
+import {
+  getLivePlaysLikeSnapshotForCourse,
+  type LivePlaysLikeSnapshot,
+} from "@/lib/plays-like-weather";
 
 export async function getDashboardData() {
   const db = getDb();
@@ -46,6 +57,8 @@ export async function getDashboardData() {
     roundRows,
     allClubRows,
     shotCountsByClub,
+    shotCountsByContext,
+    sessionCountsByContext,
     recentStockShots,
     [pendingRapsodoCount],
     pendingRapsodoRows,
@@ -63,6 +76,8 @@ export async function getDashboardData() {
         id: sessions.id,
         fileName: sessions.fileName,
         type: sessions.type,
+        playContext: sessions.playContext,
+        courseId: sessions.courseId,
         courseName: sessions.courseName,
         date: sessions.date,
       })
@@ -75,8 +90,11 @@ export async function getDashboardData() {
         id: sessions.id,
         fileName: sessions.fileName,
         type: sessions.type,
+        playContext: sessions.playContext,
+        courseId: sessions.courseId,
         courseName: sessions.courseName,
         date: sessions.date,
+        weatherJson: sessions.weatherJson,
         scorecardJson: sessions.scorecardJson,
         courseRating: teeSets.courseRating,
         slopeRating: teeSets.slopeRating,
@@ -84,6 +102,7 @@ export async function getDashboardData() {
         providerSessionMode: rapsodoSyncSessions.providerSessionMode,
       })
       .from(sessions)
+      .leftJoin(courses, eq(sessions.courseId, courses.id))
       .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
       .leftJoin(rapsodoSyncSessions, eq(sessions.id, rapsodoSyncSessions.importedSessionId))
       .where(and(eq(sessions.userId, userId), inArray(sessions.type, [...roundSessionTypes])))
@@ -108,8 +127,25 @@ export async function getDashboardData() {
       .groupBy(shots.clubId),
     db
       .select({
+        playContext: shots.playContext,
+        count: count(),
+      })
+      .from(shots)
+      .where(eq(shots.userId, userId))
+      .groupBy(shots.playContext),
+    db
+      .select({
+        playContext: sessions.playContext,
+        count: count(),
+      })
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .groupBy(sessions.playContext),
+    db
+      .select({
         id: shots.id,
         clubId: shots.clubId,
+        playContext: shots.playContext,
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
@@ -253,6 +289,16 @@ export async function getDashboardData() {
   const bagSummary = buildDashboardBagSummary(bag, wedgeMatrix);
   const roundSummaries = roundRows.filter(isRoundHistorySession).map(summarizeRound);
   const latestRound = roundSummaries[0] ?? null;
+  const livePlaysLikeSnapshot = latestRound?.courseId
+    ? await getLivePlaysLikeSnapshotForCourse({ userId, courseId: latestRound.courseId }).catch(
+        () => null,
+      )
+    : null;
+  const playsLike = buildDashboardPlaysLike({
+    bag,
+    latestRound,
+    liveSnapshot: livePlaysLikeSnapshot,
+  });
   const realHandicap = calculateHandicapSummary(
     roundSummaries
       .filter((round) => round.type === "real_round")
@@ -310,6 +356,7 @@ export async function getDashboardData() {
       simHandicap,
       combinedHandicap,
     },
+    playContextSummary: buildPlayContextSummary(shotCountsByContext, sessionCountsByContext),
     recentSessions,
     rapsodoInbox: {
       pendingCount: pendingRapsodoCount?.value ?? pendingRapsodoSessions.length,
@@ -321,6 +368,7 @@ export async function getDashboardData() {
     pathTrend,
     wedgeMatrix,
     courseAdvice,
+    playsLike,
     whatChanged,
     coachPreview: coachCard
       ? {
@@ -699,8 +747,10 @@ function summarizeRound(round: {
   id: string;
   fileName: string | null;
   type: string;
+  courseId: string | null;
   courseName: string | null;
   date: Date;
+  weatherJson: Record<string, unknown>;
   courseRating?: number | null;
   slopeRating?: number | null;
   scorecardJson: Array<{
@@ -728,6 +778,131 @@ function summarizeRound(round: {
     totalPutts,
     totalPar,
     handicapDifferential,
+  };
+}
+
+function buildDashboardPlaysLike({
+  bag,
+  latestRound,
+  liveSnapshot,
+}: {
+  bag: Array<{
+    id: string;
+    type: string;
+    brandModel: string;
+    stock: {
+      confidenceScore: number;
+      sampleSize: number;
+      coursePlayCarryYd: number | null;
+      bestStockCarryYd: number | null;
+      recommendedPlayNumberYd: number | null;
+    };
+  }>;
+  latestRound: ReturnType<typeof summarizeRound> | null;
+  liveSnapshot: LivePlaysLikeSnapshot | null;
+}) {
+  const conditions = liveSnapshot?.conditions ?? parsePlaysLikeConditions(latestRound?.weatherJson);
+  const rows = bag
+    .filter((club) => club.stock.sampleSize > 0)
+    .slice(0, 5)
+    .map((club) => {
+      const baseYards =
+        club.stock.coursePlayCarryYd ??
+        club.stock.recommendedPlayNumberYd ??
+        club.stock.bestStockCarryYd;
+      const adjustment = calculatePlaysLikeYards(baseYards, conditions);
+
+      return adjustment
+        ? {
+            clubId: club.id,
+            clubType: club.type,
+            label: formatClubType(club.type),
+            brandModel: club.brandModel,
+            confidenceScore: club.stock.confidenceScore,
+            sampleSize: club.stock.sampleSize,
+            ...adjustment,
+          }
+        : null;
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
+  const measuredInputs = [
+    conditions.temperatureC,
+    conditions.altitudeM,
+    conditions.humidityPct,
+    conditions.windSpeedMph,
+  ].filter((value) => typeof value === "number" && Number.isFinite(value)).length;
+
+  return {
+    sourceLabel:
+      liveSnapshot?.sourceLabel ??
+      latestRound?.courseName ??
+      latestRound?.fileName ??
+      "Neutral conditions",
+    sourceKind: liveSnapshot?.source ?? "session",
+    provider: liveSnapshot?.provider ?? null,
+    fetchedAt: liveSnapshot?.fetchedAt ?? null,
+    expiresAt: liveSnapshot?.expiresAt ?? null,
+    elevationM: liveSnapshot?.elevationM ?? conditions.altitudeM ?? null,
+    measuredInputs,
+    conditions,
+    rows,
+    primary: rows[0] ?? null,
+    summary:
+      rows[0]?.summary ??
+      (measuredInputs > 0
+        ? "Weather is ready, but the bag needs more trusted stock numbers."
+        : "Add weather or course elevation to activate plays-like calls."),
+  };
+}
+
+function buildPlayContextSummary(
+  shotRows: Array<{ playContext: string; count: number }>,
+  sessionRows: Array<{ playContext: string; count: number }>,
+) {
+  const contexts: PlayContext[] = ["on_course", "simulator", "practice_bay", "indoor", "unknown"];
+  const shotCounts = new Map(shotRows.map((row) => [row.playContext, Number(row.count ?? 0)]));
+  const sessionCounts = new Map(
+    sessionRows.map((row) => [row.playContext, Number(row.count ?? 0)]),
+  );
+  const rows = contexts
+    .map((context) => ({
+      context,
+      label: playContextLabel(context),
+      evidenceLabel: playContextEvidenceLabel(context),
+      shots: shotCounts.get(context) ?? 0,
+      sessions: sessionCounts.get(context) ?? 0,
+    }))
+    .filter((row) => row.shots > 0 || row.sessions > 0);
+  const totalShots = rows.reduce((total, row) => total + row.shots, 0);
+  const totalSessions = rows.reduce((total, row) => total + row.sessions, 0);
+  const dominant = [...rows].sort(
+    (left, right) => right.shots - left.shots || right.sessions - left.sessions,
+  )[0] ?? {
+    context: "unknown" as const,
+    label: "Unknown",
+    evidenceLabel: "Unclassified",
+    shots: 0,
+    sessions: 0,
+  };
+  const onCourseShots = shotCounts.get("on_course") ?? 0;
+  const simulatorShots = shotCounts.get("simulator") ?? 0;
+  const practiceBayShots = shotCounts.get("practice_bay") ?? 0;
+
+  return {
+    totalShots,
+    totalSessions,
+    dominant,
+    rows,
+    onCourseShots,
+    simulatorShots,
+    practiceBayShots,
+    outdoorReady: onCourseShots >= 20,
+    recommendation:
+      onCourseShots >= 20
+        ? "Outdoor evidence is strong enough to compare against launch-monitor numbers."
+        : simulatorShots + practiceBayShots > 0
+          ? "Treat course-yardage calls as bay-backed until more outdoor shots land."
+          : "Import a practice bay or on-course session to classify the baseline.",
   };
 }
 

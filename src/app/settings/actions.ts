@@ -226,7 +226,7 @@ export async function updateUserSettingsAction(formData: FormData) {
     .set({
       name: nullableString(formData, "name"),
       preferredUnits: parsePreferredUnits(formData.get("preferredUnits")),
-      theme: parseTheme(formData.get("theme")),
+      theme: parseTheme(),
       tableDensity: parseTableDensity(formData.get("tableDensity")),
       dashboardPins: parseDashboardPins(formData.getAll("dashboardPins")),
       privacySettingsJson: parsePrivacySettings(formData),

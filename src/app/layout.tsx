@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { Barlow_Condensed, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { and, eq, sql } from "drizzle-orm";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { AppShell } from "@/components/app/app-shell";
+import { InteractionFeedback } from "@/components/interaction-feedback";
 import { PwaRegister } from "@/components/pwa-register";
 import { SocialFeedRail } from "@/components/social/social-feed-rail";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +15,19 @@ import { getDb } from "@/db/client";
 import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
 import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
 import "./globals.css";
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-ui",
+  display: "swap",
+});
+
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: BRAND_NAME,
@@ -25,7 +40,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: BRAND_SHORT_NAME,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
   icons: {
     icon: [
@@ -55,7 +70,7 @@ type AppShellData = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "system",
+  theme: "light",
   tableDensity: "comfortable",
 };
 
@@ -70,14 +85,15 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={preferences.theme === "dark" ? "h-full dark" : "h-full"}
-      data-theme={preferences.theme}
+      className={["h-full", plusJakarta.variable, barlowCondensed.variable].join(" ")}
+      data-theme="light"
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
         <PlausibleScript />
+        <InteractionFeedback />
         <TooltipProvider delayDuration={200}>
           <PwaRegister />
           <AppShell totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile}>
@@ -118,7 +134,6 @@ async function getAppShellData(): Promise<AppShellData> {
       db
         .select({
           preferredUnits: users.preferredUnits,
-          theme: users.theme,
           tableDensity: users.tableDensity,
           displayName: userProfiles.displayName,
           username: userProfiles.username,
@@ -150,10 +165,7 @@ async function getAppShellData(): Promise<AppShellData> {
       achievementNotifications,
       preferences: {
         preferredUnits: accountRow?.preferredUnits === "metres" ? "metres" : "yards",
-        theme:
-          accountRow?.theme === "dark" || accountRow?.theme === "light"
-            ? accountRow.theme
-            : "system",
+        theme: "light",
         tableDensity: accountRow?.tableDensity === "compact" ? "compact" : "comfortable",
       },
       isAdmin: Boolean(admin[0]),

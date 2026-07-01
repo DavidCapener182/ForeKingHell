@@ -39,7 +39,6 @@ import {
   dashboardPinOptions,
   preferredUnitOptions,
   tableDensityOptions,
-  themeOptions,
   type PrivacySettings,
 } from "@/lib/user-settings";
 
@@ -242,7 +241,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <div className="mt-3 grid gap-2 text-sm">
             <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
             <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
-            <SettingsPreviewRow label="Theme" value={profile.theme} />
             <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
           </div>
         </section>
@@ -293,12 +291,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   name="tableDensity"
                   defaultValue={profile.tableDensity}
                   values={tableDensityOptions}
-                />
-                <SelectField
-                  label="Theme"
-                  name="theme"
-                  defaultValue={profile.theme}
-                  values={themeOptions}
                 />
               </div>
 

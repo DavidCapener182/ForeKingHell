@@ -1,16 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { UploadedCsv } from "@/app/import/import-types";
 import {
   type DistanceUnit,
   type RapsodoColumnMapping,
-  parseRapsodoCsv,
 } from "@/lib/rapsodo/parser";
+import {
+  parseLaunchMonitorImportCsv,
+  type ParsedLaunchMonitorImportResult,
+} from "@/lib/imports/normalized-import";
+
+export type ParsedImportFile = UploadedCsv & {
+  parsed: ParsedLaunchMonitorImportResult;
+};
 
 export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: RapsodoColumnMapping) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedCsv[]>([]);
+  const [parsedFiles, setParsedFiles] = useState<ParsedImportFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [readProgress, setReadProgress] = useState<{
     fileName: string;
@@ -18,17 +26,33 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
     total: number;
   } | null>(null);
 
-  const parsedFiles = useMemo(
-    () =>
-      uploadedFiles.map((file) => ({
-        ...file,
-        parsed: parseRapsodoCsv(file.rawCsvText, {
-          fallbackDistanceUnit: distanceUnit,
-          columnMapping,
-        }),
-      })),
-    [columnMapping, distanceUnit, uploadedFiles],
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    async function parseFiles() {
+      const nextFiles = await Promise.all(
+        uploadedFiles.map(async (file) => ({
+          ...file,
+          parsed: await parseLaunchMonitorImportCsv({
+            rawCsvText: file.rawCsvText,
+            fileName: file.fileName,
+            fallbackDistanceUnit: distanceUnit,
+            columnMapping,
+          }),
+        })),
+      );
+
+      if (!cancelled) {
+        setParsedFiles(nextFiles);
+      }
+    }
+
+    void parseFiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [columnMapping, distanceUnit, uploadedFiles]);
 
   async function readSelectedFiles(files: FileList | File[]) {
     const csvFiles = Array.from(files).filter((file) => {
