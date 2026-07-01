@@ -27,6 +27,10 @@ import {
 } from "@/lib/courses";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { inferPlayContext } from "@/lib/play-context";
+import {
+  completeMatchingPracticePlanFromImport,
+  type PracticePlanImportMatch,
+} from "@/lib/practice-planner";
 import { recordImportFeedItems } from "@/lib/social";
 import {
   type CourseInferenceResult,
@@ -123,6 +127,7 @@ export type SaveRapsodoImportResult =
       clubCount: number;
       rawRowCount: number;
       skipped: boolean;
+      practicePlanMatch: PracticePlanImportMatch | null;
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
       warnings: string[];
@@ -141,6 +146,7 @@ export type SaveRapsodoImportBatchResult =
       clubCount: number;
       rawRowCount: number;
       skippedCount: number;
+      practicePlanMatches: PracticePlanImportMatch[];
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
       warnings: string[];
@@ -209,6 +215,9 @@ export async function saveLaunchMonitorImport(
       coursePlan,
       courseLink,
     });
+    const practicePlanMatch = result.skipped
+      ? null
+      : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
 
     const achievementUnlockNotifications = result.skipped
       ? []
@@ -249,6 +258,7 @@ export async function saveLaunchMonitorImport(
     return {
       ok: true,
       ...result,
+      practicePlanMatch,
       achievementUnlockNotifications,
       warnings: [...parsed.warnings, ...(coursePlan?.warnings ?? [])],
     };
@@ -296,6 +306,7 @@ export async function saveRapsodoImportBatch(
   let savedSessionId: string | null = null;
   const longestShotNotifications: LongestShotNotification[] = [];
   const achievementUnlockNotifications: AchievementUnlockNotification[] = [];
+  const practicePlanMatches: PracticePlanImportMatch[] = [];
 
   const parsedInputs: Array<{
     input: SaveRapsodoImportInput;
@@ -345,6 +356,9 @@ export async function saveRapsodoImportBatch(
       rawRowCount += result.rawRowCount;
       longestShotNotifications.push(...result.longestShotNotifications);
       achievementUnlockNotifications.push(...result.achievementUnlockNotifications);
+      if (result.practicePlanMatch) {
+        practicePlanMatches.push(result.practicePlanMatch);
+      }
       for (const shot of parsed.shots) {
         uniqueClubKeys.add(shot.clubKey);
       }
@@ -361,6 +375,7 @@ export async function saveRapsodoImportBatch(
     clubCount: uniqueClubKeys.size,
     rawRowCount,
     skippedCount,
+    practicePlanMatches,
     longestShotNotifications,
     achievementUnlockNotifications,
     warnings,
@@ -1183,6 +1198,9 @@ function revalidateImportPages() {
     revalidatePath("/shots");
     revalidatePath("/rounds");
     revalidatePath("/courses");
+    revalidatePath("/practice");
+    revalidatePath("/progress");
+    revalidatePath("/achievements");
     revalidatePath("/stats/training-over-time");
   } catch {
     // Allows the import helper to be reused by local scripts outside a Next.js request.

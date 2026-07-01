@@ -44,6 +44,10 @@ const trainingOverTimeMigration = readFileSync(
   join(process.cwd(), "drizzle/0030_training_over_time.sql"),
   "utf8",
 );
+const practicePlannerMigration = readFileSync(
+  join(process.cwd(), "drizzle/0036_practice_planner.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -253,6 +257,36 @@ describe("RLS migration", () => {
     );
     expect(featureFoundationsMigration).toContain("auth.uid() IS NOT NULL");
     expect(featureFoundationsMigration).toContain('"user_id" = auth.uid()');
+  });
+
+  it("keeps practice planner plans, blocks, results and templates user-owned behind RLS", () => {
+    for (const table of [
+      "fkh_practice_templates",
+      "fkh_practice_plans",
+      "fkh_practice_blocks",
+      "fkh_practice_results",
+      "fkh_practice_block_results",
+    ]) {
+      expect(practicePlannerMigration).toContain(
+        `ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`,
+      );
+    }
+
+    for (const policy of [
+      "fkh_practice_templates_owner_all",
+      "fkh_practice_plans_owner_all",
+      "fkh_practice_blocks_owner_all",
+      "fkh_practice_results_owner_all",
+      "fkh_practice_block_results_owner_all",
+    ]) {
+      expect(practicePlannerMigration).toContain(`CREATE POLICY "${policy}"`);
+    }
+
+    expect(practicePlannerMigration).toContain(
+      'CREATE POLICY "fkh_practice_templates_select_owner_or_system"',
+    );
+    expect(practicePlannerMigration).toContain('"user_id" IS NULL');
+    expect(practicePlannerMigration).toContain('"user_id" = auth.uid()');
   });
 
   it("hardens advisor-flagged functions, extension schema, and avatar listing", () => {

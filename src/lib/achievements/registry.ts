@@ -7,7 +7,7 @@ import type {
   AchievementTriggerType,
 } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-06-07-speed-training-targets-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-07-01-practice-planner-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -307,6 +307,57 @@ export const CORE_ACHIEVEMENTS: Achievement[] = (
       100,
       undefined,
       ["driver"],
+    ),
+
+    achievement(
+      "practice_planner_first_plan",
+      "Session Architect",
+      "Save your first structured Practice Planner session.",
+      "coach",
+      "bronze",
+      "progress",
+      1,
+      100,
+    ),
+    achievement(
+      "practice_planner_first_completed",
+      "Planned Practice",
+      "Complete your first structured Practice Planner session.",
+      "coach",
+      "bronze",
+      "progress",
+      1,
+      100,
+    ),
+    achievement(
+      "practice_planner_five_completed",
+      "Practice Habit",
+      "Complete 5 structured Practice Planner sessions.",
+      "coach",
+      "silver",
+      "progress",
+      5,
+      200,
+    ),
+    achievement(
+      "practice_planner_target_beaten",
+      "Beat The Plan",
+      "Score 80+ on a structured Practice Planner session.",
+      "coach",
+      "silver",
+      "progress",
+      80,
+      200,
+    ),
+    achievement(
+      "practice_planner_priority_fixed",
+      "Priority Fixed",
+      "Complete a structured plan where the main priority improves.",
+      "coach",
+      "gold",
+      "progress",
+      1,
+      250,
     ),
 
     achievement(

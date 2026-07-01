@@ -6,11 +6,19 @@ import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "
 
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  DataPanel,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+  type Tone,
+} from "@/components/premium";
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
+import { getPracticePlanReviewForSourceSession } from "@/lib/practice-planner";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +82,8 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
           detail="Stored as unknown rows"
         />
       </section>
+
+      {result.practiceReview ? <PracticePlanReviewCard review={result.practiceReview} /> : null}
 
       <DataPanel>
         <SectionHeader
@@ -140,6 +150,76 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
   );
 }
 
+function PracticePlanReviewCard({
+  review,
+}: {
+  review: NonNullable<Awaited<ReturnType<typeof getImportResultData>>["practiceReview"]>;
+}) {
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Planned practice review"
+        description="This import matched a saved Practice Planner session and was judged from shot data."
+        action={<StatusPill tone={practiceScoreTone(review.score)}>{review.score}/100</StatusPill>}
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="premium-hero rounded-lg p-4">
+          <p className="text-sm font-semibold text-emerald-900">Matched plan</p>
+          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">{review.title}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.verdict}</p>
+          <p className="mt-3 text-sm font-medium text-[#111611]">{review.nextAction}</p>
+          <Button asChild className="mt-4 premium-action rounded-lg">
+            <Link href="/practice" prefetch={false}>
+              <Target className="size-4" />
+              Open planner
+            </Link>
+          </Button>
+        </div>
+        <div className="grid gap-2">
+          {review.comparison?.decisions.slice(0, 4).map((decision) => (
+            <div key={decision.blockId} className="rounded-lg border bg-muted/20 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold">{decision.title}</p>
+                <StatusPill tone={practiceDecisionTone(decision.decision)}>
+                  {decision.decision.replace("_", " ")}
+                </StatusPill>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">Target: {decision.target}</p>
+              <p className="text-xs leading-5 text-muted-foreground">Actual: {decision.actual}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function practiceScoreTone(score: number): Tone {
+  if (score >= 80) {
+    return "green";
+  }
+
+  if (score >= 60) {
+    return "amber";
+  }
+
+  return "slate";
+}
+
+function practiceDecisionTone(
+  decision: "maintain" | "repeat_once" | "keep_priority" | "move_down",
+): Tone {
+  if (decision === "maintain" || decision === "move_down") {
+    return "green";
+  }
+
+  if (decision === "repeat_once") {
+    return "amber";
+  }
+
+  return "slate";
+}
+
 function PracticePrescriptionCard({ plan }: { plan: FeatureIdeasData["practicePlan"][number] }) {
   return (
     <DataPanel>
@@ -201,7 +281,7 @@ async function getImportResultData(sessionId: string) {
     notFound();
   }
 
-  const [shotStats, rowStats] = await Promise.all([
+  const [shotStats, rowStats, practiceReview] = await Promise.all([
     db
       .select({
         shotCount: count(shots.id),
@@ -217,6 +297,7 @@ async function getImportResultData(sessionId: string) {
       })
       .from(importRows)
       .where(and(eq(importRows.sessionId, session.id), eq(importRows.userId, userId))),
+    getPracticePlanReviewForSourceSession(userId, session.id),
   ]);
 
   return {
@@ -225,6 +306,7 @@ async function getImportResultData(sessionId: string) {
     clubCount: Number(shotStats[0]?.clubCount ?? 0),
     rawRowCount: Number(rowStats[0]?.rawRowCount ?? 0),
     questionableRowCount: Number(rowStats[0]?.questionableRowCount ?? 0),
+    practiceReview,
   };
 }
 

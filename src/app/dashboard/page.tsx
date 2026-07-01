@@ -7,6 +7,7 @@ import {
   Brain,
   CalendarDays,
   CheckCircle2,
+  Clock,
   Crosshair,
   Database,
   Eye,
@@ -77,6 +78,8 @@ import {
   type DashboardTone,
 } from "@/app/dashboard/dashboard-formatters";
 import { formatClubType } from "@/lib/club-format";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { getCurrentPracticePlanSummary, type SavedPracticePlan } from "@/lib/practice-planner";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import type { DashboardPin } from "@/lib/user-settings";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
@@ -148,11 +151,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return <MissingDatabaseUrlSetup />;
   }
 
-  const [params, data, social, featureData] = await Promise.all([
+  const userId = await requireCurrentUserId();
+  const [params, data, social, featureData, currentPracticePlan] = await Promise.all([
     searchParams,
     getDashboardData(),
     getFeedPageData(),
     getFeatureIdeasData(),
+    getCurrentPracticePlanSummary(userId),
   ]);
   const activeDashboardSection = parseDashboardSection(params?.section);
   const pinnedDashboardSections = new Set(data.dashboardPins);
@@ -161,9 +166,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const latestSession = data.recentSessions[0] ?? null;
   const bestClub = getBestClub(data.bagPreview);
   const firstSignal = data.whatChanged[0] ?? null;
-  const practiceHref = data.coachPreview
-    ? `/bag/${data.coachPreview.clubId}/analytics`
-    : primaryAction;
   const latestRoundHref = data.latestRound ? `/rounds/${data.latestRound.id}` : "/rounds";
   const mappedClubCount = data.bagPreview.filter((club) => club.stock.confidenceScore >= 60).length;
 
@@ -261,10 +263,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const routeCards = [
     {
-      title: "Start practice",
-      description: "Open the current coach signal and drill.",
-      href: practiceHref,
-      metric: data.coachPreview ? data.coachPreview.clubName : primaryActionLabel,
+      title: "Practice Planner",
+      description: "Open the current structured practice workflow.",
+      href: "/practice",
+      metric: currentPracticePlan
+        ? currentPracticePlan.focusClubs[0] || "Saved plan"
+        : "Build plan",
       icon: Crosshair,
       accent: "text-emerald-700 bg-emerald-50",
     },
@@ -512,8 +516,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         />
 
         <DashboardBentoGrid>
+          <DashboardBentoItem span={4}>
+            <PracticePlannerDashboardCard plan={currentPracticePlan} className="h-full" />
+          </DashboardBentoItem>
           {pinnedDashboardSections.has("coach") ? (
-            <DashboardBentoItem span={8}>
+            <DashboardBentoItem span={4}>
               <PracticeRecommendationCard
                 coachPreview={data.coachPreview}
                 primaryAction={primaryAction}
@@ -3086,6 +3093,55 @@ function PracticeRecommendationCard({
         </div>
       )}
     </section>
+  );
+}
+
+function PracticePlannerDashboardCard({
+  plan,
+  className,
+}: {
+  plan: SavedPracticePlan | null;
+  className?: string;
+}) {
+  return (
+    <DataPanel className={className}>
+      <CardContent className="grid h-full content-between gap-4 p-4">
+        <div className="min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <StatusPill tone={plan?.status === "analysed" || plan?.status === "completed" ? "green" : "sky"}>
+              Practice Planner
+            </StatusPill>
+            <Clock className="size-4 text-muted-foreground" aria-hidden />
+          </div>
+          <h2 className="mt-3 text-2xl font-semibold tracking-normal">
+            {plan?.title ?? "Build today’s plan"}
+          </h2>
+          <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+            {plan?.summary ??
+              "Turn latest practice, bag trust, progress priorities and training load into a structured session."}
+          </p>
+        </div>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <PracticePayoffPill
+              label="Volume"
+              value={plan?.totalBalls ? `${plan.totalBalls}` : plan ? "Timed" : "Ready"}
+            />
+            <PracticePayoffPill label="Time" value={plan ? `${plan.timeMinutes}m` : "45m"} />
+            <PracticePayoffPill
+              label="Score"
+              value={plan?.score === null || plan?.score === undefined ? "--" : `${plan.score}`}
+            />
+          </div>
+          <Button asChild className="premium-action rounded-lg">
+            <Link href="/practice" prefetch={false}>
+              <Crosshair className="size-4" />
+              Open planner
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </DataPanel>
   );
 }
 

@@ -42,6 +42,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatClubType } from "@/lib/club-format";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import type { ClubAnalytics } from "@/lib/club-analytics";
 import { getProgressData } from "@/lib/progress-data";
 import {
@@ -81,10 +83,12 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
-  const [params, data, featureData] = await Promise.all([
+  const userId = await requireCurrentUserId();
+  const [params, data, featureData, practicePlannerSummary] = await Promise.all([
     searchParams,
-    getProgressData(),
+    getProgressData(userId),
     getFeatureIdeasData(),
+    getPracticePlannerProgressSummary(userId),
   ]);
   const summary = buildProgressSummary(data.clubs);
   const mostImproved = summary.rankings.mostImproved;
@@ -208,6 +212,9 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
             </ProgressBentoItem>
             <ProgressBentoItem span={12}>
               <ProgressRoadmapPanel summary={summary} />
+            </ProgressBentoItem>
+            <ProgressBentoItem span={12}>
+              <ProgressPracticePlannerPanel summary={practicePlannerSummary} priorities={summary.practicePlan} />
             </ProgressBentoItem>
             <ProgressBentoItem span={12}>
               <ComparisonBar summary={summary} />
@@ -781,6 +788,59 @@ function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
               </span>
             </Link>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ProgressPracticePlannerPanel({
+  summary,
+  priorities,
+}: {
+  summary: Awaited<ReturnType<typeof getPracticePlannerProgressSummary>>;
+  priorities: PracticePriority[];
+}) {
+  const priorityOne = priorities[0] ?? null;
+  const priorityCompletion =
+    priorityOne && summary.topFocus?.label.toLowerCase().includes(priorityOne.clubType)
+      ? summary.topFocus.completedCount
+      : 0;
+
+  return (
+    <section className="premium-card overflow-hidden rounded-lg">
+      <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+            <ClipboardCheck className="size-4" />
+            Structured practice
+          </div>
+          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-[#111827]">
+            {summary.completedCount > 0
+              ? `${summary.completedCount} planned sessions completed`
+              : "Plan the next session"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#667085]">
+            {priorityOne
+              ? `Priority 1: ${priorityOne.title}. Completed structured sessions against this focus: ${priorityCompletion}.`
+              : "Import more stock-shot data to connect planner work to roadmap priorities."}
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <DataPair label="Planned" value={integerFormatter.format(summary.plannedCount)} />
+          <DataPair label="Completed" value={integerFormatter.format(summary.completedCount)} />
+          <DataPair label="Average score" value={summary.averageScore === null ? "--" : `${summary.averageScore}`} />
+          <DataPair
+            label="Top focus"
+            value={summary.topFocus ? summary.topFocus.label : "Waiting"}
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <Button asChild className="premium-action rounded-lg">
+            <Link href="/practice" prefetch={false}>
+              Open Practice Planner
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

@@ -5,6 +5,7 @@ import {
   Calculator,
   CalendarDays,
   Cable,
+  ClipboardCheck,
   CreditCard,
   Database,
   Flag,
@@ -210,6 +211,12 @@ export const navGroups: AppNavGroup[] = [
     label: "Improve",
     items: [
       {
+        href: "/practice",
+        label: "Practice Planner",
+        icon: ClipboardCheck,
+        isActive: (pathname) => pathname.startsWith("/practice"),
+      },
+      {
         href: "/coach",
         label: "Coach",
         icon: Brain,
@@ -311,6 +318,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
     label: "Improve",
     icon: Brain,
     isActive: (pathname) =>
+      pathname.startsWith("/practice") ||
       pathname.startsWith("/coach") ||
       pathname.startsWith("/data-chat") ||
       pathname.startsWith("/achievements") ||

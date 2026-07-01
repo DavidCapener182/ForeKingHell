@@ -2615,6 +2615,200 @@ export const practiceSessions = pgTable(
   ],
 );
 
+export const practiceTemplates = pgTable(
+  "fkh_practice_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    templateType: varchar("template_type", { length: 32 }).notNull().default("user"),
+    sessionType: varchar("session_type", { length: 32 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    description: text("description"),
+    inputsJson: jsonb("inputs_json").$type<Record<string, unknown>>().notNull().default({}),
+    blocksJson: jsonb("blocks_json").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_practice_templates_user_type_idx").on(table.userId, table.sessionType),
+    index("fkh_practice_templates_active_idx").on(table.active, table.templateType),
+  ],
+);
+
+export const practicePlans = pgTable(
+  "fkh_practice_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    templateId: uuid("template_id").references(() => practiceTemplates.id, {
+      onDelete: "set null",
+    }),
+    sourceSessionId: uuid("source_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    sessionType: varchar("session_type", { length: 32 }).notNull(),
+    ballCount: integer("ball_count"),
+    timeMinutes: integer("time_minutes").notNull(),
+    energyLevel: varchar("energy_level", { length: 32 }).notNull(),
+    intent: varchar("intent", { length: 40 }).notNull(),
+    facilityJson: jsonb("facility_json").$type<Record<string, unknown>>().notNull().default({}),
+    contextJson: jsonb("context_json").$type<Record<string, unknown>>().notNull().default({}),
+    focusClubsJson: jsonb("focus_clubs_json").$type<string[]>().notNull().default([]),
+    title: varchar("title", { length: 180 }).notNull(),
+    generatedSummary: text("generated_summary").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("planned"),
+    practiceScore: integer("practice_score"),
+    matchConfidence: integer("match_confidence"),
+    matchReason: text("match_reason"),
+    plannedAt: timestamp("planned_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_practice_plans_user_status_idx").on(table.userId, table.status),
+    index("fkh_practice_plans_user_planned_idx").on(table.userId, table.plannedAt),
+    index("fkh_practice_plans_source_session_idx").on(table.sourceSessionId),
+  ],
+);
+
+export const practiceBlocks = pgTable(
+  "fkh_practice_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    practicePlanId: uuid("practice_plan_id")
+      .notNull()
+      .references(() => practicePlans.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockOrder: integer("block_order").notNull(),
+    blockType: varchar("block_type", { length: 40 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    clubsJson: jsonb("clubs_json").$type<string[]>().notNull().default([]),
+    ballCount: integer("ball_count"),
+    timeMinutes: integer("time_minutes").notNull(),
+    goal: text("goal").notNull(),
+    drill: text("drill").notNull(),
+    successCriteria: text("success_criteria").notNull(),
+    recordPrompt: text("record_prompt").notNull(),
+    scoringRulesJson: jsonb("scoring_rules_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_practice_blocks_plan_order_idx").on(table.practicePlanId, table.blockOrder),
+    index("fkh_practice_blocks_user_idx").on(table.userId),
+  ],
+);
+
+export const practiceResults = pgTable(
+  "fkh_practice_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    practicePlanId: uuid("practice_plan_id")
+      .notNull()
+      .references(() => practicePlans.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceSessionId: uuid("source_session_id").references(() => sessions.id, {
+      onDelete: "set null",
+    }),
+    completionStatus: varchar("completion_status", { length: 24 }).notNull().default("complete"),
+    actualBalls: integer("actual_balls"),
+    actualMinutes: integer("actual_minutes"),
+    practiceScore: integer("practice_score").notNull().default(0),
+    verdict: varchar("verdict", { length: 80 }).notNull(),
+    nextAction: text("next_action").notNull(),
+    notes: text("notes"),
+    comparisonJson: jsonb("comparison_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_practice_results_plan_idx").on(table.practicePlanId),
+    index("fkh_practice_results_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_practice_results_source_session_idx").on(table.sourceSessionId),
+  ],
+);
+
+export const practicePlanMatches = pgTable(
+  "fkh_practice_plan_matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    practicePlanId: uuid("practice_plan_id")
+      .notNull()
+      .references(() => practicePlans.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    matchConfidence: integer("match_confidence").notNull(),
+    matchReason: text("match_reason").notNull(),
+    dateScore: integer("date_score").notNull().default(0),
+    sessionTypeScore: integer("session_type_score").notNull().default(0),
+    ballCountScore: integer("ball_count_score").notNull().default(0),
+    focusClubScore: integer("focus_club_score").notNull().default(0),
+    clubMixScore: integer("club_mix_score").notNull().default(0),
+    sourceTypeScore: integer("source_type_score").notNull().default(0),
+    accepted: boolean("accepted").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_practice_plan_matches_plan_session_idx").on(
+      table.practicePlanId,
+      table.sessionId,
+    ),
+    index("fkh_practice_plan_matches_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_practice_plan_matches_session_idx").on(table.sessionId),
+  ],
+);
+
+export const practiceBlockResults = pgTable(
+  "fkh_practice_block_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    practiceResultId: uuid("practice_result_id")
+      .notNull()
+      .references(() => practiceResults.id, { onDelete: "cascade" }),
+    practiceBlockId: uuid("practice_block_id")
+      .notNull()
+      .references(() => practiceBlocks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    completionStatus: varchar("completion_status", { length: 24 }).notNull().default("complete"),
+    actualBalls: integer("actual_balls"),
+    actualMinutes: integer("actual_minutes"),
+    score: integer("score"),
+    passed: boolean("passed").notNull().default(false),
+    result: varchar("result", { length: 32 }).notNull().default("insufficient_data"),
+    summary: text("summary"),
+    linkedShotIdsJson: jsonb("linked_shot_ids_json").$type<string[]>().notNull().default([]),
+    metricsJson: jsonb("metrics_json").$type<Record<string, unknown>>().notNull().default({}),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_practice_block_results_result_block_idx").on(
+      table.practiceResultId,
+      table.practiceBlockId,
+    ),
+    index("fkh_practice_block_results_user_idx").on(table.userId),
+  ],
+);
+
 export const courseRecordGoals = pgTable(
   "fkh_course_record_goals",
   {
@@ -2796,6 +2990,12 @@ export type NewTournamentInvite = typeof tournamentInvites.$inferInsert;
 export type NewTournamentPrize = typeof tournamentPrizes.$inferInsert;
 export type NewShotSavedView = typeof shotSavedViews.$inferInsert;
 export type NewPracticeSession = typeof practiceSessions.$inferInsert;
+export type NewPracticeTemplate = typeof practiceTemplates.$inferInsert;
+export type NewPracticePlan = typeof practicePlans.$inferInsert;
+export type NewPracticeBlock = typeof practiceBlocks.$inferInsert;
+export type NewPracticeResult = typeof practiceResults.$inferInsert;
+export type NewPracticePlanMatch = typeof practicePlanMatches.$inferInsert;
+export type NewPracticeBlockResult = typeof practiceBlockResults.$inferInsert;
 export type NewCourseRecordGoal = typeof courseRecordGoals.$inferInsert;
 export type NewCourseFollow = typeof courseFollows.$inferInsert;
 export type NewUserFeaturePreference = typeof userFeaturePreferences.$inferInsert;

@@ -686,6 +686,10 @@ export function RapsodoSyncClient({
               courseShotOnlyImport
                 ? " Saved as a shot-linked course round without scorecard detail."
                 : ""
+            }${
+              result.data.practicePlanMatch
+                ? ` Practice plan matched: ${result.data.practicePlanMatch.title} (${result.data.practicePlanMatch.matchScore}% confidence) and scored ${result.data.practicePlanMatch.score.score}/100.`
+                : ""
             }${writebackMessage}`,
         sessionId: result.data.sessionId,
       };

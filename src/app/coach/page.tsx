@@ -238,6 +238,12 @@ export default async function CoachPage() {
         </Button>
         <div className="flex gap-2">
           <Button asChild variant="outline">
+            <Link href="/practice" prefetch={false}>
+              <Crosshair className="size-4" />
+              Practice Planner
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/progress" prefetch={false}>
               <LineChart className="size-4" />
               Progress

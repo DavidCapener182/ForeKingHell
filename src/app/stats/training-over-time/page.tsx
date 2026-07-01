@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import { Plus, TrendingUp } from "lucide-react";
 
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { DataPair, DataPanel, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { TrainingLoadRangeView } from "@/components/training/TrainingLoadRangeView";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import { getTrainingOverTimeData, normalizeTrainingRange } from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +28,10 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
   const userId = await requireCurrentUserId();
-  const data = await getTrainingOverTimeData(userId, "1y");
+  const [data, practiceSummary] = await Promise.all([
+    getTrainingOverTimeData(userId, "1y"),
+    getPracticePlannerProgressSummary(userId),
+  ]);
   const saved = Boolean(resolvedSearchParams.saved);
 
   return (
@@ -86,8 +90,48 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
         </div>
       ) : null}
 
+      <TrainingPracticePlannerPanel
+        statusLabel={data.status.label}
+        practiceSummary={practiceSummary}
+        recentLoad={data.latest?.fatigue ?? 0}
+      />
+
       <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} />
     </PageShell>
+  );
+}
+
+function TrainingPracticePlannerPanel({
+  statusLabel,
+  practiceSummary,
+  recentLoad,
+}: {
+  statusLabel: string;
+  practiceSummary: Awaited<ReturnType<typeof getPracticePlannerProgressSummary>>;
+  recentLoad: number;
+}) {
+  const loadHigh = recentLoad >= 120;
+  const suitability = loadHigh ? "Technical plans preferred" : "Practice load appropriate";
+
+  return (
+    <DataPanel>
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div>
+          <StatusPill tone={loadHigh ? "amber" : "green"}>{suitability}</StatusPill>
+          <h2 className="mt-3 text-2xl font-semibold tracking-normal">Practice Planner load fit</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            {practiceSummary.latestCompleted
+              ? `${practiceSummary.latestCompleted.title} finished with a ${practiceSummary.latestCompleted.score ?? "--"} practice score while Training Load read ${statusLabel}.`
+              : `No completed structured plan yet. Training Load currently reads ${statusLabel}.`}
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
+          <DataPair label="Completed plans" value={integerFormatter.format(practiceSummary.completedCount)} />
+          <DataPair label="Average score" value={practiceSummary.averageScore === null ? "--" : `${practiceSummary.averageScore}`} />
+          <DataPair label="Recent Load" value={formatMetric(recentLoad)} />
+        </div>
+      </div>
+    </DataPanel>
   );
 }
 

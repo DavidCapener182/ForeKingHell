@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -84,7 +84,6 @@ export async function requireCurrentUserId() {
     redirect("/login");
   }
 
-  await ensureUserProfile(user);
   return user.id;
 }
 
@@ -94,8 +93,6 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
   if (!user) {
     return defaultPreferences;
   }
-
-  await ensureUserProfile(user);
 
   const [profile] = await getDb()
     .select({
@@ -125,37 +122,59 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
   const db = getDb();
   const now = new Date();
   const fallbackName = profileLabelFromIdentity(name, email, "LM World Tour Player");
-
-  await db
-    .insert(users)
-    .values({
-      id: userId,
-      email,
-      name: fallbackName,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: users.id,
-      set: {
-        email,
-        name: sql`case when nullif(trim(${users.name}), '') is null or lower(${users.name}) like '%incert%' then ${fallbackName} else ${users.name} end`,
-        updatedAt: now,
-      },
-    });
-
-  const [appUser] = await db
+  let [appUser] = await db
     .select({
+      id: users.id,
       email: users.email,
       name: users.name,
     })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
+
+  if (!appUser) {
+    const [insertedUser] = await db
+      .insert(users)
+      .values({
+        id: userId,
+        email,
+        name: fallbackName,
+        updatedAt: now,
+      })
+      .returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+      });
+
+    appUser = insertedUser;
+  } else {
+    const repairedName =
+      !safeDisplayName(appUser.name) || isSharedDatabaseArtifact(appUser.name)
+        ? fallbackName
+        : appUser.name;
+    const needsUserRepair = appUser.email !== email || repairedName !== appUser.name;
+
+    if (needsUserRepair) {
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          email,
+          name: repairedName,
+          updatedAt: now,
+        })
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+        });
+
+      appUser = updatedUser ?? appUser;
+    }
+  }
+
   const canonicalDisplayName = safeDisplayName(appUser?.name) ?? fallbackName;
-  const canonicalUsername = await uniqueDefaultUsernameForUser(
-    defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
-    userId,
-  );
   const [socialProfile] = await db
     .select({
       userId: userProfiles.userId,
@@ -167,6 +186,11 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
     .limit(1);
 
   if (!socialProfile) {
+    const canonicalUsername = await uniqueDefaultUsernameForUser(
+      defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
+      userId,
+    );
+
     await db.insert(userProfiles).values({
       userId,
       username: canonicalUsername,
@@ -180,6 +204,13 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
   const needsUsernameRepair = shouldRepairStoredUsername(socialProfile.username);
 
   if (needsDisplayRepair || needsUsernameRepair) {
+    const canonicalUsername = needsUsernameRepair
+      ? await uniqueDefaultUsernameForUser(
+          defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
+          userId,
+        )
+      : socialProfile.username;
+
     await db
       .update(userProfiles)
       .set({

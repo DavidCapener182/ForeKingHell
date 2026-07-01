@@ -113,6 +113,7 @@ const mobileRouteGroups = {
     { key: "rapsodo", label: "Rapsodo", href: "/rapsodo" },
   ],
   improve: [
+    { key: "practice", label: "Practice", href: "/practice" },
     { key: "coach", label: "Coach", href: "/coach" },
     { key: "data-chat", label: "Data Chat", href: "/data-chat" },
     { key: "achievements", label: "Achievements", href: "/achievements" },

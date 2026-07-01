@@ -61,6 +61,8 @@ import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
 import {
   clubTypeCurrentPerformanceScore,
   clubTypeEstimatedStrokeEffect,
@@ -196,6 +198,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   }
 
   const params = await searchParams;
+  const userId = await requireCurrentUserId();
   const [data, challengeData] = await Promise.all([
     getTodayPracticeData({
       date: first(params.date),
@@ -204,6 +207,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     }),
     getChallengesPageData(),
   ]);
+  const linkedPracticePlan = await getPracticePlanForSourceSessions(
+    userId,
+    data.sessions.map((session) => session.id),
+  );
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(data.shots);
   const chartClubStatuses = toChartClubStatuses(data.clubComparisons);
@@ -247,6 +254,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <TodayMobileVerdictCard data={data} />
         <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
         <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+        <PracticePlanFollowedCard plan={linkedPracticePlan} className="sm:hidden" />
         <MobileMetricStrip
           items={[
             {
@@ -306,6 +314,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         comparisons={sortedClubComparisons}
         clubSort={clubSort}
         activeFilterChips={activeFilterChips}
+        linkedPracticePlan={linkedPracticePlan}
       />
 
       <MobileSectionChips
@@ -540,6 +549,7 @@ function TodayDesktopDashboard({
   comparisons,
   clubSort,
   activeFilterChips,
+  linkedPracticePlan,
 }: {
   data: TodayPracticeData;
   challenges: ChallengeListItem[];
@@ -550,6 +560,7 @@ function TodayDesktopDashboard({
   comparisons: ClubDayComparison[];
   clubSort: ClubSort;
   activeFilterChips: { label: string; href: string }[];
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
 }) {
   const hasShots = data.shots.length > 0;
 
@@ -602,12 +613,15 @@ function TodayDesktopDashboard({
       </TodayBentoItem>
 
       {hasShots ? (
-        <TodayBentoItem id="focus" span={6} className="scroll-mt-28">
+        <TodayBentoItem id="focus" span={4} className="scroll-mt-28">
           <TodayPracticePrescription data={data} />
         </TodayBentoItem>
       ) : null}
-      <TodayBentoItem span={hasShots ? 6 : 12} className="scroll-mt-28">
+      <TodayBentoItem span={hasShots ? 4 : 8} className="scroll-mt-28">
         <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+      </TodayBentoItem>
+      <TodayBentoItem span={4} className="scroll-mt-28">
+        <PracticePlanFollowedCard plan={linkedPracticePlan} />
       </TodayBentoItem>
 
       <TodayBentoItem span={12}>
@@ -845,6 +859,52 @@ function TodayPracticeModePanel({
         </details>
       </div>
     </DataPanel>
+  );
+}
+
+function PracticePlanFollowedCard({
+  plan,
+  className = "",
+}: {
+  plan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+  className?: string;
+}) {
+  if (!plan) {
+    return (
+      <section className={`grid h-full gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 ${className}`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-[#050505]">Practice plan link</p>
+          <StatusPill tone="slate">Waiting</StatusPill>
+        </div>
+        <p className="text-sm leading-5 text-[#6B7280]">
+          Complete a saved Practice Planner session and link the import to compare plan against
+          actual results.
+        </p>
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/practice" prefetch={false}>
+            Open planner
+          </Link>
+        </Button>
+      </section>
+    );
+  }
+
+  return (
+    <section className={`grid h-full gap-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-emerald-950">This session followed a plan</p>
+        <StatusPill tone="green">{plan.score ?? "--"} / 100</StatusPill>
+      </div>
+      <div>
+        <p className="text-xl font-semibold tracking-normal text-emerald-950">{plan.title}</p>
+        <p className="mt-1 text-sm leading-5 text-emerald-900">{plan.verdict}</p>
+      </div>
+      <Button asChild className="premium-action rounded-lg">
+        <Link href={plan.href} prefetch={false}>
+          Review plan
+        </Link>
+      </Button>
+    </section>
   );
 }
 

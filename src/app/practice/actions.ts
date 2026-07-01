@@ -1,0 +1,85 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { requireCurrentUserId } from "@/lib/current-user";
+import {
+  completePracticePlanForUser,
+  completePracticePlanFromSelectedImport,
+  generatePracticePlan,
+  getPracticePlannerContext,
+  savePracticePlanForUser,
+  updatePracticePlanStatusForUser,
+  type GeneratePracticePlanOptions,
+  type PracticePlan,
+  type PracticeResultInput,
+} from "@/lib/practice-planner";
+
+export async function generatePracticePlanAction(options: GeneratePracticePlanOptions) {
+  const userId = await requireCurrentUserId();
+  const context = await getPracticePlannerContext(userId);
+
+  return generatePracticePlan(context, options);
+}
+
+export async function savePracticePlanAction(plan: PracticePlan) {
+  const userId = await requireCurrentUserId();
+  const planId = await savePracticePlanForUser(userId, plan);
+
+  revalidatePracticePlannerSurfaces();
+
+  return { planId, latestSessionReview: null };
+}
+
+export async function startPracticePlanAction(planId: string) {
+  const userId = await requireCurrentUserId();
+
+  await updatePracticePlanStatusForUser(userId, planId, "awaiting_import");
+  revalidatePracticePlannerSurfaces();
+
+  return { status: "awaiting_import" as const };
+}
+
+export async function linkPracticePlanSessionAction(planId: string, sourceSessionId: string) {
+  const userId = await requireCurrentUserId();
+  const latestSessionReview = await completePracticePlanFromSelectedImport(
+    userId,
+    planId,
+    sourceSessionId,
+  );
+
+  revalidatePracticePlannerSurfaces();
+
+  return {
+    latestSessionReview,
+    error: latestSessionReview ? null : "That session could not be scored against this plan.",
+  };
+}
+
+export async function abandonPracticePlanAction(planId: string) {
+  const userId = await requireCurrentUserId();
+
+  await updatePracticePlanStatusForUser(userId, planId, "abandoned");
+  revalidatePracticePlannerSurfaces();
+
+  return { status: "abandoned" as const };
+}
+
+export async function completePracticePlanAction(planId: string, input: PracticeResultInput) {
+  const userId = await requireCurrentUserId();
+  const result = await completePracticePlanForUser(userId, planId, input);
+
+  revalidatePracticePlannerSurfaces();
+
+  return result;
+}
+
+function revalidatePracticePlannerSurfaces() {
+  revalidatePath("/practice");
+  revalidatePath("/dashboard");
+  revalidatePath("/today");
+  revalidatePath("/progress");
+  revalidatePath("/stats/training-over-time");
+  revalidatePath("/coach");
+  revalidatePath("/achievements");
+}

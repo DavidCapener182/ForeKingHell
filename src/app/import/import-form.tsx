@@ -551,11 +551,15 @@ export function ImportForm({
           result.skippedCount > 0
             ? ` ${result.skippedCount} duplicate ${result.skippedCount === 1 ? "file was" : "files were"} skipped.`
             : "";
+        const practiceText =
+          result.practicePlanMatches.length > 0
+            ? ` Practice plan matched: ${result.practicePlanMatches[0].title} (${result.practicePlanMatches[0].matchScore}% confidence) and scored ${result.practicePlanMatches[0].score.score}/100.`
+            : "";
         setSaveState({
           status: "success",
           message: `Saved ${result.shotCount} shots and ${result.rawRowCount} raw rows from ${result.sessionCount} CSV ${
             result.sessionCount === 1 ? "file" : "files"
-          } across ${result.clubCount} detected clubs.${skippedText}`,
+          } across ${result.clubCount} detected clubs.${skippedText}${practiceText}`,
           savedSessionId: result.savedSessionId,
           longestShotNotifications: result.longestShotNotifications,
           achievementUnlockNotifications: result.achievementUnlockNotifications,
