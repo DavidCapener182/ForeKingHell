@@ -24,7 +24,11 @@ export type PracticeComparisonViewLike = {
   }>;
 } | null;
 
-export type PracticeBlockImportStatus = "waiting_for_upload" | "matched_from_upload" | "needs_more_data";
+export type PracticeBlockImportStatus =
+  | "waiting_for_upload"
+  | "matched_from_upload"
+  | "needs_more_data"
+  | "no_matching_shots";
 
 export type PracticeFocusSummary = {
   main: string;
@@ -201,7 +205,7 @@ function blockImportStatus(
   decision: NonNullable<PracticeComparisonViewLike>["decisions"][number] | null,
 ): PracticeBlockImportStatus {
   if (!decision || decision.actualBalls === 0) {
-    return "waiting_for_upload";
+    return decision ? "no_matching_shots" : "waiting_for_upload";
   }
 
   return decision.matchedPlannedVolume ? "matched_from_upload" : "needs_more_data";
@@ -213,6 +217,8 @@ function importStatusLabel(status: PracticeBlockImportStatus) {
       return "Matched from upload";
     case "needs_more_data":
       return "Needs more shots";
+    case "no_matching_shots":
+      return "No matching shots";
     case "waiting_for_upload":
       return "Waiting for upload";
   }

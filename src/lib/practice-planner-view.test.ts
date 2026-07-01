@@ -56,9 +56,16 @@ describe("practice planner view helpers", () => {
   });
 
   it("marks blocks as waiting when no uploaded shots are present", () => {
-    const row = compactPracticeBlockRow(blocks[2], comparison);
+    const row = compactPracticeBlockRow(blocks[2], null);
 
     expect(row.statusLabel).toBe("Waiting for upload");
+    expect(row.importedEvidence).toBe("Scored after upload.");
+  });
+
+  it("marks linked blocks with no club evidence as no matching shots", () => {
+    const row = compactPracticeBlockRow(blocks[2], comparison);
+
+    expect(row.statusLabel).toBe("No matching shots");
     expect(row.importedEvidence).toBe("No matching imported shots");
   });
 

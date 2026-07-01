@@ -1482,6 +1482,7 @@ export async function completePracticePlanFromSelectedImport(
     plan,
     sessionSummary,
     match.score,
+    { scoringMode: "aggregate" },
   );
 
   await persistCompletedPracticePlan(userId, saved, plan, resultInput, comparison, match);

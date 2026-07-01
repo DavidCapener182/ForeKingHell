@@ -722,11 +722,13 @@ function PracticeAgenda({
               <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground">
                 {row.clubLabel || "Mixed"} · target {row.successTarget}
               </p>
-              <div className="mt-1.5 flex items-center justify-between gap-2">
+              <div className="mt-1.5 flex items-start justify-between gap-2">
                 <Badge variant="outline" className={importStatusTone(row.importStatus)}>
                   {row.statusLabel}
                 </Badge>
-                <span className="text-xs text-muted-foreground">{row.importedEvidence}</span>
+                <span className="min-w-0 text-right text-xs leading-5 text-muted-foreground">
+                  {row.importedEvidence}
+                </span>
               </div>
             </button>
           );
@@ -1295,6 +1297,7 @@ function importStatusTone(status: PracticeBlockImportStatus) {
   return cn(
     status === "matched_from_upload" && "border-emerald-200 bg-emerald-50 text-emerald-800",
     status === "needs_more_data" && "border-amber-200 bg-amber-50 text-amber-900",
+    status === "no_matching_shots" && "border-slate-200 bg-slate-50 text-slate-700",
     status === "waiting_for_upload" && "border-slate-200 bg-slate-50 text-slate-700",
   );
 }

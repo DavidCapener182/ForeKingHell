@@ -439,6 +439,49 @@ describe("practice planner", () => {
     expect(review.score.score).toBeLessThan(35);
   });
 
+  it("scores selected imports by matching planned clubs even when shot order exists", () => {
+    const plannerContext = context();
+    plannerContext.progress.priorities = [
+      priority("5w", 80),
+      priority("5i", 76),
+      priority("sw", 70),
+    ];
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "latest_weakness",
+    });
+    const selectedReview = evaluatePracticePlanAgainstImportedSession(
+      plan,
+      importedSession(30, [
+        ["driver", 5],
+        ["sw", 5],
+        ["5w", 10],
+        ["5i", 10],
+      ]),
+      92,
+      { scoringMode: "aggregate" },
+    );
+    const fiveWoodDecision = selectedReview.comparison.decisions.find((decision) =>
+      decision.title.toLowerCase().includes("5w"),
+    );
+    const fiveIronDecision = selectedReview.comparison.decisions.find((decision) =>
+      decision.title.toLowerCase().includes("5i"),
+    );
+    const wedgeDecision = selectedReview.comparison.decisions.find((decision) =>
+      decision.title.toLowerCase().includes("sw"),
+    );
+
+    expect(selectedReview.comparison.scoringMode).toBe("aggregate");
+    expect(fiveWoodDecision?.actualBalls).toBe(10);
+    expect(fiveWoodDecision?.actual).toContain("10/20 matching shots");
+    expect(fiveIronDecision?.actualBalls).toBe(10);
+    expect(fiveIronDecision?.actual).toContain("10/15 matching shots");
+    expect(wedgeDecision?.actualBalls).toBeGreaterThan(0);
+  });
+
   it("block results use shot data rather than a manual score", () => {
     const plan = generatePracticePlan(context(), {
       sessionType: "range",
