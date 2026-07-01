@@ -4,6 +4,7 @@ import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
 
 const APP_TIME_ZONE = "Europe/London";
 const PREVIOUS_SHOT_LIMIT_PER_CLUB = 50;
@@ -58,6 +59,7 @@ export type MetricSnapshot = {
   offlineAverageYd: number | null;
   straightRate: number | null;
   playableRate: number | null;
+  bigMissRate: number | null;
   carryStdDevYd: number | null;
   ballSpeedAverageMph: number | null;
   smashAverage: number | null;
@@ -72,6 +74,7 @@ export type ClubDayComparison = {
   offlineDeltaYd: number | null;
   straightRateDelta: number | null;
   playableRateDelta: number | null;
+  bigMissRateDelta: number | null;
   consistencyDeltaYd: number | null;
   ballSpeedDeltaMph: number | null;
   smashDelta: number | null;
@@ -449,16 +452,19 @@ function compareClubDay(
   const offlineDeltaYd = delta(today.offlineAverageYd, previous.offlineAverageYd);
   const straightRateDelta = delta(today.straightRate, previous.straightRate);
   const playableRateDelta = delta(today.playableRate, previous.playableRate);
+  const bigMissRateDelta = delta(today.bigMissRate, previous.bigMissRate);
   const consistencyDeltaYd = delta(today.carryStdDevYd, previous.carryStdDevYd);
   const ballSpeedDeltaMph = delta(today.ballSpeedAverageMph, previous.ballSpeedAverageMph);
   const smashDelta = delta(today.smashAverage, previous.smashAverage);
   const score = improvementScore({
+    clubType,
     today,
     previous,
     carryDeltaYd,
     offlineDeltaYd,
     straightRateDelta,
     playableRateDelta,
+    bigMissRateDelta,
     consistencyDeltaYd,
     ballSpeedDeltaMph,
     smashDelta,
@@ -482,6 +488,7 @@ function compareClubDay(
     offlineDeltaYd,
     straightRateDelta,
     playableRateDelta,
+    bigMissRateDelta,
     consistencyDeltaYd,
     ballSpeedDeltaMph,
     smashDelta,
@@ -675,12 +682,14 @@ function buildOverallComparison(
 }
 
 function improvementScore(input: {
+  clubType: string;
   today: MetricSnapshot;
   previous: MetricSnapshot;
   carryDeltaYd: number | null;
   offlineDeltaYd: number | null;
   straightRateDelta: number | null;
   playableRateDelta: number | null;
+  bigMissRateDelta: number | null;
   consistencyDeltaYd: number | null;
   ballSpeedDeltaMph: number | null;
   smashDelta: number | null;
@@ -692,24 +701,14 @@ function improvementScore(input: {
     return 0;
   }
 
-  let score = 0;
-
-  if (isNumber(input.offlineDeltaYd))
-    score += input.offlineDeltaYd <= -2 ? 2 : input.offlineDeltaYd >= 2 ? -2 : 0;
-  if (isNumber(input.straightRateDelta))
-    score += input.straightRateDelta >= 10 ? 2 : input.straightRateDelta <= -10 ? -2 : 0;
-  if (isNumber(input.playableRateDelta))
-    score += input.playableRateDelta >= 8 ? 1 : input.playableRateDelta <= -8 ? -1 : 0;
-  if (isNumber(input.carryDeltaYd))
-    score += input.carryDeltaYd >= 3 ? 1 : input.carryDeltaYd <= -3 ? -1 : 0;
-  if (isNumber(input.consistencyDeltaYd))
-    score += input.consistencyDeltaYd <= -3 ? 1 : input.consistencyDeltaYd >= 3 ? -1 : 0;
-  if (isNumber(input.ballSpeedDeltaMph))
-    score += input.ballSpeedDeltaMph >= 2 ? 1 : input.ballSpeedDeltaMph <= -2 ? -1 : 0;
-  if (isNumber(input.smashDelta))
-    score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
-
-  return score;
+  return clubTypeImprovementScore(input.clubType, {
+    carryDeltaYd: input.carryDeltaYd,
+    offlineDeltaYd: input.offlineDeltaYd,
+    straightRateDelta: input.straightRateDelta,
+    playableRateDelta: input.playableRateDelta,
+    bigMissRateDelta: input.bigMissRateDelta,
+    consistencyDeltaYd: input.consistencyDeltaYd,
+  });
 }
 
 function snapshot(shots: TodayPracticeShot[]): MetricSnapshot {
@@ -722,6 +721,11 @@ function snapshot(shots: TodayPracticeShot[]): MetricSnapshot {
   const smashValues = values(shots.map((shot) => shot.smashFactor));
   const directionalShots = shots.filter(
     (shot) => isNumber(shot.sideCarryYd) || isNumber(shot.launchDirectionDeg),
+  );
+  const bigMissShots = shots.filter(
+    (shot) =>
+      isNumber(shot.sideCarryYd) &&
+      Math.abs(shot.sideCarryYd) > bigMissOfflineLimitYd(shot.clubType),
   );
 
   return {
@@ -737,6 +741,8 @@ function snapshot(shots: TodayPracticeShot[]): MetricSnapshot {
       directionalShots.length > 0
         ? percent(directionalShots.filter(isPlayableShot).length, directionalShots.length)
         : null,
+    bigMissRate:
+      directionalShots.length > 0 ? percent(bigMissShots.length, directionalShots.length) : null,
     carryStdDevYd: roundOne(stddev(carryValues)),
     ballSpeedAverageMph: roundOne(mean(ballSpeedValues)),
     smashAverage: roundTwo(mean(smashValues)),

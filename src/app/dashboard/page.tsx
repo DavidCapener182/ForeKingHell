@@ -80,7 +80,11 @@ import { formatClubType } from "@/lib/club-format";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import type { DashboardPin } from "@/lib/user-settings";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
-import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
+import {
+  getFeatureIdeasData,
+  type FeatureIdeasData,
+  type FeatureInsight,
+} from "@/lib/feature-ideas";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -166,7 +170,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const metrics = [
     {
       pin: "shots" as const,
-      label: "Shot library",
+      label: "Golf database",
       value: integerFormatter.format(data.stats.shotCount),
       detail: latestSession
         ? `+${integerFormatter.format(latestSession.shotCount)} from latest import`
@@ -219,7 +223,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const mobileMetrics = [
     {
       pin: "shots" as const,
-      label: "Shot library",
+      label: "Golf database",
       value: integerFormatter.format(data.stats.shotCount),
       detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
       href: "/shots",
@@ -496,16 +500,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        <DashboardBentoGrid>
-          {metrics.length > 0 ? (
-            <DashboardBentoItem span={8}>
-              <PerformanceSnapshot metrics={metrics} className="h-full" />
-            </DashboardBentoItem>
-          ) : null}
-          <DashboardBentoItem span={4}>
-            <DriverStatusPanel pathTrend={data.pathTrend} className="h-full" />
-          </DashboardBentoItem>
+        <TodayCommandBrief
+          latestSession={latestSession}
+          bestClub={bestClub}
+          coachPreview={data.coachPreview}
+          firstSignal={firstSignal}
+          dataHealth={featureData.dataHealth}
+          primaryAction={primaryAction}
+          primaryActionLabel={primaryActionLabel}
+          latestRound={data.latestRound}
+        />
 
+        <DashboardBentoGrid>
           {pinnedDashboardSections.has("coach") ? (
             <DashboardBentoItem span={8}>
               <PracticeRecommendationCard
@@ -513,6 +519,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 primaryAction={primaryAction}
                 primaryActionLabel={primaryActionLabel}
               />
+            </DashboardBentoItem>
+          ) : null}
+          <DashboardBentoItem span={4}>
+            <DriverStatusPanel pathTrend={data.pathTrend} className="h-full" />
+          </DashboardBentoItem>
+
+          {metrics.length > 0 ? (
+            <DashboardBentoItem span={8}>
+              <PerformanceSnapshot metrics={metrics} className="h-full" />
             </DashboardBentoItem>
           ) : null}
           <DashboardBentoItem span={4}>
@@ -560,7 +575,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           ) : null}
 
           <DashboardBentoItem span={8} className="[&>[data-slot=card]]:h-full">
-            <ActionCentrePanel data={featureData} layout="dashboard" />
+            <DashboardActionCentrePanel data={featureData} />
           </DashboardBentoItem>
           <DashboardBentoItem span={4}>
             <div className="grid h-full auto-rows-fr gap-5">
@@ -573,17 +588,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </DashboardBentoItem>
         </DashboardBentoGrid>
-
-        <TodayCommandBrief
-          latestSession={latestSession}
-          bestClub={bestClub}
-          coachPreview={data.coachPreview}
-          firstSignal={firstSignal}
-          dataHealth={featureData.dataHealth}
-          primaryAction={primaryAction}
-          primaryActionLabel={primaryActionLabel}
-          latestRound={data.latestRound}
-        />
 
         {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
       </div>
@@ -1078,7 +1082,7 @@ function DashboardMobileBagConfidence({ clubs }: { clubs: DashboardData["bagPrev
               </span>
               {club.stock.sampleSize < 20 ? (
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
-                  Needs {integerFormatter.format(20 - club.stock.sampleSize)} clean shots
+                  Needs {formatShotCount(20 - club.stock.sampleSize, "clean")}
                 </span>
               ) : null}
             </div>
@@ -1521,6 +1525,15 @@ function DashboardSummaryHero({
   const driverStatus = getDriverStatus(pathTrend);
   const driverTrendPoints = pathTrend.points.filter((point) => point.pathDeg !== null).slice(-4);
   const driverImprovementLabel = formatDriverImprovementLabel(driverTrendPoints);
+  const driverDeliveryStory = formatDriverDeliveryStory(pathTrend.points);
+  const developmentTargetCopy = getDevelopmentTargetCopy(coachPreview);
+  const trendBadge = getHeroTrendBadge(pathTrend, driverImprovementLabel);
+  const dashboardRead = buildDashboardIntelligenceSentence({
+    coachPreview,
+    bagSummary,
+    pathTrend,
+    firstChange,
+  });
   const driverImprovementValue = driverImprovementLabel?.replace("Improved ", "") ?? "Steady";
   const driverImprovementMetricLabel = driverImprovementLabel ? "Improved" : "Delivery";
   const latestFaceDeg =
@@ -1562,35 +1575,71 @@ function DashboardSummaryHero({
         <div className="absolute right-32 bottom-20 h-px w-52 -rotate-6 bg-[#C8D9FF]" />
       </div>
 
-      <div className="relative grid gap-5 px-7 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-stretch">
-        <div className="h-full rounded-[24px] bg-white/96 p-5 shadow-[0_20px_44px_rgba(8,122,61,0.12)] ring-1 ring-[#E4EFE7]">
+      <div className="relative grid gap-4 px-6 py-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] lg:items-stretch">
+        <div className="h-full rounded-[22px] bg-white/96 p-4 shadow-[0_16px_34px_rgba(8,122,61,0.11)] ring-1 ring-[#E4EFE7]">
           <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] px-3 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
+            <div className="mb-3 rounded-[16px] border border-[#DCECE0] bg-[#F8FAF8] px-3 py-2.5">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+                Coach read
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-5 text-[#111827]">{dashboardRead}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E8F7EE] px-2.5 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
                 <Target className="size-3.5" />
                 Today&apos;s focus
               </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF3] px-3 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ECFDF3] px-2.5 py-1 text-xs font-bold leading-4 text-[#087A3D] ring-1 ring-[#CFE7D6]">
                 <CheckCircle2 className="size-3.5" />
-                {coachPreview ? `${coachPreview.trustIndex}% trust` : "Build baseline"}
+                {coachPreview ? `${coachPreview.trustIndex}% confidence` : "Build baseline"}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FFF8ED] px-2.5 py-1 text-xs font-bold leading-4 text-[#A94B00] ring-1 ring-[#F8D9A4]">
+                <LineChart className="size-3.5" />
+                {trendBadge}
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F8FAF8] px-2.5 py-1 text-xs font-bold leading-4 text-[#375041] ring-1 ring-[#DCECE0]">
+                <Database className="size-3.5" />
+                {coachPreview
+                  ? `${integerFormatter.format(coachPreview.sampleSize)} stock shots`
+                  : `${integerFormatter.format(bagSummary.mappedClubCount)} mapped clubs`}
               </span>
               {latestSession ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF1FF] px-3 py-1 text-xs font-bold leading-4 text-[#2563EB] ring-1 ring-[#CFDAFF]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAF1FF] px-2.5 py-1 text-xs font-bold leading-4 text-[#2563EB] ring-1 ring-[#CFDAFF]">
                   <CalendarDays className="size-3.5" />
                   Latest import {formatDate(latestSession.date)}
                 </span>
               ) : null}
             </div>
-            <h1 className="mt-5 max-w-3xl text-5xl font-bold leading-[3.3rem] tracking-normal text-[#111827] xl:text-[56px] xl:leading-[3.7rem]">
+            <h1 className="mt-4 max-w-3xl text-[42px] font-bold leading-[2.8rem] tracking-normal text-[#111827] xl:text-[48px] xl:leading-[3.15rem]">
               {practiceTitle}
             </h1>
-            <div className="mt-5 rounded-[18px] bg-[#F8FAF8] px-4 py-3 shadow-[inset_0_0_0_1px_rgba(220,236,224,0.72)]">
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <FocusContextTile
+                label="Development focus"
+                value={practiceTitle}
+                detail={developmentTargetCopy}
+                tone="green"
+              />
+              <FocusContextTile
+                label="Latest session focus"
+                value={firstChange ? firstChange.label : "Latest practice signal"}
+                detail={
+                  firstChange
+                    ? `${firstChange.value} · ${firstChange.detail}`
+                    : latestSession
+                      ? `${formatDate(latestSession.date)} · open latest practice for the session read.`
+                      : "Import a session to separate latest result from the development plan."
+                }
+                tone={firstChange ? normalizeDashboardTone(firstChange.tone) : "sky"}
+              />
+            </div>
+            <div className="mt-3 rounded-[16px] bg-[#F8FAF8] px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(220,236,224,0.72)]">
               <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
                 <div className="min-w-[10rem] pr-2">
                   <p className="text-xs font-bold uppercase tracking-normal text-[#667085]">
-                    Current pattern
+                    Driver delivery
                   </p>
-                  <p className="mt-1 text-[28px] font-bold leading-8 tracking-normal text-[#111827]">
+                  <p className="mt-1 text-[24px] font-bold leading-7 tracking-normal text-[#111827]">
                     {driverStatus.label}
                   </p>
                 </div>
@@ -1623,28 +1672,31 @@ function DashboardSummaryHero({
                 />
               </div>
             </div>
-            <div className="mt-4 rounded-[16px] bg-[#F0FAF3] px-4 py-3">
+            <div className="mt-3 rounded-[16px] bg-[#F0FAF3] px-3 py-2.5">
               <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(220px,0.85fr)] xl:items-center">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
-                    Expected gain
+                    Development target
                   </p>
                   <p className="mt-1 text-sm font-semibold leading-6 text-[#111827]">
-                    {expectedGain}
+                    {driverDeliveryStory ?? expectedGain}
                   </p>
                 </div>
-                <p className="text-xs font-medium leading-5 text-[#526071]">{focusSummary}</p>
+                <p className="text-xs font-medium leading-5 text-[#526071]">
+                  {developmentTargetCopy} {focusSummary}
+                </p>
               </div>
             </div>
           </div>
           <FacePathClubSelector
             pathTrend={pathTrend}
-            className="mt-4"
+            compact
+            className="mt-3"
             action={
               <Link
                 href={practiceHref}
                 prefetch={false}
-                className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl bg-[#087A3D] px-5 text-sm font-bold text-white shadow-[0_14px_28px_rgba(8,122,61,0.18)] outline-none transition-colors hover:bg-[#065F32] focus-visible:ring-3 focus-visible:ring-[#087A3D]/30"
+                className="inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-xl bg-[#087A3D] px-4 text-sm font-bold text-white shadow-[0_14px_28px_rgba(8,122,61,0.18)] outline-none transition-colors hover:bg-[#065F32] focus-visible:ring-3 focus-visible:ring-[#087A3D]/30"
               >
                 Start practice
                 <ArrowRight className="size-4" />
@@ -1653,17 +1705,17 @@ function DashboardSummaryHero({
           />
         </div>
 
-        <div className="grid self-start gap-4">
+        <div className="grid self-start gap-3">
           <RoundReadinessCard readiness={readiness} />
           <SinceLastSessionCard insights={whatChanged} />
         </div>
       </div>
 
-      <div className="relative grid auto-rows-fr gap-4 border-t border-[#EDF1ED] bg-white/78 px-7 py-4 lg:grid-cols-4">
+      <div className="relative grid auto-rows-fr gap-4 border-t border-[#EDF1ED] bg-white/78 px-6 py-3 lg:grid-cols-4">
         <HeroInsightCard
-          title="Current form"
-          value={scoringCeiling}
-          detail={`${scoringTrend} · ${integerFormatter.format(scoringSampleSize)} round sample`}
+          title="Scoring trend"
+          value={formatScoringCeilingValue(scoringCeiling)}
+          detail={`${scoringTrend} · ${integerFormatter.format(scoringSampleSize)} comparable rounds`}
           href="/rounds"
           tone="amber"
         />
@@ -1709,6 +1761,122 @@ function DashboardSummaryHero({
       </div>
     </section>
   );
+}
+
+function FocusContextTile({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: ReactNode;
+  detail: ReactNode;
+  tone: DashboardTone;
+}) {
+  return (
+    <div className="rounded-[16px] border border-[#DFE7DF] bg-white px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{label}</p>
+        <DashboardDot tone={tone} />
+      </div>
+      <p className="mt-2 line-clamp-1 text-sm font-bold leading-5 text-[#111827]">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#667085]">{detail}</p>
+    </div>
+  );
+}
+
+function formatDriverDeliveryStory(points: DashboardData["pathTrend"]["points"]) {
+  const measured = getMeasuredPathPoints(points);
+
+  if (measured.length < 2) {
+    return null;
+  }
+
+  const first = measured[0];
+  const latest = measured[measured.length - 1];
+
+  return `Delivery moving from ${formatSignedDegrees(first.pathDeg)} to ${formatSignedDegrees(latest.pathDeg)} path.`;
+}
+
+function getMeasuredPathPoints(points: DashboardData["pathTrend"]["points"]) {
+  return points.filter(
+    (point): point is (typeof points)[number] & { pathDeg: number } =>
+      typeof point.pathDeg === "number" && Number.isFinite(point.pathDeg),
+  );
+}
+
+function getHeroTrendBadge(
+  pathTrend: DashboardData["pathTrend"],
+  driverImprovementLabel: string | null,
+) {
+  if (pathTrend.status === "neutralising" || driverImprovementLabel) {
+    return "Improving trend";
+  }
+
+  if (pathTrend.status === "widening") {
+    return "Watch trend";
+  }
+
+  return pathTrend.label;
+}
+
+function getDevelopmentTargetCopy(coachPreview: DashboardData["coachPreview"]) {
+  if (!coachPreview) {
+    return "Import a clean session to unlock the first development focus.";
+  }
+
+  const clubLabel =
+    coachPreview.clubName.toLowerCase() === "driver"
+      ? "stock drivers"
+      : `stock ${coachPreview.clubName} shots`;
+
+  return `Keep the next 10 ${clubLabel} inside the neutral window.`;
+}
+
+function buildDashboardIntelligenceSentence({
+  coachPreview,
+  bagSummary,
+  pathTrend,
+  firstChange,
+}: {
+  coachPreview: DashboardData["coachPreview"];
+  bagSummary: DashboardData["bagSummary"];
+  pathTrend: DashboardData["pathTrend"];
+  firstChange: DashboardInsight | null;
+}) {
+  if (coachPreview && pathTrend.status === "neutralising") {
+    const trustedClub = bagSummary.mostTrusted?.label
+      ? ` Trust ${bagSummary.mostTrusted.label} on-course while that delivery settles.`
+      : "";
+    const sessionCue = firstChange
+      ? ` Latest-session signal: ${firstChange.label.toLowerCase()} ${firstChange.value}.`
+      : "";
+
+    return `${coachPreview.clubName} delivery is moving toward neutral, so keep the work narrow and measured.${trustedClub}${sessionCue}`;
+  }
+
+  if (coachPreview) {
+    return `${coachPreview.clubName} is the development job today. ${getDashboardPracticeTask(
+      coachPreview,
+    )}`;
+  }
+
+  if (bagSummary.mappedClubCount > 0) {
+    return `${integerFormatter.format(
+      bagSummary.mappedClubCount,
+    )} clubs are mapped. Add the next clean import to turn the dashboard into a practice plan.`;
+  }
+
+  return "Import one clean launch-monitor session and the dashboard can separate practice, bag and scoring priorities.";
+}
+
+function formatScoringCeilingValue(scoringCeiling: string) {
+  if (scoringCeiling === "--") {
+    return "Building";
+  }
+
+  return `${scoringCeiling} ceiling`;
 }
 
 const DRIVER_PATH_TARGET = { min: 2, max: 5 };
@@ -1817,8 +1985,11 @@ type RoundReadiness = {
   label: string;
   tone: DashboardTone;
   driver: string;
+  driverTone: DashboardTone;
   irons: string;
+  ironsTone: DashboardTone;
   wedges: string;
+  wedgesTone: DashboardTone;
   recommended: string;
 };
 
@@ -1861,9 +2032,9 @@ function RoundReadinessCard({
           </div>
         </div>
         <div className="grid gap-2">
-          <ReadinessRow label="Driver" value={readiness.driver} />
-          <ReadinessRow label="Irons" value={readiness.irons} />
-          <ReadinessRow label="Wedges" value={readiness.wedges} />
+          <ReadinessRow label="Driver" value={readiness.driver} tone={readiness.driverTone} />
+          <ReadinessRow label="Irons" value={readiness.irons} tone={readiness.ironsTone} />
+          <ReadinessRow label="Wedges" value={readiness.wedges} tone={readiness.wedgesTone} />
         </div>
       </div>
       <div className="mt-4 rounded-[16px] bg-[#F8FAF8] px-3 py-3">
@@ -1876,10 +2047,26 @@ function RoundReadinessCard({
   );
 }
 
-function ReadinessRow({ label, value }: { label: string; value: string }) {
+function ReadinessRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: DashboardTone;
+}) {
   return (
-    <p className="flex items-center justify-between gap-3 rounded-xl bg-[#F8FAF8] px-3 py-2.5 text-sm">
-      <span className="font-medium text-[#667085]">{label}</span>
+    <p
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm",
+        toneSoftClass(tone),
+      )}
+    >
+      <span className="flex items-center gap-2 font-medium text-[#111827]">
+        <DashboardDot tone={tone} />
+        {label}
+      </span>
       <span className="text-right font-semibold text-[#111827]">{value}</span>
     </p>
   );
@@ -1965,10 +2152,27 @@ function calculateRoundReadiness({
       : wedgeScore >= 50
         ? "Calibrating"
         : "Needs data";
+  const trustedRatio =
+    bagSummary.mappedClubCount > 0 ? bagSummary.trustedClubCount / bagSummary.mappedClubCount : 0;
+  const ironsTone: DashboardTone =
+    bagSummary.mappedClubCount === 0
+      ? "slate"
+      : trustedRatio >= 0.75
+        ? "green"
+        : trustedRatio >= 0.5
+          ? "amber"
+          : "pink";
+  const wedgesTone: DashboardTone = bagSummary.scoringZones.some((zone) => zone.isSuggested)
+    ? "amber"
+    : wedgeScore >= 75
+      ? "green"
+      : wedgeScore >= 50
+        ? "amber"
+        : "pink";
   const recommended = coachPreview
     ? getDashboardPracticeTask(coachPreview)
     : bagSummary.leastTrusted?.needsShots
-      ? `Add ${integerFormatter.format(bagSummary.leastTrusted.needsShots)} ${bagSummary.leastTrusted.label} shots before next round.`
+      ? `Add ${formatShotCount(bagSummary.leastTrusted.needsShots, bagSummary.leastTrusted.label)} before next round.`
       : "Import a clean session before the next round.";
 
   return {
@@ -1976,8 +2180,11 @@ function calculateRoundReadiness({
     label,
     tone,
     driver: driverLabel,
+    driverTone: driverStatus.tone,
     irons: `${bagSummary.trustedClubCount}/${bagSummary.mappedClubCount} trusted`,
+    ironsTone,
     wedges: wedgeLabel,
+    wedgesTone,
     recommended,
   };
 }
@@ -2078,6 +2285,13 @@ function formatSignedNumberForDashboard(value: number) {
   return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
 }
 
+function formatShotCount(count: number, qualifier?: string) {
+  const shotLabel = count === 1 ? "shot" : "shots";
+  const qualifierLabel = qualifier ? `${qualifier} ` : "";
+
+  return `${integerFormatter.format(count)} ${qualifierLabel}${shotLabel}`;
+}
+
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -2090,6 +2304,10 @@ function DriverStatusPanel({
   className?: string;
 }) {
   const status = getDriverStatus(pathTrend);
+  const measuredPathPoints = getMeasuredPathPoints(pathTrend.points);
+  const previousPoint =
+    measuredPathPoints.length >= 2 ? measuredPathPoints[0] : (measuredPathPoints[0] ?? null);
+  const currentPoint = measuredPathPoints[measuredPathPoints.length - 1] ?? null;
   const latestPoint =
     [...pathTrend.points].reverse().find((point) => point.pathDeg !== null) ?? null;
   const sampleSize = latestPoint?.sampleSize ?? pathTrend.recentShots.length;
@@ -2111,16 +2329,30 @@ function DriverStatusPanel({
       <div className="grid gap-4">
         <div className="flex items-start justify-between gap-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">Status</p>
-            <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+              Current trend
+            </p>
+            <p className="mt-1 flex items-center gap-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+              <LineChart className="size-5 text-[#087A3D]" />
               {status.label}
             </p>
           </div>
           <StatusPill tone={status.tone}>{pathTrend.label}</StatusPill>
         </div>
+        <div className="rounded-lg border border-[#DFE7DF] bg-white px-4 py-3">
+          <div className="grid grid-cols-3 gap-2">
+            <DataPair
+              label="Previous"
+              value={formatSignedDegrees(previousPoint?.pathDeg ?? null)}
+            />
+            <DataPair label="Current" value={formatSignedDegrees(currentPoint?.pathDeg ?? null)} />
+            <DataPair label="Target" value="0 deg" />
+          </div>
+          <DriverPathProgress previous={previousPoint?.pathDeg ?? null} current={status.pathDeg} />
+        </div>
         <div className="grid grid-cols-3 gap-2">
           <DataPair label="Path" value={formatSignedDegrees(status.pathDeg)} />
-          <DataPair label="Target" value="+/-5 deg" />
+          <DataPair label="Window" value="+/-5 deg" />
           <DataPair label="F-P" value={formatSignedDegrees(status.faceToPathDeg)} />
         </div>
         <p className="rounded-lg border border-[#EDF1ED] bg-white px-3 py-3 text-sm leading-5 text-[#667085]">
@@ -2131,6 +2363,57 @@ function DriverStatusPanel({
         </p>
       </div>
     </DashboardPanel>
+  );
+}
+
+function DriverPathProgress({
+  previous,
+  current,
+}: {
+  previous: number | null;
+  current: number | null;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="relative h-2 rounded-full bg-[#EEF2F0]">
+        <span className="absolute left-1/2 top-1/2 h-5 w-px -translate-y-1/2 bg-[#087A3D]" />
+        <DriverPathMarker value={previous} label="Previous" tone="amber" />
+        <DriverPathMarker value={current} label="Current" tone="green" />
+      </div>
+      <div className="mt-2 flex justify-between text-[11px] font-semibold uppercase tracking-[0.08em] text-[#667085]">
+        <span>Outside</span>
+        <span>Neutral</span>
+        <span>Outside</span>
+      </div>
+    </div>
+  );
+}
+
+function DriverPathMarker({
+  value,
+  label,
+  tone,
+}: {
+  value: number | null;
+  label: string;
+  tone: "green" | "amber";
+}) {
+  if (value === null) {
+    return null;
+  }
+
+  const left = clampNumber(((value + 10) / 20) * 100, 4, 96);
+
+  return (
+    <span
+      className={cn(
+        "absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_0_0_3px_rgba(17,24,39,0.08)]",
+        tone === "green" ? "bg-[#087A3D]" : "bg-[#B87500]",
+      )}
+      style={{ left: `${left}%` }}
+      aria-label={`${label}: ${formatSignedDegrees(value)}`}
+      title={`${label}: ${formatSignedDegrees(value)}`}
+    />
   );
 }
 
@@ -2607,12 +2890,18 @@ function PlaysLikeAdjustmentPanel({
                       {integerFormatter.format(row.sampleSize)} shots · {row.confidenceScore}% trust
                     </p>
                   </div>
-                  <p className="text-right text-xl font-bold leading-6 text-[#111827]">
-                    {formatYards(row.playsLikeYards)}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+                      Feels like
+                    </p>
+                    <p className="mt-1 text-xl font-bold leading-6 text-[#111827]">
+                      {formatYards(row.playsLikeYards)}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-xs text-[#667085]">
                   <span>Stock {formatYards(row.baseYards)}</span>
+                  <span className="truncate">{formatPlaysLikeWeatherCue(playsLike)}</span>
                   <span className="font-semibold text-[#087A3D]">
                     {row.deltaYards > 0 ? "+" : ""}
                     {numberFormatter.format(row.deltaYards)} yd
@@ -2629,6 +2918,20 @@ function PlaysLikeAdjustmentPanel({
       </div>
     </DashboardPanel>
   );
+}
+
+function formatPlaysLikeWeatherCue(playsLike: DashboardData["playsLike"]) {
+  if (typeof playsLike.conditions.windSpeedMph === "number") {
+    const direction = playsLike.conditions.windDirectionLabel ?? "Wind";
+
+    return `${direction} ${numberFormatter.format(playsLike.conditions.windSpeedMph)} mph`;
+  }
+
+  if (typeof playsLike.conditions.temperatureC === "number") {
+    return `${numberFormatter.format(playsLike.conditions.temperatureC)} C weather input`;
+  }
+
+  return "Weather neutral";
 }
 
 function CompactSignalRow({
@@ -2689,6 +2992,7 @@ function PracticeRecommendationCard({
 }) {
   const href = coachPreview ? `/bag/${coachPreview.clubId}/analytics` : primaryAction;
   const taskCopy = coachPreview ? getDashboardPracticeTask(coachPreview) : "";
+  const expectedImprovement = coachPreview ? getPracticeExpectedImprovement(coachPreview) : null;
 
   return (
     <section
@@ -2722,6 +3026,12 @@ function PracticeRecommendationCard({
               <span className="text-sm leading-6 text-[#667085]">
                 Goal: path inside +/-5 degrees with a predictable start line.
               </span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <PracticePayoffPill label="Estimated time" value="15 mins" />
+              {expectedImprovement ? (
+                <PracticePayoffPill label="Expected improvement" value={expectedImprovement} />
+              ) : null}
             </div>
             <PracticeReasonText reason={coachPreview.reason} />
             <TargetLaneVisual coachPreview={coachPreview} />
@@ -2777,6 +3087,30 @@ function PracticeRecommendationCard({
       )}
     </section>
   );
+}
+
+function PracticePayoffPill({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="grid min-h-14 rounded-lg border border-[#DFE7DF] bg-white px-3 py-2">
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{label}</span>
+      <span className="mt-1 text-sm font-bold leading-5 text-[#111827]">{value}</span>
+    </span>
+  );
+}
+
+function getPracticeExpectedImprovement(coachPreview: NonNullable<DashboardData["coachPreview"]>) {
+  const issue = coachPreview.issueLabel.toLowerCase();
+  const reason = coachPreview.reason.toLowerCase();
+
+  if (issue.includes("delivery") || reason.includes("path")) {
+    return "Neutral start line";
+  }
+
+  if (issue.includes("trust")) {
+    return "+12 clean stock shots";
+  }
+
+  return "Cleaner stock window";
 }
 
 function PracticeReasonText({ reason }: { reason: string }) {
@@ -3099,9 +3433,7 @@ function BagCaddieCard({
         <DataPair label="Miss" value={club.missLabel} />
         <DataPair
           label="Need"
-          value={
-            club.needsShots > 0 ? `${integerFormatter.format(club.needsShots)} shots` : "Ready"
-          }
+          value={club.needsShots > 0 ? formatShotCount(club.needsShots) : "Ready"}
         />
       </div>
     </Link>
@@ -3170,6 +3502,7 @@ function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] })
           const hasGappingWarning =
             carry > 0 && nextCarry !== null && nextCarry > 0 && Math.abs(carry - nextCarry) < 8;
           const needsMoreShots = club.stock.confidenceScore < 60;
+          const confidenceTone = confidenceToneFromScore(club.stock.confidenceScore);
 
           return (
             <Link
@@ -3182,20 +3515,24 @@ function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] })
                 <span className="font-semibold text-[#111827]">{formatClubType(club.type)}</span>
                 <span className="h-2 overflow-hidden rounded-full bg-[#EEF2F0]">
                   <span
-                    className="block h-full rounded-full bg-[#9AD7AE]"
+                    className={cn("block h-full rounded-full", confidenceBarClass(confidenceTone))}
                     style={{ width: `${width}%` }}
                   />
                 </span>
                 <span className="text-right tabular-nums text-[#111827]">
                   {formatYards(club.stock.carryMedianYd)}
                 </span>
-                <span className="text-right tabular-nums text-[#667085]">
+                <span
+                  className={cn("text-right tabular-nums", confidenceTextClass(confidenceTone))}
+                >
                   {club.stock.confidenceScore}%
                 </span>
               </span>
               <span className="flex flex-wrap gap-1.5 pl-[4.5rem] text-[11px] font-semibold uppercase tracking-[0.08em]">
                 {club.stock.recommendedPlayNumberYd ? (
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-emerald-700">
+                  <span
+                    className={cn("rounded-full px-2 py-1", confidencePillClass(confidenceTone))}
+                  >
                     Safe {formatYards(club.stock.recommendedPlayNumberYd)}
                   </span>
                 ) : null}
@@ -3216,6 +3553,63 @@ function ClubConfidenceLadder({ clubs }: { clubs: DashboardData["bagPreview"] })
       </div>
     </div>
   );
+}
+
+type ConfidenceTone = "green" | "yellow" | "orange" | "red";
+
+function confidenceToneFromScore(score: number): ConfidenceTone {
+  if (score >= 80) {
+    return "green";
+  }
+
+  if (score >= 65) {
+    return "yellow";
+  }
+
+  if (score >= 50) {
+    return "orange";
+  }
+
+  return "red";
+}
+
+function confidenceBarClass(tone: ConfidenceTone) {
+  switch (tone) {
+    case "green":
+      return "bg-[#087A3D]";
+    case "yellow":
+      return "bg-[#D6A300]";
+    case "orange":
+      return "bg-[#EA6A00]";
+    case "red":
+      return "bg-[#C2410C]";
+  }
+}
+
+function confidenceTextClass(tone: ConfidenceTone) {
+  switch (tone) {
+    case "green":
+      return "text-[#087A3D]";
+    case "yellow":
+      return "text-[#8A6A00]";
+    case "orange":
+      return "text-[#B45309]";
+    case "red":
+      return "text-[#B42318]";
+  }
+}
+
+function confidencePillClass(tone: ConfidenceTone) {
+  switch (tone) {
+    case "green":
+      return "bg-emerald-50 text-emerald-700";
+    case "yellow":
+      return "bg-yellow-50 text-yellow-700";
+    case "orange":
+      return "bg-orange-50 text-orange-700";
+    case "red":
+      return "bg-rose-50 text-rose-700";
+  }
 }
 
 function LatestRoundPanel({
@@ -3457,11 +3851,15 @@ function CourseDecisionPanel({
               </span>
               <p className="text-sm font-semibold leading-5 text-[#111827]">{item.label}</p>
             </div>
-            <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-              {item.value}
-            </p>
+            <div className="mt-3 rounded-lg border border-[#EDF1ED] bg-[#F8FAF8] px-3 py-2.5">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+                Recommended
+              </p>
+              <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+                {item.value}
+              </p>
+            </div>
             <div className="mt-3 grid gap-2">
-              <DataPair label="Call" value={courseDecisionCallLabel(item)} />
               <DataPair label="Expected leave" value={courseDecisionLeaveLabel(item)} />
             </div>
             <p className="mt-3 text-sm leading-5 text-[#667085]">{item.detail}</p>
@@ -3470,22 +3868,6 @@ function CourseDecisionPanel({
       </div>
     </DashboardPanel>
   );
-}
-
-function courseDecisionCallLabel(item: DashboardData["courseAdvice"][number]) {
-  if (item.key === "200-out") {
-    return "Lay up";
-  }
-
-  if (item.key === "180-tee") {
-    return "Position";
-  }
-
-  if (item.key === "150-approach") {
-    return "Hit stock";
-  }
-
-  return "Score";
 }
 
 function courseDecisionLeaveLabel(item: DashboardData["courseAdvice"][number]) {
@@ -3498,6 +3880,112 @@ function courseDecisionLeaveLabel(item: DashboardData["courseAdvice"][number]) {
   }
 
   return `${formatYards(item.expectedLeaveYd)} pitch`;
+}
+
+function DashboardActionCentrePanel({
+  data,
+  className,
+}: {
+  data: FeatureIdeasData;
+  className?: string;
+}) {
+  const { practice, maintenance } = splitDashboardActions(data.dashboardActions);
+
+  return (
+    <DashboardPanel
+      className={className}
+      title="Action centre"
+      description="Practice jobs separated from import, proof and competition housekeeping."
+      action={
+        <Button asChild variant="outline" className="rounded-lg">
+          <Link href="/progress" prefetch={false}>
+            <LineChart className="size-4" />
+            Review week
+          </Link>
+        </Button>
+      }
+    >
+      <div className="grid h-full gap-4 lg:grid-cols-2">
+        <DashboardActionGroup title="Practice" items={practice} empty="No practice action yet." />
+        <DashboardActionGroup
+          title="Maintenance"
+          items={maintenance}
+          empty="No maintenance action due."
+        />
+      </div>
+    </DashboardPanel>
+  );
+}
+
+function DashboardActionGroup({
+  title,
+  items,
+  empty,
+}: {
+  title: string;
+  items: FeatureInsight[];
+  empty: string;
+}) {
+  return (
+    <section className="grid content-start gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] p-3">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{title}</p>
+      {items.length > 0 ? (
+        <div className="grid gap-2">
+          {items.map((item, index) => (
+            <DashboardActionCard key={`${item.title}-${item.href ?? index}`} item={item} />
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-[#CFE1D2] bg-white px-3 py-3 text-sm leading-5 text-[#667085]">
+          {empty}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DashboardActionCard({ item }: { item: FeatureInsight }) {
+  const content = (
+    <div className="grid gap-2 rounded-lg border border-[#DFE7DF] bg-white px-3 py-3 text-sm transition-colors hover:border-[#0F8F4D] hover:bg-[#F8FAF8]">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-semibold leading-5 text-[#111827]">{item.title}</p>
+        {item.metric ? (
+          <StatusPill tone={normalizeDashboardTone(item.tone)}>{item.metric}</StatusPill>
+        ) : null}
+      </div>
+      <p className="line-clamp-2 leading-5 text-[#667085]">{item.detail}</p>
+    </div>
+  );
+
+  return item.href ? (
+    <Link href={item.href} prefetch={false} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function splitDashboardActions(actions: FeatureInsight[]) {
+  const practice = actions.filter(isPracticeAction);
+  const maintenance = actions.filter((item) => !isPracticeAction(item));
+
+  return {
+    practice: practice.slice(0, 3),
+    maintenance: maintenance.slice(0, 3),
+  };
+}
+
+function isPracticeAction(item: FeatureInsight) {
+  const text = `${item.title} ${item.detail} ${item.href ?? ""}`.toLowerCase();
+
+  if (/import|proof|tournament|submit|provider|rapsodo|sync|account/.test(text)) {
+    return false;
+  }
+
+  return /practice|coach|drill|wedge|driver|stock|challenge|gap|bag|review week|progress/.test(
+    text,
+  );
 }
 
 function DecisionIcon({ itemKey }: { itemKey: DashboardData["courseAdvice"][number]["key"] }) {

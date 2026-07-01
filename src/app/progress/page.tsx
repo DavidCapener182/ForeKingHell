@@ -63,6 +63,14 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+type ProgressPageProps = {
+  searchParams?: Promise<{
+    bag?: string;
+  }>;
+};
+
+type BagMovementFilter = "all" | "woods" | "irons" | "wedges" | "needs-work";
+
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
@@ -72,10 +80,15 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
 
-export default async function ProgressPage() {
-  const [data, featureData] = await Promise.all([getProgressData(), getFeatureIdeasData()]);
+export default async function ProgressPage({ searchParams }: ProgressPageProps) {
+  const [params, data, featureData] = await Promise.all([
+    searchParams,
+    getProgressData(),
+    getFeatureIdeasData(),
+  ]);
   const summary = buildProgressSummary(data.clubs);
   const mostImproved = summary.rankings.mostImproved;
+  const bagFilter = parseBagMovementFilter(params?.bag);
 
   return (
     <PageShell>
@@ -86,7 +99,7 @@ export default async function ProgressPage() {
         tabs={[
           { key: "overview", label: "Overview", href: "/progress" },
           { key: "trends", label: "Trends", href: "#trends" },
-          { key: "calendar", label: "Calendar", href: "#journey" },
+          { key: "calendar", label: "Timeline", href: "#journey" },
           { key: "pbs", label: "PBs", href: "/achievements" },
         ]}
       />
@@ -186,6 +199,8 @@ export default async function ProgressPage() {
         </>
       ) : (
         <>
+          <ProgressScorePanel summary={summary} />
+          <GoalProgressPanel summary={summary} />
           <MobileProgressFirstCard summary={summary} />
           <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
             <ProgressBentoItem span={12}>
@@ -213,15 +228,18 @@ export default async function ProgressPage() {
                 gaps={summary.dataGaps}
               />
             </ProgressBentoItem>
+            <ProgressBentoItem span={12}>
+              <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
+            </ProgressBentoItem>
             <ProgressBentoItem span={9}>
-              <BagMovementPanel rows={summary.clubRows} />
+              <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
             </ProgressBentoItem>
             <ProgressBentoItem span={3}>
               <TrustLadderPanel items={summary.trustLadder} />
             </ProgressBentoItem>
             <ProgressBentoItem span={12}>
               <div id="journey" className="h-full scroll-mt-28">
-                <JourneyPanel events={summary.journey} />
+                <CoachTimelinePanel summary={summary} />
               </div>
             </ProgressBentoItem>
           </div>
@@ -284,7 +302,7 @@ function ProgressHeroPanel({
               Personal baseline
             </span>
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
-              Progress verdict: Improving, but uneven
+              Progress verdict: {progressVerdictChip(summary)}
             </span>
           </div>
           <h1 className="mt-4 text-[26px] font-bold leading-8 tracking-normal text-[#111827] sm:text-3xl sm:leading-10">
@@ -323,6 +341,147 @@ function ProgressHeroPanel({
             className={index > 0 ? "border-t sm:border-l sm:border-t-0" : ""}
           />
         ))}
+      </div>
+    </section>
+  );
+}
+
+function ProgressScorePanel({ summary }: { summary: ProgressSummary }) {
+  const score = progressScore(summary);
+  const momentum = progressScoreMomentum(summary);
+  const signals = progressScoreClubSignals(summary);
+  const readout = progressScoreReadout(summary, momentum);
+
+  return (
+    <section className="grid gap-4 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)] lg:items-center lg:p-6">
+      <div className="min-w-0">
+        <div className="flex items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+            <Gauge className="size-6" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#667085]">
+              Progress score
+            </p>
+            <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+              Overall progress {score} / 100
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-2.5 rounded-full bg-[#087A3D]"
+            style={{ width: `${score}%` }}
+            aria-hidden="true"
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <StatusPill tone={momentum >= 0 ? "green" : "amber"}>
+            {momentum >= 0 ? (
+              <TrendingUp className="mr-1 size-3.5" />
+            ) : (
+              <TrendingDown className="mr-1 size-3.5" />
+            )}
+            Momentum {formatSigned(momentum)} vs baseline
+          </StatusPill>
+          <span className="text-sm leading-5 text-[#667085]">{readout}</span>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {signals.map((signal) => {
+          const Icon = signal.direction === "up" ? TrendingUp : TrendingDown;
+
+          return (
+            <Link
+              key={signal.clubId}
+              href={`/bag/${signal.clubId}/analytics`}
+              prefetch={false}
+              className={cn(
+                "grid min-h-24 gap-2 rounded-lg border p-3 transition-colors hover:border-emerald-300",
+                progressScoreClubClasses[signal.tone],
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-[#111827]">
+                  {formatClubType(signal.clubType)}
+                </span>
+                <Icon className="size-4" />
+              </div>
+              <p className="text-lg font-bold leading-6 tracking-normal">{signal.value}</p>
+              <p className="text-xs leading-4 text-[#667085]">{signal.detail}</p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function GoalProgressPanel({ summary }: { summary: ProgressSummary }) {
+  const progress = break80Progress(summary);
+  const trend = break80Trend(summary);
+  const needs = break80Needs(summary);
+  const sentence = progressCoachSentence(summary);
+
+  return (
+    <section className="grid gap-4 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-6">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone="green">
+            <Target className="mr-1 size-3.5" />
+            Score goal
+          </StatusPill>
+          <StatusPill tone={trend >= 0 ? "green" : "amber"}>
+            {trend >= 0 ? (
+              <TrendingUp className="mr-1 size-3.5" />
+            ) : (
+              <TrendingDown className="mr-1 size-3.5" />
+            )}
+            Trend {formatSigned(trend)}%
+          </StatusPill>
+        </div>
+        <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+          Break 80 readiness
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-[#667085]">
+          How close the current bag profile is to a round-ready scoring goal.
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="min-w-0">
+          <div className="flex items-end justify-between gap-3">
+            <span className="text-4xl font-bold leading-none tracking-normal text-[#111827]">
+              {progress}%
+            </span>
+            <span className="text-sm font-semibold text-[#087A3D]">
+              {goalProgressLabel(progress)}
+            </span>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-3 rounded-full bg-[#087A3D]"
+              style={{ width: `${progress}%` }}
+              aria-hidden="true"
+            />
+          </div>
+          <p className="mt-3 text-sm font-medium leading-6 text-[#475467]">
+            <span className="font-semibold text-[#111827]">Coach summary: </span>
+            {sentence}
+          </p>
+        </div>
+        <div className="grid min-w-[10rem] gap-2 rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">Need</p>
+          <div className="flex flex-wrap gap-2 md:grid">
+            {needs.map((club) => (
+              <span
+                key={club}
+                className="rounded-lg border border-[#CFE7D6] bg-white px-3 py-1.5 text-sm font-semibold text-[#087A3D]"
+              >
+                {club}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -402,119 +561,58 @@ function WeeklyRecapPanel({ data, summary }: { data: FeatureIdeasData; summary: 
         </div>
       </div>
 
-      <div className="mt-4 grid flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
-        <div className="grid gap-3">
-          <div className="grid gap-2 lg:grid-cols-2">
-            <WeeklyRecapNotice
-              icon={TrendingUp}
-              text={`${sessionsLabel} in this week's sample. Keep the next goal tight and measurable.`}
-            />
-            <WeeklyRecapNotice
-              icon={Sparkles}
-              text={
-                <>
-                  <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
-                  {weeklyRead}
-                </>
-              }
-            />
-          </div>
+      <p className="mt-4 rounded-xl border border-[#CFE7D6] bg-[#F8FCF9] px-4 py-3 text-sm font-medium leading-6 text-[#475467]">
+        <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
+        {weeklyRead}
+      </p>
 
-          <div className="grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WeeklyRecapCard
-              label="Long-term trust"
-              value={
-                longTermTrust ? formatClubType(longTermTrust.clubType) : data.weeklyRecap.bestClub
-              }
-              detail={
-                longTermTrust
-                  ? longTermTrustDetail(longTermTrust, summary)
-                  : "Keep building clean stock-shot samples"
-              }
-              href={longTermTrust ? `/bag/${longTermTrust.clubId}/analytics` : undefined}
-              tone="green"
-              icon={Trophy}
-            />
-            <WeeklyRecapCard
-              label="Current form"
-              value={currentForm ? formatClubType(currentForm.clubType) : "Needs sample"}
-              detail={
-                currentForm
-                  ? currentFormDetail(currentForm)
-                  : "Latest-session form appears after 3+ clean shots"
-              }
-              href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
-              tone={currentForm?.tone ?? "slate"}
-              icon={Sparkles}
-            />
-            <WeeklyRecapCard
-              label="Weakest signal"
-              value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
-              detail={
-                weakestSignal
-                  ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
-                  : "Review the next clean baseline"
-              }
-              href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
-              tone="amber"
-              icon={TrendingDown}
-            />
-            <WeeklyRecapCard
-              label="Next goal"
-              value={topPriority?.title ?? "Build next baseline"}
-              detail={nextGoalDetail(topPriority)}
-              href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
-              tone={topPriority?.tone ?? "slate"}
-              icon={Target}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-[#DFE7DF] bg-white p-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-[#111827]">Practice plan calendar</p>
-            <span className="rounded-full border border-[#E5E7EB] bg-slate-50 px-3 py-1 text-sm font-semibold text-[#475467]">
-              {data.practiceCalendar.length} planned
-            </span>
-          </div>
-          <div
-            aria-label="Practice plan calendar"
-            tabIndex={0}
-            className="mt-3 grid gap-2 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {data.practiceCalendar.slice(0, 4).map((item) => (
-              <div
-                key={`${item.title}-${item.date.toISOString()}`}
-                className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5"
-              >
-                <span className="grid size-9 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
-                  <CalendarDays className="size-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">
-                    {shortDateFormatter.format(item.date)}
-                  </span>
-                  <span className="mt-1 block truncate text-sm font-semibold text-[#111827]">
-                    {compactPracticeTitle(item.title)}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <WeeklyRecapCard
+          label="Long-term trust"
+          value={longTermTrust ? formatClubType(longTermTrust.clubType) : data.weeklyRecap.bestClub}
+          detail={
+            longTermTrust
+              ? longTermTrustDetail(longTermTrust, summary)
+              : "Keep building clean stock-shot samples"
+          }
+          href={longTermTrust ? `/bag/${longTermTrust.clubId}/analytics` : undefined}
+          tone="green"
+          icon={Trophy}
+        />
+        <WeeklyRecapCard
+          label="Current form"
+          value={currentForm ? formatClubType(currentForm.clubType) : "Needs sample"}
+          detail={
+            currentForm
+              ? currentFormDetail(currentForm)
+              : "Latest-session form appears after 3+ clean shots"
+          }
+          href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
+          tone={currentForm?.tone ?? "slate"}
+          icon={Sparkles}
+        />
+        <WeeklyRecapCard
+          label="Weakest signal"
+          value={weakestSignal ? formatClubType(weakestSignal.clubType) : "Needs sample"}
+          detail={
+            weakestSignal
+              ? `${weakestSignal.trustIndex}% trust · lowest reliable-data club`
+              : "Review the next clean baseline"
+          }
+          href={weakestSignal ? `/bag/${weakestSignal.clubId}/analytics` : undefined}
+          tone="amber"
+          icon={TrendingDown}
+        />
+        <WeeklyRecapCard
+          label="Next goal"
+          value={topPriority?.title ?? "Build next baseline"}
+          detail={nextGoalDetail(topPriority)}
+          href={topPriority ? `/bag/${topPriority.clubId}/analytics` : "/import"}
+          tone={topPriority?.tone ?? "slate"}
+          icon={Target}
+        />
       </div>
     </section>
-  );
-}
-
-function WeeklyRecapNotice({ icon: Icon, text }: { icon: LucideIcon; text: ReactNode }) {
-  return (
-    <div className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-lg border border-[#CFE7D6] bg-[#F8FCF9] px-3 py-2 text-sm leading-6 text-[#475467]">
-      <span className="grid size-8 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
-        <Icon className="size-4" />
-      </span>
-      <p>{text}</p>
-    </div>
   );
 }
 
@@ -575,6 +673,56 @@ function WeeklyRecapCard({
   );
 }
 
+function PracticeCalendarPanel({ calendar }: { calendar: FeatureIdeasData["practiceCalendar"] }) {
+  return (
+    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
+            Practice calendar
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-[#667085]">
+            The planned work sits below the weekly read so the recap stays focused.
+          </p>
+        </div>
+        <StatusPill tone={calendar.length > 0 ? "sky" : "slate"}>
+          {calendar.length} planned
+        </StatusPill>
+      </div>
+      <div
+        aria-label="Practice plan calendar"
+        tabIndex={0}
+        className="mt-4 grid gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-2 xl:grid-cols-4"
+      >
+        {calendar.length > 0 ? (
+          calendar.slice(0, 4).map((item) => (
+            <div
+              key={`${item.title}-${item.date.toISOString()}`}
+              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8FCF9] px-3 py-3"
+            >
+              <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
+                <CalendarDays className="size-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">
+                  {shortDateFormatter.format(item.date)}
+                </span>
+                <span className="mt-1 block truncate text-sm font-semibold text-[#111827]">
+                  {compactPracticeTitle(item.title)}
+                </span>
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-xl border border-dashed border-[#CFE1D2] bg-white px-4 py-4 text-sm leading-6 text-[#667085] md:col-span-2 xl:col-span-4">
+            Save a weekly recap or practice plan to pin the next calendar block.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
   const roadmapItems = buildRoadmapItems(summary);
 
@@ -587,7 +735,7 @@ function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
             This week
           </div>
           <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-[#111827]">
-            {roadmapGoalLabel(summary)}
+            {roadmapGoalLabel()}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[#667085]">
             Three actions from shot pattern, trust, and movement data. Finish these before chasing
@@ -620,7 +768,7 @@ function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
-                    Priority {index + 1}
+                    {roadmapStepLabel(index)}
                   </p>
                   <p className="mt-2 text-lg font-bold leading-6 text-[#111827]">{item.title}</p>
                 </div>
@@ -712,7 +860,7 @@ function ComparisonBar({ summary }: { summary: ProgressSummary }) {
       </div>
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Compared with
+          Baseline
         </p>
         <p className="mt-1 font-semibold">Personal baseline</p>
       </div>
@@ -896,17 +1044,17 @@ function LargeSignalCard({
   const content = (
     <div
       className={cn(
-        "grid h-full min-h-32 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-4 transition-colors hover:border-emerald-300",
+        "grid h-full min-h-40 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-xl border p-5 transition-colors hover:border-emerald-300",
         progressSignalToneStyles[tone].card,
       )}
     >
       <span
         className={cn(
-          "grid size-10 place-items-center rounded-xl",
+          "grid size-12 place-items-center rounded-xl",
           progressSignalToneStyles[tone].icon,
         )}
       >
-        <Icon className="size-5" />
+        <Icon className="size-6" />
       </span>
       <div className="min-w-0">
         <p
@@ -917,8 +1065,8 @@ function LargeSignalCard({
         >
           {label}
         </p>
-        <p className="mt-1.5 text-xl font-bold leading-7 tracking-normal text-[#111827]">{value}</p>
-        <p className="mt-3 text-sm leading-5 text-[#475467]">
+        <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">{value}</p>
+        <p className="mt-4 text-sm leading-5 text-[#475467]">
           <EmphasizedLead text={detail} tone={tone} />
         </p>
         {note ? <p className="mt-1.5 text-xs leading-5 text-[#667085]">{note}</p> : null}
@@ -1513,13 +1661,13 @@ function CoachDataRow({
 
 function BestSignalBanner({ signal }: { signal: BestSignal }) {
   const content = (
-    <div className="grid min-h-28 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-lg border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-4 transition-colors hover:border-emerald-400">
-      <span className="grid size-10 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-        <Zap className="size-5" />
+    <div className="grid min-h-36 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-lg border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-5 transition-colors hover:border-emerald-400">
+      <span className="grid size-12 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+        <Zap className="size-6" />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-bold text-emerald-800">Best signal</p>
-        <p className="mt-2 text-lg font-bold leading-7 text-[#111827]">{signal.value}</p>
+        <p className="text-base font-bold text-emerald-800">Best signal</p>
+        <p className="mt-2 text-xl font-bold leading-7 text-[#111827]">{signal.value}</p>
         <p className="mt-2 text-sm leading-6 text-[#111827]">
           <span className="font-semibold">Why it matters: </span>
           {signal.why}
@@ -1538,62 +1686,160 @@ function BestSignalBanner({ signal }: { signal: BestSignal }) {
   );
 }
 
-function BagMovementPanel({ rows }: { rows: ProgressClubRow[] }) {
+const bagMovementFilterOptions: Array<{ key: BagMovementFilter; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "woods", label: "Woods" },
+  { key: "irons", label: "Irons" },
+  { key: "wedges", label: "Wedges" },
+  { key: "needs-work", label: "Needs work" },
+];
+
+function parseBagMovementFilter(value: string | undefined): BagMovementFilter {
+  return bagMovementFilterOptions.some((option) => option.key === value)
+    ? (value as BagMovementFilter)
+    : "all";
+}
+
+function buildBagMovementFilters(rows: ProgressClubRow[]) {
+  return bagMovementFilterOptions.map((option) => ({
+    ...option,
+    count: rows.filter((row) => bagMovementFilterMatches(row, option.key)).length,
+  }));
+}
+
+function bagMovementFilterHref(filter: BagMovementFilter) {
+  return filter === "all" ? "/progress#bag-movement" : `/progress?bag=${filter}#bag-movement`;
+}
+
+function bagMovementFilterMatches(row: ProgressClubRow, filter: BagMovementFilter) {
+  switch (filter) {
+    case "woods":
+      return progressClubFamily(row.clubType) === "wood";
+    case "irons":
+      return progressClubFamily(row.clubType) === "iron";
+    case "wedges":
+      return progressClubFamily(row.clubType) === "wedge";
+    case "needs-work":
+      return (
+        row.sampleSize < 10 || row.trustIndex <= 62 || row.confidenceLabel === "Not enough data"
+      );
+    default:
+      return true;
+  }
+}
+
+function progressClubFamily(clubType: string): "wood" | "iron" | "wedge" {
+  const normalized = clubType.toLowerCase();
+
+  if (normalized === "driver" || /^[1-9][wh]$/.test(normalized) || normalized === "hybrid") {
+    return "wood";
+  }
+
+  if (["pw", "gw", "aw", "sw", "lw", "wedge"].includes(normalized)) {
+    return "wedge";
+  }
+
+  return "iron";
+}
+
+function BagMovementPanel({
+  rows,
+  activeFilter,
+}: {
+  rows: ProgressClubRow[];
+  activeFilter: BagMovementFilter;
+}) {
+  const filteredRows = rows.filter((row) => bagMovementFilterMatches(row, activeFilter));
+  const filters = buildBagMovementFilters(rows);
+
   return (
-    <DataPanel className="h-full">
+    <DataPanel id="bag-movement" className="h-full scroll-mt-28">
       <SectionHeader
         title="Bag movement"
-        description={bagMovementSummary(rows)}
+        description={bagMovementSummary(filteredRows.length > 0 ? filteredRows : rows)}
         action={<Table2 className="size-5 text-sky-600" />}
       />
       <CardContent>
-        <Table className="min-w-[840px]">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {filters.map((filter) => {
+            const isActive = filter.key === activeFilter;
+
+            return (
+              <Link
+                key={filter.key}
+                href={bagMovementFilterHref(filter.key)}
+                prefetch={false}
+                className={cn(
+                  "inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
+                  isActive
+                    ? "border-[#087A3D] bg-[#E8F7EE] text-[#087A3D]"
+                    : "border-[#DFE7DF] bg-white text-[#475467] hover:border-[#CFE7D6] hover:bg-[#F8FCF9]",
+                )}
+              >
+                {filter.label}
+                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">{filter.count}</span>
+              </Link>
+            );
+          })}
+        </div>
+        <Table className="min-w-[1120px]">
           <TableHeader>
             <TableRow>
               <TableHead>Club</TableHead>
               <TableHead>Trust</TableHead>
               <TableHead>Clean shots</TableHead>
               <TableHead>Stock carry</TableHead>
-              <TableHead>Meaningful movement</TableHead>
+              <TableHead>Movement</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.clubId}>
-                <TableCell>
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span
-                      aria-hidden="true"
-                      className={cn("mt-1.5 size-2 shrink-0 rounded-full", bagRowMarkerClass(row))}
-                    />
-                    <div className="min-w-0">
-                      <Link
-                        href={`/bag/${row.clubId}/analytics`}
-                        prefetch={false}
-                        className="font-semibold hover:text-emerald-700"
-                      >
-                        {formatClubType(row.clubType)}
-                      </Link>
-                      <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
-                        {row.brandModel}
-                      </p>
+            {filteredRows.length > 0 ? (
+              filteredRows.map((row) => (
+                <TableRow key={row.clubId}>
+                  <TableCell>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "mt-1.5 size-2 shrink-0 rounded-full",
+                          bagRowMarkerClass(row),
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/bag/${row.clubId}/analytics`}
+                          prefetch={false}
+                          className="font-semibold hover:text-emerald-700"
+                        >
+                          {formatClubType(row.clubType)}
+                        </Link>
+                        <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
+                          {row.brandModel}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <StatusPill
-                    tone={row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"}
-                  >
-                    {row.trustIndex}% trust
-                  </StatusPill>
-                </TableCell>
-                <TableCell>{row.sampleSize}</TableCell>
-                <TableCell>{formatYards(row.stockCarryYd)}</TableCell>
-                <TableCell>
-                  <MovementPills row={row} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusPill
+                      tone={row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"}
+                    >
+                      {row.trustIndex}% trust
+                    </StatusPill>
+                  </TableCell>
+                  <TableCell>{row.sampleSize}</TableCell>
+                  <TableCell>{formatYards(row.stockCarryYd)}</TableCell>
+                  <TableCell>
+                    <MovementPills row={row} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
+                  No clubs match this filter yet.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </CardContent>
@@ -1603,19 +1849,51 @@ function BagMovementPanel({ rows }: { rows: ProgressClubRow[] }) {
 
 function MovementPills({ row }: { row: ProgressClubRow }) {
   const items = movementItems(row);
-
-  if (items.length === 0) {
-    return <span className="text-sm text-muted-foreground">No meaningful movement detected</span>;
-  }
+  const itemsByMetric = new Map(items.map((item) => [item.metric, item]));
+  const status = movementStatus(row);
+  const StatusIcon = status.icon;
 
   return (
-    <div className="flex min-w-64 flex-wrap gap-2">
-      {items.map((item) => (
-        <StatusPill key={item.label} tone={item.tone}>
-          {item.label}
-        </StatusPill>
-      ))}
+    <div
+      className="grid min-w-[35rem] items-center gap-2"
+      style={{ gridTemplateColumns: "6.25rem 5.75rem 7.6rem 6.35rem 5.75rem" }}
+    >
+      <StatusPill tone={status.tone}>
+        <StatusIcon className="mr-1 size-3.5" />
+        {status.label}
+      </StatusPill>
+      {items.length === 0 ? (
+        <span className="col-span-4 text-sm text-muted-foreground">
+          No meaningful movement detected
+        </span>
+      ) : (
+        movementMetricOrder.map((metric) => {
+          const item = itemsByMetric.get(metric);
+
+          return item ? (
+            <MovementMetricPill key={metric} item={item} />
+          ) : (
+            <span key={metric} aria-hidden="true" className="h-12" />
+          );
+        })
+      )}
     </div>
+  );
+}
+
+const movementMetricOrder = ["Carry", "Offline", "Ball speed", "Launch"] as const;
+
+function MovementMetricPill({ item }: { item: MovementItem }) {
+  return (
+    <span
+      className={cn(
+        "grid h-12 w-full content-center gap-0.5 rounded-lg border px-2.5 py-1.5",
+        movementPillToneClasses[item.tone],
+      )}
+    >
+      <span className="text-base font-bold leading-5">{item.value}</span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.14em]">{item.metric}</span>
+    </span>
   );
 }
 
@@ -1633,7 +1911,6 @@ function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
             key={item.clubId}
             href={`/bag/${item.clubId}/analytics`}
             prefetch={false}
-            title="Based on distance consistency, direction, strike quality, and clean-shot sample depth."
             className="grid grid-cols-[3.5rem_auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 hover:border-emerald-300"
           >
             <p className="font-semibold">{formatClubType(item.clubType)}</p>
@@ -1651,35 +1928,20 @@ function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
   );
 }
 
-function JourneyPanel({ events }: { events: JourneyEvent[] }) {
-  const visibleEvents = events.slice(0, 4);
+function CoachTimelinePanel({ summary }: { summary: ProgressSummary }) {
+  const items = coachTimelineItems(summary);
 
   return (
     <DataPanel className="h-full">
       <SectionHeader
-        title="Journey"
-        description="Recent milestones and notable movement from the current data."
-        action={<StatusPill tone="slate">Latest 4</StatusPill>}
+        title="AI Coach timeline"
+        description="A running coaching narrative from current progress, next focus and recent milestones."
+        action={<StatusPill tone="green">Live narrative</StatusPill>}
       />
-      <CardContent>
-        <div className="grid auto-rows-fr gap-3 md:grid-cols-2">
-          {visibleEvents.map((event, index) => (
-            <Link
-              key={`${event.title}-${index}`}
-              href={`/bag/${event.clubId}/analytics`}
-              prefetch={false}
-              className="relative block h-full rounded-lg border border-slate-200 bg-white p-3 hover:border-emerald-300"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusPill tone="slate">
-                  <CalendarDays className="mr-1 size-3" />
-                  {event.dateLabel}
-                </StatusPill>
-                <StatusPill tone={event.tone}>{formatClubType(event.clubType)}</StatusPill>
-              </div>
-              <p className="mt-2 font-semibold">{event.title}</p>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">{event.detail}</p>
-            </Link>
+      <CardContent className="pt-3">
+        <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {items.map((item, index) => (
+            <CoachTimelineCard key={`${item.title}-${index}`} item={item} />
           ))}
         </div>
       </CardContent>
@@ -1687,33 +1949,205 @@ function JourneyPanel({ events }: { events: JourneyEvent[] }) {
   );
 }
 
-function movementItems(row: ProgressClubRow) {
-  const items: Array<{ label: string; tone: Tone }> = [];
+type CoachTimelineItem = {
+  clubId?: string;
+  dateLabel: string;
+  label: string;
+  title: string;
+  detail: string;
+  action: string;
+  tone: Tone;
+  icon: LucideIcon;
+};
 
-  if (isMeaningful(row.carryDeltaYd, 0.5)) {
+function CoachTimelineCard({ item }: { item: CoachTimelineItem }) {
+  const Icon = item.icon;
+  const content = (
+    <div className="relative grid h-full min-h-44 grid-rows-[auto_1fr_auto] rounded-lg border border-slate-200 bg-white p-4 hover:border-emerald-300">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusPill tone={item.tone}>
+          <Icon className="mr-1 size-3" />
+          {item.label}
+        </StatusPill>
+        <StatusPill tone="slate">
+          <CalendarDays className="mr-1 size-3" />
+          {item.dateLabel}
+        </StatusPill>
+      </div>
+      <div className="mt-3 min-w-0">
+        <p className="text-base font-semibold leading-6 text-[#111827]">{item.title}</p>
+        <p className="mt-2 text-sm leading-5 text-muted-foreground">{item.detail}</p>
+      </div>
+      <p className="mt-4 text-sm font-semibold text-[#087A3D]">{item.action}</p>
+    </div>
+  );
+
+  return item.clubId ? (
+    <Link href={`/bag/${item.clubId}/analytics`} prefetch={false} className="block h-full">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function coachTimelineItems(summary: ProgressSummary): CoachTimelineItem[] {
+  const items: CoachTimelineItem[] = [];
+
+  if (summary.bestSignal) {
     items.push({
-      label: `Carry ${formatSigned(row.carryDeltaYd)} yd`,
+      clubId: summary.bestSignal.clubId,
+      dateLabel: "Now",
+      label: "Coach read",
+      title: summary.bestSignal.value.replace(/\.$/, ""),
+      detail: summary.bestSignal.why,
+      action: "Protect this trend",
+      tone: summary.bestSignal.tone,
+      icon: Brain,
+    });
+  }
+
+  const nextPriority = summary.practicePlan[0];
+  if (nextPriority) {
+    items.push({
+      clubId: nextPriority.clubId,
+      dateLabel: "Next block",
+      label: "Practice switch",
+      title: `${formatClubType(nextPriority.clubType)} becomes the focus`,
+      detail: nextPriority.reason,
+      action: practiceCtaLabel(nextPriority),
+      tone: nextPriority.tone,
+      icon: Target,
+    });
+  }
+
+  for (const event of summary.journey.slice(0, 4)) {
+    const milestone = journeyMilestone(event);
+    items.push({
+      clubId: event.clubId,
+      dateLabel: event.dateLabel,
+      label: milestone.label,
+      title: event.title,
+      detail: event.detail,
+      action: "Review supporting shots",
+      tone: event.tone,
+      icon: milestone.icon,
+    });
+  }
+
+  if (items.length === 0) {
+    items.push({
+      dateLabel: "Next import",
+      label: "Coach read",
+      title: "Build the first timeline entry",
+      detail:
+        "Import a comparable stock-shot session so the coach narrative can start tracking progress.",
+      action: "Import CSV",
+      tone: "slate",
+      icon: Upload,
+    });
+  }
+
+  return uniqueCoachTimelineItems(items).slice(0, 4);
+}
+
+function uniqueCoachTimelineItems(items: CoachTimelineItem[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = `${item.clubId ?? item.title}-${item.label}`;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+function journeyMilestone(event: JourneyEvent): { label: string; icon: LucideIcon; tone: Tone } {
+  const title = event.title.toLowerCase();
+
+  if (title.includes("trust leader")) {
+    return { label: "Trust leader", icon: Trophy, tone: "green" };
+  }
+
+  if (title.includes("trust crossed")) {
+    return { label: "Above 75%", icon: Trophy, tone: "green" };
+  }
+
+  if (title.includes("start line")) {
+    return { label: "Start line", icon: Target, tone: "sky" };
+  }
+
+  if (title.includes("now playable")) {
+    return { label: "Playable", icon: CheckCircle2, tone: "green" };
+  }
+
+  if (title.includes("useful carry")) {
+    return { label: "Carry gain", icon: TrendingUp, tone: "green" };
+  }
+
+  if (title.includes("carry high")) {
+    return { label: "Carry high", icon: Trophy, tone: "sky" };
+  }
+
+  return { label: "Milestone", icon: Sparkles, tone: event.tone };
+}
+
+type MovementItem = {
+  metric: string;
+  value: string;
+  tone: Tone;
+};
+
+function movementStatus(row: ProgressClubRow): { label: string; tone: Tone; icon: LucideIcon } {
+  const momentum = progressClubMomentum(row);
+
+  if (momentum >= 3) {
+    return { label: "Improving", tone: "green", icon: TrendingUp };
+  }
+
+  if (momentum <= -2) {
+    return { label: "Regressing", tone: "amber", icon: TrendingDown };
+  }
+
+  return { label: "Stable", tone: "slate", icon: Gauge };
+}
+
+function movementItems(row: ProgressClubRow) {
+  const items: MovementItem[] = [];
+
+  if (isMeaningful(row.carryDeltaYd, 1)) {
+    items.push({
+      metric: "Carry",
+      value: `${formatSigned(row.carryDeltaYd)} yd`,
       tone: row.carryDeltaYd >= 0 ? "green" : "amber",
     });
   }
 
   if (isMeaningful(row.offlineDeltaYd, 0.5)) {
     items.push({
-      label: `Offline ${Math.abs(row.offlineDeltaYd)} yd ${row.offlineDeltaYd <= 0 ? "tighter" : "wider"}`,
+      metric: "Offline",
+      value: `${numberFormatter.format(Math.abs(row.offlineDeltaYd))} yd ${
+        row.offlineDeltaYd <= 0 ? "tighter" : "wider"
+      }`,
       tone: row.offlineDeltaYd <= 0 ? "green" : "amber",
     });
   }
 
   if (isMeaningful(row.ballSpeedDeltaMph, 0.3)) {
     items.push({
-      label: `Ball speed ${formatSigned(row.ballSpeedDeltaMph)} mph`,
+      metric: "Ball speed",
+      value: `${formatSigned(row.ballSpeedDeltaMph)} mph`,
       tone: row.ballSpeedDeltaMph >= 0 ? "green" : "amber",
     });
   }
 
   if (isMeaningful(row.launchDeltaDeg, 0.3)) {
     items.push({
-      label: `Launch ${formatSigned(row.launchDeltaDeg)} deg`,
+      metric: "Launch",
+      value: `${formatSigned(row.launchDeltaDeg)} deg`,
       tone: "sky",
     });
   }
@@ -1738,6 +2172,293 @@ function heroVerdict(summary: ProgressSummary) {
   }
 
   return "Compared with your personal baseline, the bag is moving forward. Keep building clean stock-shot depth so the weak spots separate clearly.";
+}
+
+function progressVerdictChip(summary: ProgressSummary) {
+  if (summary.totals.trackedCleanShots === 0) {
+    return "Build a clean baseline.";
+  }
+
+  const standout = progressVerdictStandout(summary);
+  const opportunity = progressVerdictOpportunity(summary, standout?.clubId);
+  const parts = ["Improving", standout?.text, opportunity].filter(Boolean);
+
+  return `${parts.join(". ")}.`;
+}
+
+function progressVerdictStandout(summary: ProgressSummary) {
+  const bestSignal = summary.bestSignal;
+  if (bestSignal?.clubId) {
+    return {
+      clubId: bestSignal.clubId,
+      text: bestSignal.value.replace(/\.$/, ""),
+    };
+  }
+
+  const row = summary.rankings.mostImproved ?? summary.rankings.mostTrusted;
+  if (!row) {
+    return null;
+  }
+
+  const club = formatClubType(row.clubType);
+  if (isMeaningful(row.offlineDeltaYd, 1)) {
+    return {
+      clubId: row.clubId,
+      text: `${club} dispersion ${numberFormatter.format(Math.abs(row.offlineDeltaYd))} yd ${
+        row.offlineDeltaYd <= 0 ? "tighter" : "wider"
+      }`,
+    };
+  }
+
+  if (isMeaningful(row.carryDeltaYd, 1)) {
+    return {
+      clubId: row.clubId,
+      text: `${club} carry ${formatSigned(row.carryDeltaYd)} yd`,
+    };
+  }
+
+  return {
+    clubId: row.clubId,
+    text: `${club} trust now ${row.trustIndex}%`,
+  };
+}
+
+function progressVerdictOpportunity(summary: ProgressSummary, standoutClubId: string | undefined) {
+  const priority =
+    summary.practicePlan.find((item) => item.clubId !== standoutClubId) ??
+    summary.rankings.needsWork;
+
+  if (!priority) {
+    return null;
+  }
+
+  return `${formatClubType(priority.clubType)} remains the main opportunity`;
+}
+
+function progressScore(summary: ProgressSummary) {
+  const playable = summary.totals.averagePlayableRate ?? summary.totals.averageTrust;
+  const sampleDepth = clampNumber((summary.totals.trackedCleanShots / 180) * 100, 0, 100);
+  const movement = clampNumber(
+    50 + averageNumber(summary.clubRows.map(progressClubMomentum)) * 4,
+    0,
+    100,
+  );
+
+  return Math.round(
+    clampNumber(
+      summary.totals.averageTrust * 0.45 + playable * 0.25 + sampleDepth * 0.15 + movement * 0.15,
+      0,
+      100,
+    ),
+  );
+}
+
+function progressScoreMomentum(summary: ProgressSummary) {
+  return clampNumber(
+    Math.round(averageNumber(summary.clubRows.map(progressClubMomentum)) * 1.5),
+    -12,
+    12,
+  );
+}
+
+function progressScoreReadout(summary: ProgressSummary, momentum: number) {
+  const rankedSignals = progressScoreClubSignals(summary);
+  const best = rankedSignals.find((signal) => signal.direction === "up");
+  const drag = rankedSignals.find((signal) => signal.direction === "down");
+  const positiveCount = summary.clubRows.filter((row) => progressClubMomentum(row) > 0).length;
+
+  if (momentum >= 4 && best) {
+    return `You are improving faster than your baseline trend, led by ${formatClubType(best.clubType)}.`;
+  }
+
+  if (momentum <= -3 && drag) {
+    return `Progress has slowed because ${formatClubType(drag.clubType)} is pulling the bag trend down.`;
+  }
+
+  if (positiveCount > 0 && positiveCount <= 2 && summary.clubRows.length > 2) {
+    return `Progress is forming, but only ${positiveCount} clubs are clearly changing.`;
+  }
+
+  if (best && drag) {
+    return `${formatClubType(best.clubType)} is moving the bag forward; ${formatClubType(drag.clubType)} still needs work.`;
+  }
+
+  return "Keep adding comparable stock-shot sessions so the score can separate real movement from noise.";
+}
+
+function break80Progress(summary: ProgressSummary) {
+  const score = progressScore(summary);
+  const playable = summary.totals.averagePlayableRate ?? summary.totals.averageTrust;
+  const trustedShare =
+    summary.clubRows.length === 0
+      ? 0
+      : (summary.clubRows.filter((row) => row.trustIndex >= 68).length / summary.clubRows.length) *
+        100;
+  const dataGapPenalty = Math.min(summary.dataGaps.length * 4, 16);
+
+  return Math.round(
+    clampNumber(score * 0.55 + playable * 0.25 + trustedShare * 0.2 - dataGapPenalty, 0, 96),
+  );
+}
+
+function break80Trend(summary: ProgressSummary) {
+  return clampNumber(Math.round(progressScoreMomentum(summary) * 1.2), -10, 10);
+}
+
+function break80Needs(summary: ProgressSummary) {
+  const needs = uniqueClubLabels([
+    ...summary.practicePlan.slice(0, 3),
+    summary.rankings.needsWork,
+    ...summary.dataGaps.slice(0, 1),
+  ]).slice(0, 3);
+
+  return needs.length > 0 ? needs : ["More data"];
+}
+
+function progressCoachSentence(summary: ProgressSummary) {
+  const best = summary.rankings.mostImproved ?? summary.rankings.mostTrusted;
+  const blocker = summary.practicePlan[0] ?? summary.rankings.needsWork;
+
+  if (best && blocker && best.clubId !== blocker.clubId) {
+    return `${formatClubType(best.clubType)} is moving the bag forward; ${formatClubType(blocker.clubType)} remains the next scoring gate.`;
+  }
+
+  if (best) {
+    return `${formatClubType(best.clubType)} is the strongest development signal; keep building enough clean shots for the next limiter to separate.`;
+  }
+
+  return "The next clean stock-shot block will show which club is holding the scoring goal back.";
+}
+
+function goalProgressLabel(progress: number) {
+  if (progress >= 80) {
+    return "Competition ready";
+  }
+
+  if (progress >= 65) {
+    return "Getting close";
+  }
+
+  if (progress >= 45) {
+    return "Building";
+  }
+
+  return "Needs baseline";
+}
+
+type ProgressScoreClubSignal = {
+  clubId: string;
+  clubType: string;
+  value: string;
+  detail: string;
+  tone: Tone;
+  direction: "up" | "down";
+  momentum: number;
+};
+
+type ProgressScoreCandidate = {
+  row: ProgressClubRow;
+  momentum: number;
+};
+
+function progressScoreClubSignals(summary: ProgressSummary): ProgressScoreClubSignal[] {
+  const candidates = summary.clubRows
+    .filter((row) => row.sampleSize >= 3)
+    .map((row) => ({
+      row,
+      momentum: progressClubMomentum(row),
+    }));
+  const positives = [...candidates]
+    .filter((candidate) => candidate.momentum > 0)
+    .sort((left, right) => right.momentum - left.momentum)
+    .slice(0, 3);
+  const biggestDrag =
+    [...candidates]
+      .filter((candidate) => candidate.momentum < 0)
+      .sort((left, right) => left.momentum - right.momentum)[0] ?? null;
+  const fallback = [...candidates].sort(
+    (left, right) => Math.abs(right.momentum) - Math.abs(left.momentum),
+  );
+  const picked = uniqueProgressScoreSignals(
+    [...positives, biggestDrag, ...fallback].filter(
+      (candidate): candidate is ProgressScoreCandidate => candidate !== null,
+    ),
+  );
+
+  return picked.slice(0, 4).map(({ row, momentum }) => ({
+    clubId: row.clubId,
+    clubType: row.clubType,
+    value: progressScoreClubValue(row, momentum),
+    detail: progressScoreClubDetail(row, momentum),
+    tone: momentum >= 0 ? "green" : "amber",
+    direction: momentum >= 0 ? "up" : "down",
+    momentum,
+  }));
+}
+
+function uniqueProgressScoreSignals(candidates: ProgressScoreCandidate[]) {
+  const seen = new Set<string>();
+
+  return candidates.filter((candidate) => {
+    if (seen.has(candidate.row.clubId)) {
+      return false;
+    }
+
+    seen.add(candidate.row.clubId);
+    return true;
+  });
+}
+
+function progressScoreClubValue(row: ProgressClubRow, momentum: number) {
+  if (isMeaningful(row.offlineDeltaYd, 0.5)) {
+    return `${numberFormatter.format(Math.abs(row.offlineDeltaYd))} yd ${
+      row.offlineDeltaYd <= 0 ? "tighter" : "wider"
+    }`;
+  }
+
+  if (isMeaningful(row.carryDeltaYd, 1)) {
+    return `${formatSigned(row.carryDeltaYd)} yd`;
+  }
+
+  if (isMeaningful(row.ballSpeedDeltaMph, 0.3)) {
+    return `${formatSigned(row.ballSpeedDeltaMph)} mph`;
+  }
+
+  return momentum >= 0 ? "Holding" : "Watch";
+}
+
+function progressScoreClubDetail(row: ProgressClubRow, momentum: number) {
+  const base = `${row.trustIndex}% trust · ${row.sampleSize} clean shots`;
+
+  return momentum >= 0 ? `${base} · adding progress` : `${base} · limiting progress`;
+}
+
+function progressClubMomentum(row: ProgressClubRow) {
+  let score = 0;
+
+  if (row.carryDeltaYd !== null) {
+    score += clampNumber(row.carryDeltaYd, -8, 8) * 0.45;
+  }
+
+  if (row.offlineDeltaYd !== null) {
+    score += clampNumber(-row.offlineDeltaYd, -8, 8) * 0.8;
+  }
+
+  if (row.ballSpeedDeltaMph !== null) {
+    score += clampNumber(row.ballSpeedDeltaMph, -4, 4);
+  }
+
+  if (row.trustIndex >= 75) {
+    score += 2;
+  } else if (row.trustIndex < 60) {
+    score -= 1.5;
+  }
+
+  if (row.sampleSize < 6) {
+    score -= 1;
+  }
+
+  return Math.round(score);
 }
 
 function weeklySessionsLabel(weeklyRecap: FeatureIdeasData["weeklyRecap"]) {
@@ -1873,12 +2594,20 @@ function buildRoadmapItems(summary: ProgressSummary): RoadmapItem[] {
   return items.slice(0, 3);
 }
 
-function roadmapGoalLabel(summary: ProgressSummary) {
-  if ((summary.totals.averagePlayableRate ?? 0) >= 72 && summary.totals.averageTrust >= 78) {
-    return "Scratch roadmap";
+function roadmapStepLabel(index: number) {
+  if (index === 0) {
+    return "Do now";
   }
 
-  return "Break 80 roadmap";
+  if (index === 1) {
+    return "Do next";
+  }
+
+  return "Later";
+}
+
+function roadmapGoalLabel() {
+  return "Next scoring roadmap";
 }
 
 function practiceReasonCopy(priority: PracticePriority) {
@@ -1978,6 +2707,8 @@ function trendVerdict(trend: ProgressTrend, summary: ProgressSummary) {
         ? `Bag-average carry is moving, led by ${formatClubType(carryLeader.clubType)}.`
         : "Bag-average carry needs more comparable clean baselines.";
     }
+    case "Carry stable":
+      return "Bag-average carry is effectively unchanged. That is a stable baseline, not a regression.";
     case "Playable rate":
       return "Playable rate remains strong across clubs with enough direction data.";
     default:
@@ -2063,9 +2794,37 @@ function isMeaningful(value: number | null, threshold: number): value is number 
   return value !== null && Math.abs(value) >= threshold;
 }
 
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function averageNumber(values: number[]) {
+  if (values.length === 0) {
+    return 0;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
 function roundForSvg(value: number) {
   return Math.round(value * 10) / 10;
 }
+
+const progressScoreClubClasses: Record<Tone, string> = {
+  green: "border-emerald-200 bg-emerald-50/55 text-emerald-800",
+  sky: "border-sky-200 bg-sky-50/55 text-sky-800",
+  pink: "border-rose-200 bg-rose-50/55 text-rose-800",
+  amber: "border-amber-200 bg-amber-50/55 text-amber-800",
+  slate: "border-slate-200 bg-slate-50/70 text-slate-700",
+};
+
+const movementPillToneClasses: Record<Tone, string> = {
+  green: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  sky: "border-sky-200 bg-sky-50 text-sky-800",
+  pink: "border-rose-200 bg-rose-50 text-rose-800",
+  amber: "border-amber-200 bg-amber-50 text-amber-800",
+  slate: "border-slate-200 bg-slate-50 text-slate-700",
+};
 
 const progressIconToneStyles: Record<Tone, string> = {
   green: "border-emerald-200 bg-emerald-50 text-emerald-700",

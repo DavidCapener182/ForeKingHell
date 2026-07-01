@@ -23,10 +23,12 @@ export function FacePathClubSelector({
   pathTrend,
   action,
   className,
+  compact = false,
 }: {
   pathTrend: PathTrendTracking;
   action?: ReactNode;
   className?: string;
+  compact?: boolean;
 }) {
   const clubs = useMemo(() => buildDeliveryClubOptions(pathTrend), [pathTrend]);
   const [selectedClubId, setSelectedClubId] = useState(clubs[0]?.clubId ?? "");
@@ -49,11 +51,17 @@ export function FacePathClubSelector({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[18px] bg-[#F7FBF8] px-3 py-3 shadow-[inset_0_0_0_1px_rgba(213,229,218,0.82)]",
+        "relative overflow-hidden rounded-[18px] bg-[#F7FBF8] px-3 shadow-[inset_0_0_0_1px_rgba(213,229,218,0.82)]",
+        compact ? "py-2.5" : "py-3",
         className,
       )}
     >
-      <div className="grid gap-3 2xl:grid-cols-[minmax(220px,0.72fr)_minmax(360px,1.28fr)] 2xl:items-stretch">
+      <div
+        className={cn(
+          "grid 2xl:grid-cols-[minmax(220px,0.72fr)_minmax(360px,1.28fr)] 2xl:items-stretch",
+          compact ? "gap-2" : "gap-3",
+        )}
+      >
         <div className="grid h-full gap-2">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -65,7 +73,12 @@ export function FacePathClubSelector({
               </span>
             </div>
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <p className="text-[22px] font-bold leading-7 tracking-normal text-[#111827]">
+              <p
+                className={cn(
+                  "font-bold tracking-normal text-[#111827]",
+                  compact ? "text-[20px] leading-6" : "text-[22px] leading-7",
+                )}
+              >
                 {selected.patternLabel}
               </p>
               <p className="text-sm leading-5 text-[#667085]">
@@ -124,7 +137,9 @@ export function FacePathClubSelector({
         <FacePathDeliveryChart
           datum={selected}
           idPrefix={`dashboard-${selected.clubId}`}
+          compact={compact}
           chartClassName="bg-white"
+          showMetricPills={!compact}
           targetWindow={targetWindow ?? undefined}
         />
       </div>

@@ -62,6 +62,10 @@ import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
+  clubTypeCurrentPerformanceScore,
+  clubTypeEstimatedStrokeEffect,
+} from "@/lib/today-club-scoring";
+import {
   type ClubDayComparison,
   type ClubMainStatMetric,
   type ClubMainStats,
@@ -121,11 +125,15 @@ type ClubHighlightDescriptor = {
 
 type PracticeScoreSummary = {
   score: number;
+  strikeScore: number;
+  scoringScore: number;
   tone: ReviewTone;
   strong: string;
   weak: string;
   recommendation: string;
   trend: string;
+  strikeDetail: string;
+  scoringDetail: string;
 };
 
 type WhatChangedItem = {
@@ -139,13 +147,6 @@ type WhatChangedItem = {
 type VerdictReasonItem = {
   label: string;
   value: string;
-  tone: ReviewTone;
-};
-
-type SessionImpactItem = {
-  clubLabel: string;
-  value: number | null;
-  detail: string;
   tone: ReviewTone;
 };
 
@@ -166,6 +167,19 @@ type DriverHealthSummary = {
   status: string;
   detail: string;
   tone: ReviewTone;
+};
+
+type SessionCoachingSummary = {
+  strikeScore: number;
+  strikeDetail: string;
+  scoringScore: number;
+  scoringDetail: string;
+  biggestGain: ClubDayComparison | null;
+  gainDetail: string;
+  biggestOpportunity: ClubDayComparison | null;
+  opportunityDetail: string;
+  opportunityCause: string;
+  opportunityTarget: string;
 };
 
 export default async function TodayPage({ searchParams }: { searchParams: SearchParams }) {
@@ -481,12 +495,8 @@ function TodayMobileVerdictCard({ data }: { data: TodayPracticeData }) {
         ))}
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <MobileVerdictMetric
-          label="Strength"
-          value={best?.clubLabel ?? score.strong}
-          tone="green"
-        />
-        <MobileVerdictMetric label="Weakness" value={work?.clubLabel ?? score.weak} tone="pink" />
+        <MobileVerdictMetric label="Best" value={best?.clubLabel ?? score.strong} tone="green" />
+        <MobileVerdictMetric label="Focus" value={work?.clubLabel ?? score.weak} tone="pink" />
         <MobileVerdictMetric label="Trend" value={score.trend} tone={score.tone} />
       </div>
       <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold leading-5 text-emerald-950">
@@ -1143,7 +1153,6 @@ function TodayVerdictHero({
   const selectedClubs = selectedClubCount(data);
   const bestShot = data.bestStraightShots[0];
   const scope = sessionScopeLabel(data);
-  const focus = practiceFocus(data);
   const score = practiceScoreSummary(data);
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
@@ -1190,23 +1199,23 @@ function TodayVerdictHero({
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <VerdictStoryCard
-          label="Strength"
+          label="Best performer"
           value={best?.clubLabel ?? score.strong}
-          detail={best ? `${formatRate(best.today.playableRate)} playable` : "Building signal"}
+          detail={best ? bestPerformerDetail(best) : "Building signal"}
           tone="green"
           icon={<ShieldCheck className="size-4" />}
         />
         <VerdictStoryCard
-          label="Weakness"
+          label="Biggest opportunity"
           value={work?.clubLabel ?? score.weak}
-          detail={work ? `${formatYards(work.today.offlineAverageYd)} offline` : "No clear drag"}
+          detail={work ? opportunityShortDetail(work) : "No clear drag"}
           tone="pink"
           icon={<Target className="size-4" />}
         />
         <VerdictStoryCard
           label="Recommendation"
           value={score.recommendation}
-          detail={`Start with ${focus.clubText}`}
+          detail={score.scoringDetail}
           tone="amber"
           icon={<Dumbbell className="size-4" />}
         />
@@ -1280,8 +1289,10 @@ function SessionSignalStrip({
   className?: string;
 }) {
   return (
-    <section className={`grid items-stretch gap-3 xl:grid-cols-2 ${className}`}>
-      <SessionImpactCard items={sessionImpactItems(data)} />
+    <section
+      className={`grid items-stretch gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] ${className}`}
+    >
+      <SessionCoachingCard summary={sessionCoachingSummary(data)} />
       <ConfidenceMeterCard items={confidenceMeterItems(data)} />
     </section>
   );
@@ -1323,14 +1334,18 @@ function PracticeScoreHeroCard({
   score: PracticeScoreSummary;
   reliable: ClubDayComparison | null;
 }) {
+  const reliableReadout = clubTrustReadout(reliable);
+
   return (
     <div className={`rounded-lg border px-4 py-3 shadow-sm ${verdictCardClass(score.tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
-            Practice score
+            Session summary
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-700">Practice quality, not handicap.</p>
+          <p className="mt-1 text-sm font-medium text-slate-700">
+            Strike quality and scoring quality separated.
+          </p>
         </div>
         <span
           className={`grid size-10 place-items-center rounded-full ${reviewIconClass(score.tone)}`}
@@ -1345,12 +1360,13 @@ function PracticeScoreHeroCard({
         <p className="pb-1 text-xl font-semibold text-slate-500">/100</p>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <ScoreMiniMetric label="Strong" value={score.strong} />
-        <ScoreMiniMetric label="Weak" value={score.weak} />
+        <ScoreMiniMetric label="Strike" value={`${score.strikeScore}/10`} />
+        <ScoreMiniMetric label="Scoring" value={`${score.scoringScore}/10`} />
         <ScoreMiniMetric label="Trend" value={score.trend} />
       </div>
       <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
-        Most reliable: {reliable?.clubLabel ?? "building signal"}.
+        {reliableReadout.label}: {reliable?.clubLabel ?? "building signal"}.{" "}
+        {reliableReadout.detail ?? score.strikeDetail}
       </p>
     </div>
   );
@@ -1458,58 +1474,113 @@ function DriverHealthMetric({ label, value }: { label: string; value: string }) 
   );
 }
 
-function SessionImpactCard({ items }: { items: SessionImpactItem[] }) {
-  const values = items.map((item) => item.value).filter(isNumber);
-  const net =
-    values.length > 0 ? roundOneNumber(values.reduce((total, value) => total + value, 0)) : null;
-  const tone = deltaTone(net, "higher");
-  const visibleItems = items.slice(0, 3);
+function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
+  const opportunityEffect = summary.biggestOpportunity
+    ? sessionImpactValue(summary.biggestOpportunity)
+    : null;
+  const opportunityTone = deltaTone(opportunityEffect, "higher");
 
   return (
     <div className="h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-            Session value
+            Session coaching
           </p>
           <h2 className="mt-1 text-lg font-semibold tracking-normal text-slate-950">
-            Estimated strokes effect
+            Strike quality vs scoring quality
           </h2>
         </div>
-        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${reviewStatusClass(tone)}`}>
-          Net {formatSignedDecimal(net)}
+        <span
+          className={`rounded-full px-3 py-1 text-sm font-semibold ${reviewStatusClass(
+            opportunityTone,
+          )}`}
+        >
+          Effect {formatSignedDecimal(opportunityEffect)}
         </span>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        {items.length > 0 ? (
-          visibleItems.map((item) => (
-            <div
-              key={item.clubLabel}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-slate-950">{item.clubLabel}</p>
-                <p className="mt-0.5 line-clamp-2 text-xs font-medium text-slate-600">
-                  {item.detail}
-                </p>
-              </div>
-              <p className={`text-lg font-semibold tabular-nums ${impactValueClass(item.tone)}`}>
-                {formatSignedDecimal(item.value)}
-              </p>
-            </div>
-          ))
-        ) : (
-          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-sm font-medium text-slate-600">
-            No comparable club impact yet.
-          </div>
-        )}
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <QualityReadoutCard
+          label="Strike quality"
+          value={`${summary.strikeScore}/10`}
+          detail={summary.strikeDetail}
+          tone={summary.strikeScore >= 8 ? "green" : summary.strikeScore >= 6.5 ? "amber" : "pink"}
+        />
+        <QualityReadoutCard
+          label="Scoring quality"
+          value={`${summary.scoringScore}/10`}
+          detail={summary.scoringDetail}
+          tone={
+            summary.scoringScore >= 8 ? "green" : summary.scoringScore >= 6.5 ? "amber" : "pink"
+          }
+        />
       </div>
-      <p className="mt-2 text-xs font-medium leading-5 text-muted-foreground">
-        Estimated from carry, dispersion, playable rate and consistency. Use directionally.
-        {items.length > visibleItems.length
-          ? ` ${items.length - visibleItems.length} more in club performance.`
-          : ""}
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <CoachingReadoutBlock
+          label="Biggest gain"
+          value={summary.biggestGain?.clubLabel ?? "Building signal"}
+          detail={summary.gainDetail}
+          tone="green"
+        />
+        <CoachingReadoutBlock
+          label="Biggest opportunity"
+          value={summary.biggestOpportunity?.clubLabel ?? "No clear drag"}
+          detail={summary.opportunityDetail}
+          tone="pink"
+        />
+      </div>
+      <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
+        {summary.opportunityCause} {summary.opportunityTarget}
       </p>
+    </div>
+  );
+}
+
+function QualityReadoutCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: ReviewTone;
+}) {
+  return (
+    <div className={`rounded-lg border px-3 py-2 ${verdictCardClass(tone)}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="mt-1 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+        {value}
+      </p>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-700">{detail}</p>
+    </div>
+  );
+}
+
+function CoachingReadoutBlock({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: ReviewTone;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${reviewStatusClass(tone)}`}
+        >
+          {tone === "green" ? "Maintain" : "Focus"}
+        </span>
+      </div>
+      <p className="mt-1 text-lg font-semibold tracking-normal text-slate-950">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-600">{detail}</p>
     </div>
   );
 }
@@ -1936,6 +2007,11 @@ function isDriverClubType(clubType: string | null | undefined) {
   return clubType?.trim().toLowerCase() === "driver";
 }
 
+function isWedgeClubType(clubType: string | null | undefined) {
+  const normalized = clubType?.trim().toLowerCase();
+  return normalized === "wedge" || ["pw", "gw", "aw", "sw", "lw"].includes(normalized ?? "");
+}
+
 function approachLandingPoint(
   shot: TodayPracticeShot | undefined,
   green: { x: number; y: number },
@@ -2241,11 +2317,12 @@ function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
   const reliable = reliableClubComparison(data.clubComparisons);
+  const reliableReadout = clubTrustReadout(reliable);
 
   return (
     <div className="grid gap-2 md:grid-cols-3">
       <ClubSummaryCard
-        label="Best this review"
+        label="Best performer"
         comparison={best}
         icon={<Award className="size-4" />}
         tone="green"
@@ -2257,10 +2334,12 @@ function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
         tone="pink"
       />
       <ClubSummaryCard
-        label="Most reliable"
+        label={reliableReadout.label}
         comparison={reliable}
         icon={<ShieldCheck className="size-4" />}
         tone="sky"
+        detail={reliableReadout.detail}
+        subdetail={reliableReadout.subdetail}
       />
     </div>
   );
@@ -2271,11 +2350,15 @@ function ClubSummaryCard({
   comparison,
   icon,
   tone,
+  detail,
+  subdetail,
 }: {
   label: string;
   comparison: ClubDayComparison | null;
   icon: ReactNode;
   tone: "green" | "pink" | "sky";
+  detail?: string | null;
+  subdetail?: string | null;
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
@@ -2289,13 +2372,14 @@ function ClubSummaryCard({
         {comparison?.clubLabel ?? "--"}
       </p>
       <p className="mt-1 text-sm text-slate-700">
-        {comparison
-          ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} playable`
-          : "No club data"}
+        {detail ??
+          (comparison
+            ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} playable`
+            : "No club data")}
       </p>
       {comparison ? (
         <p className="mt-1 text-xs text-muted-foreground">
-          {formatYards(comparison.today.offlineAverageYd)} offline
+          {subdetail ?? `${formatYards(comparison.today.offlineAverageYd)} offline`}
         </p>
       ) : null}
     </div>
@@ -3350,11 +3434,12 @@ function reviewNarrative(data: TodayPracticeData) {
     return data.overall.summary;
   }
 
-  const best = bestClubComparison(data.clubComparisons);
-  const focus = practiceFocus(data);
+  const coaching = sessionCoachingSummary(data);
+  const best = coaching.biggestGain;
+  const opportunity = coaching.biggestOpportunity;
   const intro =
-    best && data.clubComparisons.length > 0
-      ? `${best.clubLabel} held up best, but ${focus.clubText} pulled the session down.`
+    best && opportunity
+      ? `${best.clubLabel} was the best performer. ${opportunity.clubLabel} is the biggest opportunity.`
       : verdict === "better"
         ? "Your dispersion improved in this review."
         : verdict === "worse"
@@ -3417,19 +3502,8 @@ function sessionScopeLabel(data: TodayPracticeData) {
 
 function practiceFocus(data: TodayPracticeData) {
   const work = needsWorkComparison(data.clubComparisons);
-  const worseClubs = data.clubComparisons
-    .filter((comparison) => comparison.verdict === "worse")
-    .sort(compareNeedsWork)
-    .slice(0, 3);
-  const fallback = work ? [work] : data.clubComparisons.slice(0, 3);
-  const focusClubs = worseClubs.length > 0 ? worseClubs : fallback;
-  const clubText =
-    focusClubs.length > 0
-      ? joinLabels(focusClubs.map((comparison) => comparison.clubLabel))
-      : "your next set";
-  const problem = work
-    ? `${clubText} pulled the session down. ${work.clubLabel} was the priority: ${formatRate(work.today.straightRate)} straight and ${formatYards(work.today.offlineAverageYd)} offline.`
-    : data.overall.summary;
+  const clubText = work?.clubLabel ?? "your next set";
+  const problem = work ? opportunityProblemText(work) : data.overall.summary;
 
   return {
     clubText,
@@ -3441,14 +3515,15 @@ function practiceScoreSummary(data: TodayPracticeData): PracticeScoreSummary {
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
   const reliable = reliableClubComparison(data.clubComparisons);
-  const focus = practiceFocus(data);
-  const confidence = snapshotConfidence(data.overall.today) ?? 50;
-  const deltaBoost =
-    (data.overall.offlineDeltaYd ?? 0) * -0.7 +
-    (data.overall.straightRateDelta ?? 0) * 0.24 +
-    (data.overall.playableRateDelta ?? 0) * 0.22 +
-    (data.overall.carryDeltaYd ?? 0) * 0.08;
-  const score = data.shots.length > 0 ? clamp(Math.round(confidence + deltaBoost), 0, 100) : 0;
+  const coaching = sessionCoachingSummary(data);
+  const score =
+    data.shots.length > 0
+      ? clamp(
+          Math.round(coaching.strikeScore * 10 * 0.45 + coaching.scoringScore * 10 * 0.55),
+          0,
+          100,
+        )
+      : 0;
   const tone = score >= 82 ? "green" : score >= 68 ? "amber" : score >= 50 ? "sky" : "pink";
   const trend =
     data.overall.verdict === "better"
@@ -3461,12 +3536,182 @@ function practiceScoreSummary(data: TodayPracticeData): PracticeScoreSummary {
 
   return {
     score,
+    strikeScore: coaching.strikeScore,
+    scoringScore: coaching.scoringScore,
     tone,
     strong: best?.clubLabel ?? reliable?.clubLabel ?? "Building",
     weak: work?.clubLabel ?? "None clear",
-    recommendation: `${focus.clubText} delivery drill`,
+    recommendation: work ? `${work.clubLabel} line-control drill` : "Retest the same block",
     trend,
+    strikeDetail: coaching.strikeDetail,
+    scoringDetail: coaching.scoringDetail,
   };
+}
+
+function sessionCoachingSummary(data: TodayPracticeData): SessionCoachingSummary {
+  const strikeScore = sessionStrikeQualityScore(data);
+  const scoringScore = sessionScoringQualityScore(data);
+  const biggestGain = bestClubComparison(data.clubComparisons);
+  const biggestOpportunity = needsWorkComparison(data.clubComparisons);
+
+  return {
+    strikeScore,
+    strikeDetail: strikeQualityDetail(strikeScore),
+    scoringScore,
+    scoringDetail: scoringQualityDetail(scoringScore),
+    biggestGain,
+    gainDetail: biggestGain
+      ? gainDetail(biggestGain)
+      : "Import more shots to separate form from noise.",
+    biggestOpportunity,
+    opportunityDetail: biggestOpportunity
+      ? opportunityDetail(biggestOpportunity)
+      : "No single club is dragging this review yet.",
+    opportunityCause: biggestOpportunity
+      ? opportunityCause(biggestOpportunity)
+      : "Keep the next block like-for-like.",
+    opportunityTarget: biggestOpportunity
+      ? opportunityTarget(biggestOpportunity)
+      : "Retest before changing the practice plan.",
+  };
+}
+
+function sessionScoringQualityScore(data: TodayPracticeData) {
+  const weighted = weightedAverage(
+    data.clubComparisons
+      .filter((comparison) => comparison.today.shotCount > 0)
+      .map((comparison) => ({
+        value: clubTypeCurrentPerformanceScore(comparison.clubType, comparison.today),
+        weight: comparison.today.shotCount,
+      })),
+  );
+
+  return roundOneNumber((weighted ?? 0) / 10) ?? 0;
+}
+
+function sessionStrikeQualityScore(data: TodayPracticeData) {
+  const weighted = weightedAverage(
+    data.shots
+      .map((shot) => ({
+        value: shotStrikeQualityScore(shot),
+        weight: 1,
+      }))
+      .filter((item) => isNumber(item.value)),
+  );
+
+  return roundOneNumber((weighted ?? 0) / 10) ?? 0;
+}
+
+function shotStrikeQualityScore(shot: TodayPracticeShot) {
+  if (isNumber(shot.smashFactor)) {
+    return smashStrikeScore(shot.clubType, shot.smashFactor);
+  }
+
+  if (isNumber(shot.ballSpeedMph) && isNumber(shot.carryYd)) {
+    return clamp((shot.carryYd / Math.max(shot.ballSpeedMph, 1)) * 48, 45, 88);
+  }
+
+  return null;
+}
+
+function smashStrikeScore(clubType: string, smashFactor: number) {
+  const profile = isDriverClubType(clubType)
+    ? { floor: 1.36, ceiling: 1.5 }
+    : isWedgeClubType(clubType)
+      ? { floor: 1.08, ceiling: 1.28 }
+      : { floor: 1.22, ceiling: 1.42 };
+
+  return clamp(
+    ((smashFactor - profile.floor) / (profile.ceiling - profile.floor)) * 45 + 55,
+    40,
+    100,
+  );
+}
+
+function strikeQualityDetail(score: number) {
+  if (score >= 8.2) return "Strike was strong enough to leave the swing alone.";
+  if (score >= 6.5) return "Strike was playable; scoring was decided more by direction.";
+  return "Contact quality needs checking before judging the scoring pattern.";
+}
+
+function scoringQualityDetail(score: number) {
+  if (score >= 8) return "The session converted strike into useful scoring shots.";
+  if (score >= 6.5) return "Scoring was solid, but direction still cost value.";
+  return "Direction or carry spread reduced the scoring value.";
+}
+
+function gainDetail(comparison: ClubDayComparison) {
+  return `${bestPerformerDetail(comparison)}. Maintain current swing.`;
+}
+
+function opportunityProblemText(comparison: ClubDayComparison) {
+  return `${comparison.clubLabel} is the biggest opportunity. ${opportunityDetail(
+    comparison,
+  )} ${opportunityCause(comparison)}`;
+}
+
+function opportunityDetail(comparison: ClubDayComparison) {
+  if (isDriverClubType(comparison.clubType) && (comparison.today.playableRate ?? 0) >= 75) {
+    return `Direction, not strike: ${formatYards(
+      comparison.today.offlineAverageYd,
+    )} offline with ${formatRate(comparison.today.playableRate)} playable.`;
+  }
+
+  if (isWedgeClubType(comparison.clubType)) {
+    return `${formatYards(comparison.today.offlineAverageYd)} offline and ${formatRate(
+      comparison.today.straightRate,
+    )} straight. Tighten start line.`;
+  }
+
+  return `${formatYards(comparison.today.offlineAverageYd)} offline, ${formatRate(
+    comparison.today.playableRate,
+  )} playable, ${formatRate(comparison.today.straightRate)} straight.`;
+}
+
+function opportunityCause(comparison: ClubDayComparison) {
+  if (isDriverClubType(comparison.clubType) && (comparison.today.playableRate ?? 0) >= 75) {
+    return "Do not chase speed or contact first; start line and face control are the job.";
+  }
+
+  if ((comparison.today.playableRate ?? 0) < 65) {
+    return "Playable rate is the first fix.";
+  }
+
+  if ((comparison.today.straightRate ?? 0) < 25) {
+    return "Start line is the first fix.";
+  }
+
+  return "Carry and dispersion need another cleaner block.";
+}
+
+function opportunityTarget(comparison: ClubDayComparison) {
+  if (isDriverClubType(comparison.clubType)) {
+    return "Keep strike intent; run a 20-ball driver line-control block.";
+  }
+
+  if (isWedgeClubType(comparison.clubType)) {
+    return "Retest the same yardage window before changing wedge technique.";
+  }
+
+  return `Retest ${comparison.clubLabel} and beat this review's ${formatYards(
+    comparison.today.offlineAverageYd,
+  )} offline average.`;
+}
+
+function bestPerformerDetail(comparison: ClubDayComparison) {
+  return `${formatRate(comparison.today.playableRate)} playable / ${formatYards(
+    comparison.today.offlineAverageYd,
+  )} offline`;
+}
+
+function opportunityShortDetail(comparison: ClubDayComparison) {
+  if (isDriverClubType(comparison.clubType) && (comparison.today.playableRate ?? 0) >= 75) {
+    return `Direction only: ${formatYards(comparison.today.offlineAverageYd)} offline`;
+  }
+
+  return `${formatRate(comparison.today.straightRate)} straight / ${formatYards(
+    comparison.today.offlineAverageYd,
+  )} offline`;
 }
 
 function whatChangedItems(data: TodayPracticeData): WhatChangedItem[] {
@@ -3546,55 +3791,19 @@ function whatChangedItems(data: TodayPracticeData): WhatChangedItem[] {
   ];
 }
 
-function sessionImpactItems(data: TodayPracticeData): SessionImpactItem[] {
-  const storyComparisons = uniqueComparisons([
-    bestClubComparison(data.clubComparisons),
-    reliableClubComparison(data.clubComparisons),
-    needsWorkComparison(data.clubComparisons),
-  ]);
-  const comparisons =
-    storyComparisons.length > 0 ? storyComparisons : data.clubComparisons.slice(0, 3);
-
-  return comparisons.map((comparison) => {
-    const value = sessionImpactValue(comparison);
-    const tone = deltaTone(value, "higher");
-
-    return {
-      clubLabel: comparison.clubLabel,
-      value,
-      detail: impactDetail(comparison),
-      tone,
-    };
-  });
-}
-
 function sessionImpactValue(comparison: ClubDayComparison) {
   if (comparison.verdict === "new") {
     return null;
   }
 
-  const impact =
-    clamp((comparison.offlineDeltaYd ?? 0) * -0.055, -0.42, 0.42) +
-    clamp((comparison.straightRateDelta ?? 0) * 0.012, -0.25, 0.25) +
-    clamp((comparison.playableRateDelta ?? 0) * 0.01, -0.2, 0.2) +
-    clamp((comparison.carryDeltaYd ?? 0) * 0.015, -0.18, 0.18) +
-    clamp((comparison.consistencyDeltaYd ?? 0) * -0.018, -0.18, 0.18);
-
-  return roundOneNumber(clamp(impact, -0.8, 0.8));
-}
-
-function impactDetail(comparison: ClubDayComparison) {
-  const signals = [
-    isNumber(comparison.offlineDeltaYd) ? offlineDeltaText(comparison.offlineDeltaYd) : null,
-    isNumber(comparison.playableRateDelta)
-      ? `${deltaText(comparison.playableRateDelta, "pp", true)} playable`
-      : null,
-    isNumber(comparison.carryDeltaYd)
-      ? `${deltaText(comparison.carryDeltaYd, "yd", true)} carry`
-      : null,
-  ].filter(Boolean) as string[];
-
-  return signals.slice(0, 2).join(" / ") || comparison.summary;
+  return clubTypeEstimatedStrokeEffect(comparison.clubType, {
+    carryDeltaYd: comparison.carryDeltaYd,
+    offlineDeltaYd: comparison.offlineDeltaYd,
+    straightRateDelta: comparison.straightRateDelta,
+    playableRateDelta: comparison.playableRateDelta,
+    bigMissRateDelta: comparison.bigMissRateDelta,
+    consistencyDeltaYd: comparison.consistencyDeltaYd,
+  });
 }
 
 function confidenceMeterItems(data: TodayPracticeData): ConfidenceMeterItem[] {
@@ -3607,7 +3816,10 @@ function confidenceMeterItems(data: TodayPracticeData): ConfidenceMeterItem[] {
     storyComparisons.length > 0 ? storyComparisons : data.clubComparisons.slice(0, 3);
 
   return comparisons.map((comparison) => {
-    const score = comparison.today.shotCount > 0 ? snapshotConfidence(comparison.today) : null;
+    const score =
+      comparison.today.shotCount > 0
+        ? clubTypeCurrentPerformanceScore(comparison.clubType, comparison.today)
+        : null;
     const readout = confidenceMeterReadout(comparison, score);
 
     return {
@@ -3778,27 +3990,6 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
   };
 }
 
-function snapshotConfidence(snapshot: TodayPracticeData["overall"]["today"]) {
-  if (snapshot.shotCount <= 0) {
-    return null;
-  }
-
-  const playable = snapshot.playableRate ?? 55;
-  const straight = snapshot.straightRate ?? 24;
-  const offline = isNumber(snapshot.offlineAverageYd)
-    ? clamp(100 - snapshot.offlineAverageYd * 3.5, 0, 100)
-    : 55;
-  const consistency = isNumber(snapshot.carryStdDevYd)
-    ? clamp(100 - snapshot.carryStdDevYd * 2.4, 0, 100)
-    : 55;
-
-  return clamp(
-    Math.round(playable * 0.42 + straight * 0.24 + offline * 0.22 + consistency * 0.12),
-    0,
-    100,
-  );
-}
-
 function uniqueComparisons(items: Array<ClubDayComparison | null>) {
   const seen = new Set<string>();
   const result: ClubDayComparison[] = [];
@@ -3833,8 +4024,11 @@ function comparisonConfidencePool(comparisons: ClubDayComparison[]) {
 }
 
 function compareBestClub(left: ClubDayComparison, right: ClubDayComparison) {
+  const leftScore = clubTypeCurrentPerformanceScore(left.clubType, left.today);
+  const rightScore = clubTypeCurrentPerformanceScore(right.clubType, right.today);
+
   return (
-    right.score - left.score ||
+    rightScore - leftScore ||
     valueOrZero(right.today.straightRate) - valueOrZero(left.today.straightRate) ||
     valueOrZero(right.today.playableRate) - valueOrZero(left.today.playableRate) ||
     valueOrZero(left.today.offlineAverageYd) - valueOrZero(right.today.offlineAverageYd)
@@ -3851,41 +4045,100 @@ function compareNeedsWork(left: ClubDayComparison, right: ClubDayComparison) {
 
 function compareReliableClub(left: ClubDayComparison, right: ClubDayComparison) {
   return (
+    longTermReliabilityScore(right) - longTermReliabilityScore(left) ||
     valueOrZero(right.today.playableRate) - valueOrZero(left.today.playableRate) ||
     valueOrZero(right.today.straightRate) - valueOrZero(left.today.straightRate) ||
     valueOrZero(left.today.offlineAverageYd) - valueOrZero(right.today.offlineAverageYd)
   );
 }
 
+function longTermReliabilityScore(comparison: ClubDayComparison) {
+  const previousScore =
+    comparison.previous.shotCount > 0
+      ? clubTypeCurrentPerformanceScore(comparison.clubType, comparison.previous)
+      : null;
+  const todayScore = clubTypeCurrentPerformanceScore(comparison.clubType, comparison.today);
+  const sampleScore = clamp(
+    ((comparison.previous.shotCount + comparison.today.shotCount) / 30) * 100,
+    0,
+    100,
+  );
+
+  if (isNumber(previousScore)) {
+    return previousScore * 0.55 + todayScore * 0.25 + sampleScore * 0.2;
+  }
+
+  return todayScore * 0.75 + sampleScore * 0.25;
+}
+
 function clubPerformanceNarrative(data: TodayPracticeData) {
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
   const reliable = reliableClubComparison(data.clubComparisons);
+  const reliableReadout = clubTrustReadout(reliable);
 
   if (!best || !work || !reliable) {
     return "This review against the latest previous shots for the same club.";
   }
 
-  return `${best.clubLabel} improved, ${reliable.clubLabel} stayed reliable, and ${work.clubLabel} needs the most attention.`;
+  return `${best.clubLabel} was today's best performer, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
 }
 
 function clubPerformanceRead(data: TodayPracticeData) {
   const best = bestClubComparison(data.clubComparisons);
   const work = needsWorkComparison(data.clubComparisons);
   const reliable = reliableClubComparison(data.clubComparisons);
+  const reliableReadout = clubTrustReadout(reliable);
 
   if (!best || !work || !reliable) {
     return data.overall.summary;
   }
 
-  return `${best.clubLabel} helped the session, ${reliable.clubLabel} held playable rate, and ${work.clubLabel} caused most of the damage.`;
+  return `${best.clubLabel} won the session, ${reliable.clubLabel} ${reliableReadout.read}, and ${work.clubLabel} is the first practice job.`;
 }
 
-function joinLabels(labels: string[]) {
-  if (labels.length === 0) return "";
-  if (labels.length === 1) return labels[0];
-  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
-  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+function clubTrustReadout(comparison: ClubDayComparison | null): {
+  label: string;
+  detail: string | null;
+  subdetail: string | null;
+  narrative: string;
+  read: string;
+} {
+  if (!comparison) {
+    return {
+      label: "Most reliable",
+      detail: null,
+      subdetail: null,
+      narrative: "is the longer-term trust read",
+      read: "stayed most reliable",
+    };
+  }
+
+  if (shouldCallMostPlayable(comparison)) {
+    return {
+      label: "Most playable",
+      detail: `${formatRate(comparison.today.playableRate)} playable, but start line still needs work.`,
+      subdetail: `${formatRate(comparison.today.straightRate)} straight · ${formatYards(
+        comparison.today.offlineAverageYd,
+      )} offline`,
+      narrative: "is the most playable read, but not the straightest one",
+      read: "was most playable but still needs start-line work",
+    };
+  }
+
+  return {
+    label: "Most reliable",
+    detail: `${formatRate(comparison.today.straightRate)} straight · ${formatRate(
+      comparison.today.playableRate,
+    )} playable`,
+    subdetail: `${formatYards(comparison.today.offlineAverageYd)} offline`,
+    narrative: "is the longer-term trust read",
+    read: "stayed most reliable",
+  };
+}
+
+function shouldCallMostPlayable(comparison: ClubDayComparison) {
+  return (comparison.today.playableRate ?? 0) >= 90 && (comparison.today.straightRate ?? 100) < 35;
 }
 
 function valueOrZero(value: number | null) {
@@ -4065,14 +4318,6 @@ function verdictCardClass(tone: ReviewTone) {
   if (tone === "amber") return "border-amber-100 bg-amber-50/70 text-amber-950";
   if (tone === "sky") return "border-sky-100 bg-sky-50/70 text-sky-950";
   return "border-slate-200 bg-slate-50 text-slate-950";
-}
-
-function impactValueClass(tone: ReviewTone) {
-  if (tone === "green") return "text-emerald-700";
-  if (tone === "pink") return "text-pink-700";
-  if (tone === "amber") return "text-amber-800";
-  if (tone === "sky") return "text-sky-700";
-  return "text-slate-600";
 }
 
 function verdictTone(verdict: TodayPracticeData["overall"]["verdict"]) {
@@ -4282,6 +4527,19 @@ function averageNumbers(items: Array<number | null>) {
   }
 
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function weightedAverage(items: Array<{ value: number | null; weight: number }>) {
+  const values = items.flatMap((item) =>
+    isNumber(item.value) && item.weight > 0 ? [{ value: item.value, weight: item.weight }] : [],
+  );
+
+  if (values.length === 0) {
+    return null;
+  }
+
+  const weightTotal = values.reduce((total, item) => total + item.weight, 0);
+  return values.reduce((total, item) => total + item.value * item.weight, 0) / weightTotal;
 }
 
 function cssAttributeValue(value: string) {

@@ -338,6 +338,7 @@ function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTr
   const offlineDelta = nullableDelta(offlineCurrent, offlineBaseline);
   const averageTrust = average(trustPoints);
   const averagePlayable = average(playablePoints);
+  const carryIsStable = isNumber(carryDelta) && Math.abs(carryDelta) < 1;
 
   return [
     {
@@ -360,12 +361,22 @@ function buildTrends(clubs: ProgressClub[], rows: ProgressClubRow[]): ProgressTr
       tone: offlineDelta === null ? "slate" : offlineDelta <= 0 ? "green" : "amber",
     },
     {
-      label: "Carry movement",
-      value: carryDelta === null ? "--" : `${signed(carryDelta)} yd`,
-      detail: "Bag-average carry, latest clean baseline vs first clean baseline.",
+      label: carryIsStable ? "Carry stable" : "Carry movement",
+      value:
+        carryDelta === null ? "--" : carryIsStable ? "Within 1 yd" : `${signed(carryDelta)} yd`,
+      detail: carryIsStable
+        ? "Bag-average carry is effectively unchanged against the first clean baseline."
+        : "Bag-average carry, latest clean baseline vs first clean baseline.",
       points: [carryBaseline, carryCurrent].filter(isNumber),
       goodDirection: "up",
-      tone: carryDelta === null ? "slate" : carryDelta >= 0 ? "green" : "amber",
+      tone:
+        carryDelta === null
+          ? "slate"
+          : carryIsStable
+            ? "green"
+            : carryDelta >= 0
+              ? "green"
+              : "amber",
     },
     {
       label: "Playable rate",
@@ -661,7 +672,9 @@ function buildTrustLadder(
             : isVolatile
               ? "Reliable but volatile"
               : speedWarning
-                ? "Watch ball speed"
+                ? row.trustIndex >= 68
+                  ? "Trusted - monitor speed"
+                  : "Monitor speed"
                 : row.confidenceLabel,
         tone: !hasEnoughData
           ? "slate"
@@ -675,38 +688,67 @@ function buildTrustLadder(
 }
 
 function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEvent[] {
-  const events: JourneyEvent[] = [];
+  const events: Array<JourneyEvent & { sortTime: number }> = [];
+  const addEvent = (event: JourneyEvent) => {
+    events.push({ ...event, sortTime: journeyTimeForClub(clubs, event.clubId) });
+  };
+  const trustLeader =
+    [...rows]
+      .filter((row) => row.sampleSize >= 10)
+      .sort((left, right) => right.trustIndex - left.trustIndex)[0] ?? null;
+
+  if (trustLeader) {
+    addEvent({
+      clubId: trustLeader.clubId,
+      clubType: trustLeader.clubType,
+      dateLabel: journeyDateForClub(clubs, trustLeader.clubId),
+      title: `${formatClubType(trustLeader.clubType)} became long-term trust leader`,
+      detail: `${trustLeader.trustIndex}% trust from ${trustLeader.sampleSize} clean stock shots.`,
+      tone: "green",
+    });
+  }
 
   for (const row of rows) {
-    if (isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 5) {
-      events.push({
-        clubId: row.clubId,
-        clubType: row.clubType,
-        dateLabel: journeyDateForClub(clubs, row.clubId),
-        title: `${formatClubType(row.clubType)} carry moved up`,
-        detail: `${signed(row.carryDeltaYd)} yd versus the first clean baseline.`,
-        tone: "green",
-      });
-    }
-
     if (isNumber(row.offlineDeltaYd) && row.offlineDeltaYd <= -8) {
-      events.push({
+      addEvent({
         clubId: row.clubId,
         clubType: row.clubType,
         dateLabel: journeyDateForClub(clubs, row.clubId),
-        title: `${formatClubType(row.clubType)} miss pattern tightened`,
+        title: `${formatClubType(row.clubType)} start line tightened`,
         detail: `${Math.abs(roundOne(row.offlineDeltaYd) ?? 0)} yd less average offline.`,
         tone: "sky",
       });
     }
 
-    if (row.trustIndex >= 75 && row.sampleSize >= 10) {
-      events.push({
+    if (row.trustIndex >= 75 && row.sampleSize >= 10 && row.clubId !== trustLeader?.clubId) {
+      addEvent({
         clubId: row.clubId,
         clubType: row.clubType,
         dateLabel: journeyDateForClub(clubs, row.clubId),
-        title: `${formatClubType(row.clubType)} is becoming playable`,
+        title: `${formatClubType(row.clubType)} trust crossed 75%`,
         detail: `${row.trustIndex}% trust with ${row.sampleSize} clean stock shots.`,
+        tone: "green",
+      });
+    }
+
+    if (isNumber(row.playableRate) && row.playableRate >= 70) {
+      addEvent({
+        clubId: row.clubId,
+        clubType: row.clubType,
+        dateLabel: journeyDateForClub(clubs, row.clubId),
+        title: `${formatClubType(row.clubType)} now playable`,
+        detail: `${Math.round(row.playableRate)}% playable from the current clean sample.`,
+        tone: "green",
+      });
+    }
+
+    if (isNumber(row.carryDeltaYd) && row.carryDeltaYd >= 5) {
+      addEvent({
+        clubId: row.clubId,
+        clubType: row.clubType,
+        dateLabel: journeyDateForClub(clubs, row.clubId),
+        title: `${formatClubType(row.clubType)} gained useful carry`,
+        detail: `${signed(row.carryDeltaYd)} yd versus the first clean baseline.`,
         tone: "green",
       });
     }
@@ -722,18 +764,18 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
     .slice(0, 2);
 
   for (const club of personalBests) {
-    events.push({
+    addEvent({
       clubId: club.clubId,
       clubType: club.clubType,
       dateLabel: journeyDate(club.analytics.sample.latestShotAt),
-      title: `${formatClubType(club.clubType)} personal best`,
+      title: `${formatClubType(club.clubType)} set a carry high`,
       detail: `${club.analytics.progress.personalBestCarryYd} yd carry in the saved data.`,
       tone: "sky",
     });
   }
 
   if (events.length === 0 && clubs.length > 0) {
-    events.push({
+    addEvent({
       clubId: clubs[0].clubId,
       clubType: clubs[0].clubType,
       dateLabel: journeyDate(clubs[0].analytics.sample.latestShotAt),
@@ -743,7 +785,17 @@ function buildJourney(clubs: ProgressClub[], rows: ProgressClubRow[]): JourneyEv
     });
   }
 
-  return events.slice(0, 8);
+  return events
+    .sort((left, right) => right.sortTime - left.sortTime)
+    .map(({ clubId, clubType, dateLabel, title, detail, tone }) => ({
+      clubId,
+      clubType,
+      dateLabel,
+      title,
+      detail,
+      tone,
+    }))
+    .slice(0, 8);
 }
 
 function improvementScore(analytics: ClubAnalytics) {
@@ -981,6 +1033,10 @@ function scoreFromRaw(value: number, worstExpected: number) {
 
 function journeyDateForClub(clubs: ProgressClub[], clubId: string) {
   return journeyDate(findClub(clubs, clubId)?.analytics.sample.latestShotAt ?? null);
+}
+
+function journeyTimeForClub(clubs: ProgressClub[], clubId: string) {
+  return findClub(clubs, clubId)?.analytics.sample.latestShotAt?.getTime() ?? 0;
 }
 
 function journeyDate(date: Date | null) {

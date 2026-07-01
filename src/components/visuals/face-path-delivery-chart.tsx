@@ -38,6 +38,7 @@ export function FacePathDeliveryChart({
   idPrefix,
   className,
   chartClassName,
+  compact = false,
   showMetricPills = true,
   targetWindow,
 }: {
@@ -45,6 +46,7 @@ export function FacePathDeliveryChart({
   idPrefix: string;
   className?: string;
   chartClassName?: string;
+  compact?: boolean;
   showMetricPills?: boolean;
   targetWindow?: TargetWindow;
 }) {
@@ -61,7 +63,7 @@ export function FacePathDeliveryChart({
           aria-label={`${datum.label} ${datum.patternLabel} club face and club path direction`}
           role="img"
           viewBox="0 18 260 96"
-          className="h-40 w-full sm:h-44"
+          className={cn("w-full", compact ? "h-28 sm:h-32" : "h-40 sm:h-44")}
         >
           <defs>
             <marker
@@ -218,7 +220,10 @@ function TargetWindowRow({
   );
 }
 
-function angleTargetState(value: number | null | undefined, window: AngleWindow): TargetWindowState {
+function angleTargetState(
+  value: number | null | undefined,
+  window: AngleWindow,
+): TargetWindowState {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return {
       label: "Needs data",
