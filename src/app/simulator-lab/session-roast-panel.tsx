@@ -39,22 +39,26 @@ export function SessionRoastPanel({
   function generateRoast() {
     setMessage(null);
     startTransition(async () => {
-      const response = await fetch("/api/ai/session-roast", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: activeSession.id }),
-      });
-      const payload = (await response.json().catch(() => null)) as {
-        roast?: RoastDraft;
-        message?: string;
-      } | null;
+      try {
+        const response = await fetch("/api/ai/session-roast", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ sessionId: activeSession.id }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          roast?: RoastDraft;
+          message?: string;
+        } | null;
 
-      if (!response.ok || !payload?.roast) {
-        setMessage(payload?.message ?? "Roast generation failed.");
-        return;
+        if (!response.ok || !payload?.roast) {
+          setMessage(payload?.message ?? "Roast generation failed.");
+          return;
+        }
+
+        setDraft(payload.roast);
+      } catch {
+        setMessage("Roast generation could not connect. Try again after the page reloads.");
       }
-
-      setDraft(payload.roast);
     });
   }
 
@@ -65,14 +69,22 @@ export function SessionRoastPanel({
 
     setMessage(null);
     startTransition(async () => {
-      const result = await createSessionRoastFeedItemAction({
-        sessionId: activeSession.id,
-        headline: draft.headline,
-        roast: draft.roast,
-        shortCaption: draft.shortCaption,
-      });
+      try {
+        const result = await createSessionRoastFeedItemAction({
+          sessionId: activeSession.id,
+          headline: draft.headline,
+          roast: draft.roast,
+          shortCaption: draft.shortCaption,
+        });
 
-      setMessage(result.ok ? "Saved as a private feed draft." : (result.message ?? "Could not save draft."));
+        setMessage(
+          result.ok
+            ? "Saved as a private feed draft."
+            : (result.message ?? "Could not save draft."),
+        );
+      } catch {
+        setMessage("Could not save draft. Try again after the page reloads.");
+      }
     });
   }
 
