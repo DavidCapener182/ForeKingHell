@@ -124,7 +124,7 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button type="submit" className="premium-action">
           <Save className="size-4" />
-          Log Golf Load
+          Save Training Load
         </Button>
       </div>
     </form>

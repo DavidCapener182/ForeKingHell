@@ -21,6 +21,7 @@ import {
 import { getTrainingStatus, getTrainingTrend } from "@/lib/training/trainingStatus";
 import type { TrainingStatus, TrainingTrend } from "@/lib/training/trainingStatus";
 import { calculateSessionLoad, calculateSessionVolume } from "@/lib/training/trainingLoad";
+import { trainingRangeDays, type TrainingRangeKey } from "@/lib/training/ranges";
 import {
   aggregateSessionFormSnapshots,
   calculateSessionFormSignal,
@@ -29,8 +30,11 @@ import {
   type SessionFormSnapshot,
 } from "@/lib/training/sessionForm";
 import { isRoundHistorySession } from "@/lib/round-sessions";
-
-export type TrainingRangeKey = "7d" | "4w" | "3m" | "6m" | "1y";
+export {
+  normalizeTrainingRange,
+  trainingRangeDays,
+  type TrainingRangeKey,
+} from "@/lib/training/ranges";
 
 export type TrainingSourceType = "round" | "practice" | "manual" | "launch_monitor" | "imported";
 
@@ -97,6 +101,27 @@ export type TrainingSessionMarker = {
   title: string;
 };
 
+export type TrainingEfficiencyCard = {
+  title: string;
+  detail: string;
+  metric: string;
+  tone: "green" | "amber" | "sky" | "slate";
+};
+
+export type TrainingBalanceSegment = {
+  key: "range" | "rounds" | "speed";
+  label: string;
+  percent: number;
+  sessions: number;
+  load: number;
+};
+
+export type TrainingBalance = {
+  windowDays: number;
+  totalSessions: number;
+  segments: TrainingBalanceSegment[];
+};
+
 export type TrainingOverTimeData = {
   rangeKey: TrainingRangeKey;
   rangeDays: number;
@@ -120,11 +145,8 @@ export type TrainingOverTimeData = {
   hasTrainingData: boolean;
   averageTrainingLoad: number;
   confidence: TrainingConfidence;
-  efficiencyCards: Array<{
-    title: string;
-    detail: string;
-    metric: string;
-  }>;
+  efficiencyCards: TrainingEfficiencyCard[];
+  trainingBalance: TrainingBalance;
 };
 
 type TrainingSessionDbRow = {
@@ -160,27 +182,10 @@ type SessionSnapshotGroup = {
   snapshot: SessionFormSnapshot;
 };
 
-const RANGE_DAYS: Record<TrainingRangeKey, number> = {
-  "7d": 7,
-  "4w": 28,
-  "3m": 90,
-  "6m": 183,
-  "1y": 365,
-};
-
 const WARMUP_DAYS = 90;
 const CONDITIONING_DAYS = 84;
 const SUGGESTION_LOOKBACK_DAYS = 45;
 const CONFIDENCE_LOOKBACK_DAYS = 28;
-
-export function normalizeTrainingRange(value: string | string[] | undefined): TrainingRangeKey {
-  const key = Array.isArray(value) ? value[0] : value;
-  return key === "7d" || key === "4w" || key === "3m" || key === "6m" || key === "1y" ? key : "3m";
-}
-
-export function trainingRangeDays(rangeKey: TrainingRangeKey) {
-  return RANGE_DAYS[rangeKey];
-}
 
 export async function getTrainingOverTimeData(
   userId: string,
@@ -298,8 +303,16 @@ export async function getTrainingOverTimeData(
   const recentSessions = recentSessionRows.map(toTrainingSessionListItem);
   const formSessions = formSessionRows.map(toTrainingSessionListItem);
   const sessionMarkers = buildSessionMarkers(sessionMarkerRows);
-  const sessionFormSignal = await buildLatestSessionFormSignal(userId, recentSessions);
-  const formAdjustments = await buildHistoricalSessionFormAdjustments(userId, formSessions);
+  const snapshotRows = await buildSessionSnapshotRows(userId, formSessions);
+  const snapshotGroups = buildSessionSnapshotGroups(snapshotRows).sort((a, b) =>
+    a.date === b.date ? a.kind.localeCompare(b.kind) : a.date.localeCompare(b.date),
+  );
+  const sessionFormSignal = buildLatestSessionFormSignal(
+    recentSessions,
+    snapshotRows,
+    snapshotGroups,
+  );
+  const formAdjustments = buildHistoricalSessionFormAdjustments(snapshotGroups);
   const confidence = buildTrainingConfidence(formSessions, sessionFormSignal, today);
   const firstTrainingDataDate = firstDateKey([
     ...dailyRows.map((row) => toDateKey(row.date)),
@@ -361,7 +374,8 @@ export async function getTrainingOverTimeData(
     hasTrainingData: recentSessionRows.length > 0,
     averageTrainingLoad,
     confidence,
-    efficiencyCards: buildEfficiencyCards(averageTrainingLoad),
+    efficiencyCards: buildEfficiencyCards(snapshotGroups),
+    trainingBalance: buildTrainingBalance(formSessions, today),
   };
 }
 
@@ -711,18 +725,13 @@ function confidenceLabel(score: number) {
   return "Low confidence";
 }
 
-async function buildHistoricalSessionFormAdjustments(
-  userId: string,
-  sessions: TrainingSessionListItem[],
-): Promise<DailyFormAdjustment[]> {
-  if (sessions.length < 2) {
+function buildHistoricalSessionFormAdjustments(
+  snapshotGroups: SessionSnapshotGroup[],
+): DailyFormAdjustment[] {
+  if (snapshotGroups.length < 2) {
     return [];
   }
 
-  const snapshots = await buildSessionSnapshotRows(userId, sessions);
-  const snapshotGroups = buildSessionSnapshotGroups(snapshots).sort((a, b) =>
-    a.date === b.date ? a.kind.localeCompare(b.kind) : a.date.localeCompare(b.date),
-  );
   const previousByKind = new Map<SessionFormSnapshot["kind"], SessionFormSnapshot>();
   const adjustmentsByDate = new Map<string, number>();
 
@@ -771,33 +780,32 @@ function formAdjustmentWeight(snapshot: SessionFormSnapshot) {
   return 0.4;
 }
 
-async function buildLatestSessionFormSignal(
-  userId: string,
+function buildLatestSessionFormSignal(
   recentSessions: TrainingSessionListItem[],
-): Promise<SessionFormSignal> {
+  snapshotRows: SessionSnapshotRow[],
+  snapshotGroups: SessionSnapshotGroup[],
+): SessionFormSignal {
   const latestSession = recentSessions[0];
   if (!latestSession) {
     return neutralSessionFormSignal;
   }
 
-  const snapshotRows = await buildSessionSnapshotRows(userId, recentSessions);
   const latestSnapshotRow = snapshotRows.find((row) => row.session.id === latestSession.id);
 
   if (!latestSnapshotRow) {
     return neutralSessionFormSignal;
   }
 
-  const snapshotGroups = buildSessionSnapshotGroups(snapshotRows).sort((a, b) =>
-    b.date === a.date ? b.kind.localeCompare(a.kind) : b.date.localeCompare(a.date),
-  );
   const latestGroup = snapshotGroups.find(
     (group) =>
       group.date === latestSession.sessionDate && group.kind === latestSnapshotRow.snapshot.kind,
   );
-  const previousGroup = snapshotGroups.find(
-    (group) =>
-      group.kind === latestSnapshotRow.snapshot.kind && group.date < latestSession.sessionDate,
-  );
+  const previousGroup = [...snapshotGroups]
+    .reverse()
+    .find(
+      (group) =>
+        group.kind === latestSnapshotRow.snapshot.kind && group.date < latestSession.sessionDate,
+    );
 
   if (!latestGroup || !previousGroup) {
     return neutralSessionFormSignal;
@@ -1014,28 +1022,243 @@ function loadSnapshot(session: TrainingSessionListItem): SessionFormSnapshot {
   };
 }
 
-function buildEfficiencyCards(averageTrainingLoad: number) {
-  const loadLabel =
-    averageTrainingLoad > 0 ? `${Math.round(averageTrainingLoad)} avg load` : "No load yet";
+function buildEfficiencyCards(snapshotGroups: SessionSnapshotGroup[]): TrainingEfficiencyCard[] {
+  const shotGroups = snapshotGroups
+    .filter((group) => group.kind === "shots")
+    .filter((group) => group.snapshot.sampleSize >= 5)
+    .slice(-8);
+  const roundGroups = snapshotGroups
+    .filter((group) => group.kind === "round")
+    .filter((group) => typeof group.snapshot.scoreToParPer18 === "number")
+    .slice(-5);
+
+  const carryTrend = compareSnapshotHalves(
+    shotGroups,
+    (group) => group.snapshot.carryAverageYd,
+    "higher",
+  );
+  const offlineTrend = compareSnapshotHalves(
+    shotGroups,
+    (group) => group.snapshot.averageOfflineYd,
+    "lower",
+  );
+  const scoreTrend = compareSnapshotHalves(
+    roundGroups,
+    (group) => group.snapshot.scoreToParPer18,
+    "lower",
+  );
 
   return [
     {
-      title: "Are you improving while load stays stable?",
-      detail: "Future overlay: scoring, handicap and strokes-gained trend against practice load.",
-      metric: loadLabel,
+      title: "Carry Response",
+      detail: trendDetail(
+        carryTrend,
+        shotGroups.length,
+        "practice days",
+        averageSnapshotLoad(shotGroups),
+      ),
+      metric: carryTrend
+        ? `${carryTrend.delta > 0 ? "+" : ""}${formatOne(carryTrend.delta)} yd`
+        : "Need more data",
+      tone: carryTrendTone(carryTrend),
     },
     {
-      title: "Is speed increasing without higher RPE?",
-      detail: "Future overlay: clubhead speed and ball speed against speed-session effort.",
-      metric: "Speed overlay ready",
+      title: "Accuracy Response",
+      detail: trendDetail(
+        offlineTrend,
+        shotGroups.length,
+        "practice days",
+        averageSnapshotLoad(shotGroups),
+      ),
+      metric: offlineTrend
+        ? `${formatOne(Math.abs(offlineTrend.delta))} yd ${offlineTrend.improved ? "tighter" : "wider"}`
+        : "Need more data",
+      tone: trendTone(offlineTrend),
     },
     {
-      title: "Is scoring improving without acute-load spikes?",
-      detail:
-        "Future overlay: scoring average, fairways, greens and dispersion alongside acute load.",
-      metric: "Performance overlay ready",
+      title: "Scoring Response",
+      detail: trendDetail(
+        scoreTrend,
+        roundGroups.length,
+        "rounds",
+        averageSnapshotLoad(roundGroups),
+      ),
+      metric: scoreTrend
+        ? `${scoreTrend.delta > 0 ? "+" : ""}${formatOne(scoreTrend.delta)} vs par`
+        : "Need round data",
+      tone: trendTone(scoreTrend),
     },
   ];
+}
+
+function buildTrainingBalance(sessions: TrainingSessionListItem[], today: string): TrainingBalance {
+  const windowDays = 30;
+  const startDate = subtractDays(today, windowDays - 1);
+  const buckets: Record<TrainingBalanceSegment["key"], { sessions: number; load: number }> = {
+    range: { sessions: 0, load: 0 },
+    rounds: { sessions: 0, load: 0 },
+    speed: { sessions: 0, load: 0 },
+  };
+
+  for (const session of sessions) {
+    if (session.sessionDate < startDate) {
+      continue;
+    }
+
+    const bucket = trainingBalanceBucket(session);
+    buckets[bucket].sessions += 1;
+    buckets[bucket].load += session.sessionLoad;
+  }
+
+  const totalLoad = Object.values(buckets).reduce((total, bucket) => total + bucket.load, 0);
+  const totalSessions = Object.values(buckets).reduce(
+    (total, bucket) => total + bucket.sessions,
+    0,
+  );
+  const denominator = totalLoad > 0 ? totalLoad : totalSessions;
+
+  return {
+    windowDays,
+    totalSessions,
+    segments: [
+      buildBalanceSegment("range", "Range", buckets.range, denominator, totalLoad),
+      buildBalanceSegment("rounds", "Rounds", buckets.rounds, denominator, totalLoad),
+      buildBalanceSegment("speed", "Speed", buckets.speed, denominator, totalLoad),
+    ],
+  };
+}
+
+function buildBalanceSegment(
+  key: TrainingBalanceSegment["key"],
+  label: string,
+  bucket: { sessions: number; load: number },
+  denominator: number,
+  useLoad: number,
+): TrainingBalanceSegment {
+  const numerator = useLoad > 0 ? bucket.load : bucket.sessions;
+  return {
+    key,
+    label,
+    percent: denominator > 0 ? Math.round((numerator / denominator) * 100) : 0,
+    sessions: bucket.sessions,
+    load: bucket.load,
+  };
+}
+
+function trainingBalanceBucket(session: TrainingSessionListItem): TrainingBalanceSegment["key"] {
+  if (isSpeedTrainingSession(session)) {
+    return "speed";
+  }
+
+  if (session.sourceType === "round" || (session.holesPlayed ?? 0) > 0) {
+    return "rounds";
+  }
+
+  return "range";
+}
+
+function isSpeedTrainingSession(session: TrainingSessionListItem) {
+  const text = `${session.title} ${session.notes ?? ""}`.toLowerCase();
+
+  return (
+    text.includes("speed") ||
+    text.includes("r-speed") ||
+    ((session.physicalDemand ?? 0) >= 8 && session.rpe >= 7 && session.holesPlayed === null)
+  );
+}
+
+type SnapshotTrend = {
+  delta: number;
+  improved: boolean;
+};
+
+function compareSnapshotHalves(
+  groups: SessionSnapshotGroup[],
+  selectValue: (group: SessionSnapshotGroup) => number | null | undefined,
+  direction: "higher" | "lower",
+): SnapshotTrend | null {
+  const values = groups
+    .map((group) => selectValue(group))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  if (values.length < 2) {
+    return null;
+  }
+
+  const splitIndex = Math.max(1, Math.floor(values.length / 2));
+  const previous = mean(values.slice(0, splitIndex));
+  const recent = mean(values.slice(splitIndex));
+
+  if (previous === null || recent === null) {
+    return null;
+  }
+
+  const delta = recent - previous;
+  const improved = direction === "higher" ? delta > 0 : delta < 0;
+
+  return { delta, improved };
+}
+
+function averageSnapshotLoad(groups: SessionSnapshotGroup[]) {
+  const values = groups
+    .map((group) => group.snapshot.sessionLoad)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  return mean(values);
+}
+
+function trendDetail(
+  trend: SnapshotTrend | null,
+  sampleSize: number,
+  sampleLabel: string,
+  averageLoad: number | null,
+) {
+  if (!trend) {
+    return `Needs at least two comparable ${sampleLabel} with workload attached.`;
+  }
+
+  const loadText =
+    averageLoad !== null
+      ? `${Math.round(averageLoad).toLocaleString("en-GB")} avg load`
+      : "load logged";
+  const direction = trend.improved
+    ? "Trend improving"
+    : Math.abs(trend.delta) < 0.1
+      ? "Trend stable"
+      : "Trend slipping";
+
+  return `${direction} over last ${sampleSize} ${sampleLabel} - ${loadText}.`;
+}
+
+function trendTone(trend: SnapshotTrend | null): TrainingEfficiencyCard["tone"] {
+  if (!trend) {
+    return "slate";
+  }
+
+  if (Math.abs(trend.delta) < 0.1) {
+    return "sky";
+  }
+
+  return trend.improved ? "green" : "amber";
+}
+
+function carryTrendTone(trend: SnapshotTrend | null): TrainingEfficiencyCard["tone"] {
+  if (!trend) {
+    return "slate";
+  }
+
+  if (Math.abs(trend.delta) < 1) {
+    return "sky";
+  }
+
+  return trend.improved ? "green" : "amber";
+}
+
+function formatOne(value: number) {
+  return value.toLocaleString("en-GB", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: Math.abs(value) < 10 ? 1 : 0,
+  });
 }
 
 function sourceKey(sourceType: TrainingSourceType, sourceId: string) {

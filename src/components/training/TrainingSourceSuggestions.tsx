@@ -1,10 +1,10 @@
-import { Link2, Save } from "lucide-react";
+import { CheckCircle2, Save } from "lucide-react";
 
 import { createGolfTrainingSessionAction } from "@/app/stats/training-over-time/actions";
 import { RpeSelector } from "@/components/training/RpeSelector";
 import { CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DataPanel, EmptyState, SectionHeader, StatusPill } from "@/components/premium";
+import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
 import type { TrainingSourceSuggestion } from "@/lib/training/trainingData";
 import { calculateSessionLoad } from "@/lib/training/trainingLoad";
 
@@ -22,17 +22,20 @@ export function TrainingSourceSuggestions({
   return (
     <DataPanel>
       <SectionHeader
-        title="Suggested from your golf data"
+        title="Suggestions"
         description="Link existing rounds, imports, practice sessions or speed work without overwriting the source record."
-        action={<StatusPill tone="green">{suggestions.length} ready</StatusPill>}
+        action={
+          <StatusPill tone={suggestions.length > 0 ? "green" : "slate"}>
+            {suggestions.length > 0 ? `${suggestions.length} ready` : "No sessions waiting"}
+          </StatusPill>
+        }
       />
       <CardContent>
         {suggestions.length === 0 ? (
-          <EmptyState
-            icon={<Link2 className="size-5" aria-hidden="true" />}
-            title="No unlogged source sessions found"
-            description="Recent source activity will appear here when it can be turned into a golf load entry."
-          />
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm font-semibold text-emerald-950">
+            <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
+            No sessions waiting
+          </div>
         ) : (
           <div className="grid gap-3">
             {suggestions.map((suggestion) => (

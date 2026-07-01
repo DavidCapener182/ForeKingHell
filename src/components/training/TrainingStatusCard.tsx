@@ -1,5 +1,4 @@
-import { AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
-import type { ReactNode } from "react";
+import { AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
 
 import { CardContent } from "@/components/ui/card";
 import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
@@ -27,74 +26,84 @@ export function TrainingStatusCard({
     <DataPanel>
       <SectionHeader
         title="Training interpretation"
-        description="Plain-English read on golf workload, Golf Form and confidence in the signal."
+        description="Plain-English read on Golf Form, workload and evidence confidence."
         action={<StatusPill tone={status.tone}>{status.label}</StatusPill>}
       />
-      <CardContent className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="premium-hero rounded-lg p-4">
+      <CardContent className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <div className="premium-hero rounded-lg p-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
             <CheckCircle2 className="size-4" aria-hidden="true" />
             Latest read
           </div>
-          <p className="mt-3 text-2xl font-semibold tracking-normal text-foreground">
+          <p className="mt-3 text-xl font-semibold tracking-normal text-foreground">
             {latest ? status.detail : "Start logging to build your golf training profile."}
           </p>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             {latest
               ? status.advice
-              : "Golf Conditioning, acute load and Golf Form will become more useful once several rounds or practice sessions have a load score."}
+              : "Golf Form, Training Fitness and Recent Load will become more useful once several rounds or practice sessions have a load score."}
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Readout
-            icon={<TrendingUp className="size-4" aria-hidden="true" />}
-            label="Trend"
-            value={trend.label}
-            detail={trend.detail}
-          />
-          <Readout
-            icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
-            label="Confidence"
-            value={`${confidence.score} - ${confidence.label}`}
-            detail={confidence.detail}
-          />
-          <Readout
-            icon={<CheckCircle2 className="size-4" aria-hidden="true" />}
-            label="Latest session"
-            value={sessionFormSignal.label}
-            detail={`${sessionFormSignal.detail} Comparison strength: ${sessionFormSignal.confidence}.`}
-          />
-          <Readout
-            icon={<AlertTriangle className="size-4" aria-hidden="true" />}
-            label="Accuracy note"
-            value="Golf workload signal"
-            detail="This may suggest when to adjust practice volume. It is not a medical or injury diagnosis."
-          />
+        <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-5 text-sky-950">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Sparkles className="size-4" aria-hidden="true" />
+              Coach summary
+            </div>
+            <StatusPill tone="sky">{confidence.score} evidence</StatusPill>
+          </div>
+          <p className="mt-3 text-2xl font-semibold tracking-normal">
+            {latest ? coachSummaryLead(status.label) : "Start logging to unlock the coaching read."}
+          </p>
+          <div className="mt-4 grid gap-2">
+            {coachSummaryLines({ latest, trend, confidence, sessionFormSignal }).map((line) => (
+              <div key={line} className="flex gap-2 text-sm leading-5">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-700" aria-hidden="true" />
+                <span>{line}</span>
+              </div>
+            ))}
+            <div className="flex gap-2 text-sm leading-5 text-sky-900/80">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
+              <span>
+                This guides practice intensity and recovery. It is not a medical or injury
+                diagnosis.
+              </span>
+            </div>
+          </div>
         </div>
       </CardContent>
     </DataPanel>
   );
 }
 
-function Readout({
-  icon,
-  label,
-  value,
-  detail,
+function coachSummaryLead(label: string) {
+  return `Golf Form remains at ${label}.`;
+}
+
+function coachSummaryLines({
+  latest,
+  trend,
+  confidence,
+  sessionFormSignal,
 }: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail: string;
+  latest: FitnessFreshnessPoint | null;
+  trend: TrainingTrend;
+  confidence: TrainingConfidence;
+  sessionFormSignal: SessionFormSignal;
 }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-4">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <p className="mt-2 text-lg font-semibold tracking-normal text-foreground">{value}</p>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
-    </div>
-  );
+  if (!latest) {
+    return [
+      "Log one round, range session or speed block to start the workload model.",
+      "Evidence confidence will build as comparable sessions accumulate.",
+    ];
+  }
+
+  return [
+    `Golf Form is ${Math.round(latest.form).toLocaleString("en-GB")} against your 100 baseline.`,
+    `Recent load is ${Math.round(latest.fatigue).toLocaleString("en-GB")} against Training Fitness ${Math.round(latest.fitness).toLocaleString("en-GB")}.`,
+    trend.detail,
+    sessionFormSignal.detail,
+    `Evidence confidence is ${confidence.label.toLowerCase()}: ${confidence.detail}`,
+    `Latest session signal: ${sessionFormSignal.label}. Evidence strength: ${sessionFormSignal.confidence}.`,
+  ];
 }

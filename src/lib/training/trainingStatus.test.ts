@@ -28,7 +28,7 @@ describe("golf training status", () => {
     });
   });
 
-  it("labels acute load spikes and overloaded states", () => {
+  it("labels recent load spikes and overloaded states", () => {
     expect(
       getTrainingTrend([
         point("2026-06-01", 0, 100, 91),
@@ -37,7 +37,7 @@ describe("golf training status", () => {
       ]),
     ).toMatchObject({
       key: "acute_load_spike",
-      label: "Acute load spike",
+      label: "Recent Load spike",
     });
 
     expect(

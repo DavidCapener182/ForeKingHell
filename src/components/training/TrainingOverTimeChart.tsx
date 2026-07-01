@@ -25,17 +25,17 @@ const DISPLAY_FORM_GAIN_ALPHA = 0.28;
 const DISPLAY_FORM_SETBACK_RESPONSE = 0.7;
 
 const chartConfig = {
-  fitness: {
-    label: "Golf Conditioning",
-    color: "#087A3D",
-  },
-  fatigue: {
-    label: "Acute load",
-    color: "#D97706",
-  },
   displayForm: {
     label: "Golf Form",
     color: "#2563EB",
+  },
+  fitness: {
+    label: "Training Fitness",
+    color: "#087A3D",
+  },
+  fatigue: {
+    label: "Recent Load",
+    color: "#D97706",
   },
 } satisfies ChartConfig;
 
@@ -52,8 +52,8 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
   return (
     <ChartContainer
       config={chartConfig}
-      className="h-[20rem] w-full min-w-0 aspect-auto"
-      initialDimension={{ width: 720, height: 320 }}
+      className="h-[17rem] w-full min-w-0 aspect-auto"
+      initialDimension={{ width: 720, height: 272 }}
     >
       <LineChart
         data={chartData}
@@ -131,6 +131,15 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
         />
         <Line
           type="monotone"
+          yAxisId="form"
+          dataKey="displayForm"
+          stroke="var(--color-displayForm)"
+          strokeWidth={2.5}
+          dot={false}
+          label={renderLatestFormLabel(latestPointIndex)}
+        />
+        <Line
+          type="monotone"
           yAxisId="workload"
           dataKey="fitness"
           stroke="var(--color-fitness)"
@@ -144,15 +153,6 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
           stroke="var(--color-fatigue)"
           strokeWidth={2.5}
           dot={false}
-        />
-        <Line
-          type="monotone"
-          yAxisId="form"
-          dataKey="displayForm"
-          stroke="var(--color-displayForm)"
-          strokeWidth={2.5}
-          dot={false}
-          label={renderLatestFormLabel(latestPointIndex)}
         />
       </LineChart>
     </ChartContainer>

@@ -78,6 +78,7 @@ type PageHeaderMetric = {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
+  className?: string;
 };
 
 type PageHeaderProps = {
@@ -129,7 +130,12 @@ export function PageHeader({
           ) : null}
         </div>
         {primaryMetric || actions ? (
-          <div className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 py-2">
+          <div
+            className={cn(
+              "premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 py-2",
+              primaryMetric?.className,
+            )}
+          >
             {primaryMetric ? (
               <div className="min-w-0">
                 <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -209,7 +215,10 @@ export function PageHeader({
             {metrics.map((metric) => (
               <div
                 key={metric.label}
-                className="metric-tile desktop-metric-tile luxury-metric-card"
+                className={cn(
+                  "metric-tile desktop-metric-tile luxury-metric-card",
+                  metric.className,
+                )}
               >
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {metric.label}

@@ -5,6 +5,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import {
   clubs,
+  golfTrainingSessions,
   importFiles,
   importRows,
   sessions,
@@ -53,6 +54,7 @@ import {
   DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
   buildStrokesGainedEventsFromCourseShots,
 } from "@/lib/strokes-gained";
+import { buildImportedTrainingSessionRow } from "@/lib/training/sourceLoad";
 import {
   MAX_IMPORT_CSV_BYTES,
   MAX_IMPORT_CSV_ROWS,
@@ -419,6 +421,23 @@ async function persistImport(
 
     if (existingImport) {
       await tx
+        .insert(golfTrainingSessions)
+        .values(
+          buildImportedTrainingSessionRow({
+            userId,
+            sourceId: existingImport.id,
+            source: input.source,
+            sessionType: input.sessionType,
+            sessionDate,
+            fileName: input.fileName,
+            courseName: input.courseName,
+            shotCount: input.shots.length,
+            scorecardHoleCount: input.coursePlan?.scorecard.length ?? null,
+          }),
+        )
+        .onConflictDoNothing();
+
+      await tx
         .insert(importFiles)
         .values({
           userId,
@@ -598,6 +617,23 @@ async function persistImport(
         })),
       )
       .returning({ id: shots.id });
+
+    await tx
+      .insert(golfTrainingSessions)
+      .values(
+        buildImportedTrainingSessionRow({
+          userId,
+          sourceId: session.id,
+          source: input.source,
+          sessionType: input.sessionType,
+          sessionDate,
+          fileName: input.fileName,
+          courseName: input.courseName,
+          shotCount: input.shots.length,
+          scorecardHoleCount: input.coursePlan?.scorecard.length ?? null,
+        }),
+      )
+      .onConflictDoNothing();
 
     if (input.coursePlan?.shots.length) {
       const shotIdByRowNumber = new Map<number, string>();
@@ -1147,6 +1183,7 @@ function revalidateImportPages() {
     revalidatePath("/shots");
     revalidatePath("/rounds");
     revalidatePath("/courses");
+    revalidatePath("/stats/training-over-time");
   } catch {
     // Allows the import helper to be reused by local scripts outside a Next.js request.
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
 import {
   ChartContainer,
@@ -17,7 +17,7 @@ type TrainingLoadBarsProps = {
 const chartConfig = {
   load: {
     label: "Session load",
-    color: "#111827",
+    color: "#087A3D",
   },
 } satisfies ChartConfig;
 
@@ -44,10 +44,30 @@ export function TrainingLoadBars({ data }: TrainingLoadBarsProps) {
             <ChartTooltipContent labelFormatter={(value) => formatLongDate(String(value))} />
           }
         />
-        <Bar dataKey="load" fill="var(--color-load)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="load" fill="var(--color-load)" radius={[4, 4, 0, 0]}>
+          {data.map((point) => (
+            <Cell key={point.date} fill={loadColor(point.load)} />
+          ))}
+        </Bar>
       </BarChart>
     </ChartContainer>
   );
+}
+
+function loadColor(load: number) {
+  if (load >= 500) {
+    return "#DC2626";
+  }
+
+  if (load >= 300) {
+    return "#D97706";
+  }
+
+  if (load > 0) {
+    return "#087A3D";
+  }
+
+  return "#CBD5E1";
 }
 
 function formatAxisNumber(value: number) {

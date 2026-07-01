@@ -51,7 +51,17 @@ export function TrainingSummaryCards({
   return (
     <section className="grid gap-3 md:grid-cols-3">
       <SummaryCard
-        label="Golf Conditioning"
+        label="Golf Form"
+        value={summary.form.value}
+        change={summary.form.change}
+        explanation="How well your golf is trending"
+        icon={<Sparkles className="size-5" aria-hidden="true" />}
+        statusLabel={`${status.label} · ${sessionFormSignal.summaryLabel}`}
+        tooltip={metricTooltips.golfForm}
+        tone={status.tone}
+      />
+      <SummaryCard
+        label="Training Fitness"
         value={summary.fitness.value}
         change={summary.fitness.change}
         explanation="Long-term golf workload capacity"
@@ -61,7 +71,7 @@ export function TrainingSummaryCards({
         tone="green"
       />
       <SummaryCard
-        label="Acute Load"
+        label="Recent Load"
         value={summary.fatigue.value}
         change={summary.fatigue.change}
         explanation="Recent golf workload"
@@ -69,16 +79,6 @@ export function TrainingSummaryCards({
         statusLabel={formatAcuteLoadChange(summary.fatigue.value, summary.fatigue.change)}
         tooltip={metricTooltips.acuteLoad}
         tone="amber"
-      />
-      <SummaryCard
-        label="Golf Form"
-        value={summary.form.value}
-        change={summary.form.change}
-        explanation="How well your golf is trending"
-        icon={<Sparkles className="size-5" aria-hidden="true" />}
-        statusLabel={`${status.label} · ${sessionFormSignal.summaryLabel}`}
-        tooltip={metricTooltips.golfForm}
-        tone={status.tone}
       />
     </section>
   );
@@ -178,10 +178,10 @@ function formatConditioningChange(change: number) {
   }
 
   if (rounded >= 5) {
-    return "Conditioning building";
+    return "Training Fitness building";
   }
 
-  return "Conditioning holding";
+  return "Training Fitness holding";
 }
 
 function formatAcuteLoadChange(value: number, change: number) {
@@ -189,11 +189,11 @@ function formatAcuteLoadChange(value: number, change: number) {
   const roundedChange = Math.round(change);
 
   if (roundedValue >= 120 || roundedChange >= 80) {
-    return "Heavy practice week";
+    return "Heavy week";
   }
 
   if (roundedValue >= 70 || roundedChange >= 25) {
-    return "Higher than normal";
+    return "Above normal";
   }
 
   if (roundedChange <= -25) {

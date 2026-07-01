@@ -126,7 +126,7 @@ export function getTrainingTrend(series: FitnessFreshnessPoint[]): TrainingTrend
   if (fatigueChange > 15 || sevenDayLoad > previousSevenDayLoad * 1.75) {
     return {
       key: "acute_load_spike",
-      label: "Acute load spike",
+      label: "Recent Load spike",
       detail: "Workload is up sharply. Use this for practice planning, not as a form score.",
     };
   }
@@ -150,7 +150,7 @@ export function getTrainingTrend(series: FitnessFreshnessPoint[]): TrainingTrend
   if (twoWeekFitnessChange < -5 && sevenDayLoad === 0) {
     return {
       key: "detraining",
-      label: "Conditioning easing",
+      label: "Training Fitness easing",
       detail: "Long-term golf workload is easing after a quiet spell.",
     };
   }
@@ -158,7 +158,7 @@ export function getTrainingTrend(series: FitnessFreshnessPoint[]): TrainingTrend
   if (fitnessChange > 5) {
     return {
       key: "fitness_rising",
-      label: "Conditioning building",
+      label: "Training Fitness building",
       detail: "Your long-term golf workload is trending upward.",
     };
   }
@@ -166,7 +166,7 @@ export function getTrainingTrend(series: FitnessFreshnessPoint[]): TrainingTrend
   if (fitnessChange < -5) {
     return {
       key: "fitness_dropping",
-      label: "Conditioning easing",
+      label: "Training Fitness easing",
       detail: "Your long-term golf workload is easing after a lighter spell.",
     };
   }
