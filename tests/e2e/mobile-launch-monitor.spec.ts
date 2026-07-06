@@ -56,6 +56,28 @@ test.describe("mobile launch monitor loop", () => {
     await expect(csvSource).toHaveAttribute("href", /\/import\?source=csv#csv-import/);
     await expect(page.getByText(/We do not store your Rapsodo password/i)).toBeVisible();
   });
+
+  test("surfaces mobile dispersion before the shot list", async ({ page }) => {
+    await gotoAuthenticatedOrSkip(page, "/shots", /Dispersion map/i);
+
+    await expect(page.getByRole("heading", { name: "Dispersion map" })).toBeVisible();
+    await expect(page.locator('[aria-label="Club dispersion filters"]')).toBeVisible();
+    await expect(page.locator("#dispersion [data-media-container]").first()).toBeVisible();
+  });
+
+  test("starts practice with a mobile launch-monitor cockpit", async ({ page }) => {
+    await gotoAuthenticatedOrSkip(page, "/practice", /Active session mode/i);
+
+    const cockpit = page.locator("section", { hasText: "Active session mode" }).first();
+    await expect(cockpit).toBeVisible();
+    await expect(
+      cockpit.getByText(/Practice scoring is driven by imported launch-monitor shots/i),
+    ).toBeVisible();
+    await expect(cockpit.getByText("Carry", { exact: true })).toBeVisible();
+    await expect(cockpit.getByText("Spin", { exact: true })).toBeVisible();
+    await expect(cockpit.getByText("Smash", { exact: true })).toBeVisible();
+    await expect(cockpit.getByText("Readiness", { exact: true })).toBeVisible();
+  });
 });
 
 async function gotoAuthenticatedOrSkip(page: Page, path: string, expectedText: RegExp | string) {

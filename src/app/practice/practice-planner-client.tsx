@@ -121,13 +121,15 @@ export function PracticePlannerClient({
   );
   const [localSavedPlans] = useState(savedPlans);
   const initialSavedPlan = initialPlan.id
-    ? savedPlans.find((savedPlan) => savedPlan.id === initialPlan.id) ?? null
+    ? (savedPlans.find((savedPlan) => savedPlan.id === initialPlan.id) ?? null)
     : null;
   const [comparison, setComparison] = useState<PracticeComparison | null>(
     initialSavedPlan?.result?.comparison ?? latestSessionReview?.comparison ?? null,
   );
   const [practiceScore, setPracticeScore] = useState<PracticeScore | null>(
-    initialSavedPlan?.result ? scoreFromSavedPlan(initialSavedPlan) : latestSessionReview?.score ?? null,
+    initialSavedPlan?.result
+      ? scoreFromSavedPlan(initialSavedPlan)
+      : (latestSessionReview?.score ?? null),
   );
   const [message, setMessage] = useState<string | null>(
     latestSessionReview && !initialSavedPlan?.result
@@ -176,7 +178,9 @@ export function PracticePlannerClient({
       setPlan((current) => ({ ...current, id: result.planId, status: "planned" }));
       setComparison(null);
       setPracticeScore(null);
-      setMessage("Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.");
+      setMessage(
+        "Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.",
+      );
     });
   }
 
@@ -221,7 +225,9 @@ export function PracticePlannerClient({
     startTransition(async () => {
       await startPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "awaiting_import" }));
-      setMessage("Practice started. Upload or sync the matching launch-monitor session when finished.");
+      setMessage(
+        "Practice started. Upload or sync the matching launch-monitor session when finished.",
+      );
     });
   }
 
@@ -275,7 +281,7 @@ export function PracticePlannerClient({
   }
 
   return (
-    <div className="grid gap-3 lg:gap-4">
+    <div id="practice-plan" className="grid gap-3 scroll-mt-28 lg:gap-4">
       <PracticeSetupBar
         options={options}
         updateOptions={updateOptions}
@@ -295,11 +301,7 @@ export function PracticePlannerClient({
         isPending={isPending}
       />
 
-      <PracticeTodayCard
-        plan={plan}
-        focusSummary={focusSummary}
-        message={message}
-      />
+      <PracticeTodayCard plan={plan} focusSummary={focusSummary} message={message} />
 
       <div className="grid gap-3 sm:grid-cols-12 sm:items-start">
         <div className="min-w-0 sm:col-span-5 xl:col-span-4">
@@ -311,10 +313,7 @@ export function PracticePlannerClient({
           />
         </div>
         <div className="min-w-0 sm:col-span-5 xl:col-span-5">
-          <SelectedBlockDetail
-            block={selectedBlock}
-            comparison={comparison}
-          />
+          <SelectedBlockDetail block={selectedBlock} comparison={comparison} />
         </div>
         <div className="min-w-0 sm:col-span-2 xl:col-span-3">
           <SessionControlPanel
@@ -358,7 +357,9 @@ function PracticeSetupBar({
   trainingBlocked: boolean;
 }) {
   const showBalls = ["range", "course_warmup", "mixed"].includes(options.sessionType);
-  const selectedBallCount = options.facility?.customBalls ? "custom" : String(options.ballCount ?? 80);
+  const selectedBallCount = options.facility?.customBalls
+    ? "custom"
+    : String(options.ballCount ?? 80);
 
   return (
     <section className="rounded-xl border bg-white/80 p-2.5 shadow-sm ring-1 ring-emerald-950/5">
@@ -390,7 +391,10 @@ function PracticeSetupBar({
         <CompactSelect
           label="Time"
           value={String(options.timeMinutes)}
-          options={timeOptions.map((minutes) => ({ value: String(minutes), label: `${minutes} min` }))}
+          options={timeOptions.map((minutes) => ({
+            value: String(minutes),
+            label: `${minutes} min`,
+          }))}
           onChange={(value) => updateOptions({ timeMinutes: Number(value) })}
         />
         <CompactSelect
@@ -549,7 +553,8 @@ function PracticeSessionImportBar({
               >
                 {importOptions.map((option) => (
                   <option key={option.id} value={option.id}>
-                    {option.dateLabel} | {option.shotCount} shots | {formatSessionOptionType(option.sessionType)} | {option.label}
+                    {option.dateLabel} | {option.shotCount} shots |{" "}
+                    {formatSessionOptionType(option.sessionType)} | {option.label}
                   </option>
                 ))}
               </select>
@@ -607,7 +612,9 @@ function PracticeTodayCard({
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">Practise this today</Badge>
+            <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">
+              Practise this today
+            </Badge>
             <Badge variant="outline">{plannedBalls}</Badge>
             <Badge variant="outline">{plan.estimatedTimeMinutes} min</Badge>
             <Badge variant="outline">{plan.trainingStatus}</Badge>
@@ -748,7 +755,9 @@ function SelectedBlockDetail({
   if (!block) {
     return (
       <section className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
-        <p className="text-sm text-muted-foreground">Generate a plan to see the main practice block.</p>
+        <p className="text-sm text-muted-foreground">
+          Generate a plan to see the main practice block.
+        </p>
       </section>
     );
   }
@@ -786,7 +795,9 @@ function SelectedBlockDetail({
       <div className="mt-3 rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
         {decision ? (
           <>
-            <p className="font-semibold text-foreground">Uploaded result: {decision.result.replace("_", " ")}</p>
+            <p className="font-semibold text-foreground">
+              Uploaded result: {decision.result.replace("_", " ")}
+            </p>
             <p className="mt-1">Actual: {decision.actual}</p>
             <p>{decision.summary}</p>
           </>
@@ -824,7 +835,8 @@ function SessionControlPanel({
   const hasImport = Boolean(score || comparison?.sourceSessionId);
   const status = plan.status ?? (savedPlanId ? "planned" : "draft");
   const plannedBalls = plan.totalBalls ?? summary.totalBalls;
-  const plannedVolume = plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plannedBalls} balls`;
+  const plannedVolume =
+    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plannedBalls} balls`;
   const focus = plan.focusClubs.map((club) => club.toUpperCase()).join(", ") || "Baseline";
   const statusLabel = hasImport
     ? status === "draft"
@@ -870,7 +882,10 @@ function SessionControlPanel({
             ) : (
               <>
                 <p className="font-semibold text-foreground">Match rule</p>
-                <p>Auto-match uses newer uploads. If needed, choose the exact uploaded session near the top.</p>
+                <p>
+                  Auto-match uses newer uploads. If needed, choose the exact uploaded session near
+                  the top.
+                </p>
               </>
             )}
           </div>
@@ -884,7 +899,11 @@ function SessionControlPanel({
               </Button>
             ) : null}
             {status === "draft" ? (
-              <Button onClick={onSave} disabled={isPending || Boolean(savedPlanId)} className="rounded-lg">
+              <Button
+                onClick={onSave}
+                disabled={isPending || Boolean(savedPlanId)}
+                className="rounded-lg"
+              >
                 <Save className="size-4" />
                 {hasImport ? "Save reviewed plan" : "Save plan"}
               </Button>
@@ -895,7 +914,8 @@ function SessionControlPanel({
                 Start practice
               </Button>
             ) : null}
-            {(status === "awaiting_import" || status === "match_found" || status === "analysed") && !hasImport ? (
+            {(status === "awaiting_import" || status === "match_found" || status === "analysed") &&
+            !hasImport ? (
               <Button asChild variant="outline" className="rounded-lg">
                 <Link href="/import" prefetch={false}>
                   <Upload className="size-4" />
@@ -909,8 +929,14 @@ function SessionControlPanel({
                 Import after saving
               </Button>
             ) : null}
-            {(status === "planned" || status === "awaiting_import" || status === "match_found") && !hasImport ? (
-              <Button variant="ghost" className="rounded-lg" onClick={onAbandon} disabled={isPending}>
+            {(status === "planned" || status === "awaiting_import" || status === "match_found") &&
+            !hasImport ? (
+              <Button
+                variant="ghost"
+                className="rounded-lg"
+                onClick={onAbandon}
+                disabled={isPending}
+              >
                 Mark abandoned
               </Button>
             ) : null}
@@ -940,7 +966,8 @@ function ScorecardPanel({
       <div className="rounded-lg border bg-muted/20 p-3">
         <p className="text-sm font-semibold">Import progress</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {summary.importedBalls}/{summary.totalBalls} planned balls found. {summary.matchedBlocks}/{summary.totalBlocks} blocks met planned volume.
+          {summary.importedBalls}/{summary.totalBalls} planned balls found. {summary.matchedBlocks}/
+          {summary.totalBlocks} blocks met planned volume.
         </p>
       </div>
       <div className="rounded-lg border bg-white/70 p-3">
@@ -985,7 +1012,9 @@ function PlanVsActual({ comparison }: { comparison: PracticeComparison | null })
               <MiniMetric label="Mode" value={comparison.scoringMode} />
             </div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Clubs: {comparison.planVsActual.actualClubs.map((club) => club.toUpperCase()).join(", ") || "No clubs"}
+              Clubs:{" "}
+              {comparison.planVsActual.actualClubs.map((club) => club.toUpperCase()).join(", ") ||
+                "No clubs"}
             </p>
           </div>
           {comparison.decisions.slice(0, 4).map((item) => (
@@ -1081,7 +1110,8 @@ function ImportPanel({
   return (
     <div className="grid gap-2">
       <p className="text-sm leading-6 text-muted-foreground">
-        Upload the next matching Rapsodo session and LM World Tour will score the plan from the shot data.
+        Upload the next matching Rapsodo session and LM World Tour will score the plan from the shot
+        data.
       </p>
       {savedPlanId ? (
         <div className="grid gap-2">
@@ -1181,7 +1211,11 @@ function SavedPlansPanel({
           >
             <span className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-semibold">{plan.title}</span>
-              <Badge variant={plan.status === "analysed" || plan.status === "completed" ? "default" : "outline"}>
+              <Badge
+                variant={
+                  plan.status === "analysed" || plan.status === "completed" ? "default" : "outline"
+                }
+              >
                 {plan.status}
               </Badge>
             </span>

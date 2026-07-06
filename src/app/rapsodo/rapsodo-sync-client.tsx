@@ -112,7 +112,14 @@ type HoleReviewState = Record<
 type ClubSelectionMode = "recommendations" | "rapsodo" | "custom";
 type CourseImportMode = "shot_only" | "scored_round";
 type BrowserNotificationState = NotificationPermission | "unsupported";
-type RapsodoMobileStep = "connect" | "sessions" | "preview" | "clubs" | "course" | "import";
+type RapsodoMobileStep =
+  | "connect"
+  | "sessions"
+  | "preview"
+  | "clubs"
+  | "course"
+  | "import"
+  | "review";
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const RAPSODO_SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -352,12 +359,13 @@ export function RapsodoSyncClient({
   );
   const mobileSteps = useMemo(
     () => [
-      { id: "connect" as const, label: "Connect" },
-      { id: "sessions" as const, label: "Sessions" },
+      { id: "connect" as const, label: "Connect/upload" },
+      { id: "sessions" as const, label: "Choose" },
       { id: "preview" as const, label: "Preview" },
-      { id: "clubs" as const, label: "Clubs" },
+      { id: "clubs" as const, label: "Map clubs" },
       ...(isCoursePreview ? [{ id: "course" as const, label: "Course" }] : []),
       { id: "import" as const, label: "Import" },
+      { id: "review" as const, label: "Review trust" },
     ],
     [isCoursePreview],
   );
@@ -365,7 +373,9 @@ export function RapsodoSyncClient({
     ? mobileStep
     : "preview";
   const activeMobileStepIndex = mobileSteps.findIndex((step) => step.id === visibleMobileStep);
-  const isMobileReviewStep = ["preview", "clubs", "course", "import"].includes(visibleMobileStep);
+  const isMobileReviewStep = ["preview", "clubs", "course", "import", "review"].includes(
+    visibleMobileStep,
+  );
   const showStickyReviewBar = Boolean(preview && isMobileReviewStep);
   const showMobileReviewChrome = Boolean(preview);
   const showMobileConnectionCard = !status.connected || visibleMobileStep === "connect";
@@ -706,6 +716,7 @@ export function RapsodoSyncClient({
         message: saveNotice.message,
         sessionId: result.data.sessionId,
       });
+      setMobileStep("review");
       setSessions((current) =>
         current.map((session) =>
           session.providerKind === preview.session.providerKind &&
@@ -1218,7 +1229,7 @@ export function RapsodoSyncClient({
             ref={previewSectionRef}
             className={cn(
               "space-y-4 scroll-mt-4",
-              ["preview", "clubs", "course", "import"].includes(visibleMobileStep)
+              ["preview", "clubs", "course", "import", "review"].includes(visibleMobileStep)
                 ? "block"
                 : "hidden sm:block",
             )}
@@ -1305,7 +1316,9 @@ export function RapsodoSyncClient({
                 <div
                   className={cn(
                     "grid gap-2 sm:grid-cols-4",
-                    visibleMobileStep === "preview" || visibleMobileStep === "import"
+                    visibleMobileStep === "preview" ||
+                      visibleMobileStep === "import" ||
+                      visibleMobileStep === "review"
                       ? "grid"
                       : "hidden sm:grid",
                   )}
@@ -1323,6 +1336,41 @@ export function RapsodoSyncClient({
                   />
                   <CompactSummaryTile label="Duplicate" value={preview.rawCsvHash.slice(0, 12)} />
                 </div>
+                {visibleMobileStep === "review" ? (
+                  <div className="premium-command-surface grid gap-3 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">Review trust</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Confirmed clubs, duplicate hash, warnings and save status decide whether
+                          this session is trusted for bag numbers, coach scoring and challenge
+                          proof.
+                        </p>
+                      </div>
+                      <Badge
+                        variant={visibleSaveStatus?.kind === "success" ? "default" : "secondary"}
+                      >
+                        {visibleSaveStatus?.kind === "success" ? "Trusted" : "Reviewing"}
+                      </Badge>
+                    </div>
+                    <div className="grid gap-2 text-sm">
+                      <DataPair
+                        label="Club mapping"
+                        value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount} confirmed`}
+                      />
+                      <DataPair
+                        label="Warnings"
+                        value={
+                          preview.warnings.length === 0 ? "None" : `${preview.warnings.length}`
+                        }
+                      />
+                      <DataPair
+                        label="Save status"
+                        value={visibleSaveStatus?.title ?? "Not imported yet"}
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 {preview.warnings.length > 0 ? (
                   <Alert>
                     <AlertCircle className="size-4" />
@@ -1617,7 +1665,19 @@ export function RapsodoSyncClient({
               >
                 Back
               </Button>
-              {visibleMobileStep === "import" ? (
+              {visibleMobileStep === "review" ? (
+                <Button asChild className="premium-action rounded-lg">
+                  <Link
+                    href={
+                      visibleSaveStatus?.kind === "success" && visibleSaveStatus.sessionId
+                        ? `/shots?sessionId=${encodeURIComponent(visibleSaveStatus.sessionId)}`
+                        : "/shots"
+                    }
+                  >
+                    View trusted shots
+                  </Link>
+                </Button>
+              ) : visibleMobileStep === "import" ? (
                 <Button
                   type="button"
                   disabled={!canSave}
@@ -1944,7 +2004,7 @@ function RapsodoMobileStepper({
           type="button"
           onClick={() => onStepChange(item.id)}
           className={cn(
-            "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
+            "focus-aaa min-h-11 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm outline-none",
             item.id === step
               ? "premium-route-tab-active"
               : "border-border bg-white/80 text-slate-700",

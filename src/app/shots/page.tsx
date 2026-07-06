@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowDown,
   ArrowLeft,
@@ -126,6 +127,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
       rowTypes,
       sessionSummaries,
       savedShots,
+      dispersionShots,
       totalFilteredShots,
       clubsForFilter,
       categories,
@@ -247,10 +249,17 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
       <MobileSectionChips
         items={[
           { label: "Import", href: "/import" },
+          { label: "Dispersion", href: "#dispersion" },
           { label: "Filters", href: "#filters" },
           { label: "Sessions", href: "#sessions" },
           { label: "Shots", href: "#shots" },
         ]}
+      />
+
+      <MobileShotDispersionMap
+        shots={dispersionShots}
+        filters={filters}
+        clubsForFilter={clubsForFilter}
       />
 
       <div id="filters" className="grid gap-3 scroll-mt-28">
@@ -617,6 +626,161 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
   );
 }
 
+type DispersionShot = {
+  id: string;
+  shotAt: Date;
+  clubType: string;
+  carryYd: number | null;
+  sideCarryYd: number | null;
+  ballSpeedMph: number | null;
+  smashFactor: number | null;
+};
+
+function MobileShotDispersionMap({
+  shots,
+  filters,
+  clubsForFilter,
+}: {
+  shots: DispersionShot[];
+  filters: ShotFilters;
+  clubsForFilter: string[];
+}) {
+  const plottedShots = shots.filter(
+    (shot) => isFiniteShotMetric(shot.carryYd) && isFiniteShotMetric(shot.sideCarryYd),
+  );
+  const maxCarry = Math.max(1, ...plottedShots.map((shot) => Number(shot.carryYd)));
+  const maxSide = Math.max(12, ...plottedShots.map((shot) => Math.abs(Number(shot.sideCarryYd))));
+  const clubCounts = clubsForFilter.map((clubType) => ({
+    clubType,
+    count: shots.filter((shot) => shot.clubType === clubType).length,
+  }));
+  const playableCount = plottedShots.filter(
+    (shot) => Math.abs(Number(shot.sideCarryYd)) <= 20,
+  ).length;
+  const averageCarry = averageShotMetric(plottedShots.map((shot) => shot.carryYd));
+  const averageSmash = averageShotMetric(plottedShots.map((shot) => shot.smashFactor));
+
+  return (
+    <section id="dispersion" className="grid gap-3 scroll-mt-28 sm:hidden">
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold tracking-normal text-foreground">Dispersion map</h2>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            Recent matching shots over a fairway view. Chips filter the archive.
+          </p>
+        </div>
+        <Badge variant="secondary">{plottedShots.length} plotted</Badge>
+      </div>
+      <div
+        aria-label="Club dispersion filters"
+        tabIndex={0}
+        className="focus-aaa -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 outline-none"
+      >
+        <Link
+          href={shotsHref({ ...filters, page: 1, club: "" })}
+          prefetch={false}
+          className={`focus-aaa min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold outline-none ${
+            filters.club
+              ? "border-border bg-white/80 text-muted-foreground"
+              : "border-emerald-950 bg-emerald-950 text-white"
+          }`}
+        >
+          All
+        </Link>
+        {clubCounts
+          .filter((club) => club.count > 0)
+          .map((club) => {
+            const active = filters.club === club.clubType;
+
+            return (
+              <Link
+                key={club.clubType}
+                href={shotsHref({ ...filters, page: 1, club: club.clubType })}
+                prefetch={false}
+                className={`focus-aaa min-h-11 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold outline-none ${
+                  active
+                    ? "border-emerald-950 bg-emerald-950 text-white"
+                    : "border-border bg-white/80 text-muted-foreground"
+                }`}
+              >
+                {formatClubType(club.clubType)}
+              </Link>
+            );
+          })}
+      </div>
+      <div className="apple-panel-strong overflow-hidden rounded-lg">
+        <div
+          data-media-container
+          className="relative aspect-[4/5] min-h-[24rem] overflow-hidden rounded-lg bg-[#eef6ef]"
+        >
+          <Image
+            src="/assets/fairway-dispersion-bg.svg"
+            alt=""
+            fill
+            loading="eager"
+            sizes="calc(100vw - 2rem)"
+            className="object-cover opacity-95"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(5,44,23,0.08))]" />
+          {plottedShots.length > 0 ? (
+            plottedShots.slice(0, 80).map((shot) => {
+              const x = clampPercent(50 + (Number(shot.sideCarryYd) / maxSide) * 38, 8, 92);
+              const y = clampPercent(88 - (Number(shot.carryYd) / maxCarry) * 72, 8, 90);
+
+              return (
+                <span
+                  key={shot.id}
+                  className={`absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-[0_0_0_4px_rgba(255,255,255,0.5)] ${dispersionPointClass(
+                    shot.sideCarryYd,
+                  )}`}
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                  aria-hidden="true"
+                />
+              );
+            })
+          ) : (
+            <div className="absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-lg bg-white/90 p-4 text-center text-sm font-medium text-muted-foreground shadow-sm">
+              No carry and side data match this filter yet.
+            </div>
+          )}
+          <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2">
+            <DispersionMetric label="Carry" value={formatYards(averageCarry)} />
+            <DispersionMetric
+              label="Playable"
+              value={`${playableCount}/${plottedShots.length || 0}`}
+            />
+            <DispersionMetric label="Smash" value={formatMetric(averageSmash)} />
+          </div>
+        </div>
+      </div>
+      <MobileDataList>
+        {plottedShots.slice(0, 3).map((shot) => (
+          <MobileDataCard
+            key={`fallback-${shot.id}`}
+            title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)}`}
+            subtitle={formatDate(shot.shotAt)}
+            action={<Badge variant="outline">{formatSignedYards(Number(shot.sideCarryYd))}</Badge>}
+          >
+            <DataPair label="Ball speed" value={formatMetric(shot.ballSpeedMph)} />
+            <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
+          </MobileDataCard>
+        ))}
+      </MobileDataList>
+    </section>
+  );
+}
+
+function DispersionMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-white/90 px-2 py-2 text-center shadow-sm">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{value}</p>
+    </div>
+  );
+}
+
 function ShotFilterFields({
   filters,
   clubsForFilter,
@@ -736,6 +900,7 @@ async function getShotDatabase(filters: ShotFilters) {
     rawCountsBySession,
     [filteredCount],
     savedShots,
+    dispersionShots,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
@@ -810,6 +975,21 @@ async function getShotDatabase(filters: ShotFilters) {
       .orderBy(...shotOrderBy(filters))
       .limit(PAGE_SIZE)
       .offset((filters.page - 1) * PAGE_SIZE),
+    db
+      .select({
+        id: shots.id,
+        shotAt: shots.shotAt,
+        clubType: shots.clubType,
+        carryYd: shots.carryYd,
+        sideCarryYd: shots.sideCarryYd,
+        ballSpeedMph: shots.ballSpeedMph,
+        smashFactor: shots.smashFactor,
+      })
+      .from(shots)
+      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+      .where(where)
+      .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
+      .limit(90),
   ]);
 
   const shotCountBySessionId = new Map(
@@ -832,6 +1012,7 @@ async function getShotDatabase(filters: ShotFilters) {
     rowTypes,
     sessionSummaries,
     savedShots,
+    dispersionShots,
     totalFilteredShots: filteredCount?.value ?? 0,
     clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
     categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
@@ -1092,6 +1273,54 @@ function formatDate(value: Date) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatYards(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
+
+function formatSignedYards(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} yd`;
+}
+
+function isFiniteShotMetric(value: number | null): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function averageShotMetric(values: Array<number | null>) {
+  const finite = values.filter(isFiniteShotMetric);
+
+  if (finite.length === 0) {
+    return null;
+  }
+
+  return finite.reduce((total, value) => total + value, 0) / finite.length;
+}
+
+function clampPercent(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function dispersionPointClass(sideCarryYd: number | null) {
+  if (sideCarryYd === null) {
+    return "bg-slate-500";
+  }
+
+  const side = Math.abs(sideCarryYd);
+
+  if (side <= 8) {
+    return "bg-emerald-500";
+  }
+
+  if (side <= 20) {
+    return "bg-amber-500";
+  }
+
+  return "bg-pink-500";
 }
 
 function formatSessionType(value: string) {

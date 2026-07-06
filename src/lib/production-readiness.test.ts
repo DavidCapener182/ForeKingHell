@@ -260,6 +260,36 @@ describe("production readiness gate", () => {
     }
   });
 
+  it("keeps the route-level AAA mobile launch monitor experiences wired", () => {
+    const bagSource = readFileSync(join(root, "src/app/bag/page.tsx"), "utf8");
+    const shotsSource = readFileSync(join(root, "src/app/shots/page.tsx"), "utf8");
+    const challengesSource = readFileSync(join(root, "src/app/challenges/page.tsx"), "utf8");
+    const practiceSource = readFileSync(join(root, "src/app/practice/page.tsx"), "utf8");
+    const importSource = readFileSync(join(root, "src/app/import/page.tsx"), "utf8");
+    const rapsodoSource = readFileSync(
+      join(root, "src/app/rapsodo/rapsodo-sync-client.tsx"),
+      "utf8",
+    );
+
+    expect(bagSource).toContain("Swipe your bag");
+    expect(bagSource).toContain('source="generated-v2"');
+    expect(bagSource).toContain("Latest Reliable");
+    expect(shotsSource).toContain("Dispersion map");
+    expect(shotsSource).toContain("/assets/fairway-dispersion-bg.svg");
+    expect(shotsSource).toContain("Club dispersion filters");
+    expect(challengesSource).toContain("MobilePremiumChallengeCard");
+    expect(challengesSource).toContain("/assets/challenge-longest-drive.webp");
+    expect(challengesSource).toContain("Proof-led");
+    expect(practiceSource).toContain("Active session mode");
+    expect(practiceSource).toContain("Practice scoring is driven by imported launch-monitor shots");
+    expect(practiceSource).toContain("spinAverageRpm");
+    expect(importSource).toContain("Connect/upload");
+    expect(importSource).toContain("Review trust");
+    expect(rapsodoSource).toContain("Map clubs");
+    expect(rapsodoSource).toContain("Review trust");
+    expect(rapsodoSource).toContain('setMobileStep("review")');
+  });
+
   it("keeps mobile launch verification configured across devices and Lighthouse routes", () => {
     const playwrightSource = readFileSync(join(root, "playwright.config.ts"), "utf8");
     const lighthouseSource = readFileSync(join(root, "scripts/lighthouse-audit.mjs"), "utf8");

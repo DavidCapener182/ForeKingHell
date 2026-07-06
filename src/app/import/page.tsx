@@ -294,40 +294,32 @@ function FirstRunRapsodoOnboarding({
 
   const steps = [
     {
-      title: "Welcome",
-      detail: "Turn Rapsodo data into stock yardages, progress and practice priorities.",
+      title: "Connect/upload",
+      detail: "Start with R-Cloud or a Rapsodo CSV so session data becomes the source of truth.",
       ready: true,
     },
     {
-      title: "Import Rapsodo",
+      title: "Preview",
       detail: connected
-        ? "R-Cloud is connected; upload CSV if you want a fallback import."
-        : "Upload a CSV or connect/sync Rapsodo.",
+        ? "Load an R-Cloud session and check the shot count before saving."
+        : "Connect R-Cloud or open the CSV wizard to preview exported shots.",
       ready: connected,
     },
     {
-      title: "Check club mapping",
-      detail: "Confirm club names before any stock yardage or challenge data is trusted.",
+      title: "Map clubs",
+      detail:
+        "Confirm club names before stock yardage, coach scoring or challenge proof is trusted.",
       ready: false,
     },
     {
-      title: "Read first insight",
-      detail: "The first card tells you what changed or what data is still missing.",
+      title: "Import",
+      detail: "Save confirmed shots only after duplicates, dates and club mapping look right.",
       ready: false,
     },
     {
-      title: "Review bag gaps",
-      detail: "Stock yardages and the gapping ladder show the first decision numbers.",
-      ready: false,
-    },
-    {
-      title: "Use coach next action",
-      detail: "The coach surface gives one practice priority, why it matters and the drill.",
-      ready: false,
-    },
-    {
-      title: "Share or compete",
-      detail: "PB, challenge and leaderboard prompts stay optional after data checks pass.",
+      title: "Review trust",
+      detail:
+        "Use the first trusted insight for bag numbers, practice priorities and optional proof.",
       ready: false,
     },
   ];

@@ -450,41 +450,7 @@ export default async function BagPage({ searchParams }: PageProps) {
                       <StockFilterCards clubs={stockFilterClubs} compact />
                     </NativeListSection>
                   ) : null}
-                  <NativeListSection title="Club rail">
-                    <div
-                      aria-label="Club rail"
-                      tabIndex={0}
-                      className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      {bag.map((club, index) => (
-                        <Link
-                          key={club.id}
-                          href={`/bag/${club.id}`}
-                          prefetch={false}
-                          className="premium-rail-card grid min-w-36 gap-2 rounded-lg p-3"
-                        >
-                          <ClubArtwork
-                            clubType={club.type}
-                            brand={club.brand}
-                            model={club.model}
-                            alt=""
-                            className="h-14 rounded-lg"
-                            sizes="144px"
-                            priority={index === 0}
-                          />
-                          <span className="font-semibold">{formatClubType(club.type)}</span>
-                          <span className="text-sm text-[#6B7280]">
-                            {formatMetric(club.stock.bestStockCarryYd)} yd
-                          </span>
-                          <span className="grid gap-1 text-xs leading-4 text-[#6B7280]">
-                            <span>Trust score {clubTrustScore(club)}%</span>
-                            <span>Current miss {clubCurrentMiss(club).label}</span>
-                            <span>Club health {clubHealthReadout(club).label}</span>
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  </NativeListSection>
+                  <MobileClubArtworkCarousel clubs={bag} />
                 </div>
               ),
             },
@@ -3084,6 +3050,129 @@ function buildClubIntelligenceItems(bag: BagClub[]): ClubIntelligenceItem[] {
       shots: chartShots,
     } satisfies ClubIntelligenceItem;
   });
+}
+
+function MobileClubArtworkCarousel({ clubs }: { clubs: BagClub[] }) {
+  if (clubs.length === 0) {
+    return null;
+  }
+
+  return (
+    <NativeListSection
+      title="Swipe your bag"
+      description="Trust-first club cards. Recommended is the number to take to the course."
+    >
+      <div className="-mx-4 max-w-[100vw] overflow-hidden">
+        <div
+          aria-label="Swipe through clubs"
+          tabIndex={0}
+          className="focus-aaa flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 outline-none"
+        >
+          {clubs.map((club, index) => {
+            const health = clubHealthReadout(club);
+            const miss = clubCurrentMiss(club);
+            const primaryCarry = clubPrimaryCarryYd(club);
+            const secondaryCarry = clubSecondaryCarryYd(club);
+
+            return (
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="focus-aaa apple-panel-strong grid min-h-[25rem] w-[85vw] max-w-[22rem] shrink-0 snap-center content-between gap-3 rounded-lg p-3 outline-none transition-transform duration-150 ease-out active:scale-[0.985]"
+              >
+                <div className="grid gap-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                        {health.label}
+                      </p>
+                      <h3 className="truncate text-3xl font-semibold leading-tight tracking-normal text-foreground">
+                        {formatClubType(club.type)}
+                      </h3>
+                      <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
+                        {club.brandModel}
+                      </p>
+                    </div>
+                    <StatusPill tone={health.tone}>{clubTrustScore(club)}%</StatusPill>
+                  </div>
+                  <ClubArtwork
+                    clubType={club.type}
+                    brand={club.brand}
+                    model={club.model}
+                    alt=""
+                    view={index % 2 === 0 ? "side" : "top"}
+                    source="generated-v2"
+                    className="h-32 rounded-lg border-emerald-950/10 bg-[linear-gradient(180deg,#ffffff,#eef6ef)]"
+                    imageClassName="px-4 py-3"
+                    sizes="85vw"
+                    priority={index === 0}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <ClubCarouselMetric
+                      label={club.isShortGameTouch ? "Touch median" : "Recommended"}
+                      value={formatCarryYards(primaryCarry)}
+                      emphasis
+                    />
+                    <ClubCarouselMetric
+                      label={club.isShortGameTouch ? "Full stock" : "Best Stock"}
+                      value={formatCarryYards(secondaryCarry)}
+                    />
+                    <ClubCarouselMetric
+                      label="Latest Reliable"
+                      value={formatCarryYards(club.stock.latestReliableCarryYd)}
+                    />
+                    <ClubCarouselMetric
+                      label="Personal Best"
+                      value={formatCarryYards(club.stock.personalBestCarryYd)}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2 rounded-lg border border-emerald-950/10 bg-white/78 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold text-foreground">{miss.label}</span>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {club.rawShotCount} shots
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 leading-5 text-muted-foreground">{health.detail}</p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </NativeListSection>
+  );
+}
+
+function ClubCarouselMetric({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border p-2.5 ${
+        emphasis
+          ? "border-emerald-800/25 bg-emerald-950 text-white"
+          : "border-emerald-950/10 bg-white/82 text-foreground"
+      }`}
+    >
+      <p
+        className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+          emphasis ? "text-emerald-50/80" : "text-muted-foreground"
+        }`}
+      >
+        {label}
+      </p>
+      <p className="mt-1 truncate text-xl font-semibold tracking-normal">{value}</p>
+    </div>
+  );
 }
 
 function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {

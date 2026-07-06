@@ -1,12 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import { CompetitionFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
-  ChallengeCard,
-  EventHeroCard,
   MobileAppShell,
   MobileRouteTabs,
   MobileStatusAction,
@@ -210,55 +209,15 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           </NativeListSection>
         ) : (
           <>
-            {featured ? (
-              <EventHeroCard
-                eyebrow="Featured challenge"
-                title={featured.title}
-                description={
-                  featured.description ??
-                  `${featured.templateName} · ${featured.participantCount} players`
-                }
-                href={`/challenges/${featured.id}`}
-                actionLabel="Open"
-                media={
-                  <ChallengeBadgeImage
-                    challenge={featured}
-                    className="h-full rounded-none"
-                  />
-                }
-                meta={
-                  <span>
-                    {featured.endsAt ? `${formatDate(featured.endsAt)} · ` : ""}
-                    {featured.leader
-                      ? `Leader: ${featured.leader.displayName}`
-                      : "Awaiting qualifying imports"}
-                  </span>
-                }
-                joined={featured.viewerJoined ? <Badge variant="secondary">Joined</Badge> : null}
-              />
-            ) : null}
+            {featured ? <MobilePremiumChallengeCard challenge={featured} featured /> : null}
             <NativeListSection title={activeTab === "joined" ? "Joined" : "Recommended"}>
               {(activeTab === "joined" ? data.mine : data.challenges)
                 .slice(0, 10)
-                .map((challenge) => (
-                  <ChallengeCard
+                .map((challenge, index) => (
+                  <MobilePremiumChallengeCard
                     key={challenge.id}
-                    title={challenge.title}
-                    description={challenge.description ?? challenge.templateName}
-                    href={`/challenges/${challenge.id}`}
-                    cta="Open"
-                    leader={
-                      challenge.leader
-                        ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}`
-                        : undefined
-                    }
-                    media={<ChallengeBadgeImage challenge={challenge} />}
-                    meta={
-                      <>
-                        <span>{challenge.participantCount} players</span>
-                        <span>{titleCase(challenge.visibility)}</span>
-                      </>
-                    }
+                    challenge={challenge}
+                    eager={index === 0}
                   />
                 ))}
             </NativeListSection>
@@ -592,6 +551,128 @@ function ChallengeBadgeImage({
   );
 }
 
+function MobilePremiumChallengeCard({
+  challenge,
+  eager = false,
+  featured = false,
+}: {
+  challenge: ChallengeListItem;
+  eager?: boolean;
+  featured?: boolean;
+}) {
+  const kind = getChallengeBadgeKind(challenge);
+  const href = `/challenges/${challenge.id}`;
+
+  return (
+    <article
+      className={cn(
+        "relative min-h-[24rem] overflow-hidden rounded-lg border border-emerald-950/15 bg-emerald-950 shadow-[0_22px_48px_rgba(5,27,15,0.22)]",
+        featured ? "min-h-[28rem]" : "",
+      )}
+    >
+      <Image
+        src={challengeImageSrc(kind)}
+        alt=""
+        fill
+        loading={featured || eager ? "eager" : "lazy"}
+        sizes="calc(100vw - 2rem)"
+        className="object-cover"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,16,10,0.08)_0%,rgba(5,16,10,0.35)_42%,rgba(5,16,10,0.88)_100%)]" />
+      <div className="relative grid min-h-[inherit] content-between gap-4 p-4 text-white">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Badge className="bg-white/92 text-emerald-950 hover:bg-white/92">
+              {featured ? "Featured" : challenge.templateName}
+            </Badge>
+            <Badge className="bg-emerald-300/92 text-emerald-950 hover:bg-emerald-300/92">
+              Proof-led
+            </Badge>
+          </div>
+          {challenge.viewerJoined ? (
+            <Badge className="bg-white/18 text-white ring-1 ring-white/40 hover:bg-white/18">
+              Joined{challenge.viewerRank ? ` · #${challenge.viewerRank}` : ""}
+            </Badge>
+          ) : null}
+        </div>
+        <div className="grid gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/75">
+              {challenge.endsAt
+                ? `Ends ${formatDate(challenge.endsAt)}`
+                : titleCase(challenge.visibility)}
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold leading-tight tracking-normal text-balance">
+              {challenge.title}
+            </h2>
+            <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/84">
+              {challenge.description ?? challenge.templateName}
+            </p>
+          </div>
+          <div className="grid gap-2 rounded-lg bg-white/12 p-3 text-sm ring-1 ring-white/18 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-3">
+              <span>{challenge.participantCount} players</span>
+              <span>{titleCase(challenge.visibility)}</span>
+            </div>
+            <p className="line-clamp-1 text-white/82">
+              {challenge.leader
+                ? `Leader: ${challenge.leader.displayName} · ${challenge.leader.scoreLabel}`
+                : "Waiting for the first verified import."}
+            </p>
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+            <Button
+              asChild
+              className="min-h-12 rounded-lg bg-white text-emerald-950 hover:bg-white/92"
+            >
+              <Link href={href} prefetch={false}>
+                Open board
+              </Link>
+            </Button>
+            {!challenge.viewerJoined ? (
+              <form action={joinChallengeAction}>
+                <input type="hidden" name="challengeId" value={challenge.id} />
+                <Button
+                  type="submit"
+                  className="min-h-12 rounded-lg bg-[#C7972B] text-white hover:bg-[#A77D1F]"
+                >
+                  Join
+                </Button>
+              </form>
+            ) : (
+              <Button
+                asChild
+                variant="outline"
+                className="min-h-12 rounded-lg border-white/42 bg-white/12 text-white hover:bg-white/20"
+              >
+                <Link href="/import" prefetch={false}>
+                  Submit
+                </Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function challengeImageSrc(kind: ReturnType<typeof getChallengeBadgeKind>) {
+  if (kind === "long-drive") {
+    return "/assets/challenge-longest-drive.webp";
+  }
+
+  if (kind === "closest-pin") {
+    return "/assets/challenge-closest-pin.webp";
+  }
+
+  if (kind === "seven-iron") {
+    return "/assets/challenge-seven-iron-consistency.webp";
+  }
+
+  return "/assets/challenge-wedge-window.webp";
+}
+
 function getChallengeBadgeKind(challenge: Pick<ChallengeListItem, "title" | "templateName">) {
   const text = `${challenge.title} ${challenge.templateName}`.toLowerCase();
 
@@ -636,9 +717,19 @@ function LongestDriveBadgeArtwork() {
       <rect width="800" height="800" rx="132" fill="#DCE7FF" />
       <path d="M92 622C214 565 330 535 440 536C550 538 639 563 708 612V742H92Z" fill="#8ECF7A" />
       <path d="M228 742C260 592 319 468 406 370C489 466 550 590 590 742Z" fill="#2D8C54" />
-      <path d="M238 742C272 620 322 523 388 451C451 518 501 616 540 742Z" fill="#6BC36F" opacity="0.55" />
+      <path
+        d="M238 742C272 620 322 523 388 451C451 518 501 616 540 742Z"
+        fill="#6BC36F"
+        opacity="0.55"
+      />
       <circle cx="244" cy="650" r="10" fill="#FFFFFF" stroke="#94A3B8" strokeWidth="4" />
-      <path d="M248 650C314 558 390 446 476 314C527 236 574 182 618 152" stroke="#F97316" strokeWidth="18" strokeLinecap="round" fill="none" />
+      <path
+        d="M248 650C314 558 390 446 476 314C527 236 574 182 618 152"
+        stroke="#F97316"
+        strokeWidth="18"
+        strokeLinecap="round"
+        fill="none"
+      />
       <path d="M612 140L672 164L610 198Z" fill="#0F172A" />
       <rect x="82" y="96" width="230" height="74" rx="37" fill="#FFFFFF" opacity="0.94" />
       <text x="197" y="144" textAnchor="middle" fill="#1E3A8A" fontSize="42" fontWeight="700">
@@ -687,8 +778,20 @@ function SevenIronBadgeArtwork() {
     <svg viewBox="0 0 800 800" className="h-full w-full">
       <rect width="800" height="800" rx="132" fill="#FCE7F3" />
       <rect x="154" y="190" width="492" height="372" rx="54" fill="#FFFFFF" opacity="0.92" />
-      <path d="M208 500C287 449 351 424 400 424C449 424 514 449 594 500" stroke="#CBD5E1" strokeWidth="14" strokeLinecap="round" fill="none" />
-      <path d="M226 486C300 438 358 414 400 414C442 414 500 438 574 486" stroke="#EC4899" strokeWidth="10" strokeLinecap="round" fill="none" />
+      <path
+        d="M208 500C287 449 351 424 400 424C449 424 514 449 594 500"
+        stroke="#CBD5E1"
+        strokeWidth="14"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M226 486C300 438 358 414 400 414C442 414 500 438 574 486"
+        stroke="#EC4899"
+        strokeWidth="10"
+        strokeLinecap="round"
+        fill="none"
+      />
       <circle cx="346" cy="448" r="12" fill="#EC4899" />
       <circle cx="386" cy="430" r="12" fill="#EC4899" />
       <circle cx="423" cy="444" r="12" fill="#EC4899" />
@@ -717,7 +820,13 @@ function WedgeWindowBadgeArtwork() {
       <path d="M220 404H580" stroke="#CBD5E1" strokeWidth="10" strokeLinecap="round" />
       <path d="M220 340H580" stroke="#CBD5E1" strokeWidth="10" strokeLinecap="round" />
       <rect x="266" y="322" width="270" height="164" rx="28" fill="#BBF7D0" />
-      <path d="M288 456C334 421 373 404 404 404C438 404 476 421 520 456" stroke="#16A34A" strokeWidth="12" strokeLinecap="round" fill="none" />
+      <path
+        d="M288 456C334 421 373 404 404 404C438 404 476 421 520 456"
+        stroke="#16A34A"
+        strokeWidth="12"
+        strokeLinecap="round"
+        fill="none"
+      />
       <circle cx="402" cy="404" r="18" fill="#15803D" />
       <rect x="92" y="98" width="246" height="74" rx="37" fill="#FFFFFF" opacity="0.95" />
       <text x="215" y="146" textAnchor="middle" fill="#166534" fontSize="42" fontWeight="700">
@@ -835,6 +944,12 @@ function ChallengeGrid({
     <div className="grid gap-3 md:grid-cols-2">
       {challenges.map((challenge) => (
         <Card key={challenge.id} className="premium-card" size="sm">
+          <div
+            data-media-container
+            className="relative mx-3 mt-3 aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
+          >
+            <ChallengeBadgeImage challenge={challenge} />
+          </div>
           <CardHeader>
             <CardTitle>{challenge.title}</CardTitle>
             <CardDescription>{challenge.templateName}</CardDescription>
