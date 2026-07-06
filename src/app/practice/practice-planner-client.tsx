@@ -58,6 +58,7 @@ type PracticePlannerClientProps = {
   templates: PracticeTemplateView[];
   importOptions: PracticeImportOption[];
   latestSessionReview: PracticeLatestSessionReview | null;
+  initialOptions: GeneratePracticePlanOptions;
 };
 
 const sessionTypes: Array<{ value: PracticeSessionType; label: string }> = [
@@ -93,24 +94,11 @@ export function PracticePlannerClient({
   templates,
   importOptions,
   latestSessionReview,
+  initialOptions,
 }: PracticePlannerClientProps) {
-  const [options, setOptions] = useState<GeneratePracticePlanOptions>({
-    sessionType: "range",
-    ballCount: 80,
-    timeMinutes: 45,
-    energy: "normal",
-    intent: "latest_weakness",
-    facility: {
-      chippingGreen: true,
-      bunker: true,
-      puttingGreen: true,
-      distanceAvailableFt: 30,
-      speedSticks: false,
-      golfClubOnly: true,
-      rapsodoSpeed: true,
-      overrideTrainingLoad: false,
-    },
-  });
+  const [options, setOptions] = useState<GeneratePracticePlanOptions>(() =>
+    normalizeInitialOptions(initialOptions),
+  );
   const [plan, setPlan] = useState(initialPlan);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(() =>
     defaultSelectedPracticeBlockId(initialPlan.blocks),
@@ -339,6 +327,29 @@ export function PracticePlannerClient({
       />
     </div>
   );
+}
+
+function normalizeInitialOptions(
+  options: GeneratePracticePlanOptions,
+): GeneratePracticePlanOptions {
+  return {
+    sessionType: options.sessionType,
+    ballCount: options.ballCount ?? 80,
+    timeMinutes: options.timeMinutes,
+    energy: options.energy,
+    intent: options.intent,
+    facility: {
+      chippingGreen: true,
+      bunker: true,
+      puttingGreen: true,
+      distanceAvailableFt: 30,
+      speedSticks: false,
+      golfClubOnly: true,
+      rapsodoSpeed: true,
+      overrideTrainingLoad: false,
+      ...options.facility,
+    },
+  };
 }
 
 function PracticeSetupBar({

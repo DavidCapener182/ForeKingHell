@@ -14,29 +14,30 @@ import {
   getLatestPracticeSessionReview,
   getPracticePlannerPageData,
   savedPracticePlanToPracticePlan,
+  type GeneratePracticePlanOptions,
   type PracticeLatestSessionReview,
   type PracticePlan,
 } from "@/lib/practice-planner";
 
 export const dynamic = "force-dynamic";
 
-export default async function PracticePlannerPage() {
+type PracticePlannerPageProps = {
+  searchParams?: Promise<{
+    source?: string;
+    time?: string;
+    intent?: string;
+    energy?: string;
+    session?: string;
+    balls?: string;
+  }>;
+};
+
+export default async function PracticePlannerPage({ searchParams }: PracticePlannerPageProps) {
   const userId = await requireCurrentUserId();
+  const params = await searchParams;
   const data = await getPracticePlannerPageData(userId);
-  const generatedPlan = generatePracticePlan(data.context, {
-    sessionType: "range",
-    ballCount: 80,
-    timeMinutes: 45,
-    energy: "normal",
-    intent: "latest_weakness",
-    facility: {
-      chippingGreen: true,
-      bunker: true,
-      puttingGreen: true,
-      golfClubOnly: true,
-      rapsodoSpeed: true,
-    },
-  });
+  const requestedOptions = practiceOptionsFromSearchParams(params);
+  const generatedPlan = generatePracticePlan(data.context, requestedOptions);
   const latestOpenPlan =
     data.savedPlans.find(
       (plan) =>
@@ -52,6 +53,7 @@ export default async function PracticePlannerPage() {
     latestOpenPlan && !latestOpenPlan.result && latestOpenPracticePlan
       ? await getLatestPracticeSessionReviewSafely(userId, latestOpenPracticePlan)
       : null;
+  const initialOptions = practicePlanOptionsFromPlan(initialPlan, requestedOptions);
   const cockpit = await getPracticeCockpitMetrics(userId, latestSessionReview);
   const planVolume =
     initialPlan.totalBalls === null
@@ -103,6 +105,7 @@ export default async function PracticePlannerPage() {
         templates={data.templates}
         importOptions={data.importOptions}
         latestSessionReview={latestSessionReview}
+        initialOptions={initialOptions}
       />
       <StickyMobileAction>
         <Button asChild className="premium-action min-h-12 w-full rounded-lg">
@@ -114,6 +117,97 @@ export default async function PracticePlannerPage() {
       </StickyMobileAction>
     </PageShell>
   );
+}
+
+function practiceOptionsFromSearchParams(
+  params: Awaited<PracticePlannerPageProps["searchParams"]>,
+): GeneratePracticePlanOptions {
+  return {
+    sessionType: parseSessionType(params?.session),
+    ballCount: parseBallCount(params?.balls),
+    timeMinutes: parsePracticeTime(params?.time),
+    energy: parseEnergy(params?.energy),
+    intent: parseIntent(params?.intent),
+    facility: {
+      chippingGreen: true,
+      bunker: true,
+      puttingGreen: true,
+      golfClubOnly: true,
+      rapsodoSpeed: true,
+    },
+  };
+}
+
+function practicePlanOptionsFromPlan(
+  plan: PracticePlan,
+  fallback: GeneratePracticePlanOptions,
+): GeneratePracticePlanOptions {
+  return {
+    ...fallback,
+    sessionType: plan.sessionType,
+    ballCount: plan.totalBalls ?? fallback.ballCount,
+    timeMinutes: plan.estimatedTimeMinutes,
+    energy: plan.energy,
+    intent: plan.intent,
+  };
+}
+
+function parsePracticeTime(value: string | undefined) {
+  const minutes = Number(value);
+
+  if (minutes === 20 || minutes === 30 || minutes === 45 || minutes === 60 || minutes === 90) {
+    return minutes;
+  }
+
+  return 45;
+}
+
+function parseBallCount(value: string | undefined) {
+  const balls = Number(value);
+
+  if (balls === 30 || balls === 50 || balls === 80 || balls === 100 || balls === 120) {
+    return balls;
+  }
+
+  return 80;
+}
+
+function parseSessionType(value: string | undefined): GeneratePracticePlanOptions["sessionType"] {
+  if (
+    value === "range" ||
+    value === "short_game" ||
+    value === "speed" ||
+    value === "putting" ||
+    value === "course_warmup" ||
+    value === "mixed"
+  ) {
+    return value;
+  }
+
+  return "range";
+}
+
+function parseEnergy(value: string | undefined): GeneratePracticePlanOptions["energy"] {
+  if (value === "fresh" || value === "normal" || value === "tired" || value === "niggle") {
+    return value;
+  }
+
+  return "normal";
+}
+
+function parseIntent(value: string | undefined): GeneratePracticePlanOptions["intent"] {
+  if (
+    value === "scoring" ||
+    value === "confidence" ||
+    value === "latest_weakness" ||
+    value === "round_preparation" ||
+    value === "distance_mapping" ||
+    value === "speed"
+  ) {
+    return value;
+  }
+
+  return "latest_weakness";
 }
 
 async function getLatestPracticeSessionReviewSafely(

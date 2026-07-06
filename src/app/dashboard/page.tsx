@@ -49,6 +49,7 @@ import {
   PageHeader,
   PageShell,
   SectionHeader,
+  StickyMobileAction,
   StatusPill,
 } from "@/components/premium";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,6 +81,7 @@ import {
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getCurrentPracticePlanSummary, type SavedPracticePlan } from "@/lib/practice-planner";
+import { buildAiCaddieBrief, type AiCaddieBrief } from "@/lib/ai-caddie-brief";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import type { DashboardPin } from "@/lib/user-settings";
 import { getFeedPageData, type FeedItemView } from "@/lib/social";
@@ -168,6 +170,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const firstSignal = data.whatChanged[0] ?? null;
   const latestRoundHref = data.latestRound ? `/rounds/${data.latestRound.id}` : "/rounds";
   const mappedClubCount = data.bagPreview.filter((club) => club.stock.confidenceScore >= 60).length;
+  const aiCaddieBrief = buildAiCaddieBrief({
+    stats: {
+      shotCount: data.stats.shotCount,
+      sessionCount: data.stats.sessionCount,
+      roundCount: data.stats.roundCount,
+    },
+    latestSession: latestSession
+      ? {
+          fileName: latestSession.fileName,
+          dateLabel: formatDate(latestSession.date),
+          shotCount: latestSession.shotCount,
+          rawRowCount: latestSession.rawRowCount,
+        }
+      : null,
+    rapsodoInbox: {
+      pendingCount: data.rapsodoInbox.pendingCount,
+      latest: data.rapsodoInbox.latest
+        ? {
+            title: data.rapsodoInbox.latest.title,
+            shotCount: data.rapsodoInbox.latest.shotCount,
+          }
+        : null,
+    },
+    bagSummary: data.bagSummary,
+    coachPreview: data.coachPreview,
+    dataHealth: featureData.dataHealth,
+    playContextSummary: data.playContextSummary,
+    whatChanged: data.whatChanged,
+    currentPracticePlan,
+  });
 
   const metrics = [
     {
@@ -485,6 +517,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         activeDashboardSection={activeDashboardSection}
         featureData={featureData}
         commandRoutes={toDashboardCommandRoutes(mobileRouteCards)}
+        aiCaddieBrief={aiCaddieBrief}
       />
 
       <div className="hidden flex-col gap-5 sm:flex">
@@ -771,6 +804,7 @@ function DashboardMobileLayout({
   activeDashboardSection,
   featureData,
   commandRoutes,
+  aiCaddieBrief,
 }: {
   data: DashboardData;
   social: Awaited<ReturnType<typeof getFeedPageData>>;
@@ -782,6 +816,7 @@ function DashboardMobileLayout({
   activeDashboardSection: DashboardTabKey;
   featureData: FeatureIdeasData;
   commandRoutes: DashboardCommandRoute[];
+  aiCaddieBrief: AiCaddieBrief;
 }) {
   const mobileFeatureData = {
     ...featureData,
@@ -800,6 +835,7 @@ function DashboardMobileLayout({
         id="dashboard-mobile-today"
         className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
       />
+      <DashboardAiCaddieBriefCard brief={aiCaddieBrief} />
       <DashboardTodayCompanionHero
         inbox={data.rapsodoInbox}
         latestSession={data.recentSessions[0] ?? null}
@@ -922,7 +958,156 @@ function DashboardMobileLayout({
           },
         ]}
       />
+      <StickyMobileAction>
+        <Button asChild className="premium-action min-h-12 w-full rounded-lg">
+          <Link href={aiCaddieBrief.actions.primary.href} prefetch={false}>
+            <Crosshair className="size-4" aria-hidden />
+            {aiCaddieBrief.actions.primary.label}
+          </Link>
+        </Button>
+      </StickyMobileAction>
     </div>
+  );
+}
+
+function DashboardAiCaddieBriefCard({ brief }: { brief: AiCaddieBrief }) {
+  const confidenceTone =
+    brief.confidence === "high" ? "green" : brief.confidence === "medium" ? "sky" : "amber";
+  const primaryBlock =
+    brief.practice.blocks.find((block) => block.balls > 0) ?? brief.practice.blocks[0];
+
+  return (
+    <section
+      aria-labelledby="dashboard-ai-caddie-title"
+      className="overflow-hidden rounded-lg border border-emerald-950/10 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)] ring-1 ring-white"
+    >
+      <div className="bg-[linear-gradient(135deg,#f8fff8_0%,#eef8ff_52%,#fff7ed_100%)] p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="grid size-11 place-items-center rounded-lg bg-emerald-700 text-white shadow-[0_10px_24px_rgba(8,122,61,0.22)]">
+                <Brain className="size-5" aria-hidden />
+              </span>
+              <div className="grid gap-1">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-700">
+                  {brief.title}
+                </p>
+                <StatusPill tone={confidenceTone}>AI caddie / {brief.confidence}</StatusPill>
+              </div>
+            </div>
+            <h2
+              id="dashboard-ai-caddie-title"
+              className="mt-4 text-[1.7rem] font-black leading-8 tracking-normal text-slate-950"
+            >
+              {brief.headline}
+            </h2>
+          </div>
+          <div className="shrink-0 rounded-lg bg-white/82 px-3 py-2 text-right shadow-sm ring-1 ring-emerald-950/10">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
+              Session
+            </p>
+            <p className="mt-1 text-lg font-black text-slate-950">
+              {brief.practice.durationMinutes}m
+            </p>
+            <p className="text-xs font-semibold text-slate-600">
+              {brief.practice.ballCount ? `${brief.practice.ballCount} balls` : "Import first"}
+            </p>
+          </div>
+        </div>
+
+        <p className="mt-3 text-sm font-medium leading-6 text-slate-700">{brief.summary}</p>
+
+        <div className="mt-4 grid gap-2 rounded-lg bg-white/86 p-3 shadow-sm ring-1 ring-emerald-950/10">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600">
+            Practice block
+          </p>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="min-w-0">
+              <p className="text-base font-black tracking-normal text-slate-950">
+                {primaryBlock.label}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-slate-700">{primaryBlock.task}</p>
+            </div>
+            <span className="grid min-h-11 min-w-11 place-items-center rounded-lg bg-slate-950 px-3 text-sm font-black text-white">
+              {primaryBlock.balls}
+            </span>
+          </div>
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold leading-5 text-emerald-950">
+            Success: {brief.practice.successMetric}
+          </p>
+        </div>
+
+        {brief.warnings.length > 0 ? (
+          <div className="mt-3 grid gap-2">
+            {brief.warnings.map((warning) => (
+              <p
+                key={warning}
+                className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-950"
+              >
+                {warning}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 p-3">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {brief.actions.secondary.map((action) => (
+            <Button
+              key={action.label}
+              asChild
+              variant="outline"
+              className="min-h-11 shrink-0 rounded-lg px-3 text-xs font-bold"
+            >
+              <Link href={action.href} prefetch={false}>
+                {action.label}
+              </Link>
+            </Button>
+          ))}
+        </div>
+
+        <div id="dashboard-caddie-evidence" className="grid gap-2 scroll-mt-28">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-black tracking-normal text-slate-950">Data used</p>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
+              Structured JSON
+            </span>
+          </div>
+          <div className="grid gap-2">
+            {brief.dataUsed.slice(0, 4).map((item) => (
+              <div
+                key={item.label}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-black text-slate-950">{item.value}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-slate-600">
+                    {item.detail}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "grid min-h-8 place-items-center rounded-full px-2 text-[11px] font-black capitalize",
+                    item.status === "ready"
+                      ? "bg-emerald-100 text-emerald-900"
+                      : item.status === "limited"
+                        ? "bg-amber-100 text-amber-950"
+                        : "bg-slate-200 text-slate-700",
+                  )}
+                >
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs font-medium leading-5 text-slate-600">{brief.confidenceReason}</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -3108,7 +3293,9 @@ function PracticePlannerDashboardCard({
       <CardContent className="grid h-full content-between gap-4 p-4">
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-3">
-            <StatusPill tone={plan?.status === "analysed" || plan?.status === "completed" ? "green" : "sky"}>
+            <StatusPill
+              tone={plan?.status === "analysed" || plan?.status === "completed" ? "green" : "sky"}
+            >
               Practice Planner
             </StatusPill>
             <Clock className="size-4 text-muted-foreground" aria-hidden />

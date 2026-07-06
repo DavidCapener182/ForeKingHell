@@ -290,6 +290,31 @@ describe("production readiness gate", () => {
     expect(rapsodoSource).toContain('setMobileStep("review")');
   });
 
+  it("keeps the AI caddie brief wired as the mobile dashboard to practice loop", () => {
+    const dashboardSource = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
+    const caddieSource = readFileSync(join(root, "src/lib/ai-caddie-brief.ts"), "utf8");
+    const practicePageSource = readFileSync(join(root, "src/app/practice/page.tsx"), "utf8");
+    const practiceClientSource = readFileSync(
+      join(root, "src/app/practice/practice-planner-client.tsx"),
+      "utf8",
+    );
+
+    expect(dashboardSource).toContain("buildAiCaddieBrief");
+    expect(dashboardSource).toContain("DashboardAiCaddieBriefCard");
+    expect(dashboardSource).toContain("brief.title");
+    expect(dashboardSource).toContain("Structured JSON");
+    expect(dashboardSource).toContain("StickyMobileAction");
+    expect(caddieSource).toContain("Today's AI Caddie Brief");
+    expect(caddieSource).toContain("schemaVersion: 1");
+    expect(caddieSource).toContain("dataUsed");
+    expect(caddieSource).toContain("Start today's practice");
+    expect(caddieSource).toContain("/practice?source=caddie&time=");
+    expect(practicePageSource).toContain("practiceOptionsFromSearchParams");
+    expect(practicePageSource).toContain("practicePlanOptionsFromPlan");
+    expect(practiceClientSource).toContain("initialOptions");
+    expect(practiceClientSource).toContain("normalizeInitialOptions");
+  });
+
   it("keeps mobile launch verification configured across devices and Lighthouse routes", () => {
     const playwrightSource = readFileSync(join(root, "playwright.config.ts"), "utf8");
     const lighthouseSource = readFileSync(join(root, "scripts/lighthouse-audit.mjs"), "utf8");

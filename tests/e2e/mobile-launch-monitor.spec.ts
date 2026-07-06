@@ -9,31 +9,37 @@ test.describe("mobile launch monitor loop", () => {
     await page.setViewportSize({ width: 390, height: 844 });
   });
 
-  test("starts the dashboard with the Rapsodo inbox below the fixed app bar", async ({ page }) => {
-    await gotoAuthenticatedOrSkip(page, "/dashboard", /Rapsodo inbox/i);
+  test("starts the dashboard with the AI caddie brief below the fixed app bar", async ({
+    page,
+  }) => {
+    await gotoAuthenticatedOrSkip(page, "/dashboard", /Today's AI Caddie Brief/i);
 
-    await expect(page.getByText("Rapsodo inbox")).toBeVisible();
     await expect(
-      page.getByText(/Rapsodo sessions|Rapsodo session|Start with Rapsodo/i),
+      page.getByRole("heading", { name: /practice|import|build/i }).first(),
     ).toBeVisible();
+    await expect(page.getByText("Structured JSON")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Start today's practice" })).toHaveAttribute(
+      "href",
+      /\/practice\?source=caddie&time=/,
+    );
 
     const layout = await page.evaluate(() => {
       const appBar = document.querySelector('[aria-label="Mobile app bar"]');
       const main = document.querySelector("main");
-      const inbox = Array.from(document.querySelectorAll("section")).find((section) =>
-        section.textContent?.includes("Rapsodo inbox"),
+      const caddie = Array.from(document.querySelectorAll("section")).find((section) =>
+        section.textContent?.includes("Today's AI Caddie Brief"),
       );
 
       return {
         appBarBottom: appBar?.getBoundingClientRect().bottom ?? 0,
         mainTop: main?.getBoundingClientRect().top ?? 0,
-        inboxTop: inbox?.getBoundingClientRect().top ?? 0,
+        caddieTop: caddie?.getBoundingClientRect().top ?? 0,
         horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
       };
     });
 
     expect(layout.mainTop).toBeGreaterThanOrEqual(layout.appBarBottom - 1);
-    expect(layout.inboxTop).toBeGreaterThan(layout.appBarBottom);
+    expect(layout.caddieTop).toBeGreaterThan(layout.appBarBottom);
     expect(layout.horizontalOverflow).toBeLessThanOrEqual(2);
   });
 
