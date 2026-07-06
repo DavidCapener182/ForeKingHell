@@ -25,7 +25,20 @@ export type PageArtworkVariant =
   | "progress"
   | "strokesGained"
   | "rounds"
-  | "stockYardages";
+  | "stockYardages"
+  | "practice"
+  | "dataChat"
+  | "speed"
+  | "leaderboard"
+  | "challenges"
+  | "tournaments"
+  | "friends"
+  | "groups"
+  | "settings"
+  | "billing"
+  | "partners"
+  | "admin"
+  | "safety";
 
 export type PageArtworkCrop = "green" | "fairway" | "tee" | "random";
 
@@ -54,6 +67,19 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   strokesGained: "/assets/generated/strokes-gained-hole-tracers.png",
   rounds: "/assets/page-rounds.png",
   stockYardages: "/assets/page-stock-yardages.png",
+  practice: "/assets/page-coach-drill-board.webp",
+  dataChat: "/assets/page-shots-shot-trace.svg",
+  speed: "/assets/generated/strokes-gained-hole-tracers.png",
+  leaderboard: "/assets/profile-trophy-shelf.webp",
+  challenges: "/assets/challenge-longest-drive.webp",
+  tournaments: "/assets/tour-covers/tour-cover-01.webp",
+  friends: "/assets/feed-empty-state.webp",
+  groups: "/assets/profile-trophy-shelf.webp",
+  settings: "/assets/provider-rapsodo-device.webp",
+  billing: "/assets/provider-square-device.webp",
+  partners: "/assets/tour-covers/tour-cover-02.webp",
+  admin: "/assets/page-course-records-honours.webp",
+  safety: "/assets/page-course-records-honours.webp",
 };
 
 const cropOptions = ["green", "fairway", "tee"] as const;
@@ -69,6 +95,9 @@ const imageTreatmentByVariant: Partial<Record<PageArtworkVariant, string>> = {
   fairway: imageTreatmentByCrop.green,
   coach: imageTreatmentByCrop.green,
   import: imageTreatmentByCrop.green,
+  practice: imageTreatmentByCrop.green,
+  challenges: imageTreatmentByCrop.tee,
+  tournaments: imageTreatmentByCrop.fairway,
 };
 
 const overlayByVariant: Record<PageArtworkVariant, string> = {
@@ -94,6 +123,19 @@ const overlayByVariant: Record<PageArtworkVariant, string> = {
   strokesGained: "from-white/55 via-sky-50/15 to-emerald-950/10",
   rounds: "from-white/60 via-white/20 to-sky-50/20",
   stockYardages: "from-white/70 via-white/35 to-emerald-50/25",
+  practice: "from-white/72 via-emerald-50/24 to-sky-50/24",
+  dataChat: "from-white/76 via-sky-50/28 to-emerald-50/18",
+  speed: "from-white/58 via-sky-50/18 to-emerald-950/12",
+  leaderboard: "from-white/62 via-amber-50/24 to-emerald-50/18",
+  challenges: "from-black/10 via-transparent to-emerald-950/28",
+  tournaments: "from-black/10 via-transparent to-black/30",
+  friends: "from-white/78 via-sky-50/22 to-emerald-50/20",
+  groups: "from-white/68 via-amber-50/22 to-emerald-50/20",
+  settings: "from-white/76 via-white/28 to-emerald-50/20",
+  billing: "from-white/76 via-slate-50/28 to-sky-50/18",
+  partners: "from-white/64 via-amber-50/18 to-emerald-950/12",
+  admin: "from-white/70 via-emerald-50/18 to-slate-950/10",
+  safety: "from-white/72 via-emerald-50/18 to-sky-50/20",
 };
 
 export function PageArtwork({

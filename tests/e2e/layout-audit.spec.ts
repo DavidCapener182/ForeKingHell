@@ -5,6 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { authStorageState } from "./helpers";
 
 const viewports = [
+  { name: "mobile-small", width: 320, height: 568 },
   { name: "mobile", width: 390, height: 844 },
   { name: "desktop", width: 1728, height: 1117 },
 ] as const;

@@ -280,7 +280,7 @@ export const adminNavItem: AppNavItem = {
 export const mobilePrimaryItems: AppNavItem[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: "Home",
     icon: Gauge,
     isActive: (pathname) =>
       pathname === "/" ||
@@ -315,7 +315,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
   },
   {
     href: "/coach",
-    label: "Improve",
+    label: "Coach",
     icon: Brain,
     isActive: (pathname) =>
       pathname.startsWith("/practice") ||

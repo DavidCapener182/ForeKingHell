@@ -40,16 +40,18 @@ test.describe("mobile launch monitor loop", () => {
   test("uses a route-level CSV import wizard on mobile", async ({ page }) => {
     await gotoAuthenticatedOrSkip(page, "/import?source=csv#csv-import", /CSV import/i);
 
-    await expect(page.getByRole("heading", { name: "CSV import" })).toBeVisible();
+    await expect(
+      page.locator("[data-mobile-route-label]", { hasText: "CSV import" }),
+    ).toBeVisible();
     await expect(page.getByRole("heading", { name: "Import launch monitor shots" })).toBeVisible();
-    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
+    await expect(page.locator('#csv-import [data-import-ready="true"]')).toBeVisible();
     await expect(page.getByText("Other sources")).toHaveCount(0);
   });
 
   test("keeps CSV as a source choice, not a sheet-hosted wizard", async ({ page }) => {
     await gotoAuthenticatedOrSkip(page, "/import", /Rapsodo import/i);
 
-    const csvSource = page.getByRole("link", { name: /CSV files/i });
+    const csvSource = page.getByRole("link", { name: "CSV" });
     await expect(csvSource).toBeVisible();
     await expect(csvSource).toHaveAttribute("href", /\/import\?source=csv#csv-import/);
     await expect(page.getByText(/We do not store your Rapsodo password/i)).toBeVisible();

@@ -96,7 +96,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Dashboard" group="dashboard" activeKey="progress" />
+      <MobileRouteHeader title="Home" group="dashboard" activeKey="progress" />
       <MobileTabBar
         activeKey="overview"
         className="sm:hidden"

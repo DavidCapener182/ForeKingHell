@@ -188,4 +188,99 @@ describe("production readiness gate", () => {
     expect(onboardingDocs).toContain(".playwright/auth/forekinghell-state.json");
     expect(gitignore).toContain(".playwright/auth/");
   });
+
+  it("keeps the AAA mobile shell primitives explicit and route chrome out of the h1 outline", () => {
+    const mobileSportsSource = readFileSync(join(root, "src/components/mobile-sports.tsx"), "utf8");
+    const mobileTabsSource = readFileSync(join(root, "src/components/mobile-tab-bar.tsx"), "utf8");
+    const premiumSource = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
+    const dashboardMobileHeaderSource = readFileSync(
+      join(root, "src/app/dashboard/dashboard-mobile-header.tsx"),
+      "utf8",
+    );
+    const globalsSource = readFileSync(join(root, "src/app/globals.css"), "utf8");
+
+    expect(mobileSportsSource).not.toContain("<h1");
+    expect(dashboardMobileHeaderSource).not.toContain("<h1");
+    expect(mobileSportsSource).toContain("data-mobile-route-label");
+    expect(dashboardMobileHeaderSource).toContain("data-mobile-route-label");
+    expect(mobileTabsSource).toContain("min-h-11");
+    expect(premiumSource).toContain("min-h-11");
+    expect(dashboardMobileHeaderSource).toContain("min-h-11");
+    expect(globalsSource).toContain(".focus-aaa:focus-visible");
+    expect(globalsSource).toContain("scroll-padding-top");
+    expect(globalsSource).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(globalsSource).toContain("--muted-foreground: #334139");
+  });
+
+  it("keeps the mobile primary nav and drawer aligned to the launch-monitor IA", () => {
+    const navItemsSource = readFileSync(join(root, "src/components/app/nav-items.ts"), "utf8");
+    const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
+
+    expect(navItemsSource).toContain('label: "Home"');
+    expect(navItemsSource).toContain('label: "Coach"');
+    expect(mobileNavSource).toContain("Search pages, clubs, rounds or friends");
+    expect(mobileNavSource).toContain('href="/settings"');
+    expect(mobileNavSource).toContain('href="/privacy"');
+    expect(mobileNavSource).toContain('href="/profile"');
+    expect(mobileNavSource).toContain("focus-aaa");
+  });
+
+  it("keeps the mobile artwork catalogue ready for all AAA launch surfaces", () => {
+    const artworkSource = readFileSync(
+      join(root, "src/components/visuals/page-artwork.tsx"),
+      "utf8",
+    );
+
+    for (const variant of [
+      "practice",
+      "dataChat",
+      "speed",
+      "leaderboard",
+      "challenges",
+      "tournaments",
+      "friends",
+      "groups",
+      "settings",
+      "billing",
+      "partners",
+      "admin",
+      "safety",
+    ]) {
+      expect(artworkSource).toContain(`| "${variant}"`);
+      expect(artworkSource).toContain(`${variant}:`);
+    }
+
+    for (const asset of [
+      "/assets/challenge-longest-drive.webp",
+      "/assets/tour-covers/tour-cover-01.webp",
+      "/assets/provider-rapsodo-device.webp",
+      "/assets/profile-trophy-shelf.webp",
+    ]) {
+      expect(artworkSource).toContain(asset);
+    }
+  });
+
+  it("keeps mobile launch verification configured across devices and Lighthouse routes", () => {
+    const playwrightSource = readFileSync(join(root, "playwright.config.ts"), "utf8");
+    const lighthouseSource = readFileSync(join(root, "scripts/lighthouse-audit.mjs"), "utf8");
+
+    for (const project of [
+      "mobile-small",
+      "mobile-iphone",
+      "mobile-pixel",
+      "tablet-ipad-mini",
+      "phone-landscape",
+    ]) {
+      expect(playwrightSource).toContain(`name: "${project}"`);
+    }
+
+    expect(playwrightSource).toContain("width: 320");
+    expect(playwrightSource).toContain("width: 390");
+    expect(playwrightSource).toContain("width: 430");
+    expect(lighthouseSource).toContain(
+      "/login,/dashboard,/today,/import,/rapsodo,/shots,/bag,/practice,/coach,/feed",
+    );
+    expect(lighthouseSource).not.toContain("--preset=desktop");
+    expect(lighthouseSource).toContain("LIGHTHOUSE_PRESET");
+  });
 });

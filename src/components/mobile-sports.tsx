@@ -61,9 +61,12 @@ export function MobileTopBar({ title, leading, actions, className }: MobileTopBa
     >
       <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border/70 px-4">
         <div className="flex min-w-0 items-center justify-start gap-1.5">{leading}</div>
-        <h1 className="max-w-[12rem] truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground">
+        <div
+          className="max-w-[12rem] truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground"
+          data-mobile-route-label
+        >
           {title}
-        </h1>
+        </div>
         <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
       </div>
     </header>
@@ -80,7 +83,12 @@ export function MobileIconButton({
   icon: LucideIcon;
 }) {
   return (
-    <Button asChild variant="ghost" size="icon" className="size-10 rounded-full text-foreground">
+    <Button
+      asChild
+      variant="ghost"
+      size="icon"
+      className="focus-aaa size-11 rounded-full text-foreground"
+    >
       <Link href={href} prefetch={false} aria-label={label}>
         <Icon className="size-5" />
       </Link>
@@ -181,9 +189,12 @@ export function MobileRouteHeader({
     >
       <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
         <span aria-hidden="true" />
-        <h1 className="truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground">
+        <div
+          className="truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground"
+          data-mobile-route-label
+        >
           {title}
-        </h1>
+        </div>
         <span aria-hidden="true" />
       </header>
       <MobileRouteTabs group={group} activeKey={activeKey} sticky={false} />
@@ -275,7 +286,7 @@ export function BottomSheet({
       <Drawer>
         <DrawerTrigger
           className={cn(
-            "premium-action inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none transition-colors duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "premium-action focus-aaa inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none transition-colors duration-150 ease-out",
             triggerClassName,
           )}
         >

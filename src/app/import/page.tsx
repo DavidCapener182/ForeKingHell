@@ -95,7 +95,12 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
             <MobileTopBar
               title="CSV import"
               leading={
-                <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  className="focus-aaa size-11 rounded-full"
+                >
                   <Link href="/import" prefetch={false} aria-label="Back to import sources">
                     <ArrowLeft className="size-5" />
                   </Link>

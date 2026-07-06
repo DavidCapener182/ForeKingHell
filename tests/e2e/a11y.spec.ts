@@ -19,12 +19,18 @@ test.describe("authenticated accessibility smoke checks", () => {
 
   for (const route of [
     "/dashboard",
+    "/today",
     "/import",
+    "/rapsodo",
     "/shots",
     "/bag",
     "/rounds",
     "/handicap",
+    "/practice",
     "/coach",
+    "/feed",
+    "/challenges",
+    "/leaderboard",
     "/achievements",
   ]) {
     test(`${route} has no critical or serious axe violations`, async ({ page }) => {

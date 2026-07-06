@@ -6,11 +6,15 @@ const execFileAsync = promisify(execFile);
 
 const port = process.env.LIGHTHOUSE_PORT ?? "3110";
 const baseUrl = process.env.LIGHTHOUSE_BASE_URL ?? `http://127.0.0.1:${port}`;
-const routes = (process.env.LIGHTHOUSE_ROUTES ?? "/login")
+const routes = (
+  process.env.LIGHTHOUSE_ROUTES ??
+  "/login,/dashboard,/today,/import,/rapsodo,/shots,/bag,/practice,/coach,/feed"
+)
   .split(",")
   .map((route) => route.trim())
   .filter(Boolean);
 const outputDir = process.env.LIGHTHOUSE_OUTPUT_DIR ?? "output/lighthouse";
+const lighthousePreset = process.env.LIGHTHOUSE_PRESET ?? "";
 const npxBin = process.platform === "win32" ? "npx.cmd" : "npx";
 let serverProcess = null;
 
@@ -35,12 +39,15 @@ async function main() {
       url,
       "--quiet",
       "--chrome-flags=--headless=new",
-      "--preset=desktop",
       "--only-categories=performance,accessibility,best-practices",
       "--output=html",
       "--output=json",
       `--output-path=${outputDir}/${name}`,
     ];
+
+    if (lighthousePreset) {
+      args.push(`--preset=${lighthousePreset}`);
+    }
 
     if (process.env.LIGHTHOUSE_COOKIE) {
       args.push(`--extra-headers=${JSON.stringify({ Cookie: process.env.LIGHTHOUSE_COOKIE })}`);

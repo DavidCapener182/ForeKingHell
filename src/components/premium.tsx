@@ -156,7 +156,7 @@ export function PageHeader({
             {actions ? (
               <div
                 data-primary-action
-                className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3"
+                className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:px-3.5"
               >
                 {actions}
               </div>
@@ -302,7 +302,7 @@ export function MobileCompactPageHeader({
           {action ? (
             <div
               data-primary-action
-              className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:px-3"
+              className="flex shrink-0 gap-2 [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:px-3.5"
             >
               {action}
             </div>
@@ -329,7 +329,7 @@ export function MobileSectionChips({
       aria-label="Page sections"
       tabIndex={0}
       className={cn(
-        "sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden",
+        "focus-aaa sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none sm:hidden",
         "premium-route-tabs rounded-lg",
         className,
       )}
@@ -338,7 +338,7 @@ export function MobileSectionChips({
         <a
           key={`${item.label}-${item.href}-${index}`}
           href={item.href}
-          className="min-h-10 shrink-0 rounded-md border border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground"
+          className="focus-aaa min-h-11 shrink-0 rounded-md border border-transparent px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground active:scale-[0.98]"
         >
           {item.label}
         </a>
@@ -364,7 +364,7 @@ export function StickyMobileAction({
     >
       <div
         data-sticky-mobile-action
-        className="premium-mobile-action-bar pointer-events-auto rounded-lg p-2"
+        className="premium-mobile-action-bar pointer-events-auto rounded-lg p-2 [&_[data-slot=button]]:min-h-11 [&_a]:min-h-11 [&_button]:min-h-11"
       >
         {children}
       </div>
@@ -386,14 +386,11 @@ export function ActiveFilterChips({
   return (
     <div
       tabIndex={0}
-      className={cn(
-        "flex gap-2 overflow-x-auto pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        className,
-      )}
+      className={cn("focus-aaa flex gap-2 overflow-x-auto pb-1 outline-none", className)}
     >
       {items.map((item) => {
         const content = (
-          <span className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-emerald-900/10 bg-white/80 px-3 text-sm font-semibold text-slate-700 shadow-sm">
+          <span className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-emerald-900/10 bg-white/80 px-3.5 text-sm font-semibold text-slate-700 shadow-sm">
             {item.label}
           </span>
         );
@@ -584,7 +581,7 @@ export function MobileBentoSummary({
               ) : null}
             </div>
             {item.action ? (
-              <div className="[&_[data-slot=button]]:min-h-10">{item.action}</div>
+              <div className="[&_[data-slot=button]]:min-h-11">{item.action}</div>
             ) : null}
           </div>
         );

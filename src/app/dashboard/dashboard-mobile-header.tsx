@@ -71,7 +71,10 @@ export function DashboardMobileHeader({
     };
   }, []);
 
-  function handleTabClick(event: MouseEvent<HTMLAnchorElement>, tab: (typeof dashboardTabs)[number]) {
+  function handleTabClick(
+    event: MouseEvent<HTMLAnchorElement>,
+    tab: (typeof dashboardTabs)[number],
+  ) {
     setActiveKey(tab.key);
 
     const section = document.getElementById(tab.targetId);
@@ -89,15 +92,18 @@ export function DashboardMobileHeader({
     <section className="premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid max-w-[100vw] gap-0 overflow-x-clip px-4 sm:hidden">
       <header className="-mx-4 grid h-11 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
         <span aria-hidden="true" />
-        <h1 className="truncate text-center text-[1.15rem] font-semibold leading-7 tracking-normal text-foreground">
-          Dashboard
-        </h1>
+        <div
+          className="truncate text-center text-[1.15rem] font-semibold leading-7 tracking-normal text-foreground"
+          data-mobile-route-label
+        >
+          Home
+        </div>
         <span aria-hidden="true" />
       </header>
       <nav
         aria-label="Dashboard sections"
         tabIndex={0}
-        className="premium-route-tabs -mx-4 flex max-w-[100vw] gap-1.5 overflow-x-auto border-b px-4 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="premium-route-tabs focus-aaa -mx-4 flex max-w-[100vw] gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none"
       >
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;
@@ -110,7 +116,7 @@ export function DashboardMobileHeader({
               aria-current={active ? "page" : undefined}
               onClick={(event) => handleTabClick(event, tab)}
               className={cn(
-                "min-h-9 shrink-0 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm font-semibold tracking-normal transition-[border-color,background-color,color,box-shadow] duration-150 ease-out",
+                "focus-aaa min-h-11 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3.5 py-2.5 text-sm font-semibold tracking-normal transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98]",
                 active
                   ? "premium-route-tab-active"
                   : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",

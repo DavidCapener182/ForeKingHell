@@ -73,7 +73,7 @@ export function MobileTabBar({
       aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
       tabIndex={0}
       className={cn(
-        "premium-route-tabs -mx-4 flex min-w-0 gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "premium-route-tabs focus-aaa -mx-4 flex min-w-0 gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none",
         className,
       )}
     >
@@ -87,7 +87,7 @@ export function MobileTabBar({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color,box-shadow] duration-150 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              "focus-aaa min-h-11 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3.5 py-2.5 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98]",
               active
                 ? "premium-route-tab-active"
                 : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",

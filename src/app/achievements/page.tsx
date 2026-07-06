@@ -29,7 +29,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Improve" group="improve" activeKey="achievements" />
+      <MobileRouteHeader title="Coach" group="improve" activeKey="achievements" />
 
       <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
         <Button asChild variant="ghost" className="px-0">

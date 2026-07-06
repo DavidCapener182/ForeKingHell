@@ -82,7 +82,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <PageShell size="6xl">
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
-      <MobileRouteHeader title="Improve" group="improve" activeKey="settings" />
+      <MobileRouteHeader title="Coach" group="improve" activeKey="settings" />
 
       <PageHeader
         eyebrow={<StatusPill tone="sky">Account</StatusPill>}

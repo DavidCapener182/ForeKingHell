@@ -10,6 +10,7 @@ test.describe("mobile density screenshots", () => {
   test.setTimeout(1_200_000);
 
   const mobileViewports = [
+    { name: "mobile-320x568", width: 320, height: 568 },
     { name: "mobile-390x844", width: 390, height: 844 },
     { name: "mobile-430x932", width: 430, height: 932 },
   ];

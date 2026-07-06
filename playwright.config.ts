@@ -25,6 +25,56 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "mobile-small",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 320, height: 568 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: "mobile-iphone",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: "mobile-pixel",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 430, height: 932 },
+        deviceScaleFactor: 2.75,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: "tablet-ipad-mini",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 744, height: 1133 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: "phone-landscape",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 844, height: 390 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined

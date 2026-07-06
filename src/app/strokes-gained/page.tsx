@@ -161,7 +161,7 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Dashboard" group="dashboard" activeKey="strokes" />
+      <MobileRouteHeader title="Home" group="dashboard" activeKey="strokes" />
 
       <div className="hidden items-center justify-between gap-4 sm:flex">
         <Button asChild variant="ghost" className="px-0">

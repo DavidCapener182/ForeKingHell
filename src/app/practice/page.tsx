@@ -57,7 +57,7 @@ export default async function PracticePlannerPage() {
 
   return (
     <PageShell size="full">
-      <MobileRouteHeader title="Improve" group="improve" activeKey="practice" />
+      <MobileRouteHeader title="Coach" group="improve" activeKey="practice" />
       <header className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
