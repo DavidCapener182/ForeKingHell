@@ -17,6 +17,7 @@ describe("course records desktop board", () => {
     expect(source).toContain('exportTableId="course-records-board"');
     expect(source).toContain('data-workbench-export-table="course-records-board"');
     expect(source).toContain('mainTableLabel="Course records board table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
 
     for (const column of [

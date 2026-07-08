@@ -525,7 +525,7 @@ function CourseRecordBoardTable({ courses }: { courses: CourseRecordsHubCourse[]
         exportTableId="course-records-board"
         exportFileName="forekinghell-course-records-board.csv"
       />
-      <DataTableFrame mainTable mainTableLabel="Course records board table">
+      <DataTableFrame mainTable mainTableLabel="Course records board table" stickyFirstColumn>
         <Table
           data-workbench-export-table="course-records-board"
           aria-describedby="course-records-board-summary"

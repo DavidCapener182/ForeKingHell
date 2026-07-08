@@ -1259,6 +1259,7 @@ export function DataTableFrame({
   label,
   mainTable = false,
   mainTableLabel = "Main data table",
+  stickyFirstColumn = false,
 }: {
   children: ReactNode;
   mobile?: ReactNode;
@@ -1266,6 +1267,7 @@ export function DataTableFrame({
   label?: string;
   mainTable?: boolean;
   mainTableLabel?: string;
+  stickyFirstColumn?: boolean;
 }) {
   const regionLabel = label ?? (mainTable ? mainTableLabel : undefined);
 
@@ -1275,6 +1277,8 @@ export function DataTableFrame({
         id={mainTable ? "main-table" : undefined}
         tabIndex={mainTable ? -1 : undefined}
         data-main-table-target={mainTable ? "true" : undefined}
+        data-sticky-table-header="true"
+        data-sticky-first-column={stickyFirstColumn ? "true" : undefined}
         role={regionLabel ? "region" : undefined}
         aria-label={regionLabel}
         className={cn(

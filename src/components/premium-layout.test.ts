@@ -22,13 +22,29 @@ describe("PageShell layout contract", () => {
       )?.[0] ?? "";
 
     expect(frameBlock).toContain("label,");
+    expect(frameBlock).toContain("stickyFirstColumn = false,");
     expect(frameBlock).toContain(
       "const regionLabel = label ?? (mainTable ? mainTableLabel : undefined);",
+    );
+    expect(frameBlock).toContain('data-sticky-table-header="true"');
+    expect(frameBlock).toContain(
+      'data-sticky-first-column={stickyFirstColumn ? "true" : undefined}',
     );
     expect(frameBlock).toContain('role={regionLabel ? "region" : undefined}');
     expect(frameBlock).toContain("aria-label={regionLabel}");
     expect(frameBlock).toContain('<div className="min-w-0">{children}</div>');
     expect(frameBlock).not.toContain("<ScrollArea");
+  });
+
+  it("standardises opt-in sticky first columns for desktop tables", () => {
+    const frameSource = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
+    const globalsSource = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+
+    expect(frameSource).toContain("stickyFirstColumn?: boolean;");
+    expect(globalsSource).toContain('[data-sticky-first-column="true"]');
+    expect(globalsSource).toContain(".data-table-scroll :where(th, td):first-child");
+    expect(globalsSource).toContain('tr[data-state="selected"]');
+    expect(globalsSource).toContain("td:first-child");
   });
 
   it("keeps desktop AI rails limited to workbench routes", () => {
