@@ -215,16 +215,18 @@ export function DesktopWorkbenchControls({
       return;
     }
 
+    const savedAt = new Date();
+    const savedAtIso = savedAt.toISOString();
     const view: SavedView = {
-      id: `${Date.now()}`,
+      id: savedAtIso,
       title: title.slice(0, 80),
       href: `${window.location.pathname}${window.location.search}`,
       detail: new Intl.DateTimeFormat("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
-      }).format(new Date()),
-      createdAt: new Date().toISOString(),
+      }).format(savedAt),
+      createdAt: savedAtIso,
       density,
       visibleColumnIds: Array.from(visibleColumnIds),
     };
@@ -232,6 +234,7 @@ export function DesktopWorkbenchControls({
     setSavedViews(next);
     window.localStorage.setItem(savedViewsKey, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent));
+    announceLayoutStatus(`Saved table view ${view.title}.`);
     setSaveDialogOpen(false);
   }
 
@@ -271,10 +274,12 @@ export function DesktopWorkbenchControls({
   }
 
   function removeSavedView(id: string) {
+    const removed = savedViews.find((view) => view.id === id);
     const next = savedViews.filter((view) => view.id !== id);
     setSavedViews(next);
     window.localStorage.setItem(savedViewsKey, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent));
+    announceLayoutStatus(removed ? `Removed saved view ${removed.title}.` : "Saved view removed.");
   }
 
   function toggleColumn(id: string, checked: boolean) {

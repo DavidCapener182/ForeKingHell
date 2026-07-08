@@ -17,6 +17,9 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("openSaveCurrentViewDialog");
     expect(source).toContain("draftSavedViewTitle");
     expect(source).toContain("maxLength={80}");
+    expect(source).toContain("const savedAt = new Date()");
+    expect(source).toContain("const savedAtIso = savedAt.toISOString()");
+    expect(source).not.toContain("Date.now()");
     expect(source).toContain("window.localStorage.setItem(savedViewsKey, JSON.stringify(next))");
     expect(source).toContain(
       'export const desktopSavedViewsUpdatedEvent = "fkh:desktop-saved-views-updated"',
@@ -47,6 +50,8 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("window.clearTimeout(layoutStatusTimerRef.current)");
     expect(source).toContain("setLayoutStatusMessage(message)");
     expect(source).toContain('setLayoutStatusMessage("")');
+    expect(source).toContain("Saved table view");
+    expect(source).toContain("Removed saved view");
     expect(source).toContain("Applied saved view with");
     expect(source).toContain("columns visible.");
     expect(source).toContain("Table layout reset to all columns and comfortable density.");
