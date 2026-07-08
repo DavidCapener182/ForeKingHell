@@ -153,6 +153,9 @@ export const dynamic = "force-dynamic";
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+const integerFormatter = new Intl.NumberFormat("en-GB", {
+  maximumFractionDigits: 0,
+});
 const shortMonthFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
@@ -212,6 +215,7 @@ const EVOLUTION_SHOTS_PER_CLUB = 1200;
 
 const bagShotSelect = {
   id: shots.id,
+  sessionId: shots.sessionId,
   clubId: shots.clubId,
   clubType: shots.clubType,
   shotNumber: shots.shotNumber,
@@ -880,6 +884,7 @@ async function getBag() {
 
   const rankedBagShotSelect = {
     id: rankedClubShots.id,
+    sessionId: rankedClubShots.sessionId,
     clubId: rankedClubShots.clubId,
     clubType: rankedClubShots.clubType,
     shotNumber: rankedClubShots.shotNumber,
@@ -4093,6 +4098,24 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DriverContextMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="apple-panel p-3">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 font-semibold">{value}</p>
+      <p className="mt-1 text-xs leading-4 text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
 function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
   const clubLines = buildClubEvolutionRows(
     clubs.map((club) => ({
@@ -4110,83 +4133,289 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
     return null;
   }
 
+  const driverContext = buildDriverEvolutionContext(clubLines);
+
   return (
     <DataPanel>
       <SectionHeader
         title="Club evolution"
-        description="Monthly carry deltas from clean stock shots."
+        description="Monthly median carry from clean-stock shots, with sample size and retest confidence."
         action={<TrendingUp className="size-5 text-emerald-600" />}
       />
       <CardContent>
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-[#F5F6F4]">
-          <div className="grid grid-cols-[7rem_minmax(0,1fr)_7rem_8rem] gap-3 border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <div className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] gap-3 border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <span>Club</span>
             <span>Last three months</span>
             <span className="text-right">Change</span>
-            <span className="text-right">Health</span>
+            <span className="text-right">Read</span>
           </div>
-          {clubLines.map(({ club, measuredPoints, points }) => (
-            <Link
-              key={club.id}
-              href={`/bag/${club.id}`}
-              prefetch={false}
-              className="grid grid-cols-[7rem_minmax(0,1fr)_7rem_8rem] items-center gap-3 border-b border-slate-200 px-3 py-2 text-sm transition-colors last:border-b-0 hover:bg-white"
-            >
-              <span className="font-semibold">{formatClubType(club.type)}</span>
-              <span className="grid grid-cols-3 gap-2">
-                {points.map((point) => (
-                  <span
-                    key={point.key}
-                    className={`rounded-md px-2 py-1 ${
-                      point.carryYd === null ? "bg-white/45 text-muted-foreground" : "bg-white/80"
-                    }`}
-                  >
-                    <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      {point.label}
-                    </span>
-                    <span className="font-semibold">
-                      {point.carryYd === null ? "No shots" : `${formatMetric(point.carryYd)} yd`}
-                    </span>
-                  </span>
-                ))}
-              </span>
-              <span
-                className={`text-right font-semibold ${clubEvolutionTextClass(measuredPoints)}`}
+          {clubLines.map(({ club, measuredPoints, points }) => {
+            const readout = clubEvolutionReadout(club, measuredPoints);
+
+            return (
+              <Link
+                key={club.id}
+                href={`/bag/${club.id}`}
+                prefetch={false}
+                className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] items-center gap-3 border-b border-slate-200 px-3 py-2 text-sm transition-colors last:border-b-0 hover:bg-white"
               >
-                {clubEvolutionDelta(measuredPoints)}
-              </span>
-              <span className="text-right">
-                <StatusPill tone={clubHealthReadout(club).tone}>
-                  {clubHealthReadout(club).label}
-                </StatusPill>
-              </span>
-            </Link>
-          ))}
+                <span className="font-semibold">{formatClubType(club.type)}</span>
+                <span className="grid grid-cols-3 gap-2">
+                  {points.map((point) => (
+                    <span
+                      key={point.key}
+                      className={`rounded-md px-2 py-1 ${
+                        point.carryYd === null ? "bg-white/45 text-muted-foreground" : "bg-white/80"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                        {point.label}
+                      </span>
+                      <span className="block font-semibold">
+                        {point.carryYd === null ? "No shots" : `${formatMetric(point.carryYd)} yd`}
+                      </span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {point.sampleSize > 0
+                          ? `${integerFormatter.format(point.sampleSize)} clean`
+                          : "No clean sample"}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+                <span className="text-right">
+                  <span className={`block font-semibold ${clubEvolutionTextClass(measuredPoints)}`}>
+                    {clubEvolutionDelta(measuredPoints)}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {readout.confidenceLabel}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <StatusPill tone={readout.tone}>{readout.label}</StatusPill>
+                </span>
+              </Link>
+            );
+          })}
         </div>
+        {driverContext ? <DriverEvolutionContextCard context={driverContext} /> : null}
         <details className="group mt-3">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-emerald-300 [&::-webkit-details-marker]:hidden">
             <span>Expand evolution notes</span>
             <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {clubLines.map(({ club, measuredPoints }) => (
-              <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-base font-semibold">{formatClubType(club.type)}</p>
-                  <StatusPill tone={clubEvolutionTone(measuredPoints)}>
-                    {clubEvolutionDelta(measuredPoints)}
-                  </StatusPill>
+            {clubLines.map(({ club, measuredPoints }) => {
+              const readout = clubEvolutionReadout(club, measuredPoints);
+
+              return (
+                <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-base font-semibold">{formatClubType(club.type)}</p>
+                    <StatusPill tone={readout.tone}>{readout.label}</StatusPill>
+                  </div>
+                  <p className="mt-2 text-sm leading-5 text-muted-foreground">{readout.detail}</p>
                 </div>
-                <p className="mt-2 text-sm leading-5 text-muted-foreground">
-                  {clubHealthReadout(club).detail}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </details>
       </CardContent>
     </DataPanel>
   );
+}
+
+type DriverEvolutionContext = {
+  latestSession: DriverLatestSessionSummary;
+  latestMonth: ClubEvolutionMeasuredPoint;
+  baselineMonth: ClubEvolutionMeasuredPoint;
+  deltaYd: number;
+};
+
+type DriverLatestSessionSummary = {
+  shotCount: number;
+  carryAverageYd: number | null;
+  playableRate: number | null;
+  ballSpeedAverageMph: number | null;
+  ballSpeedBestMph: number | null;
+};
+
+function DriverEvolutionContextCard({ context }: { context: DriverEvolutionContext }) {
+  const todayCarryLabel = formatCarryYards(context.latestSession.carryAverageYd);
+  const latestMonthCarryLabel = formatCarryYards(context.latestMonth.carryYd);
+  const baselineCarryLabel = formatCarryYards(context.baselineMonth.carryYd);
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Driver read
+          </p>
+          <p className="mt-1 text-sm font-semibold">
+            Playable today, carry down versus {context.baselineMonth.label}.
+          </p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            Action: monitor carry over the next 2 stock sessions. Do not change swing unless ball
+            speed also drops.
+          </p>
+        </div>
+        <StatusPill tone="sky">Monitor carry</StatusPill>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        <DriverContextMetric
+          label="Today"
+          value={todayCarryLabel}
+          detail={`${formatMetric(context.latestSession.playableRate)}% playable · ${integerFormatter.format(
+            context.latestSession.shotCount,
+          )} clean shots`}
+        />
+        <DriverContextMetric
+          label={context.latestMonth.label}
+          value={latestMonthCarryLabel}
+          detail={`${integerFormatter.format(context.latestMonth.sampleSize)} clean monthly stock shots`}
+        />
+        <DriverContextMetric
+          label={context.baselineMonth.label}
+          value={baselineCarryLabel}
+          detail={`${integerFormatter.format(context.baselineMonth.sampleSize)} clean monthly stock shots`}
+        />
+      </div>
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        <Metric
+          label="Driver ball speed today"
+          value={formatDriverBallSpeed(
+            context.latestSession.ballSpeedAverageMph,
+            context.latestSession.ballSpeedBestMph,
+          )}
+        />
+        <Metric
+          label="Carry movement"
+          value={`${formatSignedYards(context.deltaYd)} vs ${context.baselineMonth.label}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function buildDriverEvolutionContext(
+  clubLines: Array<{
+    club: BagClub;
+    measuredPoints: ClubEvolutionMeasuredPoint[];
+  }>,
+): DriverEvolutionContext | null {
+  const driverLine = clubLines.find((row) => row.club.type === "driver") ?? null;
+
+  if (!driverLine || driverLine.measuredPoints.length < 2) {
+    return null;
+  }
+
+  const latestSession = buildLatestDriverSessionSummary(driverLine.club.shots);
+
+  if (!latestSession) {
+    return null;
+  }
+
+  const baselineMonth = driverLine.measuredPoints[0];
+  const latestMonth = driverLine.measuredPoints[driverLine.measuredPoints.length - 1];
+
+  return {
+    latestSession,
+    latestMonth,
+    baselineMonth,
+    deltaYd: roundOneNumber(latestMonth.carryYd - baselineMonth.carryYd),
+  };
+}
+
+function buildLatestDriverSessionSummary(
+  shots: BagClub["shots"],
+): DriverLatestSessionSummary | null {
+  const cleanDriverShots = shots
+    .filter((shot) => shot.clubType === "driver" && isCleanFullBagShot(shot))
+    .sort((left, right) => shotTime(right.shotAt) - shotTime(left.shotAt));
+  const bySession = new Map<string, typeof cleanDriverShots>();
+
+  for (const shot of cleanDriverShots) {
+    const existing = bySession.get(shot.sessionId) ?? [];
+    existing.push(shot);
+    bySession.set(shot.sessionId, existing);
+  }
+
+  const latestSessionShots =
+    [...bySession.values()]
+      .filter((rows) => rows.length >= 5)
+      .sort((left, right) => shotTime(right[0]?.shotAt) - shotTime(left[0]?.shotAt))[0] ?? null;
+
+  if (!latestSessionShots) {
+    return null;
+  }
+
+  const carryValues = latestSessionShots.map((shot) => shot.carryYd).filter(isFiniteMetric);
+  const playableShots = latestSessionShots.filter(
+    (shot) =>
+      isFiniteMetric(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) <= playableLimit("driver"),
+  );
+  const directionalShots = latestSessionShots.filter((shot) => isFiniteMetric(shot.sideCarryYd));
+  const ballSpeedValues = latestSessionShots
+    .map((shot) => shot.ballSpeedMph)
+    .filter(isFiniteMetric);
+
+  return {
+    shotCount: latestSessionShots.length,
+    carryAverageYd: roundOne(averageNumber(carryValues)),
+    playableRate:
+      directionalShots.length === 0
+        ? null
+        : roundOneNumber((playableShots.length / directionalShots.length) * 100),
+    ballSpeedAverageMph: roundOne(averageNumber(ballSpeedValues)),
+    ballSpeedBestMph: roundOne(maxNumberOrNull(ballSpeedValues)),
+  };
+}
+
+function isCleanFullBagShot(shot: BagClub["shots"][number]) {
+  const qualityTag = shot.qualityTag?.trim().toLowerCase();
+  const category = shot.shotCategory?.trim().toLowerCase();
+
+  if (!isFiniteMetric(shot.carryYd)) {
+    return false;
+  }
+
+  if (
+    qualityTag &&
+    ["top", "mishit", "thin", "fat", "bad_data", "bad-data", "misread"].includes(qualityTag)
+  ) {
+    return false;
+  }
+
+  return !category || category === "full";
+}
+
+function playableLimit(clubType: string) {
+  if (clubType === "driver") return 45;
+  if (clubType.endsWith("w")) return 36;
+  if (clubType.endsWith("h")) return 32;
+  if (clubType.endsWith("i")) return 26;
+  return 18;
+}
+
+function shotTime(value: StockShot["shotAt"]) {
+  return shotDate(value)?.getTime() ?? 0;
+}
+
+function formatDriverBallSpeed(average: number | null, best: number | null) {
+  if (average === null && best === null) {
+    return "--";
+  }
+
+  if (average === null) {
+    return `PB ${formatMetric(best)} mph`;
+  }
+
+  if (best === null) {
+    return `${formatMetric(average)} mph avg`;
+  }
+
+  return `${formatMetric(average)} avg / ${formatMetric(best)} PB`;
 }
 
 function stockTrendLabel(status: StockCarryTrend["status"]) {
@@ -4253,36 +4482,49 @@ function clubHealthReadout(club: BagClub): {
     (club.type === "sw" && club.stock.coursePlayCarryYd === null)
   ) {
     return {
-      label: "Calibrating",
-      detail: `${stockSampleSize} usable shots. Add more proof before course trust.`,
+      label: "Low confidence",
+      detail: `${stockSampleSize} usable shots. Add more proof before changing the play number.`,
       tone: "amber",
     };
   }
 
-  if (club.stockTrend?.status === "worse" || missSize >= 28) {
+  if (club.stockTrend?.status === "worse") {
     return {
-      label: "Needs attention",
-      detail:
-        club.stockTrend?.status === "worse"
-          ? stockTrendDetail(club.stockTrend)
-          : `Miss window reaches ${formatMetric(missSize)} yd.`,
+      label: "Distance retest",
+      detail: `${stockTrendDetail(club.stockTrend)}. Retest 10 clean stock shots before calling this a real regression.`,
+      tone: "amber",
+    };
+  }
+
+  if (missSize >= 28) {
+    return {
+      label: "Pattern check",
+      detail: `Miss window reaches ${formatMetric(missSize)} yd. Treat the carry number separately from start-line control.`,
       tone: "pink",
     };
   }
 
   if (trust >= 75) {
     return {
-      label: "Healthy",
+      label: stableBagLabel(club),
       detail: `${trust}% trust from the current stock window.`,
       tone: "green",
     };
   }
 
   return {
-    label: "Usable",
+    label: "Course usable",
     detail: `${trust}% trust. Fine with a conservative target.`,
     tone: "sky",
   };
+}
+
+function stableBagLabel(club: BagClub) {
+  return club.isShortGameTouch || isScoringWedgeClub(club.type) ? "Gapping stable" : "Carry stable";
+}
+
+function isScoringWedgeClub(clubType: string) {
+  return ["pw", "gw", "aw", "sw"].includes(clubType.toLowerCase());
 }
 
 function clubCurrentMiss(club: BagClub): {
@@ -4354,6 +4596,101 @@ function clubEvolutionDelta(points: ClubEvolutionMeasuredPoint[]) {
   return formatSignedYards(delta);
 }
 
+function clubEvolutionReadout(
+  club: BagClub,
+  points: ClubEvolutionMeasuredPoint[],
+): {
+  label: string;
+  detail: string;
+  confidenceLabel: string;
+  tone: BagDoctorFinding["tone"];
+} {
+  if (points.length < 2) {
+    return {
+      label: "Low confidence",
+      detail: "Need two measured months before calling this a carry trend.",
+      confidenceLabel: "low confidence",
+      tone: "slate",
+    };
+  }
+
+  const first = points[0];
+  const latest = points[points.length - 1];
+  const delta = roundOneNumber(latest.carryYd - first.carryYd);
+  const confidenceLabel = clubEvolutionConfidenceLabel(points);
+  const sampleDetail = `${latest.label} has ${integerFormatter.format(
+    latest.sampleSize,
+  )} clean stock shots; ${first.label} had ${integerFormatter.format(first.sampleSize)}.`;
+  const signedDelta = delta === 0 ? "stable" : formatSignedYards(delta);
+
+  if (Math.min(first.sampleSize, latest.sampleSize) < 6) {
+    return {
+      label: "Low confidence",
+      detail: `${first.label} to ${latest.label} is ${signedDelta}, but the month sample is thin. Retest 10 stock shots before changing the play number. ${sampleDetail}`,
+      confidenceLabel,
+      tone: "amber",
+    };
+  }
+
+  if (delta <= -8) {
+    return {
+      label: "Distance retest",
+      detail: `${first.label} to ${latest.label} is ${formatSignedYards(
+        delta,
+      )}. Controlled or start-line practice can pull carry lower without proving strike regressed. Retest 10 stock shots. ${sampleDetail}`,
+      confidenceLabel,
+      tone: "amber",
+    };
+  }
+
+  if (delta <= -5) {
+    return {
+      label: "Monitor carry",
+      detail: `${first.label} to ${latest.label} is ${formatSignedYards(
+        delta,
+      )}. Keep the course number conservative and compare after the next stock-distance set. ${sampleDetail}`,
+      confidenceLabel,
+      tone: "sky",
+    };
+  }
+
+  if (delta >= 5) {
+    return {
+      label: "Carry up",
+      detail: `${first.label} to ${latest.label} is ${formatSignedYards(
+        delta,
+      )}. Keep the gain visible but confirm it with the next clean stock set. ${sampleDetail}`,
+      confidenceLabel,
+      tone: "green",
+    };
+  }
+
+  return {
+    label: stableBagLabel(club),
+    detail: `${first.label} to ${latest.label} is within normal variation for median clean-stock carry. ${sampleDetail}`,
+    confidenceLabel,
+    tone: "green",
+  };
+}
+
+function clubEvolutionConfidenceLabel(points: ClubEvolutionMeasuredPoint[]) {
+  if (points.length < 2) {
+    return "low confidence";
+  }
+
+  const boundarySample = Math.min(points[0].sampleSize, points[points.length - 1].sampleSize);
+
+  if (boundarySample >= 12) {
+    return "high confidence";
+  }
+
+  if (boundarySample >= 6) {
+    return "medium confidence";
+  }
+
+  return "low confidence";
+}
+
 function clubEvolutionTone(points: ClubEvolutionMeasuredPoint[]): BagDoctorFinding["tone"] {
   if (points.length < 2) {
     return "slate";
@@ -4361,11 +4698,11 @@ function clubEvolutionTone(points: ClubEvolutionMeasuredPoint[]): BagDoctorFindi
 
   const delta = points[points.length - 1].carryYd - points[0].carryYd;
 
-  if (delta >= 3) {
+  if (delta >= 5) {
     return "green";
   }
 
-  if (delta <= -3) {
+  if (delta <= -8) {
     return "amber";
   }
 

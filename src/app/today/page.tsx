@@ -84,6 +84,7 @@ import {
   type TodayPracticeData,
   type TodayPracticeShot,
   getTodayPracticeData,
+  isExcludedPracticeQualityTag,
 } from "@/lib/today-session-data";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +109,7 @@ type HighlightDirection = "higher" | "lower";
 type HighlightKind = "record" | "tie" | "close";
 type ClubSort = "bag" | "best" | "worst";
 type ReviewTone = "green" | "sky" | "pink" | "amber" | "slate";
+type PracticeReviewMode = "clean" | "raw";
 
 type ClubHighlight = {
   id: string;
@@ -266,7 +268,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <TodayMobileVerdictCard data={data} linkedPracticePlan={linkedPracticePlan} />
         <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
         <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-        <PracticePlanFollowedCard plan={linkedPracticePlan} className="sm:hidden" />
+        <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} className="sm:hidden" />
         <MobileMetricStrip
           items={[
             {
@@ -309,7 +311,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           <MobilePlayRoute
             href={shotDatabaseHref}
             title="Latest review"
-            value={`${integerFormatter.format(data.shots.length)} selected`}
+            value={`${integerFormatter.format(data.shots.length)} clean selected`}
             detail="Filtered shot rows, charts and club scope."
             icon={<Database className="size-5" />}
           />
@@ -375,6 +377,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </form>
         </details>
         <ActiveFilterChips items={activeFilterChips} />
+        <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
       </div>
 
       {data.shots.length === 0 ? (
@@ -409,17 +412,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 
           <MobileAccordionSection
             title="Latest practice shot list"
-            count={integerFormatter.format(data.shots.length)}
-            description="Open for raw selected shots."
+            count={integerFormatter.format(data.rawShots.length)}
+            description="Raw imported rows with clean-scoring exclusions labelled."
             className="scroll-mt-28"
           >
             <MobileDataList>
-              {data.shots.map((shot) => (
+              {data.rawShots.map((shot) => (
                 <MobileDataCard
                   key={shot.id}
                   title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
                   subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                  action={<Badge variant="outline">{formatShotCategory(shot.shotCategory)}</Badge>}
+                  action={
+                    <Badge variant="outline" className={shotQualityBadgeClass(shot)}>
+                      {formatShotQualityLabel(shot)}
+                    </Badge>
+                  }
                 >
                   <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                   <DataPair label="Total" value={formatYards(shot.totalYd)} />
@@ -659,7 +666,7 @@ function TodayDesktopDashboard({
           <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
         </TodayBentoItem>
         <TodayBentoItem span={4} className="scroll-mt-28">
-          <PracticePlanFollowedCard plan={linkedPracticePlan} />
+          <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
         </TodayBentoItem>
 
         <TodayBentoItem span={12}>
@@ -668,6 +675,11 @@ function TodayDesktopDashboard({
 
         {hasShots ? (
           <>
+            {data.dataCleaning.excludedShotCount > 0 ? (
+              <TodayBentoItem span={12}>
+                <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
+              </TodayBentoItem>
+            ) : null}
             <TodayBentoItem id="charts" span={12} className="scroll-mt-28">
               <TodayShotCharts
                 shots={chartShots}
@@ -740,6 +752,105 @@ function TodayDesktopFilterBar({
         </div>
       ) : null}
     </section>
+  );
+}
+
+function TodayDataCleaningImpactCard({
+  data,
+  linkedPracticePlan,
+  className = "",
+}: {
+  data: TodayPracticeData;
+  linkedPracticePlan?: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+  className?: string;
+}) {
+  if (data.dataCleaning.excludedShotCount === 0) {
+    return null;
+  }
+
+  const cleanScore = practiceScoreSummary(data, "clean");
+  const rawScore = practiceScoreSummary(data, "raw");
+  const carryDelta = delta(data.overall.today.carryAverageYd, data.rawOverall.today.carryAverageYd);
+  const scoreDelta = cleanScore.score - rawScore.score;
+  const scoringDelta = cleanScore.scoringScore - rawScore.scoringScore;
+  const cleanHeadline = practiceHeadlineFromScore(cleanScore);
+  const rawHeadline = practiceHeadlineFromScore(rawScore);
+  const verdictUnchanged = cleanHeadline === rawHeadline;
+  const planNote = buildPlanCleanSampleNote(linkedPracticePlan ?? null, data);
+
+  return (
+    <section
+      className={`grid gap-3 rounded-lg border border-emerald-100 bg-emerald-50/45 p-3 shadow-sm ${className}`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-emerald-950">Data cleaning impact</p>
+          <p className="mt-1 text-sm leading-5 text-emerald-900">
+            Excluded shots stay in raw history and are removed from clean scoring, stock carry and
+            plan matching.
+          </p>
+        </div>
+        <Badge variant="outline" className="border-emerald-200 bg-white/80 text-emerald-800">
+          {integerFormatter.format(data.dataCleaning.excludedShotCount)} excluded
+        </Badge>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-4">
+        <DataCleaningMetric
+          label="Imported"
+          value={integerFormatter.format(data.dataCleaning.importedShotCount)}
+        />
+        <DataCleaningMetric
+          label="Clean selected"
+          value={integerFormatter.format(data.dataCleaning.cleanShotCount)}
+        />
+        <DataCleaningMetric
+          label="Excluded"
+          value={integerFormatter.format(data.dataCleaning.excludedShotCount)}
+        />
+        <DataCleaningMetric label="Reason" value={data.dataCleaning.reasonLabel} />
+      </div>
+      <div className="grid gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <p className="font-semibold leading-5 text-emerald-950">
+          Impact: carry {formatImpactDelta(carryDelta, "yd")} · session score{" "}
+          {formatImpactDelta(scoreDelta, "points")} · scoring control{" "}
+          {formatImpactDelta(scoringDelta, "points")}
+        </p>
+        <p className="leading-5 text-emerald-900">
+          {verdictUnchanged
+            ? `Verdict unchanged: ${cleanHeadline}.`
+            : `Verdict moved from ${rawHeadline} to ${cleanHeadline}.`}
+        </p>
+      </div>
+      {data.dataCleaning.excludedByClub.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {data.dataCleaning.excludedByClub.map((item) => (
+            <Badge
+              key={item.clubType}
+              variant="outline"
+              className="border-emerald-200 bg-white/80 text-emerald-900"
+            >
+              {item.clubLabel}: {item.cleanShotCount}/{item.importedShotCount} clean
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {planNote ? (
+        <p className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
+          {planNote}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function DataCleaningMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-emerald-100 bg-white/80 px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-base font-semibold text-slate-950">{value}</p>
+    </div>
   );
 }
 
@@ -903,9 +1014,11 @@ function TodayPracticeModePanel({
 
 function PracticePlanFollowedCard({
   plan,
+  data,
   className = "",
 }: {
   plan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+  data?: TodayPracticeData;
   className?: string;
 }) {
   if (!plan) {
@@ -932,6 +1045,7 @@ function PracticePlanFollowedCard({
 
   const planResult = buildPlanResultReadout(plan);
   const planTone = (planResult?.tone ?? "green") as ReviewTone;
+  const cleanSampleNote = data ? buildPlanCleanSampleNote(plan, data) : null;
 
   return (
     <section
@@ -954,6 +1068,11 @@ function PracticePlanFollowedCard({
         <p className={`mt-1 text-sm leading-5 ${practicePlanResultBodyClass(planTone)}`}>
           {planResult ? `${planResult.scoreLabel} - ${planResult.detail}` : plan.verdict}
         </p>
+        {cleanSampleNote ? (
+          <p className="mt-2 rounded-lg border border-white/65 bg-white/70 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+            {cleanSampleNote}
+          </p>
+        ) : null}
       </div>
       <Button
         asChild
@@ -2619,7 +2738,7 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           <option value="">All clubs</option>
           {data.clubs.map((club) => (
             <option key={club.type} value={club.type}>
-              {club.label} ({club.shotCount})
+              {club.label} ({formatClubOptionShotCount(club)})
             </option>
           ))}
         </select>
@@ -2722,7 +2841,8 @@ function TodayRawShotListPanel({
         <div>
           <p className="text-sm font-semibold">Raw shot list</p>
           <p className="mt-1 text-sm font-medium text-slate-800">
-            {integerFormatter.format(data.shots.length)} selected shots ready for source-row review.
+            {integerFormatter.format(data.rawShots.length)} imported rows ·{" "}
+            {integerFormatter.format(data.shots.length)} clean selected.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -2742,7 +2862,7 @@ function TodayRawShotListPanel({
             <Table className="min-w-[1040px]" aria-describedby="today-raw-shot-preview-summary">
               <TableCaption id="today-raw-shot-preview-summary" className="sr-only">
                 Raw shot preview table for the selected latest-practice shots with session, club,
-                shot type, carry, total, side, start, launch, ball speed and smash values.
+                shot type, quality, carry, total, side, start, launch, ball speed and smash values.
               </TableCaption>
               <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
                 <TableRow>
@@ -2757,6 +2877,7 @@ function TodayRawShotListPanel({
                   </TableHead>
                   <TableHead data-column="club">Club</TableHead>
                   <TableHead data-column="type">Type</TableHead>
+                  <TableHead data-column="quality">Quality</TableHead>
                   <TableHead data-column="carry" className="text-right">
                     Carry
                   </TableHead>
@@ -2781,7 +2902,7 @@ function TodayRawShotListPanel({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.shots.map((shot) => (
+                {data.rawShots.map((shot) => (
                   <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="session"
@@ -2797,6 +2918,11 @@ function TodayRawShotListPanel({
                     </TableCell>
                     <TableCell data-column="type" className="py-1.5">
                       {formatShotCategory(shot.shotCategory)}
+                    </TableCell>
+                    <TableCell data-column="quality" className="py-1.5">
+                      <Badge variant="outline" className={shotQualityBadgeClass(shot)}>
+                        {formatShotQualityLabel(shot)}
+                      </Badge>
                     </TableCell>
                     <TableCell data-column="carry" className="py-1.5 text-right">
                       {formatYards(shot.carryYd)}
@@ -3593,21 +3719,25 @@ function shotPatternInsight(data: TodayPracticeData) {
 function heroVerdictTitle(data: TodayPracticeData) {
   if (data.shots.length > 0) {
     const score = practiceScoreSummary(data);
-    return latestPracticeHeadline(
-      {
-        score: score.score,
-        label: score.sessionQualityLabel,
-        detail: score.sessionQualityDetail,
-        tone: score.tone,
-      },
-      buildScoringControlReadout(score.scoringScore),
-    );
+    return practiceHeadlineFromScore(score);
   }
 
   if (data.overall.verdict === "better") return "Better than baseline";
   if (data.overall.verdict === "worse") return "Behind baseline";
   if (data.overall.verdict === "mixed") return "Mixed session";
   return data.overall.title;
+}
+
+function practiceHeadlineFromScore(score: PracticeScoreSummary) {
+  return latestPracticeHeadline(
+    {
+      score: score.score,
+      label: score.sessionQualityLabel,
+      detail: score.sessionQualityDetail,
+      tone: score.tone,
+    },
+    buildScoringControlReadout(score.scoringScore),
+  );
 }
 
 function verdictStoryChips(data: TodayPracticeData): VerdictReasonItem[] {
@@ -3734,8 +3864,8 @@ function selectedClubLabel(data: TodayPracticeData) {
   );
 }
 
-function selectedClubCount(data: TodayPracticeData) {
-  return new Set(data.shots.map((shot) => shot.clubType)).size;
+function selectedClubCount(data: TodayPracticeData, mode: PracticeReviewMode = "clean") {
+  return new Set(reviewShots(data, mode).map((shot) => shot.clubType)).size;
 }
 
 function sessionScopeLabel(data: TodayPracticeData) {
@@ -3755,20 +3885,38 @@ function practiceFocus(data: TodayPracticeData) {
   };
 }
 
-function practiceScoreSummary(data: TodayPracticeData): PracticeScoreSummary {
-  const best = bestClubComparison(data.clubComparisons);
-  const work = needsWorkComparison(data.clubComparisons);
-  const reliable = reliableClubComparison(data.clubComparisons);
-  const coaching = sessionCoachingSummary(data);
+function reviewShots(data: TodayPracticeData, mode: PracticeReviewMode) {
+  return mode === "raw" ? data.rawShots : data.shots;
+}
+
+function reviewComparisons(data: TodayPracticeData, mode: PracticeReviewMode) {
+  return mode === "raw" ? data.rawClubComparisons : data.clubComparisons;
+}
+
+function reviewOverall(data: TodayPracticeData, mode: PracticeReviewMode) {
+  return mode === "raw" ? data.rawOverall : data.overall;
+}
+
+function practiceScoreSummary(
+  data: TodayPracticeData,
+  mode: PracticeReviewMode = "clean",
+): PracticeScoreSummary {
+  const comparisons = reviewComparisons(data, mode);
+  const overall = reviewOverall(data, mode);
+  const shots = reviewShots(data, mode);
+  const best = bestClubComparison(comparisons);
+  const work = needsWorkComparison(comparisons);
+  const reliable = reliableClubComparison(comparisons);
+  const coaching = sessionCoachingSummary(data, mode);
   const sessionQuality = buildSessionQualityReadout({
-    shotCount: data.shots.length,
-    selectedClubCount: selectedClubCount(data),
-    playableRate: data.overall.today.playableRate,
-    bigMissRate: data.overall.today.bigMissRate,
-    offlineAverageYd: data.overall.today.offlineAverageYd,
+    shotCount: shots.length,
+    selectedClubCount: selectedClubCount(data, mode),
+    playableRate: overall.today.playableRate,
+    bigMissRate: overall.today.bigMissRate,
+    offlineAverageYd: overall.today.offlineAverageYd,
     strikeScore: coaching.strikeScore,
     pbMomentCount: pbMomentCount(data),
-    clubs: data.clubComparisons.map((comparison) => ({
+    clubs: comparisons.map((comparison) => ({
       clubType: comparison.clubType,
       shotCount: comparison.today.shotCount,
       playableRate: comparison.today.playableRate,
@@ -3799,12 +3947,16 @@ function practiceScoreSummary(data: TodayPracticeData): PracticeScoreSummary {
   };
 }
 
-function sessionCoachingSummary(data: TodayPracticeData): SessionCoachingSummary {
-  const strikeScore = sessionStrikeQualityScore(data);
-  const scoringScore = sessionScoringQualityScore(data);
+function sessionCoachingSummary(
+  data: TodayPracticeData,
+  mode: PracticeReviewMode = "clean",
+): SessionCoachingSummary {
+  const comparisons = reviewComparisons(data, mode);
+  const strikeScore = sessionStrikeQualityScore(data, mode);
+  const scoringScore = sessionScoringQualityScore(data, mode);
   const scoringControl = buildScoringControlReadout(scoringScore);
-  const biggestGain = bestClubComparison(data.clubComparisons);
-  const biggestOpportunity = needsWorkComparison(data.clubComparisons);
+  const biggestGain = bestClubComparison(comparisons);
+  const biggestOpportunity = needsWorkComparison(comparisons);
 
   return {
     strikeScore,
@@ -3828,9 +3980,9 @@ function sessionCoachingSummary(data: TodayPracticeData): SessionCoachingSummary
   };
 }
 
-function sessionScoringQualityScore(data: TodayPracticeData) {
+function sessionScoringQualityScore(data: TodayPracticeData, mode: PracticeReviewMode = "clean") {
   const weighted = weightedAverage(
-    data.clubComparisons
+    reviewComparisons(data, mode)
       .filter((comparison) => comparison.today.shotCount > 0)
       .map((comparison) => ({
         value: clubTypeCurrentPerformanceScore(comparison.clubType, comparison.today),
@@ -3841,9 +3993,9 @@ function sessionScoringQualityScore(data: TodayPracticeData) {
   return roundOneNumber((weighted ?? 0) / 10) ?? 0;
 }
 
-function sessionStrikeQualityScore(data: TodayPracticeData) {
+function sessionStrikeQualityScore(data: TodayPracticeData, mode: PracticeReviewMode = "clean") {
   const weighted = weightedAverage(
-    data.shots
+    reviewShots(data, mode)
       .map((shot) => ({
         value: shotStrikeQualityScore(shot),
         weight: 1,
@@ -4849,6 +5001,110 @@ function formatShotCategory(value: string | null) {
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatClubOptionShotCount(club: TodayPracticeData["clubs"][number]) {
+  if (club.cleanShotCount === club.shotCount) {
+    return integerFormatter.format(club.shotCount);
+  }
+
+  return `${integerFormatter.format(club.cleanShotCount)} clean / ${integerFormatter.format(
+    club.shotCount,
+  )}`;
+}
+
+function shotQualityBadgeClass(shot: TodayPracticeShot) {
+  if (isShotExcluded(shot)) {
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  }
+
+  return "border-emerald-200 bg-emerald-50 text-emerald-800";
+}
+
+function formatShotQualityLabel(shot: TodayPracticeShot) {
+  if (isShotExcluded(shot)) {
+    return `Excluded: ${formatQualityTag(shot.qualityTag)}`;
+  }
+
+  return "Clean";
+}
+
+function isShotExcluded(shot: TodayPracticeShot) {
+  return isExcludedPracticeQualityTag(shot.qualityTag);
+}
+
+function formatQualityTag(value: string | null) {
+  const normalized = value?.trim().toLowerCase();
+
+  if (!normalized) {
+    return "non-clean";
+  }
+
+  if (normalized === "top") {
+    return "topped / non-clean";
+  }
+
+  if (normalized === "bad_data" || normalized === "bad-data") {
+    return "bad data";
+  }
+
+  return normalized.replace(/[-_]+/g, " ");
+}
+
+function formatImpactDelta(value: number | null, unit: "yd" | "points") {
+  if (!isNumber(value)) {
+    return "--";
+  }
+
+  const sign = value > 0 ? "+" : "";
+  const suffix = unit === "yd" ? " yd" : "";
+  return `${sign}${numberFormatter.format(value)}${suffix}`;
+}
+
+function buildPlanCleanSampleNote(
+  plan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>> | null,
+  data: TodayPracticeData,
+) {
+  if (!plan || data.dataCleaning.excludedShotCount === 0) {
+    return null;
+  }
+
+  for (const block of plan.blocks ?? []) {
+    if (!block.ballCount || block.clubs.length === 0) {
+      continue;
+    }
+
+    const blockClubs = new Set(block.clubs);
+    const rawCount = data.rawShots.filter((shot) => blockClubs.has(shot.clubType)).length;
+    const cleanCount = data.shots.filter((shot) => blockClubs.has(shot.clubType)).length;
+    const excludedCount = rawCount - cleanCount;
+
+    if (rawCount >= block.ballCount && cleanCount < block.ballCount && excludedCount > 0) {
+      const clubLabel =
+        block.clubs.length === 1 ? formatClubType(block.clubs[0] ?? "") : "matching";
+      const noun = excludedCount === 1 ? "shot" : "shots";
+
+      return `Plan partially matched: ${integerFormatter.format(cleanCount)}/${integerFormatter.format(
+        block.ballCount,
+      )} valid ${clubLabel} shots found. ${integerFormatter.format(
+        excludedCount,
+      )} excluded ${noun} stay in raw history.`;
+    }
+  }
+
+  return `Clean scoring used ${integerFormatter.format(
+    data.dataCleaning.cleanShotCount,
+  )}/${integerFormatter.format(
+    data.dataCleaning.importedShotCount,
+  )} valid shots; excluded shots stay in raw history.`;
+}
+
+function delta(current: number | null, previous: number | null) {
+  if (!isNumber(current) || !isNumber(previous)) {
+    return null;
+  }
+
+  return Math.round((current - previous) * 10) / 10;
 }
 
 function titleCase(value: string) {

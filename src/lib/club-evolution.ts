@@ -10,12 +10,14 @@ export type ClubEvolutionMeasuredPoint = {
   key: string;
   label: string;
   carryYd: number;
+  sampleSize: number;
 };
 
 export type ClubEvolutionDisplayPoint = {
   key: string;
   label: string;
   carryYd: number | null;
+  sampleSize: number;
 };
 
 export type ClubEvolutionRow<TClub extends ClubEvolutionClub = ClubEvolutionClub> = {
@@ -64,6 +66,7 @@ export function buildClubEvolutionRows<TClub extends ClubEvolutionClub>(
       const displayPoints = monthWindow.map((month) => ({
         ...month,
         carryYd: pointByKey.get(month.key)?.carryYd ?? null,
+        sampleSize: pointByKey.get(month.key)?.sampleSize ?? 0,
       }));
       const measuredPoints = displayPoints.filter(
         (point): point is ClubEvolutionMeasuredPoint => point.carryYd !== null,
@@ -111,6 +114,7 @@ function buildClubEvolutionMeasuredPoints<TClub extends ClubEvolutionClub>(
     .map(([key, group]) => {
       const { filteredShots } = selectStockYardageShots(group.shots, maxShots, {
         clubType: club.type,
+        averageSampleSize: maxShots,
       });
       const values = filteredShots.map((shot) => shot.carryYd).filter(isFiniteNumber);
 
@@ -118,9 +122,13 @@ function buildClubEvolutionMeasuredPoints<TClub extends ClubEvolutionClub>(
         key,
         label: group.label,
         carryYd: values.length > 0 ? roundOne(percentile(values, 0.5)) : null,
+        sampleSize: values.length,
       };
     })
-    .filter((point): point is ClubEvolutionMeasuredPoint => isFiniteNumber(point.carryYd));
+    .filter(
+      (point): point is ClubEvolutionMeasuredPoint =>
+        isFiniteNumber(point.carryYd) && point.sampleSize > 0,
+    );
 }
 
 function recentMonthWindow(

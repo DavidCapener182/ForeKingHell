@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -29,7 +29,11 @@ import {
   type ProgressSummary,
 } from "@/lib/progress-summary";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
-import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-session-data";
+import {
+  getTodayPracticeData,
+  isExcludedPracticeQualityTag,
+  type ClubDayComparison,
+} from "@/lib/today-session-data";
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
 import type { TrainingStatusKey } from "@/lib/training/trainingStatus";
 import { normalizeClubType } from "@/lib/rapsodo/parser";
@@ -405,6 +409,8 @@ export type ImportedPracticeSessionSummary = {
   sessionDate: Date;
   uploadedAt: Date;
   shotCount: number;
+  rawShotCount: number;
+  excludedShotCount: number;
   clubTypes: string[];
   clubSummaries: Array<{
     clubType: string;
@@ -429,6 +435,7 @@ export type ImportedPracticeShotRow = {
   faceAngleDeg: number | null;
   ballSpeedMph: number | null;
   clubSpeedMph: number | null;
+  qualityTag: string | null;
 };
 
 const RANGE_BALL_OPTIONS = [30, 50, 80, 100, 120];
@@ -802,21 +809,23 @@ export function comparePlanWithShotRows(
   matchConfidence: number | null = null,
   options: { scoringMode?: PracticeBlockScoringMode } = {},
 ): PracticeComparison {
+  const cleanRows = session.shotRows.filter(isCleanImportedPracticeShotRow);
+  const cleanClubTypes = uniqueClubs(cleanRows.map((row) => row.clubType));
   const ordered =
-    options.scoringMode === "aggregate" ? false : canUseOrderedBlockScoring(plan, session.shotRows);
+    options.scoringMode === "aggregate" ? false : canUseOrderedBlockScoring(plan, cleanRows);
   const decisions = ordered
-    ? evaluateOrderedPracticeBlocks(plan, session.shotRows)
-    : evaluateAggregatePracticeBlocks(plan, session.shotRows);
+    ? evaluateOrderedPracticeBlocks(plan, cleanRows)
+    : evaluateAggregatePracticeBlocks(plan, cleanRows);
 
   return buildPracticeComparison(
     plan,
     sourceSessionId,
     ordered ? "ordered" : "aggregate",
     {
-      shotCount: session.shotCount,
+      shotCount: cleanRows.length,
       sessionType: session.sessionType,
       dateLabel: session.dateLabel,
-      clubTypes: session.clubTypes,
+      clubTypes: cleanClubTypes,
       matchConfidence,
     },
     decisions,
@@ -900,6 +909,10 @@ function canUseOrderedBlockScoring(plan: PracticePlan, rows: ImportedPracticeSho
   }
 
   return new Set(rows.map((row) => row.shotNumber)).size === rows.length;
+}
+
+function isCleanImportedPracticeShotRow(row: ImportedPracticeShotRow) {
+  return !isExcludedPracticeQualityTag(row.qualityTag);
 }
 
 function evaluateOrderedPracticeBlocks(
@@ -1948,6 +1961,17 @@ export async function getPracticePlanForSourceSessions(userId: string, sessionId
     return null;
   }
 
+  const blockRows = await getDb()
+    .select({
+      id: practiceBlocks.id,
+      title: practiceBlocks.title,
+      clubs: practiceBlocks.clubsJson,
+      ballCount: practiceBlocks.ballCount,
+      blockOrder: practiceBlocks.blockOrder,
+    })
+    .from(practiceBlocks)
+    .where(eq(practiceBlocks.practicePlanId, row.plan.id))
+    .orderBy(asc(practiceBlocks.blockOrder));
   const comparison = row.result ? parsePracticeComparison(row.result.comparisonJson) : null;
   const decisions = comparison?.decisions ?? [];
   const passedBlocks = decisions.filter(
@@ -1972,6 +1996,13 @@ export async function getPracticePlanForSourceSessions(userId: string, sessionId
     passedBlocks,
     mixedBlocks,
     incompleteBlocks,
+    blocks: blockRows.map((block) => ({
+      id: block.id,
+      title: block.title,
+      clubs: uniqueClubs(block.clubs),
+      ballCount: block.ballCount,
+      order: block.blockOrder,
+    })),
   };
 }
 
@@ -2048,6 +2079,7 @@ async function getImportedPracticeSessionSummary(
       faceAngleDeg: shots.faceAngleDeg,
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
+      qualityTag: shots.qualityTag,
     })
     .from(shots)
     .where(and(eq(shots.sessionId, sourceSessionId), eq(shots.userId, userId)))
@@ -2066,7 +2098,9 @@ async function getImportedPracticeSessionSummary(
     faceAngleDeg: row.faceAngleDeg === null ? null : roundOne(Number(row.faceAngleDeg)),
     ballSpeedMph: row.ballSpeedMph === null ? null : roundOne(Number(row.ballSpeedMph)),
     clubSpeedMph: row.clubSpeedMph === null ? null : roundOne(Number(row.clubSpeedMph)),
+    qualityTag: row.qualityTag,
   }));
+  const cleanShotRows = normalizedShotRows.filter(isCleanImportedPracticeShotRow);
 
   return {
     id: session.id,
@@ -2074,9 +2108,11 @@ async function getImportedPracticeSessionSummary(
     sessionType: session.sessionType,
     sessionDate: session.sessionDate,
     uploadedAt: session.uploadedAt,
-    shotCount: Number(session.shotCount ?? 0),
-    clubTypes: uniqueClubs(normalizedShotRows.map((row) => row.clubType)),
-    clubSummaries: summarizeImportedPracticeShotRows(normalizedShotRows),
+    shotCount: cleanShotRows.length,
+    rawShotCount: Number(session.shotCount ?? normalizedShotRows.length),
+    excludedShotCount: normalizedShotRows.length - cleanShotRows.length,
+    clubTypes: uniqueClubs(cleanShotRows.map((row) => row.clubType)),
+    clubSummaries: summarizeImportedPracticeShotRows(cleanShotRows),
     shotRows: normalizedShotRows,
   };
 }

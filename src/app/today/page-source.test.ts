@@ -42,6 +42,7 @@ describe("latest practice desktop dashboard", () => {
       "session",
       "shot",
       "type",
+      "quality",
       "start",
       "ball",
       "smash",
@@ -59,6 +60,15 @@ describe("latest practice desktop dashboard", () => {
     );
     expect(source).toContain("Quality, strike, scoring control and plan result separated.");
     expect(source).toContain("The plan result is incomplete, but the session itself was not poor.");
+  });
+
+  it("keeps raw shot history while explaining clean-scoring exclusions", () => {
+    expect(source).toContain("Data cleaning impact");
+    expect(source).toContain("data.dataCleaning.excludedShotCount");
+    expect(source).toContain("data.rawShots.map");
+    expect(source).toContain("formatShotQualityLabel(shot)");
+    expect(source).toContain("Plan partially matched");
+    expect(source).toContain("Clean scoring used");
   });
 
   it("uses scoring-trust language instead of generic confidence copy", () => {

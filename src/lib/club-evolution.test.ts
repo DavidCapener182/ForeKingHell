@@ -25,8 +25,10 @@ describe("buildClubEvolutionRows", () => {
 
     expect(driver?.points.map((point) => point.label)).toEqual(["Apr", "May", "Jun"]);
     expect(driver?.points.map((point) => point.carryYd)).toEqual([null, 216.1, 217.2]);
+    expect(driver?.points.map((point) => point.sampleSize)).toEqual([0, 1, 1]);
     expect(fiveWood?.points.map((point) => point.label)).toEqual(["Apr", "May", "Jun"]);
     expect(fiveWood?.points.map((point) => point.carryYd)).toEqual([186, 184.9, 183.8]);
+    expect(fiveWood?.points.map((point) => point.sampleSize)).toEqual([1, 1, 1]);
   });
 
   it("drops populated months outside the latest three-calendar-month window", () => {
@@ -65,6 +67,27 @@ describe("buildClubEvolutionRows", () => {
 
     expect(rows[0]?.points.map((point) => point.label)).toEqual(["Apr", "May", "Jun"]);
     expect(rows[0]?.points.map((point) => point.carryYd)).toEqual([214, 216, 217]);
+    expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([44, 200, 58]);
+  });
+
+  it("uses median clean-stock carry and exposes clean sample counts", () => {
+    const rows = buildClubEvolutionRows(
+      [
+        club("7i", [
+          shot(140, "2026-05-08T12:00:00.000Z"),
+          shot(160, "2026-05-08T12:05:00.000Z"),
+          { ...shot(80, "2026-05-08T12:10:00.000Z"), qualityTag: "top" },
+          shot(135, "2026-06-08T12:00:00.000Z"),
+          shot(139, "2026-06-08T12:05:00.000Z"),
+          shot(143, "2026-06-08T12:10:00.000Z"),
+        ]),
+      ],
+      { monthCount: 2 },
+    );
+
+    expect(rows[0]?.points.map((point) => point.label)).toEqual(["May", "Jun"]);
+    expect(rows[0]?.points.map((point) => point.carryYd)).toEqual([150, 139]);
+    expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([2, 3]);
   });
 
   it("omits clubs without two measured months in the shared window", () => {

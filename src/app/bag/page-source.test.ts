@@ -43,4 +43,31 @@ describe("bag desktop workbench source", () => {
     expect(overlaySvgBlock).toContain('role="img"');
     expect(overlaySvgBlock).toContain("aria-label={`${overlay.label} shot pattern overlay`}");
   });
+
+  it("keeps club evolution confidence-led instead of blunt health labels", () => {
+    const evolutionBlock =
+      source.match(/function ClubEvolutionPanel[\s\S]*?function stockTrendLabel/)?.[0] ?? "";
+    const evolutionReadoutBlock =
+      source.match(
+        /function clubEvolutionReadout[\s\S]*?function clubEvolutionConfidenceLabel/,
+      )?.[0] ?? "";
+    const healthBlock =
+      source.match(/function clubHealthReadout[\s\S]*?function stableBagLabel/)?.[0] ?? "";
+
+    expect(evolutionBlock).toContain(
+      "Monthly median carry from clean-stock shots, with sample size and retest confidence.",
+    );
+    expect(evolutionBlock).toContain("point.sampleSize");
+    expect(evolutionBlock).toContain("clubEvolutionReadout(club, measuredPoints)");
+    expect(evolutionBlock).toContain("Playable today, carry down versus");
+    expect(evolutionBlock).toContain("Do not change swing unless ball");
+    expect(evolutionBlock).toContain("Driver ball speed today");
+    expect(evolutionReadoutBlock).toContain('label: "Monitor carry"');
+    expect(evolutionReadoutBlock).toContain("Retest 10 stock shots");
+    expect(evolutionReadoutBlock).toContain("delta <= -8");
+    expect(evolutionBlock).not.toContain(">Health<");
+    expect(healthBlock).toContain('label: "Distance retest"');
+    expect(healthBlock).toContain('label: "Pattern check"');
+    expect(healthBlock).not.toContain('label: "Needs attention"');
+  });
 });

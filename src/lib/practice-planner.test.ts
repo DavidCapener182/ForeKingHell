@@ -426,6 +426,41 @@ describe("practice planner", () => {
     expect(fiveWoodDecision?.actualBalls).toBe(20);
   });
 
+  it("excludes top-tagged imported rows from clean plan matching", () => {
+    const plan = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "latest_weakness",
+    });
+    const rows = shotRows("5w", 1, 20, { offlineYd: 8, launchDirectionDeg: 2 }).map(
+      (row, index) => ({
+        ...row,
+        shotNumber: null,
+        qualityTag: index >= 18 ? "top" : null,
+      }),
+    );
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      80,
+    );
+    const fiveWoodDecision = comparison.decisions.find((decision) => decision.title.includes("5W"));
+
+    expect(comparison.planVsActual.actualShots).toBe(18);
+    expect(fiveWoodDecision?.actualBalls).toBe(18);
+    expect(fiveWoodDecision?.matchedPlannedVolume).toBe(false);
+    expect(fiveWoodDecision?.actual).toContain("18/20 matching shots");
+  });
+
   it("scores a short latest-session upload against the planned club and pulls the score down", () => {
     const plannerContext = context();
     plannerContext.progress.priorities = [
@@ -670,6 +705,8 @@ function importedSession(
     sessionDate: new Date(options.sessionDate ?? "2026-07-01T12:00:00.000Z"),
     uploadedAt: new Date(options.uploadedAt ?? options.sessionDate ?? "2026-07-01T12:00:00.000Z"),
     shotCount,
+    rawShotCount: shotCount,
+    excludedShotCount: 0,
     clubTypes: clubCounts.map(([clubType]) => clubType),
     clubSummaries: clubCounts.map(([clubType, count]) => ({
       clubType,
@@ -701,6 +738,7 @@ function shotRows(
     faceAngleDeg: 1,
     ballSpeedMph: 120,
     clubSpeedMph: 88,
+    qualityTag: null,
   }));
 }
 

@@ -43,6 +43,7 @@ export type TodayPracticeShot = {
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
   faceAngleDeg: number | null;
+  qualityTag: string | null;
 };
 
 export type TodayPracticeSession = {
@@ -82,6 +83,37 @@ export type ClubDayComparison = {
   score: number;
   verdict: "better" | "worse" | "mixed" | "new";
   summary: string;
+};
+
+export type TodayPracticeOverall = {
+  verdict: "better" | "worse" | "mixed" | "new";
+  title: string;
+  summary: string;
+  today: MetricSnapshot;
+  previous: MetricSnapshot;
+  carryDeltaYd: number | null;
+  offlineDeltaYd: number | null;
+  straightRateDelta: number | null;
+  playableRateDelta: number | null;
+};
+
+export type TodayPracticeDataCleaning = {
+  importedShotCount: number;
+  cleanShotCount: number;
+  excludedShotCount: number;
+  reasonLabel: string;
+  excludedByClub: Array<{
+    clubType: string;
+    clubLabel: string;
+    importedShotCount: number;
+    cleanShotCount: number;
+    excludedShotCount: number;
+  }>;
+  excludedByTag: Array<{
+    tag: string;
+    label: string;
+    count: number;
+  }>;
 };
 
 export type ClubBestStatus = "first" | "new" | "tied" | "none";
@@ -124,29 +156,37 @@ export type TodayPracticeData = {
     club: string;
   };
   sessions: TodayPracticeSession[];
-  clubs: Array<{ type: string; label: string; shotCount: number }>;
+  clubs: Array<{ type: string; label: string; shotCount: number; cleanShotCount: number }>;
   shots: TodayPracticeShot[];
+  rawShots: TodayPracticeShot[];
   allTodayShotCount: number;
+  allCleanTodayShotCount: number;
   comparisonShots: TodayPracticeShot[];
+  rawComparisonShots: TodayPracticeShot[];
   clubComparisons: ClubDayComparison[];
+  rawClubComparisons: ClubDayComparison[];
   clubStats: ClubMainStats[];
   bestStraightShots: TodayPracticeShot[];
-  overall: {
-    verdict: "better" | "worse" | "mixed" | "new";
-    title: string;
-    summary: string;
-    today: MetricSnapshot;
-    previous: MetricSnapshot;
-    carryDeltaYd: number | null;
-    offlineDeltaYd: number | null;
-    straightRateDelta: number | null;
-    playableRateDelta: number | null;
-  };
+  overall: TodayPracticeOverall;
+  rawOverall: TodayPracticeOverall;
+  dataCleaning: TodayPracticeDataCleaning;
 };
 
 type ShotRow = TodayPracticeShot & {
   clubSort: number;
 };
+
+const EXCLUDED_PRACTICE_QUALITY_TAGS = new Set([
+  "mishit",
+  "top",
+  "thin",
+  "fat",
+  "bad_data",
+  "bad-data",
+  "misread",
+  "delete",
+  "deleted",
+]);
 
 const practiceShotSelect = {
   id: shots.id,
@@ -174,6 +214,7 @@ const practiceShotSelect = {
   attackAngleDeg: shots.attackAngleDeg,
   clubPathDeg: shots.clubPathDeg,
   faceAngleDeg: shots.faceAngleDeg,
+  qualityTag: shots.qualityTag,
 };
 
 export async function getTodayPracticeData(
@@ -326,6 +367,7 @@ async function fetchPreviousPracticeRows(
       attackAngleDeg: rankedPreviousShots.attackAngleDeg,
       clubPathDeg: rankedPreviousShots.clubPathDeg,
       faceAngleDeg: rankedPreviousShots.faceAngleDeg,
+      qualityTag: rankedPreviousShots.qualityTag,
     })
     .from(rankedPreviousShots)
     .where(lte(rankedPreviousShots.clubRank, PREVIOUS_SHOT_LIMIT_PER_CLUB))
@@ -392,14 +434,27 @@ function buildTodayPracticeData({
 }): TodayPracticeData {
   const sessions = sessionOptions(allTodayRows);
   const clubsForFilter = clubOptions(allTodayRows);
-  const comparisonShots = filteredTodayRows.filter(isComparisonShot);
+  const cleanTodayRows = filteredTodayRows.filter(isCleanPracticeShot);
+  const cleanAllTodayRows = allTodayRows.filter(isCleanPracticeShot);
+  const comparisonShots = cleanTodayRows.filter(isComparisonShot);
+  const rawComparisonShots = filteredTodayRows.filter(isRawComparisonShot);
   const previousByClub = groupBy(previousRows.filter(isComparisonShot), (shot) => shot.clubType);
   const todayByClub = groupBy(comparisonShots, (shot) => shot.clubType);
-  const allTimeRows = [...previousRows, ...allTodayRows].filter(
+  const rawTodayByClub = groupBy(rawComparisonShots, (shot) => shot.clubType);
+  const allTimeRows = [...previousRows, ...cleanAllTodayRows].filter(
     (shot) => isComparisonShot(shot) && todayByClub.has(shot.clubType),
   );
   const allTimeByClub = groupBy(allTimeRows, (shot) => shot.clubType);
   const clubComparisons = [...todayByClub.entries()]
+    .map(([clubType, todayShots]) => {
+      const previousShots = (previousByClub.get(clubType) ?? []).slice(
+        0,
+        PREVIOUS_SHOT_LIMIT_PER_CLUB,
+      );
+      return compareClubDay(clubType, todayShots, previousShots);
+    })
+    .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+  const rawClubComparisons = [...rawTodayByClub.entries()]
     .map(([clubType, todayShots]) => {
       const previousShots = (previousByClub.get(clubType) ?? []).slice(
         0,
@@ -422,8 +477,10 @@ function buildTodayPracticeData({
     (previousByClub.get(comparison.clubType) ?? []).slice(0, PREVIOUS_SHOT_LIMIT_PER_CLUB),
   );
   const today = snapshot(comparisonShots);
+  const rawToday = snapshot(rawComparisonShots);
   const previous = snapshot(previousComparableShots);
   const overall = buildOverallComparison(clubComparisons, today, previous);
+  const rawOverall = buildOverallComparison(rawClubComparisons, rawToday, previous);
 
   return {
     dateKey,
@@ -432,13 +489,19 @@ function buildTodayPracticeData({
     filters,
     sessions,
     clubs: clubsForFilter,
-    shots: filteredTodayRows,
+    shots: cleanTodayRows,
+    rawShots: filteredTodayRows,
     allTodayShotCount: allTodayRows.length,
+    allCleanTodayShotCount: cleanAllTodayRows.length,
     comparisonShots,
+    rawComparisonShots,
     clubComparisons,
+    rawClubComparisons,
     clubStats,
-    bestStraightShots: bestStraightShots(filteredTodayRows),
+    bestStraightShots: bestStraightShots(cleanTodayRows),
     overall,
+    rawOverall,
+    dataCleaning: buildDataCleaningSummary(filteredTodayRows, cleanTodayRows),
   };
 }
 
@@ -617,7 +680,7 @@ function buildOverallComparison(
   clubComparisons: ClubDayComparison[],
   today: MetricSnapshot,
   previous: MetricSnapshot,
-): TodayPracticeData["overall"] {
+): TodayPracticeOverall {
   const comparable = clubComparisons.filter(
     (comparison) =>
       comparison.today.shotCount >= MIN_TODAY_SHOTS_FOR_VERDICT &&
@@ -766,6 +829,14 @@ function straightShotScore(shot: TodayPracticeShot) {
 }
 
 function isComparisonShot(shot: TodayPracticeShot) {
+  if (!isCleanPracticeShot(shot)) {
+    return false;
+  }
+
+  return isRawComparisonShot(shot);
+}
+
+function isRawComparisonShot(shot: TodayPracticeShot) {
   if (!isTrackedClubType(shot.clubType)) {
     return false;
   }
@@ -775,6 +846,92 @@ function isComparisonShot(shot: TodayPracticeShot) {
   }
 
   return isNumber(shot.carryYd) || isNumber(shot.sideCarryYd) || isNumber(shot.ballSpeedMph);
+}
+
+function isCleanPracticeShot(shot: Pick<TodayPracticeShot, "qualityTag">) {
+  return !isExcludedPracticeQualityTag(shot.qualityTag);
+}
+
+export function isExcludedPracticeQualityTag(qualityTag: string | null | undefined) {
+  const normalized = qualityTag?.trim().toLowerCase();
+  return Boolean(normalized && EXCLUDED_PRACTICE_QUALITY_TAGS.has(normalized));
+}
+
+function buildDataCleaningSummary(
+  rawShots: TodayPracticeShot[],
+  cleanShots: TodayPracticeShot[],
+): TodayPracticeDataCleaning {
+  const cleanIds = new Set(cleanShots.map((shot) => shot.id));
+  const excludedShots = rawShots.filter((shot) => !cleanIds.has(shot.id));
+  const rawByClub = groupBy(
+    rawShots.filter((shot) => isTrackedClubType(shot.clubType)),
+    (shot) => shot.clubType,
+  );
+  const cleanByClub = groupBy(
+    cleanShots.filter((shot) => isTrackedClubType(shot.clubType)),
+    (shot) => shot.clubType,
+  );
+  const excludedByClub = [...rawByClub.entries()]
+    .map(([clubType, clubShots]) => {
+      const cleanShotCount = cleanByClub.get(clubType)?.length ?? 0;
+
+      return {
+        clubType,
+        clubLabel: formatClubType(clubType),
+        importedShotCount: clubShots.length,
+        cleanShotCount,
+        excludedShotCount: clubShots.length - cleanShotCount,
+      };
+    })
+    .filter((item) => item.excludedShotCount > 0)
+    .sort(
+      (left, right) =>
+        right.excludedShotCount - left.excludedShotCount ||
+        clubSortValue(left.clubType) - clubSortValue(right.clubType),
+    );
+  const tagCounts = new Map<string, number>();
+
+  for (const shot of excludedShots) {
+    const tag = shot.qualityTag?.trim().toLowerCase() || "excluded";
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+  }
+
+  const excludedByTag = [...tagCounts.entries()]
+    .map(([tag, count]) => ({ tag, label: qualityTagLabel(tag), count }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+
+  return {
+    importedShotCount: rawShots.length,
+    cleanShotCount: cleanShots.length,
+    excludedShotCount: excludedShots.length,
+    reasonLabel:
+      excludedByTag.length > 0 ? excludedByTag.map((item) => item.label).join(", ") : "None",
+    excludedByClub,
+    excludedByTag,
+  };
+}
+
+function qualityTagLabel(tag: string) {
+  switch (tag) {
+    case "top":
+      return "topped / non-clean strike";
+    case "thin":
+      return "thin strike";
+    case "fat":
+      return "fat strike";
+    case "mishit":
+      return "mishit";
+    case "bad-data":
+    case "bad_data":
+      return "bad data";
+    case "misread":
+      return "misread";
+    case "delete":
+    case "deleted":
+      return "excluded";
+    default:
+      return tag.replace(/[-_]+/g, " ");
+  }
 }
 
 function isStraightShot(shot: TodayPracticeShot) {
@@ -827,6 +984,7 @@ function clubOptions(shots: ShotRow[]) {
       type,
       label: formatClubType(type),
       shotCount: clubShots.length,
+      cleanShotCount: clubShots.filter(isCleanPracticeShot).length,
     }))
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
 }
