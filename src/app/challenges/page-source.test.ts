@@ -22,6 +22,7 @@ describe("challenges desktop board", () => {
     expect(source).toContain('exportTableId="challenge-board"');
     expect(source).toContain('data-workbench-export-table="challenge-board"');
     expect(source).toContain('mainTableLabel="Challenge board table"');
+    expect(source).toContain('mainTableLabel="Challenge board table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('href: "/challenges?tab=templates"');

@@ -14,6 +14,7 @@ describe("friends desktop manager", () => {
     expect(source).toContain('exportTableId="friend-graph"');
     expect(source).toContain('data-workbench-export-table="friend-graph"');
     expect(source).toContain('mainTableLabel="Friend graph table"');
+    expect(source).toContain('mainTableLabel="Friend graph table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('id="blocked-users"');

@@ -404,7 +404,7 @@ function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: stri
         exportTableId="friend-graph"
         exportFileName="forekinghell-friend-graph.csv"
       />
-      <DataTableFrame mainTable mainTableLabel="Friend graph table">
+      <DataTableFrame mainTable mainTableLabel="Friend graph table" stickyFirstColumn>
         <Table data-workbench-export-table="friend-graph" aria-describedby="friend-graph-summary">
           <TableCaption id="friend-graph-summary" className="sr-only">
             Friend graph table showing golfer, relationship status, visibility, home course, launch

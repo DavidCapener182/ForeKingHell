@@ -653,7 +653,7 @@ function ChallengeBoardTable({
         exportTableId="challenge-board"
         exportFileName={`forekinghell-challenge-board-${activeTab}.csv`}
       />
-      <DataTableFrame mainTable mainTableLabel="Challenge board table">
+      <DataTableFrame mainTable mainTableLabel="Challenge board table" stickyFirstColumn>
         <Table
           data-workbench-export-table="challenge-board"
           aria-describedby="challenge-board-summary"

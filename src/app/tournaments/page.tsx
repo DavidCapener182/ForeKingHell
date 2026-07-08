@@ -418,7 +418,7 @@ function TournamentHubEventTable({
           exportTableId="tournament-events"
           exportFileName={`forekinghell-tournament-events-${activeTab}.csv`}
         />
-        <DataTableFrame mainTable mainTableLabel="Tournament event board table">
+        <DataTableFrame mainTable mainTableLabel="Tournament event board table" stickyFirstColumn>
           <Table
             data-workbench-export-table="tournament-events"
             aria-describedby="tournament-events-summary"

@@ -16,6 +16,7 @@ describe("tournaments desktop event board", () => {
     expect(source).toContain('exportTableId="tournament-events"');
     expect(source).toContain('data-workbench-export-table="tournament-events"');
     expect(source).toContain('mainTableLabel="Tournament event board table"');
+    expect(source).toContain('mainTableLabel="Tournament event board table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('href: "/tournaments?tab=past"');
