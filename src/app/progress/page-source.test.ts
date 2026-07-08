@@ -34,6 +34,7 @@ describe("progress desktop workbench source", () => {
     expect(source).toContain('exportTableId="progress-bag-movement"');
     expect(source).toContain('data-workbench-export-table="progress-bag-movement"');
     expect(source).toContain('mainTableLabel="Progress bag movement table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

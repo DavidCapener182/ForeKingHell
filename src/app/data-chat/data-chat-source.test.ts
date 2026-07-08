@@ -31,6 +31,7 @@ describe("data chat desktop workbench", () => {
     expect(panelSource).toContain('exportTableId="data-chat-saved-answers"');
     expect(panelSource).toContain('data-workbench-export-table="data-chat-saved-answers"');
     expect(panelSource).toContain('mainTableLabel="Saved Data Chat answers table"');
+    expect(panelSource).toContain("stickyFirstColumn");
     expect(panelSource).toContain("<TableCaption");
     expect(panelSource).toContain("tabIndex={0}");
 

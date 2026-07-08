@@ -257,6 +257,7 @@ export function RoundsWorkspace({
               <DataTableFrame
                 mainTable
                 mainTableLabel="Round history table"
+                stickyFirstColumn
                 mobile={
                   <MobileDataList>
                     {filteredRounds.length > 0 ? (

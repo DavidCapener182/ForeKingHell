@@ -13,6 +13,7 @@ describe("rounds desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-rounds-view.csv"');
     expect(source).toContain('data-workbench-export-table="rounds"');
     expect(source).toContain('mainTableLabel="Round history table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain('aria-label="Round filters"');
     expect(source).toContain("data-filter-search");

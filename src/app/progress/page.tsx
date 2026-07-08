@@ -2098,7 +2098,7 @@ function BagMovementPanel({
             className="mb-3"
           />
 
-          <DataTableFrame mainTable mainTableLabel="Progress bag movement table">
+          <DataTableFrame mainTable mainTableLabel="Progress bag movement table" stickyFirstColumn>
             <Table
               data-workbench-export-table="progress-bag-movement"
               aria-describedby="progress-bag-movement-summary"

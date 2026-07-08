@@ -13,6 +13,7 @@ describe("coach desktop evidence workbench", () => {
     expect(source).toContain('exportTableId="coach-evidence"');
     expect(source).toContain('data-workbench-export-table="coach-evidence"');
     expect(source).toContain('mainTableLabel="Coach evidence table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

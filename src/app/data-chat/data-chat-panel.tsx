@@ -574,7 +574,7 @@ function SavedAnswersWorkbench({
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Saved Data Chat answers table">
+      <DataTableFrame mainTable mainTableLabel="Saved Data Chat answers table" stickyFirstColumn>
         <Table
           data-workbench-export-table="data-chat-saved-answers"
           aria-describedby="saved-data-chat-answers-summary"

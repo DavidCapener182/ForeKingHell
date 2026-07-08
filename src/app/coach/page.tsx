@@ -1463,7 +1463,7 @@ function CoachEvidenceTable({ cards }: { cards: CoachClubCard[] }) {
             exportTableId="coach-evidence"
             exportFileName="forekinghell-coach-evidence.csv"
           />
-          <DataTableFrame mainTable mainTableLabel="Coach evidence table">
+          <DataTableFrame mainTable mainTableLabel="Coach evidence table" stickyFirstColumn>
             <Table
               data-workbench-export-table="coach-evidence"
               aria-describedby="coach-evidence-summary"
