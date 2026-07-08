@@ -7,6 +7,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -77,6 +78,8 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
   const defaultSettings = useMemo(() => defaultDashboardSettings(panels), [panels]);
   const [settings, setSettings] = useState<DashboardWorkspaceSettings>(defaultSettings);
   const [hydrated, setHydrated] = useState(false);
+  const [layoutStatusMessage, setLayoutStatusMessage] = useState("");
+  const layoutStatusTimerRef = useRef<number | null>(null);
   const validIds = useMemo(() => new Set(panels.map((panel) => panel.id)), [panels]);
   const childByPanelId = useMemo(() => mapChildrenByPanelId(children), [children]);
   const panelById = useMemo(() => new Map(panels.map((panel) => [panel.id, panel])), [panels]);
@@ -110,6 +113,10 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
       : 0;
   const visiblePanelCount = hydrated ? visibleIds.length : panels.length;
   const controlIds = hydrated ? orderedIds : panels.map((panel) => panel.id);
+  const controlPanelIds = controlIds.filter((panelId) => {
+    const panel = panelById.get(panelId);
+    return Boolean(panel && (!hydrated || childByPanelId.has(panelId)));
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -128,48 +135,77 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
     window.localStorage.setItem(storageKey, JSON.stringify(settings));
   }, [hydrated, settings]);
 
+  useEffect(() => {
+    return () => {
+      if (layoutStatusTimerRef.current !== null) {
+        window.clearTimeout(layoutStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  function announceLayoutStatus(message: string) {
+    if (layoutStatusTimerRef.current !== null) {
+      window.clearTimeout(layoutStatusTimerRef.current);
+    }
+
+    setLayoutStatusMessage(message);
+    layoutStatusTimerRef.current = window.setTimeout(() => {
+      setLayoutStatusMessage("");
+      layoutStatusTimerRef.current = null;
+    }, 2200);
+  }
+
   function setMode(mode: DashboardWorkspaceMode) {
-    setSettings((current) => ({ ...current, mode }));
+    setSettings({ ...settings, mode });
+    announceLayoutStatus(`Dashboard layout set to ${mode.replace("-", " ")} mode.`);
   }
 
   function togglePanel(panelId: DashboardWorkspacePanelId) {
-    setSettings((current) => {
-      const hidden = new Set(current.hidden);
-      if (hidden.has(panelId)) {
-        hidden.delete(panelId);
-      } else {
-        const visibleCustomCount = panels.filter((panel) => !hidden.has(panel.id)).length;
-        if (visibleCustomCount <= 1) {
-          return current;
-        }
-        hidden.add(panelId);
-      }
+    const panel = panelById.get(panelId);
+    const hidden = new Set(settings.hidden);
 
-      return { ...current, hidden: [...hidden] };
-    });
+    if (hidden.has(panelId)) {
+      hidden.delete(panelId);
+      setSettings({ ...settings, hidden: [...hidden] });
+      announceLayoutStatus(`${panel?.label ?? "Panel"} shown.`);
+      return;
+    }
+
+    const visibleCustomCount = panels.filter((item) => !hidden.has(item.id)).length;
+    if (visibleCustomCount <= 1) {
+      announceLayoutStatus("Keep at least one dashboard panel visible.");
+      return;
+    }
+
+    hidden.add(panelId);
+    setSettings({ ...settings, hidden: [...hidden] });
+    announceLayoutStatus(`${panel?.label ?? "Panel"} hidden.`);
   }
 
   function movePanel(panelId: DashboardWorkspacePanelId, direction: -1 | 1) {
-    setSettings((current) => {
-      const order = normalizeOrder(
-        current.order,
-        panels.map((panel) => panel.id),
-      );
-      const index = order.indexOf(panelId);
-      const nextIndex = index + direction;
+    const panel = panelById.get(panelId);
+    const order = normalizeOrder(
+      settings.order,
+      panels.map((item) => item.id),
+    );
+    const index = order.indexOf(panelId);
+    const nextIndex = index + direction;
 
-      if (index < 0 || nextIndex < 0 || nextIndex >= order.length) {
-        return current;
-      }
+    if (index < 0 || nextIndex < 0 || nextIndex >= order.length) {
+      return;
+    }
 
-      const nextOrder = [...order];
-      [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
-      return { ...current, order: nextOrder };
-    });
+    const nextOrder = [...order];
+    [nextOrder[index], nextOrder[nextIndex]] = [nextOrder[nextIndex], nextOrder[index]];
+    setSettings({ ...settings, order: nextOrder });
+    announceLayoutStatus(
+      `${panel?.label ?? "Panel"} moved ${direction < 0 ? "earlier" : "later"}.`,
+    );
   }
 
   function resetLayout() {
     setSettings(defaultSettings);
+    announceLayoutStatus("Dashboard layout reset.");
   }
 
   return (
@@ -245,14 +281,16 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
           className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5"
           data-dashboard-panel-controls
         >
-          {controlIds.map((panelId) => {
+          {controlPanelIds.map((panelId, controlIndex) => {
             const panel = panelById.get(panelId);
-            if (!panel || (hydrated && !childByPanelId.has(panelId))) {
+            if (!panel) {
               return null;
             }
 
             const hidden = hiddenIds.has(panelId);
             const folded = settings.mode === "executive" && !panel.executive && !hidden;
+            const firstPanel = controlIndex === 0;
+            const lastPanel = controlIndex === controlPanelIds.length - 1;
 
             return (
               <div
@@ -276,6 +314,7 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
                       variant="outline"
                       size="icon-sm"
                       onClick={() => movePanel(panelId, -1)}
+                      disabled={firstPanel}
                       aria-label={`Move ${panel.label} earlier`}
                     >
                       <ArrowUp className="size-4" aria-hidden />
@@ -285,6 +324,7 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
                       variant="outline"
                       size="icon-sm"
                       onClick={() => movePanel(panelId, 1)}
+                      disabled={lastPanel}
                       aria-label={`Move ${panel.label} later`}
                     >
                       <ArrowDown className="size-4" aria-hidden />
@@ -309,6 +349,9 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
             );
           })}
         </div>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {layoutStatusMessage}
+        </span>
       </section>
 
       <div
