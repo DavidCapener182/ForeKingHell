@@ -40,6 +40,21 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("Current view link could not be copied.");
   });
 
+  it("announces desktop table layout changes through the shared live region", () => {
+    expect(source).toContain("layoutStatusMessage");
+    expect(source).toContain("function announceLayoutStatus(message: string)");
+    expect(source).toContain("layoutStatusTimerRef");
+    expect(source).toContain("window.clearTimeout(layoutStatusTimerRef.current)");
+    expect(source).toContain("setLayoutStatusMessage(message)");
+    expect(source).toContain('setLayoutStatusMessage("")');
+    expect(source).toContain("Applied saved view with");
+    expect(source).toContain("columns visible.");
+    expect(source).toContain("Table layout reset to all columns and comfortable density.");
+    expect(source).toContain('function updateDensity(nextDensity: "comfortable" | "compact")');
+    expect(source).toContain("Table density set to");
+    expect(source).toContain('aria-live="polite"');
+  });
+
   it("lets desktop users reset table layout back to default columns and comfortable density", () => {
     expect(source).toContain("function resetTableLayout()");
     expect(source).toContain("Reset table layout");

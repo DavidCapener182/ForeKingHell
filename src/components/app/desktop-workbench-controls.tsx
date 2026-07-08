@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Check,
   Columns3,
@@ -88,8 +88,10 @@ export function DesktopWorkbenchControls({
   const [density, setDensity] = useState<"comfortable" | "compact">("comfortable");
   const [exportStatus, setExportStatus] = useState<"idle" | "done" | "missing">("idle");
   const [copyStatus, setCopyStatus] = useState<"idle" | "done" | "failed">("idle");
+  const [layoutStatusMessage, setLayoutStatusMessage] = useState("");
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [draftSavedViewTitle, setDraftSavedViewTitle] = useState(currentViewLabel);
+  const layoutStatusTimerRef = useRef<number | null>(null);
   const saveViewTitleId = useId();
   const storageSignature = useMemo(
     () => `${savedViewsKey}:${visibleColumnsKey}:${columns.map((column) => column.id).join("|")}`,
@@ -111,7 +113,9 @@ export function DesktopWorkbenchControls({
       : copyStatus === "failed"
         ? "Current view link could not be copied."
         : "";
-  const actionStatusMessage = [exportStatusMessage, copyStatusMessage].filter(Boolean).join(" ");
+  const actionStatusMessage = [exportStatusMessage, copyStatusMessage, layoutStatusMessage]
+    .filter(Boolean)
+    .join(" ");
   const lockedIds = useMemo(
     () => new Set(columns.filter((column) => column.locked).map((column) => column.id)),
     [columns],
@@ -180,9 +184,29 @@ export function DesktopWorkbenchControls({
     window.localStorage.setItem(densityStorageKey, density);
   }, [density, hydrated]);
 
+  useEffect(() => {
+    return () => {
+      if (layoutStatusTimerRef.current !== null) {
+        window.clearTimeout(layoutStatusTimerRef.current);
+      }
+    };
+  }, []);
+
   function openSaveCurrentViewDialog() {
     setDraftSavedViewTitle(currentViewLabel || "Current view");
     setSaveDialogOpen(true);
+  }
+
+  function announceLayoutStatus(message: string) {
+    if (layoutStatusTimerRef.current !== null) {
+      window.clearTimeout(layoutStatusTimerRef.current);
+    }
+
+    setLayoutStatusMessage(message);
+    layoutStatusTimerRef.current = window.setTimeout(() => {
+      setLayoutStatusMessage("");
+      layoutStatusTimerRef.current = null;
+    }, 2200);
   }
 
   function saveCurrentView(titleValue = draftSavedViewTitle) {
@@ -212,6 +236,9 @@ export function DesktopWorkbenchControls({
   }
 
   function applySavedView(view: SavedView) {
+    let appliedColumnCount: number | null = null;
+    let appliedDensity: "comfortable" | "compact" | null = null;
+
     if (view.visibleColumnIds?.length) {
       const validIds = new Set(columns.map((column) => column.id));
       const nextVisible = view.visibleColumnIds.filter((id) => validIds.has(id));
@@ -219,12 +246,27 @@ export function DesktopWorkbenchControls({
       if (nextVisible.length > 0) {
         setVisibleColumnIds(new Set(nextVisible));
         window.localStorage.setItem(visibleColumnsKey, JSON.stringify(nextVisible));
+        appliedColumnCount = nextVisible.length;
       }
     }
 
     if (view.density === "compact" || view.density === "comfortable") {
       setDensity(view.density);
       window.localStorage.setItem(densityStorageKey, view.density);
+      appliedDensity = view.density;
+    }
+
+    if (appliedColumnCount !== null || appliedDensity !== null) {
+      announceLayoutStatus(
+        [
+          appliedColumnCount === null
+            ? null
+            : `Applied saved view with ${appliedColumnCount} visible columns.`,
+          appliedDensity === null ? null : `${appliedDensity} density.`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
     }
   }
 
@@ -249,12 +291,14 @@ export function DesktopWorkbenchControls({
         next.delete(id);
       }
 
+      announceLayoutStatus(`${next.size} of ${columns.length} columns visible.`);
       return next;
     });
   }
 
   function resetColumns() {
     setVisibleColumnIds(new Set(columns.map((column) => column.id)));
+    announceLayoutStatus(`All ${columns.length} columns shown.`);
   }
 
   function resetTableLayout() {
@@ -264,6 +308,12 @@ export function DesktopWorkbenchControls({
     setDensity("comfortable");
     window.localStorage.setItem(visibleColumnsKey, JSON.stringify(allColumnIds));
     window.localStorage.setItem(densityStorageKey, "comfortable");
+    announceLayoutStatus("Table layout reset to all columns and comfortable density.");
+  }
+
+  function updateDensity(nextDensity: "comfortable" | "compact") {
+    setDensity(nextDensity);
+    announceLayoutStatus(`Table density set to ${nextDensity}.`);
   }
 
   function exportCurrentTable() {
@@ -431,13 +481,13 @@ export function DesktopWorkbenchControls({
               <DropdownMenuLabel>Table density</DropdownMenuLabel>
               <DropdownMenuCheckboxItem
                 checked={density === "comfortable"}
-                onCheckedChange={() => setDensity("comfortable")}
+                onCheckedChange={() => updateDensity("comfortable")}
               >
                 Comfortable
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={density === "compact"}
-                onCheckedChange={() => setDensity("compact")}
+                onCheckedChange={() => updateDensity("compact")}
               >
                 Compact
               </DropdownMenuCheckboxItem>
