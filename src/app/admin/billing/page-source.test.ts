@@ -14,12 +14,14 @@ describe("admin billing desktop console source", () => {
 
   it("keeps subscriptions as an exportable admin table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("DataTableFrame");
     expect(source).toContain('viewKey="admin-billing"');
     expect(source).toContain('scope="admin-billing"');
     expect(source).toContain('exportTableId="admin-billing"');
     expect(source).toContain('exportFileName="forekinghell-admin-billing-view.csv"');
-    expect(source).toContain('data-main-table-target="true"');
-    expect(source).toContain('aria-label="Subscriptions table"');
+    expect(source).toContain("mainTable");
+    expect(source).toContain('mainTableLabel="Subscriptions table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-export-table="admin-billing"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");

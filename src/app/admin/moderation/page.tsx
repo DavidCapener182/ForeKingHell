@@ -33,7 +33,7 @@ import {
   StatusBadge,
 } from "@/app/admin/admin-components";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { DataTableFrame, PageShell } from "@/components/premium";
 import { getAdminModerationData } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -223,12 +223,11 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                   itemSingular="report"
                 />
               </form>
-              <div
-                id="main-table"
-                className="scroll-mt-28 overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                tabIndex={-1}
-                aria-label="User reports table"
-                data-main-table-target="true"
+              <DataTableFrame
+                mainTable
+                mainTableLabel="User reports table"
+                stickyFirstColumn
+                className="overflow-x-auto"
               >
                 <table
                   className="w-full min-w-[820px] text-left text-sm"
@@ -357,7 +356,7 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                     )}
                   </tbody>
                 </table>
-              </div>
+              </DataTableFrame>
             </div>
           </AdminSection>
 
@@ -398,10 +397,10 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                   itemSingular="event"
                 />
               </form>
-              <div
-                className="scroll-mt-28 overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                tabIndex={-1}
-                aria-label="Moderation events table"
+              <DataTableFrame
+                label="Moderation events table"
+                stickyFirstColumn
+                className="overflow-x-auto"
               >
                 <table
                   className="w-full min-w-[820px] text-left text-sm"
@@ -533,7 +532,7 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                     )}
                   </tbody>
                 </table>
-              </div>
+              </DataTableFrame>
             </div>
           </AdminSection>
         </section>

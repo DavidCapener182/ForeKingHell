@@ -28,7 +28,7 @@ import {
   StatusBadge,
 } from "@/app/admin/admin-components";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { DataTableFrame, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAdminBillingData } from "@/lib/admin";
@@ -202,12 +202,11 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                 exportFileName="forekinghell-admin-billing-view.csv"
                 className="mb-3"
               />
-              <div
-                id="main-table"
-                className="scroll-mt-28 overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                tabIndex={-1}
-                aria-label="Subscriptions table"
-                data-main-table-target="true"
+              <DataTableFrame
+                mainTable
+                mainTableLabel="Subscriptions table"
+                stickyFirstColumn
+                className="overflow-x-auto"
               >
                 <table
                   className="w-full min-w-[780px] text-left text-sm"
@@ -288,7 +287,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </DataTableFrame>
             </AdminSection>
 
             <AdminSection title="Recent entitlements">

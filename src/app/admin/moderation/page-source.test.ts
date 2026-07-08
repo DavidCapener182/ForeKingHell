@@ -25,8 +25,10 @@ describe("admin moderation desktop console source", () => {
       expect(source).toContain(`data-workbench-export-table="${scope}"`);
     }
 
-    expect(source).toContain('aria-label="User reports table"');
-    expect(source).toContain('aria-label="Moderation events table"');
+    expect(source).toContain("DataTableFrame");
+    expect(source).toContain('mainTableLabel="User reports table"');
+    expect(source).toContain('label="Moderation events table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
   });

@@ -14,12 +14,14 @@ describe("admin users desktop console source", () => {
 
   it("keeps the admin users table exportable, configurable and keyboard reachable", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("DataTableFrame");
     expect(source).toContain('viewKey="admin-users"');
     expect(source).toContain('scope="admin-users"');
     expect(source).toContain('exportTableId="admin-users"');
     expect(source).toContain('exportFileName="forekinghell-admin-users-view.csv"');
-    expect(source).toContain('data-main-table-target="true"');
-    expect(source).toContain('aria-label="Admin user accounts table"');
+    expect(source).toContain("mainTable");
+    expect(source).toContain('mainTableLabel="Admin user accounts table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-export-table="admin-users"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");

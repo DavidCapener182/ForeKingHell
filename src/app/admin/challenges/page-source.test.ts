@@ -14,12 +14,14 @@ describe("admin challenges desktop console source", () => {
 
   it("keeps challenge boards as an exportable admin table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("DataTableFrame");
     expect(source).toContain('viewKey="admin-challenges"');
     expect(source).toContain('scope="admin-challenges"');
     expect(source).toContain('exportTableId="admin-challenges"');
     expect(source).toContain('exportFileName="forekinghell-admin-challenges-view.csv"');
-    expect(source).toContain('data-main-table-target="true"');
-    expect(source).toContain('aria-label="Challenge boards table"');
+    expect(source).toContain("mainTable");
+    expect(source).toContain('mainTableLabel="Challenge boards table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-export-table="admin-challenges"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
