@@ -391,6 +391,19 @@ describe("production readiness gate", () => {
     }
 
     expect(desktopWorkbenchSource).toContain("desktopMatrixRoutes");
+    for (const route of [
+      "/dashboard",
+      "/today",
+      "/shots",
+      "/bag",
+      "/speed",
+      "/strokes-gained",
+      "/rounds?filter=scorecard-only",
+      "/leaderboard?tab=monthly&sort=monthly-shots&dir=desc",
+      "/data-chat",
+    ]) {
+      expect(desktopWorkbenchSource).toContain(`path: "${route}"`);
+    }
     expect(desktopWorkbenchSource).toContain("expectNoHorizontalOverflow");
     expect(desktopWorkbenchSource).toContain("expectNoCrampedWorkbenchText");
     expect(desktopWorkbenchSource).toContain("dashboard bento panels stay readable");
