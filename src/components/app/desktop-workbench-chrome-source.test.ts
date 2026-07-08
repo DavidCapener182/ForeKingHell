@@ -236,6 +236,8 @@ describe("desktop workbench chrome source", () => {
       "Export current view",
       "Open workspace links",
       "Open AI assistant on supported pages",
+      "Select focused table row",
+      "Move between table rows",
       "Keyboard shortcuts",
     ]) {
       expect(shortcutRowsBlock).toContain(shortcut);

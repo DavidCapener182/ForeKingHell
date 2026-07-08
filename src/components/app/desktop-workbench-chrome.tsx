@@ -242,6 +242,8 @@ const shortcutRows = [
   { keys: ["E"], action: "Export current view" },
   { keys: ["W"], action: "Open workspace links" },
   { keys: ["A"], action: "Open AI assistant on supported pages" },
+  { keys: ["Enter"], altKeys: ["Space"], action: "Select focused table row" },
+  { keys: ["↑", "↓"], altKeys: ["Home", "End"], action: "Move between table rows" },
   { keys: ["?"], action: "Keyboard shortcuts" },
 ];
 
