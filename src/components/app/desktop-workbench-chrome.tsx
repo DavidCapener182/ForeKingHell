@@ -2138,8 +2138,18 @@ function assistantContext({
       },
       actionPrompt ?? defaultActionPrompt,
       reportPrompt ?? defaultReportPrompt,
-    ],
+    ].map((prompt) => ({
+      ...prompt,
+      prompt: guardAssistantPrompt(prompt.prompt),
+    })),
   };
+}
+
+function guardAssistantPrompt(prompt: string) {
+  return [
+    prompt,
+    "Use only visible ForeKingHell metrics, cite the evidence labels shown in the assistant rail, and say when a number is missing or low-confidence instead of inventing it.",
+  ].join(" ");
 }
 
 function readStoredLinks(key: string, fallback: WorkbenchLink[] = []): WorkbenchLink[] {

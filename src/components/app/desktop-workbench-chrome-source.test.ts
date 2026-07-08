@@ -268,4 +268,20 @@ describe("desktop workbench chrome source", () => {
     expect(commandLinkBlock).toContain('role="option"');
     expect(commandLinkBlock).toContain("aria-selected={active}");
   });
+
+  it("guards every assistant rail prompt against invented numbers", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+    const assistantContextBlock =
+      source.match(/function assistantContext\([\s\S]*?function readStoredLinks/)?.[0] ?? "";
+
+    expect(assistantContextBlock).toContain("function guardAssistantPrompt(prompt: string)");
+    expect(assistantContextBlock).toContain(".map((prompt) => ({");
+    expect(assistantContextBlock).toContain("prompt: guardAssistantPrompt(prompt.prompt)");
+    expect(assistantContextBlock).toContain("Use only visible ForeKingHell metrics");
+    expect(assistantContextBlock).toContain("cite the evidence labels shown in the assistant rail");
+    expect(assistantContextBlock).toContain("instead of inventing it");
+  });
 });
