@@ -791,6 +791,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
               <DataTableFrame
                 mainTable
                 mainTableLabel="Course library table"
+                stickyFirstColumn
                 mobile={
                   <MobileDataList>
                     {sortedDisplayedCourses.length > 0 ? (

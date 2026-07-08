@@ -28,6 +28,7 @@ describe("courses desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-courses-view.csv"');
     expect(source).toContain('data-workbench-export-table="courses"');
     expect(source).toContain('mainTableLabel="Course library table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

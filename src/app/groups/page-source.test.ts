@@ -23,6 +23,7 @@ describe("groups desktop board", () => {
     expect(source).toContain('exportTableId="group-board"');
     expect(source).toContain('data-workbench-export-table="group-board"');
     expect(source).toContain('mainTableLabel="Group board table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('aria-label="Group operations rail"');

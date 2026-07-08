@@ -15,6 +15,11 @@ describe("leaderboard desktop workspace source", () => {
   });
 
   it("keeps player leaderboards as controlled exportable tables", () => {
+    const playerTableBlock =
+      source.match(
+        /<DataTableFrame mainTable mainTableLabel="Leaderboard player table"[\s\S]*?<\/DataTableFrame>/,
+      )?.[0] ?? "";
+
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("leaderboardPlayerColumns");
     expect(source).toContain("leaderboardSuggestedViews");
@@ -24,6 +29,7 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-leaderboard-players-view.csv"');
     expect(source).toContain('data-workbench-export-table="leaderboard-players"');
     expect(source).toContain('mainTableLabel="Leaderboard player table"');
+    expect(playerTableBlock).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 
@@ -42,6 +48,11 @@ describe("leaderboard desktop workspace source", () => {
   });
 
   it("keeps challenge leaderboards exportable for desktop users", () => {
+    const challengeTableBlock =
+      source.match(
+        /<DataTableFrame mainTable mainTableLabel="Challenge leaderboard table"[\s\S]*?<\/DataTableFrame>/,
+      )?.[0] ?? "";
+
     expect(source).toContain("challengeLeaderboardColumns");
     expect(source).toContain("challengeLeaderboardSuggestedViews");
     expect(source).toContain('viewKey="leaderboard-challenges"');
@@ -49,6 +60,7 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-challenge-leaderboards-view.csv"');
     expect(source).toContain('data-workbench-export-table="leaderboard-challenges"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
+    expect(challengeTableBlock).toContain("stickyFirstColumn");
 
     for (const column of ["challenge", "template", "participants", "leader", "score", "source"]) {
       expect(source).toContain(`data-column="${column}"`);

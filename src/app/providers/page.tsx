@@ -290,7 +290,7 @@ function ProviderSessionsTable({ sessions }: { sessions: ProviderSession[] }) {
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Provider sessions table">
+      <DataTableFrame mainTable mainTableLabel="Provider sessions table" stickyFirstColumn>
         <Table
           data-workbench-export-table="provider-sessions"
           aria-describedby="provider-sessions-summary"

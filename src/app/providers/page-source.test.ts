@@ -15,6 +15,7 @@ describe("providers desktop workbench", () => {
     expect(source).toContain('exportTableId="provider-sessions"');
     expect(source).toContain('data-workbench-export-table="provider-sessions"');
     expect(source).toContain('mainTableLabel="Provider sessions table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

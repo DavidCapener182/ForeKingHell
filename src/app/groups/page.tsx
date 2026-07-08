@@ -502,7 +502,7 @@ function GroupBoardTable({
         exportTableId="group-board"
         exportFileName={`forekinghell-groups-${activeTab}.csv`}
       />
-      <DataTableFrame mainTable mainTableLabel="Group board table">
+      <DataTableFrame mainTable mainTableLabel="Group board table" stickyFirstColumn>
         <Table data-workbench-export-table="group-board" aria-describedby="group-board-summary">
           <TableCaption id="group-board-summary" className="sr-only">
             Group board table showing group, membership status, visibility, group type, member
