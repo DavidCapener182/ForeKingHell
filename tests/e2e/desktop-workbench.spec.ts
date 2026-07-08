@@ -17,6 +17,7 @@ const desktopMatrixViewports = [
 ] as const;
 const desktopMatrixRoutes = [
   { path: "/dashboard", ready: /Quick answers|Dashboard/i },
+  { path: "/today", ready: /Best performer|Practice score/i },
   { path: "/shots", ready: /Shot explorer/i },
   { path: "/bag", ready: /AI bag rail|Bag/i },
   { path: "/speed", ready: /Speed Centre/i },
