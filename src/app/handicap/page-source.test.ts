@@ -10,6 +10,7 @@ describe("handicap desktop score differential table", () => {
     expect(source).toContain('data-workbench-scope="handicap-rounds"');
     expect(source).toContain('data-workbench-export-table="handicap-rounds"');
     expect(source).toContain('mainTableLabel="Score differential table"');
+    expect(source).toContain('mainTableLabel="Score differential table" stickyFirstColumn');
     expect(source).toContain("forekinghell-handicap-score-differentials.csv");
     expect(source).toContain("tabIndex={0}");
   });

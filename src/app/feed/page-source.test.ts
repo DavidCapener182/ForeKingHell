@@ -22,6 +22,7 @@ describe("feed desktop activity ledger", () => {
     expect(source).toContain('exportTableId="feed-activity-ledger"');
     expect(source).toContain('data-workbench-export-table="feed-activity-ledger"');
     expect(source).toContain('mainTableLabel="Feed activity ledger table"');
+    expect(source).toContain('mainTableLabel="Feed activity ledger table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain("DesktopInsightRail");

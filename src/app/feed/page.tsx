@@ -668,7 +668,7 @@ function FeedActivityLedger({
         exportTableId="feed-activity-ledger"
         exportFileName={`forekinghell-feed-activity-${activeFilter}.csv`}
       />
-      <DataTableFrame mainTable mainTableLabel="Feed activity ledger table">
+      <DataTableFrame mainTable mainTableLabel="Feed activity ledger table" stickyFirstColumn>
         <Table
           data-workbench-export-table="feed-activity-ledger"
           aria-describedby="feed-activity-ledger-summary"

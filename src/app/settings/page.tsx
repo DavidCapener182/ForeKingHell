@@ -742,7 +742,7 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
         exportFileName="forekinghell-account-access.csv"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Account access table">
+      <DataTableFrame mainTable mainTableLabel="Account access table" stickyFirstColumn>
         <Table
           data-workbench-export-table="settings-access"
           aria-describedby="settings-access-summary"

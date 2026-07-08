@@ -336,7 +336,7 @@ function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
           exportTableId="admin-overview-users"
           exportFileName="forekinghell-admin-overview-users.csv"
         />
-        <DataTableFrame mainTable mainTableLabel="Admin recent users table">
+        <DataTableFrame mainTable mainTableLabel="Admin recent users table" stickyFirstColumn>
           <Table
             data-workbench-export-table="admin-overview-users"
             aria-describedby="admin-overview-users-summary"

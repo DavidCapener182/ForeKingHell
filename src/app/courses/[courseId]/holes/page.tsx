@@ -737,7 +737,7 @@ function HoleGeometryTable({
             exportTableId="course-hole-geometry"
             exportFileName="forekinghell-course-hole-geometry.csv"
           />
-          <DataTableFrame mainTable mainTableLabel="Course hole geometry table">
+          <DataTableFrame mainTable mainTableLabel="Course hole geometry table" stickyFirstColumn>
             <Table
               data-workbench-export-table="course-hole-geometry"
               aria-describedby="course-hole-geometry-summary"

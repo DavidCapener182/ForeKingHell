@@ -256,7 +256,7 @@ function BillingLimitsTable({
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Billing plan limits table">
+      <DataTableFrame mainTable mainTableLabel="Billing plan limits table" stickyFirstColumn>
         <Table
           data-workbench-export-table="billing-limits"
           aria-describedby="billing-limits-summary"

@@ -493,7 +493,7 @@ export default async function HandicapPage() {
                 exportTableId="handicap-rounds"
                 exportFileName="forekinghell-handicap-score-differentials.csv"
               />
-              <DataTableFrame mainTable mainTableLabel="Score differential table">
+              <DataTableFrame mainTable mainTableLabel="Score differential table" stickyFirstColumn>
                 <Table
                   className="min-w-[1040px]"
                   data-workbench-export-table="handicap-rounds"

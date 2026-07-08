@@ -268,7 +268,7 @@ function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Social safety queue table">
+      <DataTableFrame mainTable mainTableLabel="Social safety queue table" stickyFirstColumn>
         <Table data-workbench-export-table="social-safety" aria-describedby="social-safety-summary">
           <TableCaption id="social-safety-summary" className="sr-only">
             Social safety queue table showing source, severity, status, reason, target, detail and

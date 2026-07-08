@@ -13,6 +13,7 @@ describe("social intelligence desktop safety console", () => {
     expect(source).toContain('exportTableId="social-safety"');
     expect(source).toContain('data-workbench-export-table="social-safety"');
     expect(source).toContain('mainTableLabel="Social safety queue table"');
+    expect(source).toContain('mainTableLabel="Social safety queue table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

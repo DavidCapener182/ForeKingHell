@@ -19,6 +19,7 @@ describe("admin overview desktop console", () => {
     expect(source).toContain('exportTableId="admin-overview-users"');
     expect(source).toContain('data-workbench-export-table="admin-overview-users"');
     expect(source).toContain('mainTableLabel="Admin recent users table"');
+    expect(source).toContain('mainTableLabel="Admin recent users table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

@@ -13,6 +13,7 @@ describe("partners desktop operations board", () => {
     expect(source).toContain('exportTableId="partner-sponsors"');
     expect(source).toContain('data-workbench-export-table="partner-sponsors"');
     expect(source).toContain('mainTableLabel="Sponsor pipeline table"');
+    expect(source).toContain('mainTableLabel="Sponsor pipeline table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

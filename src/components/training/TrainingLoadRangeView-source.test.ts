@@ -14,6 +14,7 @@ describe("TrainingLoadRangeView desktop workbench", () => {
     expect(source).toContain('data-workbench-scope="training-load-sessions"');
     expect(source).toContain('data-workbench-export-table="training-load-sessions"');
     expect(source).toContain('mainTableLabel="Training load session table"');
+    expect(source).toContain('mainTableLabel="Training load session table" stickyFirstColumn');
     expect(source).toContain('{ key: "sessionQuality", label: "Session Quality" }');
     expect(source).toContain("Latest scored session quality");
     expect(source).toContain("tabIndex={0}");

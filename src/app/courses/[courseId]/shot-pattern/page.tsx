@@ -275,7 +275,7 @@ function ShotPatternHoleTable({
         exportFileName={`forekinghell-shot-pattern-${courseId}-holes.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Shot pattern mapped holes table">
+      <DataTableFrame mainTable mainTableLabel="Shot pattern mapped holes table" stickyFirstColumn>
         <Table
           data-workbench-export-table="shot-pattern-holes"
           aria-describedby="shot-pattern-holes-summary"
@@ -380,7 +380,7 @@ function ShotPatternClubTable({
         exportFileName={`forekinghell-shot-pattern-${courseId}-clubs.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Shot pattern club evidence table">
+      <DataTableFrame mainTableLabel="Shot pattern club evidence table" stickyFirstColumn>
         <Table
           data-workbench-export-table="shot-pattern-clubs"
           aria-describedby="shot-pattern-clubs-summary"

@@ -262,7 +262,7 @@ function SponsorPipelineTable({
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Sponsor pipeline table">
+      <DataTableFrame mainTable mainTableLabel="Sponsor pipeline table" stickyFirstColumn>
         <Table
           data-workbench-export-table="partner-sponsors"
           aria-describedby="partner-sponsors-summary"

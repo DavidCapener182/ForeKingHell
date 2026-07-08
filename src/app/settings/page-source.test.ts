@@ -19,6 +19,7 @@ describe("settings desktop account access", () => {
     expect(source).toContain('exportTableId="settings-access"');
     expect(source).toContain('data-workbench-export-table="settings-access"');
     expect(source).toContain('mainTableLabel="Account access table"');
+    expect(source).toContain('mainTableLabel="Account access table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

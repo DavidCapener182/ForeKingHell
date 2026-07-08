@@ -19,6 +19,7 @@ describe("billing desktop plan limits ledger", () => {
     expect(source).toContain('exportTableId="billing-limits"');
     expect(source).toContain('data-workbench-export-table="billing-limits"');
     expect(source).toContain('mainTableLabel="Billing plan limits table"');
+    expect(source).toContain('mainTableLabel="Billing plan limits table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

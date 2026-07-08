@@ -19,6 +19,7 @@ describe("course holes desktop workspace", () => {
     expect(source).toContain('exportTableId="course-hole-geometry"');
     expect(source).toContain('data-workbench-export-table="course-hole-geometry"');
     expect(source).toContain('mainTableLabel="Course hole geometry table"');
+    expect(source).toContain('mainTableLabel="Course hole geometry table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("#desktop-hole-form-${holeNumber}");
     expect(source).not.toContain('<PageShell size="wide">');

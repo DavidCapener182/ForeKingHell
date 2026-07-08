@@ -721,7 +721,7 @@ function TrainingSessionLedger({
             exportTableId="training-load-sessions"
             exportFileName={`forekinghell-training-load-${rangeKey}.csv`}
           />
-          <DataTableFrame mainTable mainTableLabel="Training load session table">
+          <DataTableFrame mainTable mainTableLabel="Training load session table" stickyFirstColumn>
             <Table
               data-workbench-export-table="training-load-sessions"
               aria-describedby="training-load-sessions-summary"
