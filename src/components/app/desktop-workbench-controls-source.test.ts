@@ -18,6 +18,12 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("draftSavedViewTitle");
     expect(source).toContain("maxLength={80}");
     expect(source).toContain("window.localStorage.setItem(savedViewsKey, JSON.stringify(next))");
+    expect(source).toContain(
+      'export const desktopSavedViewsUpdatedEvent = "fkh:desktop-saved-views-updated"',
+    );
+    expect(source).toContain(
+      "window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent))",
+    );
     expect(source).not.toContain("window.prompt");
   });
 

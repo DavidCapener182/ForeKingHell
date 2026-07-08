@@ -66,6 +66,7 @@ type DesktopWorkbenchControlsProps = {
 };
 
 const densityStorageKey = "fkh:desktop-workbench-density";
+export const desktopSavedViewsUpdatedEvent = "fkh:desktop-saved-views-updated";
 
 export function DesktopWorkbenchControls({
   viewKey,
@@ -206,6 +207,7 @@ export function DesktopWorkbenchControls({
     const next = [view, ...savedViews.filter((saved) => saved.href !== view.href)].slice(0, 10);
     setSavedViews(next);
     window.localStorage.setItem(savedViewsKey, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent));
     setSaveDialogOpen(false);
   }
 
@@ -230,6 +232,7 @@ export function DesktopWorkbenchControls({
     const next = savedViews.filter((view) => view.id !== id);
     setSavedViews(next);
     window.localStorage.setItem(savedViewsKey, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent));
   }
 
   function toggleColumn(id: string, checked: boolean) {

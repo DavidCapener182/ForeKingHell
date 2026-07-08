@@ -64,6 +64,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { savedInsightUpdatedEvent } from "@/components/app/desktop-save-insight-button";
+import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";
 import { cn } from "@/lib/utils";
 
 type DesktopWorkbenchChromeProps = {
@@ -370,12 +371,15 @@ export function DesktopWorkbenchChrome({
       setSavedViewCommands(readSavedViewCommands());
     }, 0);
     const syncSavedInsights = () => setSavedInsightLinks(readStoredLinks(savedInsightStorageKey));
+    const syncSavedViews = () => setSavedViewCommands(readSavedViewCommands());
 
     window.addEventListener(savedInsightUpdatedEvent, syncSavedInsights);
+    window.addEventListener(desktopSavedViewsUpdatedEvent, syncSavedViews);
 
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener(savedInsightUpdatedEvent, syncSavedInsights);
+      window.removeEventListener(desktopSavedViewsUpdatedEvent, syncSavedViews);
     };
   }, []);
 

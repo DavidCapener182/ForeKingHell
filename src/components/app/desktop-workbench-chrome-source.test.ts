@@ -170,6 +170,22 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain("window.removeEventListener(savedInsightUpdatedEvent");
   });
 
+  it("refreshes command-palette saved views after table view changes", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain(
+      'import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";',
+    );
+    expect(source).toContain(
+      "const syncSavedViews = () => setSavedViewCommands(readSavedViewCommands())",
+    );
+    expect(source).toContain("window.addEventListener(desktopSavedViewsUpdatedEvent");
+    expect(source).toContain("window.removeEventListener(desktopSavedViewsUpdatedEvent");
+  });
+
   it("keeps the desktop workspace switcher role-aware", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
