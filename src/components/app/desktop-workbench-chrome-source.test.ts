@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("desktop workbench chrome source", () => {
-  it("keeps the persistent AI assistant available on analytical workbench routes", () => {
+  it("keeps the optional AI assistant available on analytical workbench routes", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
@@ -12,6 +12,7 @@ describe("desktop workbench chrome source", () => {
       source.match(/const assistantSupportedRoutePrefixes = \[[\s\S]*?\];/)?.[0] ?? "";
 
     for (const route of [
+      "/today",
       "/shots",
       "/bag",
       "/courses",
@@ -34,7 +35,6 @@ describe("desktop workbench chrome source", () => {
     expect(prefixBlock).not.toContain('"/leaderboard"');
     expect(prefixBlock).not.toContain('"/profile"');
     expect(prefixBlock).not.toContain('"/settings"');
-    expect(prefixBlock).not.toContain('"/today"');
     expect(prefixBlock).not.toContain('"/practice"');
     expect(prefixBlock).not.toContain('"/speed"');
     expect(prefixBlock).not.toContain('"/stats/training-over-time"');
@@ -75,7 +75,6 @@ describe("desktop workbench chrome source", () => {
 
     for (const route of [
       "/dashboard",
-      "/today",
       "/practice",
       "/speed",
       "/stats/training-over-time",
@@ -102,6 +101,7 @@ describe("desktop workbench chrome source", () => {
     }
 
     for (const route of [
+      "/today",
       "/shots",
       "/compare",
       "/bag",
@@ -116,9 +116,15 @@ describe("desktop workbench chrome source", () => {
     ]) {
       expect(contextBlock).toContain(`pathname.startsWith("${route}")`);
     }
+
+    expect(contextBlock).toContain('label: "Latest practice"');
+    expect(contextBlock).toContain("Clean scoring summary");
+    expect(contextBlock).toContain("Raw shot rows and quality tags");
+    expect(contextBlock).toContain('label: "Build latest-practice plan"');
+    expect(contextBlock).toContain('label: "Generate session report"');
   });
 
-  it("closes the persistent assistant when navigating to unsupported pages", () => {
+  it("closes the assistant sheet when navigating to unsupported pages", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
@@ -289,7 +295,7 @@ describe("desktop workbench chrome source", () => {
     expect(commandLinkBlock).toContain("aria-selected={active}");
   });
 
-  it("guards every assistant rail prompt against invented numbers", () => {
+  it("guards every assistant sheet prompt against invented numbers", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
@@ -301,7 +307,9 @@ describe("desktop workbench chrome source", () => {
     expect(assistantContextBlock).toContain(".map((prompt) => ({");
     expect(assistantContextBlock).toContain("prompt: guardAssistantPrompt(prompt.prompt)");
     expect(assistantContextBlock).toContain("Use only visible ForeKingHell metrics");
-    expect(assistantContextBlock).toContain("cite the evidence labels shown in the assistant rail");
+    expect(assistantContextBlock).toContain(
+      "cite the evidence labels shown in the assistant sheet",
+    );
     expect(assistantContextBlock).toContain("instead of inventing it");
   });
 });

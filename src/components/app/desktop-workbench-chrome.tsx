@@ -132,6 +132,7 @@ const notificationReadStorageKey = "fkh:desktop-notification-read-ids";
 const savedViewsStoragePrefix = "fkh:saved-views:";
 
 const assistantSupportedRoutePrefixes = [
+  "/today",
   "/shots",
   "/compare",
   "/bag",
@@ -911,8 +912,8 @@ export function DesktopWorkbenchChrome({
               <SheetHeader className="border-b border-border p-4 text-left">
                 <SheetTitle>AI assistant</SheetTitle>
                 <SheetDescription>
-                  Open Dashboard, Shots, Bag, Rounds, Progress, Coach or Data Chat for contextual
-                  help.
+                  Open Latest practice, Shots, Bag, Rounds, Progress, Coach or Data Chat for
+                  contextual help.
                 </SheetDescription>
               </SheetHeader>
             </>
@@ -1508,7 +1509,7 @@ function AssistantPanel({
           </span>
           <div className="min-w-0">
             <SheetTitle className="truncate">{context.label} assistant</SheetTitle>
-            <SheetDescription className="truncate">Contextual AI workbench rail</SheetDescription>
+            <SheetDescription className="truncate">Contextual AI assistant sheet</SheetDescription>
           </div>
         </div>
       </SheetHeader>
@@ -1951,6 +1952,32 @@ function getAssistantContext(pathname: string): AssistantContext | null {
     return null;
   }
 
+  if (pathname.startsWith("/today")) {
+    return assistantContext({
+      label: "Latest practice",
+      route: pathname,
+      summary:
+        "Use the clean-scoring session read, raw shot history, club comparisons and data-cleaning notes before recommending the next range job.",
+      evidence: [
+        "Clean scoring summary",
+        "Raw shot rows and quality tags",
+        "Club comparison and plan-result cards",
+      ],
+      actionPrompt: {
+        label: "Build latest-practice plan",
+        prompt:
+          "Build a latest-practice follow-up plan from the visible ForeKingHell clean-scoring summary, raw shot history, club comparisons and data-cleaning notes.",
+        icon: Target,
+      },
+      reportPrompt: {
+        label: "Generate session report",
+        prompt:
+          "Generate a latest-practice report from the visible ForeKingHell session evidence, including clean-scoring exclusions and low-confidence clubs.",
+        icon: Download,
+      },
+    });
+  }
+
   if (pathname.startsWith("/shots")) {
     return assistantContext({
       label: "Shots",
@@ -2154,7 +2181,7 @@ function assistantContext({
 function guardAssistantPrompt(prompt: string) {
   return [
     prompt,
-    "Use only visible ForeKingHell metrics, cite the evidence labels shown in the assistant rail, and say when a number is missing or low-confidence instead of inventing it.",
+    "Use only visible ForeKingHell metrics, cite the evidence labels shown in the assistant sheet, and say when a number is missing or low-confidence instead of inventing it.",
   ].join(" ");
 }
 
