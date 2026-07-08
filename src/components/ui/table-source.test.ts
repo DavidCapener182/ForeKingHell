@@ -23,4 +23,17 @@ describe("shared table semantics", () => {
     expect(tableHeadBlock).toContain('scope = "col"');
     expect(tableHeadBlock).toContain("scope={scope}");
   });
+
+  it("maps selected row state onto accessible table-row selection", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/ui/table.tsx"), "utf8");
+    const tableRowBlock =
+      source.match(/function TableRow\([\s\S]*?\n}\n\nfunction TableHead/)?.[0] ?? "";
+
+    expect(tableRowBlock).toContain('"data-state": dataState');
+    expect(tableRowBlock).toContain('"aria-selected": ariaSelected');
+    expect(tableRowBlock).toContain("data-state={dataState}");
+    expect(tableRowBlock).toContain(
+      'aria-selected={ariaSelected ?? (dataState === "selected" ? true : undefined)}',
+    );
+  });
 });

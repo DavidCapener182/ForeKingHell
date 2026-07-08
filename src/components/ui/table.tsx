@@ -52,10 +52,17 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+function TableRow({
+  className,
+  "aria-selected": ariaSelected,
+  "data-state": dataState,
+  ...props
+}: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
+      data-state={dataState}
+      aria-selected={ariaSelected ?? (dataState === "selected" ? true : undefined)}
       className={cn(
         "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
         className,
