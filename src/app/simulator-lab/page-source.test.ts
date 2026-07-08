@@ -8,8 +8,14 @@ describe("simulator lab desktop workbench", () => {
   it("keeps simulator session deltas as an exportable desktop workbench table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("sessionDeltaColumns");
+    expect(source).toContain("sessionDeltaSuggestedViews");
+    expect(source).toContain('id="simulator-session-deltas"');
     expect(source).toContain('data-workbench-scope="simulator-session-deltas"');
     expect(source).toContain('viewKey="simulator-session-deltas"');
+    expect(source).toContain("suggestedViews={sessionDeltaSuggestedViews}");
+    expect(source).toContain('href: "/simulator-lab#simulator-session-deltas"');
+    expect(source).toContain("Latest simulator changes");
+    expect(source).toContain("Offline control check");
     expect(source).toContain('exportTableId="simulator-session-deltas"');
     expect(source).toContain('data-workbench-export-table="simulator-session-deltas"');
     expect(source).toContain('mainTableLabel="Simulator session delta table"');
@@ -25,8 +31,14 @@ describe("simulator lab desktop workbench", () => {
 
   it("keeps equipment impact as an exportable desktop workbench table", () => {
     expect(source).toContain("equipmentImpactColumns");
+    expect(source).toContain("equipmentImpactSuggestedViews");
+    expect(source).toContain('id="simulator-equipment-impact"');
     expect(source).toContain('data-workbench-scope="simulator-equipment-impact"');
     expect(source).toContain('viewKey="simulator-equipment-impact"');
+    expect(source).toContain("suggestedViews={equipmentImpactSuggestedViews}");
+    expect(source).toContain('href: "/simulator-lab#simulator-equipment-impact"');
+    expect(source).toContain("Before/after equipment proof");
+    expect(source).toContain("Equipment regressions");
     expect(source).toContain('exportTableId="simulator-equipment-impact"');
     expect(source).toContain('data-workbench-export-table="simulator-equipment-impact"');
     expect(source).toContain('label="Simulator equipment impact table"');

@@ -30,6 +30,7 @@ import { MobileRouteHeader } from "@/components/mobile-sports";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,19 @@ const sessionDeltaColumns: DesktopWorkbenchColumn[] = [
   { id: "verdict", label: "Verdict", locked: true },
 ];
 
+const sessionDeltaSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Latest simulator changes",
+    href: "/simulator-lab#simulator-session-deltas",
+    detail: "Review clubs whose latest indoor session moved against the 30-day baseline.",
+  },
+  {
+    title: "Offline control check",
+    href: "/simulator-lab#simulator-session-deltas",
+    detail: "Keep club, samples, offline and verdict visible for direction-control review.",
+  },
+];
+
 const equipmentImpactColumns: DesktopWorkbenchColumn[] = [
   { id: "change", label: "Change", locked: true },
   { id: "samples", label: "Samples" },
@@ -79,6 +93,19 @@ const equipmentImpactColumns: DesktopWorkbenchColumn[] = [
   { id: "smash", label: "Smash" },
   { id: "offline", label: "Offline" },
   { id: "verdict", label: "Verdict", locked: true },
+];
+
+const equipmentImpactSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Before/after equipment proof",
+    href: "/simulator-lab#simulator-equipment-impact",
+    detail: "Compare carry, speed and offline movement around logged setup changes.",
+  },
+  {
+    title: "Equipment regressions",
+    href: "/simulator-lab#simulator-equipment-impact",
+    detail: "Start with verdict and samples before trusting an equipment-change result.",
+  },
 ];
 
 export default async function SimulatorLabPage() {
@@ -253,13 +280,18 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
   }
 
   return (
-    <div className="grid gap-3" data-workbench-scope="simulator-session-deltas">
+    <div
+      id="simulator-session-deltas"
+      className="grid scroll-mt-28 gap-3"
+      data-workbench-scope="simulator-session-deltas"
+    >
       <DesktopTableWorkbenchControls
         viewKey="simulator-session-deltas"
         scope="simulator-session-deltas"
         currentViewLabel="Latest session deltas"
         resultLabel={`${rows.length.toLocaleString("en-GB")} clubs`}
         columns={sessionDeltaColumns}
+        suggestedViews={sessionDeltaSuggestedViews}
         exportTableId="simulator-session-deltas"
         exportFileName="forekinghell-simulator-session-deltas.csv"
       />
@@ -366,13 +398,18 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
   }
 
   return (
-    <div className="grid gap-3" data-workbench-scope="simulator-equipment-impact">
+    <div
+      id="simulator-equipment-impact"
+      className="grid scroll-mt-28 gap-3"
+      data-workbench-scope="simulator-equipment-impact"
+    >
       <DesktopTableWorkbenchControls
         viewKey="simulator-equipment-impact"
         scope="simulator-equipment-impact"
         currentViewLabel="Equipment impact"
         resultLabel={`${impacts.length.toLocaleString("en-GB")} changes`}
         columns={equipmentImpactColumns}
+        suggestedViews={equipmentImpactSuggestedViews}
         exportTableId="simulator-equipment-impact"
         exportFileName="forekinghell-simulator-equipment-impact.csv"
       />
