@@ -52,6 +52,10 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
+type TableRowProps = React.ComponentProps<"tr"> & {
+  "data-state"?: string;
+};
+
 function TableRow({
   className,
   "aria-selected": ariaSelected,
@@ -59,7 +63,7 @@ function TableRow({
   "data-state": dataState,
   tabIndex,
   ...props
-}: React.ComponentProps<"tr">) {
+}: TableRowProps) {
   const rowKeyShortcuts =
     tabIndex !== undefined ? "Enter Space ArrowDown ArrowUp Home End" : undefined;
 

@@ -29,6 +29,9 @@ describe("shared table semantics", () => {
     const tableRowBlock =
       source.match(/function TableRow\([\s\S]*?\n}\n\nfunction TableHead/)?.[0] ?? "";
 
+    expect(source).toContain('type TableRowProps = React.ComponentProps<"tr"> & {');
+    expect(source).toContain('"data-state"?: string;');
+    expect(tableRowBlock).toContain("}: TableRowProps)");
     expect(tableRowBlock).toContain('"data-state": dataState');
     expect(tableRowBlock).toContain('"aria-selected": ariaSelected');
     expect(tableRowBlock).toContain("data-state={dataState}");
