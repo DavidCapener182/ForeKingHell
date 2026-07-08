@@ -14,6 +14,7 @@ import {
   resolveModerationEventAction,
   resolveSocialReportAction,
 } from "@/app/admin/actions";
+import { AdminBulkActionSubmit } from "@/app/admin/admin-bulk-action-submit";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
 import {
   DesktopTableWorkbenchControls,
@@ -213,13 +214,14 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                     logged.
                   </p>
                 </div>
-                <AdminConfirmSubmitButton
-                  confirmMessage="Resolve the selected open reports? This closes the checked report records and writes an admin audit entry for each change."
-                  size="sm"
-                  variant="outline"
-                >
-                  Resolve selected reports
-                </AdminConfirmSubmitButton>
+                <AdminBulkActionSubmit
+                  actionDescription="This closes the checked open report records and writes an admin audit entry for each change."
+                  buttonLabel="Resolve selected reports"
+                  fieldName="reportId"
+                  formId="admin-report-bulk-form"
+                  itemPlural="reports"
+                  itemSingular="report"
+                />
               </form>
               <div
                 id="main-table"
@@ -387,13 +389,14 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                     logged.
                   </p>
                 </div>
-                <AdminConfirmSubmitButton
-                  confirmMessage="Resolve the selected open moderation events? This closes the checked event records and writes an admin audit entry for each change."
-                  size="sm"
-                  variant="outline"
-                >
-                  Resolve selected events
-                </AdminConfirmSubmitButton>
+                <AdminBulkActionSubmit
+                  actionDescription="This closes the checked open moderation event records and writes an admin audit entry for each change."
+                  buttonLabel="Resolve selected events"
+                  fieldName="eventId"
+                  formId="admin-event-bulk-form"
+                  itemPlural="events"
+                  itemSingular="event"
+                />
               </form>
               <div
                 className="scroll-mt-28 overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

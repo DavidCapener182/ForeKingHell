@@ -29,7 +29,8 @@ describe("confirm submit button", () => {
     expect(adminUsersSource).toContain("writes an audit entry");
 
     expect(adminModerationSource).toContain("AdminConfirmSubmitButton");
-    expect(adminModerationSource).toContain("Resolve the selected open reports");
+    expect(adminModerationSource).toContain("AdminBulkActionSubmit");
+    expect(adminModerationSource).toContain("Resolve selected reports");
     expect(adminModerationSource).toContain("Resolve moderation event");
     expect(adminModerationSource).toContain("writes an admin audit entry");
   });
