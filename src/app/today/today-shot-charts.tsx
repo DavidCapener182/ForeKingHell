@@ -16,6 +16,7 @@ import {
   type DispersionCorridorBucket,
   type DispersionCorridorTone,
 } from "@/lib/dispersion-corridor";
+import { buildShotShapeTrace, type ShotShapeTrace } from "@/lib/shot-shape-trace";
 import { cn } from "@/lib/utils";
 
 export type TodayChartShot = {
@@ -26,6 +27,7 @@ export type TodayChartShot = {
   carryYd: number | null;
   totalYd: number | null;
   sideCarryYd: number | null;
+  launchDirectionDeg: number | null;
   apexFt: number | null;
   launchAngleDeg: number | null;
   ballSpeedMph: number | null;
@@ -132,6 +134,15 @@ const trajectoryChartColumns: ChartFallbackColumn[] = [
   { key: "ballSpeed", label: "Ball speed" },
 ];
 
+const shapeChartColumns: ChartFallbackColumn[] = [
+  { key: "club", label: "Club" },
+  { key: "shot", label: "Shot" },
+  { key: "carry", label: "Carry" },
+  { key: "side", label: "Left/right" },
+  { key: "start", label: "Start line" },
+  { key: "curve", label: "Curve" },
+];
+
 export function TodayShotCharts({
   shots,
   clubStatuses = [],
@@ -162,8 +173,10 @@ export function TodayShotCharts({
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
   const dispersionSummary = buildDispersionChartSummary(visibleShots);
   const trajectorySummary = buildTrajectoryChartSummary(visibleShots, trajectoryView);
+  const shapeSummary = buildShapeChartSummary(visibleShots);
   const dispersionRows = buildDispersionChartRows(visibleShots);
   const trajectoryRows = buildTrajectoryChartRows(visibleShots);
+  const shapeRows = buildShapeChartRows(visibleShots);
 
   return (
     <Card size="sm" className="premium-card today-shot-pattern-card">
@@ -334,6 +347,24 @@ export function TodayShotCharts({
           >
             <TrajectoryChart shots={visibleShots} view={trajectoryView} />
           </ChartPanel>
+          <ChartPanel
+            title="Top-down shape"
+            detail="Launch-direction curves over the same carry and left-right landing points."
+            empty={!visibleShots.some(hasDispersionData)}
+            footer={<TopDownShapeInsightCards shots={visibleShots} />}
+            fallback={
+              <ChartAccessibleFallback
+                title="Today top-down shape"
+                summary={shapeSummary}
+                columns={shapeChartColumns}
+                rows={shapeRows}
+              />
+            }
+            className="lg:col-span-2"
+            chartClassName="grid place-items-center overflow-hidden"
+          >
+            <TopDownShapeChart shots={visibleShots} />
+          </ChartPanel>
         </div>
         <ClubLegend clubs={clubGroups} />
       </CardContent>
@@ -467,6 +498,39 @@ function buildTrajectoryChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
       ballSpeed: isNumber(shot.ballSpeedMph)
         ? `${numberFormatter.format(shot.ballSpeedMph)} mph`
         : "-",
+    }));
+}
+
+function buildShapeChartSummary(shots: ChartPoint[]) {
+  const model = buildTopDownShapeModel(shots);
+
+  if (model.traces.length === 0) {
+    return "No top-down shot-shape data is available for the visible club filter.";
+  }
+
+  const straightCount = model.traces.length - model.estimatedCount;
+  const averageCurve = meanNumber(
+    model.traces.map(({ trace }) => (trace.source === "estimated" ? trace.curveYd : null)),
+  );
+
+  return `${model.traces.length} landing point${model.traces.length === 1 ? "" : "s"} plotted. ${
+    model.estimatedCount
+  } launch-derived curve${model.estimatedCount === 1 ? "" : "s"}; ${straightCount} straight landing line${
+    straightCount === 1 ? "" : "s"
+  } without start direction. Average curve is ${formatSigned(averageCurve)}.`;
+}
+
+function buildShapeChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
+  return buildTopDownShapeModel(shots)
+    .traces.slice(-12)
+    .map(({ shot, trace }) => ({
+      _key: shot.id,
+      club: shot.clubLabel,
+      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
+      carry: formatNullable(shot.carryYd ?? shot.totalYd ?? null),
+      side: formatSigned(shot.sideCarryYd),
+      start: formatDegrees(shot.launchDirectionDeg),
+      curve: trace.curveYd === null ? "Straight line" : formatSigned(trace.curveYd),
     }));
 }
 
@@ -613,6 +677,37 @@ function TrajectoryInsight({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
       <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
       <p className="mt-0.5 truncate text-sm font-semibold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function TopDownShapeInsightCards({ shots }: { shots: ChartPoint[] }) {
+  const model = buildTopDownShapeModel(shots);
+  const straightCount = model.traces.length - model.estimatedCount;
+  const averageCurve = meanNumber(
+    model.traces.map(({ trace }) => (trace.source === "estimated" ? trace.curveYd : null)),
+  );
+  const playableCount = model.traces.filter(
+    ({ shot }) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) <= 20,
+  ).length;
+
+  if (model.traces.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+      <TrajectoryInsight
+        label="Shape curves"
+        value={`${model.estimatedCount}/${model.traces.length}`}
+      />
+      <TrajectoryInsight label="Landing lines" value={`${straightCount}`} />
+      <TrajectoryInsight label="Playable" value={`${playableCount}/${model.traces.length}`} />
+      <TrajectoryInsight label="Avg curve" value={formatSigned(averageCurve)} />
+      <p className="col-span-2 text-[11px] text-muted-foreground sm:col-span-4">
+        Curves require launch direction. Rows with carry and left-right landing only stay as
+        straight lines to the dispersion point.
+      </p>
     </div>
   );
 }
@@ -1020,6 +1115,164 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
   );
 }
 
+function TopDownShapeChart({ shots }: { shots: ChartPoint[] }) {
+  const model = buildTopDownShapeModel(shots);
+  const yTicks = ticks(model.maxCarry, 4);
+  const xTicks = [-model.maxSide, -model.maxSide / 2, 0, model.maxSide / 2, model.maxSide];
+  const yForTick = (value: number) => clampPercent(88 - (value / model.maxCarry) * 72, 8, 90);
+  const xForTick = (value: number) => clampPercent(50 + (value / model.maxSide) * 38, 5, 95);
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="xMidYMid meet"
+      className="mx-auto block aspect-square w-full max-w-[640px]"
+      role="img"
+      aria-label="Top-down shot shape chart"
+    >
+      <rect x={0} y={0} width={100} height={100} fill="#eef6ef" />
+      <image
+        href="/assets/fairway-dispersion-bg.svg"
+        x={0}
+        y={0}
+        width={100}
+        height={100}
+        preserveAspectRatio="xMidYMid slice"
+        opacity={0.95}
+      />
+      <rect x={0} y={0} width={100} height={100} fill="rgba(255,255,255,0.12)" />
+      <rect
+        x={xForTick(-10)}
+        y={8}
+        width={xForTick(10) - xForTick(-10)}
+        height={80}
+        fill="rgba(16,185,129,0.1)"
+      />
+      {yTicks.map((tick) => (
+        <g key={`shape-y-${tick}`}>
+          <line
+            x1={8}
+            x2={95}
+            y1={yForTick(tick)}
+            y2={yForTick(tick)}
+            stroke="rgba(15,23,42,0.12)"
+            strokeWidth={0.28}
+            vectorEffect="non-scaling-stroke"
+          />
+          <text x={7} y={yForTick(tick) + 1.2} textAnchor="end" fill="#475569" fontSize={2.4}>
+            {tick}
+          </text>
+        </g>
+      ))}
+      {xTicks.map((tick) => (
+        <g key={`shape-x-${tick}`}>
+          <line
+            x1={xForTick(tick)}
+            x2={xForTick(tick)}
+            y1={8}
+            y2={90}
+            stroke={tick === 0 ? "rgba(15,23,42,0.5)" : "rgba(15,23,42,0.14)"}
+            strokeDasharray={tick === 0 ? undefined : "1.2 1.4"}
+            strokeWidth={tick === 0 ? 0.42 : 0.28}
+            vectorEffect="non-scaling-stroke"
+          />
+          <text x={xForTick(tick)} y={96} textAnchor="middle" fill="#475569" fontSize={2.4}>
+            {formatTick(tick)}
+          </text>
+        </g>
+      ))}
+      <text x={8} y={5} fill="#475569" fontSize={2.5}>
+        carry yd
+      </text>
+      <text x={50} y={99} textAnchor="middle" fill="#475569" fontSize={2.5}>
+        left / right yd
+      </text>
+      <path
+        d="M 50 88 L 50 8"
+        fill="none"
+        stroke="rgba(15,23,42,0.22)"
+        strokeDasharray="1.5 1.8"
+        strokeLinecap="round"
+        strokeWidth={0.4}
+        vectorEffect="non-scaling-stroke"
+      />
+      {model.traces.map(({ shot, trace }) => (
+        <path
+          key={`shape-trace-${shot.id}`}
+          d={trace.path}
+          fill="none"
+          stroke={trace.source === "estimated" ? shot.color : "rgba(15,23,42,0.45)"}
+          strokeLinecap="round"
+          strokeWidth={trace.source === "estimated" ? 0.74 : 0.48}
+          strokeOpacity={trace.source === "estimated" ? 0.74 : 0.44}
+          vectorEffect="non-scaling-stroke"
+        >
+          <title>{`${shotTitle(shot)}; ${shapeTraceTitle(trace)}`}</title>
+        </path>
+      ))}
+      {model.traces.slice(0, 120).map(({ shot, trace }) => (
+        <circle
+          key={`shape-point-${shot.id}`}
+          cx={trace.landingX}
+          cy={trace.landingY}
+          r={1.05}
+          fill={shot.color}
+          fillOpacity={0.92}
+          stroke="white"
+          strokeWidth={0.42}
+          vectorEffect="non-scaling-stroke"
+        >
+          <title>{shotTitle(shot)}</title>
+        </circle>
+      ))}
+      <circle
+        cx={50}
+        cy={88}
+        r={1.25}
+        fill="#ffffff"
+        stroke="#0f172a"
+        strokeWidth={0.45}
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+type RenderedTopDownShapeTrace = {
+  shot: ChartPoint;
+  trace: ShotShapeTrace;
+};
+
+function buildTopDownShapeModel(shots: ChartPoint[]) {
+  const points = shots.filter(hasDispersionData);
+  const maxCarry = Math.max(
+    1,
+    niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25),
+  );
+  const maxSide = dispersionSideMax(points);
+  const traces = points
+    .map((shot) => {
+      const trace = buildShotShapeTrace({
+        id: shot.id,
+        carryYd: shot.carryYd ?? shot.totalYd ?? null,
+        sideCarryYd: shot.sideCarryYd,
+        launchDirectionDeg: shot.launchDirectionDeg,
+        maxCarryYd: maxCarry,
+        maxSideYd: maxSide,
+      });
+
+      return trace ? { shot, trace } : null;
+    })
+    .filter((item): item is RenderedTopDownShapeTrace => item !== null);
+
+  return {
+    traces,
+    estimatedCount: traces.filter(({ trace }) => trace.source === "estimated").length,
+    maxCarry,
+    maxSide,
+  };
+}
+
 function averageDispersionPoints(points: ChartPoint[]): AverageDispersion[] {
   const groups = new Map<
     string,
@@ -1221,6 +1474,12 @@ function shotTitle(shot: TodayChartShot) {
   return `${shot.clubLabel}${shotNumber}: ${formatNullable(shot.carryYd)} carry, ${formatSigned(shot.sideCarryYd)} side`;
 }
 
+function shapeTraceTitle(trace: ShotShapeTrace) {
+  return trace.source === "estimated"
+    ? `Launch-derived curve, ${formatSigned(trace.curveYd)} curve`
+    : "Straight line to landing point";
+}
+
 function compactShotLabel(shot: TodayChartShot) {
   return `${shot.clubLabel}${shot.shotNumber ? ` #${shot.shotNumber}` : ""}`;
 }
@@ -1256,6 +1515,10 @@ function niceTrajectoryMax(value: number) {
   return Math.min(150, Math.max(60, niceMax(value + 10, 10)));
 }
 
+function clampPercent(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function ticks(maxValue: number, count: number) {
   const step = niceMax(maxValue / count, 10);
   const values: number[] = [];
@@ -1282,6 +1545,10 @@ function formatNullable(value: number | null) {
 
 function formatFeet(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} ft`;
+}
+
+function formatDegrees(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} deg`;
 }
 
 function formatSigned(value: number | null) {

@@ -388,7 +388,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             <MobileAccordionSection
               title="Charts"
               count={`${integerFormatter.format(chartShots.length)} shots`}
-              description="Dispersion and trajectory stay available without pushing the prescription down."
+              description="Dispersion, trajectory and top-down shape stay available without pushing the prescription down."
             >
               <TodayShotCharts
                 shots={chartShots}
@@ -3684,6 +3684,7 @@ function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
     carryYd: shot.carryYd,
     totalYd: shot.totalYd,
     sideCarryYd: shot.sideCarryYd,
+    launchDirectionDeg: shot.launchDirectionDeg,
     apexFt: shot.apexFt,
     launchAngleDeg: shot.launchAngleDeg,
     ballSpeedMph: shot.ballSpeedMph,
