@@ -551,6 +551,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           />
         }
       >
+        <DesktopShotDispersionMap shots={dispersionShots} currentViewLabel={currentViewLabel} />
+
         <Card id="shots" className="premium-card order-2 scroll-mt-28 sm:order-none">
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -673,6 +675,16 @@ type RenderedShotShapeTrace = ShotShapeTrace & {
   sideCarryYd: number | null;
 };
 
+type ShotShapeMapModel = {
+  plottedShots: DispersionShot[];
+  shapeTraces: RenderedShotShapeTrace[];
+  telemetryTraceCount: number;
+  playableCount: number;
+  averageCarry: number | null;
+  maxCarry: number;
+  maxSide: number;
+};
+
 function MobileShotDispersionMap({
   shots,
   filters,
@@ -682,42 +694,11 @@ function MobileShotDispersionMap({
   filters: ShotFilters;
   clubsForFilter: string[];
 }) {
-  const plottedShots = shots.filter(
-    (shot) => isFiniteShotMetric(shot.carryYd) && isFiniteShotMetric(shot.sideCarryYd),
-  );
-  const maxCarry = Math.max(1, ...plottedShots.map((shot) => Number(shot.carryYd)));
-  const maxSide = Math.max(12, ...plottedShots.map((shot) => Math.abs(Number(shot.sideCarryYd))));
-  const shapeTraces = plottedShots
-    .slice(0, 36)
-    .map((shot) =>
-      buildShotShapeTrace({
-        id: shot.id,
-        carryYd: shot.carryYd,
-        sideCarryYd: shot.sideCarryYd,
-        launchDirectionDeg: shot.launchDirectionDeg,
-        spinAxis: shot.spinAxis,
-        maxCarryYd: maxCarry,
-        maxSideYd: maxSide,
-      }),
-    )
-    .map((trace, index) =>
-      trace
-        ? {
-            ...trace,
-            sideCarryYd: plottedShots[index]?.sideCarryYd ?? null,
-          }
-        : null,
-    )
-    .filter((trace): trace is RenderedShotShapeTrace => trace !== null);
-  const telemetryTraceCount = shapeTraces.filter((trace) => trace.source !== "landing").length;
+  const model = buildShotShapeMapModel(shots, 36);
   const clubCounts = clubsForFilter.map((clubType) => ({
     clubType,
     count: shots.filter((shot) => shot.clubType === clubType).length,
   }));
-  const playableCount = plottedShots.filter(
-    (shot) => Math.abs(Number(shot.sideCarryYd)) <= 20,
-  ).length;
-  const averageCarry = averageShotMetric(plottedShots.map((shot) => shot.carryYd));
 
   return (
     <section id="dispersion" className="grid gap-3 scroll-mt-28 sm:hidden">
@@ -729,7 +710,7 @@ function MobileShotDispersionMap({
           </p>
         </div>
         <Badge variant="secondary">
-          {telemetryTraceCount}/{shapeTraces.length} shaped
+          {model.telemetryTraceCount}/{model.shapeTraces.length} shaped
         </Badge>
       </div>
       <div
@@ -769,95 +750,15 @@ function MobileShotDispersionMap({
             );
           })}
       </div>
-      <div className="apple-panel-strong overflow-hidden rounded-lg">
-        <div
-          data-media-container
-          className="relative aspect-[4/5] min-h-[24rem] overflow-hidden rounded-lg bg-[#eef6ef]"
-        >
-          <Image
-            src="/assets/fairway-dispersion-bg.svg"
-            alt=""
-            fill
-            loading="eager"
-            sizes="calc(100vw - 2rem)"
-            className="object-cover opacity-95"
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(5,44,23,0.08))]" />
-          {shapeTraces.length > 0 ? (
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="absolute inset-0 z-[1] h-full w-full"
-            >
-              <path
-                d="M 50 88 L 50 12"
-                fill="none"
-                stroke="rgba(15,23,42,0.18)"
-                strokeDasharray="2 3"
-                strokeLinecap="round"
-                strokeWidth="1.5"
-                vectorEffect="non-scaling-stroke"
-              />
-              {shapeTraces.map((trace) => (
-                <path
-                  key={trace.id}
-                  d={trace.path}
-                  fill="none"
-                  stroke={traceStroke(trace.sideCarryYd, trace.source)}
-                  strokeLinecap="round"
-                  strokeWidth={trace.source === "landing" ? "1.7" : "2.35"}
-                  vectorEffect="non-scaling-stroke"
-                  opacity={trace.source === "landing" ? 0.42 : 0.72}
-                />
-              ))}
-              <circle
-                cx="50"
-                cy="88"
-                r="1.3"
-                fill="#ffffff"
-                stroke="#0f172a"
-                strokeWidth="1.4"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          ) : null}
-          {plottedShots.length > 0 ? (
-            plottedShots.slice(0, 80).map((shot) => {
-              const x = clampPercent(50 + (Number(shot.sideCarryYd) / maxSide) * 38, 8, 92);
-              const y = clampPercent(88 - (Number(shot.carryYd) / maxCarry) * 72, 8, 90);
-
-              return (
-                <span
-                  key={shot.id}
-                  className={`absolute z-[2] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-[0_0_0_4px_rgba(255,255,255,0.5)] ${dispersionPointClass(
-                    shot.sideCarryYd,
-                  )}`}
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                  aria-hidden="true"
-                />
-              );
-            })
-          ) : (
-            <div className="absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-lg bg-white/90 p-4 text-center text-sm font-medium text-muted-foreground shadow-sm">
-              No carry and side data match this filter yet.
-            </div>
-          )}
-          <div className="absolute inset-x-3 bottom-[4.5rem] grid grid-cols-3 gap-2">
-            <DispersionMetric label="Carry" value={formatYards(averageCarry)} />
-            <DispersionMetric
-              label="Playable"
-              value={`${playableCount}/${plottedShots.length || 0}`}
-            />
-            <DispersionMetric
-              label="Shape"
-              value={`${telemetryTraceCount}/${shapeTraces.length}`}
-            />
-          </div>
-        </div>
-      </div>
+      <ShotShapeMapField
+        model={model}
+        className="apple-panel-strong overflow-hidden rounded-lg"
+        mediaClassName="aspect-[4/5] min-h-[24rem]"
+        metricClassName="bottom-[4.5rem]"
+        imageSizes="calc(100vw - 2rem)"
+      />
       <MobileDataList>
-        {plottedShots.slice(0, 3).map((shot) => (
+        {model.plottedShots.slice(0, 3).map((shot) => (
           <MobileDataCard
             key={`fallback-${shot.id}`}
             title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)}`}
@@ -868,17 +769,263 @@ function MobileShotDispersionMap({
             <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
             <DataPair
               label="Shape"
-              value={
-                hasShotShapeTelemetry(shot)
-                  ? formatShapeTelemetry(shot.launchDirectionDeg, shot.spinAxis)
-                  : "Landing only"
-              }
+              value={formatShapeTelemetry(shot.launchDirectionDeg, shot.spinAxis)}
             />
           </MobileDataCard>
         ))}
       </MobileDataList>
     </section>
   );
+}
+
+function DesktopShotDispersionMap({
+  shots,
+  currentViewLabel,
+}: {
+  shots: DispersionShot[];
+  currentViewLabel: string;
+}) {
+  const model = buildShotShapeMapModel(shots, 64);
+  const latestRows = model.plottedShots.slice(0, 6);
+
+  return (
+    <Card id="dispersion-desktop" className="premium-card hidden scroll-mt-28 sm:block">
+      <CardHeader>
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <CardTitle>Top-down shot shape</CardTitle>
+            <CardDescription>
+              Estimated curves use launch direction. Rows without start line fall back to landing
+              lines. {currentViewLabel}.
+            </CardDescription>
+          </div>
+          <Badge variant="secondary" className="w-fit">
+            {model.telemetryTraceCount}/{model.shapeTraces.length} shaped
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <ShotShapeMapField
+          model={model}
+          className="overflow-hidden rounded-lg border border-emerald-950/10 bg-[#eef6ef]"
+          mediaClassName="aspect-[16/9] min-h-[28rem]"
+          imageSizes="(min-width: 1280px) 58vw, 100vw"
+          showMetrics={false}
+        />
+        <div className="grid content-start gap-4">
+          <CompactReadoutGrid
+            columnsClassName="sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3"
+            items={[
+              {
+                label: "Carry",
+                value: formatYards(model.averageCarry),
+                detail: "Average plotted carry",
+                tone: "green",
+              },
+              {
+                label: "Playable",
+                value: `${model.playableCount}/${model.plottedShots.length || 0}`,
+                detail: "Inside 20 yd offline",
+                tone: "sky",
+              },
+              {
+                label: "Shape",
+                value: `${model.telemetryTraceCount}/${model.shapeTraces.length}`,
+                detail: "Launch-derived curves",
+                tone: "amber",
+              },
+            ]}
+          />
+          <DataTableFrame mainTableLabel="Latest inferred shot shape rows">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Shot</TableHead>
+                  <TableHead>Side</TableHead>
+                  <TableHead>Shape evidence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {latestRows.map((shot) => (
+                  <TableRow key={`desktop-shape-${shot.id}`}>
+                    <TableCell className="font-medium">
+                      <span className="block">{formatClubType(shot.clubType)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatYards(shot.carryYd)} · {formatDate(shot.shotAt)}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatSignedYards(shot.sideCarryYd)}</TableCell>
+                    <TableCell>
+                      {formatShapeTelemetry(shot.launchDirectionDeg, shot.spinAxis)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {latestRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                      No carry and side data match this filter yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+          <p className="text-sm leading-6 text-muted-foreground">
+            This is an inferred top-down path, not measured ball-flight tracking. Landing position
+            uses carry and side; curved shape requires launch direction.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ShotShapeMapField({
+  model,
+  className,
+  mediaClassName,
+  metricClassName,
+  imageSizes,
+  showMetrics = true,
+}: {
+  model: ShotShapeMapModel;
+  className: string;
+  mediaClassName: string;
+  metricClassName?: string;
+  imageSizes: string;
+  showMetrics?: boolean;
+}) {
+  return (
+    <div className={className}>
+      <div
+        data-media-container
+        className={`relative overflow-hidden rounded-lg bg-[#eef6ef] ${mediaClassName}`}
+      >
+        <Image
+          src="/assets/fairway-dispersion-bg.svg"
+          alt=""
+          fill
+          loading="eager"
+          sizes={imageSizes}
+          className="object-cover opacity-95"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(5,44,23,0.08))]" />
+        {model.shapeTraces.length > 0 ? (
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="absolute inset-0 z-[1] h-full w-full"
+          >
+            <path
+              d="M 50 88 L 50 12"
+              fill="none"
+              stroke="rgba(15,23,42,0.18)"
+              strokeDasharray="2 3"
+              strokeLinecap="round"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+            {model.shapeTraces.map((trace) => (
+              <path
+                key={trace.id}
+                d={trace.path}
+                fill="none"
+                stroke={traceStroke(trace.sideCarryYd, trace.source)}
+                strokeLinecap="round"
+                strokeWidth={trace.source === "straight" ? "1.7" : "2.35"}
+                vectorEffect="non-scaling-stroke"
+                opacity={trace.source === "straight" ? 0.42 : 0.72}
+              />
+            ))}
+            <circle
+              cx="50"
+              cy="88"
+              r="1.3"
+              fill="#ffffff"
+              stroke="#0f172a"
+              strokeWidth="1.4"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        ) : null}
+        {model.plottedShots.length > 0 ? (
+          model.plottedShots.slice(0, 80).map((shot) => {
+            const x = clampPercent(50 + (Number(shot.sideCarryYd) / model.maxSide) * 38, 8, 92);
+            const y = clampPercent(88 - (Number(shot.carryYd) / model.maxCarry) * 72, 8, 90);
+
+            return (
+              <span
+                key={shot.id}
+                className={`absolute z-[2] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-[0_0_0_4px_rgba(255,255,255,0.5)] ${dispersionPointClass(
+                  shot.sideCarryYd,
+                )}`}
+                style={{ left: `${x}%`, top: `${y}%` }}
+                aria-hidden="true"
+              />
+            );
+          })
+        ) : (
+          <div className="absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-lg bg-white/90 p-4 text-center text-sm font-medium text-muted-foreground shadow-sm">
+            No carry and side data match this filter yet.
+          </div>
+        )}
+        {showMetrics ? (
+          <div className={`absolute inset-x-3 grid grid-cols-3 gap-2 ${metricClassName ?? ""}`}>
+            <DispersionMetric label="Carry" value={formatYards(model.averageCarry)} />
+            <DispersionMetric
+              label="Playable"
+              value={`${model.playableCount}/${model.plottedShots.length || 0}`}
+            />
+            <DispersionMetric
+              label="Shape"
+              value={`${model.telemetryTraceCount}/${model.shapeTraces.length}`}
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function buildShotShapeMapModel(shots: DispersionShot[], traceLimit: number): ShotShapeMapModel {
+  const plottedShots = shots.filter(
+    (shot) => isFiniteShotMetric(shot.carryYd) && isFiniteShotMetric(shot.sideCarryYd),
+  );
+  const maxCarry = Math.max(1, ...plottedShots.map((shot) => Number(shot.carryYd)));
+  const maxSide = Math.max(12, ...plottedShots.map((shot) => Math.abs(Number(shot.sideCarryYd))));
+  const shapeTraces = plottedShots
+    .slice(0, traceLimit)
+    .map((shot) =>
+      buildShotShapeTrace({
+        id: shot.id,
+        carryYd: shot.carryYd,
+        sideCarryYd: shot.sideCarryYd,
+        launchDirectionDeg: shot.launchDirectionDeg,
+        spinAxis: shot.spinAxis,
+        maxCarryYd: maxCarry,
+        maxSideYd: maxSide,
+      }),
+    )
+    .map((trace, index) =>
+      trace
+        ? {
+            ...trace,
+            sideCarryYd: plottedShots[index]?.sideCarryYd ?? null,
+          }
+        : null,
+    )
+    .filter((trace): trace is RenderedShotShapeTrace => trace !== null);
+
+  return {
+    plottedShots,
+    shapeTraces,
+    telemetryTraceCount: shapeTraces.filter((trace) => trace.source === "estimated").length,
+    playableCount: plottedShots.filter((shot) => Math.abs(Number(shot.sideCarryYd)) <= 20).length,
+    averageCarry: averageShotMetric(plottedShots.map((shot) => shot.carryYd)),
+    maxCarry,
+    maxSide,
+  };
 }
 
 function DispersionMetric({ label, value }: { label: string; value: string }) {
@@ -1544,7 +1691,7 @@ function dispersionPointClass(sideCarryYd: number | null) {
 }
 
 function traceStroke(sideCarryYd: number | null, source: ShotShapeTrace["source"]) {
-  if (source === "landing" || sideCarryYd === null) {
+  if (source === "straight" || sideCarryYd === null) {
     return "rgba(15,23,42,0.46)";
   }
 
@@ -1561,22 +1708,21 @@ function traceStroke(sideCarryYd: number | null, source: ShotShapeTrace["source"
   return "rgba(219,39,119,0.82)";
 }
 
-function hasShotShapeTelemetry(shot: Pick<DispersionShot, "launchDirectionDeg" | "spinAxis">) {
-  return isFiniteShotMetric(shot.launchDirectionDeg) || isFiniteShotMetric(shot.spinAxis);
-}
-
 function formatShapeTelemetry(launchDirectionDeg: number | null, spinAxis: number | null) {
-  const parts = [];
+  const hasLaunchDirection = isFiniteShotMetric(launchDirectionDeg);
+  const hasSpinAxis = isFiniteShotMetric(spinAxis);
 
-  if (isFiniteShotMetric(launchDirectionDeg)) {
-    parts.push(`${formatMetric(launchDirectionDeg)} deg start`);
+  if (!hasLaunchDirection) {
+    return hasSpinAxis ? `${formatMetric(spinAxis)} axis only` : "Landing line";
   }
 
-  if (isFiniteShotMetric(spinAxis)) {
+  const parts = [`${formatMetric(launchDirectionDeg)} deg start`];
+
+  if (hasSpinAxis) {
     parts.push(`${formatMetric(spinAxis)} axis`);
   }
 
-  return parts.join(" / ") || "Landing only";
+  return parts.join(" / ");
 }
 
 function formatSessionType(value: string) {

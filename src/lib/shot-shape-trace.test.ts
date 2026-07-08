@@ -24,7 +24,7 @@ describe("shot shape trace", () => {
     ).toBeNull();
   });
 
-  it("builds a landing-only curve when start and spin telemetry are unavailable", () => {
+  it("builds a straight landing line when start telemetry is unavailable", () => {
     const trace = buildShotShapeTrace({
       id: "landing-only",
       carryYd: 180,
@@ -34,12 +34,26 @@ describe("shot shape trace", () => {
     });
 
     expect(trace).toMatchObject({
-      source: "landing",
+      source: "straight",
       landingX: 31,
       landingY: 34,
+      curveYd: null,
     });
-    expect(trace?.controlX).toBeLessThan(50);
-    expect(trace?.path).toBe("M 50 88 Q 43.54 56.68 31 34");
+    expect(trace?.path).toBe("M 50 88 L 31 34");
+  });
+
+  it("does not infer a curve from spin axis without launch direction", () => {
+    const trace = buildShotShapeTrace({
+      id: "spin-only",
+      carryYd: 180,
+      sideCarryYd: 20,
+      spinAxis: 18,
+      maxCarryYd: 240,
+      maxSideYd: 40,
+    });
+
+    expect(trace?.source).toBe("straight");
+    expect(trace?.curveYd).toBeNull();
   });
 
   it("uses launch direction to show a shot starting left before finishing right", () => {
@@ -52,12 +66,13 @@ describe("shot shape trace", () => {
       maxSideYd: 40,
     });
 
-    expect(trace?.source).toBe("launch");
+    expect(trace?.source).toBe("estimated");
+    expect(trace?.curveYd).toBeGreaterThan(50);
     expect(trace?.landingX).toBeGreaterThan(50);
-    expect(trace?.controlX).toBeLessThan(50);
+    expect(firstLineX(trace?.path)).toBeLessThan(50);
   });
 
-  it("classifies traces with both launch direction and spin axis telemetry", () => {
+  it("keeps the estimated curve tied to launch direction when spin axis is also present", () => {
     const trace = buildShotShapeTrace({
       id: "full-telemetry",
       carryYd: 210,
@@ -68,7 +83,13 @@ describe("shot shape trace", () => {
       maxSideYd: 40,
     });
 
-    expect(trace?.source).toBe("launch-spin");
-    expect(trace?.path).toMatch(/^M 50 88 Q \d+(\.\d+)? \d+(\.\d+)? \d+(\.\d+)? \d+(\.\d+)?$/);
+    expect(trace?.source).toBe("estimated");
+    expect(trace?.curveYd).toBeLessThan(14);
+    expect(trace?.path).toMatch(/^M 50 88 L \d+(\.\d+)? \d+(\.\d+)? L \d+(\.\d+)? \d+(\.\d+)?/);
   });
 });
+
+function firstLineX(path: string | undefined) {
+  const [, , , , x] = path?.split(" ") ?? [];
+  return Number(x);
+}
