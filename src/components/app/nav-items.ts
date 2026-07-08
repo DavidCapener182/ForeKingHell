@@ -43,19 +43,19 @@ export type AppNavGroup = {
 
 export const navGroups: AppNavGroup[] = [
   {
-    label: "Overview",
+    label: "Home",
     items: [
-      {
-        href: "/today",
-        label: "Latest practice",
-        icon: CalendarDays,
-        isActive: (pathname) => pathname.startsWith("/today"),
-      },
       {
         href: "/dashboard",
         label: "Dashboard",
         icon: Gauge,
         isActive: (pathname) => pathname === "/" || pathname === "/dashboard",
+      },
+      {
+        href: "/today",
+        label: "Latest practice",
+        icon: CalendarDays,
+        isActive: (pathname) => pathname.startsWith("/today"),
       },
       {
         href: "/progress",
@@ -234,17 +234,17 @@ export const navGroups: AppNavGroup[] = [
         icon: Award,
         isActive: (pathname) => pathname.startsWith("/achievements"),
       },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
       {
         href: "/settings",
         label: "Settings",
         icon: Settings,
         isActive: (pathname) => pathname.startsWith("/settings"),
       },
-    ],
-  },
-  {
-    label: "Platform",
-    items: [
       {
         href: "/billing",
         label: "Billing",
@@ -274,7 +274,43 @@ export const adminNavItem: AppNavItem = {
   label: "Admin",
   icon: ShieldCheck,
   badge: "Admin",
-  isActive: (pathname) => pathname.startsWith("/admin"),
+  isActive: (pathname) => pathname === "/admin",
+};
+
+export const adminNavGroup: AppNavGroup = {
+  label: "Admin",
+  items: [
+    adminNavItem,
+    partnerNavItem,
+    {
+      href: "/admin/users",
+      label: "Users",
+      icon: Users,
+      badge: "Admin",
+      isActive: (pathname) => pathname.startsWith("/admin/users"),
+    },
+    {
+      href: "/admin/moderation",
+      label: "Moderation",
+      icon: ShieldAlert,
+      badge: "Admin",
+      isActive: (pathname) => pathname.startsWith("/admin/moderation"),
+    },
+    {
+      href: "/admin/billing",
+      label: "Billing ops",
+      icon: CreditCard,
+      badge: "Admin",
+      isActive: (pathname) => pathname.startsWith("/admin/billing"),
+    },
+    {
+      href: "/admin/challenges",
+      label: "Challenge ops",
+      icon: Trophy,
+      badge: "Admin",
+      isActive: (pathname) => pathname.startsWith("/admin/challenges"),
+    },
+  ],
 };
 
 export const mobilePrimaryItems: AppNavItem[] = [
@@ -306,6 +342,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
     icon: Target,
     isActive: (pathname) =>
       pathname.startsWith("/bag") ||
+      pathname.startsWith("/simulator-lab") ||
       pathname.startsWith("/speed") ||
       pathname.startsWith("/stats/training-over-time") ||
       pathname.startsWith("/shots") ||
@@ -321,8 +358,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
       pathname.startsWith("/practice") ||
       pathname.startsWith("/coach") ||
       pathname.startsWith("/data-chat") ||
-      pathname.startsWith("/achievements") ||
-      pathname.startsWith("/settings"),
+      pathname.startsWith("/achievements"),
   },
   {
     href: "/feed",
@@ -340,28 +376,20 @@ export const mobilePrimaryItems: AppNavItem[] = [
 ];
 
 const desktopNavOrder = new Map([
-  ["Overview", 0],
-  ["Play", 1],
-  ["Analyse", 2],
+  ["Home", 0],
+  ["Analyse", 1],
+  ["Play", 2],
   ["Improve", 3],
-  ["Platform", 4],
-  ["Social", 5],
+  ["Social", 4],
+  ["Platform", 5],
+  ["Admin", 6],
 ]);
 
 export function buildDesktopNavGroups(isAdmin: boolean) {
-  return [...navGroups]
-    .sort(
-      (left, right) =>
-        (desktopNavOrder.get(left.label) ?? 99) - (desktopNavOrder.get(right.label) ?? 99),
-    )
-    .map((group) => {
-      if (group.label !== "Platform") {
-        return group;
-      }
+  const groups = isAdmin ? [...navGroups, adminNavGroup] : navGroups;
 
-      return {
-        ...group,
-        items: isAdmin ? [...group.items, partnerNavItem, adminNavItem] : group.items,
-      };
-    });
+  return [...groups].sort(
+    (left, right) =>
+      (desktopNavOrder.get(left.label) ?? 99) - (desktopNavOrder.get(right.label) ?? 99),
+  );
 }

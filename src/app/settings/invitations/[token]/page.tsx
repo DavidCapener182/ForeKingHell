@@ -33,7 +33,7 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
   const emailMatches = currentUser?.email?.toLowerCase() === invitation.invitedEmail.toLowerCase();
 
   return (
-    <PageShell size="6xl">
+    <PageShell>
       <PageHeader
         eyebrow={<StatusPill tone="green">Invitation</StatusPill>}
         title={`Accept ${BRAND_NAME} access`}

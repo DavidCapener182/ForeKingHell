@@ -148,7 +148,8 @@ describe("production readiness gate", () => {
       "Last sync",
       "Import failures",
       "live/current",
-      "coming soon",
+      "beta adapter",
+      "research adapter",
       "data-provider-import-health",
     ]) {
       expect(providerPageSource).toContain(expected);
@@ -332,10 +333,66 @@ describe("production readiness gate", () => {
     expect(playwrightSource).toContain("width: 320");
     expect(playwrightSource).toContain("width: 390");
     expect(playwrightSource).toContain("width: 430");
-    expect(lighthouseSource).toContain(
-      "/login,/dashboard,/today,/import,/rapsodo,/shots,/bag,/practice,/coach,/feed",
-    );
+    for (const route of [
+      "/login",
+      "/dashboard",
+      "/today",
+      "/import",
+      "/rapsodo",
+      "/providers",
+      "/shots",
+      "/bag",
+      "/progress",
+      "/strokes-gained",
+      "/compare",
+      "/rounds",
+      "/courses",
+      "/course-records",
+      "/practice",
+      "/coach",
+      "/data-chat",
+      "/feed",
+    ]) {
+      expect(lighthouseSource).toContain(`"${route}"`);
+    }
     expect(lighthouseSource).not.toContain("--preset=desktop");
     expect(lighthouseSource).toContain("LIGHTHOUSE_PRESET");
+  });
+
+  it("keeps desktop workbench verification configured across command-centre viewports", () => {
+    const playwrightSource = readFileSync(join(root, "playwright.config.ts"), "utf8");
+    const desktopWorkbenchSource = readFileSync(
+      join(root, "tests/e2e/desktop-workbench.spec.ts"),
+      "utf8",
+    );
+
+    for (const project of [
+      "desktop-1024x768",
+      "desktop-1280x720",
+      "desktop-1366x768",
+      "desktop-1440x900",
+      "desktop-1920x1080",
+      "desktop-2560x1440",
+    ]) {
+      expect(playwrightSource).toContain(`name: "${project}"`);
+      expect(desktopWorkbenchSource).toContain(`name: "${project}"`);
+    }
+
+    for (const viewport of [
+      "width: 1024, height: 768",
+      "width: 1280, height: 720",
+      "width: 1366, height: 768",
+      "width: 1440, height: 900",
+      "width: 1920, height: 1080",
+      "width: 2560, height: 1440",
+    ]) {
+      expect(playwrightSource).toContain(viewport);
+      expect(desktopWorkbenchSource).toContain(viewport);
+    }
+
+    expect(desktopWorkbenchSource).toContain("desktopMatrixRoutes");
+    expect(desktopWorkbenchSource).toContain("expectNoHorizontalOverflow");
+    expect(desktopWorkbenchSource).toContain("expectNoCrampedWorkbenchText");
+    expect(desktopWorkbenchSource).toContain("dashboard bento panels stay readable");
   });
 });

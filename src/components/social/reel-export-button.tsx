@@ -75,9 +75,9 @@ export function ReelExportButton({ feedItemId, compact = false }: ReelExportButt
       ? "Building Reel"
       : message === "ready"
         ? "Reel ready"
-      : message === "error"
-        ? "Try again"
-        : "Export Reel";
+        : message === "error"
+          ? "Try again"
+          : "Export Reel";
 
   return (
     <Button

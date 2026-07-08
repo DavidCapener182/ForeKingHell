@@ -1,10 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import {
   CheckCircle2,
   ClipboardCheck,
+  Download,
+  Eye,
+  Minus,
+  Plus,
+  RefreshCw,
   Save,
   SlidersHorizontal,
   Target,
@@ -19,12 +25,34 @@ import {
   savePracticePlanAction,
   startPracticePlanAction,
 } from "@/app/practice/actions";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { DataTableFrame } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   GeneratePracticePlanOptions,
   PracticeBlock,
@@ -61,6 +89,28 @@ type PracticePlannerClientProps = {
   initialOptions: GeneratePracticePlanOptions;
 };
 
+type PracticeDrillSuggestion = Pick<
+  PracticeBlock,
+  "type" | "title" | "purpose" | "drill" | "successTarget" | "recordPrompt" | "scoringRules"
+> & {
+  id: string;
+  label: string;
+  clubs?: string[];
+  source: "original" | "alternative";
+};
+
+type PracticeDrillOptionsByBlock = Record<string, PracticeDrillSuggestion[]>;
+
+type CanvasTextOptions = {
+  x: number;
+  y: number;
+  maxWidth: number;
+  lineHeight: number;
+  maxLines?: number;
+  font: string;
+  color: string;
+};
+
 const sessionTypes: Array<{ value: PracticeSessionType; label: string }> = [
   { value: "range", label: "Range" },
   { value: "short_game", label: "Short game" },
@@ -87,6 +137,35 @@ const intentOptions: Array<{ value: PracticeIntent; label: string }> = [
   { value: "speed", label: "Speed" },
 ];
 
+const practiceBlockColumns: DesktopWorkbenchColumn[] = [
+  { id: "block", label: "Block", locked: true },
+  { id: "type", label: "Type" },
+  { id: "club", label: "Club" },
+  { id: "planned-volume", label: "Planned volume" },
+  { id: "target", label: "Target" },
+  { id: "upload-status", label: "Upload status" },
+  { id: "evidence", label: "Evidence" },
+  { id: "action", label: "Action" },
+];
+
+const practiceBlockSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Awaiting upload",
+    href: "/practice#practice-block-ledger",
+    detail: "Keep block, club, target and upload status visible while matching a session.",
+  },
+  {
+    title: "Plan vs actual",
+    href: "/practice#practice-block-ledger",
+    detail: "Review planned volume, imported evidence and next action after scoring.",
+  },
+  {
+    title: "Coach handoff",
+    href: "/practice#practice-block-ledger",
+    detail: "Use club, target and evidence columns for coach notes or reports.",
+  },
+];
+
 export function PracticePlannerClient({
   context,
   initialPlan,
@@ -100,6 +179,9 @@ export function PracticePlannerClient({
     normalizeInitialOptions(initialOptions),
   );
   const [plan, setPlan] = useState(initialPlan);
+  const [drillOptionsByBlock, setDrillOptionsByBlock] = useState<PracticeDrillOptionsByBlock>(() =>
+    buildPracticeDrillOptionsByBlock(initialPlan.blocks),
+  );
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(() =>
     defaultSelectedPracticeBlockId(initialPlan.blocks),
   );
@@ -124,6 +206,8 @@ export function PracticePlannerClient({
       ? `Latest ${latestSessionReview.importedSession.shotCount}-shot session is being used to review this plan. Incomplete planned clubs still count, but they pull the score down.`
       : null,
   );
+  const [savedImageDialogOpen, setSavedImageDialogOpen] = useState(false);
+  const [savedImagePreviewUrl, setSavedImagePreviewUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const sessionSummary = useMemo(
     () => summarizePracticeImportControl(plan, comparison),
@@ -146,16 +230,109 @@ export function PracticePlannerClient({
     }));
   }
 
-  function generatePlan(nextOptions = options) {
+  function generatePlanWithOptions(nextOptions: GeneratePracticePlanOptions) {
     setMessage(null);
     startTransition(async () => {
       const generated = await generatePracticePlanAction(nextOptions);
       setPlan(generated);
+      setDrillOptionsByBlock(buildPracticeDrillOptionsByBlock(generated.blocks));
       setSelectedBlockId(defaultSelectedPracticeBlockId(generated.blocks));
       setSavedPlanId(null);
       setComparison(null);
       setPracticeScore(null);
     });
+  }
+
+  function generatePlan() {
+    generatePlanWithOptions(options);
+  }
+
+  function editSelectedBlock(
+    updater: (block: PracticeBlock) => PracticeBlock,
+    messageText = "Practice updated. Save the edited plan before upload.",
+  ) {
+    const blockId = selectedBlock?.id;
+
+    if (!blockId) {
+      return;
+    }
+
+    setPlan((current) =>
+      practicePlanWithEditedBlocks(
+        current,
+        current.blocks.map((blockItem) =>
+          blockItem.id === blockId ? updater(blockItem) : blockItem,
+        ),
+      ),
+    );
+    setSavedPlanId(null);
+    setComparison(null);
+    setPracticeScore(null);
+    setMessage(messageText);
+  }
+
+  function updateSelectedBlockBalls(ballCount: number) {
+    const blockId = selectedBlock?.id;
+
+    if (!blockId) {
+      return;
+    }
+
+    setPlan((current) =>
+      practicePlanWithEditedBlocks(
+        current,
+        updatePracticeBlockBallsWithinTotal(
+          current.blocks,
+          blockId,
+          ballCount,
+          current.totalBalls ?? totalBallsForBlocks(current.blocks),
+        ),
+      ),
+    );
+    setSavedPlanId(null);
+    setComparison(null);
+    setPracticeScore(null);
+    setMessage("Practice volume rebalanced. Save the edited plan before upload.");
+  }
+
+  function swapSelectedBlockDrill(suggestionId: string) {
+    const blockId = selectedBlock?.id;
+    const drillOptions = blockId ? (drillOptionsByBlock[blockId] ?? []) : [];
+
+    editSelectedBlock(
+      (blockItem) => applyPracticeDrillSuggestion(blockItem, suggestionId, drillOptions),
+      "Practice drill swapped. Save the edited plan before upload.",
+    );
+  }
+
+  function suggestSelectedBlockDrill() {
+    if (!selectedBlock) {
+      return;
+    }
+
+    const suggestion = nextPracticeDrillSuggestion(
+      selectedBlock,
+      drillOptionsByBlock[selectedBlock.id] ?? [],
+    );
+
+    if (!suggestion) {
+      return;
+    }
+
+    swapSelectedBlockDrill(suggestion.id);
+  }
+
+  function openSavedImageDialog(showPngPreview = false) {
+    setSavedImagePreviewUrl(showPngPreview ? practicePlanImageDataUrl(plan) : null);
+    setSavedImageDialogOpen(true);
+  }
+
+  function updateSavedImageDialogOpen(nextOpen: boolean) {
+    setSavedImageDialogOpen(nextOpen);
+
+    if (!nextOpen) {
+      setSavedImagePreviewUrl(null);
+    }
   }
 
   function savePlan() {
@@ -169,6 +346,7 @@ export function PracticePlannerClient({
       setMessage(
         "Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.",
       );
+      openSavedImageDialog(false);
     });
   }
 
@@ -242,7 +420,7 @@ export function PracticePlannerClient({
       facility: options.facility,
     };
     setOptions(nextOptions);
-    generatePlan(nextOptions);
+    generatePlanWithOptions(nextOptions);
   }
 
   function loadSavedPlan(saved: SavedPracticePlan) {
@@ -262,6 +440,7 @@ export function PracticePlannerClient({
     };
 
     setPlan(loaded);
+    setDrillOptionsByBlock(buildPracticeDrillOptionsByBlock(loaded.blocks));
     setSelectedBlockId(defaultSelectedPracticeBlockId(loaded.blocks));
     setSavedPlanId(saved.id);
     setComparison(saved.result?.comparison ?? null);
@@ -269,7 +448,10 @@ export function PracticePlannerClient({
   }
 
   return (
-    <div id="practice-plan" className="grid gap-3 scroll-mt-28 lg:gap-4">
+    <div
+      id="practice-plan"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 scroll-mt-28 lg:gap-4"
+    >
       <PracticeSetupBar
         options={options}
         updateOptions={updateOptions}
@@ -290,6 +472,11 @@ export function PracticePlannerClient({
       />
 
       <PracticeTodayCard plan={plan} focusSummary={focusSummary} message={message} />
+      <PracticeResultsOverview
+        comparison={comparison}
+        score={practiceScore}
+        summary={sessionSummary}
+      />
 
       <div className="grid gap-3 sm:grid-cols-12 sm:items-start">
         <div className="min-w-0 sm:col-span-5 xl:col-span-4">
@@ -300,8 +487,16 @@ export function PracticePlannerClient({
             onSelect={setSelectedBlockId}
           />
         </div>
-        <div className="min-w-0 sm:col-span-5 xl:col-span-5">
-          <SelectedBlockDetail block={selectedBlock} comparison={comparison} />
+        <div className="min-w-0 sm:sticky sm:top-4 sm:col-span-5 sm:self-start xl:col-span-5">
+          <SelectedBlockDetail
+            block={selectedBlock}
+            comparison={comparison}
+            drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
+            onBallCountChange={updateSelectedBlockBalls}
+            onSwapDrill={swapSelectedBlockDrill}
+            onSuggestDrill={suggestSelectedBlockDrill}
+            isPending={isPending}
+          />
         </div>
         <div className="min-w-0 sm:col-span-2 xl:col-span-3">
           <SessionControlPanel
@@ -314,10 +509,14 @@ export function PracticePlannerClient({
             onSave={savePlan}
             onStart={startPractice}
             onAbandon={abandonPlan}
+            onShowPracticeImage={() => openSavedImageDialog(true)}
             isPending={isPending}
           />
         </div>
       </div>
+
+      {comparison?.decisions.length ? <PlanVsActual comparison={comparison} /> : null}
+      <PracticeBlockLedger blocks={plan.blocks} comparison={comparison} />
 
       <PracticeLibrary
         templates={templates}
@@ -325,7 +524,294 @@ export function PracticePlannerClient({
         onUseTemplate={useTemplate}
         onLoadSavedPlan={loadSavedPlan}
       />
+
+      <PracticePlanImageDialog
+        open={savedImageDialogOpen}
+        onOpenChange={updateSavedImageDialogOpen}
+        plan={plan}
+        savedPlanId={savedPlanId}
+        pngPreviewUrl={savedImagePreviewUrl}
+        onPngPreviewChange={setSavedImagePreviewUrl}
+      />
     </div>
+  );
+}
+
+function PracticePlanImageDialog({
+  open,
+  onOpenChange,
+  plan,
+  savedPlanId,
+  pngPreviewUrl,
+  onPngPreviewChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  plan: PracticePlan;
+  savedPlanId: string | null;
+  pngPreviewUrl: string | null;
+  onPngPreviewChange: (url: string | null) => void;
+}) {
+  const plannedVolume =
+    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plan.totalBalls} balls`;
+  const focus = plan.focusClubs.map((club) => club.toUpperCase()).join(", ") || "Practice";
+
+  function showPngPreview() {
+    onPngPreviewChange(practicePlanImageDataUrl(plan));
+  }
+
+  function savePng() {
+    const dataUrl = pngPreviewUrl ?? practicePlanImageDataUrl(plan);
+
+    onPngPreviewChange(dataUrl);
+    downloadPracticePlanImage(dataUrl, plan, savedPlanId);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      onPngPreviewChange(null);
+    }
+
+    onOpenChange(nextOpen);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="grid h-[calc(100vh-1rem)] max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)]">
+        <DialogHeader className="border-b bg-white p-4">
+          <DialogTitle>Saved practice reference</DialogTitle>
+          <DialogDescription>
+            Save this image to your phone so the range blocks are easy to follow.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]">
+          <div className="min-h-0 overflow-y-auto bg-[#f8f7ed] p-3">
+            <div className="overflow-hidden rounded-lg border bg-white shadow-inner">
+              <div className="rounded-t-lg bg-[#0b5130] p-4 text-white">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">
+                  LM World Tour
+                </p>
+                <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-2xl font-semibold tracking-normal">{plan.title}</h3>
+                    <p className="mt-1 text-sm text-emerald-50">{plan.summary}</p>
+                  </div>
+                  <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-right">
+                    <p className="text-xs uppercase tracking-wide text-emerald-100">Reference</p>
+                    <p className="text-sm font-semibold">{plannedVolume}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2 bg-white p-3 sm:grid-cols-3">
+                <MiniMetric label="Planned" value={plannedVolume} />
+                <MiniMetric label="Time" value={`${plan.estimatedTimeMinutes} min`} />
+                <MiniMetric label="Focus" value={focus} />
+              </div>
+
+              <div className="grid gap-2 bg-white px-3 pb-3">
+                {plan.blocks.map((block) => (
+                  <div key={block.id} className="rounded-lg border bg-emerald-50/30 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="outline">Block {block.order}</Badge>
+                          <Badge className={blockTone(block.type)}>
+                            {block.type.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 font-semibold">{block.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {formatClubList(block.clubs)} | {block.ballCount ?? block.timeMinutes}{" "}
+                          {block.ballCount === null ? "min" : "balls"}
+                        </p>
+                      </div>
+                      <span className="rounded-md border bg-white px-2 py-1 text-xs font-semibold">
+                        Target: {shortTarget(block.successTarget)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm leading-5">{block.drill}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-0 overflow-y-auto border-t bg-[#f6f4e7] p-3 lg:border-l lg:border-t-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold">PNG preview</p>
+              <Badge variant="outline">{pngPreviewUrl ? "Generated" : "Not generated"}</Badge>
+            </div>
+
+            {pngPreviewUrl ? (
+              <div className="mt-3 overflow-auto rounded-lg border bg-white p-2">
+                <Image
+                  src={pngPreviewUrl}
+                  alt="Saved practice reference PNG preview"
+                  width={1200}
+                  height={practicePlanImageHeight(plan)}
+                  unoptimized
+                  className="h-auto w-full rounded-md"
+                />
+              </div>
+            ) : (
+              <div className="mt-3 grid min-h-80 place-items-center rounded-lg border border-dashed bg-white p-6 text-center">
+                <div className="max-w-sm">
+                  <Eye className="mx-auto size-8 text-emerald-700" />
+                  <p className="mt-3 text-sm font-semibold">Generate the practice PNG</p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                    The image version appears here, ready to save or screenshot before practice.
+                  </p>
+                  <Button type="button" className="mt-4 rounded-lg" onClick={showPngPreview}>
+                    <Eye className="size-4" />
+                    Show PNG
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t bg-white p-3 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button type="button" variant="outline" className="rounded-lg" onClick={showPngPreview}>
+            <Eye className="size-4" />
+            Show PNG
+          </Button>
+          <Button type="button" className="rounded-lg" onClick={savePng}>
+            <Download className="size-4" />
+            Save as image
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PracticeBlockLedger({
+  blocks,
+  comparison,
+}: {
+  blocks: PracticeBlock[];
+  comparison: PracticeComparison | null;
+}) {
+  const rows = blocks.map((block) => {
+    const row = compactPracticeBlockRow(block, comparison);
+    const decision = comparison?.decisions.find((item) => item.blockId === block.id) ?? null;
+
+    return { block, row, decision };
+  });
+  const matchedRows = rows.filter((item) => item.decision && item.decision.actualBalls > 0).length;
+  const resultLabel =
+    matchedRows > 0 ? `${matchedRows}/${rows.length} blocks matched` : `${rows.length} blocks`;
+
+  return (
+    <section
+      id="practice-block-ledger"
+      data-workbench-scope="practice-blocks"
+      className="scroll-mt-28 rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold tracking-normal">Practice block ledger</h3>
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+            Exportable plan-vs-upload evidence for every drill block before the practice becomes a
+            coach note or report.
+          </p>
+        </div>
+        <Badge variant="outline" className="w-fit">
+          {resultLabel}
+        </Badge>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey="practice-blocks"
+        scope="practice-blocks"
+        currentViewLabel="Practice block ledger"
+        resultLabel={resultLabel}
+        columns={practiceBlockColumns}
+        suggestedViews={practiceBlockSuggestedViews}
+        exportTableId="practice-blocks"
+        exportFileName="forekinghell-practice-block-ledger.csv"
+        className="my-3"
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Practice block ledger table">
+        <Table
+          data-workbench-export-table="practice-blocks"
+          aria-describedby="practice-block-ledger-summary"
+        >
+          <TableCaption id="practice-block-ledger-summary" className="sr-only">
+            Practice block ledger showing block, type, club, planned volume, target, upload status,
+            imported evidence and recommended action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="block"
+                className="sticky left-0 z-20 min-w-56 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Block
+              </TableHead>
+              <TableHead data-column="type">Type</TableHead>
+              <TableHead data-column="club">Club</TableHead>
+              <TableHead data-column="planned-volume">Planned volume</TableHead>
+              <TableHead data-column="target">Target</TableHead>
+              <TableHead data-column="upload-status">Upload status</TableHead>
+              <TableHead data-column="evidence">Evidence</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map(({ block, row, decision }) => (
+                <TableRow key={block.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="block"
+                    className="sticky left-0 z-10 min-w-56 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <span className="block max-w-64 truncate">{row.blockLabel}</span>
+                    <span className="mt-1 block max-w-64 truncate text-xs text-muted-foreground">
+                      {row.title}
+                    </span>
+                  </TableCell>
+                  <TableCell data-column="type" className="capitalize">
+                    {row.typeLabel}
+                  </TableCell>
+                  <TableCell data-column="club">{row.clubLabel || "Mixed"}</TableCell>
+                  <TableCell data-column="planned-volume">{row.volumeLabel}</TableCell>
+                  <TableCell data-column="target" className="min-w-64">
+                    {row.successTarget}
+                  </TableCell>
+                  <TableCell data-column="upload-status">
+                    <Badge variant="outline" className={importStatusTone(row.importStatus)}>
+                      {row.statusLabel}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-column="evidence" className="min-w-56">
+                    {row.importedEvidence}
+                  </TableCell>
+                  <TableCell data-column="action" className="min-w-44 text-right">
+                    {practiceDecisionAction(decision)}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={practiceBlockColumns.length} className="h-24 text-center">
+                  Generate a plan to create the practice ledger.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -543,9 +1029,9 @@ function PracticeSessionImportBar({
   const selectedSession = importOptions.find((option) => option.id === selectedImportId) ?? null;
 
   return (
-    <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[16rem] flex-1">
+    <section className="min-w-0 overflow-hidden rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
+      <div className="flex min-w-0 flex-wrap items-end gap-3">
+        <div className="min-w-0 flex-[1_1_16rem]">
           <p className="text-sm font-semibold">Score from uploaded session</p>
           <p className="text-xs leading-5 text-muted-foreground">
             After you upload the range session, choose it here and LM World Tour will score this
@@ -555,10 +1041,10 @@ function PracticeSessionImportBar({
 
         {importOptions.length > 0 ? (
           <>
-            <label className="grid min-w-[18rem] flex-1 gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="grid min-w-0 flex-[1_1_18rem] gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Uploaded session
               <select
-                className="h-9 rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
+                className="h-9 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
                 value={selectedImportId}
                 onChange={(event) => onSelect(event.target.value)}
               >
@@ -667,6 +1153,104 @@ function PracticeTodayCard({
   );
 }
 
+function PracticeResultsOverview({
+  comparison,
+  score,
+  summary,
+}: {
+  comparison: PracticeComparison | null;
+  score: PracticeScore | null;
+  summary: ReturnType<typeof summarizePracticeImportControl>;
+}) {
+  if (!comparison?.decisions.length) {
+    return null;
+  }
+
+  const decisionsWithEvidence = comparison.decisions.filter((item) => item.actualBalls > 0);
+  const passed = decisionsWithEvidence.filter((item) => item.result === "passed");
+  const repeat = decisionsWithEvidence.filter((item) => item.result === "mixed");
+  const missed = decisionsWithEvidence.filter(
+    (item) => item.result === "failed" || item.result === "insufficient_data",
+  );
+  const volumeShort = decisionsWithEvidence.filter((item) => !item.matchedPlannedVolume);
+  const importedSessionLabel = comparison.importedSession
+    ? `${comparison.importedSession.shotCount}-shot ${formatSessionOptionType(
+        comparison.importedSession.sessionType,
+      ).toLowerCase()} · ${comparison.importedSession.dateLabel}`
+    : `${comparison.planVsActual.actualShots} imported shots`;
+
+  return (
+    <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm ring-1 ring-emerald-950/5">
+      <div className="grid gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">
+              Analysed from upload
+            </Badge>
+            <Badge variant="outline">{importedSessionLabel}</Badge>
+            <Badge variant="outline">{comparison.matchConfidence ?? "--"}% match</Badge>
+          </div>
+          <h3 className="mt-2 text-xl font-semibold tracking-normal">
+            Practice result: {score ? `${score.score}/100` : "session matched"}
+          </h3>
+          <p className="mt-1 max-w-5xl text-sm leading-5 text-emerald-950/80">
+            {comparison.summary}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <MiniMetric
+            label="Matched balls"
+            value={`${summary.importedBalls}/${summary.totalBalls}`}
+          />
+          <MiniMetric
+            label="Blocks scored"
+            value={`${decisionsWithEvidence.length}/${comparison.decisions.length}`}
+          />
+          <MiniMetric label="Passed" value={`${passed.length}`} />
+          <MiniMetric label="Repeat" value={`${repeat.length + missed.length}`} />
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem]">
+        <ResultCallout
+          label="Worked"
+          value={
+            comparison.whatWorked.length
+              ? comparison.whatWorked.join(" ")
+              : "No block reached a clear passed result."
+          }
+        />
+        <ResultCallout
+          label="Repeat"
+          value={
+            comparison.needsWork.length
+              ? comparison.needsWork.join(" ")
+              : "No repeat block flagged from this upload."
+          }
+        />
+        <ResultCallout
+          label="Volume"
+          value={
+            volumeShort.length
+              ? `${volumeShort.length} blocks were short of the planned ball count but still carry evidence.`
+              : "Every matched block met planned volume."
+          }
+        />
+      </div>
+    </section>
+  );
+}
+
+function ResultCallout({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-white/75 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 line-clamp-3 text-sm leading-5 text-foreground">{value}</p>
+    </div>
+  );
+}
+
 function formatSessionOptionType(sessionType: string) {
   return sessionType
     .split("_")
@@ -744,9 +1328,12 @@ function PracticeAgenda({
                 <Badge variant="outline" className={importStatusTone(row.importStatus)}>
                   {row.statusLabel}
                 </Badge>
-                <span className="min-w-0 text-right text-xs leading-5 text-muted-foreground">
-                  {row.importedEvidence}
-                </span>
+                <div className="min-w-0 text-right text-xs leading-5 text-muted-foreground">
+                  <p>{row.resultNote}</p>
+                  {row.importedEvidence !== "Scored after upload." ? (
+                    <p className="line-clamp-2">{row.importedEvidence}</p>
+                  ) : null}
+                </div>
               </div>
             </button>
           );
@@ -759,9 +1346,19 @@ function PracticeAgenda({
 function SelectedBlockDetail({
   block,
   comparison,
+  drillOptions,
+  onBallCountChange,
+  onSwapDrill,
+  onSuggestDrill,
+  isPending,
 }: {
   block: PracticeBlock | null;
   comparison: PracticeComparison | null;
+  drillOptions: PracticeDrillSuggestion[];
+  onBallCountChange: (ballCount: number) => void;
+  onSwapDrill: (suggestionId: string) => void;
+  onSuggestDrill: () => void;
+  isPending: boolean;
 }) {
   if (!block) {
     return (
@@ -775,6 +1372,7 @@ function SelectedBlockDetail({
 
   const row = compactPracticeBlockRow(block, comparison);
   const decision = comparison?.decisions.find((item) => item.blockId === block.id) ?? null;
+  const options = drillOptions.length > 0 ? drillOptions : buildPracticeDrillOptions(block);
 
   return (
     <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
@@ -803,12 +1401,22 @@ function SelectedBlockDetail({
         <DetailLine label="Scored from" value={scoredFromLabel(block)} />
       </div>
 
+      <PracticeBlockEditControls
+        block={block}
+        options={options}
+        onBallCountChange={onBallCountChange}
+        onSwapDrill={onSwapDrill}
+        onSuggestDrill={onSuggestDrill}
+        disabled={isPending}
+      />
+
       <div className="mt-3 rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
         {decision ? (
           <>
             <p className="font-semibold text-foreground">
               Uploaded result: {decision.result.replace("_", " ")}
             </p>
+            <p className="mt-1 font-medium text-foreground">{row.resultNote}</p>
             <p className="mt-1">Actual: {decision.actual}</p>
             <p>{decision.summary}</p>
           </>
@@ -817,6 +1425,106 @@ function SelectedBlockDetail({
         )}
       </div>
     </section>
+  );
+}
+
+function PracticeBlockEditControls({
+  block,
+  options,
+  onBallCountChange,
+  onSwapDrill,
+  onSuggestDrill,
+  disabled,
+}: {
+  block: PracticeBlock;
+  options: PracticeDrillSuggestion[];
+  onBallCountChange: (ballCount: number) => void;
+  onSwapDrill: (suggestionId: string) => void;
+  onSuggestDrill: () => void;
+  disabled: boolean;
+}) {
+  const currentBalls = block.ballCount ?? Math.max(1, Math.round(block.timeMinutes * 1.5));
+  const currentOptionId = selectedPracticeDrillOptionId(block, options);
+  const nextSuggestion = nextPracticeDrillSuggestion(block, options);
+
+  return (
+    <div className="mt-3 rounded-lg border bg-emerald-50/40 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold">Tune block</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onSuggestDrill}
+          disabled={disabled || !nextSuggestion}
+          className="rounded-lg"
+        >
+          <RefreshCw className="size-3.5" />
+          Suggest drill
+        </Button>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_13rem]">
+        <label className="grid min-w-0 gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Swap drill
+          <select
+            className="h-9 min-w-0 rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
+            value={currentOptionId}
+            onChange={(event) => {
+              if (event.target.value) {
+                onSwapDrill(event.target.value);
+              }
+            }}
+            disabled={disabled}
+          >
+            {currentOptionId ? null : <option value="">Current custom drill</option>}
+            {options.map((suggestion) => (
+              <option key={suggestion.id} value={suggestion.id}>
+                {suggestion.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="grid gap-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Balls
+          </p>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Decrease block balls"
+              onClick={() => onBallCountChange(currentBalls - 1)}
+              disabled={disabled || currentBalls <= 1}
+            >
+              <Minus className="size-3.5" />
+            </Button>
+            <Input
+              type="number"
+              min={1}
+              max={200}
+              inputMode="numeric"
+              className="h-9 min-w-0 text-center"
+              value={currentBalls}
+              onChange={(event) => onBallCountChange(Number(event.target.value))}
+              disabled={disabled}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Increase block balls"
+              onClick={() => onBallCountChange(currentBalls + 1)}
+              disabled={disabled || currentBalls >= 200}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -830,6 +1538,7 @@ function SessionControlPanel({
   onSave,
   onStart,
   onAbandon,
+  onShowPracticeImage,
   isPending,
 }: {
   context: PracticePlannerContext;
@@ -841,6 +1550,7 @@ function SessionControlPanel({
   onSave: () => void;
   onStart: () => void;
   onAbandon: () => void;
+  onShowPracticeImage: () => void;
   isPending: boolean;
 }) {
   const hasImport = Boolean(score || comparison?.sourceSessionId);
@@ -925,6 +1635,18 @@ function SessionControlPanel({
                 Start practice
               </Button>
             ) : null}
+            {savedPlanId ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg"
+                onClick={onShowPracticeImage}
+                disabled={isPending}
+              >
+                <Eye className="size-4" />
+                Show PNG
+              </Button>
+            ) : null}
             {(status === "awaiting_import" || status === "match_found" || status === "analysed") &&
             !hasImport ? (
               <Button asChild variant="outline" className="rounded-lg">
@@ -958,7 +1680,6 @@ function SessionControlPanel({
           <ScorecardPanel score={score} summary={summary} />
           <CoachPanel context={context} plan={plan} score={score} />
           <ImportPanel savedPlanId={savedPlanId} hasImport={hasImport} />
-          {hasImport ? <PlanVsActual comparison={comparison} /> : null}
         </CardContent>
       </Card>
     </aside>
@@ -1004,12 +1725,26 @@ function ScorecardPanel({
 
 function PlanVsActual({ comparison }: { comparison: PracticeComparison | null }) {
   return (
-    <div className="grid gap-2">
-      <p className="text-sm font-semibold">Plan vs Actual</p>
+    <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
+      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold tracking-normal">Plan vs Actual</h3>
+          <p className="mt-1 max-w-4xl text-sm leading-5 text-muted-foreground">
+            Every block is scored from the matched upload so the review uses the whole page width,
+            not the side rail.
+          </p>
+        </div>
+        {comparison?.decisions.length ? (
+          <Badge variant="outline" className="w-fit">
+            {comparison.decisions.filter((item) => item.actualBalls > 0).length}/
+            {comparison.decisions.length} blocks scored
+          </Badge>
+        ) : null}
+      </div>
       {comparison?.decisions.length ? (
         <>
           <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
               <MiniMetric
                 label="Planned"
                 value={
@@ -1028,35 +1763,37 @@ function PlanVsActual({ comparison }: { comparison: PracticeComparison | null })
                 "No clubs"}
             </p>
           </div>
-          {comparison.decisions.slice(0, 4).map((item) => (
-            <div key={item.blockId} className="rounded-lg border bg-muted/20 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold">{item.title}</p>
-                <Badge variant="outline">{item.result.replace("_", " ")}</Badge>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Target: {item.target}</p>
-              <p className="text-xs leading-5 text-muted-foreground">Actual: {item.actual}</p>
-              <p className="text-xs leading-5 text-muted-foreground">Summary: {item.summary}</p>
-            </div>
-          ))}
-          {comparison.whatWorked.length || comparison.needsWork.length ? (
-            <div className="rounded-lg border bg-white/70 p-3 text-xs leading-5 text-muted-foreground">
-              {comparison.whatWorked.length ? (
-                <p>
-                  <span className="font-semibold text-foreground">Worked: </span>
-                  {comparison.whatWorked.join(" ")}
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {comparison.decisions.map((item) => (
+              <div key={item.blockId} className="rounded-lg border bg-muted/20 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold">{item.title}</p>
+                  <Badge variant="outline" className={practiceComparisonResultTone(item.result)}>
+                    {practiceComparisonResultLabel(item)}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  Target: {item.target}
                 </p>
+                <p className="text-xs leading-5 text-muted-foreground">Actual: {item.actual}</p>
+                {!item.matchedPlannedVolume && item.actualBalls > 0 ? (
+                  <p className="text-xs leading-5 text-amber-900">
+                    Volume: {item.actualBalls}/{item.plannedBalls ?? "planned"} planned balls found.
+                  </p>
+                ) : null}
+                <p className="text-xs leading-5 text-muted-foreground">Summary: {item.summary}</p>
+              </div>
+            ))}
+          </div>
+          {comparison.whatWorked.length || comparison.needsWork.length ? (
+            <div className="mt-3 grid gap-2 lg:grid-cols-3">
+              {comparison.whatWorked.length ? (
+                <ResultCallout label="Worked" value={comparison.whatWorked.join(" ")} />
               ) : null}
               {comparison.needsWork.length ? (
-                <p className="mt-1">
-                  <span className="font-semibold text-foreground">Needs work: </span>
-                  {comparison.needsWork.join(" ")}
-                </p>
+                <ResultCallout label="Repeat" value={comparison.needsWork.join(" ")} />
               ) : null}
-              <p className="mt-1">
-                <span className="font-semibold text-foreground">Next: </span>
-                {comparison.nextRecommendation}
-              </p>
+              <ResultCallout label="Next" value={comparison.nextRecommendation} />
             </div>
           ) : null}
         </>
@@ -1065,7 +1802,7 @@ function PlanVsActual({ comparison }: { comparison: PracticeComparison | null })
           Upload the matching launch-monitor session to see whether the practice worked.
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -1345,6 +2082,1316 @@ function importStatusTone(status: PracticeBlockImportStatus) {
     status === "no_matching_shots" && "border-slate-200 bg-slate-50 text-slate-700",
     status === "waiting_for_upload" && "border-slate-200 bg-slate-50 text-slate-700",
   );
+}
+
+function practiceDecisionAction(
+  decision: NonNullable<PracticeComparison>["decisions"][number] | null,
+) {
+  if (!decision || decision.actualBalls === 0) {
+    return "Upload matching shots";
+  }
+
+  switch (decision.decision) {
+    case "maintain":
+      return "Move to maintenance";
+    case "move_down":
+      return "Reduce priority";
+    case "repeat_once":
+      return "Repeat once";
+    case "keep_priority":
+      return "Keep priority";
+  }
+}
+
+function practiceComparisonResultLabel(
+  decision: NonNullable<PracticeComparison>["decisions"][number],
+) {
+  switch (decision.result) {
+    case "passed":
+      return "Passed";
+    case "mixed":
+      return "Repeat once";
+    case "failed":
+      return "Missed target";
+    case "insufficient_data":
+      return "Low evidence";
+  }
+}
+
+function practiceComparisonResultTone(
+  result: NonNullable<PracticeComparison>["decisions"][number]["result"],
+) {
+  return cn(
+    result === "passed" && "border-emerald-200 bg-emerald-50 text-emerald-800",
+    result === "mixed" && "border-amber-200 bg-amber-50 text-amber-900",
+    result === "failed" && "border-rose-200 bg-rose-50 text-rose-800",
+    result === "insufficient_data" && "border-slate-200 bg-slate-50 text-slate-700",
+  );
+}
+
+function practicePlanWithEditedBlocks(plan: PracticePlan, blocks: PracticeBlock[]): PracticePlan {
+  const resequencedBlocks = blocks.map((blockItem, index) => ({
+    ...blockItem,
+    order: index + 1,
+  }));
+  const totalBalls = totalBallsForBlocks(resequencedBlocks);
+  const focusClubs = focusClubsForBlocks(resequencedBlocks);
+  const focusLabel = focusClubs.map((club) => club.toUpperCase()).join(", ") || "today's priority";
+
+  return {
+    ...plan,
+    id: undefined,
+    status: "draft",
+    totalBalls,
+    focusClubs,
+    title: editedPracticePlanTitle(plan, resequencedBlocks),
+    summary:
+      totalBalls === null
+        ? `${plan.estimatedTimeMinutes}-minute edited session built around ${focusLabel}.`
+        : `${totalBalls}-ball edited session built around ${focusLabel}.`,
+    blocks: resequencedBlocks,
+  };
+}
+
+function updatePracticeBlockBalls(block: PracticeBlock, value: number): PracticeBlock {
+  const ballCount = normalizeEditedBallCount(value, editablePracticeBlockBalls(block));
+  const withVolume = {
+    ...block,
+    ballCount,
+    timeMinutes: estimateBlockMinutes(block, ballCount),
+  };
+
+  return retargetPracticeBlock(withVolume, ballCount);
+}
+
+function updatePracticeBlockBallsWithinTotal(
+  blocks: PracticeBlock[],
+  blockId: string,
+  value: number,
+  targetTotal: number | null,
+): PracticeBlock[] {
+  const blockIndex = blocks.findIndex((block) => block.id === blockId);
+
+  if (blockIndex < 0) {
+    return blocks;
+  }
+
+  if (targetTotal === null || blocks.length <= 1) {
+    return blocks.map((block) =>
+      block.id === blockId ? updatePracticeBlockBalls(block, value) : block,
+    );
+  }
+
+  const selectedBlock = blocks[blockIndex];
+  const otherBlockCount = blocks.length - 1;
+  const selectedBallCount = normalizeEditedBallCount(
+    value,
+    editablePracticeBlockBalls(selectedBlock),
+  );
+  const maxSelectedBalls = Math.max(1, targetTotal - otherBlockCount);
+  const cappedSelectedBalls = Math.min(selectedBallCount, maxSelectedBalls);
+  const remainingBalls = Math.max(otherBlockCount, targetTotal - cappedSelectedBalls);
+  const otherBlocks = blocks.filter((block) => block.id !== blockId);
+  const rebalancedOtherBlocks = redistributePracticeBalls(otherBlocks, remainingBalls);
+  let nextOtherIndex = 0;
+
+  return blocks.map((block) => {
+    if (block.id === blockId) {
+      return updatePracticeBlockBalls(block, cappedSelectedBalls);
+    }
+
+    const nextBlock = rebalancedOtherBlocks[nextOtherIndex] ?? block;
+    nextOtherIndex += 1;
+    return nextBlock;
+  });
+}
+
+function redistributePracticeBalls(blocks: PracticeBlock[], targetTotal: number): PracticeBlock[] {
+  if (blocks.length === 0) {
+    return blocks;
+  }
+
+  const nextCounts = blocks.map(editablePracticeBlockBalls);
+  let delta = targetTotal - nextCounts.reduce((total, count) => total + count, 0);
+
+  while (delta > 0) {
+    const targetIndex = indexOfSmallestCount(nextCounts);
+    nextCounts[targetIndex] += 1;
+    delta -= 1;
+  }
+
+  while (delta < 0) {
+    const targetIndex = indexOfLargestReducibleCount(nextCounts);
+
+    if (targetIndex < 0) {
+      break;
+    }
+
+    nextCounts[targetIndex] -= 1;
+    delta += 1;
+  }
+
+  return blocks.map((block, index) => updatePracticeBlockBalls(block, nextCounts[index] ?? 1));
+}
+
+function practicePlanImageDataUrl(plan: PracticePlan) {
+  return renderPracticePlanImageCanvas(plan).toDataURL("image/png");
+}
+
+function downloadPracticePlanImage(
+  dataUrl: string,
+  plan: PracticePlan,
+  savedPlanId: string | null,
+) {
+  const anchor = document.createElement("a");
+  const datePart = safePracticeImageFilePart(plan.createdAt.slice(0, 10) || "practice");
+  const idPart = safePracticeImageFilePart(savedPlanId ?? plan.id ?? "plan");
+
+  anchor.href = dataUrl;
+  anchor.download = `lm-world-tour-practice-${datePart}-${idPart}.png`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
+function renderPracticePlanImageCanvas(plan: PracticePlan) {
+  const width = 1200;
+  const blockHeight = 178;
+  const height = practicePlanImageHeight(plan);
+  const scale = 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return canvas;
+  }
+
+  context.scale(scale, scale);
+  context.textBaseline = "top";
+  context.fillStyle = "#f6f4e7";
+  context.fillRect(0, 0, width, height);
+
+  drawCanvasRoundRect(context, 32, 32, width - 64, 178, 24, "#0b5130");
+  drawCanvasText(context, "LM WORLD TOUR", {
+    x: 64,
+    y: 60,
+    maxWidth: 500,
+    lineHeight: 22,
+    font: "700 18px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#bde7c4",
+  });
+  drawCanvasText(context, "Practice reference", {
+    x: 64,
+    y: 90,
+    maxWidth: 500,
+    lineHeight: 46,
+    font: "700 42px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#ffffff",
+  });
+  drawCanvasText(context, plan.title, {
+    x: 64,
+    y: 143,
+    maxWidth: 700,
+    lineHeight: 26,
+    maxLines: 2,
+    font: "500 22px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#ecfdf3",
+  });
+
+  const plannedVolume =
+    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plan.totalBalls} balls`;
+  drawCanvasRoundRect(context, 906, 68, 214, 104, 16, "#ffffff1f", "#ffffff55");
+  drawCanvasText(context, "PLANNED", {
+    x: 932,
+    y: 88,
+    maxWidth: 160,
+    lineHeight: 18,
+    font: "700 14px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#d9fbe3",
+  });
+  drawCanvasText(context, plannedVolume, {
+    x: 932,
+    y: 112,
+    maxWidth: 160,
+    lineHeight: 34,
+    font: "700 32px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#ffffff",
+  });
+
+  const focus = plan.focusClubs.map((club) => club.toUpperCase()).join(", ") || "Practice";
+  const metricY = 236;
+  const metricWidth = 344;
+  drawPracticeImageMetric(
+    context,
+    "Time",
+    `${plan.estimatedTimeMinutes} min`,
+    48,
+    metricY,
+    metricWidth,
+  );
+  drawPracticeImageMetric(context, "Focus", focus, 428, metricY, metricWidth);
+  drawPracticeImageMetric(context, "Status", "Saved plan", 808, metricY, metricWidth);
+
+  let y = 340;
+  for (const block of plan.blocks) {
+    drawPracticeImageBlock(context, block, y, width - 96, blockHeight - 18);
+    y += blockHeight;
+  }
+
+  drawCanvasRoundRect(context, 48, height - 76, width - 96, 44, 12, "#e7f4dc", "#b6d4a6");
+  drawCanvasText(
+    context,
+    "After practice: upload the matching Rapsodo or launch-monitor session so scores come from shot data.",
+    {
+      x: 68,
+      y: height - 64,
+      maxWidth: width - 136,
+      lineHeight: 20,
+      maxLines: 1,
+      font: "600 16px system-ui, -apple-system, Segoe UI, sans-serif",
+      color: "#194d2b",
+    },
+  );
+
+  return canvas;
+}
+
+function practicePlanImageHeight(plan: PracticePlan) {
+  return 440 + plan.blocks.length * 178 + 96;
+}
+
+function drawPracticeImageMetric(
+  context: CanvasRenderingContext2D,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+) {
+  drawCanvasRoundRect(context, x, y, width, 70, 14, "#ffffff", "#d7d2bc");
+  drawCanvasText(context, label.toUpperCase(), {
+    x: x + 20,
+    y: y + 14,
+    maxWidth: width - 40,
+    lineHeight: 16,
+    maxLines: 1,
+    font: "700 13px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#61715f",
+  });
+  drawCanvasText(context, value, {
+    x: x + 20,
+    y: y + 36,
+    maxWidth: width - 40,
+    lineHeight: 22,
+    maxLines: 1,
+    font: "700 20px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#11180f",
+  });
+}
+
+function drawPracticeImageBlock(
+  context: CanvasRenderingContext2D,
+  block: PracticeBlock,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const x = 48;
+  const balls = block.ballCount === null ? `${block.timeMinutes} min` : `${block.ballCount} balls`;
+  const blockLabel = `Block ${block.order} | ${block.type.replace("_", " ")} | ${balls}`;
+
+  drawCanvasRoundRect(context, x, y, width, height, 18, "#ffffff", "#d7d2bc");
+  drawCanvasRoundRect(context, x + 18, y + 18, 232, 34, 10, "#e3f4e4", "#b8d9bd");
+  drawCanvasText(context, blockLabel, {
+    x: x + 34,
+    y: y + 25,
+    maxWidth: 200,
+    lineHeight: 18,
+    maxLines: 1,
+    font: "700 15px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#15552e",
+  });
+  drawCanvasText(context, block.title, {
+    x: x + 272,
+    y: y + 18,
+    maxWidth: width - 296,
+    lineHeight: 28,
+    maxLines: 1,
+    font: "700 25px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#11180f",
+  });
+  drawCanvasText(context, `Clubs: ${formatClubList(block.clubs)}`, {
+    x: x + 272,
+    y: y + 52,
+    maxWidth: width - 296,
+    lineHeight: 20,
+    maxLines: 1,
+    font: "600 16px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#61715f",
+  });
+  drawCanvasText(context, `Target: ${block.successTarget}`, {
+    x: x + 24,
+    y: y + 82,
+    maxWidth: width - 48,
+    lineHeight: 22,
+    maxLines: 2,
+    font: "600 17px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#194d2b",
+  });
+  drawCanvasText(context, `How: ${block.drill}`, {
+    x: x + 24,
+    y: y + 126,
+    maxWidth: width - 48,
+    lineHeight: 22,
+    maxLines: 2,
+    font: "500 17px system-ui, -apple-system, Segoe UI, sans-serif",
+    color: "#182016",
+  });
+}
+
+function drawCanvasRoundRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fill: string,
+  stroke?: string,
+) {
+  const right = x + width;
+  const bottom = y + height;
+
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(right - radius, y);
+  context.quadraticCurveTo(right, y, right, y + radius);
+  context.lineTo(right, bottom - radius);
+  context.quadraticCurveTo(right, bottom, right - radius, bottom);
+  context.lineTo(x + radius, bottom);
+  context.quadraticCurveTo(x, bottom, x, bottom - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+  context.fillStyle = fill;
+  context.fill();
+
+  if (stroke) {
+    context.strokeStyle = stroke;
+    context.lineWidth = 1;
+    context.stroke();
+  }
+}
+
+function drawCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  options: CanvasTextOptions,
+) {
+  const lines = wrapCanvasText(context, text, options);
+
+  context.font = options.font;
+  context.fillStyle = options.color;
+
+  lines.forEach((line, index) => {
+    context.fillText(line, options.x, options.y + index * options.lineHeight);
+  });
+
+  return options.y + lines.length * options.lineHeight;
+}
+
+function wrapCanvasText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  options: CanvasTextOptions,
+) {
+  context.font = options.font;
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+
+    if (context.measureText(candidate).width <= options.maxWidth) {
+      line = candidate;
+      continue;
+    }
+
+    if (line) {
+      lines.push(line);
+    }
+
+    line = word;
+  }
+
+  if (line) {
+    lines.push(line);
+  }
+
+  if (!options.maxLines || lines.length <= options.maxLines) {
+    return lines.length > 0 ? lines : [""];
+  }
+
+  const visibleLines = lines.slice(0, options.maxLines);
+  const lastIndex = visibleLines.length - 1;
+  visibleLines[lastIndex] = truncateCanvasText(
+    context,
+    visibleLines[lastIndex] ?? "",
+    options.maxWidth,
+  );
+
+  return visibleLines;
+}
+
+function truncateCanvasText(context: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  let nextText = text;
+
+  while (nextText.length > 0 && context.measureText(`${nextText}...`).width > maxWidth) {
+    nextText = nextText.slice(0, -1).trimEnd();
+  }
+
+  return `${nextText}...`;
+}
+
+function safePracticeImageFilePart(value: string) {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "practice"
+  );
+}
+
+function applyPracticeDrillSuggestion(
+  block: PracticeBlock,
+  suggestionId: string,
+  options: PracticeDrillSuggestion[],
+): PracticeBlock {
+  const suggestion = options.find((item) => item.id === suggestionId) ?? null;
+
+  if (!suggestion) {
+    return block;
+  }
+
+  const ballCount = normalizeEditedBallCount(
+    editablePracticeBlockBalls(block),
+    editablePracticeBlockBalls(block),
+  );
+  const nextBlock = {
+    ...block,
+    type: suggestion.type,
+    title: suggestion.title,
+    clubs: suggestion.clubs ?? block.clubs,
+    ballCount,
+    timeMinutes: estimateBlockMinutes({ ...block, type: suggestion.type }, ballCount),
+    purpose: suggestion.purpose,
+    drill: suggestion.drill,
+    successTarget: suggestion.successTarget,
+    recordPrompt: suggestion.recordPrompt,
+    scoringRules: suggestion.scoringRules,
+  };
+
+  return retargetPracticeBlock(nextBlock, ballCount);
+}
+
+function buildPracticeDrillOptionsByBlock(blocks: PracticeBlock[]): PracticeDrillOptionsByBlock {
+  return Object.fromEntries(blocks.map((block) => [block.id, buildPracticeDrillOptions(block)]));
+}
+
+function buildPracticeDrillOptions(block: PracticeBlock): PracticeDrillSuggestion[] {
+  return [originalPracticeDrillOption(block), ...buildPracticeDrillAlternatives(block).slice(0, 3)];
+}
+
+function originalPracticeDrillOption(block: PracticeBlock): PracticeDrillSuggestion {
+  return {
+    id: "original-agenda",
+    label: `Original agenda - ${cleanEditedBlockTitle(block.title)}`,
+    source: "original",
+    type: block.type,
+    title: block.title,
+    clubs: block.clubs,
+    purpose: block.purpose,
+    drill: block.drill,
+    successTarget: block.successTarget,
+    recordPrompt: block.recordPrompt,
+    scoringRules: block.scoringRules,
+  };
+}
+
+function selectedPracticeDrillOptionId(block: PracticeBlock, options: PracticeDrillSuggestion[]) {
+  return options.find((option) => practiceDrillOptionMatchesBlock(option, block))?.id ?? "";
+}
+
+function nextPracticeDrillSuggestion(block: PracticeBlock, options: PracticeDrillSuggestion[]) {
+  const currentIndex = options.findIndex((option) =>
+    practiceDrillOptionMatchesBlock(option, block),
+  );
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % options.length : 0;
+
+  return options[nextIndex] ?? null;
+}
+
+function practiceDrillOptionMatchesBlock(option: PracticeDrillSuggestion, block: PracticeBlock) {
+  return (
+    option.type === block.type &&
+    normalizeText(cleanEditedBlockTitle(option.title)) ===
+      normalizeText(cleanEditedBlockTitle(block.title))
+  );
+}
+
+function buildPracticeDrillAlternatives(block: PracticeBlock): PracticeDrillSuggestion[] {
+  const balls = block.ballCount ?? Math.max(1, Math.round(block.timeMinutes * 1.5));
+  const clubs = block.clubs.length > 0 ? block.clubs : ["7i"];
+  const primaryClub = clubs[0] ?? "7i";
+  const clubLabel = formatClubList(clubs);
+  const universal = buildUniversalPracticeDrillAlternatives(block, balls);
+  const alternatives: PracticeDrillSuggestion[] = [];
+
+  if (block.type === "warmup" || block.type === "warmup_round") {
+    alternatives.push(
+      playableSuggestion({
+        id: "warmup-tempo-ladder",
+        label: "Tempo ladder",
+        type: "warmup",
+        title: "Tempo ladder warm-up",
+        clubs,
+        balls,
+        targetRate: 0.75,
+        purpose: "Find rhythm and strike before the scored blocks.",
+        drill: `Move from half-speed wedges to stock ${formatClubCode(primaryClub)} swings. Call playable before checking the result.`,
+        recordPrompt: "Playable count, tempo feel, and first repeated strike miss.",
+      }),
+      playableSuggestion({
+        id: "warmup-contact-map",
+        label: "Contact map",
+        type: "warmup",
+        title: "Contact map",
+        clubs,
+        balls,
+        targetRate: 0.7,
+        purpose: "See whether strike location is ready before chasing direction.",
+        drill: `Rotate ${clubLabel}. Mark strike, start line, and whether the ball would stay in play.`,
+        recordPrompt: "Strike location, playable count, and any heavy or thin pattern.",
+      }),
+    );
+  }
+
+  if (block.type === "baseline") {
+    alternatives.push(
+      baselineSuggestion({
+        id: "baseline-stock-check",
+        label: "Stock check",
+        title: "Baseline check",
+        clubs,
+        balls,
+        purpose: "Check whether today matches the latest data before changing anything.",
+        drill: `Alternate ${clubLabel}. Normal stock swings only.`,
+        recordPrompt: "Start line, carry miss, and whether the pattern matches the last import.",
+      }),
+      playableSuggestion({
+        id: "baseline-dispersion-scan",
+        label: "Dispersion scan",
+        type: "baseline",
+        title: "Dispersion scan",
+        clubs,
+        balls,
+        targetRate: 0.65,
+        purpose: "Find the day's biggest miss before the priority work.",
+        drill: `Hit one ball with each club in order: ${clubLabel}. Score playable and note the first big miss.`,
+        recordPrompt: "Playable count, big miss direction, and carry feel.",
+      }),
+    );
+  }
+
+  if (block.type === "scoring" || block.type === "short_game") {
+    alternatives.push(
+      scoringSuggestion({
+        id: "scoring-wedge-ladder",
+        label: "Wedge ladder",
+        title: `${formatClubCode(primaryClub)} wedge ladder`,
+        clubs,
+        balls,
+        targetRate: 0.65,
+        purpose: "Turn the scoring-zone opportunity into measured carry control.",
+        drill: `Split the block between full, three-quarter and half ${formatClubCode(primaryClub)} shots.`,
+        recordPrompt: "Carry, offline, and whether the shot was full, three-quarter, or half.",
+      }),
+      scoringSuggestion({
+        id: "scoring-random-windows",
+        label: "Random windows",
+        title: "Random wedge windows",
+        clubs,
+        balls,
+        targetRate: 0.6,
+        purpose: "Make scoring practice less grooved and more course-like.",
+        drill: `Change distance or flight every ball with ${clubLabel}. Do not repeat the same shot twice.`,
+        recordPrompt: "Target window, carry result, and whether distance control held up.",
+      }),
+      playableSuggestion({
+        id: "scoring-up-and-down",
+        label: "Up-and-down",
+        type: "short_game",
+        title: "Up-and-down rehearsal",
+        clubs,
+        balls,
+        targetRate: 0.6,
+        purpose: "Move the block toward one-ball scoring decisions.",
+        drill:
+          "Play each ball as a new short-game problem. Change lie, landing spot, or trajectory every rep.",
+        recordPrompt: "Up-and-down result, landing spot, and miss pattern.",
+      }),
+    );
+  }
+
+  if (block.type === "putting") {
+    alternatives.push(
+      puttingSuggestion({
+        id: "putting-start-gate",
+        label: "Start gate",
+        title: "Putting start gate",
+        balls,
+        targetRate: 0.7,
+        purpose: "Clean up start line before moving into distance control.",
+        drill: "Set a start gate and roll sets of three from the same face alignment.",
+        recordPrompt: "Gate hits, pushes, pulls, and speed notes.",
+      }),
+      puttingSuggestion({
+        id: "putting-pace-ladder",
+        label: "Pace ladder",
+        title: "Pace ladder",
+        balls,
+        targetRate: 0.65,
+        purpose: "Make lag putting measurable without turning it into mechanics.",
+        drill: "Roll balls to three distances and score finishes inside the intended pace zone.",
+        recordPrompt: "Distance, leave distance, and short or long bias.",
+      }),
+    );
+  }
+
+  if (block.type === "speed") {
+    alternatives.push(
+      playableSuggestion({
+        id: "speed-controlled-ladder",
+        label: "Controlled speed",
+        type: "speed",
+        title: "Controlled speed ladder",
+        clubs,
+        balls,
+        targetRate: 0.7,
+        purpose: "Build speed without losing strike or start line.",
+        drill: "Move from 80% to 90% to full intent, only stepping up after playable contact.",
+        recordPrompt: "Club speed, playable strike, and where speed started leaking.",
+      }),
+      playableSuggestion({
+        id: "speed-sequence-reset",
+        label: "Sequence reset",
+        type: "speed",
+        title: "Sequence reset",
+        clubs,
+        balls,
+        targetRate: 0.65,
+        purpose: "Keep speed work athletic without chasing one-off numbers.",
+        drill:
+          "Alternate a rehearsal swing with one measured swing. Stop after any two poor strikes in a row.",
+        recordPrompt: "Peak speed, average speed, and strike quality.",
+      }),
+    );
+  }
+
+  if (block.type === "random" || block.type === "test") {
+    alternatives.push(
+      pointsSuggestion({
+        id: "random-scoring-finish",
+        label: "Random finish",
+        title: "Randomised scoring finish",
+        clubs,
+        balls,
+        purpose: "Transfer the range work into one-ball course decisions.",
+        drill: `Random club every ball: ${clubLabel}. One routine, one shot, then change club.`,
+        recordPrompt: "One point for playable, one bonus for target corridor.",
+      }),
+      playableSuggestion({
+        id: "random-fairway-green",
+        label: "Fairway or green",
+        type: "random",
+        title: "Fairway or green challenge",
+        clubs,
+        balls,
+        targetRate: 0.65,
+        purpose: "Pressure-test the plan against course-style targets.",
+        drill: `Call fairway or green before each shot with ${clubLabel}. Full reset between balls.`,
+        recordPrompt: "Target call, playable result, and decision quality.",
+      }),
+    );
+  }
+
+  const driverLike = block.clubs.some((club) => normalizeText(club).includes("driver"));
+
+  alternatives.push(
+    corridorSuggestion({
+      id: "technical-start-line",
+      label: "Start-line gate",
+      title: `${technicalTitlePrefix(block)} ${driverLike ? "delivery" : "start line"}`,
+      clubs,
+      balls,
+      targetRate: 0.6,
+      maxMissRate: 0.12,
+      purpose: block.purpose,
+      drill: driverLike
+        ? "Neutral delivery window. Track path and face-to-path, but only score playable shots."
+        : "Start-line gate. Pick a clear start window and hit stock swings only.",
+      recordPrompt: "Corridor hits, big misses, and one miss pattern note.",
+    }),
+    playableSuggestion({
+      id: "technical-strike-ladder",
+      label: "Strike ladder",
+      type: "technical",
+      title: `${technicalTitlePrefix(block)} strike ladder`,
+      clubs,
+      balls,
+      targetRate: 0.7,
+      purpose: "Prioritise centred contact before judging the flight.",
+      drill: `Hit ${formatClubCode(primaryClub)} in small sets. Move on only after two playable strikes in a row.`,
+      recordPrompt: "Strike quality, playable count, and the first miss after a good pair.",
+    }),
+    corridorSuggestion({
+      id: "technical-pressure-corridor",
+      label: "Pressure corridor",
+      title: `${technicalTitlePrefix(block)} pressure corridor`,
+      clubs,
+      balls,
+      targetRate: 0.55,
+      maxMissRate: 0.15,
+      purpose: "Make the same priority measurable under a little pressure.",
+      drill: `Every miss restarts the mini-set. Complete three clean reps with ${formatClubCode(primaryClub)} before changing target.`,
+      recordPrompt: "Clean sets, big misses, and the miss that broke the set.",
+    }),
+  );
+
+  const mixedAlternatives = [...alternatives.slice(0, 2), ...universal, ...alternatives.slice(2)];
+
+  return uniquePracticeDrillAlternatives(block, mixedAlternatives).slice(0, 3);
+}
+
+function buildUniversalPracticeDrillAlternatives(
+  block: PracticeBlock,
+  balls: number,
+): PracticeDrillSuggestion[] {
+  return [
+    corridorSuggestion({
+      id: "alt-7i-start-gate",
+      label: "7I start gate",
+      title: "7I start-line gate",
+      clubs: ["7i"],
+      balls,
+      targetRate: 0.62,
+      maxMissRate: 0.12,
+      purpose: "Use a neutral mid-iron to check whether start line is the real issue today.",
+      drill:
+        "Pick a tight start window with 7I. Reset after every ball and ignore distance unless strike collapses.",
+      recordPrompt: "Start-line hits, big misses, and whether contact stayed neutral.",
+    }),
+    playableSuggestion({
+      id: "alt-driver-fairway-finder",
+      label: "Driver finder",
+      type: "technical",
+      title: "Driver fairway finder",
+      clubs: ["driver"],
+      balls,
+      targetRate: 0.65,
+      purpose: "Pressure-test tee-shot safety without letting speed dominate the session.",
+      drill:
+        "Hit driver to a fairway-width target. Score only playable starts and stop after two penalty misses.",
+      recordPrompt: "Playable starts, penalty misses, and the safest tee-shot feel.",
+    }),
+    scoringSuggestion({
+      id: "alt-wedge-distance-windows",
+      label: "Wedge windows",
+      title: "SW distance windows",
+      clubs: ["sw", "gw", "pw"],
+      balls,
+      targetRate: 0.65,
+      purpose: "Move the block into scoring control with different clubs and shorter targets.",
+      drill: "Rotate SW, GW and PW through three carry windows. Change target every shot.",
+      recordPrompt: "Carry window, miss side, and whether distance control tightened.",
+    }),
+    pointsSuggestion({
+      id: "alt-nine-shot-course-test",
+      label: "Course test",
+      title: "Nine-shot course test",
+      clubs: ["driver", "7i", "sw", "putter"],
+      balls,
+      purpose: "Check whether the session transfers into one-ball course decisions.",
+      drill: "Play tee shot, approach, wedge and putt patterns as if each ball starts a new hole.",
+      recordPrompt: "One point for playable, one bonus for choosing the right shot.",
+    }),
+  ];
+}
+
+function uniquePracticeDrillAlternatives(
+  original: PracticeBlock,
+  alternatives: PracticeDrillSuggestion[],
+) {
+  const seen = new Set([practiceDrillIdentity(original)]);
+
+  return alternatives.filter((alternative) => {
+    const identity = practiceDrillIdentity(alternative);
+
+    if (seen.has(identity)) {
+      return false;
+    }
+
+    seen.add(identity);
+    return true;
+  });
+}
+
+function practiceDrillIdentity(drill: Pick<PracticeBlock, "type" | "title">) {
+  return `${drill.type}:${normalizeText(cleanEditedBlockTitle(drill.title))}`;
+}
+
+function playableSuggestion({
+  id,
+  label,
+  type,
+  title,
+  clubs,
+  balls,
+  targetRate,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  type: PracticeBlock["type"];
+  title: string;
+  clubs: string[];
+  balls: number;
+  targetRate: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.ceil(balls * targetRate));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type,
+    title,
+    clubs,
+    purpose,
+    drill,
+    successTarget: `${target} of ${balls} playable.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "playable",
+      target,
+    },
+  };
+}
+
+function baselineSuggestion({
+  id,
+  label,
+  title,
+  clubs,
+  balls,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  clubs: string[];
+  balls: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.ceil(balls * 0.6));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type: "baseline",
+    title,
+    clubs,
+    purpose,
+    drill,
+    successTarget: `${target} playable or inside carry target.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "baseline",
+      target,
+    },
+  };
+}
+
+function corridorSuggestion({
+  id,
+  label,
+  title,
+  clubs,
+  balls,
+  targetRate,
+  maxMissRate,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  clubs: string[];
+  balls: number;
+  targetRate: number;
+  maxMissRate: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.ceil(balls * targetRate));
+  const maxBigMisses = Math.max(1, Math.floor(balls * maxMissRate));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type: "technical",
+    title,
+    clubs,
+    purpose,
+    drill,
+    successTarget: `${target} of ${balls} start inside the corridor. No more than ${maxBigMisses} big misses.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "corridor",
+      target,
+      maxBigMisses,
+    },
+  };
+}
+
+function scoringSuggestion({
+  id,
+  label,
+  title,
+  clubs,
+  balls,
+  targetRate,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  clubs: string[];
+  balls: number;
+  targetRate: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.ceil(balls * targetRate));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type: "scoring",
+    title,
+    clubs,
+    purpose,
+    drill,
+    successTarget: `${target} of ${balls} finish inside the carry window.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "carry_ladder",
+      target,
+    },
+  };
+}
+
+function puttingSuggestion({
+  id,
+  label,
+  title,
+  balls,
+  targetRate,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  balls: number;
+  targetRate: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.ceil(balls * targetRate));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type: "putting",
+    title,
+    clubs: ["putter"],
+    purpose,
+    drill,
+    successTarget: `${target} of ${balls} finish inside the target zone.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "putting",
+      target,
+    },
+  };
+}
+
+function pointsSuggestion({
+  id,
+  label,
+  title,
+  clubs,
+  balls,
+  purpose,
+  drill,
+  recordPrompt,
+}: {
+  id: string;
+  label: string;
+  title: string;
+  clubs: string[];
+  balls: number;
+  purpose: string;
+  drill: string;
+  recordPrompt: string;
+}): PracticeDrillSuggestion {
+  const target = Math.max(1, Math.round(balls * 1.35));
+
+  return {
+    id,
+    label,
+    source: "alternative",
+    type: "random",
+    title,
+    clubs,
+    purpose,
+    drill,
+    successTarget: `${target}+ points from ${balls * 2} possible.`,
+    recordPrompt,
+    scoringRules: {
+      metric: "points",
+      target,
+    },
+  };
+}
+
+function retargetPracticeBlock(block: PracticeBlock, balls: number): PracticeBlock {
+  const metric = block.scoringRules.metric;
+
+  if (metric === "points") {
+    const target = Math.max(1, Math.round(balls * 1.35));
+
+    return {
+      ...block,
+      successTarget: `${target}+ points from ${balls * 2} possible.`,
+      scoringRules: { ...block.scoringRules, target },
+    };
+  }
+
+  if (metric === "carry_ladder") {
+    const target = Math.max(1, Math.ceil(balls * 0.65));
+
+    return {
+      ...block,
+      successTarget: `${target} of ${balls} finish inside the carry window.`,
+      scoringRules: { ...block.scoringRules, target },
+    };
+  }
+
+  if (metric === "corridor") {
+    const target = Math.max(1, Math.ceil(balls * 0.6));
+    const maxBigMisses = Math.max(1, Math.floor(balls * 0.12));
+
+    return {
+      ...block,
+      successTarget: `${target} of ${balls} start inside the corridor. No more than ${maxBigMisses} big misses.`,
+      scoringRules: { ...block.scoringRules, target, maxBigMisses },
+    };
+  }
+
+  if (metric === "baseline") {
+    const target = Math.max(1, Math.ceil(balls * 0.6));
+
+    return {
+      ...block,
+      successTarget: `${target} playable or inside carry target.`,
+      scoringRules: { ...block.scoringRules, target },
+    };
+  }
+
+  if (metric === "putting") {
+    const target = Math.max(1, Math.ceil(balls * 0.7));
+
+    return {
+      ...block,
+      successTarget: `${target} of ${balls} finish inside the target zone.`,
+      scoringRules: { ...block.scoringRules, target },
+    };
+  }
+
+  const targetRate = block.type === "warmup" || block.type === "warmup_round" ? 0.75 : 0.7;
+  const target = Math.max(1, Math.ceil(balls * targetRate));
+
+  return {
+    ...block,
+    successTarget: `${target} of ${balls} playable.`,
+    scoringRules: { ...block.scoringRules, target },
+  };
+}
+
+function editedPracticePlanTitle(plan: PracticePlan, blocks: PracticeBlock[]) {
+  const mainBlock =
+    blocks.find((block) => /main priority/i.test(block.title)) ??
+    blocks.find((block) => block.type === "technical") ??
+    blocks.find((block) => block.type !== "warmup" && block.type !== "warmup_round") ??
+    blocks[0] ??
+    null;
+
+  return mainBlock ? cleanEditedBlockTitle(mainBlock.title) : plan.title;
+}
+
+function totalBallsForBlocks(blocks: PracticeBlock[]) {
+  if (blocks.some((block) => block.ballCount === null)) {
+    return null;
+  }
+
+  return blocks.reduce((total, block) => total + (block.ballCount ?? 0), 0);
+}
+
+function focusClubsForBlocks(blocks: PracticeBlock[]) {
+  const seen = new Set<string>();
+  const clubs: string[] = [];
+  const orderedBlocks = [
+    ...blocks.filter(
+      (block) =>
+        block.type !== "warmup" && block.type !== "warmup_round" && block.type !== "baseline",
+    ),
+    ...blocks.filter((block) => block.type === "baseline"),
+    ...blocks.filter((block) => block.type === "warmup" || block.type === "warmup_round"),
+  ];
+
+  for (const block of orderedBlocks) {
+    for (const club of block.clubs) {
+      const normalized = normalizeText(club);
+
+      if (!normalized || seen.has(normalized)) {
+        continue;
+      }
+
+      seen.add(normalized);
+      clubs.push(club);
+    }
+  }
+
+  return clubs.slice(0, 6);
+}
+
+function estimateBlockMinutes(block: PracticeBlock, balls: number) {
+  if (block.type === "warmup" || block.type === "warmup_round") {
+    return Math.max(5, Math.round(balls * 0.6));
+  }
+
+  if (block.type === "random" || block.type === "test") {
+    return Math.max(5, Math.round(balls * 0.8));
+  }
+
+  if (block.type === "putting" || block.type === "short_game") {
+    return Math.max(5, Math.round(balls * 0.65));
+  }
+
+  return Math.max(5, Math.round(balls * 0.5));
+}
+
+function editablePracticeBlockBalls(block: PracticeBlock) {
+  return block.ballCount ?? Math.max(1, Math.round(block.timeMinutes * 1.5));
+}
+
+function indexOfSmallestCount(counts: number[]) {
+  return counts.reduce(
+    (lowestIndex, count, index) => (count < counts[lowestIndex] ? index : lowestIndex),
+    0,
+  );
+}
+
+function indexOfLargestReducibleCount(counts: number[]) {
+  return counts.reduce((largestIndex, count, index) => {
+    if (count <= 1) {
+      return largestIndex;
+    }
+
+    if (largestIndex < 0 || count > counts[largestIndex]) {
+      return index;
+    }
+
+    return largestIndex;
+  }, -1);
+}
+
+function normalizeEditedBallCount(value: number, fallback: number) {
+  const nextValue = Number.isFinite(value) ? Math.round(value) : fallback;
+
+  return Math.min(200, Math.max(1, nextValue));
+}
+
+function technicalTitlePrefix(block: PracticeBlock) {
+  const title = cleanEditedBlockTitle(block.title);
+  const titleBase = title
+    .replace(/\s+(start line|delivery|strike ladder|pressure corridor)$/i, "")
+    .trim();
+
+  if (
+    titleBase &&
+    !/^main priority$/i.test(titleBase) &&
+    !/^secondary priority$/i.test(titleBase)
+  ) {
+    return titleBase;
+  }
+
+  return block.clubs[0] ? formatClubCode(block.clubs[0]) : "Priority";
+}
+
+function cleanEditedBlockTitle(title: string) {
+  return title
+    .replace(/^main priority:\s*/i, "")
+    .replace(/^secondary priority:\s*/i, "")
+    .trim();
+}
+
+function formatClubList(clubs: string[]) {
+  return clubs.map(formatClubCode).join(", ") || "the selected club";
+}
+
+function formatClubCode(club: string) {
+  return club.toUpperCase();
+}
+
+function normalizeText(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function scoreFromSavedPlan(saved: SavedPracticePlan): PracticeScore {

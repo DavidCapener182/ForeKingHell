@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 
 import {
+  bulkResolveModerationEvents,
+  bulkResolveSocialReports,
   deactivateAdminAccess,
   grantAdminAccessByEmail,
   grantLifetimeFullAccessByEmail,
@@ -19,6 +21,7 @@ export async function grantLifetimeFullAction(formData: FormData) {
   try {
     await grantLifetimeFullAccessByEmail(email);
   } catch (error) {
+    unstable_rethrow(error);
     redirect(`${returnTo}?adminError=${encodeURIComponent(errorMessage(error))}`);
   }
 
@@ -34,6 +37,7 @@ export async function grantAdminAccessAction(formData: FormData) {
   try {
     await grantAdminAccessByEmail(email, role);
   } catch (error) {
+    unstable_rethrow(error);
     redirect(`${returnTo}?adminError=${encodeURIComponent(errorMessage(error))}`);
   }
 
@@ -47,6 +51,7 @@ export async function deactivateAdminAccessAction(formData: FormData) {
   try {
     await deactivateAdminAccess(userId);
   } catch (error) {
+    unstable_rethrow(error);
     redirect(`/admin/users?adminError=${encodeURIComponent(errorMessage(error))}`);
   }
 
@@ -66,9 +71,52 @@ export async function resolveModerationEventAction(formData: FormData) {
   redirect(`/admin/moderation?adminStatus=${encodeURIComponent("Moderation event resolved.")}`);
 }
 
+export async function bulkResolveSocialReportsAction(formData: FormData) {
+  let resolvedCount = 0;
+
+  try {
+    resolvedCount = await bulkResolveSocialReports(readStrings(formData, "reportId"));
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect(`/admin/moderation?adminError=${encodeURIComponent(errorMessage(error))}`);
+  }
+
+  revalidatePath("/admin/moderation");
+  redirect(
+    `/admin/moderation?adminStatus=${encodeURIComponent(
+      `${resolvedCount} ${resolvedCount === 1 ? "report" : "reports"} resolved.`,
+    )}`,
+  );
+}
+
+export async function bulkResolveModerationEventsAction(formData: FormData) {
+  let resolvedCount = 0;
+
+  try {
+    resolvedCount = await bulkResolveModerationEvents(readStrings(formData, "eventId"));
+  } catch (error) {
+    unstable_rethrow(error);
+    redirect(`/admin/moderation?adminError=${encodeURIComponent(errorMessage(error))}`);
+  }
+
+  revalidatePath("/admin/moderation");
+  redirect(
+    `/admin/moderation?adminStatus=${encodeURIComponent(
+      `${resolvedCount} ${resolvedCount === 1 ? "moderation event" : "moderation events"} resolved.`,
+    )}`,
+  );
+}
+
 function readString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readStrings(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter(Boolean);
 }
 
 function parseAdminRole(value: string): AdminRole {

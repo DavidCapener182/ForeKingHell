@@ -21,6 +21,16 @@ import {
 import { syncAchievementsAction } from "@/app/achievements/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
 import { EmptyState } from "@/components/app/empty-state";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,8 +44,17 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { MobileFilterSheet } from "@/components/premium";
+import { DataTableFrame, MobileFilterSheet } from "@/components/premium";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { achievementDomId } from "@/lib/alert-links";
 import type { AchievementPageData, AchievementView } from "@/lib/achievements/service";
 import type { AchievementTier } from "@/lib/achievements/types";
@@ -168,9 +187,23 @@ const calendarCellStyle = {
   minHeight: "2.5rem",
   width: "100%",
 } as const;
+const defaultUnlockLedgerLimit = 40;
+const unlockLedgerPageSize = 40;
+const defaultCatalogueLimit = 72;
+const cataloguePageSize = 72;
 const defaultStatusFilter = "all";
 const defaultHideCompleted = true;
 type MobileAchievementTab = "next" | "cabinet" | "catalogue" | "calendar";
+
+const achievementUnlockColumns: DesktopWorkbenchColumn[] = [
+  { id: "achievement", label: "Achievement", locked: true },
+  { id: "unlocked", label: "Unlocked" },
+  { id: "tier", label: "Tier" },
+  { id: "xp", label: "XP" },
+  { id: "category", label: "Category" },
+  { id: "source", label: "Source" },
+  { id: "action", label: "Action", locked: true },
+];
 
 const mobileAchievementTabs: Array<{ id: MobileAchievementTab; label: string }> = [
   { id: "next", label: "Next" },
@@ -190,6 +223,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
   const [hideCompleted, setHideCompleted] = useState(defaultHideCompleted);
   const [query, setQuery] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileAchievementTab>("next");
+  const [catalogueLimit, setCatalogueLimit] = useState(defaultCatalogueLimit);
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
   const focusedAchievementId =
     focusAchievementId && dismissedFocusId !== focusAchievementId ? focusAchievementId : "";
@@ -274,6 +308,17 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     ...tier,
     completion: Math.round((tier.unlocked / Math.max(1, tier.total)) * 100),
   }));
+  const unlockLedger = useMemo(
+    () =>
+      data.achievements
+        .filter((achievement) => achievement.unlocked)
+        .sort((left, right) => {
+          const leftTime = left.unlockedAt ? new Date(left.unlockedAt).getTime() : 0;
+          const rightTime = right.unlockedAt ? new Date(right.unlockedAt).getTime() : 0;
+          return rightTime - leftTime;
+        }),
+    [data.achievements],
+  );
   const focusedAchievement = focusedAchievementId
     ? data.achievements.find((achievement) => achievement.id === focusedAchievementId)
     : null;
@@ -348,10 +393,13 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     tierFilter === "all"
       ? "All tiers"
       : (tierOptions.find((item) => item.id === tierFilter)?.label ?? "All tiers");
-  const shownAchievements =
-    !query.trim() && filteredAchievements.length > 360
-      ? filteredAchievements.slice(0, 360)
-      : filteredAchievements;
+  const shownAchievements = focusedAchievementId
+    ? filteredAchievements.slice(0, 1)
+    : filteredAchievements.slice(0, catalogueLimit);
+  const remainingFilteredAchievementCount = Math.max(
+    0,
+    filteredAchievements.length - shownAchievements.length,
+  );
   const nextUnlock =
     data.achievements
       .filter((achievement) => !achievement.unlocked)
@@ -367,6 +415,44 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     setTierFilter("all");
     setHideCompleted(defaultHideCompleted);
     setQuery("");
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function updateQuery(value: string) {
+    setQuery(value);
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function updateTypeFilter(value: string) {
+    setTypeFilter(value);
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function updateClubFilter(value: string) {
+    setClubFilter(value);
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function updateTierFilter(value: string) {
+    setTierFilter(value);
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function toggleHideCompleted() {
+    setHideCompleted((current) => !current);
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function showUnlockedAchievements() {
+    setHideCompleted(false);
+    setStatusFilter("unlocked");
+    setCatalogueLimit(defaultCatalogueLimit);
+  }
+
+  function showAllAchievements() {
+    setHideCompleted(false);
+    setStatusFilter("all");
+    setCatalogueLimit(defaultCatalogueLimit);
   }
 
   return (
@@ -508,6 +594,10 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         </Card>
       </section>
 
+      <section className="hidden sm:block">
+        <AchievementUnlockLedger achievements={unlockLedger} />
+      </section>
+
       <section
         className={cn(
           "grid gap-3 md:grid-cols-4",
@@ -555,7 +645,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => updateQuery(event.target.value)}
                     placeholder="Search achievements"
                     className="pl-9"
                   />
@@ -563,21 +653,21 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                 <AchievementSelect
                   label="Achievement type"
                   value={typeFilter}
-                  onValueChange={setTypeFilter}
+                  onValueChange={updateTypeFilter}
                   options={typeOptions}
                   allLabel="All types"
                 />
                 <AchievementSelect
                   label="Club"
                   value={clubFilter}
-                  onValueChange={setClubFilter}
+                  onValueChange={updateClubFilter}
                   options={clubOptions}
                   allLabel="All clubs"
                 />
                 <AchievementSelect
                   label="Tier"
                   value={tierFilter}
-                  onValueChange={setTierFilter}
+                  onValueChange={updateTierFilter}
                   options={tierOptions}
                   allLabel="All tiers"
                 />
@@ -585,7 +675,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                   type="button"
                   variant={hideCompleted ? "default" : "outline"}
                   className="h-10 justify-center rounded-lg"
-                  onClick={() => setHideCompleted((current) => !current)}
+                  onClick={toggleHideCompleted}
                 >
                   <EyeOff className="size-4" />
                   Hide completed
@@ -598,12 +688,12 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => updateQuery(event.target.value)}
                 placeholder="Search achievements"
                 className="pl-9"
               />
             </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={updateTypeFilter}>
               <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Achievement type">
                 <span className="truncate">{selectedTypeLabel}</span>
               </SelectTrigger>
@@ -616,7 +706,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={clubFilter} onValueChange={setClubFilter}>
+            <Select value={clubFilter} onValueChange={updateClubFilter}>
               <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Club">
                 <span className="truncate">{selectedClubLabel}</span>
               </SelectTrigger>
@@ -629,7 +719,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={tierFilter} onValueChange={setTierFilter}>
+            <Select value={tierFilter} onValueChange={updateTierFilter}>
               <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Tier">
                 <span className="truncate">{selectedTierLabel}</span>
               </SelectTrigger>
@@ -646,7 +736,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               type="button"
               variant={hideCompleted ? "default" : "outline"}
               className="h-10 justify-center rounded-lg"
-              onClick={() => setHideCompleted((current) => !current)}
+              onClick={toggleHideCompleted}
             >
               <EyeOff className="size-4" />
               Hide completed
@@ -662,7 +752,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               type="button"
               size="sm"
               variant={!hideCompleted && statusFilter === "unlocked" ? "default" : "outline"}
-              onClick={() => setStatusFilter("unlocked")}
+              onClick={showUnlockedAchievements}
             >
               Unlocked
               <span className="ml-1 text-xs opacity-70">
@@ -673,7 +763,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               type="button"
               size="sm"
               variant={!hideCompleted && statusFilter === "all" ? "default" : "outline"}
-              onClick={() => setStatusFilter("all")}
+              onClick={showAllAchievements}
             >
               All
               <span className="ml-1 text-xs opacity-70">
@@ -693,11 +783,10 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           </div>
         </CardHeader>
         <CardContent>
-          {!query.trim() && filteredAchievements.length > shownAchievements.length ? (
+          {remainingFilteredAchievementCount > 0 ? (
             <div className="apple-panel mb-4 px-3 py-2 text-sm text-muted-foreground">
-              Showing the first {shownAchievements.length.toLocaleString("en-GB")} achievements. Use
-              search, club, type, or tier filters to narrow the full{" "}
-              {filteredAchievements.length.toLocaleString("en-GB")} set.
+              Showing {shownAchievements.length.toLocaleString("en-GB")} of{" "}
+              {filteredAchievements.length.toLocaleString("en-GB")} matching achievements.
             </div>
           ) : null}
 
@@ -726,12 +815,197 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             </p>
           ) : null}
 
+          {remainingFilteredAchievementCount > 0 ? (
+            <div className="mt-4 flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-white/70 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                {remainingFilteredAchievementCount.toLocaleString("en-GB")} more achievement
+                {remainingFilteredAchievementCount === 1 ? "" : "s"} available.
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setCatalogueLimit((current) =>
+                      Math.min(filteredAchievements.length, current + cataloguePageSize),
+                    )
+                  }
+                >
+                  Show {Math.min(cataloguePageSize, remainingFilteredAchievementCount)} more
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setCatalogueLimit(filteredAchievements.length)}
+                >
+                  Show all
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {shownAchievements.length === 0 ? (
             <EmptyState title="No achievements match this filter" />
           ) : null}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function AchievementUnlockLedger({ achievements }: { achievements: AchievementView[] }) {
+  const [visibleCount, setVisibleCount] = useState(defaultUnlockLedgerLimit);
+  const visibleAchievements = achievements.slice(0, visibleCount);
+  const remainingCount = Math.max(0, achievements.length - visibleAchievements.length);
+  const resultLabel = `${visibleAchievements.length.toLocaleString("en-GB")} of ${achievements.length.toLocaleString("en-GB")} unlocks`;
+
+  return (
+    <Card className="premium-card overflow-hidden">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="achievement-ledger" className="border-0">
+          <AccordionTrigger className="px-4 py-3 text-left no-underline hover:no-underline sm:px-5">
+            <span className="grid min-w-0 gap-1">
+              <span className="text-sm font-semibold tracking-normal text-slate-950">
+                XP unlock ledger
+              </span>
+              <span className="text-sm font-normal leading-5 text-muted-foreground">
+                Recent unlocked badges, XP, category and source evidence.
+              </span>
+            </span>
+            <Badge variant="outline" className="ml-auto shrink-0">
+              {achievements.length.toLocaleString("en-GB")} unlocks
+            </Badge>
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-border/70 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+            <div className="space-y-3">
+              <DesktopTableWorkbenchControls
+                viewKey="achievement-unlocks"
+                scope="achievements"
+                currentViewLabel="Achievement unlock history"
+                resultLabel={resultLabel}
+                columns={achievementUnlockColumns}
+                exportTableId="achievement-unlocks"
+                exportFileName="forekinghell-achievement-unlocks.csv"
+              />
+              {achievements.length === 0 ? (
+                <div className="apple-panel p-4 text-sm text-muted-foreground">
+                  Import provider sessions or complete round scorecards to start the XP ledger.
+                </div>
+              ) : (
+                <DataTableFrame mainTable mainTableLabel="Achievement unlock ledger table">
+                  <Table
+                    className="min-w-[880px]"
+                    data-workbench-export-table="achievement-unlocks"
+                    aria-describedby="achievement-unlock-ledger-summary"
+                  >
+                    <TableCaption id="achievement-unlock-ledger-summary" className="sr-only">
+                      Achievement unlock ledger with achievement name, unlock date, tier, XP
+                      awarded, category, source evidence and action.
+                    </TableCaption>
+                    <TableHeader className="sticky top-0 z-10 bg-white">
+                      <TableRow>
+                        <TableHead
+                          data-column="achievement"
+                          className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        >
+                          Achievement
+                        </TableHead>
+                        <TableHead data-column="unlocked">Unlocked</TableHead>
+                        <TableHead data-column="tier">Tier</TableHead>
+                        <TableHead data-column="xp" className="text-right">
+                          XP
+                        </TableHead>
+                        <TableHead data-column="category">Category</TableHead>
+                        <TableHead data-column="source">Source</TableHead>
+                        <TableHead data-column="action" className="text-right">
+                          Action
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visibleAchievements.map((achievement) => (
+                        <TableRow
+                          key={achievement.id}
+                          tabIndex={0}
+                          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <TableCell
+                            data-column="achievement"
+                            className="sticky left-0 z-10 max-w-[18rem] bg-white font-medium text-slate-950 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          >
+                            <span className="block truncate">{achievement.displayName}</span>
+                          </TableCell>
+                          <TableCell data-column="unlocked">
+                            {formatUnlockDate(achievement.unlockedAt)}
+                          </TableCell>
+                          <TableCell data-column="tier">{tierLabels[achievement.tier]}</TableCell>
+                          <TableCell data-column="xp" className="text-right tabular-nums">
+                            {achievement.xpAwarded.toLocaleString("en-GB")}
+                          </TableCell>
+                          <TableCell data-column="category">
+                            {categoryLabels[achievement.category] ?? achievement.category}
+                          </TableCell>
+                          <TableCell data-column="source">
+                            {achievement.source
+                              ? sourceLabel(achievement.source.kind)
+                              : "Older unlock"}
+                          </TableCell>
+                          <TableCell data-column="action" className="text-right">
+                            <Button asChild variant="outline" size="sm">
+                              <Link
+                                href={
+                                  achievement.source?.href ?? `#${achievementDomId(achievement.id)}`
+                                }
+                                prefetch={false}
+                              >
+                                {achievement.source?.href ? "Open source" : "Open badge"}
+                                <ExternalLink className="size-3.5" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </DataTableFrame>
+              )}
+              {remainingCount > 0 ? (
+                <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-white/70 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    {remainingCount.toLocaleString("en-GB")} older unlock
+                    {remainingCount === 1 ? "" : "s"} available.
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setVisibleCount((current) =>
+                          Math.min(achievements.length, current + unlockLedgerPageSize),
+                        )
+                      }
+                    >
+                      Show {Math.min(unlockLedgerPageSize, remainingCount)} more
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setVisibleCount(achievements.length)}
+                    >
+                      Show all
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </Card>
   );
 }
 

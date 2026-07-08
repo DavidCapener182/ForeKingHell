@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 import { sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { DataPair, PageShell, StatusPill, StickyMobileAction } from "@/components/premium";
+import {
+  DesktopWorkflowLayout,
+  type DesktopWorkflowHelpItem,
+  type DesktopWorkflowStep,
+} from "@/components/app/desktop-workbench";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   generatePracticePlan,
@@ -21,6 +27,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const practiceWorkflowHelpItems: DesktopWorkflowHelpItem[] = [
+  {
+    title: "Score from shot evidence",
+    detail:
+      "Practice completion and block scores come from matched launch-monitor rows, not manual notes.",
+  },
+  {
+    title: "Keep the plan narrow",
+    detail:
+      "Use the latest opportunity and roadmap priority to avoid turning one session into a full rebuild.",
+  },
+  {
+    title: "Export the ledger",
+    detail: "The block table is the handoff for coach review, reports and plan-vs-actual checks.",
+  },
+];
+
 type PracticePlannerPageProps = {
   searchParams?: Promise<{
     source?: string;
@@ -31,7 +54,6 @@ type PracticePlannerPageProps = {
     balls?: string;
   }>;
 };
-
 export default async function PracticePlannerPage({ searchParams }: PracticePlannerPageProps) {
   const userId = await requireCurrentUserId();
   const params = await searchParams;
@@ -63,6 +85,13 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
     ? data.context.latestPractice.biggestOpportunity.toUpperCase()
     : "Building";
   const roadmapPriority = data.context.progress.priorities[0]?.clubType.toUpperCase() ?? "Baseline";
+  const workflowSteps = buildPracticeWorkflowSteps({
+    planVolume,
+    confidenceLabel: initialPlan.confidenceLabel,
+    focusLabel: latestOpportunity,
+    hasSavedPlan: Boolean(latestOpenPlan),
+    hasSessionEvidence: Boolean(latestSessionReview || latestOpenPlan?.result),
+  });
 
   return (
     <PageShell size="full">
@@ -77,36 +106,55 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
           recommendation: data.context.trainingLoad.recommendation,
         }}
       />
-      <header className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">Practice Planner</h1>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              Create today&apos;s session from latest practice, progress roadmap, bag trust, and
-              training load.
-            </p>
+      <DesktopWorkflowLayout
+        steps={workflowSteps}
+        helpTitle="Practice workflow help"
+        helpDescription="Plan, save, upload, then review"
+        helpItems={practiceWorkflowHelpItems}
+        workflowRailBreakpoint="2xl"
+      >
+        <header className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
+                Practice Planner
+              </h1>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                Create today&apos;s session from latest practice, progress roadmap, bag trust, and
+                training load.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill tone={data.context.trainingLoad.highRecentLoad ? "amber" : "green"}>
+                {data.context.trainingLoad.statusLabel}
+              </StatusPill>
+              <StatusPill tone="amber">Latest opportunity: {latestOpportunity}</StatusPill>
+              <StatusPill tone="sky">Roadmap: {roadmapPriority}</StatusPill>
+              <StatusPill tone="green">{planVolume}</StatusPill>
+              <StatusPill tone="green">Confidence {initialPlan.confidenceLabel}</StatusPill>
+            </div>
+            <div className="hidden h-24 w-40 shrink-0 min-[1800px]:block">
+              <PageArtwork
+                variant="practice"
+                alt=""
+                className="h-full w-full"
+                sizes="160px"
+                priority
+              />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusPill tone={data.context.trainingLoad.highRecentLoad ? "amber" : "green"}>
-              {data.context.trainingLoad.statusLabel}
-            </StatusPill>
-            <StatusPill tone="amber">Latest opportunity: {latestOpportunity}</StatusPill>
-            <StatusPill tone="sky">Roadmap: {roadmapPriority}</StatusPill>
-            <StatusPill tone="green">{planVolume}</StatusPill>
-            <StatusPill tone="green">Confidence {initialPlan.confidenceLabel}</StatusPill>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <PracticePlannerClient
-        context={data.context}
-        initialPlan={initialPlan}
-        savedPlans={data.savedPlans}
-        templates={data.templates}
-        importOptions={data.importOptions}
-        latestSessionReview={latestSessionReview}
-        initialOptions={initialOptions}
-      />
+        <PracticePlannerClient
+          context={data.context}
+          initialPlan={initialPlan}
+          savedPlans={data.savedPlans}
+          templates={data.templates}
+          importOptions={data.importOptions}
+          latestSessionReview={latestSessionReview}
+          initialOptions={initialOptions}
+        />
+      </DesktopWorkflowLayout>
       <StickyMobileAction>
         <Button asChild className="premium-action min-h-12 w-full rounded-lg">
           <a href="#practice-plan">
@@ -117,6 +165,50 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
       </StickyMobileAction>
     </PageShell>
   );
+}
+
+function buildPracticeWorkflowSteps({
+  planVolume,
+  confidenceLabel,
+  focusLabel,
+  hasSavedPlan,
+  hasSessionEvidence,
+}: {
+  planVolume: string;
+  confidenceLabel: string;
+  focusLabel: string;
+  hasSavedPlan: boolean;
+  hasSessionEvidence: boolean;
+}): DesktopWorkflowStep[] {
+  return [
+    {
+      title: "Set session brief",
+      detail: "Choose time, volume, energy, intent and available practice facilities.",
+      status: "complete",
+      value: planVolume,
+    },
+    {
+      title: "Build practice blocks",
+      detail: `Use ${focusLabel.toLowerCase()} as the first measurable practice focus.`,
+      status: "complete",
+      value: `Confidence ${confidenceLabel}`,
+    },
+    {
+      title: "Save and start",
+      detail: "Save the generated plan before the upload can be matched back to it.",
+      status: hasSavedPlan ? "complete" : "current",
+    },
+    {
+      title: "Import evidence",
+      detail: "Upload or sync the matching launch-monitor session after practice.",
+      status: hasSessionEvidence ? "complete" : hasSavedPlan ? "current" : "upcoming",
+    },
+    {
+      title: "Review plan vs actual",
+      detail: "Compare planned blocks against imported shot rows and export the ledger.",
+      status: hasSessionEvidence ? "current" : "upcoming",
+    },
+  ];
 }
 
 function practiceOptionsFromSearchParams(

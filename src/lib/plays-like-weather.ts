@@ -53,11 +53,7 @@ export async function getLivePlaysLikeSnapshotForCourse({
     )
     .limit(1);
 
-  if (
-    !course ||
-    typeof course.latitude !== "number" ||
-    typeof course.longitude !== "number"
-  ) {
+  if (!course || typeof course.latitude !== "number" || typeof course.longitude !== "number") {
     return null;
   }
 
@@ -215,7 +211,8 @@ function firstNumberFromArray(value: unknown) {
 }
 
 function numberFromUnknown(value: unknown) {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
 }
 

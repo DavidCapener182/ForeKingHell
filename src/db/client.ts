@@ -37,7 +37,9 @@ export function getDb() {
   if (!state.client) {
     state.client = postgres(getDatabaseUrl(), {
       prepare: false,
-      max: Number(process.env.DATABASE_POOL_MAX ?? (process.env.NODE_ENV === "production" ? 10 : 3)),
+      max: Number(
+        process.env.DATABASE_POOL_MAX ?? (process.env.NODE_ENV === "production" ? 10 : 3),
+      ),
       idle_timeout: 20,
       max_lifetime: 60 * 30,
     });

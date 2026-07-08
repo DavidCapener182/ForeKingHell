@@ -232,10 +232,7 @@ async function resolveLinkedCurrentUser(authUser: CurrentUser): Promise<CurrentU
     .from(userIdentityLinks)
     .innerJoin(users, eq(users.id, userIdentityLinks.canonicalUserId))
     .where(
-      and(
-        eq(userIdentityLinks.linkedUserId, authUser.id),
-        eq(userIdentityLinks.status, "active"),
-      ),
+      and(eq(userIdentityLinks.linkedUserId, authUser.id), eq(userIdentityLinks.status, "active")),
     )
     .limit(1);
 
@@ -267,7 +264,7 @@ function normalizeAuthUser(user: User): CurrentUser {
 }
 
 async function getPlaywrightCookieUser(): Promise<CurrentUser | null> {
-  if (process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1" || process.env.NODE_ENV === "production") {
+  if (!isPlaywrightE2eAuthBypassEnabled()) {
     return null;
   }
 
@@ -308,6 +305,14 @@ async function getPlaywrightCookieUser(): Promise<CurrentUser | null> {
   } catch {
     return null;
   }
+}
+
+export function isPlaywrightE2eAuthBypassEnabled() {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  return process.env.PLAYWRIGHT_E2E_AUTH_BYPASS === "1";
 }
 
 function supabaseAuthCookieValue(cookies: { name: string; value: string }[]) {

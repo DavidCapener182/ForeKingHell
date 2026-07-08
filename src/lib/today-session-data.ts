@@ -61,6 +61,7 @@ export type MetricSnapshot = {
   playableRate: number | null;
   bigMissRate: number | null;
   carryStdDevYd: number | null;
+  carryRobustStdDevYd: number | null;
   ballSpeedAverageMph: number | null;
   smashAverage: number | null;
 };
@@ -744,6 +745,7 @@ function snapshot(shots: TodayPracticeShot[]): MetricSnapshot {
     bigMissRate:
       directionalShots.length > 0 ? percent(bigMissShots.length, directionalShots.length) : null,
     carryStdDevYd: roundOne(stddev(carryValues)),
+    carryRobustStdDevYd: roundOne(trimmedStddev(carryValues)),
     ballSpeedAverageMph: roundOne(mean(ballSpeedValues)),
     smashAverage: roundTwo(mean(smashValues)),
   };
@@ -1017,6 +1019,18 @@ function stddev(items: number[]) {
 
   const variance = items.reduce((total, item) => total + (item - average) ** 2, 0) / items.length;
   return Math.sqrt(variance);
+}
+
+function trimmedStddev(items: number[]) {
+  if (items.length < 5) {
+    return stddev(items);
+  }
+
+  const sorted = [...items].sort((left, right) => left - right);
+  const trimCount = Math.max(1, Math.floor(sorted.length * 0.1));
+  const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
+
+  return trimmed.length >= 2 ? stddev(trimmed) : stddev(items);
 }
 
 function percent(value: number, total: number) {

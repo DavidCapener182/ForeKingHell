@@ -10,6 +10,7 @@ export function selectTrainingRangeData(
   const series = data.series.filter((point) => point.date >= rangeStartDate);
   const chartStartDate = series[0]?.date ?? rangeStartDate;
   const sessionMarkers = data.sessionMarkers.filter((marker) => marker.date >= chartStartDate);
+  const sessions = data.sessions.filter((session) => session.sessionDate >= chartStartDate);
   const averageTrainingLoad =
     series.length > 0 ? series.reduce((total, point) => total + point.load, 0) / series.length : 0;
 
@@ -20,6 +21,7 @@ export function selectTrainingRangeData(
     chartStartDate,
     series,
     sessionMarkers,
+    sessions,
     averageTrainingLoad,
   };
 }

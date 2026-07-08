@@ -42,11 +42,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { sessions, strokesGainedShotEvents } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -134,6 +144,62 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const strokesGainedWorkbenchPrompts = [
+  {
+    label: "Explain scoring leaks",
+    prompt:
+      "Explain my ForeKingHell strokes-gained page using only the visible category, round, hole and event-table evidence. Do not invent missing numbers.",
+    icon: Sigma,
+  },
+  {
+    label: "What cost strokes?",
+    prompt:
+      "Identify what cost strokes from the visible strokes-gained evidence. Cite phase, hole and shot-event examples where available.",
+    icon: TrendingDown,
+  },
+  {
+    label: "Build phase practice plan",
+    prompt:
+      "Build a practice plan from the visible strokes-gained leak. Keep it golfer-facing and mark any low-confidence recommendation.",
+    icon: Target,
+  },
+  {
+    label: "Save this insight",
+    prompt:
+      "Save the clearest strokes-gained insight with cited visible evidence, confidence, and the next action.",
+    icon: ListFilter,
+  },
+  ...commonAiPrompts("strokes-gained board").slice(3, 4),
+];
+const strokesGainedEventColumns: DesktopWorkbenchColumn[] = [
+  { id: "round", label: "Round", locked: true },
+  { id: "hole", label: "Hole" },
+  { id: "category", label: "Category" },
+  { id: "from", label: "From" },
+  { id: "to", label: "To" },
+  { id: "distance", label: "Distance" },
+  { id: "expected-before", label: "Expected before" },
+  { id: "expected-after", label: "Expected after" },
+  { id: "sg", label: "SG" },
+  { id: "status", label: "Status", locked: true },
+];
+const strokesGainedSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Biggest scoring leaks",
+    href: "/strokes-gained?sg=loss&sort=losses#events",
+    detail: "Losing events first, ready for coach review.",
+  },
+  {
+    title: "Tee-shot value",
+    href: "/strokes-gained?category=tee#events",
+    detail: "Driver and tee-shot events only.",
+  },
+  {
+    title: "Pending calculations",
+    href: "/strokes-gained?sg=pending#events",
+    detail: "Events that still need deterministic expected-strokes data.",
+  },
+];
 
 export default async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
   const filters = parseFilters(await searchParams);
@@ -158,98 +224,176 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
   const filteredEvents = filterEvents(data.events, filters);
   const filterOptions = buildFilterOptions(data.events);
   const activeFilterChips = buildActiveFilterChips(filters, filterOptions.sessions);
+  const railFocus = activeCategory ?? analysis.weakestCategory ?? analysis.bestCategory;
+  const railSampleSize = activeCategory?.sampleSize ?? analysis.totals.sampleSize;
+  const railPendingCount = activeCategory?.pendingCount ?? analysis.pendingCount;
+  const railEventCount = activeCategory?.eventCount ?? data.events.length;
+  const railTotal = activeCategory?.total ?? analysis.totals.total;
 
   return (
     <PageShell>
       <MobileRouteHeader title="Home" group="dashboard" activeKey="strokes" />
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/coach" prefetch={false}>
-            <Brain className="size-4" />
-            Coach
-          </Link>
-        </Button>
-      </div>
-
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Expected-strokes baseline</StatusPill>}
-        title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
-        description={heroDescription(analysis, activeCategory)}
-        metrics={heroMetrics(analysis, data.events.length, activeCategory)}
-        visualSize="wide"
-        visual={
-          <PageArtwork
-            variant="strokesGained"
-            alt=""
-            className="h-full min-h-44 w-full aspect-auto"
-            imageClassName="scale-[1.05] object-[52%_62%] opacity-90 saturate-[1.04]"
-            priority
+      <DesktopWorkbenchLayout
+        scope="strokes-gained"
+        rail={
+          <DesktopInsightRail
+            title="AI strokes-gained rail"
+            description="Phase leaks, calculated sample and shot-event evidence stay visible while reviewing the board."
+            metrics={[
+              {
+                label: "Current view",
+                value: activeCategory ? activeCategory.label : "All phases",
+                detail: activeCategory
+                  ? `${activeCategory.label} is filtered across ${integerFormatter.format(activeCategory.eventCount)} mapped events.`
+                  : "Tee, approach, short game and putting are shown together.",
+                tone: activeCategory ? toneForSg(activeCategory.total) : "sky",
+              },
+              {
+                label: "Total SG",
+                value: formatSg(railTotal, "No data"),
+                detail: `Across ${integerFormatter.format(railSampleSize)} calculated events.`,
+                tone: toneForSg(railTotal),
+              },
+              {
+                label: "Coverage",
+                value: coveragePercentLabel(railSampleSize, railEventCount),
+                detail: `${integerFormatter.format(railPendingCount)} pending or unmapped events need deterministic expected-strokes data.`,
+                tone: railPendingCount > 0 ? "amber" : "green",
+              },
+              {
+                label: activeCategory ? "Active phase" : "Main leak",
+                value: railFocus ? railFocus.label : "No data",
+                detail: railFocus
+                  ? `${formatSg(railFocus.total, "No data")} from ${integerFormatter.format(railFocus.sampleSize)} calculated events.`
+                  : "Map shot-to-hole rounds before asking AI for a diagnosis.",
+                tone: toneForSg(railFocus?.total ?? null),
+              },
+            ]}
+            evidence={[
+              `${integerFormatter.format(railSampleSize)} calculated events from ${integerFormatter.format(railEventCount)} mapped shot events.`,
+              analysis.bestCategory
+                ? `${analysis.bestCategory.label} is the best phase at ${formatSg(analysis.bestCategory.total, "No data")}.`
+                : "No best phase is available yet.",
+              analysis.weakestCategory
+                ? `${analysis.weakestCategory.label} is the weakest phase at ${formatSg(analysis.weakestCategory.total, "No data")}.`
+                : "No weakest phase is available yet.",
+              `${integerFormatter.format(analysis.pendingCount)} events are pending or unmapped before AI analysis.`,
+            ]}
+            prompts={strokesGainedWorkbenchPrompts}
+            actions={[
+              {
+                label: "Round history",
+                href: "/rounds",
+                detail: "Open scorecards behind the strokes-gained sample.",
+                icon: Flag,
+              },
+              {
+                label: "Coach desk",
+                href: "/coach",
+                detail: "Turn the leak into a practice diagnosis.",
+                icon: Brain,
+              },
+              {
+                label: "Data Chat",
+                href: "/data-chat",
+                detail: "Ask for a cited explanation.",
+                icon: Sigma,
+              },
+            ]}
           />
         }
-      />
+      >
+        <div className="hidden items-center justify-between gap-4 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/coach" prefetch={false}>
+              <Brain className="size-4" />
+              Coach
+            </Link>
+          </Button>
+        </div>
 
-      <MobileBentoSummary items={mobileHeroMetrics(analysis, data.events.length, activeCategory)} />
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Expected-strokes baseline</StatusPill>}
+          title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
+          description={heroDescription(analysis, activeCategory)}
+          metrics={heroMetrics(analysis, data.events.length, activeCategory)}
+          visualSize="wide"
+          visual={
+            <PageArtwork
+              variant="strokesGained"
+              alt=""
+              className="h-full min-h-44 w-full aspect-auto"
+              imageClassName="scale-[1.05] object-[52%_62%] opacity-90 saturate-[1.04]"
+              priority
+            />
+          }
+        />
 
-      <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
+        <MobileBentoSummary
+          items={mobileHeroMetrics(analysis, data.events.length, activeCategory)}
+        />
 
-      <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
+        <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
 
-      <CategoryCards
-        categories={analysis.categories}
-        activeCategory={activeCategory}
-        bestCategory={analysis.bestCategory}
-        weakestCategory={analysis.weakestCategory}
-      />
+        <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
 
-      <CategoryBreakdown
-        categories={analysis.categories}
-        total={analysis.totals.total}
-        categoryTotal={analysis.categoryTotal}
-        pendingCount={analysis.pendingCount}
-      />
+        <CategoryCards
+          categories={analysis.categories}
+          activeCategory={activeCategory}
+          bestCategory={analysis.bestCategory}
+          weakestCategory={analysis.weakestCategory}
+        />
 
-      <GainLossWaterfall categories={analysis.categories} />
+        <CategoryBreakdown
+          categories={analysis.categories}
+          total={analysis.totals.total}
+          categoryTotal={analysis.categoryTotal}
+          pendingCount={analysis.pendingCount}
+        />
 
-      <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
+        <GainLossWaterfall categories={analysis.categories} />
 
-      <MainScoringLeak
-        summary={activeCategory ?? analysis.weakestCategory}
-        events={data.events}
-        focusCategory={activeCategory}
-      />
+        <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
 
-      <ShotHighlights
-        gains={activeCategory ? scopedGains : analysis.biggestGains}
-        losses={activeCategory ? scopedLosses : analysis.biggestLosses}
-        focusCategory={activeCategory}
-      />
+        <MainScoringLeak
+          summary={activeCategory ?? analysis.weakestCategory}
+          events={data.events}
+          focusCategory={activeCategory}
+        />
 
-      <RoundTrendPanel
-        rounds={activeCategory ? scopedRounds : analysis.rounds}
-        bestCategory={analysis.bestCategory}
-        weakestCategory={analysis.weakestCategory}
-        focusCategory={activeCategory}
-      />
+        <ShotHighlights
+          gains={activeCategory ? scopedGains : analysis.biggestGains}
+          losses={activeCategory ? scopedLosses : analysis.biggestLosses}
+          focusCategory={activeCategory}
+        />
 
-      <HoleImpactPanel
-        holes={activeCategory ? scopedHoles : analysis.holes}
-        focusCategory={activeCategory}
-      />
+        <RoundTrendPanel
+          rounds={activeCategory ? scopedRounds : analysis.rounds}
+          bestCategory={analysis.bestCategory}
+          weakestCategory={analysis.weakestCategory}
+          focusCategory={activeCategory}
+        />
 
-      <RecentShotEventsPanel
-        events={filteredEvents}
-        totalEvents={data.events.length}
-        filters={filters}
-        filterOptions={filterOptions}
-        activeFilterChips={activeFilterChips}
-      />
+        <HoleImpactPanel
+          holes={activeCategory ? scopedHoles : analysis.holes}
+          focusCategory={activeCategory}
+        />
+
+        <RecentShotEventsPanel
+          events={filteredEvents}
+          totalEvents={data.events.length}
+          filters={filters}
+          filterOptions={filterOptions}
+          activeFilterChips={activeFilterChips}
+        />
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -780,6 +924,33 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
   const values = calculated.map((category) => category.total ?? 0);
   const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
   const barWidth = calculated.length > 0 ? 680 / calculated.length : 680;
+  const bestCategory = [...calculated].sort(
+    (left, right) => (right.total ?? 0) - (left.total ?? 0),
+  )[0];
+  const weakestCategory = [...calculated].sort(
+    (left, right) => (left.total ?? 0) - (right.total ?? 0),
+  )[0];
+  const totalSg = calculated.reduce((sum, category) => sum + (category.total ?? 0), 0);
+  const waterfallSummary =
+    calculated.length > 0
+      ? `The waterfall covers ${calculated.length} calculated scoring categories with ${formatSg(totalSg)} total category value. ${
+          bestCategory
+            ? `${bestCategory.label} is strongest at ${formatSg(bestCategory.total)}.`
+            : ""
+        } ${
+          weakestCategory
+            ? `${weakestCategory.label} is weakest at ${formatSg(weakestCategory.total)}.`
+            : ""
+        }`.trim()
+      : "No calculated strokes-gained categories are available yet.";
+  const waterfallRows = categories.map((category) => ({
+    _key: category.category,
+    category: category.label,
+    total: formatSg(category.total),
+    average: formatSg(category.average),
+    calculatedEvents: integerFormatter.format(category.sampleSize),
+    pendingEvents: integerFormatter.format(category.pendingCount),
+  }));
 
   return (
     <DataPanel>
@@ -790,8 +961,13 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
       />
       <CardContent>
         {calculated.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
-            <svg viewBox="0 0 760 260" role="img" aria-label="Strokes gained waterfall" className="h-64 w-full">
+          <div className="grid gap-3 overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
+            <svg
+              viewBox="0 0 760 260"
+              role="img"
+              aria-label="Strokes gained waterfall"
+              className="h-64 w-full"
+            >
               <line x1="40" x2="720" y1="130" y2="130" stroke="#B8C8B7" strokeWidth="2" />
               {calculated.map((category, index) => {
                 const value = category.total ?? 0;
@@ -802,17 +978,51 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
 
                 return (
                   <g key={category.category}>
-                    <rect x={x} y={y} width={Math.max(48, barWidth - 28)} height={height} rx="10" fill={fill} opacity="0.9" />
-                    <text x={x + Math.max(48, barWidth - 28) / 2} y={value >= 0 ? y - 12 : y + height + 24} textAnchor="middle" fill="#111827" fontSize="22" fontWeight="800">
+                    <rect
+                      x={x}
+                      y={y}
+                      width={Math.max(48, barWidth - 28)}
+                      height={height}
+                      rx="10"
+                      fill={fill}
+                      opacity="0.9"
+                    />
+                    <text
+                      x={x + Math.max(48, barWidth - 28) / 2}
+                      y={value >= 0 ? y - 12 : y + height + 24}
+                      textAnchor="middle"
+                      fill="#111827"
+                      fontSize="22"
+                      fontWeight="800"
+                    >
                       {formatSg(value)}
                     </text>
-                    <text x={x + Math.max(48, barWidth - 28) / 2} y="232" textAnchor="middle" fill="#667085" fontSize="18" fontWeight="700">
+                    <text
+                      x={x + Math.max(48, barWidth - 28) / 2}
+                      y="232"
+                      textAnchor="middle"
+                      fill="#667085"
+                      fontSize="18"
+                      fontWeight="700"
+                    >
                       {category.label}
                     </text>
                   </g>
                 );
               })}
             </svg>
+            <ChartAccessibleFallback
+              title="Strokes gained waterfall"
+              summary={waterfallSummary}
+              columns={[
+                { key: "category", label: "Category" },
+                { key: "total", label: "Total SG" },
+                { key: "average", label: "Average SG" },
+                { key: "calculatedEvents", label: "Calculated events" },
+                { key: "pendingEvents", label: "Pending events" },
+              ]}
+              rows={waterfallRows}
+            />
           </div>
         ) : (
           <div className="rounded-lg border border-dashed border-[#DDE8DE] bg-[#F8FAF8] p-6 text-center text-sm leading-6 text-muted-foreground">
@@ -844,18 +1054,12 @@ function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null })
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          <DataPair
-            label="SG total"
-            value={total === null ? "--" : formatSg(total)}
-          />
+          <DataPair label="SG total" value={total === null ? "--" : formatSg(total)} />
           <DataPair
             label="Sample"
             value={summary ? integerFormatter.format(summary.sampleSize) : "--"}
           />
-          <DataPair
-            label="Confidence"
-            value={hasCalculatedSignal ? "Actionable" : "Building"}
-          />
+          <DataPair label="Confidence" value={hasCalculatedSignal ? "Actionable" : "Building"} />
         </div>
         <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="/coach#more-drills" prefetch={false}>
@@ -1445,11 +1649,48 @@ function RecentShotEventsPanel({
           <QuickFilters filters={filters} />
           <StrokesGainedFilterForm filters={filters} options={filterOptions} />
           {activeFilterChips.length > 0 ? <ActiveFilterChips items={activeFilterChips} /> : null}
+          <DesktopTableWorkbenchControls
+            viewKey="strokes-gained-events"
+            scope="strokes-gained"
+            currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
+            resultLabel={`${integerFormatter.format(events.length)} rows`}
+            columns={strokesGainedEventColumns}
+            suggestedViews={strokesGainedSuggestedViews}
+            exportTableId="strokes-gained-events"
+            exportFileName="forekinghell-strokes-gained-events.csv"
+          />
           <StrokesGainedEventTable events={events} />
         </CardContent>
       </details>
     </DataPanel>
   );
+}
+
+function strokesGainedCurrentViewLabel(
+  filters: StrokesGainedFilters,
+  activeFilterChips: Array<{ label: string; href: string }>,
+) {
+  if (activeFilterChips.length > 0) {
+    return activeFilterChips.map((chip) => chip.label).join(" · ");
+  }
+
+  if (filters.sort === "gains") {
+    return "Biggest gaining events";
+  }
+
+  if (filters.sort === "losses") {
+    return "Biggest losing events";
+  }
+
+  if (filters.sort === "hole") {
+    return "Events by hole";
+  }
+
+  if (filters.sort === "category") {
+    return "Events by category";
+  }
+
+  return "Recent strokes-gained events";
 }
 
 function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
@@ -1597,6 +1838,8 @@ function StrokesGainedFilterForm({
 function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
   return (
     <DataTableFrame
+      mainTable
+      mainTableLabel="Strokes gained event table"
       mobile={
         <MobileDataList
           empty={
@@ -1637,30 +1880,59 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
       }
     >
       <div className="max-h-[560px] overflow-auto">
-        <Table>
+        <Table
+          data-workbench-export-table="strokes-gained-events"
+          aria-describedby="strokes-gained-events-summary"
+        >
+          <TableCaption id="strokes-gained-events-summary" className="sr-only">
+            Recent strokes-gained event table showing round, hole, category, start and end position,
+            distance change, expected strokes, strokes gained and calculation status.
+          </TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead className="sticky top-0 z-10 bg-white">Round</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">Hole</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">Category</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">From</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">To</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">Distance</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white text-right">
+              <TableHead data-column="round" className="sticky top-0 z-10 bg-white">
+                Round
+              </TableHead>
+              <TableHead data-column="hole" className="sticky top-0 z-10 bg-white">
+                Hole
+              </TableHead>
+              <TableHead data-column="category" className="sticky top-0 z-10 bg-white">
+                Category
+              </TableHead>
+              <TableHead data-column="from" className="sticky top-0 z-10 bg-white">
+                From
+              </TableHead>
+              <TableHead data-column="to" className="sticky top-0 z-10 bg-white">
+                To
+              </TableHead>
+              <TableHead data-column="distance" className="sticky top-0 z-10 bg-white">
+                Distance
+              </TableHead>
+              <TableHead
+                data-column="expected-before"
+                className="sticky top-0 z-10 bg-white text-right"
+              >
                 Expected before
               </TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white text-right">
+              <TableHead
+                data-column="expected-after"
+                className="sticky top-0 z-10 bg-white text-right"
+              >
                 Expected after
               </TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white text-right">SG</TableHead>
-              <TableHead className="sticky top-0 z-10 bg-white">Status</TableHead>
+              <TableHead data-column="sg" className="sticky top-0 z-10 bg-white text-right">
+                SG
+              </TableHead>
+              <TableHead data-column="status" className="sticky top-0 z-10 bg-white">
+                Status
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {events.length > 0 ? (
               events.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell className="min-w-48">
+                  <TableCell data-column="round" className="min-w-48">
                     <Link
                       href={`/rounds/${event.sessionId}`}
                       className="font-medium text-emerald-700 hover:underline"
@@ -1671,25 +1943,29 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
                       {formatDate(event.sessionDate)}
                     </p>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{holeShotLabel(event)}</TableCell>
-                  <TableCell>{titleCase(event.category)}</TableCell>
-                  <TableCell className="min-w-44">
+                  <TableCell data-column="hole" className="whitespace-nowrap">
+                    {holeShotLabel(event)}
+                  </TableCell>
+                  <TableCell data-column="category">{titleCase(event.category)}</TableCell>
+                  <TableCell data-column="from" className="min-w-44">
                     {formatPosition(event.startDistanceYd, event.startLie)}
                   </TableCell>
-                  <TableCell className="min-w-44">
+                  <TableCell data-column="to" className="min-w-44">
                     {formatPosition(event.endDistanceYd, event.endLie)}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{formatDistanceChange(event)}</TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell data-column="distance" className="whitespace-nowrap">
+                    {formatDistanceChange(event)}
+                  </TableCell>
+                  <TableCell data-column="expected-before" className="text-right tabular-nums">
                     {formatExpectedStrokes(expectedStrokesForEvent(event, "start"))}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell data-column="expected-after" className="text-right tabular-nums">
                     {formatExpectedStrokes(expectedStrokesForEvent(event, "end"))}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="sg" className="text-right">
                     <SgValue value={event.strokesGained} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="status">
                     <StatusPill tone={event.strokesGained === null ? "amber" : "green"}>
                       {event.strokesGained === null ? "Pending" : "Calculated"}
                     </StatusPill>
@@ -1813,8 +2089,7 @@ function mobileHeroMetrics(
   activeCategory: CategorySummary | null,
 ) {
   const metrics = heroMetrics(analysis, totalEvents, activeCategory);
-  const filteredMetrics =
-    !activeCategory && metrics.length > 1 ? metrics.slice(1) : metrics;
+  const filteredMetrics = !activeCategory && metrics.length > 1 ? metrics.slice(1) : metrics;
 
   return filteredMetrics.map((metric) => ({
     label: metric.label,

@@ -17,9 +17,18 @@ import {
 } from "lucide-react";
 
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { CoachPracticeFeaturePanel } from "@/components/features/feature-panels";
 import {
   DataPanel,
+  DataTableFrame,
   MobileCompanionAccordion,
   MobileCompanionHero,
   PageShell,
@@ -39,6 +48,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   buildCoachSummary,
   buildCoachDrillChallenges,
@@ -65,6 +83,36 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+const coachEvidenceColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "issue", label: "Issue" },
+  { id: "trust", label: "Trust" },
+  { id: "sample", label: "Sample" },
+  { id: "stock", label: "Stock carry" },
+  { id: "playable", label: "Playable" },
+  { id: "miss", label: "Usual miss" },
+  { id: "drill", label: "Drill" },
+  { id: "action", label: "Action" },
+];
+
+const coachEvidenceSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Low-trust clubs",
+    href: "/coach#coach-evidence-ledger",
+    detail: "Sort the evidence table by trust and sample size before practising.",
+  },
+  {
+    title: "Practice plan",
+    href: "/practice",
+    detail: "Move from diagnosis evidence to a planned session.",
+  },
+  {
+    title: "Full diagnosis",
+    href: "/coach/diagnosis",
+    detail: "Open the full coach report for all clubs.",
+  },
+];
+
 export default async function CoachPage() {
   const userId = await requireCurrentUserId();
   const [data, activePlanKey, challengeData, featureData, speedCoachData] = await Promise.all([
@@ -84,6 +132,36 @@ export default async function CoachPage() {
   );
   const aiPayload = buildAiCoachPayload(coach);
   const canUseAiCoach = planAllowsAiCoach(activePlanKey);
+  const coachPromptContext = topClub
+    ? `${topClub.clubName}: ${topClub.issueLabel}. ${topClub.reason}`
+    : "my current ForeKingHell coach baseline";
+  const coachWorkbenchPrompts = [
+    {
+      label: "Regenerate plan",
+      prompt: `Regenerate my coach practice plan from ${coachPromptContext}. Use only my available ForeKingHell data and call out low-confidence evidence.`,
+      icon: Sparkles,
+    },
+    {
+      label: "Make it 30 minutes",
+      prompt: `Turn the current coach plan into a 30 minute practice session. Base it on ${coachPromptContext} and keep the drill order practical for the range.`,
+      icon: Clock,
+    },
+    {
+      label: "Range-only version",
+      prompt: `Convert the current coach recommendation into a range-only plan. Use ${coachPromptContext} and avoid course-only tasks.`,
+      icon: Target,
+    },
+    {
+      label: "Pre-round warm-up",
+      prompt: `Make a pre-round warm-up from ${coachPromptContext}. Keep it short, confidence-first, and avoid mechanical overcorrection.`,
+      icon: Gauge,
+    },
+    {
+      label: "Confidence focus",
+      prompt: `Rewrite the current coach plan to focus on confidence and trust rather than mechanics. Use ${coachPromptContext} and cite the evidence quality.`,
+      icon: CheckCircle2,
+    },
+  ];
 
   return (
     <PageShell>
@@ -258,70 +336,141 @@ export default async function CoachPage() {
         </div>
       </div>
 
-      <div
-        className="hidden auto-rows-auto items-stretch gap-4 sm:grid lg:gap-5"
-        style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+      <DesktopWorkbenchLayout
+        scope="coach"
+        className="hidden sm:grid"
+        rail={
+          <DesktopInsightRail
+            title="AI coach rail"
+            description="Diagnosis, evidence and drill-plan controls stay available while reviewing the desk."
+            metrics={[
+              {
+                label: "Primary focus",
+                value: topClub ? topClub.clubName : "Baseline",
+                detail: topClub ? topClub.reason : coach.headline,
+                tone: topClub?.tone ?? "slate",
+              },
+              {
+                label: "Bag trust",
+                value: `${coach.summary.totals.averageTrust}%`,
+                detail: `${coach.summary.totals.clubs} clubs, ${coach.summary.totals.trackedCleanShots.toLocaleString(
+                  "en-GB",
+                )} clean shots in the coach model.`,
+                tone: coach.summary.totals.averageTrust >= 70 ? "green" : "amber",
+              },
+              {
+                label: "AI access",
+                value: canUseAiCoach ? "Available" : "Plan",
+                detail: canUseAiCoach
+                  ? "Coach AI tools can generate summaries and drill language."
+                  : "AI coaching remains gated by the active plan.",
+                tone: canUseAiCoach ? "green" : "amber",
+              },
+            ]}
+            evidence={[
+              topClub
+                ? `${topClub.clubName} is the current practice priority.`
+                : "No club has enough clean evidence for a priority yet.",
+              `${coach.sessionPlan.length} practice blocks are available in the generated plan.`,
+              "Uploaded shot data remains the source of truth for drill completion and trust.",
+            ]}
+            prompts={[...coachWorkbenchPrompts, ...commonAiPrompts("coach desk").slice(0, 2)]}
+            actions={[
+              {
+                label: "Open diagnosis",
+                href: "/coach/diagnosis",
+                detail: "Full club-by-club evidence report.",
+                icon: Brain,
+              },
+              {
+                label: "Practice planner",
+                href: "/practice",
+                detail: "Turn the coach plan into a session.",
+                icon: Crosshair,
+              },
+              {
+                label: "Data Chat",
+                href: "/data-chat",
+                detail: "Ask for a cited explanation.",
+                icon: MessageCircle,
+              },
+            ]}
+          />
+        }
       >
-        {data.clubs.length === 0 ? (
-          <CompactCoachEmptyState />
-        ) : (
-          <>
-            <CoachPracticeHero
-              coach={coach}
-              topClub={topClub}
-              primaryChallenge={drillChallenges[0] ?? null}
-              primaryStatus={drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined}
-            />
+        <div
+          className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
+          style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+        >
+          {data.clubs.length === 0 ? (
+            <CompactCoachEmptyState />
+          ) : (
+            <>
+              <CoachPracticeHero
+                coach={coach}
+                topClub={topClub}
+                primaryChallenge={drillChallenges[0] ?? null}
+                primaryStatus={
+                  drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined
+                }
+              />
 
-            <WhatChangedPanel signals={coach.signals} span={6} />
+              <WhatChangedPanel signals={coach.signals} span={6} />
 
-            <AthleticDevelopmentCoachCard summary={speedCoachData.summary} span={6} />
+              <AthleticDevelopmentCoachCard summary={speedCoachData.summary} span={6} />
 
-            <PracticeSessionBuilder
-              topClub={topClub}
-              drillChallenges={drillChallenges}
-              drillStatuses={drillStatuses}
-              span={7}
-            />
-            <RoundReadinessPanel
-              coach={coach}
-              featureData={featureData}
-              topClub={topClub}
-              span={5}
-            />
+              <PracticeSessionBuilder
+                topClub={topClub}
+                drillChallenges={drillChallenges}
+                drillStatuses={drillStatuses}
+                span={7}
+              />
+              <RoundReadinessPanel
+                coach={coach}
+                featureData={featureData}
+                topClub={topClub}
+                span={5}
+              />
 
-            <TodaysPlan cards={coach.clubCards} span={8} />
+              <TodaysPlan cards={coach.clubCards} span={8} />
 
-            <CoachSummaryPanel coach={coach} impacts={coach.trainingImpact.slice(0, 3)} span={4} />
-            <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} span={6} />
+              <CoachSummaryPanel
+                coach={coach}
+                impacts={coach.trainingImpact.slice(0, 3)}
+                span={4}
+              />
+              <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} span={6} />
 
-            <DiagnosisPreview cards={coach.clubCards} span={6} />
+              <DiagnosisPreview cards={coach.clubCards} span={6} />
 
-            <AiCoachToolsPanel
-              canUseAiCoach={canUseAiCoach}
-              aiPayload={aiPayload}
-              className="coach-ai-grid-item"
-            />
+              <CoachEvidenceTable cards={coach.clubCards} />
 
-            <details className="group min-w-0" style={bentoSpan(6)}>
-              <summary className="premium-card grid h-full cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
-                <span>
-                  <span className="block text-lg font-semibold tracking-normal">
-                    Social comparison
+              <AiCoachToolsPanel
+                canUseAiCoach={canUseAiCoach}
+                aiPayload={aiPayload}
+                className="coach-ai-grid-item"
+              />
+
+              <details className="group min-w-0" style={bentoSpan(6)}>
+                <summary className="premium-card grid h-full cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+                  <span>
+                    <span className="block text-lg font-semibold tracking-normal">
+                      Social comparison
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      Hidden by default so this page stays focused on your game.
+                    </span>
                   </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    Hidden by default so this page stays focused on your game.
-                  </span>
-                </span>
-                <StatusPill tone="amber">Secondary</StatusPill>
-              </summary>
-              <div className="mt-4">
-                <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
-              </div>
-            </details>
-          </>
-        )}
-      </div>
+                  <StatusPill tone="amber">Secondary</StatusPill>
+                </summary>
+                <div className="mt-4">
+                  <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
+                </div>
+              </details>
+            </>
+          )}
+        </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -1282,6 +1431,120 @@ function DiagnosisPreview({
         )}
       </CardContent>
     </CoachBentoPanel>
+  );
+}
+
+function CoachEvidenceTable({ cards }: { cards: CoachClubCard[] }) {
+  return (
+    <section
+      id="coach-evidence-ledger"
+      data-workbench-scope="coach-evidence"
+      className="min-w-0"
+      style={bentoSpan(12)}
+    >
+      <DataPanel className="gap-0 py-0">
+        <CompactPanelHeader
+          title="Coach evidence ledger"
+          description="Exportable diagnosis evidence for every tracked club before choosing the drill."
+          action={
+            <StatusPill tone={cards.length > 0 ? "green" : "slate"}>
+              {cards.length} clubs
+            </StatusPill>
+          }
+        />
+        <CardContent className="grid gap-3 p-3">
+          <DesktopTableWorkbenchControls
+            viewKey="coach-evidence"
+            scope="coach-evidence"
+            currentViewLabel="Coach evidence"
+            resultLabel={`${cards.length} clubs`}
+            columns={coachEvidenceColumns}
+            suggestedViews={coachEvidenceSuggestedViews}
+            exportTableId="coach-evidence"
+            exportFileName="forekinghell-coach-evidence.csv"
+          />
+          <DataTableFrame mainTable mainTableLabel="Coach evidence table">
+            <Table
+              data-workbench-export-table="coach-evidence"
+              aria-describedby="coach-evidence-summary"
+            >
+              <TableCaption id="coach-evidence-summary" className="sr-only">
+                Coach evidence table showing club, issue, trust, sample, stock carry, playable rate,
+                usual miss, drill and action.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                <TableRow>
+                  <TableHead
+                    data-column="club"
+                    className="sticky left-0 z-20 min-w-52 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    Club
+                  </TableHead>
+                  <TableHead data-column="issue">Issue</TableHead>
+                  <TableHead data-column="trust">Trust</TableHead>
+                  <TableHead data-column="sample">Sample</TableHead>
+                  <TableHead data-column="stock">Stock carry</TableHead>
+                  <TableHead data-column="playable">Playable</TableHead>
+                  <TableHead data-column="miss">Usual miss</TableHead>
+                  <TableHead data-column="drill">Drill</TableHead>
+                  <TableHead data-column="action" className="text-right">
+                    Action
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cards.length > 0 ? (
+                  cards.map((card) => (
+                    <TableRow key={card.clubId} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="club"
+                        className="sticky left-0 z-10 min-w-52 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        <span className="block max-w-60 truncate">{card.clubName}</span>
+                        <span className="mt-1 block truncate text-xs text-muted-foreground">
+                          {card.brandModel}
+                        </span>
+                      </TableCell>
+                      <TableCell data-column="issue">{card.issueLabel}</TableCell>
+                      <TableCell data-column="trust">
+                        <StatusPill tone={card.tone}>{card.trustIndex}%</StatusPill>
+                      </TableCell>
+                      <TableCell data-column="sample">{card.sampleSize} shots</TableCell>
+                      <TableCell data-column="stock">
+                        {card.stockCarryYd === null ? "--" : `${card.stockCarryYd} yd`}
+                      </TableCell>
+                      <TableCell data-column="playable">
+                        {card.playableRate === null ? "--" : `${card.playableRate}%`}
+                      </TableCell>
+                      <TableCell data-column="miss">{card.usualMiss ?? "Needs data"}</TableCell>
+                      <TableCell data-column="drill" className="max-w-[24rem] whitespace-normal">
+                        {card.drill}
+                      </TableCell>
+                      <TableCell data-column="action" className="text-right">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/bag/${card.clubId}/analytics`} prefetch={false}>
+                            Open
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={9}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      Import clean stock shots to build coach evidence.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </CardContent>
+      </DataPanel>
+    </section>
   );
 }
 

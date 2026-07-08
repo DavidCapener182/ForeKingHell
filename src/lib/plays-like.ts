@@ -197,7 +197,8 @@ function stringFromUnknown(value: unknown) {
 }
 
 function numberFromUnknown(value: unknown) {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
 }
 

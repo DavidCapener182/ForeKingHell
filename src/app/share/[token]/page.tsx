@@ -19,6 +19,7 @@ import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -135,41 +136,74 @@ export default async function SharedRoundPage({ params }: PageProps) {
                   ))}
                 </MobileDataList>
               }
+              label="Shared scorecard table"
             >
-              <Table className="min-w-[720px]">
-                <TableHeader>
+              <Table className="min-w-[720px]" aria-describedby="shared-scorecard-summary">
+                <TableCaption id="shared-scorecard-summary" className="sr-only">
+                  Shared round scorecard with hole, par, yards, score, putting, penalty, fairway and
+                  green-in-regulation values.
+                </TableCaption>
+                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
                   <TableRow>
-                    <TableHead>Hole</TableHead>
-                    <TableHead className="text-right">Par</TableHead>
-                    <TableHead className="text-right">Yards</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                    <TableHead className="text-right">Putts</TableHead>
-                    <TableHead className="text-right">Penalties</TableHead>
-                    <TableHead className="text-right">FIR</TableHead>
-                    <TableHead className="text-right">GIR</TableHead>
+                    <TableHead
+                      data-column="hole"
+                      className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      Hole
+                    </TableHead>
+                    <TableHead data-column="par" className="text-right">
+                      Par
+                    </TableHead>
+                    <TableHead data-column="yards" className="text-right">
+                      Yards
+                    </TableHead>
+                    <TableHead data-column="score" className="text-right">
+                      Score
+                    </TableHead>
+                    <TableHead data-column="putts" className="text-right">
+                      Putts
+                    </TableHead>
+                    <TableHead data-column="penalties" className="text-right">
+                      Penalties
+                    </TableHead>
+                    <TableHead data-column="fir" className="text-right">
+                      FIR
+                    </TableHead>
+                    <TableHead data-column="gir" className="text-right">
+                      GIR
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {round.holes.map((hole) => (
-                    <TableRow key={hole.holeNumber}>
-                      <TableCell className="font-medium">Hole {hole.holeNumber}</TableCell>
-                      <TableCell className="text-right">
+                    <TableRow key={hole.holeNumber} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="hole"
+                        className="sticky left-0 z-10 min-w-28 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        Hole {hole.holeNumber}
+                      </TableCell>
+                      <TableCell data-column="par" className="text-right">
                         {integerFormatter.format(hole.par)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="yards" className="text-right">
                         {hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="score" className="text-right">
                         {formatNullableInteger(hole.score)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="putts" className="text-right">
                         {formatNullableInteger(hole.putts)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="penalties" className="text-right">
                         {formatNullableInteger(hole.penalties)}
                       </TableCell>
-                      <TableCell className="text-right">{formatBoolean(hole.fairwayHit)}</TableCell>
-                      <TableCell className="text-right">{formatBoolean(hole.gir)}</TableCell>
+                      <TableCell data-column="fir" className="text-right">
+                        {formatBoolean(hole.fairwayHit)}
+                      </TableCell>
+                      <TableCell data-column="gir" className="text-right">
+                        {formatBoolean(hole.gir)}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -93,6 +94,9 @@ type ClubSelection = {
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
+});
+const oneDecimalFormatter = new Intl.NumberFormat("en-GB", {
+  maximumFractionDigits: 1,
 });
 const AIM_LINE_LABEL_RATIO = 0.34;
 
@@ -539,7 +543,11 @@ export function ShotPatternMap({
     const excludedPoints = displayProjection.points.filter((point) => !point.included);
 
     if (showEnvelope && dispersionEllipse) {
-      const ellipse = ellipseLatLngPoints(dispersionEllipse, selectedHole.geometry, playingHoleYards);
+      const ellipse = ellipseLatLngPoints(
+        dispersionEllipse,
+        selectedHole.geometry,
+        playingHoleYards,
+      );
 
       if (ellipse.length >= 8) {
         L.polygon(ellipse, {
@@ -1164,6 +1172,32 @@ export function ShotPatternMap({
           ) : null}
         </div>
 
+        <ChartAccessibleFallback
+          title="Course shot pattern"
+          summary={courseShotPatternSummary({
+            courseName,
+            data,
+            dangerHeat,
+            displayLandingSummary,
+            mode,
+            outlierMode,
+            playingHoleYards,
+            points: displayProjection.points,
+            selectedHole,
+            targetLine,
+          })}
+          columns={[
+            { key: "point", label: "Point" },
+            { key: "distance", label: "Distance" },
+            { key: "forward", label: "Forward" },
+            { key: "side", label: "Side" },
+            { key: "included", label: "Included" },
+            { key: "surface", label: "Surface" },
+          ]}
+          rows={courseShotPatternRows(displayProjection.points, projectedPointSurfaces)}
+          className="bg-white/82"
+        />
+
         {data ? (
           <ShotPatternSummaryDrawer
             pattern={data.pattern}
@@ -1178,6 +1212,105 @@ export function ShotPatternMap({
       </div>
     </div>
   );
+}
+
+function courseShotPatternSummary({
+  courseName,
+  data,
+  dangerHeat,
+  displayLandingSummary,
+  mode,
+  outlierMode,
+  playingHoleYards,
+  points,
+  selectedHole,
+  targetLine,
+}: {
+  courseName: string;
+  data: ShotPatternApiData | null;
+  dangerHeat: ReturnType<typeof buildDangerHeatSummary>;
+  displayLandingSummary: LandingClassificationSummary | null;
+  mode: ShotPatternMode;
+  outlierMode: ShotPatternOutlierMode;
+  playingHoleYards: number;
+  points: ProjectedShotPatternPoint[];
+  selectedHole: ShotPatternApiData["hole"];
+  targetLine: ShotPatternTargetLine | null;
+}) {
+  if (!data) {
+    return `${courseName} shot pattern data is loading. The map table will populate after club, hole and projection data are available.`;
+  }
+
+  const includedCount = points.filter((point) => point.included).length;
+  const landingSummary = displayLandingSummary ?? data.landingSummary;
+  const playablePercent =
+    (landingSummary.percentages.fairway ?? 0) + (landingSummary.percentages.green ?? 0);
+  const expectedPenalty =
+    landingSummary.expectedPenalty === null
+      ? "unavailable"
+      : oneDecimalFormatter.format(landingSummary.expectedPenalty);
+  const holeText = selectedHole
+    ? `hole ${selectedHole.holeNumber}, par ${selectedHole.par}, ${numberFormatter.format(playingHoleYards)} yd playing`
+    : "an unmapped hole";
+  const targetText = targetLine
+    ? `${targetLine.targetDistanceYd} yd target, aim ${formatAimOffset(targetLine.aimOffsetYd)}, ${
+        targetLine.beyondCapability
+          ? "outside current club capability"
+          : "inside current club capability"
+      }`
+    : "no target line is available";
+
+  return `${courseName} shot pattern shows ${data.pattern.clubLabel} on ${holeText}. ${includedCount}/${points.length} projected points are included using ${formatPatternMode(
+    mode,
+  )} distance and ${formatOutlierMode(outlierMode)} filtering. Target line: ${targetText}. Landing summary has ${landingSummary.knownSampleSize}/${landingSummary.sampleSize} classified points, ${oneDecimalFormatter.format(
+    playablePercent,
+  )}% fairway or green, expected penalty ${expectedPenalty}. Risk scan counts ${dangerHeat.playableCount} playable and ${dangerHeat.troubleCount} trouble points, with ${dangerHeat.dominantMiss} as the dominant miss.`;
+}
+
+function courseShotPatternRows(
+  points: ProjectedShotPatternPoint[],
+  projectedPointSurfaces: ReadonlyMap<string, TargetSurfaceStatus>,
+) {
+  return points.slice(0, 50).map((point, index) => ({
+    _key: point.id,
+    point: `Point ${index + 1}`,
+    distance: `${numberFormatter.format(point.distanceYd)} yd`,
+    forward: `${numberFormatter.format(point.forwardYd)} yd`,
+    side: formatSide(point.sideYd),
+    included: point.included ? "Yes" : "No",
+    surface: formatTargetSurface(projectedPointSurfaces.get(point.id)),
+  }));
+}
+
+function formatTargetSurface(surface: TargetSurfaceStatus | undefined) {
+  if (!surface) {
+    return "Unmapped";
+  }
+
+  if (surface === "playable") {
+    return "Fairway/green";
+  }
+
+  if (surface === "trouble") {
+    return "Trouble";
+  }
+
+  return "Unavailable";
+}
+
+function formatPatternMode(mode: ShotPatternMode) {
+  return mode === "carry" ? "carry" : "total";
+}
+
+function formatOutlierMode(mode: ShotPatternOutlierMode) {
+  switch (mode) {
+    case "best80":
+      return "best 80%";
+    case "best90":
+      return "best 90%";
+    default:
+      return "all-shot";
+  }
 }
 
 function SegmentedControl({
@@ -1560,7 +1693,9 @@ function ellipseLatLngPoints(
     const projection = pointAlongGeometry(holeGeometry, Math.max(0, forwardYd) / holeYards);
     const sideBearing = projection.bearingDeg + (sideYd >= 0 ? 90 : -90);
 
-    points.push(destinationPoint(projection.point, sideBearing, Math.abs(sideYd) * YARDS_TO_METERS));
+    points.push(
+      destinationPoint(projection.point, sideBearing, Math.abs(sideYd) * YARDS_TO_METERS),
+    );
   }
 
   return points;

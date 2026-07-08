@@ -156,10 +156,7 @@ export async function saveBagOrderAction(formData: FormData) {
   }
 
   const db = getDb();
-  const ownedClubs = await db
-    .select({ id: clubs.id })
-    .from(clubs)
-    .where(eq(clubs.userId, userId));
+  const ownedClubs = await db.select({ id: clubs.id }).from(clubs).where(eq(clubs.userId, userId));
   const ownedClubIds = new Set(ownedClubs.map((club) => club.id));
   const uniqueClubIds = [...new Set(clubIds)];
 

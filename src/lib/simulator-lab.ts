@@ -99,6 +99,7 @@ export type SessionRoastFact = {
 
 export type SimulatorLabData = {
   latestSession: SimulatorLabSession | null;
+  dataIssues?: string[];
   totals: {
     activeClubs: number;
     gappingRows: number;
@@ -153,7 +154,7 @@ const MIN_BASELINE_SHOTS_FOR_VERDICT = 5;
 export async function getSimulatorLabData(userId?: string): Promise<SimulatorLabData> {
   userId ??= await requireCurrentUserId();
   const db = getDb();
-  const [clubRows, latestSessionRows, historyRows] = await Promise.all([
+  const [clubRows, latestSessionRows] = await Promise.all([
     db
       .select({
         id: clubs.id,
@@ -176,7 +177,12 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
       .where(and(eq(sessions.userId, userId), inArray(sessions.type, simulatorSessionTypes())))
       .orderBy(desc(sessions.date))
       .limit(1),
-    db
+  ]);
+  let historyRows: EquipmentHistoryRow[] = [];
+  let equipmentHistoryIssue: string | null = null;
+
+  try {
+    historyRows = await db
       .select({
         id: clubEquipmentHistory.id,
         clubId: clubEquipmentHistory.clubId,
@@ -195,8 +201,11 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
       .innerJoin(clubs, eq(clubs.id, clubEquipmentHistory.clubId))
       .where(eq(clubEquipmentHistory.userId, userId))
       .orderBy(desc(clubEquipmentHistory.effectiveFrom))
-      .limit(MAX_EQUIPMENT_HISTORY),
-  ]);
+      .limit(MAX_EQUIPMENT_HISTORY);
+  } catch {
+    equipmentHistoryIssue =
+      "Equipment history was unavailable for this render, so equipment impact is hidden until the query recovers.";
+  }
   const activeClubs = clubRows.filter((club) => isTrackedClubType(club.type));
   const latestSession = latestSessionRows[0] ?? null;
   const clubIds = activeClubs.map((club) => club.id);
@@ -231,12 +240,14 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
 
   return {
     latestSession,
+    dataIssues: equipmentHistoryIssue ? [equipmentHistoryIssue] : [],
     totals: {
       activeClubs: activeClubs.length,
       gappingRows: gappingRows.length,
       latestSessionShots: latestShotRows.length,
-      gapFlags: gappingRows.filter((row) => row.gapStatus === "danger" || row.gapStatus === "overlap")
-        .length,
+      gapFlags: gappingRows.filter(
+        (row) => row.gapStatus === "danger" || row.gapStatus === "overlap",
+      ).length,
       positiveDeltas: sessionDeltas.filter((row) => row.verdict === "better").length,
       equipmentChanges: equipmentImpacts.length,
     },
@@ -345,7 +356,12 @@ export function buildSessionDeltaRows(
     (shot) => shot.clubType,
   );
 
-  return [...groupBy(latestShots.filter((shot) => isTrackedClubType(shot.clubType)), (shot) => shot.clubType)]
+  return [
+    ...groupBy(
+      latestShots.filter((shot) => isTrackedClubType(shot.clubType)),
+      (shot) => shot.clubType,
+    ),
+  ]
     .sort(([left], [right]) => clubSortValue(left) - clubSortValue(right))
     .map(([clubType, shotsForClub]) => {
       const latest = snapshot(shotsForClub);
@@ -391,7 +407,9 @@ export function buildEquipmentChangeImpacts(
 ): EquipmentChangeImpact[] {
   const shotsByClubId = groupBy(inputShots, (shot) => shot.clubId);
   const historyByClubId = groupBy(
-    [...historyRows].sort((left, right) => left.effectiveFrom.getTime() - right.effectiveFrom.getTime()),
+    [...historyRows].sort(
+      (left, right) => left.effectiveFrom.getTime() - right.effectiveFrom.getTime(),
+    ),
     (row) => row.clubId,
   );
   const impacts: EquipmentChangeImpact[] = [];
@@ -402,7 +420,10 @@ export function buildEquipmentChangeImpacts(
       (row) => row.effectiveFrom.getTime() > history.effectiveFrom.getTime(),
     );
     const beforeStart = addDays(history.effectiveFrom, -BASELINE_DAYS);
-    const afterEnd = minDate(addDays(history.effectiveFrom, BASELINE_DAYS), nextChange?.effectiveFrom ?? history.effectiveTo);
+    const afterEnd = minDate(
+      addDays(history.effectiveFrom, BASELINE_DAYS),
+      nextChange?.effectiveFrom ?? history.effectiveTo,
+    );
     const clubShots = shotsByClubId.get(history.clubId) ?? [];
     const before = clubShots.filter(
       (shot) => shot.shotAt >= beforeStart && shot.shotAt < history.effectiveFrom,
@@ -595,6 +616,7 @@ async function fetchLabShots(
 function emptySimulatorLabData(latestSession: SimulatorLabSession | null): SimulatorLabData {
   return {
     latestSession,
+    dataIssues: [],
     totals: {
       activeClubs: 0,
       gappingRows: 0,
@@ -689,11 +711,14 @@ function deltaVerdict(input: {
   }
 
   let score = 0;
-  if (isNumber(input.carryDeltaYd)) score += input.carryDeltaYd >= 2 ? 1 : input.carryDeltaYd <= -2 ? -1 : 0;
+  if (isNumber(input.carryDeltaYd))
+    score += input.carryDeltaYd >= 2 ? 1 : input.carryDeltaYd <= -2 ? -1 : 0;
   if (isNumber(input.ballSpeedDeltaMph))
     score += input.ballSpeedDeltaMph >= 1 ? 1 : input.ballSpeedDeltaMph <= -1 ? -1 : 0;
-  if (isNumber(input.smashDelta)) score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
-  if (isNumber(input.offlineDeltaYd)) score += input.offlineDeltaYd <= -2 ? 1 : input.offlineDeltaYd >= 2 ? -1 : 0;
+  if (isNumber(input.smashDelta))
+    score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
+  if (isNumber(input.offlineDeltaYd))
+    score += input.offlineDeltaYd <= -2 ? 1 : input.offlineDeltaYd >= 2 ? -1 : 0;
   if (isNumber(input.carrySpreadDeltaYd))
     score += input.carrySpreadDeltaYd <= -2 ? 1 : input.carrySpreadDeltaYd >= 2 ? -1 : 0;
 
@@ -715,11 +740,14 @@ function equipmentVerdict(input: {
   }
 
   let score = 0;
-  if (isNumber(input.carryDeltaYd)) score += input.carryDeltaYd >= 2 ? 1 : input.carryDeltaYd <= -2 ? -1 : 0;
+  if (isNumber(input.carryDeltaYd))
+    score += input.carryDeltaYd >= 2 ? 1 : input.carryDeltaYd <= -2 ? -1 : 0;
   if (isNumber(input.ballSpeedDeltaMph))
     score += input.ballSpeedDeltaMph >= 1 ? 1 : input.ballSpeedDeltaMph <= -1 ? -1 : 0;
-  if (isNumber(input.smashDelta)) score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
-  if (isNumber(input.offlineDeltaYd)) score += input.offlineDeltaYd <= -2 ? 1 : input.offlineDeltaYd >= 2 ? -1 : 0;
+  if (isNumber(input.smashDelta))
+    score += input.smashDelta >= 0.02 ? 1 : input.smashDelta <= -0.02 ? -1 : 0;
+  if (isNumber(input.offlineDeltaYd))
+    score += input.offlineDeltaYd <= -2 ? 1 : input.offlineDeltaYd >= 2 ? -1 : 0;
 
   if (score >= 2) return "helped";
   if (score <= -2) return "hurt";
@@ -730,7 +758,11 @@ function snapshot(inputShots: SimulatorLabShot[]): MetricSnapshot {
   const carryValues = values(inputShots.map((shot) => shot.carryYd));
   const ballSpeedValues = values(inputShots.map((shot) => shot.ballSpeedMph));
   const smashValues = values(inputShots.map((shot) => shot.smashFactor));
-  const offlineValues = values(inputShots.map((shot) => shot.sideCarryYd).map((value) => (isNumber(value) ? Math.abs(value) : null)));
+  const offlineValues = values(
+    inputShots
+      .map((shot) => shot.sideCarryYd)
+      .map((value) => (isNumber(value) ? Math.abs(value) : null)),
+  );
 
   return {
     shotCount: inputShots.length,
@@ -742,7 +774,11 @@ function snapshot(inputShots: SimulatorLabShot[]): MetricSnapshot {
   };
 }
 
-function deltaSummary(verdict: SessionDeltaRow["verdict"], latestCount: number, baselineCount: number) {
+function deltaSummary(
+  verdict: SessionDeltaRow["verdict"],
+  latestCount: number,
+  baselineCount: number,
+) {
   if (verdict === "building") {
     return `${latestCount}/${baselineCount} shots. Need 3 latest and 5 baseline before calling it.`;
   }
@@ -768,10 +804,12 @@ function equipmentLabel(row: EquipmentHistoryRow) {
     row.notes,
   ].filter(Boolean);
 
-  return parts.length > 0 ? parts.join(" / ") : brandModel({
-    brand: row.clubBrand,
-    model: row.clubModel,
-  });
+  return parts.length > 0
+    ? parts.join(" / ")
+    : brandModel({
+        brand: row.clubBrand,
+        model: row.clubModel,
+      });
 }
 
 function brandModel(input: { brand: string | null; model: string | null }) {
@@ -798,13 +836,16 @@ function values(items: Array<number | null | undefined>) {
 }
 
 function average(items: number[], digits = 1) {
-  return items.length > 0 ? round(items.reduce((total, value) => total + value, 0) / items.length, digits) : null;
+  return items.length > 0
+    ? round(items.reduce((total, value) => total + value, 0) / items.length, digits)
+    : null;
 }
 
 function standardDeviation(items: number[]) {
   if (items.length < 2) return 0;
   const itemAverage = average(items) ?? 0;
-  const variance = items.reduce((total, value) => total + (value - itemAverage) ** 2, 0) / items.length;
+  const variance =
+    items.reduce((total, value) => total + (value - itemAverage) ** 2, 0) / items.length;
   return Math.sqrt(variance);
 }
 
@@ -823,9 +864,7 @@ function addDays(date: Date, days: number) {
 
 function minDate(...dates: Array<Date | null | undefined>) {
   const valid = dates.filter((date): date is Date => date instanceof Date);
-  return valid.length > 0
-    ? new Date(Math.min(...valid.map((date) => date.getTime())))
-    : null;
+  return valid.length > 0 ? new Date(Math.min(...valid.map((date) => date.getTime()))) : null;
 }
 
 function verdictTone(verdict: SessionDeltaRow["verdict"]): SimulatorLabTone {

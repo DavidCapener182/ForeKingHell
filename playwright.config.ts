@@ -2,6 +2,14 @@ import { defineConfig, devices } from "@playwright/test";
 
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
+const desktopViewportProjects = [
+  { name: "desktop-1024x768", width: 1024, height: 768 },
+  { name: "desktop-1280x720", width: 1280, height: 720 },
+  { name: "desktop-1366x768", width: 1366, height: 768 },
+  { name: "desktop-1440x900", width: 1440, height: 900 },
+  { name: "desktop-1920x1080", width: 1920, height: 1080 },
+  { name: "desktop-2560x1440", width: 2560, height: 1440 },
+];
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -25,6 +33,16 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    ...desktopViewportProjects.map((viewport) => ({
+      name: viewport.name,
+      use: {
+        browserName: "chromium" as const,
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: 1,
+        isMobile: false,
+        hasTouch: false,
+      },
+    })),
     {
       name: "mobile-small",
       use: {

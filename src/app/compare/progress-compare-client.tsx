@@ -4,6 +4,10 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { BarChart3, CalendarDays, CalendarRange, TrendingUp } from "lucide-react";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
 import { DataPanel, SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -300,14 +304,48 @@ function PeriodTrendStrip({ periods }: { periods: ProgressPeriod[] }) {
           <p className="text-sm text-muted-foreground">No periods available yet.</p>
         )}
       </div>
+      <ChartAccessibleFallback
+        title="Compare period trend"
+        summary={periodTrendChartSummary(chronological)}
+        columns={[
+          { key: "period", label: "Period" },
+          { key: "shots", label: "Shots" },
+          { key: "carry", label: "Carry" },
+          { key: "playable", label: "Playable" },
+          { key: "cone", label: "Shot cone" },
+        ]}
+        rows={periodTrendChartRows(chronological)}
+        className="mt-4 bg-white/70"
+      />
     </div>
   );
+}
+
+function periodTrendChartSummary(periods: ProgressPeriod[]) {
+  const latest = periods.at(-1);
+
+  if (!latest) {
+    return "No compare period trend rows are available yet; import more tracked stock shots before asking for trend explanations.";
+  }
+
+  return `Latest shown period is ${latest.label}: ${integerFormatter.format(latest.summary.stockShots)} stock shots, ${formatYards(latest.summary.carryMedianYd)} carry, ${formatRate(latest.summary.playableRate)} playable and ${formatYards(latest.summary.shotConeWidthYd)} shot cone.`;
+}
+
+function periodTrendChartRows(periods: ProgressPeriod[]): ChartFallbackRow[] {
+  return periods.map((period) => ({
+    _key: period.key,
+    period: period.label,
+    shots: integerFormatter.format(period.summary.stockShots),
+    carry: formatYards(period.summary.carryMedianYd),
+    playable: formatRate(period.summary.playableRate),
+    cone: formatYards(period.summary.shotConeWidthYd),
+  }));
 }
 
 function PeriodTable({ periods, mode }: { periods: ProgressPeriod[]; mode: ProgressPeriodMode }) {
   return (
     <div className="overflow-hidden rounded-[8px] border">
-      <Table>
+      <Table className="min-w-[920px]">
         <TableHeader>
           <TableRow>
             <TableHead>{mode === "week" ? "Week" : "Month"}</TableHead>
@@ -317,7 +355,7 @@ function PeriodTable({ periods, mode }: { periods: ProgressPeriod[]; mode: Progr
             <TableHead className="text-right">Playable</TableHead>
             <TableHead className="text-right">Big misses</TableHead>
             <TableHead className="text-right">Shot cone</TableHead>
-            <TableHead className="text-right">Vs previous</TableHead>
+            <TableHead className="min-w-36 text-right">Vs previous</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -345,7 +383,7 @@ function PeriodTable({ periods, mode }: { periods: ProgressPeriod[]; mode: Progr
                 <TableCell className="text-right">
                   {formatYards(period.summary.shotConeWidthYd)}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="min-w-36 text-right">
                   <StackedDelta delta={period.deltaFromPrevious} />
                 </TableCell>
               </TableRow>

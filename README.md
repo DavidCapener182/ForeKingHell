@@ -56,7 +56,7 @@ Authenticated Playwright coverage is opt-in because Supabase sessions are cookie
 
 `npm run production:check` is the public-tester gate. It runs format check, lint, TypeScript, unit tests, build, E2E, Lighthouse and `git diff --check`. If `PLAYWRIGHT_AUTH_STATE` is missing it prints `Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.` and fails the gate because authenticated flows were not fully verified.
 
-`npm run test:lighthouse` audits `/login` by default against `next start`. Set `LIGHTHOUSE_ROUTES=/login,/dashboard` and `LIGHTHOUSE_COOKIE` or `LIGHTHOUSE_EXTRA_HEADERS_JSON` when auditing authenticated routes.
+`npm run test:lighthouse` audits `/login` plus the main desktop workbench routes by default against `next start`. Set `LIGHTHOUSE_PRESET=desktop` for a desktop-form-factor audit, or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` and `LIGHTHOUSE_COOKIE` or `LIGHTHOUSE_EXTRA_HEADERS_JSON` when auditing a smaller authenticated route set.
 
 ## Launch Documentation
 

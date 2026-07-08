@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackColumn,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -277,48 +282,109 @@ function ClubDispersionChart({ club }: { club: ClubIntelligenceItem }) {
 
   const maxCarry = Math.max(240, ...club.shots.map((shot) => shot.carryYd));
   const maxSide = Math.max(45, ...club.shots.map((shot) => Math.abs(shot.sideCarryYd ?? 0)));
+  const chartTitle = `${club.label} dispersion`;
 
   return (
-    <svg
-      viewBox="0 0 360 160"
-      className="mt-3 h-44 w-full rounded-lg border border-slate-200 bg-white"
-      role="img"
-      aria-label={`${club.label} carry and offline shot pattern`}
-    >
-      <rect x="0" y="0" width="360" height="160" fill="#F8FAFC" />
-      {[60, 120, 180, 240].map((yard) => {
-        const y = 148 - (yard / maxCarry) * 126;
+    <div className="mt-3 grid gap-3">
+      <svg
+        viewBox="0 0 360 160"
+        className="h-44 w-full rounded-lg border border-slate-200 bg-white"
+        role="img"
+        aria-label={`${club.label} carry and offline shot pattern`}
+      >
+        <rect x="0" y="0" width="360" height="160" fill="#F8FAFC" />
+        {[60, 120, 180, 240].map((yard) => {
+          const y = 148 - (yard / maxCarry) * 126;
 
-        return (
-          <g key={yard}>
-            <line x1="18" x2="344" y1={y} y2={y} stroke="#E5E7EB" />
-            <text x="24" y={y - 5} fill="#94A3B8" fontSize="10" fontWeight="700">
-              {yard}
-            </text>
-          </g>
-        );
-      })}
-      <line x1="180" x2="180" y1="14" y2="148" stroke="#CBD5E1" strokeDasharray="4 5" />
-      {club.carryMedianYd ? (
-        <line
-          x1="18"
-          x2="344"
-          y1={148 - (club.carryMedianYd / maxCarry) * 126}
-          y2={148 - (club.carryMedianYd / maxCarry) * 126}
-          stroke={club.accent}
-          strokeDasharray="7 5"
-          strokeOpacity="0.85"
-          strokeWidth="2"
-        />
-      ) : null}
-      {club.shots.map((shot, index) => {
-        const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
-        const y = 148 - (shot.carryYd / maxCarry) * 126;
+          return (
+            <g key={yard}>
+              <line x1="18" x2="344" y1={y} y2={y} stroke="#E5E7EB" />
+              <text x="24" y={y - 5} fill="#94A3B8" fontSize="10" fontWeight="700">
+                {yard}
+              </text>
+            </g>
+          );
+        })}
+        <line x1="180" x2="180" y1="14" y2="148" stroke="#CBD5E1" strokeDasharray="4 5" />
+        {club.carryMedianYd ? (
+          <line
+            x1="18"
+            x2="344"
+            y1={148 - (club.carryMedianYd / maxCarry) * 126}
+            y2={148 - (club.carryMedianYd / maxCarry) * 126}
+            stroke={club.accent}
+            strokeDasharray="7 5"
+            strokeOpacity="0.85"
+            strokeWidth="2"
+          />
+        ) : null}
+        {club.shots.map((shot, index) => {
+          const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
+          const y = 148 - (shot.carryYd / maxCarry) * 126;
 
-        return <circle key={index} cx={x} cy={y} r="4.5" fill={club.accent} opacity="0.72" />;
-      })}
-    </svg>
+          return <circle key={index} cx={x} cy={y} r="4.5" fill={club.accent} opacity="0.72" />;
+        })}
+      </svg>
+      <ChartAccessibleFallback
+        title={chartTitle}
+        summary={clubDispersionSummary(club)}
+        columns={clubDispersionColumns}
+        rows={clubDispersionRows(club)}
+      />
+    </div>
   );
+}
+
+const clubDispersionColumns: ChartFallbackColumn[] = [
+  { key: "shot", label: "Shot" },
+  { key: "carry", label: "Carry" },
+  { key: "offline", label: "Offline" },
+  { key: "context", label: "Context" },
+];
+
+function clubDispersionSummary(club: ClubIntelligenceItem) {
+  const avgCarry =
+    club.shots.reduce((total, shot) => total + shot.carryYd, 0) / Math.max(1, club.shots.length);
+  const avgOffline =
+    club.shots.reduce((total, shot) => total + Math.abs(shot.sideCarryYd ?? 0), 0) /
+    Math.max(1, club.shots.length);
+
+  return `${club.label} dispersion uses ${club.shots.length} supporting shots. Average carry is ${formatChartYards(
+    avgCarry,
+  )}, average offline is ${formatChartYards(avgOffline)}, and the stock carry marker is ${
+    club.carryMedianYd === null ? "still building" : formatChartYards(club.carryMedianYd)
+  }.`;
+}
+
+function clubDispersionRows(club: ClubIntelligenceItem): ChartFallbackRow[] {
+  return club.shots.map((shot, index) => ({
+    _key: `${club.id}-${index}`,
+    shot: `Shot ${index + 1}`,
+    carry: formatChartYards(shot.carryYd),
+    offline: formatSignedChartYards(shot.sideCarryYd),
+    context:
+      club.carryMedianYd === null
+        ? "Stock carry marker is still building."
+        : `${formatChartYards(shot.carryYd - club.carryMedianYd)} from stock carry.`,
+  }));
+}
+
+function formatChartYards(value: number) {
+  return `${Math.round(value).toLocaleString("en-GB")} yd`;
+}
+
+function formatSignedChartYards(value: number | null) {
+  if (value === null) {
+    return "No offline value";
+  }
+
+  const rounded = Math.round(value);
+
+  if (rounded === 0) {
+    return "0 yd";
+  }
+
+  return `${rounded > 0 ? "+" : ""}${rounded.toLocaleString("en-GB")} yd`;
 }
 
 function metricToneClass(tone: Tone) {

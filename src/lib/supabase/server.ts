@@ -19,6 +19,29 @@ export function isSupabaseAuthConfigured() {
   return Boolean(url && publishableKey);
 }
 
+export async function clearSupabaseAuthCookies() {
+  const { url } = getSupabasePublicConfig();
+  const projectRef = supabaseProjectRef(url);
+
+  if (!projectRef) {
+    return;
+  }
+
+  const authStorageKey = `sb-${projectRef}-auth-token`;
+  const authCookiePrefixes = [authStorageKey, `${authStorageKey}-code-verifier`];
+  const cookieStore = await cookies();
+
+  for (const cookie of cookieStore.getAll()) {
+    if (
+      authCookiePrefixes.some(
+        (prefix) => cookie.name === prefix || cookie.name.startsWith(`${prefix}.`),
+      )
+    ) {
+      cookieStore.delete(cookie.name);
+    }
+  }
+}
+
 export async function createSupabaseServerClient() {
   const { url, publishableKey } = getSupabasePublicConfig();
 
@@ -46,6 +69,18 @@ export async function createSupabaseServerClient() {
       },
     },
   });
+}
+
+function supabaseProjectRef(url: string | undefined) {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    return new URL(url).hostname.split(".")[0] || null;
+  } catch {
+    return null;
+  }
 }
 
 export function getSupabaseServiceRoleClient() {

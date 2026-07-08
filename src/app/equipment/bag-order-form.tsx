@@ -52,7 +52,7 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
         />
       ))}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {BAG_SECTIONS.map((section) => {
           const sectionItems = grouped.get(section.key) ?? [];
 
@@ -94,9 +94,7 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
                         <p className="truncate text-sm font-semibold tracking-normal">
                           {club.label}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {club.brandModel}
-                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{club.brandModel}</p>
                       </div>
                       <div className="flex gap-1">
                         <IconButton
@@ -212,12 +210,7 @@ function groupBySection(items: BagOrderClubItem[]) {
   return grouped;
 }
 
-function moveClub(
-  items: BagOrderClubItem[],
-  clubId: string,
-  section: string,
-  targetId?: string,
-) {
+function moveClub(items: BagOrderClubItem[], clubId: string, section: string, targetId?: string) {
   const moving = items.find((item) => item.id === clubId);
 
   if (!moving) {

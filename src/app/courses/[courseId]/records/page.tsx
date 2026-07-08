@@ -12,7 +12,13 @@ import {
   Users,
 } from "lucide-react";
 
-import { PageShell, StatusPill } from "@/components/premium";
+import {
+  DesktopWorkbenchLayout,
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import {
   BottomSheet,
   CourseRecordCard,
@@ -25,6 +31,15 @@ import {
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getCourseRecordCourseData, verificationTierLabel } from "@/lib/course-records";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +48,35 @@ type CourseRecordsPageProps = {
   params: Promise<{ courseId: string }>;
   searchParams?: Promise<{ tab?: string }>;
 };
+
+const courseRecordRouteColumns: DesktopWorkbenchColumn[] = [
+  { id: "board", label: "Board", locked: true },
+  { id: "scope", label: "Scope" },
+  { id: "champion", label: "Champion" },
+  { id: "score", label: "Score" },
+  { id: "proof", label: "Proof" },
+  { id: "your-best", label: "Your best" },
+  { id: "friend", label: "Friend to beat" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const courseRecordRouteSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "All-time public boards",
+    href: "?tab=all_time",
+    detail: "Primary verified champion boards for this course.",
+  },
+  {
+    title: "Friends boards",
+    href: "?tab=friends",
+    detail: "Records scoped to friends where privacy allows.",
+  },
+  {
+    title: "Hole records",
+    href: "?tab=holes",
+    detail: "Longest drive, closest-to-pin and best-hole boards.",
+  },
+];
 
 export default async function CourseRecordsForCoursePage({
   params,
@@ -49,7 +93,7 @@ export default async function CourseRecordsForCoursePage({
   const champion = data.championCard?.champion;
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title={data.course.name}
@@ -178,22 +222,22 @@ export default async function CourseRecordsForCoursePage({
         </NativeListSection>
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/course-records" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Records
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={`/courses/${data.course.id}/tournaments`} prefetch={false}>
-            <Trophy className="size-4" />
-            Events
-          </Link>
-        </Button>
-      </div>
+      <DesktopWorkbenchLayout scope="course-records-course" className="hidden sm:grid">
+        <div className="flex items-center justify-between gap-3">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/course-records" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Records
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/courses/${data.course.id}/tournaments`} prefetch={false}>
+              <Trophy className="size-4" />
+              Events
+            </Link>
+          </Button>
+        </div>
 
-      <div className="hidden sm:contents">
         <header className="premium-hero overflow-hidden">
           <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
             <div>
@@ -348,6 +392,12 @@ export default async function CourseRecordsForCoursePage({
           />
         </nav>
 
+        <CourseRecordCourseTable
+          activeTab={activeTab}
+          courseId={data.course.id}
+          records={data.recordCards}
+        />
+
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.recordCards.map(
             ({ record, category, champion: recordChampion, viewerBest, friendToBeat }) => (
@@ -411,8 +461,143 @@ export default async function CourseRecordsForCoursePage({
             </div>
           ) : null}
         </section>
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+type CourseRecordCourseRow = NonNullable<
+  Awaited<ReturnType<typeof getCourseRecordCourseData>>
+>["recordCards"][number];
+
+function CourseRecordCourseTable({
+  activeTab,
+  courseId,
+  records,
+}: {
+  activeTab: "all_time" | "month" | "friends" | "holes";
+  courseId: string;
+  records: CourseRecordCourseRow[];
+}) {
+  return (
+    <section id="course-record-board-table" className="grid gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Course record table</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Desktop reference for scope, champion, proof, your best and friend pressure before
+            opening a board.
+          </p>
+        </div>
+        <StatusPill tone={records.some((row) => row.champion) ? "green" : "amber"}>
+          {records.length} boards
+        </StatusPill>
+      </div>
+      <DesktopTableWorkbenchControls
+        viewKey={`course-records-${courseId}-${activeTab}`}
+        scope="course-records-course"
+        currentViewLabel="Course record boards"
+        resultLabel={`${records.length} boards`}
+        columns={courseRecordRouteColumns}
+        suggestedViews={courseRecordRouteSuggestedViews}
+        exportTableId="course-record-course-board"
+        exportFileName="forekinghell-course-record-board.csv"
+      />
+      <DataTableFrame mainTable mainTableLabel="Course-specific record board table">
+        <Table
+          data-workbench-export-table="course-record-course-board"
+          aria-describedby="course-record-course-board-summary"
+        >
+          <TableCaption id="course-record-course-board-summary" className="sr-only">
+            Course-specific record board table showing record board, scope, champion, score, proof
+            tier, viewer best, friend to beat and action link.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="board"
+                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Board
+              </TableHead>
+              <TableHead data-column="scope">Scope</TableHead>
+              <TableHead data-column="champion">Champion</TableHead>
+              <TableHead data-column="score">Score</TableHead>
+              <TableHead data-column="proof">Proof</TableHead>
+              <TableHead data-column="your-best">Your best</TableHead>
+              <TableHead data-column="friend">Friend to beat</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.length > 0 ? (
+              records.map(({ record, category, champion, viewerBest, friendToBeat }) => (
+                <TableRow key={record.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="board"
+                    className="sticky left-0 z-10 min-w-64 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <Link
+                      href={`/course-records/${record.id}`}
+                      prefetch={false}
+                      className="text-emerald-700 hover:underline"
+                    >
+                      {category.name}
+                    </Link>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                      {category.description}
+                    </p>
+                  </TableCell>
+                  <TableCell data-column="scope">
+                    {record.period === "month"
+                      ? "This month"
+                      : record.scope === "friends"
+                        ? "Friends"
+                        : "All-time"}
+                  </TableCell>
+                  <TableCell data-column="champion">
+                    {champion?.profile?.displayName ?? "Open board"}
+                  </TableCell>
+                  <TableCell data-column="score">
+                    {champion?.result.scoreLabel ?? "Set first mark"}
+                  </TableCell>
+                  <TableCell data-column="proof">
+                    <Badge variant={champion ? "secondary" : "outline"}>
+                      {champion
+                        ? verificationTierLabel(champion.result.verificationTier)
+                        : verificationTierLabel(record.verificationRequired)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-column="your-best">
+                    {viewerBest ? viewerBest.result.scoreLabel : "--"}
+                  </TableCell>
+                  <TableCell data-column="friend">
+                    {friendToBeat?.profile
+                      ? `${friendToBeat.profile.displayName} · ${friendToBeat.result.scoreLabel}`
+                      : "--"}
+                  </TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/course-records/${record.id}`} prefetch={false}>
+                        Open board
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                  No boards match this scope yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 

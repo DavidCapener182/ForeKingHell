@@ -159,6 +159,7 @@ export function PageArtwork({
 }) {
   const resolvedTreatment = resolveImageTreatment(variant, crop, cropKey);
   const src = resolveArtworkSource(variant, cropKey);
+  const shouldBypassOptimizer = !priority && src === greenComplexArtwork;
 
   return (
     <div
@@ -173,7 +174,9 @@ export function PageArtwork({
         src={src}
         alt={alt}
         fill
+        unoptimized={shouldBypassOptimizer}
         loading={priority ? "eager" : "lazy"}
+        fetchPriority={priority ? "high" : "auto"}
         sizes={sizes}
         className={cn("object-cover opacity-80 saturate-[0.92]", resolvedTreatment, imageClassName)}
       />
@@ -197,6 +200,7 @@ export function MobileVisualCard({
 }) {
   const resolvedTreatment = resolveImageTreatment(variant, crop, cropKey);
   const src = resolveArtworkSource(variant, cropKey);
+  const shouldBypassOptimizer = src === greenComplexArtwork;
 
   return (
     <div
@@ -210,6 +214,7 @@ export function MobileVisualCard({
         src={src}
         alt=""
         fill
+        unoptimized={shouldBypassOptimizer}
         sizes="calc(100vw - 2rem)"
         className={cn(
           "object-cover",

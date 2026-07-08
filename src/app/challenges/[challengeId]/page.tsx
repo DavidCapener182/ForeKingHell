@@ -7,7 +7,6 @@ import {
   Plus,
   Send,
   ShieldCheck,
-  Trophy,
   Users,
 } from "lucide-react";
 
@@ -16,6 +15,12 @@ import {
   inviteFriendToChallengeAction,
   joinChallengeAction,
 } from "@/app/challenges/actions";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import {
   DataPanel,
   DataTableFrame,
@@ -39,6 +44,7 @@ import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -58,6 +64,29 @@ type ChallengePageProps = {
   }>;
 };
 
+type ChallengeDetail = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>;
+type ChallengeResultRow = ChallengeDetail["results"][number];
+type ChallengeAttemptEntry = ChallengeDetail["attempts"][number];
+
+const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
+  { id: "rank", label: "Rank", locked: true },
+  { id: "player", label: "Player" },
+  { id: "score", label: "Score" },
+  { id: "verification", label: "Verification" },
+  { id: "calculated", label: "Calculated" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const challengeAttemptColumns: DesktopWorkbenchColumn[] = [
+  { id: "player", label: "Player", locked: true },
+  { id: "metric", label: "Metric" },
+  { id: "source", label: "Source" },
+  { id: "verification", label: "Verification" },
+  { id: "evidence", label: "Evidence" },
+  { id: "attempted", label: "Attempted" },
+  { id: "action", label: "Action", locked: true },
+];
+
 export default async function ChallengePage({ params, searchParams }: ChallengePageProps) {
   const [{ challengeId }, query] = await Promise.all([params, searchParams]);
   const data = await getChallengeDetailData(challengeId);
@@ -72,7 +101,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
   const activeTab = parseChallengeDetailTab(query?.tab);
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title={data.challenge.title}
@@ -211,17 +240,17 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         )}
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/challenges" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Challenges
-          </Link>
-        </Button>
-        <Badge variant="outline">{data.challenge.templateName}</Badge>
-      </div>
+      <DesktopWorkbenchLayout scope="challenge-detail" className="hidden sm:grid">
+        <div className="flex items-center justify-between gap-3">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/challenges" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Challenges
+            </Link>
+          </Button>
+          <Badge variant="outline">{data.challenge.templateName}</Badge>
+        </div>
 
-      <div className="hidden sm:contents">
         <PageHeader
           eyebrow={<StatusPill tone="amber">Challenge</StatusPill>}
           title={data.challenge.title}
@@ -258,6 +287,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
 
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
           <Anchor href="#board" label="Board" />
+          <Anchor href="#challenge-command" label="Command board" />
           <Anchor href="#rules" label="Rules" />
           <Anchor href="#imported-shots" label="Imported shots" />
           <Anchor href="#chat" label="Chat" />
@@ -343,6 +373,8 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             </div>
           </article>
         </section>
+
+        <ChallengeCommandTables data={data} verificationMode={verificationMode} />
 
         <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
           <div className="grid gap-4">
@@ -435,102 +467,8 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
           </div>
 
           <div className="grid gap-4">
-            <DataPanel>
-              <SectionHeader
-                title="Full leaderboard"
-                description="Expanded ranking uses the template scoring direction and best imported result per player."
-                action={<Trophy className="size-5 text-amber-600" />}
-              />
-              <CardContent>
-                <details className="rounded-lg border bg-[#F5F6F4]">
-                  <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                    View full leaderboard
-                  </summary>
-                  <div className="border-t bg-white p-3">
-                    <DataTableFrame>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>Player</TableHead>
-                            <TableHead className="text-right">Score</TableHead>
-                            <TableHead className="text-right">Verification</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {data.results.map(({ result, profile, verificationLabel }) => (
-                            <TableRow key={result.id}>
-                              <TableCell>
-                                <Badge variant={result.rank === 1 ? "default" : "outline"}>
-                                  {result.rank ?? "--"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Link
-                                  href={`/profile/${profile.username}`}
-                                  prefetch={false}
-                                  className="font-medium hover:underline"
-                                >
-                                  {profile.displayName}
-                                </Link>
-                              </TableCell>
-                              <TableCell className="text-right">{result.scoreLabel}</TableCell>
-                              <TableCell className="text-right">{verificationLabel}</TableCell>
-                            </TableRow>
-                          ))}
-                          {data.results.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={4}
-                                className="h-24 text-center text-muted-foreground"
-                              >
-                                No qualifying imported shots yet.
-                              </TableCell>
-                            </TableRow>
-                          ) : null}
-                        </TableBody>
-                      </Table>
-                    </DataTableFrame>
-                  </div>
-                </details>
-              </CardContent>
-            </DataPanel>
-
             <section className="grid gap-4 md:grid-cols-2">
               <Card id="chat" className="premium-card scroll-mt-28">
-                <CardHeader>
-                  <CardTitle>Recent imported results</CardTitle>
-                  <CardDescription>
-                    Latest qualifying import-derived entries for this challenge.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-2">
-                  {data.attempts.slice(0, 6).map(({ attempt, profile }) => (
-                    <div key={attempt.id} className="rounded-lg border bg-white px-3 py-2 text-sm">
-                      <Link
-                        href={`/profile/${profile.username}`}
-                        prefetch={false}
-                        className="font-medium hover:underline"
-                      >
-                        {profile.displayName}
-                      </Link>
-                      <p className="text-muted-foreground">
-                        {attemptScoreLabel(attempt)} · {attempt.verificationLabel}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {attemptMetadataLabel(attempt.metadataJson)}
-                      </p>
-                    </div>
-                  ))}
-                  {data.attempts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No qualifying imported shots yet.
-                    </p>
-                  ) : null}
-                </CardContent>
-              </Card>
-
-              <Card className="premium-card">
                 <CardHeader>
                   <CardTitle>Comments</CardTitle>
                   <CardDescription>Keep challenge talk attached to the challenge.</CardDescription>
@@ -565,12 +503,274 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             </section>
           </div>
         </section>
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
 
 type PodiumRow = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>["results"][number];
+
+function ChallengeCommandTables({
+  data,
+  verificationMode,
+}: {
+  data: ChallengeDetail;
+  verificationMode: string;
+}) {
+  return (
+    <section id="challenge-command" className="grid scroll-mt-28 gap-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Challenge command board</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Exportable leaderboard and imported-shot evidence from the same qualifying imports that
+            decide the podium.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatusPill tone={data.results.length > 0 ? "green" : "slate"}>
+            {data.results.length} ranked
+          </StatusPill>
+          <StatusPill tone={data.attempts.length > 0 ? "amber" : "slate"}>
+            {data.attempts.length} attempts
+          </StatusPill>
+        </div>
+      </div>
+
+      <ChallengeLeaderboardTable data={data} verificationMode={verificationMode} />
+      <ChallengeAttemptEvidenceTable data={data} />
+    </section>
+  );
+}
+
+function ChallengeLeaderboardTable({
+  data,
+  verificationMode,
+}: {
+  data: ChallengeDetail;
+  verificationMode: string;
+}) {
+  const suggestedViews = challengeLeaderboardSuggestedViews(data.challenge.id);
+
+  return (
+    <section className="grid gap-3" data-workbench-scope="challenge-leaderboard">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Full leaderboard</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Template scoring direction, best imported result per player and verification state.
+          </p>
+        </div>
+        <StatusPill tone={data.results.length > 0 ? "green" : "slate"}>
+          {verificationMode}
+        </StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey={`challenge-leaderboard-${data.challenge.id}`}
+        scope="challenge-leaderboard"
+        currentViewLabel={`${data.challenge.title} leaderboard`}
+        resultLabel={`${data.results.length} ranked players`}
+        columns={challengeLeaderboardColumns}
+        suggestedViews={suggestedViews}
+        exportTableId="challenge-leaderboard"
+        exportFileName={`forekinghell-challenge-${data.challenge.id}-leaderboard.csv`}
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table">
+        <Table
+          data-workbench-export-table="challenge-leaderboard"
+          aria-describedby="challenge-leaderboard-summary"
+        >
+          <TableCaption id="challenge-leaderboard-summary" className="sr-only">
+            Challenge leaderboard table showing rank, player, score, verification, calculation time
+            and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="rank"
+                className="sticky left-0 z-20 min-w-24 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Rank
+              </TableHead>
+              <TableHead data-column="player">Player</TableHead>
+              <TableHead data-column="score" className="text-right">
+                Score
+              </TableHead>
+              <TableHead data-column="verification">Verification</TableHead>
+              <TableHead data-column="calculated">Calculated</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.results.length > 0 ? (
+              data.results.map((row) => <ChallengeLeaderboardRow key={row.result.id} row={row} />)
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  No qualifying imported shots yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
+  );
+}
+
+function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
+  return (
+    <TableRow tabIndex={0} className="focus-aaa outline-none">
+      <TableCell
+        data-column="rank"
+        className="sticky left-0 z-10 min-w-24 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+      >
+        <Badge variant={row.result.rank === 1 ? "default" : "outline"}>
+          {row.result.rank ? `#${row.result.rank}` : "--"}
+        </Badge>
+      </TableCell>
+      <TableCell data-column="player">
+        <Link
+          href={`/profile/${row.profile.username}`}
+          prefetch={false}
+          className="font-semibold text-emerald-700 hover:underline"
+        >
+          {row.profile.displayName}
+        </Link>
+        <p className="mt-1 text-xs text-muted-foreground">@{row.profile.username}</p>
+      </TableCell>
+      <TableCell data-column="score" className="text-right font-semibold">
+        {row.result.scoreLabel}
+      </TableCell>
+      <TableCell data-column="verification">{row.verificationLabel}</TableCell>
+      <TableCell data-column="calculated">
+        {challengeDateTimeFormatter.format(row.result.calculatedAt)}
+      </TableCell>
+      <TableCell data-column="action" className="text-right">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/profile/${row.profile.username}`} prefetch={false}>
+            Open profile
+          </Link>
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function ChallengeAttemptEvidenceTable({ data }: { data: ChallengeDetail }) {
+  const suggestedViews = challengeAttemptSuggestedViews(data.challenge.id);
+
+  return (
+    <section className="grid gap-3" data-workbench-scope="challenge-attempts">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Imported shot evidence</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Qualifying attempts that feed the leaderboard, including source and sample evidence.
+          </p>
+        </div>
+        <StatusPill tone={data.attempts.length > 0 ? "amber" : "slate"}>
+          {data.attempts.length} attempts
+        </StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey={`challenge-attempts-${data.challenge.id}`}
+        scope="challenge-attempts"
+        currentViewLabel={`${data.challenge.title} attempts`}
+        resultLabel={`${data.attempts.length} imported attempts`}
+        columns={challengeAttemptColumns}
+        suggestedViews={suggestedViews}
+        exportTableId="challenge-attempts"
+        exportFileName={`forekinghell-challenge-${data.challenge.id}-attempts.csv`}
+      />
+
+      <DataTableFrame mainTableLabel="Challenge imported shot evidence table">
+        <Table
+          data-workbench-export-table="challenge-attempts"
+          aria-describedby="challenge-attempts-summary"
+        >
+          <TableCaption id="challenge-attempts-summary" className="sr-only">
+            Challenge imported shot evidence table showing player, metric, source, verification,
+            evidence, attempted time and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="player"
+                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Player
+              </TableHead>
+              <TableHead data-column="metric">Metric</TableHead>
+              <TableHead data-column="source">Source</TableHead>
+              <TableHead data-column="verification">Verification</TableHead>
+              <TableHead data-column="evidence">Evidence</TableHead>
+              <TableHead data-column="attempted">Attempted</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.attempts.length > 0 ? (
+              data.attempts.map((row) => (
+                <ChallengeAttemptTableRow key={row.attempt.id} row={row} />
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  No qualifying imported attempts yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
+  );
+}
+
+function ChallengeAttemptTableRow({ row }: { row: ChallengeAttemptEntry }) {
+  return (
+    <TableRow tabIndex={0} className="focus-aaa outline-none">
+      <TableCell
+        data-column="player"
+        className="sticky left-0 z-10 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+      >
+        <Link
+          href={`/profile/${row.profile.username}`}
+          prefetch={false}
+          className="font-semibold text-emerald-700 hover:underline"
+        >
+          {row.profile.displayName}
+        </Link>
+        <p className="mt-1 text-xs text-muted-foreground">@{row.profile.username}</p>
+      </TableCell>
+      <TableCell data-column="metric">
+        <span className="font-medium">{attemptScoreLabel(row.attempt)}</span>
+        <p className="mt-1 text-xs text-muted-foreground">{row.attempt.metricLabel}</p>
+      </TableCell>
+      <TableCell data-column="source">{titleCase(row.attempt.sourceType)}</TableCell>
+      <TableCell data-column="verification">{row.attempt.verificationLabel}</TableCell>
+      <TableCell data-column="evidence">{attemptMetadataLabel(row.attempt.metadataJson)}</TableCell>
+      <TableCell data-column="attempted">
+        {challengeDateTimeFormatter.format(row.attempt.attemptedAt)}
+      </TableCell>
+      <TableCell data-column="action" className="text-right">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/profile/${row.profile.username}`} prefetch={false}>
+            Open profile
+          </Link>
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
 
 function PodiumCard({ row }: { row: PodiumRow }) {
   const rank = row.result.rank ?? 0;
@@ -605,12 +805,63 @@ function boardVerificationMode(labels: string[]) {
   return "Import-scored board";
 }
 
+const challengeDateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(value);
 }
 
 function titleCase(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function challengeLeaderboardSuggestedViews(challengeId: string): DesktopSavedViewSuggestion[] {
+  return [
+    {
+      title: "Leaderboard",
+      href: `/challenges/${challengeId}#challenge-command`,
+      detail: "Full ranking, score and verification evidence.",
+    },
+    {
+      title: "Imported shots",
+      href: `/challenges/${challengeId}#imported-shots`,
+      detail: "Challenge rules and import status.",
+    },
+    {
+      title: "Challenge centre",
+      href: "/challenges",
+      detail: "Active, invited and recommended challenge boards.",
+    },
+  ];
+}
+
+function challengeAttemptSuggestedViews(challengeId: string): DesktopSavedViewSuggestion[] {
+  return [
+    {
+      title: "Imported attempts",
+      href: `/challenges/${challengeId}#challenge-command`,
+      detail: "Every qualifying attempt that feeds this leaderboard.",
+    },
+    {
+      title: "Import data",
+      href: "/import",
+      detail: "Upload or connect new challenge evidence.",
+    },
+    {
+      title: "Compare",
+      href: "/compare",
+      detail: "Compare sessions, clubs and before-after periods.",
+    },
+  ];
 }
 
 function scoreDisplay(value: number) {

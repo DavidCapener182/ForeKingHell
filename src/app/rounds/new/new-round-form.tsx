@@ -229,6 +229,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <button
               key={hole.holeNumber}
               type="button"
+              aria-label={`Go to hole ${hole.holeNumber}`}
               onClick={() => setActiveHoleIndex(index)}
               className={cn(
                 "grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border text-sm font-semibold shadow-sm",
@@ -242,13 +243,33 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           ))}
         </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:grid sm:grid-cols-[minmax(9rem,1.4fr)_repeat(5,minmax(4.25rem,0.7fr))_repeat(2,minmax(5rem,0.75fr))] sm:items-center sm:gap-2"
+          aria-hidden
+        >
+          <span>Hole</span>
+          <span>Score</span>
+          <span>Putts</span>
+          <span>Pens</span>
+          <span>Chips</span>
+          <span>Sand</span>
+          <span>Fairway</span>
+          <span>GIR</span>
+        </div>
+
+        <div
+          id="scorecard-entry-grid"
+          data-scorecard-entry-grid
+          role="group"
+          aria-label="Keyboard-friendly scorecard hole entry grid"
+          className="mt-3 grid gap-3 sm:gap-2"
+        >
           {holes.map((hole, index) => (
-            <div
+            <fieldset
               key={hole.holeNumber}
               className={cn(
-                "apple-panel-strong p-3",
-                index === activeHoleIndex ? "block" : "hidden sm:block",
+                "apple-panel-strong grid grid-cols-2 gap-2 p-3 sm:grid-cols-[minmax(9rem,1.4fr)_repeat(5,minmax(4.25rem,0.7fr))_repeat(2,minmax(5rem,0.75fr))] sm:items-end sm:p-2",
+                index === activeHoleIndex ? "grid" : "hidden sm:grid",
               )}
             >
               <input type="hidden" name={`holeNumber-${index}`} value={hole.holeNumber} />
@@ -256,7 +277,9 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
               <input type="hidden" name={`yards-${index}`} value={hole.yards} />
               <input type="hidden" name={`strokeIndex-${index}`} value={hole.strokeIndex ?? ""} />
 
-              <div className="mb-3 flex items-start justify-between gap-3">
+              <legend className="sr-only">Hole {hole.holeNumber} scorecard entry</legend>
+
+              <div className="col-span-2 flex items-start justify-between gap-3 sm:col-span-1 sm:block">
                 <div>
                   <p className="font-semibold">Hole {hole.holeNumber}</p>
                   <p className="text-xs text-muted-foreground">
@@ -266,24 +289,18 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <RoundNumberField label="Score" name={`score-${index}`} min={1} />
-                <RoundNumberField label="Putts" name={`putts-${index}`} min={0} />
-                <RoundNumberField label="Pens" name={`penalties-${index}`} min={0} />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <RoundNumberField label="Chips" name={`chipShots-${index}`} min={0} />
-                <RoundNumberField label="Sand" name={`greensideSandShots-${index}`} min={0} />
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <BooleanSelect
-                  label="Fairway"
-                  name={`fairwayHit-${index}`}
-                  disabled={hole.par === 3}
-                />
-                <BooleanSelect label="GIR" name={`gir-${index}`} />
-              </div>
-            </div>
+              <RoundNumberField label="Score" name={`score-${index}`} min={1} />
+              <RoundNumberField label="Putts" name={`putts-${index}`} min={0} />
+              <RoundNumberField label="Pens" name={`penalties-${index}`} min={0} />
+              <RoundNumberField label="Chips" name={`chipShots-${index}`} min={0} />
+              <RoundNumberField label="Sand" name={`greensideSandShots-${index}`} min={0} />
+              <BooleanSelect
+                label="Fairway"
+                name={`fairwayHit-${index}`}
+                disabled={hole.par === 3}
+              />
+              <BooleanSelect label="GIR" name={`gir-${index}`} />
+            </fieldset>
           ))}
         </div>
       </div>
@@ -398,12 +415,14 @@ function ReviewMetric({ label, value }: { label: string; value: string }) {
 
 function RoundNumberField({ label, name, min }: { label: string; name: string; min: number }) {
   return (
-    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+    <label className="grid gap-1 text-xs font-medium text-muted-foreground sm:min-w-0">
       <span>{label}</span>
       <Input
         name={name}
         type="number"
         min={min}
+        inputMode="numeric"
+        autoComplete="off"
         className="h-9 rounded-lg bg-white text-sm text-foreground"
       />
     </label>
@@ -426,7 +445,7 @@ function BooleanSelect({
         name={name}
         defaultValue={disabled ? "null" : "null"}
         disabled={disabled}
-        className="h-9 rounded-lg border border-input bg-white px-2 text-sm text-foreground shadow-xs outline-none disabled:bg-slate-100 disabled:text-muted-foreground"
+        className="h-9 min-w-0 rounded-lg border border-input bg-white px-2 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-slate-100 disabled:text-muted-foreground"
       >
         <option value="null">-</option>
         <option value="true">Hit</option>

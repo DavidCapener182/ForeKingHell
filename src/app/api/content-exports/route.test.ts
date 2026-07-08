@@ -101,9 +101,12 @@ describe("content export routes", () => {
     );
     const { GET } = await import("@/app/api/content-exports/[exportId]/image/route");
 
-    const response = await GET(new Request("http://test.local/api/content-exports/export-1/image"), {
-      params: Promise.resolve({ exportId: "export-1" }),
-    });
+    const response = await GET(
+      new Request("http://test.local/api/content-exports/export-1/image"),
+      {
+        params: Promise.resolve({ exportId: "export-1" }),
+      },
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, max-age=60");

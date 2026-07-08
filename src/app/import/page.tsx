@@ -37,12 +37,20 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkflowLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+  type DesktopWorkflowHelpItem,
+  type DesktopWorkflowStep,
+} from "@/components/app/desktop-workbench";
+import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -67,6 +75,47 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const importLibraryColumns: DesktopWorkbenchColumn[] = [
+  { id: "file", label: "File", locked: true },
+  { id: "status", label: "Status" },
+  { id: "session", label: "Session" },
+  { id: "parse", label: "Parse" },
+  { id: "actions", label: "Actions", locked: true },
+];
+const importLibrarySuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Duplicate checks",
+    href: "/import#import-library",
+    detail: "Review duplicate and archived-import blockers before submitting proof.",
+  },
+  {
+    title: "Linked sessions",
+    href: "/import#import-library",
+    detail: "Confirm which imports already feed rounds, bag and coach evidence.",
+  },
+  {
+    title: "Rapsodo setup",
+    href: "/rapsodo",
+    detail: "Open the provider sync console for cloud-session preview.",
+  },
+];
+const importWorkflowHelpItems = [
+  {
+    title: "Rapsodo first",
+    detail:
+      "Direct launch-monitor sessions should become the evidence source before scorecard proof, records or challenges.",
+  },
+  {
+    title: "Trust before action",
+    detail:
+      "Check duplicate status, club mapping and session links before the data feeds bag yardages or coach priorities.",
+  },
+  {
+    title: "Proof stays secondary",
+    detail:
+      "Only offer records, tournaments and challenge submissions after a saved import has enough context to cite.",
+  },
+] satisfies DesktopWorkflowHelpItem[];
 
 export default async function ImportPage({ searchParams }: ImportPageProps) {
   const [params, library, rapsodoStatus, featureData] = await Promise.all([
@@ -78,6 +127,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
   const mobileCsvMode = params?.source === "csv";
   const visibleFiles = library.files.filter((file) => file.status !== "archived");
   const duplicateFiles = visibleFiles.filter((file) => file.status === "duplicate").length;
+  const savedFiles = visibleFiles.filter((file) => file.status === "saved").length;
   const eligibleSubmissionCards = buildEligibleSubmissionCards(visibleFiles);
   const connectionStatus = rapsodoStatus.ok
     ? rapsodoStatus.data
@@ -86,6 +136,12 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
         expiresAt: null,
         profile: null,
       };
+  const importWorkflowSteps = buildImportWorkflowSteps({
+    connected: connectionStatus.connected,
+    duplicateFiles,
+    fileCount: visibleFiles.length,
+    savedFiles,
+  });
 
   return (
     <>
@@ -253,32 +309,93 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                 description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
                 href="#rapsodo-connect"
                 actionLabel="Connect Rapsodo"
-                media={
-                  <PageArtwork
-                    variant="import"
-                    alt=""
-                    className="block h-full min-h-0 rounded-none"
-                    sizes="calc(100vw - 2rem)"
-                  />
-                }
               />
             </MobileAccordionSection>
           </MobileAppShell>
         )}
         <div className="hidden sm:contents">
-          <FirstRunRapsodoOnboarding
-            connected={connectionStatus.connected}
-            fileCount={visibleFiles.length}
-          />
-          <div id="rapsodo-import" className="hidden sm:block">
-            <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
-          </div>
-          <ImportQualityFeaturePanel data={featureData} />
-          <ImportFileLibrary files={visibleFiles} />
+          <DesktopWorkflowLayout
+            steps={importWorkflowSteps}
+            helpTitle="Import centre help"
+            helpDescription="Keep launch-monitor data trustworthy"
+            helpItems={importWorkflowHelpItems}
+          >
+            <FirstRunRapsodoOnboarding
+              connected={connectionStatus.connected}
+              fileCount={visibleFiles.length}
+            />
+            <div id="rapsodo-import" className="hidden min-w-0 scroll-mt-28 sm:block">
+              <ImportForm defaultDistanceUnit={library.preferredDistanceUnit} />
+            </div>
+            <div id="import-quality" className="min-w-0 scroll-mt-28">
+              <ImportQualityFeaturePanel data={featureData} />
+            </div>
+            <div id="import-library" className="min-w-0 scroll-mt-28">
+              <ImportFileLibrary files={visibleFiles} />
+            </div>
+          </DesktopWorkflowLayout>
         </div>
       </PageShell>
     </>
   );
+}
+
+function buildImportWorkflowSteps({
+  connected,
+  duplicateFiles,
+  fileCount,
+  savedFiles,
+}: {
+  connected: boolean;
+  duplicateFiles: number;
+  fileCount: number;
+  savedFiles: number;
+}): DesktopWorkflowStep[] {
+  const hasFiles = fileCount > 0;
+  const hasSavedFiles = savedFiles > 0;
+
+  return [
+    {
+      title: "Choose source",
+      detail: "Start with R-Cloud or a Rapsodo CSV before scorecard proof or manual entry.",
+      status: connected || hasFiles ? "complete" : "current",
+      value: connected ? "R-Cloud ready" : hasFiles ? `${fileCount} files` : "Start here",
+    },
+    {
+      title: "Upload and map",
+      detail: "Preview shot rows, confirm distance units and keep club names consistent.",
+      status: hasFiles ? "complete" : connected ? "current" : "upcoming",
+      value: hasFiles ? `${fileCount} files` : undefined,
+    },
+    {
+      title: "Review rows",
+      detail: "Check duplicates, linked sessions, parse version and data-quality warnings.",
+      status: hasSavedFiles ? "complete" : hasFiles ? "current" : "upcoming",
+      value:
+        duplicateFiles > 0
+          ? `${duplicateFiles} duplicates`
+          : hasFiles
+            ? "Quality check"
+            : undefined,
+    },
+    {
+      title: "Save import",
+      detail: "Only saved imports should feed bag confidence, coach evidence and practice plans.",
+      status: hasSavedFiles
+        ? "complete"
+        : hasFiles && duplicateFiles === 0
+          ? "current"
+          : "upcoming",
+      value: hasSavedFiles ? `${savedFiles} saved` : undefined,
+    },
+    {
+      title: "Use evidence",
+      detail:
+        "Open the first useful insight, then submit proof-backed records only where rules match.",
+      status: hasSavedFiles ? "current" : "upcoming",
+      value: hasSavedFiles ? "Ready to cite" : undefined,
+    },
+  ];
 }
 
 function FirstRunRapsodoOnboarding({
@@ -543,7 +660,20 @@ function ImportFileLibrary({
           action={<FileClock className="size-5 text-sky-600" />}
         />
         <CardContent>
+          <DesktopTableWorkbenchControls
+            viewKey="import-library"
+            scope="import"
+            currentViewLabel="Import file library"
+            resultLabel={`${integerFormatter.format(files.length)} files`}
+            columns={importLibraryColumns}
+            suggestedViews={importLibrarySuggestedViews}
+            exportTableId="import-library"
+            exportFileName="forekinghell-import-library.csv"
+            className="mb-3"
+          />
           <DataTableFrame
+            mainTable
+            mainTableLabel="Import file library table"
             mobile={
               <MobileDataList
                 empty={
@@ -574,21 +704,30 @@ function ImportFileLibrary({
               </MobileDataList>
             }
           >
-            <Table>
+            <Table
+              data-workbench-export-table="import-library"
+              aria-describedby="import-library-summary"
+            >
+              <TableCaption id="import-library-summary" className="sr-only">
+                Recent imported files with duplicate status, linked session, parse version and
+                archive action.
+              </TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead>File</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Session</TableHead>
-                  <TableHead>Parse</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead data-column="file">File</TableHead>
+                  <TableHead data-column="status">Status</TableHead>
+                  <TableHead data-column="session">Session</TableHead>
+                  <TableHead data-column="parse">Parse</TableHead>
+                  <TableHead data-column="actions" className="text-right">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {files.length > 0 ? (
                   files.map((file) => (
                     <TableRow key={file.id}>
-                      <TableCell>
+                      <TableCell data-column="file">
                         <div className="min-w-0">
                           <p className="truncate font-medium">{file.fileName}</p>
                           <p className="text-xs text-muted-foreground">
@@ -597,10 +736,10 @@ function ImportFileLibrary({
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-column="status">
                         <StatusBadge status={file.status} />
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-column="session">
                         {file.sessionId ? (
                           <Link
                             href={`/rounds/${file.sessionId}`}
@@ -613,13 +752,13 @@ function ImportFileLibrary({
                           <span className="text-sm text-muted-foreground">No session</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-column="parse">
                         <span className="inline-flex items-center gap-1 text-sm">
                           <RefreshCw className="size-3.5 text-muted-foreground" />
                           {file.parseVersion}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="actions" className="text-right">
                         <form action={archiveImportFileAction}>
                           <input type="hidden" name="importFileId" value={file.id} />
                           <Button type="submit" variant="ghost" size="sm">

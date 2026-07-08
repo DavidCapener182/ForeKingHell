@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, Sun, Upload, UserRound, Zap } from "lucide-react";
+import {
+  CreditCard,
+  LogOut,
+  PanelLeftIcon,
+  Rows3,
+  Settings,
+  Sun,
+  Upload,
+  UserRound,
+  Zap,
+} from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome";
 import { MobileNav, type MobileNavProfile, getProfileInitials } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +29,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -50,31 +63,144 @@ type AppShellProps = {
 };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
+const sidebarDensityStorageKey = "fkh:desktop-sidebar-density";
+
+type SidebarDensity = "comfortable" | "compact" | "icon";
+type ExpandedSidebarDensity = Exclude<SidebarDensity, "icon">;
 
 export function AppShell({ children, totalXp, isAdmin = false, profile = null }: AppShellProps) {
   const pathname = usePathname();
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
   const desktopNavGroups = useMemo(() => buildDesktopNavGroups(isAdmin), [isAdmin]);
+  const [sidebarDensity, setSidebarDensity] = useState<SidebarDensity>("comfortable");
+  const [lastExpandedDensity, setLastExpandedDensity] =
+    useState<ExpandedSidebarDensity>("comfortable");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedDensity = window.localStorage.getItem(sidebarDensityStorageKey);
+
+      if (
+        storedDensity === "compact" ||
+        storedDensity === "comfortable" ||
+        storedDensity === "icon"
+      ) {
+        setSidebarDensity(storedDensity);
+        if (storedDensity !== "icon") {
+          setLastExpandedDensity(storedDensity);
+        }
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    function handleTableKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey || isEditableTableTarget(event.target)) {
+        return;
+      }
+
+      const activeRow = findFocusedWorkbenchRow(event.target);
+
+      if (!activeRow) {
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === " " || event.code === "Space") {
+        event.preventDefault();
+        activeRow.click();
+        return;
+      }
+
+      if (
+        event.key !== "ArrowDown" &&
+        event.key !== "ArrowUp" &&
+        event.key !== "Home" &&
+        event.key !== "End"
+      ) {
+        return;
+      }
+
+      const row = nextWorkbenchRow(activeRow, event.key);
+
+      if (!row || row === activeRow) {
+        return;
+      }
+
+      event.preventDefault();
+      row.focus({ preventScroll: true });
+      row.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+
+    window.addEventListener("keydown", handleTableKeyDown);
+
+    return () => window.removeEventListener("keydown", handleTableKeyDown);
+  }, []);
 
   if (isPublicRoute(pathname)) {
     return <>{children}</>;
   }
 
+  function updateSidebarDensity(nextDensity: SidebarDensity) {
+    setSidebarDensity(nextDensity);
+
+    if (nextDensity !== "icon") {
+      setLastExpandedDensity(nextDensity);
+    }
+
+    window.localStorage.setItem(sidebarDensityStorageKey, nextDensity);
+  }
+
+  function handleSidebarOpenChange(open: boolean) {
+    updateSidebarDensity(open ? lastExpandedDensity : "icon");
+  }
+
+  const isCompactSidebar = sidebarDensity === "compact";
+  const sidebarStyle = {
+    "--sidebar-width": isCompactSidebar ? "13.75rem" : "16rem",
+  } as CSSProperties;
+
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      open={sidebarDensity !== "icon"}
+      onOpenChange={handleSidebarOpenChange}
+      style={sidebarStyle}
+      data-sidebar-density={sidebarDensity}
+    >
       <a
         href="#main-content"
         className="sr-only fixed left-3 top-3 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only"
       >
         Skip to content
       </a>
-      <Sidebar collapsible="icon" className="border-sidebar-border bg-sidebar">
-        <SidebarHeader className="border-b border-sidebar-border bg-[linear-gradient(180deg,var(--lux-ivory),#f4f7ef)]">
-          <div className="flex items-center gap-2 px-1 py-1">
+      <a
+        href="#app-sidebar"
+        className="sr-only fixed left-3 top-14 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only"
+      >
+        Skip to sidebar
+      </a>
+      <MainTableSkipLink pathname={pathname} />
+      <Sidebar
+        id="app-sidebar"
+        tabIndex={-1}
+        collapsible="icon"
+        className="border-sidebar-border bg-sidebar"
+      >
+        <SidebarHeader
+          className={cn(
+            "border-b border-sidebar-border bg-[linear-gradient(180deg,var(--lux-ivory),#f4f7ef)]",
+            isCompactSidebar && "gap-1 p-1.5",
+          )}
+        >
+          <div className={cn("flex items-center gap-2 px-1 py-1", isCompactSidebar && "py-0.5")}>
             <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
               <Link href="/dashboard">
-                <BrandMark className="size-9 rounded-lg shadow-sm" sizes="36px" />
+                <BrandMark
+                  className={cn("size-9 rounded-lg shadow-sm", isCompactSidebar && "size-8")}
+                  sizes={isCompactSidebar ? "32px" : "36px"}
+                />
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{BRAND_NAME}</span>
                   <span className="truncate text-xs text-muted-foreground">Golf analytics</span>
@@ -87,8 +213,10 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
 
         <SidebarContent>
           {desktopNavGroups.map((group) => (
-            <SidebarGroup key={group.label}>
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
+              <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
+                {group.label}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {group.items.map((item) => {
@@ -102,6 +230,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
                           isActive={active}
                           tooltip={item.label}
                           className={cn(
+                            isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
                             active &&
                               "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
                           )}
@@ -131,9 +260,21 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         </SidebarContent>
 
         <SidebarSeparator />
-        <SidebarFooter className="border-t border-sidebar-border bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]">
-          <SunlightModeButton />
-          <Button asChild className="premium-action w-full justify-start rounded-lg">
+        <SidebarFooter
+          className={cn(
+            "border-t border-sidebar-border bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]",
+            isCompactSidebar && "gap-1 p-1.5",
+          )}
+        >
+          <SidebarDensityMenu density={sidebarDensity} onDensityChange={updateSidebarDensity} />
+          <SunlightModeButton compact={isCompactSidebar} />
+          <Button
+            asChild
+            className={cn(
+              "premium-action w-full justify-start rounded-lg",
+              isCompactSidebar && "h-8 px-2 text-xs",
+            )}
+          >
             <Link href="/import">
               <Upload className="size-4" />
               <span className="group-data-[collapsible=icon]:hidden">Import data</span>
@@ -145,6 +286,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
             xpToNextLevel={xpToNextLevel}
             profile={profile}
             isAdmin={isAdmin}
+            compact={isCompactSidebar}
           />
         </SidebarFooter>
         <SidebarRail />
@@ -159,18 +301,241 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
           profile={profile}
           isAdmin={isAdmin}
         />
+        <DesktopWorkbenchChrome
+          navGroups={desktopNavGroups}
+          isAdmin={isAdmin}
+          accountMenu={
+            <ProfileDropdown
+              totalXp={totalXp}
+              level={level.level}
+              xpToNextLevel={xpToNextLevel}
+              profile={profile}
+              isAdmin={isAdmin}
+              surface="topbar"
+            />
+          }
+        />
         {children}
       </div>
     </SidebarProvider>
   );
 }
 
-function SunlightModeButton() {
-  const [enabled, setEnabled] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.localStorage.getItem("fkh:sunlight-mode") === "true",
+function MainTableSkipLink({ pathname }: { pathname: string }) {
+  const [hasMainTable, setHasMainTable] = useState(false);
+
+  useEffect(() => {
+    const findMainTable = () => Boolean(resolveMainTableTarget());
+    let observer: MutationObserver | null = null;
+    let initialTimer: number | null = null;
+    let fallbackTimer: number | null = null;
+
+    const syncMainTable = () => {
+      const nextHasMainTable = findMainTable();
+      setHasMainTable(nextHasMainTable);
+
+      if (nextHasMainTable) {
+        observer?.disconnect();
+        observer = null;
+        if (fallbackTimer !== null) {
+          window.clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+        }
+      }
+    };
+
+    initialTimer = window.setTimeout(() => {
+      observer = new MutationObserver(syncMainTable);
+      observer.observe(document.body, { childList: true, subtree: true });
+      syncMainTable();
+
+      if (!findMainTable()) {
+        fallbackTimer = window.setTimeout(syncMainTable, 2_500);
+      }
+    }, 0);
+
+    return () => {
+      observer?.disconnect();
+      if (initialTimer !== null) {
+        window.clearTimeout(initialTimer);
+      }
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+      }
+    };
+  }, [pathname]);
+
+  if (!hasMainTable) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      className="sr-only fixed left-3 top-24 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only max-sm:hidden"
+      onClick={() => {
+        const target = resolveMainTableTarget();
+        target?.focus({ preventScroll: true });
+        target?.scrollIntoView({ block: "start" });
+      }}
+    >
+      Skip to main table
+    </button>
   );
+}
+
+function resolveMainTableTarget() {
+  const explicitTarget = document.querySelector<HTMLElement>("[data-main-table-target='true']");
+
+  if (explicitTarget) {
+    return explicitTarget;
+  }
+
+  const exportTable = document.querySelector<HTMLElement>("table[data-workbench-export-table]");
+
+  return (
+    exportTable?.closest<HTMLElement>("[data-slot='table-container'], [role='region']") ??
+    exportTable ??
+    null
+  );
+}
+
+function isEditableTableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable ||
+    target.closest("button,a,input,textarea,select,[role='button'],[role='menuitem']") !== null
+  );
+}
+
+function findFocusedWorkbenchRow(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return null;
+  }
+
+  const row = target.closest<HTMLTableRowElement>("tr[tabindex]");
+
+  if (!row) {
+    return null;
+  }
+
+  return row.closest("table[data-workbench-export-table]") ? row : null;
+}
+
+function nextWorkbenchRow(activeRow: HTMLTableRowElement, key: string) {
+  const table = activeRow.closest("table[data-workbench-export-table]");
+
+  if (!table) {
+    return null;
+  }
+
+  const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr[tabindex]")).filter(
+    (row) => !row.hasAttribute("disabled") && row.offsetParent !== null,
+  );
+  const currentIndex = rows.indexOf(activeRow);
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  if (key === "Home") {
+    return rows[0] ?? null;
+  }
+
+  if (key === "End") {
+    return rows[rows.length - 1] ?? null;
+  }
+
+  if (key === "ArrowDown") {
+    return rows[Math.min(rows.length - 1, currentIndex + 1)] ?? null;
+  }
+
+  if (key === "ArrowUp") {
+    return rows[Math.max(0, currentIndex - 1)] ?? null;
+  }
+
+  return null;
+}
+
+function SidebarDensityMenu({
+  density,
+  onDensityChange,
+}: {
+  density: SidebarDensity;
+  onDensityChange: (density: SidebarDensity) => void;
+}) {
+  const densityLabel =
+    density === "compact" ? "Compact" : density === "icon" ? "Icon-only" : "Comfortable";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-start rounded-lg px-2 group-data-[collapsible=icon]:justify-center"
+          aria-label="Sidebar density"
+        >
+          {density === "icon" ? (
+            <PanelLeftIcon className="size-4" aria-hidden />
+          ) : (
+            <Rows3 className="size-4" aria-hidden />
+          )}
+          <span className="truncate group-data-[collapsible=icon]:hidden">
+            Sidebar: {densityLabel}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="end" className="w-56">
+        <DropdownMenuLabel>Sidebar density</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={density}
+          onValueChange={(value) => {
+            if (value === "comfortable" || value === "compact" || value === "icon") {
+              onDensityChange(value);
+            }
+          }}
+        >
+          <DropdownMenuRadioItem value="comfortable">
+            <span className="grid">
+              <span className="font-medium">Comfortable</span>
+              <span className="text-xs text-muted-foreground">Full labels and spacing</span>
+            </span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="compact">
+            <span className="grid">
+              <span className="font-medium">Compact</span>
+              <span className="text-xs text-muted-foreground">Tighter route switching</span>
+            </span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="icon">
+            <span className="grid">
+              <span className="font-medium">Icon-only</span>
+              <span className="text-xs text-muted-foreground">Maximum workspace width</span>
+            </span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function SunlightModeButton({ compact = false }: { compact?: boolean }) {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setEnabled(window.localStorage.getItem("fkh:sunlight-mode") === "true");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.sunlight = enabled ? "true" : "false";
@@ -187,7 +552,7 @@ function SunlightModeButton() {
     <Button
       type="button"
       variant={enabled ? "default" : "outline"}
-      className="w-full justify-start rounded-lg"
+      className={cn("w-full justify-start rounded-lg", compact && "h-8 px-2 text-xs")}
       onClick={toggleSunlightMode}
       aria-pressed={enabled}
       data-haptic="strong"
@@ -204,41 +569,56 @@ function ProfileDropdown({
   xpToNextLevel,
   profile,
   isAdmin,
+  compact = false,
+  surface = "sidebar",
 }: {
   totalXp: number;
   level: number;
   xpToNextLevel: number;
   profile: MobileNavProfile;
   isAdmin: boolean;
+  compact?: boolean;
+  surface?: "sidebar" | "topbar";
 }) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
   const profileInitials = getProfileInitials(profileLabel);
+  const isTopbar = surface === "topbar";
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
-          className="h-auto w-full justify-start gap-2 px-2 py-2"
-          aria-label="Open account menu"
+          variant={isTopbar ? "outline" : "ghost"}
+          className={cn(
+            isTopbar
+              ? "focus-aaa h-9 w-auto shrink-0 justify-start gap-2 rounded-lg border-emerald-950/10 bg-white/76 px-2 shadow-sm outline-none hover:border-emerald-300 hover:bg-white"
+              : "h-auto w-full justify-start gap-2 px-2 py-2",
+            compact && "gap-1.5 py-1.5",
+          )}
+          aria-label={isTopbar ? "Open desktop account menu" : "Open account menu"}
         >
-          <Avatar>
+          <Avatar size={isTopbar ? "sm" : "default"}>
             {profile?.avatarUrl ? (
               <ProfileDropdownAvatarImage src={profile.avatarUrl} />
             ) : (
               <AvatarFallback>{profileInitials}</AvatarFallback>
             )}
           </Avatar>
-          <span className="grid min-w-0 flex-1 text-left group-data-[collapsible=icon]:hidden">
+          <span
+            className={cn(
+              "min-w-0 flex-1 text-left",
+              isTopbar ? "hidden 2xl:grid" : "grid group-data-[collapsible=icon]:hidden",
+            )}
+          >
             <span className="truncate text-sm font-medium">{profileLabel}</span>
             <span className="truncate text-xs text-muted-foreground">
-              Level {level} · {xpFormatter.format(totalXp)} XP
+              {isTopbar ? `Level ${level}` : `Level ${level} · ${xpFormatter.format(totalXp)} XP`}
             </span>
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end" className="w-64">
+      <DropdownMenuContent side={isTopbar ? "bottom" : "right"} align="end" className="w-64">
         <DropdownMenuLabel>
           <div className="grid gap-1">
             <span className="truncate text-sm text-foreground">{profileLabel}</span>
@@ -259,6 +639,18 @@ function ProfileDropdown({
             <Badge variant="secondary" className="ml-auto">
               Lvl {level}
             </Badge>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings className="size-4" />
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/billing">
+            <CreditCard className="size-4" />
+            Billing
           </Link>
         </DropdownMenuItem>
         {isAdmin ? (

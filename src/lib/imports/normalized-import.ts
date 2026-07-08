@@ -117,10 +117,7 @@ function normalizedRawRows(session: NormalizedSession): ParsedRapsodoRawRow[] {
   ];
 }
 
-function normalizedShotToParsedShot(
-  shot: NormalizedShot,
-  index: number,
-): ParsedRapsodoShot | null {
+function normalizedShotToParsedShot(shot: NormalizedShot, index: number): ParsedRapsodoShot | null {
   const clubType = normalizeClubType(shot.clubRaw ?? shot.clubType);
 
   if (clubType === "unknown" && Object.keys(shot.metrics).length === 0) {

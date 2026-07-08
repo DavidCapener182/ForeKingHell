@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
-import { ChevronRight, Flag, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Flag, Search } from "lucide-react";
 
+import {
+  DesktopWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench-controls";
 import { CourseScorecardSvg, type CourseScorecardSvgHole } from "@/components/course-scorecard-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -32,12 +38,14 @@ export type RoundsWorkspaceRound = {
   courseName: string | null;
   fileName: string | null;
   dateLabel: string;
+  dateIso: string;
   type: string;
   typeLabel: string;
   roundStatus: string;
   totalScore: number | null;
   totalPar: number | null;
   totalPutts: number | null;
+  handicapDifferential: number | null;
   handicapDifferentialLabel: string;
   scoreSummary: string;
   shotCount: number;
@@ -49,6 +57,13 @@ export type RoundsWorkspaceRound = {
 };
 
 type RoundFilter = "all" | "real" | "simulator" | "scorecard-only" | "shot-linked";
+type RoundSortMetric = "date" | "score" | "diff" | "putts" | "data";
+type RoundSortDirection = "asc" | "desc";
+
+type RoundSortState = {
+  metric: RoundSortMetric;
+  dir: RoundSortDirection;
+};
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
@@ -60,6 +75,51 @@ const filters: Array<{ label: string; value: RoundFilter }> = [
   { label: "Shot-linked", value: "shot-linked" },
 ];
 
+const roundWorkbenchColumns: DesktopWorkbenchColumn[] = [
+  { id: "round", label: "Round", locked: true },
+  { id: "date", label: "Date" },
+  { id: "type", label: "Type" },
+  { id: "score", label: "Score" },
+  { id: "diff", label: "Diff" },
+  { id: "putts", label: "Putts" },
+  { id: "data", label: "Data" },
+  { id: "actions", label: "Actions", locked: true },
+];
+
+const roundSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Scorecard-only cleanup",
+    href: "/rounds?filter=scorecard-only",
+    detail: "Rounds that need shot data before deeper review.",
+  },
+  {
+    title: "Shot-linked reviews",
+    href: "/rounds?filter=shot-linked",
+    detail: "Rounds with shot evidence for recap and practice planning.",
+  },
+  {
+    title: "Real rounds only",
+    href: "/rounds?filter=real",
+    detail: "Keep real-course scoring separate from simulator form.",
+  },
+];
+
+const roundSortLabels: Record<RoundSortMetric, string> = {
+  date: "Date",
+  score: "Score",
+  diff: "Diff",
+  putts: "Putts",
+  data: "Data",
+};
+
+const roundSortDefaultDirections: Record<RoundSortMetric, RoundSortDirection> = {
+  date: "desc",
+  score: "asc",
+  diff: "asc",
+  putts: "asc",
+  data: "desc",
+};
+
 export function RoundsWorkspace({
   children,
   rounds,
@@ -70,6 +130,41 @@ export function RoundsWorkspace({
   const [activeFilter, setActiveFilter] = useState<RoundFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRoundId, setSelectedRoundId] = useState(rounds[0]?.id ?? null);
+  const [sortState, setSortState] = useState<RoundSortState>({ metric: "date", dir: "desc" });
+  const [urlStateReady, setUrlStateReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      setActiveFilter(parseRoundFilter(params.get("filter")));
+      setSearchTerm(params.get("q")?.slice(0, 80) ?? "");
+      setUrlStateReady(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!urlStateReady) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+
+    if (activeFilter === "all") {
+      url.searchParams.delete("filter");
+    } else {
+      url.searchParams.set("filter", activeFilter);
+    }
+
+    if (searchTerm.trim()) {
+      url.searchParams.set("q", searchTerm.trim());
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    window.history.replaceState(window.history.state, "", url);
+  }, [activeFilter, searchTerm, urlStateReady]);
 
   const filteredRounds = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -85,11 +180,20 @@ export function RoundsWorkspace({
     });
   }, [activeFilter, rounds, searchTerm]);
 
+  const sortedRounds = useMemo(
+    () => sortRounds(filteredRounds, sortState),
+    [filteredRounds, sortState],
+  );
   const selectedRound =
-    filteredRounds.find((round) => round.id === selectedRoundId) ?? filteredRounds[0] ?? null;
+    sortedRounds.find((round) => round.id === selectedRoundId) ?? sortedRounds[0] ?? null;
+  const activeFilterLabel =
+    filters.find((filter) => filter.value === activeFilter)?.label ?? "All rounds";
+  const currentViewLabel = searchTerm.trim()
+    ? `${activeFilterLabel} · ${searchTerm.trim()}`
+    : activeFilterLabel;
 
   return (
-    <section className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="grid min-w-0 items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="grid min-w-0 gap-4">
         <Card id="history" className="premium-card min-w-0 scroll-mt-28">
           <CardHeader className="gap-2">
@@ -104,6 +208,16 @@ export function RoundsWorkspace({
                 {integerFormatter.format(filteredRounds.length)} shown
               </StatusPill>
             </div>
+            <DesktopWorkbenchControls
+              viewKey="rounds"
+              scope="rounds"
+              currentViewLabel={currentViewLabel}
+              resultLabel={`${integerFormatter.format(filteredRounds.length)} rounds`}
+              columns={roundWorkbenchColumns}
+              suggestedViews={roundSuggestedViews}
+              exportTableId="rounds"
+              exportFileName="forekinghell-rounds-view.csv"
+            />
           </CardHeader>
           <CardContent className="min-w-0 space-y-3 overflow-hidden px-3 sm:px-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -133,115 +247,182 @@ export function RoundsWorkspace({
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Search course…"
                   className="pl-8"
+                  data-filter-search
+                  data-page-search
                 />
               </label>
             </div>
 
-            <DataTableFrame
-              mobile={
-                <MobileDataList>
-                  {filteredRounds.length > 0 ? (
-                    filteredRounds.map((round, index) => (
-                      <RoundMobileCard
-                        key={round.id}
-                        round={round}
-                        selected={round.id === selectedRound?.id}
-                        onSelect={() => setSelectedRoundId(round.id)}
-                        priority={index === 0}
-                      />
-                    ))
-                  ) : (
-                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                      No rounds match this filter.
-                    </div>
-                  )}
-                </MobileDataList>
-              }
-            >
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Round</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                    <TableHead className="text-right">Diff</TableHead>
-                    <TableHead className="text-right">Putts</TableHead>
-                    <TableHead className="text-right">Data</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRounds.map((round) => (
-                    <TableRow
-                      key={round.id}
-                      className={round.id === selectedRound?.id ? "bg-emerald-50/45" : undefined}
-                      data-state={round.id === selectedRound?.id ? "selected" : undefined}
-                    >
-                      <TableCell className="max-w-[18rem] font-medium">
-                        <span className="block truncate">{roundTitle(round)}</span>
-                      </TableCell>
-                      <TableCell>{round.dateLabel}</TableCell>
-                      <TableCell>
-                        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
-                          {round.typeLabel}
-                        </Badge>
-                        {round.roundStatus === "in_progress" ? (
-                          <Badge variant="outline" className="ml-2">
-                            Resume
-                          </Badge>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatInteger(round.totalScore)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {round.handicapDifferentialLabel}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatInteger(round.totalPutts)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="inline-flex flex-col items-end gap-1">
-                          <DataBadge round={round} />
-                          <span className="text-xs text-muted-foreground">
-                            {integerFormatter.format(round.shotCount)} shots
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1.5">
-                          <Button
-                            type="button"
-                            variant={round.id === selectedRound?.id ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => setSelectedRoundId(round.id)}
-                          >
-                            {round.id === selectedRound?.id ? "Selected" : "Select"}
-                          </Button>
-                          <Button asChild variant="ghost" size="sm">
-                            <Link
-                              href={`/rounds/${round.id}`}
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              {round.shotCount > 0 ? "Review" : "Add data"}
-                              <ChevronRight className="size-4" />
-                            </Link>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredRounds.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+            <div className="min-w-0">
+              <DataTableFrame
+                mainTable
+                mainTableLabel="Round history table"
+                mobile={
+                  <MobileDataList>
+                    {filteredRounds.length > 0 ? (
+                      filteredRounds.map((round, index) => (
+                        <RoundMobileCard
+                          key={round.id}
+                          round={round}
+                          selected={round.id === selectedRound?.id}
+                          onSelect={() => setSelectedRoundId(round.id)}
+                          priority={index === 0}
+                        />
+                      ))
+                    ) : (
+                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
                         No rounds match this filter.
-                      </TableCell>
+                      </div>
+                    )}
+                  </MobileDataList>
+                }
+              >
+                <Table data-workbench-export-table="rounds" aria-describedby="rounds-table-summary">
+                  <TableCaption id="rounds-table-summary" className="sr-only">
+                    Round history table showing course, date, type, score, differential, putts, data
+                    status and actions for the current filter.
+                  </TableCaption>
+                  <TableHeader className="sticky top-0 z-10 bg-white">
+                    <TableRow>
+                      <TableHead
+                        data-column="round"
+                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        Round
+                      </TableHead>
+                      <SortableRoundHead
+                        columnId="date"
+                        metric="date"
+                        sortState={sortState}
+                        onSortChange={setSortState}
+                      />
+                      <TableHead data-column="type">Type</TableHead>
+                      <SortableRoundHead
+                        columnId="score"
+                        metric="score"
+                        sortState={sortState}
+                        onSortChange={setSortState}
+                        align="right"
+                      />
+                      <SortableRoundHead
+                        columnId="diff"
+                        metric="diff"
+                        sortState={sortState}
+                        onSortChange={setSortState}
+                        align="right"
+                      />
+                      <SortableRoundHead
+                        columnId="putts"
+                        metric="putts"
+                        sortState={sortState}
+                        onSortChange={setSortState}
+                        align="right"
+                      />
+                      <SortableRoundHead
+                        columnId="data"
+                        metric="data"
+                        sortState={sortState}
+                        onSortChange={setSortState}
+                        align="right"
+                      />
+                      <TableHead data-column="actions" className="text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </DataTableFrame>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedRounds.map((round) => (
+                      <TableRow
+                        key={round.id}
+                        className={
+                          round.id === selectedRound?.id
+                            ? "cursor-pointer bg-emerald-50/45"
+                            : "cursor-pointer"
+                        }
+                        data-state={round.id === selectedRound?.id ? "selected" : undefined}
+                        tabIndex={0}
+                        aria-label={`Select ${roundTitle(round)} from ${round.dateLabel}`}
+                        onClick={() => setSelectedRoundId(round.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedRoundId(round.id);
+                          }
+                        }}
+                      >
+                        <TableCell
+                          data-column="round"
+                          className={`sticky left-0 z-10 max-w-[18rem] font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)] ${
+                            round.id === selectedRound?.id ? "bg-emerald-50" : "bg-white"
+                          }`}
+                        >
+                          <span className="block truncate">{roundTitle(round)}</span>
+                        </TableCell>
+                        <TableCell data-column="date">{round.dateLabel}</TableCell>
+                        <TableCell data-column="type">
+                          <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                            {round.typeLabel}
+                          </Badge>
+                          {round.roundStatus === "in_progress" ? (
+                            <Badge variant="outline" className="ml-2">
+                              Resume
+                            </Badge>
+                          ) : null}
+                        </TableCell>
+                        <TableCell data-column="score" className="text-right">
+                          {formatInteger(round.totalScore)}
+                        </TableCell>
+                        <TableCell data-column="diff" className="text-right">
+                          {round.handicapDifferentialLabel}
+                        </TableCell>
+                        <TableCell data-column="putts" className="text-right">
+                          {formatInteger(round.totalPutts)}
+                        </TableCell>
+                        <TableCell data-column="data" className="text-right">
+                          <div className="inline-flex flex-col items-end gap-1">
+                            <DataBadge round={round} />
+                            <span className="text-xs text-muted-foreground">
+                              {integerFormatter.format(round.shotCount)} shots
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell data-column="actions" className="text-right">
+                          <div className="flex justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              variant={round.id === selectedRound?.id ? "secondary" : "ghost"}
+                              size="sm"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedRoundId(round.id);
+                              }}
+                            >
+                              {round.id === selectedRound?.id ? "Selected" : "Select"}
+                            </Button>
+                            <Button asChild variant="ghost" size="sm">
+                              <Link
+                                href={`/rounds/${round.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {round.shotCount > 0 ? "Review" : "Add data"}
+                                <ChevronRight className="size-4" />
+                              </Link>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {sortedRounds.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                          No rounds match this filter.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </TableBody>
+                </Table>
+              </DataTableFrame>
+            </div>
           </CardContent>
         </Card>
 
@@ -253,9 +434,105 @@ export function RoundsWorkspace({
   );
 }
 
+function SortableRoundHead({
+  align = "left",
+  columnId,
+  metric,
+  onSortChange,
+  sortState,
+}: {
+  align?: "left" | "right";
+  columnId: string;
+  metric: RoundSortMetric;
+  onSortChange: (sortState: RoundSortState) => void;
+  sortState: RoundSortState;
+}) {
+  const active = sortState.metric === metric;
+  const nextDir: RoundSortDirection = active
+    ? sortState.dir === "desc"
+      ? "asc"
+      : "desc"
+    : roundSortDefaultDirections[metric];
+  const Icon = active ? (sortState.dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+  const label = roundSortLabels[metric];
+
+  return (
+    <TableHead
+      data-column={columnId}
+      className={align === "right" ? "text-right" : undefined}
+      aria-sort={active ? sortAriaValue(sortState.dir) : "none"}
+    >
+      <button
+        type="button"
+        className={`focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground ${
+          align === "right" ? "justify-end" : "justify-start"
+        }`}
+        aria-label={`Sort rounds by ${label}, ${sortDirectionCopy(nextDir)}`}
+        onClick={() => onSortChange({ metric, dir: nextDir })}
+      >
+        {label}
+        <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      </button>
+    </TableHead>
+  );
+}
+
+function sortRounds(rounds: RoundsWorkspaceRound[], sortState: RoundSortState) {
+  return [...rounds].sort((left, right) => {
+    const result = compareRoundValues(left, right, sortState.metric, sortState.dir);
+
+    if (result !== 0) {
+      return result;
+    }
+
+    return (
+      compareRoundValues(left, right, "date", "desc") ||
+      roundTitle(left).localeCompare(roundTitle(right))
+    );
+  });
+}
+
+function compareRoundValues(
+  left: RoundsWorkspaceRound,
+  right: RoundsWorkspaceRound,
+  metric: RoundSortMetric,
+  dir: RoundSortDirection,
+) {
+  switch (metric) {
+    case "date":
+      return compareNullableNumber(Date.parse(left.dateIso), Date.parse(right.dateIso), dir);
+    case "score":
+      return compareNullableNumber(left.totalScore, right.totalScore, dir);
+    case "diff":
+      return compareNullableNumber(left.handicapDifferential, right.handicapDifferential, dir);
+    case "putts":
+      return compareNullableNumber(left.totalPutts, right.totalPutts, dir);
+    case "data":
+      return compareNullableNumber(left.shotCount, right.shotCount, dir);
+  }
+}
+
+function compareNullableNumber(left: number | null, right: number | null, dir: RoundSortDirection) {
+  const leftValid = typeof left === "number" && Number.isFinite(left);
+  const rightValid = typeof right === "number" && Number.isFinite(right);
+
+  if (!leftValid && !rightValid) return 0;
+  if (!leftValid) return 1;
+  if (!rightValid) return -1;
+  return dir === "asc" ? left - right : right - left;
+}
+
+function sortAriaValue(dir: RoundSortDirection) {
+  return dir === "desc" ? "descending" : "ascending";
+}
+
+function sortDirectionCopy(dir: RoundSortDirection) {
+  return dir === "desc" ? "high to low" : "low to high";
+}
+
 function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
   return (
-    <Card className="premium-card min-w-0 scroll-mt-28 xl:sticky xl:top-5 xl:self-start">
+    <Card className="premium-card min-w-0 scroll-mt-28 2xl:sticky 2xl:top-5 2xl:self-start">
       <CardHeader>
         <CardTitle>Selected round</CardTitle>
         <CardDescription>
@@ -451,6 +728,10 @@ function filterRound(round: RoundsWorkspaceRound, filter: RoundFilter) {
   }
 
   return round.shotCount > 0;
+}
+
+function parseRoundFilter(value: string | null): RoundFilter {
+  return filters.some((filter) => filter.value === value) ? (value as RoundFilter) : "all";
 }
 
 function roundTitle(round: RoundsWorkspaceRound) {

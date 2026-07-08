@@ -42,10 +42,5 @@ function parseAllowedDevOrigins(value: string | undefined) {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  return Array.from(
-    new Set([
-      "127.0.0.1",
-      ...configuredOrigins,
-    ]),
-  );
+  return Array.from(new Set(["127.0.0.1", ...configuredOrigins]));
 }

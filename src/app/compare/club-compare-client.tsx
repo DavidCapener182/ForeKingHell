@@ -3,12 +3,28 @@
 import { useMemo, useState } from "react";
 import { Crosshair, GitCompareArrows, Radar, Target, Trophy } from "lucide-react";
 
-import { ChartFrame, DataPanel, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
+  ChartFrame,
+  DataPanel,
+  DataTableFrame,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -26,6 +42,32 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+
+const clubComparisonColumns: DesktopWorkbenchColumn[] = [
+  { id: "metric", label: "Metric", locked: true },
+  { id: "club-a", label: "Club A" },
+  { id: "club-b", label: "Club B" },
+  { id: "difference", label: "Difference" },
+  { id: "better", label: "Better" },
+];
+
+const clubComparisonSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Distance decision",
+    href: "/compare#club-comparison-metrics",
+    detail: "Keep carry, total, ball speed and difference columns visible.",
+  },
+  {
+    title: "Control decision",
+    href: "/compare#club-comparison-metrics",
+    detail: "Review offline average, shot cone, playable and big-miss signals.",
+  },
+  {
+    title: "Report export",
+    href: "/compare#club-comparison-metrics",
+    detail: "Use the complete side-by-side metric table for a comparison report.",
+  },
+];
 
 export function ClubCompareClient({ data }: { data: ClubCompareData }) {
   const [draftClubAId, setDraftClubAId] = useState(data.filters.clubAId);
@@ -319,51 +361,92 @@ function DeltaTable({
   const rows = compareMetricRows(clubA, clubB, delta);
 
   return (
-    <div className="overflow-hidden rounded-[8px] border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Metric</TableHead>
-            <TableHead className="text-right">Club A</TableHead>
-            <TableHead className="text-right">Club B</TableHead>
-            <TableHead className="text-right">Diff</TableHead>
-            <TableHead className="text-right">Better</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.label}>
-              <TableCell className="font-medium">{row.label}</TableCell>
-              <TableCell className="min-w-36">
-                <MetricValueBar
-                  value={row.a}
-                  rawValue={row.aValue}
-                  maxValue={row.maxValue}
-                  tone="green"
-                />
-              </TableCell>
-              <TableCell className="min-w-36">
-                <MetricValueBar
-                  value={row.b}
-                  rawValue={row.bValue}
-                  maxValue={row.maxValue}
-                  tone="sky"
-                />
-              </TableCell>
-              <TableCell className={deltaClass(row.outcome.winner)}>{row.diff}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex flex-col items-end gap-1">
-                  <StatusPill tone={row.outcome.tone} className="justify-center">
-                    {row.outcome.label}
-                  </StatusPill>
-                  <span className="text-xs text-muted-foreground">{row.outcome.detail}</span>
-                </div>
-              </TableCell>
+    <section id="club-comparison-metrics" data-workbench-scope="club-comparison-metrics">
+      <DesktopTableWorkbenchControls
+        viewKey="club-comparison-metrics"
+        scope="club-comparison-metrics"
+        currentViewLabel="Club comparison metrics"
+        resultLabel={`${rows.length} metrics`}
+        columns={clubComparisonColumns}
+        suggestedViews={clubComparisonSuggestedViews}
+        exportTableId="club-comparison-metrics"
+        exportFileName="forekinghell-club-comparison-metrics.csv"
+        className="mb-3"
+      />
+      <DataTableFrame mainTable mainTableLabel="Club comparison metrics table">
+        <Table
+          className="min-w-[920px]"
+          data-workbench-export-table="club-comparison-metrics"
+          aria-describedby="club-comparison-metrics-summary"
+        >
+          <TableCaption id="club-comparison-metrics-summary" className="sr-only">
+            Club comparison metrics table showing metric, Club A, Club B, difference and better
+            side.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="metric"
+                className="sticky left-0 z-20 min-w-44 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Metric
+              </TableHead>
+              <TableHead data-column="club-a" className="text-right">
+                Club A
+              </TableHead>
+              <TableHead data-column="club-b" className="text-right">
+                Club B
+              </TableHead>
+              <TableHead data-column="difference" className="text-right">
+                Diff
+              </TableHead>
+              <TableHead data-column="better" className="text-right">
+                Better
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.label} tabIndex={0} className="focus-aaa outline-none">
+                <TableCell
+                  data-column="metric"
+                  className="sticky left-0 z-10 min-w-44 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  {row.label}
+                </TableCell>
+                <TableCell data-column="club-a" className="min-w-36">
+                  <MetricValueBar
+                    value={row.a}
+                    rawValue={row.aValue}
+                    maxValue={row.maxValue}
+                    tone="green"
+                  />
+                </TableCell>
+                <TableCell data-column="club-b" className="min-w-36">
+                  <MetricValueBar
+                    value={row.b}
+                    rawValue={row.bValue}
+                    maxValue={row.maxValue}
+                    tone="sky"
+                  />
+                </TableCell>
+                <TableCell data-column="difference" className={deltaClass(row.outcome.winner)}>
+                  {row.diff}
+                </TableCell>
+                <TableCell data-column="better" className="text-right">
+                  <div className="flex flex-col items-end gap-1">
+                    <StatusPill tone={row.outcome.tone} className="justify-center">
+                      {row.outcome.label}
+                    </StatusPill>
+                    <span className="text-xs text-muted-foreground">{row.outcome.detail}</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -589,6 +672,19 @@ function CompareRadarChart({ clubA, clubB }: { clubA: ClubCompareSide; clubB: Cl
           <p className="leading-5 text-muted-foreground">Exact values sit in the metric rows.</p>
         </div>
       </div>
+      <ChartAccessibleFallback
+        title="Compare radar"
+        summary={radarChartSummary(clubA, clubB)}
+        columns={[
+          { key: "metric", label: "Metric" },
+          { key: "clubA", label: "Club A" },
+          { key: "clubB", label: "Club B" },
+          { key: "difference", label: "Difference" },
+          { key: "better", label: "Better" },
+        ]}
+        rows={radarChartRows(clubA, clubB)}
+        className="mt-3 bg-white/70"
+      />
     </div>
   );
 }
@@ -598,8 +694,23 @@ function ClubDispersionPlot({ clubA, clubB }: { clubA: ClubCompareSide; clubB: C
 
   if (points.length === 0) {
     return (
-      <div className="apple-panel grid aspect-[2/1] place-items-center text-sm text-muted-foreground">
-        No dispersion points for these clubs.
+      <div className="space-y-3">
+        <div className="apple-panel grid aspect-[2/1] place-items-center text-sm text-muted-foreground">
+          No dispersion points for these clubs.
+        </div>
+        <ChartAccessibleFallback
+          title="Club dispersion"
+          summary="No club dispersion chart points are available for the selected comparison."
+          columns={[
+            { key: "side", label: "Side" },
+            { key: "club", label: "Club" },
+            { key: "points", label: "Points" },
+            { key: "carry", label: "Carry range" },
+            { key: "offline", label: "Offline avg" },
+          ]}
+          rows={dispersionChartRows(clubA, clubB)}
+          className="bg-white/70"
+        />
       </div>
     );
   }
@@ -672,8 +783,69 @@ function ClubDispersionPlot({ clubA, clubB }: { clubA: ClubCompareSide; clubB: C
           <span className="size-2 rounded-full bg-sky-600" /> Club B
         </span>
       </div>
+      <ChartAccessibleFallback
+        title="Club dispersion"
+        summary={dispersionChartSummary(clubA, clubB)}
+        columns={[
+          { key: "side", label: "Side" },
+          { key: "club", label: "Club" },
+          { key: "points", label: "Points" },
+          { key: "carry", label: "Carry range" },
+          { key: "offline", label: "Offline avg" },
+        ]}
+        rows={dispersionChartRows(clubA, clubB)}
+        className="mt-3 bg-white/70"
+      />
     </ChartFrame>
   );
+}
+
+function radarChartSummary(clubA: ClubCompareSide, clubB: ClubCompareSide) {
+  return `${clubA.label} vs ${clubB.label}: carry ${formatYards(clubA.carryMedianYd)} vs ${formatYards(clubB.carryMedianYd)}, playable ${formatRate(clubA.playableRate)} vs ${formatRate(clubB.playableRate)}, and offline average ${formatYards(clubA.absoluteOfflineAverageYd)} vs ${formatYards(clubB.absoluteOfflineAverageYd)}.`;
+}
+
+function radarChartRows(clubA: ClubCompareSide, clubB: ClubCompareSide): ChartFallbackRow[] {
+  const delta = buildDelta(clubA, clubB);
+  const radarLabels = new Set(["Carry", "Ball speed", "Offline avg", "Playable", "Launch"]);
+
+  return compareMetricRows(clubA, clubB, delta)
+    .filter((row) => radarLabels.has(row.label))
+    .map((row) => ({
+      _key: row.label,
+      metric: row.label,
+      clubA: row.a,
+      clubB: row.b,
+      difference: row.diff,
+      better: row.outcome.label,
+    }));
+}
+
+function dispersionChartSummary(clubA: ClubCompareSide, clubB: ClubCompareSide) {
+  return `${clubA.label} has ${integerFormatter.format(clubA.dispersion.length)} plotted shots and ${clubB.label} has ${integerFormatter.format(clubB.dispersion.length)} plotted shots. Offline averages are ${formatYards(clubA.absoluteOfflineAverageYd)} and ${formatYards(clubB.absoluteOfflineAverageYd)}; shot cones are ${formatYards(clubA.shotConeWidthYd)} and ${formatYards(clubB.shotConeWidthYd)}.`;
+}
+
+function dispersionChartRows(clubA: ClubCompareSide, clubB: ClubCompareSide): ChartFallbackRow[] {
+  return [dispersionChartRow("Club A", clubA), dispersionChartRow("Club B", clubB)];
+}
+
+function dispersionChartRow(side: string, club: ClubCompareSide): ChartFallbackRow {
+  return {
+    _key: side,
+    side,
+    club: club.label,
+    points: integerFormatter.format(club.dispersion.length),
+    carry: dispersionCarryRange(club.dispersion),
+    offline: formatYards(club.absoluteOfflineAverageYd),
+  };
+}
+
+function dispersionCarryRange(points: DispersionPoint[]) {
+  if (points.length === 0) {
+    return "--";
+  }
+
+  const carryValues = points.map((point) => point.carryYd);
+  return `${formatYards(Math.min(...carryValues))} to ${formatYards(Math.max(...carryValues))}`;
 }
 
 function radarMetrics(clubA: ClubCompareSide, clubB: ClubCompareSide) {

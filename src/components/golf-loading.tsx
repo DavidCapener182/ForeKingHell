@@ -6,10 +6,48 @@ import { cn } from "@/lib/utils";
 type GolfLoadingProps = {
   title: string;
   subtitle: string;
-  variant?: "dashboard" | "bag" | "progress" | "speed" | "strokes";
+  variant?:
+    | "dashboard"
+    | "bag"
+    | "progress"
+    | "speed"
+    | "strokes"
+    | "shots"
+    | "rounds"
+    | "coach"
+    | "dataChat"
+    | "compare"
+    | "courses"
+    | "courseRecords"
+    | "admin"
+    | "clubAnalytics"
+    | "roundDetail"
+    | "today"
+    | "import"
+    | "rapsodo"
+    | "providers"
+    | "practice"
+    | "equipment"
+    | "handicap"
+    | "simulatorLab"
+    | "trainingLoad"
+    | "achievements"
+    | "leaderboard"
+    | "challenges"
+    | "tournaments"
+    | "feed"
+    | "friends"
+    | "groups"
+    | "profile"
+    | "settings"
+    | "billing"
+    | "partners"
+    | "socialSafety";
 };
 
 export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: GolfLoadingProps) {
+  const metricLabels = loadingMetricLabels(variant);
+
   return (
     <PageShell>
       <div className="grid gap-5">
@@ -23,7 +61,7 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
               <div className="mt-8 h-14 max-w-2xl rounded-lg bg-[#EAF2EC]" />
               <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
               <div className="mt-7 grid gap-3 sm:grid-cols-4">
-                {["Trust", "Round ready", "Carry", "Pattern"].map((label) => (
+                {metricLabels.map((label) => (
                   <div key={label} className="rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-3">
                     <div className="h-3 w-20 rounded-full bg-[#DDE8DE]" />
                     <div className="mt-3 h-7 w-16 rounded-md bg-[#CFE1D2]" />
@@ -60,7 +98,10 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
 
         <section className="grid gap-4 lg:grid-cols-4">
           {[Flag, Target, Activity, Flag].map((Icon, index) => (
-            <div key={index} className="premium-card rounded-lg border border-[#DDE8DE] bg-white p-4">
+            <div
+              key={index}
+              className="premium-card rounded-lg border border-[#DDE8DE] bg-white p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="h-3 w-24 rounded-full bg-[#DDE8DE]" />
@@ -70,7 +111,9 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
                   <Icon className="size-5" />
                 </span>
               </div>
-              <div className={cn("mt-5 h-2 rounded-full bg-[#EAF2EC]", index % 2 ? "w-3/4" : "w-full")} />
+              <div
+                className={cn("mt-5 h-2 rounded-full bg-[#EAF2EC]", index % 2 ? "w-3/4" : "w-full")}
+              />
             </div>
           ))}
         </section>
@@ -97,7 +140,104 @@ function variantLabel(variant: NonNullable<GolfLoadingProps["variant"]>) {
       return "Speed centre";
     case "strokes":
       return "Strokes gained";
+    case "shots":
+      return "Shot explorer";
+    case "rounds":
+      return "Round review";
+    case "coach":
+      return "Coach desk";
+    case "dataChat":
+      return "Data chat";
+    case "compare":
+      return "Compare";
+    case "courses":
+      return "Course library";
+    case "courseRecords":
+      return "Course records";
+    case "admin":
+      return "Admin console";
+    case "clubAnalytics":
+      return "Club analytics";
+    case "roundDetail":
+      return "Round review";
+    case "today":
+      return "Latest practice";
+    case "import":
+      return "Import centre";
+    case "rapsodo":
+      return "Rapsodo sync";
+    case "providers":
+      return "Provider console";
+    case "practice":
+      return "Practice planner";
+    case "equipment":
+      return "Equipment";
+    case "handicap":
+      return "Handicap";
+    case "simulatorLab":
+      return "Simulator lab";
+    case "trainingLoad":
+      return "Training load";
+    case "achievements":
+      return "Achievement hub";
+    case "leaderboard":
+      return "Leaderboard";
+    case "challenges":
+      return "Challenges";
+    case "tournaments":
+      return "Tournaments";
+    case "feed":
+      return "Feed";
+    case "friends":
+      return "Friends";
+    case "groups":
+      return "Groups";
+    case "profile":
+      return "Profile";
+    case "settings":
+      return "Settings";
+    case "billing":
+      return "Billing";
+    case "partners":
+      return "Partners";
+    case "socialSafety":
+      return "Safety console";
     default:
       return "Command centre";
+  }
+}
+
+function loadingMetricLabels(variant: NonNullable<GolfLoadingProps["variant"]>) {
+  switch (variant) {
+    case "billing":
+    case "partners":
+    case "providers":
+    case "settings":
+      return ["Plan", "Access", "Status", "Actions"];
+    case "feed":
+    case "friends":
+    case "groups":
+    case "profile":
+    case "socialSafety":
+      return ["Privacy", "Activity", "Network", "Safety"];
+    case "leaderboard":
+    case "challenges":
+    case "tournaments":
+    case "achievements":
+      return ["Rank", "Proof", "Progress", "Action"];
+    case "import":
+    case "rapsodo":
+      return ["Source", "Mapping", "Quality", "History"];
+    case "practice":
+    case "trainingLoad":
+      return ["Load", "Focus", "Blocks", "Recovery"];
+    case "equipment":
+      return ["Bag", "Change", "Impact", "Notes"];
+    case "handicap":
+      return ["Index", "Rounds", "Proof", "Trend"];
+    case "simulatorLab":
+      return ["Course", "Hole", "Overlay", "Timeline"];
+    default:
+      return ["Trust", "Round ready", "Carry", "Pattern"];
   }
 }

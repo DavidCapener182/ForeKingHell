@@ -25,14 +25,21 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
   );
   const [magicState, magicAction, magicPending] = useActionState(sendMagicLinkAction, initialState);
 
-  const passwordMessage = error ?? passwordState.message;
-  const passwordIsError = Boolean(error) || passwordState.status === "error";
+  const passwordMessage =
+    passwordState.status === "idle" ? error : (passwordState.message ?? error);
+  const passwordIsError =
+    passwordState.status === "idle" ? Boolean(error) : passwordState.status === "error";
   const magicMessage = magicState.message;
   const magicIsError = magicState.status === "error";
 
   return (
     <div className="grid gap-5">
-      <form action={passwordAction} className="grid gap-3">
+      <form
+        action={passwordAction}
+        className="grid gap-3"
+        aria-describedby={passwordMessage ? "password-login-message" : undefined}
+        noValidate
+      >
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="email">
           Email
@@ -43,7 +50,6 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             autoComplete="email"
             inputMode="email"
             placeholder="you@example.com"
-            required
             className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
           />
         </label>
@@ -55,8 +61,6 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             type="password"
             autoComplete="current-password"
             placeholder="Your password"
-            required
-            minLength={6}
             className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
           />
         </label>
@@ -71,12 +75,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         </Button>
         {passwordMessage ? (
           <p
+            id="password-login-message"
+            role="alert"
             className={
               passwordIsError
                 ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
                 : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
             }
-            aria-live="polite"
+            aria-live="assertive"
           >
             {passwordMessage}
           </p>
@@ -115,7 +121,12 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             We will email a secure link. If you are new, that link starts your account.
           </p>
         </div>
-        <form action={magicAction} className="grid gap-2">
+        <form
+          action={magicAction}
+          className="grid gap-2"
+          aria-describedby={magicMessage ? "magic-login-message" : undefined}
+          noValidate
+        >
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="magic-email">
             <span className="sr-only">Magic link address</span>
@@ -126,7 +137,6 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
-              required
               className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
             />
           </label>
@@ -142,12 +152,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           </Button>
           {magicMessage ? (
             <p
+              id="magic-login-message"
+              role="alert"
               className={
                 magicIsError
                   ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
                   : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
               }
-              aria-live="polite"
+              aria-live="assertive"
             >
               {magicMessage}
             </p>

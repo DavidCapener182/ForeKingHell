@@ -6,6 +6,7 @@ import { MobileRouteHeader } from "@/components/mobile-sports";
 import { DataPair, DataPanel, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { TrainingLoadRangeView } from "@/components/training/TrainingLoadRangeView";
 import { Button } from "@/components/ui/button";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import { getTrainingOverTimeData, normalizeTrainingRange } from "@/lib/training/trainingData";
@@ -23,7 +24,6 @@ type TrainingOverTimePageProps = {
 const integerFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
-
 export default async function TrainingOverTimePage({ searchParams }: TrainingOverTimePageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
@@ -33,70 +33,71 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
     getPracticePlannerProgressSummary(userId),
   ]);
   const saved = Boolean(resolvedSearchParams.saved);
+  const latestForm = data.latest?.form ?? 0;
+  const latestFitness = data.latest?.fitness ?? 0;
+  const latestFatigue = data.latest?.fatigue ?? 0;
 
   return (
     <PageShell>
       <MobileRouteHeader title="Analyse" group="analyse" activeKey="training" />
 
-      <PageHeader
-        eyebrow={<StatusPill tone="green">Training management</StatusPill>}
-        title="Training Load"
-        description="Golf Form, Training Fitness and Recent Load over time"
-        metrics={[
-          {
-            label: "Golf Form",
-            value: (
-              <MetricValue featured tone="sky">
-                {formatMetric(data.latest?.form ?? 0)}
-                <TrendingUp className="size-5" aria-hidden="true" />
-              </MetricValue>
-            ),
-            detail: data.status.label,
-            className: "border-sky-200 bg-sky-50/90 text-sky-950 ring-sky-100",
-          },
-          {
-            label: "Training Fitness",
-            value: (
-              <MetricValue tone="green">{formatMetric(data.latest?.fitness ?? 0)}</MetricValue>
-            ),
-            detail: `${data.conditioningDays}-day golf workload`,
-          },
-          {
-            label: "Recent Load",
-            value: (
-              <MetricValue tone="amber">{formatMetric(data.latest?.fatigue ?? 0)}</MetricValue>
-            ),
-            detail: recentLoadLabel(data.latest?.fatigue ?? 0),
-          },
-          {
-            label: "Evidence Confidence",
-            value: <MetricValue tone="purple">{formatMetric(data.confidence.score)}</MetricValue>,
-            detail: data.confidence.label,
-          },
-        ]}
-        actions={
-          <Button asChild className="premium-action">
-            <Link href="#log-load">
-              <Plus className="size-4" />
-              Log Training
-            </Link>
-          </Button>
-        }
-      />
+      <DesktopWorkbenchLayout scope="training-load">
+        <PageHeader
+          eyebrow={<StatusPill tone="green">Training management</StatusPill>}
+          title="Training Load"
+          description="Golf Form, Training Fitness and Recent Load over time"
+          metrics={[
+            {
+              label: "Golf Form",
+              value: (
+                <MetricValue featured tone="sky">
+                  {formatMetric(latestForm)}
+                  <TrendingUp className="size-5" aria-hidden="true" />
+                </MetricValue>
+              ),
+              detail: data.status.label,
+              className: "border-sky-200 bg-sky-50/90 text-sky-950 ring-sky-100",
+            },
+            {
+              label: "Training Fitness",
+              value: <MetricValue tone="green">{formatMetric(latestFitness)}</MetricValue>,
+              detail: `${data.conditioningDays}-day golf workload`,
+            },
+            {
+              label: "Recent Load",
+              value: <MetricValue tone="amber">{formatMetric(latestFatigue)}</MetricValue>,
+              detail: recentLoadLabel(latestFatigue),
+            },
+            {
+              label: "Evidence Confidence",
+              value: <MetricValue tone="purple">{formatMetric(data.confidence.score)}</MetricValue>,
+              detail: data.confidence.label,
+            },
+          ]}
+          actions={
+            <Button asChild className="premium-action">
+              <Link href="#log-load">
+                <Plus className="size-4" />
+                Log Training
+              </Link>
+            </Button>
+          }
+        />
 
-      {saved ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
-          Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
-        </div>
-      ) : null}
+        {saved ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
+            Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
+          </div>
+        ) : null}
 
-      <TrainingPracticePlannerPanel
-        statusLabel={data.status.label}
-        practiceSummary={practiceSummary}
-        recentLoad={data.latest?.fatigue ?? 0}
-      />
+        <TrainingPracticePlannerPanel
+          statusLabel={data.status.label}
+          practiceSummary={practiceSummary}
+          recentLoad={latestFatigue}
+        />
 
-      <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} />
+        <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} />
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -126,8 +127,14 @@ function TrainingPracticePlannerPanel({
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
-          <DataPair label="Completed plans" value={integerFormatter.format(practiceSummary.completedCount)} />
-          <DataPair label="Average score" value={practiceSummary.averageScore === null ? "--" : `${practiceSummary.averageScore}`} />
+          <DataPair
+            label="Completed plans"
+            value={integerFormatter.format(practiceSummary.completedCount)}
+          />
+          <DataPair
+            label="Average score"
+            value={practiceSummary.averageScore === null ? "--" : `${practiceSummary.averageScore}`}
+          />
           <DataPair label="Recent Load" value={formatMetric(recentLoad)} />
         </div>
       </div>

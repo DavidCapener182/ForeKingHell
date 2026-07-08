@@ -32,6 +32,7 @@ import {
   removeFeedReactionAction,
   updateFeedItemVisibilityAction,
 } from "@/app/feed/actions";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -495,9 +496,13 @@ function CommentCard({
           {comment.viewerCanDelete ? (
             <form action={deleteFeedCommentAction}>
               <input type="hidden" name="commentId" value={comment.id} />
-              <Button type="submit" variant="destructive" size="xs">
+              <ConfirmSubmitButton
+                confirmMessage="Delete this feed comment? This removes it from the conversation."
+                variant="destructive"
+                size="xs"
+              >
                 Delete
-              </Button>
+              </ConfirmSubmitButton>
             </form>
           ) : null}
         </div>
@@ -615,10 +620,14 @@ function FeedItemControls({ item, compact = false }: { item: FeedItemView; compa
             </form>
             <form action={deleteFeedItemAction} className="rounded-lg bg-white p-2">
               <input type="hidden" name="feedItemId" value={item.id} />
-              <Button type="submit" variant="destructive" size="sm">
+              <ConfirmSubmitButton
+                confirmMessage="Delete this feed item? This removes it from the feed for everyone who can see it."
+                variant="destructive"
+                size="sm"
+              >
                 <Trash2 className="size-4" />
                 Delete from feed
-              </Button>
+              </ConfirmSubmitButton>
             </form>
           </>
         ) : (

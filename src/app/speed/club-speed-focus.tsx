@@ -340,8 +340,7 @@ function currentClubSpeed(row: ClubSpeedRow, projection: FutureBagProjectionRow 
 
   return {
     value: row.trainingAvgMph,
-    detail:
-      row.trainingAvgMph === null ? "Need club data" : "Latest no-ball session avg",
+    detail: row.trainingAvgMph === null ? "Need club data" : "Latest no-ball session avg",
   };
 }
 

@@ -23,6 +23,18 @@ import {
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
@@ -58,6 +70,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -148,6 +161,36 @@ const RECENT_SHOTS_PER_CLUB = 200;
 const PEER_SHOT_QUERY_LIMIT = 3000;
 const PEER_MIN_STOCK_SHOTS = 3;
 const PERSONAL_STROKES_GAINED_LIMIT = 200;
+const bagGappingColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "model", label: "Model" },
+  { id: "best-stock", label: "Best stock" },
+  { id: "latest-reliable", label: "Latest reliable" },
+  { id: "recommended", label: "Recommended" },
+  { id: "personal-best", label: "Personal best" },
+  { id: "gap", label: "Gap" },
+  { id: "target", label: "Target" },
+  { id: "work-on", label: "Work on" },
+  { id: "sample", label: "Sample" },
+  { id: "decision", label: "Decision", locked: true },
+];
+const bagGappingSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Clubs below target",
+    href: "/bag#reference-data",
+    detail: "Review clubs where work-on and target fields show the next yardage job.",
+  },
+  {
+    title: "Low confidence clubs",
+    href: "/bag#bag-trust",
+    detail: "Start with sample size and trust before changing the course number.",
+  },
+  {
+    title: "Equipment impact",
+    href: "/equipment",
+    detail: "Compare bag changes against carry, gap and recommended-number movement.",
+  },
+];
 const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
   "clubSpeedMph",
@@ -263,6 +306,32 @@ export default async function BagPage({ searchParams }: PageProps) {
     handicapBand: profile.handicapBand,
   });
   const clubIntelligenceItems = buildClubIntelligenceItems(bag);
+  const bagWorkbenchPrompts = [
+    {
+      label: "Explain bag confidence",
+      prompt:
+        "Explain my ForeKingHell bag confidence using the visible bag score, club trust, gapping and data-health evidence. Do not invent missing yardages.",
+      icon: Brain,
+    },
+    {
+      label: "Which club is weak?",
+      prompt:
+        "Identify the club dragging down my bag confidence. Use visible trust, shot count, dispersion and gapping evidence, and call out low sample sizes.",
+      icon: AlertTriangle,
+    },
+    {
+      label: "Build practice plan",
+      prompt:
+        "Build a bag-focused practice plan from my current ForeKingHell bag evidence. Prioritise course-useful confidence and scoring-zone gaps.",
+      icon: Target,
+    },
+    {
+      label: "Equipment impact",
+      prompt:
+        "Summarise likely equipment or gapping actions from this bag workspace. Separate evidence-backed recommendations from low-confidence ideas.",
+      icon: ShoppingBag,
+    },
+  ];
 
   return (
     <PageShell contentClassName="overflow-x-clip pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
@@ -480,7 +549,71 @@ export default async function BagPage({ searchParams }: PageProps) {
         </Button>
       </div>
 
-      <div className="hidden sm:contents">
+      <DesktopWorkbenchLayout
+        scope="bag"
+        className="hidden sm:grid"
+        railBreakpoint="2xl"
+        rail={
+          <DesktopInsightRail
+            title="AI bag rail"
+            description="Club trust, gaps and equipment actions stay visible while reviewing the bag."
+            metrics={[
+              {
+                label: "Bag score",
+                value: `${smartBagBuilder.currentScore}%`,
+                detail: smartBagBuilder.scoreLabel,
+                tone: smartBagBuilder.currentScore >= 85 ? "green" : "amber",
+              },
+              {
+                label: "Average confidence",
+                value: `${averageConfidence}%`,
+                detail: `${bag.length} clubs and ${totalShots.toLocaleString(
+                  "en-GB",
+                )} shots feed this readout.`,
+                tone: averageConfidence >= 75 ? "green" : "sky",
+              },
+              {
+                label: "Gap risk",
+                value: currentGapRisk.value,
+                detail: currentGapRisk.detail,
+                tone: currentGapRisk.tone,
+              },
+              {
+                label: "Next action",
+                value: biggestOpportunity ? "Review" : "Maintain",
+                detail: biggestOpportunity?.detail ?? "No urgent equipment or gapping move.",
+                tone: biggestOpportunity ? "amber" : "green",
+              },
+            ]}
+            evidence={[
+              "Recommended course numbers stay primary; Best Stock remains supporting context.",
+              "Weak or low-shot clubs should be treated as low confidence, especially wedges.",
+              "Gapping and equipment actions should cite visible club trust and shot evidence.",
+            ]}
+            prompts={[...bagWorkbenchPrompts, ...commonAiPrompts("bag intelligence").slice(1, 3)]}
+            actions={[
+              {
+                label: "Shot explorer",
+                href: "/shots",
+                detail: "Open the raw shot evidence behind club trust.",
+                icon: Database,
+              },
+              {
+                label: "Compare",
+                href: "/compare",
+                detail: "Review club or session changes side by side.",
+                icon: Layers3,
+              },
+              {
+                label: "Practice planner",
+                href: "/practice",
+                detail: "Turn the bag issue into a practice block.",
+                icon: Target,
+              },
+            ]}
+          />
+        }
+      >
         <BagHealthHero
           bagScore={smartBagBuilder.currentScore}
           scoreLabel={smartBagBuilder.scoreLabel}
@@ -603,7 +736,7 @@ export default async function BagPage({ searchParams }: PageProps) {
             <Link href="#clubs">Find club</Link>
           </Button>
         </StickyMobileAction>
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -1272,6 +1405,22 @@ function formatCarryYards(carryYd: number | null) {
   return carryYd === null ? "--" : `${formatMetric(carryYd)} yd`;
 }
 
+function formatSideYards(sideYd: number | null) {
+  if (sideYd === null) {
+    return "--";
+  }
+
+  if (sideYd < 0) {
+    return `${formatMetric(Math.abs(sideYd))} yd left`;
+  }
+
+  if (sideYd > 0) {
+    return `${formatMetric(sideYd)} yd right`;
+  }
+
+  return "0 yd";
+}
+
 function compactCarryYards(carryYd: number | null) {
   return carryYd === null ? "--" : `${Math.round(carryYd)}`;
 }
@@ -1406,7 +1555,7 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
       />
       <CardContent>
         {matrix.length > 0 ? (
-          <DataTableFrame>
+          <DataTableFrame label="Wedge matrix carry table">
             <Table className="min-w-[680px]">
               <TableHeader>
                 <TableRow>
@@ -1633,6 +1782,17 @@ function ShotPatternOverlayPanel({ overlays }: { overlays: ShotPatternOverlaySum
                   <StatusPill tone={overlay.tone}>{formatMetric(overlay.playableRate)}%</StatusPill>
                 </div>
                 <PatternOverlaySvg overlay={overlay} />
+                <ChartAccessibleFallback
+                  title={`${overlay.label} shot pattern`}
+                  summary={shotPatternOverlaySummary(overlay)}
+                  columns={[
+                    { key: "metric", label: "Metric" },
+                    { key: "value", label: "Value" },
+                    { key: "context", label: "Context" },
+                  ]}
+                  rows={shotPatternOverlayRows(overlay)}
+                  className="mt-2 bg-white/70"
+                />
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                   <Metric label="P10" value={formatCarryYards(overlay.carryP10Yd)} />
                   <Metric label="Median" value={formatCarryYards(overlay.carryP50Yd)} />
@@ -3306,7 +3466,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
   const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
   return (
-    <Card className="premium-card">
+    <Card className="premium-card min-w-0 overflow-hidden">
       <CardHeader className="p-4 sm:p-6">
         <CardTitle className="text-xl tracking-normal sm:text-2xl">
           Carry gapping reference
@@ -3364,33 +3524,82 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
             ))}
           </MobileDataList>
         </MobileAccordionSection>
-        <details className="group hidden sm:block">
+        <details
+          open
+          className="group hidden min-w-0 overflow-hidden sm:block"
+          data-bag-gapping-table
+        >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-sky-300 [&::-webkit-details-marker]:hidden">
             <span>Full gapping table</span>
             <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
           <div className="mt-3">
-            <DataTableFrame>
-              <Table className="min-w-[1220px]">
-                <TableHeader>
+            <DesktopTableWorkbenchControls
+              viewKey="bag-gapping"
+              scope="bag"
+              currentViewLabel="Full bag gapping reference"
+              resultLabel={`${numberFormatter.format(rows.length)} clubs`}
+              columns={bagGappingColumns}
+              suggestedViews={bagGappingSuggestedViews}
+              exportTableId="bag-gapping"
+              exportFileName="forekinghell-bag-gapping-view.csv"
+              className="mb-3"
+            />
+            <DataTableFrame mainTable mainTableLabel="Full bag gapping table">
+              <Table
+                className="min-w-[1220px]"
+                data-workbench-export-table="bag-gapping"
+                aria-describedby="bag-gapping-table-summary"
+              >
+                <TableCaption id="bag-gapping-table-summary" className="sr-only">
+                  Full bag gapping table with stock carry, latest reliable carry, recommended
+                  number, personal best, target gap, sample size and decision confidence.
+                </TableCaption>
+                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
                   <TableRow>
-                    <TableHead>Club</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead className="text-right">Best stock</TableHead>
-                    <TableHead className="text-right">Latest reliable</TableHead>
-                    <TableHead className="text-right">Recommended</TableHead>
-                    <TableHead className="text-right">Personal best</TableHead>
-                    <TableHead className="text-right">Gap</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead className="text-right">Work on</TableHead>
-                    <TableHead className="text-right">Sample</TableHead>
-                    <TableHead className="text-right">Decision</TableHead>
+                    <TableHead
+                      data-column="club"
+                      className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      Club
+                    </TableHead>
+                    <TableHead data-column="model">Model</TableHead>
+                    <TableHead data-column="best-stock" className="text-right">
+                      Best stock
+                    </TableHead>
+                    <TableHead data-column="latest-reliable" className="text-right">
+                      Latest reliable
+                    </TableHead>
+                    <TableHead data-column="recommended" className="text-right">
+                      Recommended
+                    </TableHead>
+                    <TableHead data-column="personal-best" className="text-right">
+                      Personal best
+                    </TableHead>
+                    <TableHead data-column="gap" className="text-right">
+                      Gap
+                    </TableHead>
+                    <TableHead data-column="target" className="text-right">
+                      Target
+                    </TableHead>
+                    <TableHead data-column="work-on" className="text-right">
+                      Work on
+                    </TableHead>
+                    <TableHead data-column="sample" className="text-right">
+                      Sample
+                    </TableHead>
+                    <TableHead data-column="decision" className="text-right">
+                      Decision
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
+                    <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="club"
+                        className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
                         <Link
                           href={`/bag/${row.id}`}
                           className="font-semibold text-foreground underline-offset-4 hover:underline"
@@ -3398,14 +3607,17 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                           {formatClubType(row.clubType)}
                         </Link>
                       </TableCell>
-                      <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                      <TableCell
+                        data-column="model"
+                        className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground"
+                      >
                         {row.brandModel}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell data-column="best-stock" className="text-right font-semibold">
                         {formatMetric(row.carryYd)}
                         {row.carryYd === null ? "" : " yd"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="latest-reliable" className="text-right">
                         <span className="font-medium">
                           {formatMetric(row.latestReliableCarryYd)}
                           {row.latestReliableCarryYd === null ? "" : " yd"}
@@ -3417,18 +3629,18 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                           )}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="recommended" className="text-right">
                         {formatMetric(row.playNumberYd)}
                         {row.playNumberYd === null ? "" : " yd"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="personal-best" className="text-right">
                         {formatMetric(row.personalBestCarryYd)}
                         {row.personalBestCarryYd === null ? "" : " yd"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="gap" className="text-right">
                         <GapBadge row={row} />
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="target" className="text-right">
                         <span className="font-medium">
                           {formatMetric(row.targetCarryYd)}
                           {row.targetCarryYd === null ? "" : " yd"}
@@ -3439,11 +3651,13 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="work-on" className="text-right">
                         <WorkOnBadge row={row} />
                       </TableCell>
-                      <TableCell className="text-right">{row.sampleSize}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell data-column="sample" className="text-right">
+                        {row.sampleSize}
+                      </TableCell>
+                      <TableCell data-column="decision" className="text-right">
                         <span className="font-medium">{row.confidenceScore}%</span>
                         <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
                       </TableCell>
@@ -3823,6 +4037,51 @@ function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) 
       </text>
     </svg>
   );
+}
+
+function shotPatternOverlaySummary(overlay: ShotPatternOverlaySummary) {
+  return `${overlay.label} uses ${overlay.sampleSize} saved shots. Median carry is ${formatCarryYards(overlay.carryP50Yd)}, the carry window runs ${formatCarryYards(overlay.carryP10Yd)} to ${formatCarryYards(overlay.carryP90Yd)}, side window is ${formatSideYards(overlay.sideP10Yd)} to ${formatSideYards(overlay.sideP90Yd)}, and playable rate is ${formatMetric(overlay.playableRate)}%.`;
+}
+
+function shotPatternOverlayRows(overlay: ShotPatternOverlaySummary): ChartFallbackRow[] {
+  return [
+    {
+      _key: "sample",
+      metric: "Sample",
+      value: `${overlay.sampleSize} shots`,
+      context: "Saved shots feeding this pattern overlay.",
+    },
+    {
+      _key: "carry-p10",
+      metric: "Carry P10",
+      value: formatCarryYards(overlay.carryP10Yd),
+      context: "Lower carry edge of the pattern window.",
+    },
+    {
+      _key: "carry-median",
+      metric: "Median carry",
+      value: formatCarryYards(overlay.carryP50Yd),
+      context: "Centre carry shown by the overlay dot.",
+    },
+    {
+      _key: "carry-p90",
+      metric: "Carry P90",
+      value: formatCarryYards(overlay.carryP90Yd),
+      context: "Upper carry edge of the pattern window.",
+    },
+    {
+      _key: "side-window",
+      metric: "Side window",
+      value: `${formatSideYards(overlay.sideP10Yd)} to ${formatSideYards(overlay.sideP90Yd)}`,
+      context: `${overlay.primaryMiss} miss tendency from the side-carry window.`,
+    },
+    {
+      _key: "playable",
+      metric: "Playable rate",
+      value: `${formatMetric(overlay.playableRate)}%`,
+      context: "Share of shots treated as playable for this club pattern.",
+    },
+  ];
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

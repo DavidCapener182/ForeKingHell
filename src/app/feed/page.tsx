@@ -31,10 +31,25 @@ import {
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
+import {
+  DesktopWorkbenchLayout,
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getFeedPageData } from "@/lib/social";
 
@@ -58,6 +73,48 @@ type FeedFilter =
   | "tournaments"
   | "rounds"
   | "me";
+
+type FeedActivityRow = Awaited<ReturnType<typeof getFeedPageData>>["items"][number];
+
+const feedActivityColumns: DesktopWorkbenchColumn[] = [
+  { id: "activity", label: "Activity", locked: true },
+  { id: "golfer", label: "Golfer" },
+  { id: "type", label: "Type" },
+  { id: "metric", label: "Metric" },
+  { id: "proof", label: "Proof" },
+  { id: "privacy", label: "Privacy" },
+  { id: "engagement", label: "Engagement" },
+  { id: "date", label: "Date" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const feedActivitySuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "All activity",
+    href: "/feed",
+    detail: "Latest visible PBs, rounds, records and challenge updates.",
+  },
+  {
+    title: "Friends",
+    href: "/feed?filter=friends",
+    detail: "Friend activity without your own posts.",
+  },
+  {
+    title: "PBs",
+    href: "/feed?filter=pbs",
+    detail: "Personal-best and longest-drive moments.",
+  },
+  {
+    title: "Events",
+    href: "/feed?filter=tournaments",
+    detail: "Tournament and competition updates.",
+  },
+  {
+    title: "Mine",
+    href: "/feed?filter=me",
+    detail: "Your own shareable activity and privacy state.",
+  },
+];
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
@@ -113,7 +170,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   ];
 
   return (
-    <PageShell size="7xl" className="bg-slate-50/20">
+    <PageShell className="bg-slate-50/20">
       <MobileAppShell>
         <MobileTopBar
           title="Social"
@@ -223,288 +280,295 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         <SocialFeaturePanel data={featureData} />
       </MobileAppShell>
 
-      <section className="hidden gap-4 sm:grid lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
-        <section className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4">
-          <section className="premium-card overflow-hidden">
-            <div
-              className="h-20 bg-cover bg-center"
-              style={{
-                backgroundImage: profileHeaderBackground(
-                  profileHeaderImageUrl(data.profile.headerImageUrl, data.profile.username),
-                ),
-              }}
+      <DesktopWorkbenchLayout scope="feed" className="hidden sm:grid">
+        <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
+          <aside
+            aria-label="Feed profile shortcuts"
+            className="hidden lg:grid lg:sticky lg:top-28 lg:gap-4"
+          >
+            <section className="premium-card overflow-hidden">
+              <div
+                className="h-20 bg-cover bg-center"
+                style={{
+                  backgroundImage: profileHeaderBackground(
+                    profileHeaderImageUrl(data.profile.headerImageUrl, data.profile.username),
+                  ),
+                }}
+              />
+              <div className="grid gap-3 p-4 pt-0">
+                <div className="-mt-8">
+                  <SocialAvatar
+                    displayName={data.profile.displayName}
+                    username={data.profile.username}
+                    avatarUrl={data.profile.avatarUrl}
+                    href="/profile"
+                    size="lg"
+                  />
+                </div>
+                <div>
+                  <Link href="/profile" prefetch={false} className="font-semibold hover:underline">
+                    {data.profile.displayName}
+                  </Link>
+                  <p className="text-sm text-muted-foreground">@{data.profile.username}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <MiniStat label="Friends" value={data.friendCount} />
+                  <MiniStat label="XP" value={numberFormatter.format(data.totalXp)} />
+                </div>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/profile" prefetch={false}>
+                    Edit profile
+                  </Link>
+                </Button>
+              </div>
+            </section>
+
+            <section className="premium-card p-3">
+              <p className="px-1 text-sm font-semibold">Social shortcuts</p>
+              <div className="mt-2 grid gap-1">
+                <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
+                <SideLink href="/groups" icon={<Users className="size-4" />} label="Groups" />
+                <SideLink
+                  href="/challenges"
+                  icon={<Trophy className="size-4" />}
+                  label="Challenges"
+                />
+                <SideLink
+                  href="/course-records"
+                  icon={<Award className="size-4" />}
+                  label="Course records"
+                />
+                <SideLink
+                  href="/tournaments"
+                  icon={<Trophy className="size-4" />}
+                  label="Tournaments"
+                />
+                <SideLink
+                  href="/leaderboard"
+                  icon={<BarChart3 className="size-4" />}
+                  label="Leaderboards"
+                />
+              </div>
+            </section>
+          </aside>
+
+          <section className="grid gap-4">
+            <header className="premium-hero p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <StatusPill tone="green">Social feed</StatusPill>
+                  <h1 className="mt-3 text-2xl font-semibold tracking-normal sm:text-3xl">Feed</h1>
+                  <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    PBs, achievements, imports, rounds, course records and tournament moments from
+                    your golf network.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild variant="outline">
+                    <Link href="/friends" prefetch={false}>
+                      <Users className="size-4" />
+                      Find friends
+                    </Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/challenges" prefetch={false}>
+                      <Plus className="size-4" />
+                      Join challenge
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </header>
+
+            <section className="premium-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Zap className="size-4 text-emerald-600" />
+                    Social pulse
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {data.friendCount} friends connected · {pbCount} PBs · {recordCount} records ·{" "}
+                    {tournamentCount} events · {comments} comments.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <BadgeLike
+                    icon={<Users className="size-3" />}
+                    label={`${data.friendCount} friends`}
+                  />
+                  <BadgeLike icon={<Award className="size-3" />} label={`${pbCount} PBs`} />
+                  <BadgeLike
+                    icon={<Trophy className="size-3" />}
+                    label={`${challengeCount} challenges`}
+                  />
+                  <BadgeLike icon={<Award className="size-3" />} label={`${recordCount} records`} />
+                  <BadgeLike
+                    icon={<Trophy className="size-3" />}
+                    label={`${tournamentCount} events`}
+                  />
+                  <BadgeLike
+                    icon={<MessageCircle className="size-3" />}
+                    label={`${comments} comments`}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <DataFirstFlowPanel
+              title="Highlight of the week"
+              description="A compact readout of the best shareable golf moments before filters and the full stream."
+              steps={highlightSteps}
+              actionHref="/profile"
+              actionLabel="Preview sharing"
             />
-            <div className="grid gap-3 p-4 pt-0">
-              <div className="-mt-8">
+
+            <section className="premium-card p-4">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
                 <SocialAvatar
                   displayName={data.profile.displayName}
                   username={data.profile.username}
                   avatarUrl={data.profile.avatarUrl}
                   href="/profile"
-                  size="lg"
                 />
-              </div>
-              <div>
-                <Link href="/profile" prefetch={false} className="font-semibold hover:underline">
-                  {data.profile.displayName}
-                </Link>
-                <p className="text-sm text-muted-foreground">@{data.profile.username}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <MiniStat label="Friends" value={data.friendCount} />
-                <MiniStat label="XP" value={numberFormatter.format(data.totalXp)} />
-              </div>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>
-                  Edit profile
-                </Link>
-              </Button>
-            </div>
-          </section>
-
-          <section className="premium-card p-3">
-            <p className="px-1 text-sm font-semibold">Social shortcuts</p>
-            <div className="mt-2 grid gap-1">
-              <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
-              <SideLink href="/groups" icon={<Users className="size-4" />} label="Groups" />
-              <SideLink
-                href="/challenges"
-                icon={<Trophy className="size-4" />}
-                label="Challenges"
-              />
-              <SideLink
-                href="/course-records"
-                icon={<Award className="size-4" />}
-                label="Course records"
-              />
-              <SideLink
-                href="/tournaments"
-                icon={<Trophy className="size-4" />}
-                label="Tournaments"
-              />
-              <SideLink
-                href="/leaderboard"
-                icon={<BarChart3 className="size-4" />}
-                label="Leaderboards"
-              />
-            </div>
-          </section>
-        </section>
-
-        <section className="grid gap-4">
-          <header className="premium-hero p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <StatusPill tone="green">Social feed</StatusPill>
-                <h1 className="mt-3 text-2xl font-semibold tracking-normal sm:text-3xl">Feed</h1>
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  PBs, achievements, imports, rounds, course records and tournament moments from
-                  your golf network.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline">
-                  <Link href="/friends" prefetch={false}>
-                    <Users className="size-4" />
-                    Find friends
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/challenges" prefetch={false}>
-                    <Plus className="size-4" />
-                    Join challenge
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </header>
-
-          <section className="premium-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <Zap className="size-4 text-emerald-600" />
-                  Social pulse
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {data.friendCount} friends connected · {pbCount} PBs · {recordCount} records ·{" "}
-                  {tournamentCount} events · {comments} comments.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <BadgeLike
-                  icon={<Users className="size-3" />}
-                  label={`${data.friendCount} friends`}
-                />
-                <BadgeLike icon={<Award className="size-3" />} label={`${pbCount} PBs`} />
-                <BadgeLike
-                  icon={<Trophy className="size-3" />}
-                  label={`${challengeCount} challenges`}
-                />
-                <BadgeLike icon={<Award className="size-3" />} label={`${recordCount} records`} />
-                <BadgeLike
-                  icon={<Trophy className="size-3" />}
-                  label={`${tournamentCount} events`}
-                />
-                <BadgeLike
-                  icon={<MessageCircle className="size-3" />}
-                  label={`${comments} comments`}
-                />
-              </div>
-            </div>
-          </section>
-
-          <DataFirstFlowPanel
-            title="Highlight of the week"
-            description="A compact readout of the best shareable golf moments before filters and the full stream."
-            steps={highlightSteps}
-            actionHref="/profile"
-            actionLabel="Preview sharing"
-          />
-
-          <section className="premium-card p-4">
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-              <SocialAvatar
-                displayName={data.profile.displayName}
-                username={data.profile.username}
-                avatarUrl={data.profile.avatarUrl}
-                href="/profile"
-              />
-              <div className="grid gap-3">
-                <div className="rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
-                  Your feed is automatic right now. Import a session, complete a round, or join a
-                  challenge to post a verified update.
+                <div className="grid gap-3">
+                  <div className="rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+                    Your feed is automatic right now. Import a session, complete a round, or join a
+                    challenge to post a verified update.
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/import" prefetch={false}>
+                        <Upload className="size-4" />
+                        Import
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/rounds/new" prefetch={false}>
+                        <Radio className="size-4" />
+                        Log round
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/course-records" prefetch={false}>
+                        <Award className="size-4" />
+                        Submit record
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/profile" prefetch={false}>
+                        <Lock className="size-4" />
+                        Privacy
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+              </div>
+            </section>
+
+            {data.friendCount === 0 ? (
+              <section className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
+                <p className="text-sm font-semibold">Build your golf network</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Add a friend or join a group to unlock friend-only PBs, challenge entries and
+                  comments in this feed.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import
+                    <Link href="/friends" prefetch={false}>
+                      Find friends
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="sm">
-                    <Link href="/rounds/new" prefetch={false}>
-                      <Radio className="size-4" />
-                      Log round
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/course-records" prefetch={false}>
-                      <Award className="size-4" />
-                      Submit record
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/profile" prefetch={false}>
-                      <Lock className="size-4" />
-                      Privacy
+                    <Link href="/groups" prefetch={false}>
+                      Browse groups
                     </Link>
                   </Button>
                 </div>
+              </section>
+            ) : null}
+
+            <section className="premium-card p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 px-1 text-sm font-semibold">
+                  <Filter className="size-4 text-slate-600" />
+                  Filter
+                </span>
+                {feedFilters.map((filter) => (
+                  <Button
+                    key={filter.key}
+                    asChild
+                    variant={filter.key === activeFilter ? "default" : "outline"}
+                    size="sm"
+                  >
+                    <Link
+                      href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`}
+                      prefetch={false}
+                    >
+                      {filter.label}
+                    </Link>
+                  </Button>
+                ))}
               </div>
-            </div>
+            </section>
+
+            <FeedActivityLedger activeFilter={activeFilter} items={filteredItems} />
+
+            <FeedCardList items={filteredItems} />
+
+            <SocialFeaturePanel data={featureData} />
           </section>
 
-          {data.friendCount === 0 ? (
-            <section className="rounded-xl border border-dashed bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold">Build your golf network</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Add a friend or join a group to unlock friend-only PBs, challenge entries and
-                comments in this feed.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/friends" prefetch={false}>
-                    Find friends
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/groups" prefetch={false}>
-                    Browse groups
+          <aside aria-label="Feed social insight rail" className="grid gap-4 lg:sticky lg:top-28">
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Network pulse</p>
+              <div className="mt-3 grid gap-2">
+                <PulseRow
+                  icon={<Zap className="size-4 text-emerald-600" />}
+                  label="Total XP"
+                  value={numberFormatter.format(data.totalXp)}
+                />
+                <PulseRow
+                  icon={<Award className="size-4 text-orange-500" />}
+                  label="Feed XP"
+                  value={numberFormatter.format(feedXp)}
+                />
+                <PulseRow
+                  icon={<Award className="size-4 text-emerald-600" />}
+                  label="Kudos"
+                  value={kudos}
+                />
+                <PulseRow
+                  icon={<Radio className="size-4 text-sky-600" />}
+                  label="Comments"
+                  value={comments}
+                />
+              </div>
+            </section>
+
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Privacy state</p>
+              <div className="mt-3 grid gap-3 text-sm text-muted-foreground">
+                <p>
+                  Default feed visibility is{" "}
+                  <span className="font-medium text-foreground">
+                    {data.profile.feedVisibilityDefault}
+                  </span>
+                  .
+                </p>
+                <p>
+                  {data.publicProfileCount} golfers are discoverable through public profile search.
+                </p>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/profile" prefetch={false}>
+                    Change social defaults
                   </Link>
                 </Button>
               </div>
             </section>
-          ) : null}
-
-          <section className="premium-card p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex items-center gap-1.5 px-1 text-sm font-semibold">
-                <Filter className="size-4 text-slate-600" />
-                Filter
-              </span>
-              {feedFilters.map((filter) => (
-                <Button
-                  key={filter.key}
-                  asChild
-                  variant={filter.key === activeFilter ? "default" : "outline"}
-                  size="sm"
-                >
-                  <Link
-                    href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`}
-                    prefetch={false}
-                  >
-                    {filter.label}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          </section>
-
-          <FeedCardList items={filteredItems} />
-
-          <SocialFeaturePanel data={featureData} />
+          </aside>
         </section>
-
-        <section className="grid gap-4 lg:sticky lg:top-28">
-          <section className="premium-card p-4">
-            <p className="text-sm font-semibold">Network pulse</p>
-            <div className="mt-3 grid gap-2">
-              <PulseRow
-                icon={<Zap className="size-4 text-emerald-600" />}
-                label="Total XP"
-                value={numberFormatter.format(data.totalXp)}
-              />
-              <PulseRow
-                icon={<Award className="size-4 text-orange-500" />}
-                label="Feed XP"
-                value={numberFormatter.format(feedXp)}
-              />
-              <PulseRow
-                icon={<Award className="size-4 text-emerald-600" />}
-                label="Kudos"
-                value={kudos}
-              />
-              <PulseRow
-                icon={<Radio className="size-4 text-sky-600" />}
-                label="Comments"
-                value={comments}
-              />
-            </div>
-          </section>
-
-          <section className="premium-card p-4">
-            <p className="text-sm font-semibold">Privacy state</p>
-            <div className="mt-3 grid gap-3 text-sm text-muted-foreground">
-              <p>
-                Default feed visibility is{" "}
-                <span className="font-medium text-foreground">
-                  {data.profile.feedVisibilityDefault}
-                </span>
-                .
-              </p>
-              <p>
-                {data.publicProfileCount} golfers are discoverable through public profile search.
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>
-                  Change social defaults
-                </Link>
-              </Button>
-            </div>
-          </section>
-        </section>
-      </section>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -572,6 +636,128 @@ function BadgeLike({ icon, label }: { icon: ReactNode; label: string }) {
   );
 }
 
+function FeedActivityLedger({
+  activeFilter,
+  items,
+}: {
+  activeFilter: FeedFilter;
+  items: FeedActivityRow[];
+}) {
+  return (
+    <section id="feed-activity-ledger" className="grid gap-3" data-workbench-scope="feed-activity">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Activity ledger</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Desktop review of visible feed activity, proof, privacy and engagement before opening
+            detailed cards.
+          </p>
+        </div>
+        <StatusPill tone={items.length > 0 ? "green" : "slate"}>
+          {items.length} activities
+        </StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey={`feed-activity-${activeFilter}`}
+        scope="feed-activity"
+        currentViewLabel={feedActivityViewLabel(activeFilter)}
+        resultLabel={`${items.length} activities`}
+        columns={feedActivityColumns}
+        suggestedViews={feedActivitySuggestedViews}
+        exportTableId="feed-activity-ledger"
+        exportFileName={`forekinghell-feed-activity-${activeFilter}.csv`}
+      />
+      <DataTableFrame mainTable mainTableLabel="Feed activity ledger table">
+        <Table
+          data-workbench-export-table="feed-activity-ledger"
+          aria-describedby="feed-activity-ledger-summary"
+        >
+          <TableCaption id="feed-activity-ledger-summary" className="sr-only">
+            Feed activity ledger table showing activity headline, golfer, activity type, metric,
+            proof state, privacy, engagement counts, date and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="activity"
+                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Activity
+              </TableHead>
+              <TableHead data-column="golfer">Golfer</TableHead>
+              <TableHead data-column="type">Type</TableHead>
+              <TableHead data-column="metric">Metric</TableHead>
+              <TableHead data-column="proof">Proof</TableHead>
+              <TableHead data-column="privacy">Privacy</TableHead>
+              <TableHead data-column="engagement">Engagement</TableHead>
+              <TableHead data-column="date">Date</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.length > 0 ? (
+              items.map((item) => (
+                <TableRow key={item.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="activity"
+                    className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <p className="font-semibold">{item.headline}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                      {item.context ?? feedTypeLabel(item.itemType)}
+                    </p>
+                  </TableCell>
+                  <TableCell data-column="golfer">
+                    <Link
+                      href={`/profile/${item.profile.username}`}
+                      prefetch={false}
+                      className="font-medium text-emerald-700 hover:underline"
+                    >
+                      {item.profile.displayName}
+                    </Link>
+                    <p className="mt-1 text-xs text-muted-foreground">@{item.profile.username}</p>
+                  </TableCell>
+                  <TableCell data-column="type">{feedTypeLabel(item.itemType)}</TableCell>
+                  <TableCell data-column="metric">
+                    {item.metricValue
+                      ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}`
+                      : "--"}
+                  </TableCell>
+                  <TableCell data-column="proof">{item.verificationLabel}</TableCell>
+                  <TableCell data-column="privacy">{titleCase(item.visibility)}</TableCell>
+                  <TableCell data-column="engagement">
+                    {item.reactionCount} kudos · {item.commentCount} comments
+                  </TableCell>
+                  <TableCell data-column="date">{dateFormatter.format(item.createdAt)}</TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={item.proofUrl ?? `/profile/${item.profile.username}`}
+                        prefetch={false}
+                      >
+                        {item.proofUrl ? "Open proof" : "Open profile"}
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  No feed activity matches this filter yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
+  );
+}
+
 function xpFromFeedItem(metricValue: string | null) {
   const match = metricValue?.replace(/,/g, "").match(/^\+?(\d+(?:\.\d+)?)\s*XP$/i);
   return match ? Math.round(Number(match[1])) : 0;
@@ -579,6 +765,15 @@ function xpFromFeedItem(metricValue: string | null) {
 
 function parseFeedFilter(value: string | undefined): FeedFilter {
   return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "all";
+}
+
+function feedActivityViewLabel(filter: FeedFilter) {
+  const label = feedFilters.find((item) => item.key === filter)?.label ?? "All";
+  return `${label} feed activity`;
+}
+
+function titleCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function profileHeaderBackground(imageUrl: string) {

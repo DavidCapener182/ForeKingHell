@@ -36,7 +36,7 @@ export function buildDashboardCoachPreview({
   pathTrend: PathTrendTracking;
 }): DashboardCoachPreview | null {
   const clubById = new Map(clubs.map((club) => [club.id, club]));
-  const pathClub = pathTrend.clubId ? clubById.get(pathTrend.clubId) ?? null : null;
+  const pathClub = pathTrend.clubId ? (clubById.get(pathTrend.clubId) ?? null) : null;
 
   if (pathClub && pathTrend.status !== "building") {
     return {
@@ -49,7 +49,10 @@ export function buildDashboardCoachPreview({
       trustIndex: pathClub.stock.confidenceScore,
       sampleSize: Math.max(pathTrend.recentShots.length, pathClub.stock.sampleSize),
       stockCarryYd: pathClub.stock.coursePlayCarryYd,
-      usualMiss: missFromDispersion(pathClub.stock.dispersionLeftYd, pathClub.stock.dispersionRightYd),
+      usualMiss: missFromDispersion(
+        pathClub.stock.dispersionLeftYd,
+        pathClub.stock.dispersionRightYd,
+      ),
       playableRate: null,
       launchWindow: { low: 0, high: 0 },
     };

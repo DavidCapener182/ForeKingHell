@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
+import {
+  clearSupabaseAuthCookies,
+  createSupabaseServerClient,
+  isSupabaseAuthConfigured,
+} from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   if (isSupabaseAuthConfigured()) {
     const supabase = await createSupabaseServerClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error("[auth] Supabase sign-out failed while clearing local session", error);
+    }
+
+    await clearSupabaseAuthCookies();
   }
 
   const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });

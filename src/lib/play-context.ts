@@ -11,10 +11,11 @@ export type PlayContext = (typeof playContextOptions)[number];
 const validPlayContexts = new Set<string>(playContextOptions);
 
 export function normalizePlayContext(value: string | null | undefined): PlayContext {
-  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, "_");
-  return normalized && validPlayContexts.has(normalized)
-    ? (normalized as PlayContext)
-    : "unknown";
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  return normalized && validPlayContexts.has(normalized) ? (normalized as PlayContext) : "unknown";
 }
 
 export function inferPlayContext(input: {
@@ -47,7 +48,10 @@ export function inferPlayContext(input: {
     return "simulator";
   }
 
-  if (input.sessionType === "range" || /\b(range|rapsodo|launch monitor|practice bay)\b/.test(descriptor)) {
+  if (
+    input.sessionType === "range" ||
+    /\b(range|rapsodo|launch monitor|practice bay)\b/.test(descriptor)
+  ) {
     return "practice_bay";
   }
 

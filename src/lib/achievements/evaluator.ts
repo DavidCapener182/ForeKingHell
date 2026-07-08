@@ -86,7 +86,11 @@ export function evaluateAllAchievementCandidates(
   evaluateGeneratedClubMileageSamples(collector, shotsByClubType);
   evaluateGeneratedClubPersonalBests(collector, shotsByClubType);
   evaluateStockAndGapping(collector, context.clubs, latestStockByClubId);
-  evaluateSpeedTraining(collector, context.speedTrainingSessions ?? [], context.speedTrainingGoals ?? []);
+  evaluateSpeedTraining(
+    collector,
+    context.speedTrainingSessions ?? [],
+    context.speedTrainingGoals ?? [],
+  );
   evaluateProgress(collector, trackedShots, trackedStocks);
 
   return {
@@ -1413,10 +1417,13 @@ function evaluateSpeedTraining(
   const sessionTargetClubTypes = uniqueSpeedClubTypes(targetEntries.map((entry) => entry.session));
   const sessionCount = sortedSessions.length;
   const totalSwings = sortedSessions.reduce((total, session) => total + session.swingCount, 0);
-  const explicitTargetSessions = sortedSessions.filter((session) => isNumber(session.targetSpeedMph));
+  const explicitTargetSessions = sortedSessions.filter((session) =>
+    isNumber(session.targetSpeedMph),
+  );
   const targetClubTypes = [...new Set([...goalTargetClubTypes, ...sessionTargetClubTypes])];
   const targetHitEntries = targetEntries.filter(
-    (entry) => isNumber(entry.session.avgSpeedMph) && entry.session.avgSpeedMph >= entry.targetSpeedMph,
+    (entry) =>
+      isNumber(entry.session.avgSpeedMph) && entry.session.avgSpeedMph >= entry.targetSpeedMph,
   );
   const targetHitClubTypes = uniqueSpeedClubTypes(targetHitEntries.map((entry) => entry.session));
   const targetCount = speedTrainingGoals.length + explicitTargetSessions.length;
@@ -1437,24 +1444,15 @@ function evaluateSpeedTraining(
   collector.progressCandidate("speed_target_set", Math.min(targetCount, 1), 1, {
     speedTargetCount: targetCount,
   });
-  collector.progressCandidate(
-    "club_speed_target_set",
-    Math.min(targetClubTypes.length, 1),
-    1,
-    { clubTargetCount: targetClubTypes.length },
-  );
-  collector.progressCandidate(
-    "three_club_speed_targets",
-    Math.min(targetClubTypes.length, 3),
-    3,
-    { clubTargetCount: targetClubTypes.length },
-  );
-  collector.progressCandidate(
-    "five_club_speed_targets",
-    Math.min(targetClubTypes.length, 5),
-    5,
-    { clubTargetCount: targetClubTypes.length },
-  );
+  collector.progressCandidate("club_speed_target_set", Math.min(targetClubTypes.length, 1), 1, {
+    clubTargetCount: targetClubTypes.length,
+  });
+  collector.progressCandidate("three_club_speed_targets", Math.min(targetClubTypes.length, 3), 3, {
+    clubTargetCount: targetClubTypes.length,
+  });
+  collector.progressCandidate("five_club_speed_targets", Math.min(targetClubTypes.length, 5), 5, {
+    clubTargetCount: targetClubTypes.length,
+  });
   collector.progressCandidate(
     "three_club_speed_targets_hit",
     Math.min(targetHitClubTypes.length, 3),
@@ -1522,7 +1520,9 @@ function evaluateSpeedTraining(
     );
   }
 
-  const firstDriverTargetHit = targetHitEntries.find((entry) => entry.session.clubType === "driver");
+  const firstDriverTargetHit = targetHitEntries.find(
+    (entry) => entry.session.clubType === "driver",
+  );
   if (firstDriverTargetHit) {
     collector.unlock(
       "driver_speed_target_hit",

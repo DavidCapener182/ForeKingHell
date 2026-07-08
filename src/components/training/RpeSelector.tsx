@@ -46,7 +46,9 @@ export function RpeSelector({
       <div
         className={cn(
           "grid gap-2",
-          compact ? "grid-cols-5 sm:grid-cols-10" : "grid-cols-2 sm:grid-cols-5 xl:grid-cols-10",
+          compact
+            ? "grid-cols-5 2xl:grid-cols-10"
+            : "grid-cols-2 sm:grid-cols-5 min-[1700px]:grid-cols-10",
         )}
       >
         {rpeDescriptions.map((description, index) => {

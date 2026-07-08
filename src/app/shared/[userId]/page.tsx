@@ -20,8 +20,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -40,6 +47,27 @@ type PageProps = {
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
+const sharedSessionColumns: DesktopWorkbenchColumn[] = [
+  { id: "date", label: "Date", locked: true },
+  { id: "type", label: "Type" },
+  { id: "session", label: "Course / file", locked: true },
+  { id: "score", label: "Score" },
+  { id: "holes", label: "Holes" },
+];
+
+const sharedSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Recent scorecards",
+    href: "#shared-session-ledger",
+    detail: "Review shared rounds with score and hole evidence.",
+  },
+  {
+    title: "Coach read-only check",
+    href: "#shared-session-ledger",
+    detail: "Use visible sessions without changing the owner's account.",
+  },
+];
+
 export default async function SharedAccountPage({ params }: PageProps) {
   const { userId } = await params;
   const data = await getSharedAccountData(userId);
@@ -50,161 +78,207 @@ export default async function SharedAccountPage({ params }: PageProps) {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/settings" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Settings
-          </Link>
-        </Button>
-        <Badge variant="secondary">{data.accessRole} access</Badge>
-      </div>
+      <DesktopWorkbenchLayout scope="shared-account">
+        <div className="flex items-center justify-between gap-4">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/settings" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Settings
+            </Link>
+          </Button>
+          <Badge variant="secondary">{data.accessRole} access</Badge>
+        </div>
 
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Shared account</StatusPill>}
-        title={data.profile.name ?? data.profile.email ?? "LM World Tour player"}
-        description="Read-only account overview for coach, viewer, and editor roles. Mutations still require owner/editor-scoped actions."
-        metrics={[
-          {
-            label: "Sessions",
-            value: integerFormatter.format(data.sessionCount),
-            detail: "Imported and manual rounds.",
-          },
-          {
-            label: "Shots",
-            value: integerFormatter.format(data.shotCount),
-            detail: "Launch-monitor records.",
-          },
-          {
-            label: "Active clubs",
-            value: integerFormatter.format(data.activeClubCount),
-            detail: "Current bag entries.",
-          },
-          {
-            label: "30 day shots",
-            value: integerFormatter.format(data.recentShotCount),
-            detail: "Recent practice volume.",
-          },
-        ]}
-      />
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Shared account</StatusPill>}
+          title={data.profile.name ?? data.profile.email ?? "LM World Tour player"}
+          description="Read-only account overview for coach, viewer, and editor roles. Mutations still require owner/editor-scoped actions."
+          metrics={[
+            {
+              label: "Sessions",
+              value: integerFormatter.format(data.sessionCount),
+              detail: "Imported and manual rounds.",
+            },
+            {
+              label: "Shots",
+              value: integerFormatter.format(data.shotCount),
+              detail: "Launch-monitor records.",
+            },
+            {
+              label: "Active clubs",
+              value: integerFormatter.format(data.activeClubCount),
+              detail: "Current bag entries.",
+            },
+            {
+              label: "30 day shots",
+              value: integerFormatter.format(data.recentShotCount),
+              detail: "Recent practice volume.",
+            },
+          ]}
+        />
 
-      <MobileBentoSummary
-        items={[
-          {
-            label: "Best recent",
-            value: data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "--",
-            detail: "Longest driver total",
-            tone: "amber",
-          },
-          {
-            label: "Top club",
-            value: data.topClub?.clubType ?? "--",
-            detail: data.topClub
-              ? `${integerFormatter.format(data.topClub.count)} shots`
-              : "No shots yet",
-            tone: "green",
-          },
-          {
-            label: "Recent rounds",
-            value: integerFormatter.format(data.recentRounds.length),
-            detail: "Shared sessions",
-            tone: "sky",
-          },
-          {
-            label: "30 day shots",
-            value: integerFormatter.format(data.recentShotCount),
-            detail: "Practice volume",
-            tone: "slate",
-          },
-        ]}
-      />
+        <MobileBentoSummary
+          items={[
+            {
+              label: "Best recent",
+              value: data.longestDriveYd
+                ? `${numberFormatter.format(data.longestDriveYd)} yd`
+                : "--",
+              detail: "Longest driver total",
+              tone: "amber",
+            },
+            {
+              label: "Top club",
+              value: data.topClub?.clubType ?? "--",
+              detail: data.topClub
+                ? `${integerFormatter.format(data.topClub.count)} shots`
+                : "No shots yet",
+              tone: "green",
+            },
+            {
+              label: "Recent rounds",
+              value: integerFormatter.format(data.recentRounds.length),
+              detail: "Shared sessions",
+              tone: "sky",
+            },
+            {
+              label: "30 day shots",
+              value: integerFormatter.format(data.recentShotCount),
+              detail: "Practice volume",
+              tone: "slate",
+            },
+          ]}
+        />
 
-      <section className="hidden gap-4 sm:grid md:grid-cols-3">
-        <MetricCard
-          label="Longest drive"
-          value={data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "--"}
-          detail="Best driver total distance in the visible account."
-          icon={Trophy}
-          tone="amber"
-        />
-        <MetricCard
-          label="Most used club"
-          value={data.topClub?.clubType ?? "--"}
-          detail={
-            data.topClub
-              ? `${integerFormatter.format(data.topClub.count)} shots recorded.`
-              : "No shots yet."
-          }
-          icon={Target}
-          tone="green"
-        />
-        <MetricCard
-          label="Recent rounds"
-          value={integerFormatter.format(data.recentRounds.length)}
-          detail="Latest scorecard sessions available to this role."
-          icon={Flag}
-          tone="sky"
-        />
-      </section>
-
-      <DataPanel>
-        <SectionHeader
-          title="Recent sessions"
-          description="A quick read-only view of the shared player's latest activity."
-          action={<Database className="size-5 text-sky-600" />}
-        />
-        <CardContent>
-          <DataTableFrame
-            mobile={
-              <MobileDataList>
-                {data.recentRounds.map((round) => (
-                  <MobileDataCard
-                    key={round.id}
-                    title={round.courseName ?? round.fileName ?? "Shared session"}
-                    subtitle={`${formatDate(round.date)} · ${round.type}`}
-                    action={<Badge variant="outline">{round.totalScore ?? "--"}</Badge>}
-                  >
-                    <DataPair label="Holes" value={round.holesPlayed} />
-                    <DataPair label="Score" value={round.totalScore ?? "--"} />
-                  </MobileDataCard>
-                ))}
-              </MobileDataList>
+        <section className="hidden gap-4 sm:grid md:grid-cols-3">
+          <MetricCard
+            label="Longest drive"
+            value={data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "--"}
+            detail="Best driver total distance in the visible account."
+            icon={Trophy}
+            tone="amber"
+          />
+          <MetricCard
+            label="Most used club"
+            value={data.topClub?.clubType ?? "--"}
+            detail={
+              data.topClub
+                ? `${integerFormatter.format(data.topClub.count)} shots recorded.`
+                : "No shots yet."
             }
-          >
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Course / file</TableHead>
-                  <TableHead className="text-right">Score</TableHead>
-                  <TableHead className="text-right">Holes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.recentRounds.map((round) => (
-                  <TableRow key={round.id}>
-                    <TableCell>{formatDate(round.date)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{round.type}</Badge>
-                    </TableCell>
-                    <TableCell>{round.courseName ?? round.fileName ?? "--"}</TableCell>
-                    <TableCell className="text-right">{round.totalScore ?? "--"}</TableCell>
-                    <TableCell className="text-right">{round.holesPlayed}</TableCell>
-                  </TableRow>
-                ))}
-                {data.recentRounds.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      No shared sessions yet.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </CardContent>
-      </DataPanel>
+            icon={Target}
+            tone="green"
+          />
+          <MetricCard
+            label="Recent rounds"
+            value={integerFormatter.format(data.recentRounds.length)}
+            detail="Latest scorecard sessions available to this role."
+            icon={Flag}
+            tone="sky"
+          />
+        </section>
+
+        <section id="shared-session-ledger" data-workbench-scope="shared-sessions">
+          <DataPanel>
+            <SectionHeader
+              title="Recent sessions"
+              description="A quick read-only view of the shared player's latest activity."
+              action={<Database className="size-5 text-sky-600" />}
+            />
+            <CardContent>
+              <DesktopTableWorkbenchControls
+                viewKey={`shared-sessions-${userId}`}
+                scope="shared-sessions"
+                currentViewLabel={`${data.accessRole} shared sessions`}
+                resultLabel={`${integerFormatter.format(data.recentRounds.length)} sessions`}
+                columns={sharedSessionColumns}
+                suggestedViews={sharedSessionSuggestedViews}
+                exportTableId="shared-sessions"
+                exportFileName="forekinghell-shared-sessions.csv"
+                className="mb-3"
+              />
+              <DataTableFrame
+                mainTable
+                mainTableLabel="Shared account recent sessions table"
+                mobile={
+                  <MobileDataList>
+                    {data.recentRounds.map((round) => (
+                      <MobileDataCard
+                        key={round.id}
+                        title={round.courseName ?? round.fileName ?? "Shared session"}
+                        subtitle={`${formatDate(round.date)} · ${round.type}`}
+                        action={<Badge variant="outline">{round.totalScore ?? "--"}</Badge>}
+                      >
+                        <DataPair label="Holes" value={round.holesPlayed} />
+                        <DataPair label="Score" value={round.totalScore ?? "--"} />
+                      </MobileDataCard>
+                    ))}
+                  </MobileDataList>
+                }
+              >
+                <Table
+                  data-workbench-export-table="shared-sessions"
+                  aria-describedby="shared-sessions-table-summary"
+                >
+                  <TableCaption id="shared-sessions-table-summary" className="sr-only">
+                    Shared account recent sessions with date, type, course or file, score and holes
+                    played. The table is read-only for coach, viewer and editor roles.
+                  </TableCaption>
+                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                    <TableRow>
+                      <TableHead
+                        data-column="date"
+                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        Date
+                      </TableHead>
+                      <TableHead data-column="type">Type</TableHead>
+                      <TableHead data-column="session">Course / file</TableHead>
+                      <TableHead data-column="score" className="text-right">
+                        Score
+                      </TableHead>
+                      <TableHead data-column="holes" className="text-right">
+                        Holes
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.recentRounds.map((round) => (
+                      <TableRow key={round.id} tabIndex={0} className="focus-aaa outline-none">
+                        <TableCell
+                          data-column="date"
+                          className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        >
+                          {formatDate(round.date)}
+                        </TableCell>
+                        <TableCell data-column="type">
+                          <Badge variant="outline">{round.type}</Badge>
+                        </TableCell>
+                        <TableCell data-column="session">
+                          {round.courseName ?? round.fileName ?? "--"}
+                        </TableCell>
+                        <TableCell data-column="score" className="text-right">
+                          {round.totalScore ?? "--"}
+                        </TableCell>
+                        <TableCell data-column="holes" className="text-right">
+                          {round.holesPlayed}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {data.recentRounds.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          No shared sessions yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </TableBody>
+                </Table>
+              </DataTableFrame>
+            </CardContent>
+          </DataPanel>
+        </section>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }

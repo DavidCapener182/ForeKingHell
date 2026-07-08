@@ -26,7 +26,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { DataPair, DataPanel, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  DataPair,
+  DataPanel,
+  DataTableFrame,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { MobileRouteHeader, MobileTabBar } from "@/components/mobile-sports";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -36,11 +43,21 @@ import { CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
@@ -81,6 +98,59 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
 });
+const progressWorkbenchPrompts = [
+  {
+    label: "Explain progress trend",
+    prompt:
+      "Explain my ForeKingHell progress trend using the visible trust, bag movement, practice plan and weekly recap metrics. Do not invent missing numbers.",
+    icon: LineChart,
+  },
+  {
+    label: "Compare with last month",
+    prompt:
+      "Compare my current progress evidence with last month. Focus on clubs that changed, confidence, and the action I should take next.",
+    icon: TrendingUp,
+  },
+  {
+    label: "Build practice plan",
+    prompt:
+      "Build a practice plan from this progress page. Use uploaded shot evidence as the source of truth and mark low-confidence recommendations.",
+    icon: Target,
+  },
+  {
+    label: "Save this insight",
+    prompt:
+      "Save the most useful insight from this progress page with the visible evidence, confidence level, and one next action.",
+    icon: Bookmark,
+  },
+  ...commonAiPrompts("progress command centre").slice(3, 4),
+];
+
+const progressBagMovementColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "trust", label: "Trust" },
+  { id: "clean-shots", label: "Clean shots" },
+  { id: "stock-carry", label: "Stock carry" },
+  { id: "movement", label: "Movement" },
+];
+
+const progressBagMovementSavedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Clubs needing work",
+    href: "/progress?bag=needs-work#bag-movement",
+    detail: "Trust, sample size and movement for clubs still below decision confidence.",
+  },
+  {
+    title: "Iron progress checks",
+    href: "/progress?bag=irons#bag-movement",
+    detail: "Keep iron carry, trust and movement visible for the current roadmap.",
+  },
+  {
+    title: "Wedge scoring movement",
+    href: "/progress?bag=wedges#bag-movement",
+    detail: "Review wedge stock carry and movement before building the next scoring block.",
+  },
+];
 
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
   const userId = await requireCurrentUserId();
@@ -93,6 +163,9 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
   const summary = buildProgressSummary(data.clubs);
   const mostImproved = summary.rankings.mostImproved;
   const bagFilter = parseBagMovementFilter(params?.bag);
+  const topPracticePriority = summary.practicePlan[0] ?? null;
+  const currentProgressScore = progressScore(summary);
+  const currentProgressMomentum = progressScoreMomentum(summary);
 
   return (
     <PageShell>
@@ -108,150 +181,235 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
         ]}
       />
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowRight className="size-4 rotate-180" />
-            Dashboard
-          </Link>
-        </Button>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/bag" prefetch={false}>
-              <Target className="size-4" />
-              Bag
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/import" prefetch={false}>
-              <Upload className="size-4" />
-              Import CSV
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
-
-      {data.clubs.length === 0 ? (
-        <>
-          <DataPanel>
-            <CardContent className="flex flex-col items-center gap-3 py-7 text-center sm:gap-4 sm:py-14">
-              <Sparkles className="size-8 text-emerald-500 sm:size-9" />
-              <div>
-                <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
-                <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-                  Import a Rapsodo CSV and LM World Tour will build first-vs-latest club comparisons
-                  automatically.
-                </p>
-              </div>
-              <Button asChild>
-                <Link href="/import" prefetch={false}>
-                  <Upload className="size-4" />
-                  Import CSV
-                </Link>
-              </Button>
-            </CardContent>
-          </DataPanel>
-          <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
-            <p className="text-sm font-semibold">Next useful data</p>
-            <div className="grid gap-2">
-              <DataPair label="Best import" value="Rapsodo range CSV" />
-              <DataPair label="Minimum sample" value="8+ clean shots per club" />
-              <DataPair label="Then review" value="Trends, PBs and coach signal" />
-            </div>
-          </section>
-          <section className="grid gap-3 sm:grid-cols-3">
-            {[
+      <DesktopWorkbenchLayout
+        scope="progress"
+        railBreakpoint="wide"
+        rail={
+          <DesktopInsightRail
+            title="AI progress rail"
+            description="Weekly movement, bag trust and next-practice decisions stay available while reviewing progress."
+            metrics={[
               {
-                title: "Import data",
-                description: "Start with the next range or course CSV.",
-                href: "/import",
-                icon: Upload,
+                label: "Progress score",
+                value: `${currentProgressScore}/100`,
+                detail: progressScoreReadout(summary, currentProgressMomentum),
+                tone:
+                  currentProgressScore >= 70
+                    ? "green"
+                    : currentProgressScore >= 45
+                      ? "amber"
+                      : "pink",
               },
               {
-                title: "Map clubs",
-                description: "Confirm the bag so stock numbers compare cleanly.",
-                href: "/bag",
-                icon: Target,
+                label: "Bag trust",
+                value: `${summary.totals.averageTrust}%`,
+                detail: `${integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots across ${integerFormatter.format(summary.totals.clubs)} clubs.`,
+                tone: summary.totals.averageTrust >= 70 ? "green" : "amber",
               },
               {
-                title: "Open coach",
-                description: "Turn the first baseline into a practice plan.",
+                label: "Practice focus",
+                value: topPracticePriority
+                  ? formatClubType(topPracticePriority.clubType)
+                  : "Baseline",
+                detail:
+                  topPracticePriority?.reason ??
+                  "Import more clean stock shots to separate the next practice priority.",
+                tone: topPracticePriority?.tone ?? "slate",
+              },
+              {
+                label: "Data confidence",
+                value:
+                  summary.dataGaps.length > 0
+                    ? `${integerFormatter.format(summary.dataGaps.length)} gaps`
+                    : "Usable",
+                detail:
+                  summary.dataGaps[0]?.detail ??
+                  "No major club baseline gap is blocking the current progress readout.",
+                tone: summary.dataGaps.length > 0 ? "amber" : "green",
+              },
+            ]}
+            evidence={[
+              `${integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots feed the progress model.`,
+              summary.bestSignal
+                ? `${summary.bestSignal.title}: ${summary.bestSignal.detail}`
+                : "No single progress signal has separated yet.",
+              topPracticePriority
+                ? `Top practice priority: ${topPracticePriority.title}.`
+                : "First useful action is building a reliable baseline.",
+              `${integerFormatter.format(summary.dataGaps.length)} club data gaps are visible before AI advice.`,
+            ]}
+            prompts={progressWorkbenchPrompts}
+            actions={[
+              {
+                label: "Shot explorer",
+                href: "/shots",
+                detail: "Review the raw evidence behind progress.",
+                icon: Table2,
+              },
+              {
+                label: "Coach desk",
                 href: "/coach",
+                detail: "Turn the signal into diagnosis and drills.",
                 icon: Brain,
               },
-            ].map((step) => {
-              const Icon = step.icon;
-
-              return (
-                <Link
-                  key={step.href}
-                  href={step.href}
-                  prefetch={false}
-                  className="grid min-h-24 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm transition-colors hover:border-emerald-300"
-                >
-                  <Icon className="size-5 text-emerald-600" />
-                  <span className="text-sm font-semibold">{step.title}</span>
-                  <span className="text-sm leading-5 text-muted-foreground">
-                    {step.description}
-                  </span>
-                </Link>
-              );
-            })}
-          </section>
-        </>
-      ) : (
-        <>
-          <ProgressScorePanel summary={summary} />
-          <GoalProgressPanel summary={summary} />
-          <MobileProgressFirstCard summary={summary} />
-          <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
-            <ProgressBentoItem span={12}>
-              <WeeklyRecapPanel data={featureData} summary={summary} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={12}>
-              <ProgressRoadmapPanel summary={summary} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={12}>
-              <ProgressPracticePlannerPanel summary={practicePlannerSummary} priorities={summary.practicePlan} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={12}>
-              <ComparisonBar summary={summary} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={6}>
-              <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={6}>
-              <ProgressTrendsPanel summary={summary} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={6}>
-              <PracticePlanPanel priorities={summary.practicePlan} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={6}>
-              <CoachReadoutPanel
-                signal={summary.bestSignal}
-                groups={summary.coachSummary}
-                gaps={summary.dataGaps}
-              />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={12}>
-              <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={9}>
-              <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={3}>
-              <TrustLadderPanel items={summary.trustLadder} />
-            </ProgressBentoItem>
-            <ProgressBentoItem span={12}>
-              <div id="journey" className="h-full scroll-mt-28">
-                <CoachTimelinePanel summary={summary} />
-              </div>
-            </ProgressBentoItem>
+              {
+                label: "Practice planner",
+                href: "/practice",
+                detail: "Build the next measurable session.",
+                icon: ClipboardCheck,
+              },
+            ]}
+          />
+        }
+      >
+        <div className="hidden items-center justify-between gap-4 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard" prefetch={false}>
+              <ArrowRight className="size-4 rotate-180" />
+              Dashboard
+            </Link>
+          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="outline">
+              <Link href="/bag" prefetch={false}>
+                <Target className="size-4" />
+                Bag
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/import" prefetch={false}>
+                <Upload className="size-4" />
+                Import CSV
+              </Link>
+            </Button>
           </div>
-        </>
-      )}
+        </div>
+
+        <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
+
+        {data.clubs.length === 0 ? (
+          <>
+            <DataPanel>
+              <CardContent className="flex flex-col items-center gap-3 py-7 text-center sm:gap-4 sm:py-14">
+                <Sparkles className="size-8 text-emerald-500 sm:size-9" />
+                <div>
+                  <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
+                  <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
+                    Import a Rapsodo CSV and LM World Tour will build first-vs-latest club
+                    comparisons automatically.
+                  </p>
+                </div>
+                <Button asChild>
+                  <Link href="/import" prefetch={false}>
+                    <Upload className="size-4" />
+                    Import CSV
+                  </Link>
+                </Button>
+              </CardContent>
+            </DataPanel>
+            <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+              <p className="text-sm font-semibold">Next useful data</p>
+              <div className="grid gap-2">
+                <DataPair label="Best import" value="Rapsodo range CSV" />
+                <DataPair label="Minimum sample" value="8+ clean shots per club" />
+                <DataPair label="Then review" value="Trends, PBs and coach signal" />
+              </div>
+            </section>
+            <section className="grid gap-3 sm:grid-cols-3">
+              {[
+                {
+                  title: "Import data",
+                  description: "Start with the next range or course CSV.",
+                  href: "/import",
+                  icon: Upload,
+                },
+                {
+                  title: "Map clubs",
+                  description: "Confirm the bag so stock numbers compare cleanly.",
+                  href: "/bag",
+                  icon: Target,
+                },
+                {
+                  title: "Open coach",
+                  description: "Turn the first baseline into a practice plan.",
+                  href: "/coach",
+                  icon: Brain,
+                },
+              ].map((step) => {
+                const Icon = step.icon;
+
+                return (
+                  <Link
+                    key={step.href}
+                    href={step.href}
+                    prefetch={false}
+                    className="grid min-h-24 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm transition-colors hover:border-emerald-300"
+                  >
+                    <Icon className="size-5 text-emerald-600" />
+                    <span className="text-sm font-semibold">{step.title}</span>
+                    <span className="text-sm leading-5 text-muted-foreground">
+                      {step.description}
+                    </span>
+                  </Link>
+                );
+              })}
+            </section>
+          </>
+        ) : (
+          <>
+            <ProgressScorePanel summary={summary} />
+            <GoalProgressPanel summary={summary} />
+            <MobileProgressFirstCard summary={summary} />
+            <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
+              <ProgressBentoItem span={12}>
+                <WeeklyRecapPanel data={featureData} summary={summary} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <ProgressRoadmapPanel summary={summary} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <ProgressPracticePlannerPanel
+                  summary={practicePlannerSummary}
+                  priorities={summary.practicePlan}
+                />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <ComparisonBar summary={summary} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={6}>
+                <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={6}>
+                <ProgressTrendsPanel summary={summary} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={6}>
+                <PracticePlanPanel priorities={summary.practicePlan} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={6}>
+                <CoachReadoutPanel
+                  signal={summary.bestSignal}
+                  groups={summary.coachSummary}
+                  gaps={summary.dataGaps}
+                />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={9}>
+                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={3}>
+                <TrustLadderPanel items={summary.trustLadder} />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <div id="journey" className="h-full scroll-mt-28">
+                  <CoachTimelinePanel summary={summary} />
+                </div>
+              </ProgressBentoItem>
+            </div>
+          </>
+        )}
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -336,7 +494,7 @@ function ProgressHeroPanel({
             </Button>
           </div>
           <div className="hidden h-28 overflow-hidden rounded-lg sm:block">
-            <PageArtwork variant="progress" alt="" className="h-full min-h-28" />
+            <PageArtwork variant="progress" alt="" className="h-full min-h-28" priority />
           </div>
         </div>
       </div>
@@ -829,7 +987,10 @@ function ProgressPracticePlannerPanel({
         <div className="grid gap-3 sm:grid-cols-4">
           <DataPair label="Planned" value={integerFormatter.format(summary.plannedCount)} />
           <DataPair label="Completed" value={integerFormatter.format(summary.completedCount)} />
-          <DataPair label="Average score" value={summary.averageScore === null ? "--" : `${summary.averageScore}`} />
+          <DataPair
+            label="Average score"
+            value={summary.averageScore === null ? "--" : `${summary.averageScore}`}
+          />
           <DataPair
             label="Top focus"
             value={summary.topFocus ? summary.topFocus.label : "Waiting"}
@@ -1201,6 +1362,8 @@ function EmphasizedLead({ text, tone }: { text: string; tone: Tone }) {
 }
 
 function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
+  const trendRows = progressTrendChartRows(summary.trends);
+
   return (
     <section
       id="trends"
@@ -1217,6 +1380,19 @@ function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
           <TrendCard key={trend.label} trend={trend} summary={summary} />
         ))}
       </div>
+      <ChartAccessibleFallback
+        title="Progress trends"
+        summary={progressTrendChartSummary(summary.trends)}
+        columns={[
+          { key: "trend", label: "Trend" },
+          { key: "point", label: "Point" },
+          { key: "value", label: "Value" },
+          { key: "direction", label: "Good direction" },
+          { key: "readout", label: "Readout" },
+        ]}
+        rows={trendRows}
+        className="mt-4"
+      />
     </section>
   );
 }
@@ -1324,6 +1500,73 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
   );
 }
 
+function progressTrendChartSummary(trends: ProgressTrend[]) {
+  if (trends.length === 0) {
+    return "No progress trend rows are available yet; import more comparable clean shots before reading movement.";
+  }
+
+  const usableTrends = trends.filter((trend) => trend.points.length >= 2);
+  const positiveTrends = trends.filter((trend) => trend.tone === "green");
+  const watchTrends = trends.filter((trend) => trend.tone === "amber" || trend.tone === "pink");
+  const leadTrend = trends[0];
+
+  return [
+    `${integerFormatter.format(usableTrends.length)} of ${integerFormatter.format(trends.length)} progress trend cards have enough points for a sparkline.`,
+    leadTrend ? `${leadTrend.label}: ${leadTrend.value}.` : null,
+    positiveTrends.length > 0
+      ? `${integerFormatter.format(positiveTrends.length)} trend${positiveTrends.length === 1 ? "" : "s"} currently read positive.`
+      : null,
+    watchTrends.length > 0
+      ? `${integerFormatter.format(watchTrends.length)} trend${watchTrends.length === 1 ? "" : "s"} need more review.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function progressTrendChartRows(trends: ProgressTrend[]) {
+  return trends.flatMap((trend) => {
+    if (trend.points.length === 0) {
+      return [
+        {
+          _key: `${trend.label}-empty`,
+          trend: trend.label,
+          point: "No points",
+          value: "--",
+          direction: formatTrendDirection(trend.goodDirection),
+          readout: trend.value,
+        },
+      ];
+    }
+
+    return trend.points.map((point, index) => ({
+      _key: `${trend.label}-${index}`,
+      trend: trend.label,
+      point:
+        index === 0
+          ? "Baseline"
+          : index === trend.points.length - 1
+            ? "Latest"
+            : `Point ${index + 1}`,
+      value: numberFormatter.format(point),
+      direction: formatTrendDirection(trend.goodDirection),
+      readout: trend.value,
+    }));
+  });
+}
+
+function formatTrendDirection(direction: ProgressTrend["goodDirection"]) {
+  if (direction === "up") {
+    return "Higher is better";
+  }
+
+  if (direction === "down") {
+    return "Lower is better";
+  }
+
+  return "Stable is useful";
+}
+
 function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
   const [topPriority] = priorities;
   const visiblePriorityCount = Math.min(priorities.length, 5);
@@ -1331,7 +1574,7 @@ function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
   return (
     <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       {topPriority ? (
-        <div className="grid min-h-0 items-start gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+        <div className="grid min-h-0 items-start gap-4 min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
           <PracticePriorityFeatureCard priority={topPriority} />
           <div className="flex min-h-0 flex-col rounded-xl border border-[#DFE7DF] bg-slate-50/40 p-3">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -1842,66 +2085,102 @@ function BagMovementPanel({
             );
           })}
         </div>
-        <Table className="min-w-[1120px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Club</TableHead>
-              <TableHead>Trust</TableHead>
-              <TableHead>Clean shots</TableHead>
-              <TableHead>Stock carry</TableHead>
-              <TableHead>Movement</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredRows.length > 0 ? (
-              filteredRows.map((row) => (
-                <TableRow key={row.clubId}>
-                  <TableCell>
-                    <div className="flex min-w-0 items-start gap-2">
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "mt-1.5 size-2 shrink-0 rounded-full",
-                          bagRowMarkerClass(row),
-                        )}
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/bag/${row.clubId}/analytics`}
-                          prefetch={false}
-                          className="font-semibold hover:text-emerald-700"
-                        >
-                          {formatClubType(row.clubType)}
-                        </Link>
-                        <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
-                          {row.brandModel}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <StatusPill
-                      tone={row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"}
-                    >
-                      {row.trustIndex}% trust
-                    </StatusPill>
-                  </TableCell>
-                  <TableCell>{row.sampleSize}</TableCell>
-                  <TableCell>{formatYards(row.stockCarryYd)}</TableCell>
-                  <TableCell>
-                    <MovementPills row={row} />
-                  </TableCell>
+        <div data-workbench-scope="progress-bag-movement">
+          <DesktopTableWorkbenchControls
+            viewKey="progress-bag-movement"
+            scope="progress-bag-movement"
+            currentViewLabel="Progress bag movement"
+            resultLabel={`${filteredRows.length} clubs`}
+            columns={progressBagMovementColumns}
+            suggestedViews={progressBagMovementSavedViews}
+            exportTableId="progress-bag-movement"
+            exportFileName="forekinghell-progress-bag-movement.csv"
+            className="mb-3"
+          />
+
+          <DataTableFrame mainTable mainTableLabel="Progress bag movement table">
+            <Table
+              data-workbench-export-table="progress-bag-movement"
+              aria-describedby="progress-bag-movement-summary"
+              className="min-w-[1120px]"
+            >
+              <TableCaption id="progress-bag-movement-summary" className="sr-only">
+                Club progress table showing club, trust, clean stock shots, stock carry and
+                movement.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                <TableRow>
+                  <TableHead data-column="club" className="sticky left-0 z-20 min-w-56 bg-white">
+                    Club
+                  </TableHead>
+                  <TableHead data-column="trust">Trust</TableHead>
+                  <TableHead data-column="clean-shots">Clean shots</TableHead>
+                  <TableHead data-column="stock-carry">Stock carry</TableHead>
+                  <TableHead data-column="movement">Movement</TableHead>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
-                  No clubs match this filter yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredRows.length > 0 ? (
+                  filteredRows.map((row) => (
+                    <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="club"
+                        className="sticky left-0 z-10 min-w-56 bg-white"
+                      >
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              "mt-1.5 size-2 shrink-0 rounded-full",
+                              bagRowMarkerClass(row),
+                            )}
+                          />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/bag/${row.clubId}/analytics`}
+                              prefetch={false}
+                              className="font-semibold hover:text-emerald-700"
+                            >
+                              {formatClubType(row.clubType)}
+                            </Link>
+                            <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
+                              {row.brandModel}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell data-column="trust">
+                        <StatusPill
+                          tone={
+                            row.trustIndex >= 68 ? "green" : row.trustIndex >= 62 ? "sky" : "amber"
+                          }
+                        >
+                          {row.trustIndex}% trust
+                        </StatusPill>
+                      </TableCell>
+                      <TableCell data-column="clean-shots">{row.sampleSize}</TableCell>
+                      <TableCell data-column="stock-carry">
+                        {formatYards(row.stockCarryYd)}
+                      </TableCell>
+                      <TableCell data-column="movement">
+                        <MovementPills row={row} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={progressBagMovementColumns.length}
+                      className="py-6 text-center text-sm text-muted-foreground"
+                    >
+                      No clubs match this filter yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
       </CardContent>
     </DataPanel>
   );

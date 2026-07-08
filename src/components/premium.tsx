@@ -54,6 +54,7 @@ export function PageShell({
   return (
     <main
       id="main-content"
+      suppressHydrationWarning
       className={cn(
         "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
         className,
@@ -120,14 +121,6 @@ export function PageHeader({
               </p>
             ) : null}
           </div>
-          {visual ? (
-            <div
-              className="h-14 w-16 shrink-0 overflow-hidden rounded-lg ring-1 ring-emerald-950/10"
-              data-compact-media
-            >
-              {visual}
-            </div>
-          ) : null}
         </div>
         {primaryMetric || actions ? (
           <div
@@ -1263,21 +1256,36 @@ export function DataTableFrame({
   children,
   mobile,
   className,
+  label,
+  mainTable = false,
+  mainTableLabel = "Main data table",
 }: {
   children: ReactNode;
   mobile?: ReactNode;
   className?: string;
+  label?: string;
+  mainTable?: boolean;
+  mainTableLabel?: string;
 }) {
+  const regionLabel = label ?? (mainTable ? mainTableLabel : undefined);
+
   return (
     <>
       <div
+        id={mainTable ? "main-table" : undefined}
+        tabIndex={mainTable ? -1 : undefined}
+        data-main-table-target={mainTable ? "true" : undefined}
+        role={regionLabel ? "region" : undefined}
+        aria-label={regionLabel}
         className={cn(
           mobile ? "hidden sm:block" : "block",
           "apple-panel-strong overflow-hidden",
+          mainTable &&
+            "scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           className,
         )}
       >
-        <ScrollArea className="w-full">{children}</ScrollArea>
+        <div className="min-w-0">{children}</div>
       </div>
       {mobile ? <div className="min-w-0 overflow-hidden sm:hidden">{mobile}</div> : null}
     </>

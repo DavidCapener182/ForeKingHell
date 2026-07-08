@@ -1,7 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronDown, Database, MapPinned, Save, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Brain,
+  ChevronDown,
+  ClipboardCheck,
+  Database,
+  FileText,
+  MapPinned,
+  Save,
+  ShieldCheck,
+  Upload,
+} from "lucide-react";
 import { and, asc, desc, eq } from "drizzle-orm";
 
 import {
@@ -11,6 +22,13 @@ import {
   updateRoundHoleAction,
   updateShotClubAction,
 } from "@/app/rounds/actions";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { CourseScorecardSvg } from "@/components/course-scorecard-svg";
 import { OfflineRoundEditForm } from "@/components/offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -52,7 +71,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
+import type { CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
@@ -94,6 +113,56 @@ const CLUB_TYPE_OPTIONS = [
   "gw",
   "sw",
   "lw",
+];
+
+const roundDetailPrompts = [
+  {
+    label: "Explain this round",
+    prompt:
+      "Explain this round review using only the visible score, par, putts, handicap differential, scorecard, map, proof and shot-link evidence.",
+    icon: Brain,
+  },
+  {
+    label: "What cost shots?",
+    prompt:
+      "Identify the visible scoring leaks from this round. Use scorecard, shot-link and proof status only; call out missing evidence.",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Build cleanup plan",
+    prompt:
+      "Build a round cleanup plan from the visible context: scorecard gaps, course link, tee link, unmapped shots, proof and shot corrections.",
+    icon: ClipboardCheck,
+  },
+  {
+    label: "Generate round report",
+    prompt:
+      "Generate a round performance report with score, par, putts, differential, proof readiness, data confidence and one next practice action.",
+    icon: FileText,
+  },
+];
+
+const roundShotCorrectionColumns: DesktopWorkbenchColumn[] = [
+  { id: "hole", label: "Hole", locked: true },
+  { id: "shot", label: "Shot" },
+  { id: "club", label: "Current club", locked: true },
+  { id: "carry", label: "Carry" },
+  { id: "total", label: "Total" },
+  { id: "side", label: "Side" },
+  { id: "change-club", label: "Change club" },
+];
+
+const roundShotCorrectionViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Club corrections",
+    href: "#shots",
+    detail: "Review every linked launch-monitor row and fix one-shot club labels.",
+  },
+  {
+    title: "Distance audit",
+    href: "#shots",
+    detail: "Keep carry, total and side distance visible while checking round evidence.",
+  },
 ];
 
 export default async function RoundDetailPage({ params }: PageProps) {
@@ -175,582 +244,718 @@ export default async function RoundDetailPage({ params }: PageProps) {
         />
       ) : null}
 
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>}
-        title={round.session.courseName ?? round.session.fileName ?? "Round review"}
-        description={`${formatDate(round.session.date)} - ${
-          isRealRound
-            ? "Scorecard-only real round with no club data."
-            : `${round.session.fileName ?? "CSV import"} - ${integerFormatter.format(round.shots.length)} launch monitor shots.`
-        }`}
-        metrics={[
-          { label: "Score", value: formatNullableInteger(round.totalScore) },
-          { label: "Par", value: formatNullableInteger(round.totalPar) },
-          { label: "Putts", value: formatNullableInteger(round.totalPutts) },
-          { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
-        ]}
-        visual={
-          <PageArtwork
-            variant="fairway"
-            alt=""
-            crop="random"
-            cropKey={sessionId}
-            className="h-full min-h-44"
-            priority
+      <DesktopWorkbenchLayout
+        scope="round-detail"
+        rail={
+          <DesktopInsightRail
+            title="AI round rail"
+            description="Scorecard, map, proof and shot-link context stay visible while reviewing or correcting this round."
+            metrics={[
+              {
+                label: "Score",
+                value: formatNullableInteger(round.totalScore),
+                detail: `Par ${formatNullableInteger(round.totalPar)} · putts ${formatNullableInteger(round.totalPutts)} · diff ${formatHandicapValue(round.handicapDifferential)}.`,
+                tone: round.totalScore !== null ? "green" : "amber",
+              },
+              {
+                label: "Shot evidence",
+                value: hasClubData ? integerFormatter.format(round.shots.length) : "Scorecard",
+                detail: hasClubData
+                  ? `${integerFormatter.format(round.roundClubs.length)} clubs and ${integerFormatter.format(round.unmappedShots.length)} unmapped shots.`
+                  : "No launch-monitor rows are linked to this round.",
+                tone: hasClubData ? "green" : "amber",
+              },
+              {
+                label: "Proof",
+                value: `${proofItems.filter((item) => item.status === "ready").length}/${proofItems.length}`,
+                detail: proofItems.some((item) => item.status === "needed")
+                  ? (proofItems.find((item) => item.status === "needed")?.detail ??
+                    "Proof needs review.")
+                  : "Record and tournament proof checks are ready.",
+                tone: proofItems.some((item) => item.status === "needed") ? "amber" : "green",
+              },
+              {
+                label: "Map",
+                value: hasMap
+                  ? `${integerFormatter.format(round.mapHoles.length)} holes`
+                  : "Pending",
+                detail: hasMap
+                  ? `${hasClubData ? "Actual" : "Estimated"} shot map available for review.`
+                  : round.mapAutoImport
+                    ? roundMapImportCopy(round.mapAutoImport)
+                    : "No mapped course geometry is linked yet.",
+                tone: hasMap ? "green" : "amber",
+              },
+            ]}
+            evidence={[
+              `Score ${formatNullableInteger(round.totalScore)} on par ${formatNullableInteger(round.totalPar)} with ${formatNullableInteger(round.totalPutts)} putts.`,
+              `${integerFormatter.format(round.holes.length)} scorecard holes and ${integerFormatter.format(round.shots.length)} launch-monitor shot rows are visible.`,
+              round.session.courseId
+                ? "Round is linked to a course."
+                : "Round still needs a course link before proof is strong.",
+              `${integerFormatter.format(round.recordOpportunities.length)} record opportunities and ${integerFormatter.format(round.tournamentOpportunities.length)} tournament opportunities are visible.`,
+            ]}
+            prompts={roundDetailPrompts}
+            actions={[
+              {
+                label: "Scorecard",
+                href: "#scorecard",
+                detail: "Review and correct hole-by-hole scoring.",
+                icon: ClipboardCheck,
+              },
+              {
+                label: hasClubData ? "Shot corrections" : "Import shots",
+                href: hasClubData ? "#shots" : "/import",
+                detail: hasClubData
+                  ? "Fix one-shot club labels from the desktop table."
+                  : "Attach launch-monitor evidence to this scorecard.",
+                icon: Database,
+              },
+              {
+                label: "Course link",
+                href: "#course-link",
+                detail: "Check course, tee, rating and slope.",
+                icon: MapPinned,
+              },
+            ]}
           />
         }
-      />
-
-      {hasMap ? (
-        <MobileCollapsible
-          title={hasClubData ? "Actual hole map" : "Estimated hole map"}
-          description="Shot map detail."
-        >
-          <Card id="map" className="premium-card scroll-mt-28">
-            <CardHeader>
-              <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
-              <CardDescription>
-                {hasClubData
-                  ? "Select a hole to see the saved shot data projected over the mapped course."
-                  : "Select a hole to see estimated non-putt strokes placed along the mapped course geometry."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {round.session.courseId && shotPatternEnabled ? (
-                <div className="mb-3 flex justify-end">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/courses/${round.session.courseId}/shot-pattern`} prefetch={false}>
-                      <MapPinned className="size-4" />
-                      Open shot pattern
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-              <RoundShotMap
-                holes={round.mapHoles}
-                shots={round.mapShots}
-                courseName={round.session.courseName ?? "Course map"}
-                shotMode={hasClubData ? "actual" : "estimated"}
-              />
-            </CardContent>
-          </Card>
-        </MobileCollapsible>
-      ) : round.mapAutoImport ? (
-        <MobileCollapsible title="Course map" description="Automatic course geometry status.">
-          <Card id="map" className="premium-card scroll-mt-28">
-            <CardHeader>
-              <CardTitle>Course map</CardTitle>
-              <CardDescription>{roundMapImportCopy(round.mapAutoImport)}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-muted-foreground">
-                The review map appears here as soon as the course has tee-to-green geometry.
-              </p>
-              <Button asChild variant="outline" className="sm:w-fit">
-                <Link
-                  href={
-                    round.session.courseId ? `/courses/${round.session.courseId}/holes` : "/courses"
-                  }
-                  prefetch={false}
-                >
-                  <MapPinned className="size-4" />
-                  Open course
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </MobileCollapsible>
-      ) : null}
-
-      <MobileSectionChips
-        items={[
-          { label: "Map", href: "#map" },
-          { label: "Hole", href: "#current-hole" },
-          { label: "Scorecard", href: "#scorecard" },
-          { label: "Shots", href: "#shots" },
-        ]}
-      />
-
-      {currentHole ? (
-        <>
-          <RoundHoleSelector holes={round.holes} />
-          <CurrentHoleCard
-            sessionId={round.session.id}
-            hole={currentHole}
-            hasClubData={hasClubData}
-            isRealRound={isRealRound}
-          />
-        </>
-      ) : null}
-
-      <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
-        <Card id="context" className="premium-card scroll-mt-28">
-          <CardHeader>
-            <CardTitle>Round context</CardTitle>
-            <CardDescription>
-              Save partial-round state, weather, wind and equipment notes so comparisons explain the
-              conditions behind the score.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OfflineRoundEditForm
-              action={updateRoundContextAction}
-              editKind="round-context"
-              className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_1fr]"
-            >
-              <input type="hidden" name="sessionId" value={round.session.id} />
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Status</span>
-                <select
-                  name="roundStatus"
-                  defaultValue={round.session.roundStatus}
-                  className="h-10 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="complete">Complete</option>
-                  <option value="in_progress">In progress</option>
-                </select>
-              </label>
-              <RoundContextInput
-                label="Conditions"
-                name="weatherConditions"
-                value={round.weather.conditions}
-              />
-              <RoundContextInput label="Wind" name="wind" value={round.weather.wind} />
-              <RoundContextInput
-                label="Temperature"
-                name="temperature"
-                value={round.weather.temperature}
-              />
-              <label className="grid gap-2 text-sm font-medium lg:col-span-2">
-                <span>Round notes</span>
-                <Input
-                  name="notes"
-                  defaultValue={round.session.notes ?? ""}
-                  className="h-10 rounded-xl bg-white"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-medium lg:col-span-2">
-                <span>Equipment notes</span>
-                <Input
-                  name="equipmentNotes"
-                  defaultValue={round.session.equipmentNotes ?? ""}
-                  className="h-10 rounded-xl bg-white"
-                />
-              </label>
-              <Button
-                type="submit"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] lg:w-fit"
-              >
-                <Save className="size-4" />
-                Save context
-              </Button>
-            </OfflineRoundEditForm>
-          </CardContent>
-        </Card>
-      </MobileCollapsible>
-
-      <MobileCollapsible
-        title="Course link"
-        description="Course and tee data used by the scorecard."
       >
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Course link</CardTitle>
-            <CardDescription>
-              Change the course or tee set used by the scorecard, handicap calculation, and hole
-              map.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <OfflineRoundEditForm
-              action={updateRoundCourseLinkAction}
-              editKind="round-course-link"
-              className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end"
-            >
-              <input type="hidden" name="sessionId" value={round.session.id} />
-              <label className="grid gap-2 text-sm font-medium">
-                <span>Course / tee set</span>
-                <select
-                  name="teeSetId"
-                  defaultValue={round.session.teeSetId ?? ""}
-                  className="h-11 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                >
-                  <option value="" disabled>
-                    Select course
-                  </option>
-                  {round.courseOptions.map((option) => (
-                    <option key={option.teeSetId} value={option.teeSetId}>
-                      {option.courseName} - {option.teeSetName}
-                      {option.courseRating && option.slopeRating
-                        ? ` (${numberFormatter.format(option.courseRating)}/${option.slopeRating})`
-                        : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button
-                type="submit"
-                className="h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
-                <Save className="size-4" />
-                Update link
-              </Button>
-              <Button asChild variant="outline" className="h-11 rounded-xl">
-                <Link
-                  href={
-                    round.session.courseId ? `/courses/${round.session.courseId}/holes` : "/courses"
-                  }
-                  prefetch={false}
-                >
-                  <MapPinned className="size-4" />
-                  Edit course
-                </Link>
-              </Button>
-            </OfflineRoundEditForm>
-          </CardContent>
-        </Card>
-      </MobileCollapsible>
-
-      <RecordOpportunitiesCard round={round} />
-
-      <ProofChecklistPanel
-        title="Round proof checklist"
-        description="Before this round can support a record or tournament result, confirm the data behind the score."
-        items={proofItems}
-        actionHref="#scorecard"
-        actionLabel="Review scorecard"
-      />
-
-      {!hasClubData ? (
-        <MobileCollapsible
-          title="Real round data"
-          description="Scorecard-only stats and estimates."
-        >
-          <Card className="premium-card">
-            <CardHeader>
-              <CardTitle>Real round data</CardTitle>
-              <CardDescription>
-                This scorecard is saved without launch-monitor shots, so it contributes to real and
-                combined handicap but not bag or simulator stats.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-              <MiniMetric label="Net" value={formatNullableInteger(round.totalNetScore)} />
-              <MiniMetric label="FIR / GIR" value={`${round.fairwaysHit} / ${round.gir}`} />
-              <MiniMetric label="Chips" value={formatNullableInteger(round.totalChipShots)} />
-              <MiniMetric label="Sand" value={formatNullableInteger(round.totalSandShots)} />
-              <MiniMetric label="Penalties" value={formatNullableInteger(round.totalPenalties)} />
-              <MiniMetric
-                label="Map estimates"
-                value={integerFormatter.format(round.mapShots.length)}
-              />
-            </CardContent>
-          </Card>
-        </MobileCollapsible>
-      ) : null}
-
-      <section id="scorecard" className="grid scroll-mt-28 gap-3">
-        {round.holes.length > 0 ? (
-          <CourseScorecardSvg
-            courseName={round.session.courseName ?? round.session.fileName ?? "Round scorecard"}
-            holes={round.holes.map((hole) => ({
-              holeNumber: hole.holeNumber,
-              par: hole.par,
-              yards: hole.yards,
-              score: hole.score,
-              putts: hole.putts,
-              penalties: hole.penalties,
-              shotCount: hole.shots.length > 0 ? hole.shots.length : null,
-            }))}
-            playerName="ForeKingHell"
-            showPenalties={round.holes.some(
-              (hole) => typeof hole.penalties === "number" && hole.penalties > 0,
-            )}
-            showShotCounts={hasClubData}
-            subtitle={`${formatDate(round.session.date)} · ${formatSessionType(round.session.type)}`}
-          />
-        ) : null}
-
-        <ReviewAccordion
-          title="Hole-by-hole scorecard"
-          description={
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>}
+          title={round.session.courseName ?? round.session.fileName ?? "Round review"}
+          description={`${formatDate(round.session.date)} - ${
             isRealRound
-              ? "Edit score, putts, short-game stats, fairway hit and GIR for this real round."
-              : "Edit score, putts, missing strokes, fairway hit and GIR after the import."
+              ? "Scorecard-only real round with no club data."
+              : `${round.session.fileName ?? "CSV import"} - ${integerFormatter.format(round.shots.length)} launch monitor shots.`
+          }`}
+          metrics={[
+            { label: "Score", value: formatNullableInteger(round.totalScore) },
+            { label: "Par", value: formatNullableInteger(round.totalPar) },
+            { label: "Putts", value: formatNullableInteger(round.totalPutts) },
+            { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
+          ]}
+          visual={
+            <PageArtwork
+              variant="fairway"
+              alt=""
+              crop="random"
+              cropKey={sessionId}
+              className="h-full min-h-44"
+              priority
+            />
           }
-          count={`${round.holes.length} holes`}
-        >
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {round.holes.map((hole) => (
-              <OfflineRoundEditForm
-                id={`hole-${hole.holeNumber}`}
-                key={hole.holeNumber}
-                action={updateRoundHoleAction}
-                editKind="round-hole"
-                className="apple-panel-strong p-3"
-              >
-                <input type="hidden" name="sessionId" value={round.session.id} />
-                <input type="hidden" name="holeNumber" value={hole.holeNumber} />
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">Hole {hole.holeNumber}</p>
-                    <p className="text-xs text-muted-foreground">{formatHoleSummary(hole)}</p>
-                  </div>
-                  <Badge variant="secondary">
-                    {hasClubData ? `${hole.shots.length} CSV shots` : "Real scorecard"}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <RoundNumberInput label="Score" name="score" value={hole.score} />
-                  <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
-                  <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
-                </div>
-                {isRealRound ? (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
-                    <RoundNumberInput
-                      label="Sand"
-                      name="greensideSandShots"
-                      value={hole.greensideSandShots}
-                    />
-                  </div>
-                ) : null}
-                <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-white/85 p-2 ring-1 ring-slate-200/80">
-                  {isRealRound ? (
-                    <>
-                      <MiniMetric label="Net" value={formatNullableInteger(hole.netScore)} />
-                      <MiniMetric label="Chips" value={formatNullableInteger(hole.chipShots)} />
-                      <MiniMetric
-                        label="Sand"
-                        value={formatNullableInteger(hole.greensideSandShots)}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <MiniMetric label="Launch" value={hole.shots.length.toString()} />
-                      <MiniMetric label="Putts" value={formatNullableInteger(hole.putts)} />
-                      <MiniMetric label="Missing" value={formatNullableInteger(hole.penalties)} />
-                    </>
-                  )}
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">{strokeAccountingLabel(hole)}</p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
-                  <RoundSelect label="GIR" name="gir" value={hole.gir} />
-                </div>
-                <Button type="submit" variant="outline" size="sm" className="mt-3 w-full">
-                  <Save className="size-4" />
-                  Save hole
-                </Button>
-              </OfflineRoundEditForm>
-            ))}
-          </div>
-        </ReviewAccordion>
+        />
 
-        {hasClubData ? (
-          <ReviewAccordion
-            title="Clubs in this round"
-            description="Fix a club name, brand, or model once and all shots linked to that club update."
-            count={`${round.roundClubs.length} clubs`}
+        {hasMap ? (
+          <MobileCollapsible
+            title={hasClubData ? "Actual hole map" : "Estimated hole map"}
+            description="Shot map detail."
           >
-            <div className="space-y-3">
-              {round.roundClubs.map((club) => (
-                <OfflineRoundEditForm
-                  key={club.id}
-                  action={updateClubAction}
-                  editKind="club"
-                  className="apple-panel-strong p-3"
-                >
-                  <input type="hidden" name="sessionId" value={round.session.id} />
-                  <input type="hidden" name="clubId" value={club.id} />
-                  <div className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_auto]">
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Type</span>
-                      <ClubTypeSelect name="clubType" value={club.type} />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Brand</span>
-                      <Input name="brand" defaultValue={club.brand ?? ""} className="h-9" />
-                    </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-muted-foreground">Model</span>
-                      <Input name="model" defaultValue={club.model ?? ""} className="h-9" />
-                    </label>
-                    <div className="flex items-end">
-                      <Button type="submit" size="sm" className="w-full">
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                </OfflineRoundEditForm>
-              ))}
-              {round.roundClubs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No clubs are linked to this round.</p>
-              ) : null}
-            </div>
-          </ReviewAccordion>
-        ) : (
-          <MobileCollapsible title="Handicap input" description="Rating, slope and differential.">
-            <Card className="premium-card">
+            <Card id="map" className="premium-card scroll-mt-28">
               <CardHeader>
-                <CardTitle>Handicap input</CardTitle>
+                <CardTitle>{hasClubData ? "Actual hole map" : "Estimated hole map"}</CardTitle>
                 <CardDescription>
-                  Real rounds use the saved tee rating and slope for the rounds handicap estimate.
+                  {hasClubData
+                    ? "Select a hole to see the saved shot data projected over the mapped course."
+                    : "Select a hole to see estimated non-putt strokes placed along the mapped course geometry."}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2">
-                <MiniMetric label="Tee" value={round.session.teeName ?? "--"} />
-                <MiniMetric
-                  label="Rating / slope"
-                  value={formatRatingSlope(round.session.courseRating, round.session.slopeRating)}
-                />
-                <MiniMetric
-                  label="Gross / net"
-                  value={`${formatNullableInteger(round.totalScore)} / ${formatNullableInteger(round.totalNetScore)}`}
-                />
-                <MiniMetric
-                  label="Differential"
-                  value={formatHandicapValue(round.handicapDifferential)}
+              <CardContent>
+                {round.session.courseId && shotPatternEnabled ? (
+                  <div className="mb-3 flex justify-end">
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        href={`/courses/${round.session.courseId}/shot-pattern`}
+                        prefetch={false}
+                      >
+                        <MapPinned className="size-4" />
+                        Open shot pattern
+                      </Link>
+                    </Button>
+                  </div>
+                ) : null}
+                <RoundShotMap
+                  holes={round.mapHoles}
+                  shots={round.mapShots}
+                  courseName={round.session.courseName ?? "Course map"}
+                  shotMode={hasClubData ? "actual" : "estimated"}
                 />
               </CardContent>
             </Card>
           </MobileCollapsible>
-        )}
-      </section>
+        ) : round.mapAutoImport ? (
+          <MobileCollapsible title="Course map" description="Automatic course geometry status.">
+            <Card id="map" className="premium-card scroll-mt-28">
+              <CardHeader>
+                <CardTitle>Course map</CardTitle>
+                <CardDescription>{roundMapImportCopy(round.mapAutoImport)}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  The review map appears here as soon as the course has tee-to-green geometry.
+                </p>
+                <Button asChild variant="outline" className="sm:w-fit">
+                  <Link
+                    href={
+                      round.session.courseId
+                        ? `/courses/${round.session.courseId}/holes`
+                        : "/courses"
+                    }
+                    prefetch={false}
+                  >
+                    <MapPinned className="size-4" />
+                    Open course
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </MobileCollapsible>
+        ) : null}
 
-      {hasClubData ? (
-        <ReviewAccordion
-          id="shots"
-          title="Shot club corrections"
-          description="Use this when the CSV club is wrong for a single shot. Hole assignment is derived from the round split and is not editable from the review page."
-          count={`${round.shots.length} shots`}
+        <MobileSectionChips
+          items={[
+            { label: "Map", href: "#map" },
+            { label: "Hole", href: "#current-hole" },
+            { label: "Scorecard", href: "#scorecard" },
+            { label: "Shots", href: "#shots" },
+          ]}
+        />
+
+        {currentHole ? (
+          <>
+            <RoundHoleSelector holes={round.holes} />
+            <CurrentHoleCard
+              sessionId={round.session.id}
+              hole={currentHole}
+              hasClubData={hasClubData}
+              isRealRound={isRealRound}
+            />
+          </>
+        ) : null}
+
+        <MobileCollapsible title="Round context" description="Status, weather, wind and notes.">
+          <Card id="context" className="premium-card scroll-mt-28">
+            <CardHeader>
+              <CardTitle>Round context</CardTitle>
+              <CardDescription>
+                Save partial-round state, weather, wind and equipment notes so comparisons explain
+                the conditions behind the score.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OfflineRoundEditForm
+                action={updateRoundContextAction}
+                editKind="round-context"
+                className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_1fr]"
+              >
+                <input type="hidden" name="sessionId" value={round.session.id} />
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Status</span>
+                  <select
+                    name="roundStatus"
+                    defaultValue={round.session.roundStatus}
+                    className="h-10 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="complete">Complete</option>
+                    <option value="in_progress">In progress</option>
+                  </select>
+                </label>
+                <RoundContextInput
+                  label="Conditions"
+                  name="weatherConditions"
+                  value={round.weather.conditions}
+                />
+                <RoundContextInput label="Wind" name="wind" value={round.weather.wind} />
+                <RoundContextInput
+                  label="Temperature"
+                  name="temperature"
+                  value={round.weather.temperature}
+                />
+                <label className="grid gap-2 text-sm font-medium lg:col-span-2">
+                  <span>Round notes</span>
+                  <Input
+                    name="notes"
+                    defaultValue={round.session.notes ?? ""}
+                    className="h-10 rounded-xl bg-white"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm font-medium lg:col-span-2">
+                  <span>Equipment notes</span>
+                  <Input
+                    name="equipmentNotes"
+                    defaultValue={round.session.equipmentNotes ?? ""}
+                    className="h-10 rounded-xl bg-white"
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] lg:w-fit"
+                >
+                  <Save className="size-4" />
+                  Save context
+                </Button>
+              </OfflineRoundEditForm>
+            </CardContent>
+          </Card>
+        </MobileCollapsible>
+
+        <MobileCollapsible
+          title="Course link"
+          description="Course and tee data used by the scorecard."
         >
-          <DataTableFrame
-            mobile={
-              <MobileDataList>
-                {round.shots.length > 0 ? (
-                  round.shots.map((shot) => (
-                    <MobileDataCard
-                      key={shot.id}
-                      title={clubLabel(shot)}
-                      subtitle={`Hole ${formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}`}
-                      action={<Badge variant="outline">Shot {shot.shotNumber ?? "--"}</Badge>}
-                    >
-                      <DataPair label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
-                      <DataPair label="Total" value={`${formatMetric(shot.totalYd)} yd`} />
-                      <DataPair label="Side" value={`${formatMetric(shot.sideCarryYd)} yd`} />
-                      <OfflineRoundEditForm
-                        action={updateShotClubAction}
-                        editKind="shot-club"
-                        className="grid gap-2"
-                      >
-                        <input type="hidden" name="sessionId" value={round.session.id} />
-                        <input type="hidden" name="shotId" value={shot.id} />
-                        <select
-                          name="clubId"
-                          defaultValue={shot.clubId}
-                          className="h-9 rounded-lg border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        >
-                          {round.allClubs.map((club) => (
-                            <option key={club.id} value={club.id}>
-                              {clubLabel(club)}
-                            </option>
-                          ))}
-                        </select>
-                        <Button type="submit" size="sm" variant="outline">
-                          Save club
-                        </Button>
-                      </OfflineRoundEditForm>
-                    </MobileDataCard>
-                  ))
-                ) : (
-                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                    No shots are linked to this round.
-                  </div>
-                )}
-              </MobileDataList>
-            }
+          <Card id="course-link" className="premium-card scroll-mt-28">
+            <CardHeader>
+              <CardTitle>Course link</CardTitle>
+              <CardDescription>
+                Change the course or tee set used by the scorecard, handicap calculation, and hole
+                map.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <OfflineRoundEditForm
+                action={updateRoundCourseLinkAction}
+                editKind="round-course-link"
+                className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end"
+              >
+                <input type="hidden" name="sessionId" value={round.session.id} />
+                <label className="grid gap-2 text-sm font-medium">
+                  <span>Course / tee set</span>
+                  <select
+                    name="teeSetId"
+                    defaultValue={round.session.teeSetId ?? ""}
+                    className="h-11 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="" disabled>
+                      Select course
+                    </option>
+                    {round.courseOptions.map((option) => (
+                      <option key={option.teeSetId} value={option.teeSetId}>
+                        {option.courseName} - {option.teeSetName}
+                        {option.courseRating && option.slopeRating
+                          ? ` (${numberFormatter.format(option.courseRating)}/${option.slopeRating})`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button
+                  type="submit"
+                  className="h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                >
+                  <Save className="size-4" />
+                  Update link
+                </Button>
+                <Button asChild variant="outline" className="h-11 rounded-xl">
+                  <Link
+                    href={
+                      round.session.courseId
+                        ? `/courses/${round.session.courseId}/holes`
+                        : "/courses"
+                    }
+                    prefetch={false}
+                  >
+                    <MapPinned className="size-4" />
+                    Edit course
+                  </Link>
+                </Button>
+              </OfflineRoundEditForm>
+            </CardContent>
+          </Card>
+        </MobileCollapsible>
+
+        <RecordOpportunitiesCard round={round} />
+
+        <ProofChecklistPanel
+          title="Round proof checklist"
+          description="Before this round can support a record or tournament result, confirm the data behind the score."
+          items={proofItems}
+          actionHref="#scorecard"
+          actionLabel="Review scorecard"
+        />
+
+        {!hasClubData ? (
+          <MobileCollapsible
+            title="Real round data"
+            description="Scorecard-only stats and estimates."
           >
-            <Table className="min-w-[1120px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hole</TableHead>
-                  <TableHead className="text-right">Shot</TableHead>
-                  <TableHead>Current club</TableHead>
-                  <TableHead className="text-right">Carry</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Side</TableHead>
-                  <TableHead>Change club</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {round.shots.map((shot) => (
-                  <TableRow key={shot.id}>
-                    <TableCell>
-                      {formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}
-                    </TableCell>
-                    <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
-                    <TableCell className="font-medium">{clubLabel(shot)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.carryYd)} yd</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.totalYd)} yd</TableCell>
-                    <TableCell className="text-right">
-                      {formatMetric(shot.sideCarryYd)} yd
-                    </TableCell>
-                    <TableCell>
-                      <OfflineRoundEditForm
-                        action={updateShotClubAction}
-                        editKind="shot-club"
-                        className="flex gap-2"
-                      >
-                        <input type="hidden" name="sessionId" value={round.session.id} />
-                        <input type="hidden" name="shotId" value={shot.id} />
-                        <select
-                          name="clubId"
-                          defaultValue={shot.clubId}
-                          className="h-9 min-w-48 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                        >
-                          {round.allClubs.map((club) => (
-                            <option key={club.id} value={club.id}>
-                              {clubLabel(club)}
-                            </option>
-                          ))}
-                        </select>
-                        <Button type="submit" size="sm" variant="outline">
+            <Card className="premium-card">
+              <CardHeader>
+                <CardTitle>Real round data</CardTitle>
+                <CardDescription>
+                  This scorecard is saved without launch-monitor shots, so it contributes to real
+                  and combined handicap but not bag or simulator stats.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                <MiniMetric label="Net" value={formatNullableInteger(round.totalNetScore)} />
+                <MiniMetric label="FIR / GIR" value={`${round.fairwaysHit} / ${round.gir}`} />
+                <MiniMetric label="Chips" value={formatNullableInteger(round.totalChipShots)} />
+                <MiniMetric label="Sand" value={formatNullableInteger(round.totalSandShots)} />
+                <MiniMetric label="Penalties" value={formatNullableInteger(round.totalPenalties)} />
+                <MiniMetric
+                  label="Map estimates"
+                  value={integerFormatter.format(round.mapShots.length)}
+                />
+              </CardContent>
+            </Card>
+          </MobileCollapsible>
+        ) : null}
+
+        <section id="scorecard" className="grid scroll-mt-28 gap-3">
+          {round.holes.length > 0 ? (
+            <CourseScorecardSvg
+              courseName={round.session.courseName ?? round.session.fileName ?? "Round scorecard"}
+              holes={round.holes.map((hole) => ({
+                holeNumber: hole.holeNumber,
+                par: hole.par,
+                yards: hole.yards,
+                score: hole.score,
+                putts: hole.putts,
+                penalties: hole.penalties,
+                shotCount: hole.shots.length > 0 ? hole.shots.length : null,
+              }))}
+              playerName="ForeKingHell"
+              showPenalties={round.holes.some(
+                (hole) => typeof hole.penalties === "number" && hole.penalties > 0,
+              )}
+              showShotCounts={hasClubData}
+              subtitle={`${formatDate(round.session.date)} · ${formatSessionType(round.session.type)}`}
+            />
+          ) : null}
+
+          <ReviewAccordion
+            title="Hole-by-hole scorecard"
+            description={
+              isRealRound
+                ? "Edit score, putts, short-game stats, fairway hit and GIR for this real round."
+                : "Edit score, putts, missing strokes, fairway hit and GIR after the import."
+            }
+            count={`${round.holes.length} holes`}
+          >
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {round.holes.map((hole) => (
+                <OfflineRoundEditForm
+                  id={`hole-${hole.holeNumber}`}
+                  key={hole.holeNumber}
+                  action={updateRoundHoleAction}
+                  editKind="round-hole"
+                  className="apple-panel-strong p-3"
+                >
+                  <input type="hidden" name="sessionId" value={round.session.id} />
+                  <input type="hidden" name="holeNumber" value={hole.holeNumber} />
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">Hole {hole.holeNumber}</p>
+                      <p className="text-xs text-muted-foreground">{formatHoleSummary(hole)}</p>
+                    </div>
+                    <Badge variant="secondary">
+                      {hasClubData ? `${hole.shots.length} CSV shots` : "Real scorecard"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <RoundNumberInput label="Score" name="score" value={hole.score} />
+                    <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
+                    <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
+                  </div>
+                  {isRealRound ? (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
+                      <RoundNumberInput
+                        label="Sand"
+                        name="greensideSandShots"
+                        value={hole.greensideSandShots}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="mt-2 grid grid-cols-3 gap-2 rounded-lg bg-white/85 p-2 ring-1 ring-slate-200/80">
+                    {isRealRound ? (
+                      <>
+                        <MiniMetric label="Net" value={formatNullableInteger(hole.netScore)} />
+                        <MiniMetric label="Chips" value={formatNullableInteger(hole.chipShots)} />
+                        <MiniMetric
+                          label="Sand"
+                          value={formatNullableInteger(hole.greensideSandShots)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <MiniMetric label="Launch" value={hole.shots.length.toString()} />
+                        <MiniMetric label="Putts" value={formatNullableInteger(hole.putts)} />
+                        <MiniMetric label="Missing" value={formatNullableInteger(hole.penalties)} />
+                      </>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {strokeAccountingLabel(hole)}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
+                    <RoundSelect label="GIR" name="gir" value={hole.gir} />
+                  </div>
+                  <Button type="submit" variant="outline" size="sm" className="mt-3 w-full">
+                    <Save className="size-4" />
+                    Save hole
+                  </Button>
+                </OfflineRoundEditForm>
+              ))}
+            </div>
+          </ReviewAccordion>
+
+          {hasClubData ? (
+            <ReviewAccordion
+              title="Clubs in this round"
+              description="Fix a club name, brand, or model once and all shots linked to that club update."
+              count={`${round.roundClubs.length} clubs`}
+            >
+              <div className="space-y-3">
+                {round.roundClubs.map((club) => (
+                  <OfflineRoundEditForm
+                    key={club.id}
+                    action={updateClubAction}
+                    editKind="club"
+                    className="apple-panel-strong p-3"
+                  >
+                    <input type="hidden" name="sessionId" value={round.session.id} />
+                    <input type="hidden" name="clubId" value={club.id} />
+                    <div className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1fr_auto]">
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Type</span>
+                        <ClubTypeSelect name="clubType" value={club.type} />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Brand</span>
+                        <Input name="brand" defaultValue={club.brand ?? ""} className="h-9" />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Model</span>
+                        <Input name="model" defaultValue={club.model ?? ""} className="h-9" />
+                      </label>
+                      <div className="flex items-end">
+                        <Button type="submit" size="sm" className="w-full">
                           Save
                         </Button>
-                      </OfflineRoundEditForm>
-                    </TableCell>
-                  </TableRow>
+                      </div>
+                    </div>
+                  </OfflineRoundEditForm>
                 ))}
-                {round.shots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      No shots are linked to this round.
-                    </TableCell>
-                  </TableRow>
+                {round.roundClubs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No clubs are linked to this round.
+                  </p>
                 ) : null}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </ReviewAccordion>
-      ) : null}
+              </div>
+            </ReviewAccordion>
+          ) : (
+            <MobileCollapsible title="Handicap input" description="Rating, slope and differential.">
+              <Card className="premium-card">
+                <CardHeader>
+                  <CardTitle>Handicap input</CardTitle>
+                  <CardDescription>
+                    Real rounds use the saved tee rating and slope for the rounds handicap estimate.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2">
+                  <MiniMetric label="Tee" value={round.session.teeName ?? "--"} />
+                  <MiniMetric
+                    label="Rating / slope"
+                    value={formatRatingSlope(round.session.courseRating, round.session.slopeRating)}
+                  />
+                  <MiniMetric
+                    label="Gross / net"
+                    value={`${formatNullableInteger(round.totalScore)} / ${formatNullableInteger(round.totalNetScore)}`}
+                  />
+                  <MiniMetric
+                    label="Differential"
+                    value={formatHandicapValue(round.handicapDifferential)}
+                  />
+                </CardContent>
+              </Card>
+            </MobileCollapsible>
+          )}
+        </section>
 
-      {round.unmappedShots.length > 0 ? (
-        <Card className="premium-card border-amber-300 bg-amber-50">
-          <CardHeader>
-            <CardTitle>Unmapped shots</CardTitle>
-            <CardDescription>
-              These shots have no hole assignment. Re-import with adjusted hole shot counts if the
-              split needs to change.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">
-              {integerFormatter.format(round.unmappedShots.length)} shots are unmapped.
-            </p>
-          </CardContent>
-        </Card>
-      ) : null}
+        {hasClubData ? (
+          <ReviewAccordion
+            id="shots"
+            title="Shot club corrections"
+            description="Use this when the CSV club is wrong for a single shot. Hole assignment is derived from the round split and is not editable from the review page."
+            count={`${round.shots.length} shots`}
+          >
+            <div data-workbench-scope="round-shots">
+              <DesktopTableWorkbenchControls
+                viewKey={`round-shots-${round.session.id}`}
+                scope="round-shots"
+                currentViewLabel="Round shot corrections"
+                resultLabel={`${integerFormatter.format(round.shots.length)} shots`}
+                columns={roundShotCorrectionColumns}
+                suggestedViews={roundShotCorrectionViews}
+                exportTableId="round-shots"
+                exportFileName="forekinghell-round-shot-corrections.csv"
+                className="mb-3"
+              />
+              <DataTableFrame
+                mainTable
+                mainTableLabel="Round shot club corrections table"
+                mobile={
+                  <MobileDataList>
+                    {round.shots.length > 0 ? (
+                      round.shots.map((shot) => (
+                        <MobileDataCard
+                          key={shot.id}
+                          title={clubLabel(shot)}
+                          subtitle={`Hole ${formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}`}
+                          action={<Badge variant="outline">Shot {shot.shotNumber ?? "--"}</Badge>}
+                        >
+                          <DataPair label="Carry" value={`${formatMetric(shot.carryYd)} yd`} />
+                          <DataPair label="Total" value={`${formatMetric(shot.totalYd)} yd`} />
+                          <DataPair label="Side" value={`${formatMetric(shot.sideCarryYd)} yd`} />
+                          <OfflineRoundEditForm
+                            action={updateShotClubAction}
+                            editKind="shot-club"
+                            className="grid gap-2"
+                          >
+                            <input type="hidden" name="sessionId" value={round.session.id} />
+                            <input type="hidden" name="shotId" value={shot.id} />
+                            <select
+                              name="clubId"
+                              defaultValue={shot.clubId}
+                              className="h-9 rounded-lg border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                              {round.allClubs.map((club) => (
+                                <option key={club.id} value={club.id}>
+                                  {clubLabel(club)}
+                                </option>
+                              ))}
+                            </select>
+                            <Button type="submit" size="sm" variant="outline">
+                              Save club
+                            </Button>
+                          </OfflineRoundEditForm>
+                        </MobileDataCard>
+                      ))
+                    ) : (
+                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                        No shots are linked to this round.
+                      </div>
+                    )}
+                  </MobileDataList>
+                }
+              >
+                <Table
+                  className="min-w-[1120px]"
+                  data-workbench-export-table="round-shots"
+                  aria-describedby="round-shots-table-summary"
+                >
+                  <TableCaption id="round-shots-table-summary" className="sr-only">
+                    Round shot club corrections with hole, shot number, current club, distance
+                    metrics and club update controls.
+                  </TableCaption>
+                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                    <TableRow>
+                      <TableHead
+                        data-column="hole"
+                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        Hole
+                      </TableHead>
+                      <TableHead data-column="shot" className="text-right">
+                        Shot
+                      </TableHead>
+                      <TableHead data-column="club">Current club</TableHead>
+                      <TableHead data-column="carry" className="text-right">
+                        Carry
+                      </TableHead>
+                      <TableHead data-column="total" className="text-right">
+                        Total
+                      </TableHead>
+                      <TableHead data-column="side" className="text-right">
+                        Side
+                      </TableHead>
+                      <TableHead data-column="change-club">Change club</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {round.shots.map((shot) => (
+                      <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
+                        <TableCell
+                          data-column="hole"
+                          className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        >
+                          {formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}
+                        </TableCell>
+                        <TableCell data-column="shot" className="text-right">
+                          {shot.shotNumber ?? "--"}
+                        </TableCell>
+                        <TableCell data-column="club" className="font-medium">
+                          {clubLabel(shot)}
+                        </TableCell>
+                        <TableCell data-column="carry" className="text-right">
+                          {formatMetric(shot.carryYd)} yd
+                        </TableCell>
+                        <TableCell data-column="total" className="text-right">
+                          {formatMetric(shot.totalYd)} yd
+                        </TableCell>
+                        <TableCell data-column="side" className="text-right">
+                          {formatMetric(shot.sideCarryYd)} yd
+                        </TableCell>
+                        <TableCell data-column="change-club">
+                          <OfflineRoundEditForm
+                            action={updateShotClubAction}
+                            editKind="shot-club"
+                            className="flex gap-2"
+                          >
+                            <input type="hidden" name="sessionId" value={round.session.id} />
+                            <input type="hidden" name="shotId" value={shot.id} />
+                            <select
+                              name="clubId"
+                              defaultValue={shot.clubId}
+                              className="h-9 min-w-48 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                            >
+                              {round.allClubs.map((club) => (
+                                <option key={club.id} value={club.id}>
+                                  {clubLabel(club)}
+                                </option>
+                              ))}
+                            </select>
+                            <Button type="submit" size="sm" variant="outline">
+                              Save
+                            </Button>
+                          </OfflineRoundEditForm>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {round.shots.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                          No shots are linked to this round.
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </TableBody>
+                </Table>
+              </DataTableFrame>
+            </div>
+          </ReviewAccordion>
+        ) : null}
+
+        {round.unmappedShots.length > 0 ? (
+          <Card className="premium-card border-amber-300 bg-amber-50">
+            <CardHeader>
+              <CardTitle>Unmapped shots</CardTitle>
+              <CardDescription>
+                These shots have no hole assignment. Re-import with adjusted hole shot counts if the
+                split needs to change.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">
+                {integerFormatter.format(round.unmappedShots.length)} shots are unmapped.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
+      </DesktopWorkbenchLayout>
       <StickyMobileAction>
         <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <a href="#current-hole">Edit current hole</a>
@@ -1065,135 +1270,130 @@ async function getRoundDetail(sessionId: string) {
 
   const roundMapGeometry = await resolveRoundMapGeometry(db, session);
 
-  const [
-    shotRows,
-    clubRows,
-    courseHoleRows,
-    teeSetOptionRows,
-    recordOpportunityRows,
-    tournamentOpportunityRows,
-    recordAttemptRows,
-    tournamentSubmissionRows,
-  ] = await Promise.all([
-    db
-      .select({
-        id: shots.id,
-        clubId: shots.clubId,
-        shotNumber: shots.shotNumber,
-        courseHoleNumber: shots.courseHoleNumber,
-        courseHoleShotNumber: shots.courseHoleShotNumber,
-        clubType: shots.clubType,
-        brand: clubs.brand,
-        model: clubs.model,
-        carryYd: shots.carryYd,
-        totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
-        distanceRemainingYd: shots.distanceRemainingYd,
-        courseHoleYards: shots.courseHoleYards,
-      })
-      .from(shots)
-      .innerJoin(clubs, eq(shots.clubId, clubs.id))
-      .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
-      .orderBy(asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber)),
-    db
-      .select({
-        id: clubs.id,
-        type: clubs.type,
-        brand: clubs.brand,
-        model: clubs.model,
-        active: clubs.active,
-      })
-      .from(clubs)
-      .where(eq(clubs.userId, userId))
-      .orderBy(asc(clubs.type), asc(clubs.brand), asc(clubs.model)),
-    roundMapGeometry.teeSetId
-      ? db
-          .select({
-            holeNumber: courseHoles.holeNumber,
-            par: courseHoles.par,
-            yards: courseHoles.yards,
-            strokeIndex: courseHoles.strokeIndex,
-            centerlineGeojson: courseHoles.centerlineGeojson,
-          })
-          .from(courseHoles)
-          .where(eq(courseHoles.teeSetId, roundMapGeometry.teeSetId))
-          .orderBy(asc(courseHoles.holeNumber))
-      : Promise.resolve([]),
-    db
-      .select({
-        teeSetId: teeSets.id,
-        teeSetName: teeSets.name,
-        courseId: teeSets.courseId,
-        courseName: courses.name,
-        courseRating: teeSets.courseRating,
-        slopeRating: teeSets.slopeRating,
-      })
-      .from(teeSets)
-      .innerJoin(courses, eq(teeSets.courseId, courses.id))
-      .orderBy(asc(courses.name), asc(teeSets.name)),
-    session.courseId
-      ? db
-          .select({
-            record: courseRecords,
-            category: courseRecordCategories,
-          })
-          .from(courseRecords)
-          .innerJoin(
-            courseRecordCategories,
-            eq(courseRecords.categoryId, courseRecordCategories.id),
-          )
-          .where(
-            and(eq(courseRecords.courseId, session.courseId), eq(courseRecords.status, "active")),
-          )
-          .orderBy(asc(courseRecordCategories.sortOrder))
-          .limit(8)
-      : Promise.resolve([]),
-    session.courseId
-      ? db
-          .select()
-          .from(tournaments)
-          .where(and(eq(tournaments.courseId, session.courseId), eq(tournaments.status, "open")))
-          .orderBy(asc(tournaments.endsAt))
-          .limit(8)
-      : Promise.resolve([]),
-    session.courseId
-      ? db
-          .select({
-            id: courseRecordAttempts.id,
-            recordId: courseRecordAttempts.recordId,
-            verificationStatus: courseRecordAttempts.verificationStatus,
-            verificationTier: courseRecordAttempts.verificationTier,
-            submittedAt: courseRecordAttempts.submittedAt,
-          })
-          .from(courseRecordAttempts)
-          .where(
-            and(
-              eq(courseRecordAttempts.userId, userId),
-              eq(courseRecordAttempts.sessionId, sessionId),
-            ),
-          )
-          .orderBy(desc(courseRecordAttempts.submittedAt))
-      : Promise.resolve([]),
-    session.courseId
-      ? db
-          .select({
-            id: tournamentSubmissions.id,
-            tournamentId: tournamentSubmissions.tournamentId,
-            verificationStatus: tournamentSubmissions.verificationStatus,
-            verificationTier: tournamentSubmissions.verificationTier,
-            submittedAt: tournamentSubmissions.submittedAt,
-          })
-          .from(tournamentSubmissions)
-          .where(
-            and(
-              eq(tournamentSubmissions.userId, userId),
-              eq(tournamentSubmissions.sessionId, sessionId),
-            ),
-          )
-          .orderBy(desc(tournamentSubmissions.submittedAt))
-      : Promise.resolve([]),
-  ]);
-
+  const shotRows = await db
+    .select({
+      id: shots.id,
+      clubId: shots.clubId,
+      shotNumber: shots.shotNumber,
+      courseHoleNumber: shots.courseHoleNumber,
+      courseHoleShotNumber: shots.courseHoleShotNumber,
+      clubType: shots.clubType,
+      brand: clubs.brand,
+      model: clubs.model,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: shots.sideCarryYd,
+      distanceRemainingYd: shots.distanceRemainingYd,
+      courseHoleYards: shots.courseHoleYards,
+    })
+    .from(shots)
+    .innerJoin(clubs, eq(shots.clubId, clubs.id))
+    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
+    .orderBy(asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber));
+  const clubRows = await db
+    .select({
+      id: clubs.id,
+      type: clubs.type,
+      brand: clubs.brand,
+      model: clubs.model,
+      active: clubs.active,
+    })
+    .from(clubs)
+    .where(eq(clubs.userId, userId))
+    .orderBy(asc(clubs.type), asc(clubs.brand), asc(clubs.model));
+  const courseHoleRows = roundMapGeometry.teeSetId
+    ? await db
+        .select({
+          holeNumber: courseHoles.holeNumber,
+          par: courseHoles.par,
+          yards: courseHoles.yards,
+          strokeIndex: courseHoles.strokeIndex,
+          centerlineGeojson: courseHoles.centerlineGeojson,
+        })
+        .from(courseHoles)
+        .where(eq(courseHoles.teeSetId, roundMapGeometry.teeSetId))
+        .orderBy(asc(courseHoles.holeNumber))
+    : [];
+  const teeSetOptionRows = await db
+    .select({
+      teeSetId: teeSets.id,
+      teeSetName: teeSets.name,
+      courseId: teeSets.courseId,
+      courseName: courses.name,
+      courseRating: teeSets.courseRating,
+      slopeRating: teeSets.slopeRating,
+    })
+    .from(teeSets)
+    .innerJoin(courses, eq(teeSets.courseId, courses.id))
+    .orderBy(asc(courses.name), asc(teeSets.name));
+  const recordOpportunityRows = session.courseId
+    ? await db
+        .select({
+          record: {
+            id: courseRecords.id,
+            recordType: courseRecords.recordType,
+            scope: courseRecords.scope,
+            period: courseRecords.period,
+          },
+          category: {
+            name: courseRecordCategories.name,
+            sortOrder: courseRecordCategories.sortOrder,
+          },
+        })
+        .from(courseRecords)
+        .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
+        .where(
+          and(eq(courseRecords.courseId, session.courseId), eq(courseRecords.status, "active")),
+        )
+        .orderBy(asc(courseRecordCategories.sortOrder))
+        .limit(8)
+    : [];
+  const tournamentOpportunityRows = session.courseId
+    ? await db
+        .select()
+        .from(tournaments)
+        .where(and(eq(tournaments.courseId, session.courseId), eq(tournaments.status, "open")))
+        .orderBy(asc(tournaments.endsAt))
+        .limit(8)
+    : [];
+  const recordAttemptRows = session.courseId
+    ? await db
+        .select({
+          id: courseRecordAttempts.id,
+          recordId: courseRecordAttempts.recordId,
+          verificationStatus: courseRecordAttempts.verificationStatus,
+          verificationTier: courseRecordAttempts.verificationTier,
+          submittedAt: courseRecordAttempts.submittedAt,
+        })
+        .from(courseRecordAttempts)
+        .where(
+          and(
+            eq(courseRecordAttempts.userId, userId),
+            eq(courseRecordAttempts.sessionId, sessionId),
+          ),
+        )
+        .orderBy(desc(courseRecordAttempts.submittedAt))
+        .limit(20)
+    : [];
+  const tournamentSubmissionRows = session.courseId
+    ? await db
+        .select({
+          id: tournamentSubmissions.id,
+          tournamentId: tournamentSubmissions.tournamentId,
+          verificationStatus: tournamentSubmissions.verificationStatus,
+          verificationTier: tournamentSubmissions.verificationTier,
+          submittedAt: tournamentSubmissions.submittedAt,
+        })
+        .from(tournamentSubmissions)
+        .where(
+          and(
+            eq(tournamentSubmissions.userId, userId),
+            eq(tournamentSubmissions.sessionId, sessionId),
+          ),
+        )
+        .orderBy(desc(tournamentSubmissions.submittedAt))
+        .limit(20)
+    : [];
   const scorecard = session.scorecardJson ?? [];
   const shotByHole = new Map<number, typeof shotRows>();
 
@@ -1364,26 +1564,9 @@ async function resolveRoundMapGeometry(
     };
   }
 
-  const [course] = await db.select().from(courses).where(eq(courses.id, session.courseId)).limit(1);
-
-  if (!course) {
-    return {
-      autoImport: null,
-      teeSetId: session.teeSetId,
-    };
-  }
-
-  const courseHoleProbe = await db
-    .select({ id: courseHoles.id })
-    .from(courseHoles)
-    .where(eq(courseHoles.courseId, session.courseId))
-    .limit(1);
-  const autoImport = await ensureCourseAutoImport(course, courseHoleProbe.length);
-  const importedTeeSetId = await preferredGeometryTeeSetId(db, session.courseId, session.teeSetId);
-
   return {
-    autoImport,
-    teeSetId: importedTeeSetId ?? session.teeSetId,
+    autoImport: { changed: false, status: "no_geometry_found" } satisfies CourseAutoImportResult,
+    teeSetId: session.teeSetId,
   };
 }
 

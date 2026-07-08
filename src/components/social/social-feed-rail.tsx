@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,6 +118,7 @@ const hiddenRoutePrefixes = [
   "/auth",
   "/privacy",
   "/share",
+  "/shared",
   "/settings/invitations",
   "/feed",
   "/today",
@@ -125,6 +127,27 @@ const hiddenRoutePrefixes = [
   "/bag",
   "/rounds",
   "/strokes-gained",
+  "/shots",
+  "/compare",
+  "/simulator-lab",
+  "/speed",
+  "/stats/training-over-time",
+  "/equipment",
+  "/handicap",
+  "/courses",
+  "/course-records",
+  "/tournaments",
+  "/practice",
+  "/coach",
+  "/data-chat",
+  "/achievements",
+  "/import",
+  "/rapsodo",
+  "/providers",
+  "/billing",
+  "/settings",
+  "/admin",
+  "/partners",
 ];
 const seenStorageKey = "fkh-social-feed-seen-at";
 
@@ -789,8 +812,9 @@ function RailActivityItem({
                       Like {comment.likeCount > 0 ? comment.likeCount : ""}
                     </Button>
                     {comment.viewerCanDelete ? (
-                      <Button
+                      <ConfirmSubmitButton
                         type="button"
+                        confirmMessage="Delete this feed comment? This removes it from the conversation."
                         variant="destructive"
                         size="xs"
                         disabled={busyCommentId === comment.id}
@@ -798,7 +822,7 @@ function RailActivityItem({
                       >
                         <Trash2 className="size-3" />
                         Delete
-                      </Button>
+                      </ConfirmSubmitButton>
                     ) : null}
                   </div>
                 </div>

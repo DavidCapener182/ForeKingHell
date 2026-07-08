@@ -4,6 +4,12 @@ import { ArrowLeft, Medal, Send, ShieldCheck, Trophy } from "lucide-react";
 
 import { submitCourseRecordAttemptAction } from "@/app/course-records/actions";
 import {
+  DesktopWorkbenchLayout,
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
   BottomSheet,
   CompactLeaderboard,
   MobileAppShell,
@@ -13,10 +19,19 @@ import {
   NativeListSection,
   ProofBadge,
 } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { ScorecardProofUploader } from "@/components/scorecard-proof-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getCourseRecordDetailData, verificationTierLabel } from "@/lib/course-records";
 import { RecordSubmitButton } from "./record-submit-button";
 
@@ -29,6 +44,34 @@ type CourseRecordDetailProps = {
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" });
 type RecordProfile = { username: string; displayName: string } | null | undefined;
+
+const recordDetailLeaderboardColumns: DesktopWorkbenchColumn[] = [
+  { id: "rank", label: "Rank", locked: true },
+  { id: "player", label: "Player" },
+  { id: "score", label: "Score" },
+  { id: "proof", label: "Proof" },
+  { id: "status", label: "Status" },
+  { id: "date", label: "Date" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const recordDetailSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Verified board",
+    href: "#verified-board-table",
+    detail: "Ranked accepted entries for this record.",
+  },
+  {
+    title: "Submit attempt",
+    href: "#submit-record",
+    detail: "Upload scorecard proof against a saved round.",
+  },
+  {
+    title: "Recent attempts",
+    href: "#recent-attempts",
+    detail: "Review pending, mismatch and manual-only submissions.",
+  },
+];
 
 export default async function CourseRecordDetailPage({
   params,
@@ -49,7 +92,7 @@ export default async function CourseRecordDetailPage({
   const activeTab = parseRecordDetailTab(query?.tab);
 
   return (
-    <PageShell size="6xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title={data.category.name}
@@ -223,17 +266,17 @@ export default async function CourseRecordDetailPage({
         )}
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href={`/courses/${data.course.id}/records`} prefetch={false}>
-            <ArrowLeft className="size-4" />
-            {data.course.name}
-          </Link>
-        </Button>
-        <Badge variant="outline">{data.teeSet?.name ?? "Any tee"}</Badge>
-      </div>
+      <DesktopWorkbenchLayout scope="course-record-detail" className="hidden sm:grid">
+        <div className="flex items-center justify-between gap-3">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href={`/courses/${data.course.id}/records`} prefetch={false}>
+              <ArrowLeft className="size-4" />
+              {data.course.name}
+            </Link>
+          </Button>
+          <Badge variant="outline">{data.teeSet?.name ?? "Any tee"}</Badge>
+        </div>
 
-      <div className="hidden sm:contents">
         <header className="premium-hero p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -369,41 +412,15 @@ export default async function CourseRecordDetailPage({
           </article>
 
           <section className="grid gap-4">
-            <section className="premium-card p-4">
+            <section id="verified-board-table" className="premium-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <Trophy className="size-4 text-amber-600" />
                 Verified board
               </p>
-              <div className="mt-4 grid gap-2">
-                {data.results.slice(0, 8).map(({ result, profile }) => (
-                  <div
-                    key={result.id}
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
-                  >
-                    <Badge variant={result.rank === 1 ? "default" : "outline"}>
-                      #{result.rank ?? "--"}
-                    </Badge>
-                    <div className="min-w-0">
-                      <ProfileNameLink
-                        profile={profile}
-                        className="block truncate font-medium hover:underline"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {verificationTierLabel(result.verificationTier)}
-                      </p>
-                    </div>
-                    <p className="font-semibold">{result.scoreLabel}</p>
-                  </div>
-                ))}
-                {data.results.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    No accepted entries yet.
-                  </p>
-                ) : null}
-              </div>
+              <CourseRecordLeaderboardTable recordId={data.record.id} rows={data.results} />
             </section>
 
-            <details className="premium-card">
+            <details id="recent-attempts" className="premium-card">
               <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
                 Recent attempts
               </summary>
@@ -427,8 +444,117 @@ export default async function CourseRecordDetailPage({
             </details>
           </section>
         </section>
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+type CourseRecordLeaderboardRow = NonNullable<
+  Awaited<ReturnType<typeof getCourseRecordDetailData>>
+>["results"][number];
+
+function CourseRecordLeaderboardTable({
+  recordId,
+  rows,
+}: {
+  recordId: string;
+  rows: CourseRecordLeaderboardRow[];
+}) {
+  return (
+    <div className="mt-4 grid gap-3">
+      <DesktopTableWorkbenchControls
+        viewKey={`course-record-detail-${recordId}`}
+        scope="course-record-detail"
+        currentViewLabel="Verified record board"
+        resultLabel={`${rows.length} accepted entries`}
+        columns={recordDetailLeaderboardColumns}
+        suggestedViews={recordDetailSuggestedViews}
+        exportTableId="course-record-leaderboard"
+        exportFileName="forekinghell-course-record-leaderboard.csv"
+      />
+      <DataTableFrame mainTable mainTableLabel="Course record leaderboard table">
+        <Table
+          data-workbench-export-table="course-record-leaderboard"
+          aria-describedby="course-record-leaderboard-summary"
+        >
+          <TableCaption id="course-record-leaderboard-summary" className="sr-only">
+            Course record leaderboard table showing rank, player, score, proof tier, verification
+            status, calculation date and profile action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="rank"
+                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Rank
+              </TableHead>
+              <TableHead data-column="player">Player</TableHead>
+              <TableHead data-column="score">Score</TableHead>
+              <TableHead data-column="proof">Proof</TableHead>
+              <TableHead data-column="status">Status</TableHead>
+              <TableHead data-column="date">Date</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map(({ result, profile }) => (
+                <TableRow key={result.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="rank"
+                    className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    #{result.rank ?? "--"}
+                  </TableCell>
+                  <TableCell data-column="player">
+                    <ProfileNameLink
+                      profile={profile}
+                      className="font-medium text-emerald-700 hover:underline"
+                    />
+                  </TableCell>
+                  <TableCell data-column="score" className="font-semibold">
+                    {result.scoreLabel}
+                  </TableCell>
+                  <TableCell data-column="proof">
+                    <Badge
+                      variant={result.verificationStatus === "verified" ? "secondary" : "outline"}
+                    >
+                      {verificationTierLabel(result.verificationTier)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-column="status">
+                    {result.verificationStatus.replace(/_/g, " ")}
+                  </TableCell>
+                  <TableCell data-column="date">
+                    {dateFormatter.format(result.calculatedAt)}
+                  </TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    {profileHref(profile) ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={profileHref(profile) ?? "#"} prefetch={false}>
+                          Open profile
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No profile</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  No accepted entries yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </div>
   );
 }
 

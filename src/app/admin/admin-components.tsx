@@ -65,12 +65,14 @@ export function AdminPageHeader({
   description,
   tone = "sky",
   action,
+  visual,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   tone?: Tone;
   action?: ReactNode;
+  visual?: ReactNode;
 }) {
   return (
     <header className="premium-hero p-3 sm:p-5">
@@ -84,7 +86,12 @@ export function AdminPageHeader({
             {description}
           </p>
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {visual || action ? (
+          <div className="flex shrink-0 items-start gap-3">
+            {visual}
+            {action ? <div className="shrink-0">{action}</div> : null}
+          </div>
+        ) : null}
       </div>
     </header>
   );

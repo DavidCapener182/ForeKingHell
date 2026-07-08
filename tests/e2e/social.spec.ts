@@ -148,8 +148,7 @@ test.describe("social friends and feed visibility", () => {
 
       const exportResponsePromise = page.waitForResponse(
         (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/api/content-exports"),
+          response.request().method() === "POST" && response.url().includes("/api/content-exports"),
       );
       await exportButton.click();
       const exportResponse = await exportResponsePromise;

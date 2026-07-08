@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Activity, Gauge, Target, Trophy, Wind, type LucideIcon } from "lucide-react";
 
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatClubType } from "@/lib/club-format";
@@ -69,6 +70,23 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
           </div>
 
           <ShotSimulator shot={selectedShot} />
+          <ChartAccessibleFallback
+            title="Longest shots"
+            summary={longestShotsSummary(shots, selectedShot)}
+            columns={[
+              { key: "club", label: "Club" },
+              { key: "model", label: "Model" },
+              { key: "shot", label: "Shot" },
+              { key: "date", label: "Date" },
+              { key: "total", label: "Total" },
+              { key: "carry", label: "Carry" },
+              { key: "offline", label: "Offline" },
+              { key: "ballSpeed", label: "Ball speed" },
+              { key: "launch", label: "Launch" },
+              { key: "apex", label: "Apex" },
+            ]}
+            rows={longestShotsRows(shots, selectedShot.id)}
+          />
         </CardContent>
       </Card>
     </section>
@@ -331,7 +349,12 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
   return (
     <div className="apple-panel p-3">
       <p className="mb-2 text-xs font-medium text-muted-foreground">Flight profile</p>
-      <svg viewBox="0 0 320 128" className="h-32 w-full">
+      <svg
+        viewBox="0 0 320 128"
+        className="h-32 w-full"
+        role="img"
+        aria-label={`${formatClubType(shot.clubType)} flight profile chart`}
+      >
         <rect x="0" y="0" width="320" height="128" rx="8" fill="#eef5ee" />
         <path d="M24 108 C92 95 206 96 296 106 L296 122 L24 122 Z" fill="#7bb565" opacity="0.5" />
         <line x1="28" x2="296" y1="108" y2="108" stroke="#94a3b8" strokeDasharray="5 7" />
@@ -350,6 +373,23 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
           launch {formatMetric(shot.launchAngleDeg)} deg
         </text>
       </svg>
+      <ChartAccessibleFallback
+        title="Flight profile"
+        summary={flightProfileSummary(shot)}
+        columns={[
+          { key: "club", label: "Club" },
+          { key: "carry", label: "Carry" },
+          { key: "total", label: "Total" },
+          { key: "apex", label: "Apex" },
+          { key: "launch", label: "Launch" },
+          { key: "descent", label: "Descent" },
+          { key: "offline", label: "Offline" },
+          { key: "ballSpeed", label: "Ball speed" },
+          { key: "spin", label: "Spin" },
+        ]}
+        rows={flightProfileRows(shot)}
+        className="mt-3"
+      />
     </div>
   );
 }
@@ -425,6 +465,71 @@ function buildShotGeometry(shot: LongestShot) {
     },
     sideLabel: { x: clamp(total.x - 52, 16, 524), y: clamp(total.y + 36, 16, 964) },
   };
+}
+
+function longestShotsSummary(shots: LongestShot[], selectedShot: LongestShot) {
+  const bestShot = shots.reduce((best, shot) =>
+    shotDistanceValue(shot) > shotDistanceValue(best) ? shot : best,
+  );
+
+  return `${shots.length} clubs have longest-shot records. Selected ${formatClubType(
+    selectedShot.clubType,
+  )} is ${formatMetric(shotDistance(selectedShot))} yd total, ${formatMetric(
+    selectedShot.carryYd,
+  )} yd carry and ${formatSide(selectedShot.sideCarryYd)} offline. Best visible record is ${formatClubType(
+    bestShot.clubType,
+  )} at ${formatMetric(shotDistance(bestShot))} yd total.`;
+}
+
+function longestShotsRows(shots: LongestShot[], selectedShotId: string) {
+  return shots.map((shot) => ({
+    _key: shot.id,
+    club: `${formatClubType(shot.clubType)}${shot.id === selectedShotId ? " - selected" : ""}`,
+    model: shot.brandModel,
+    shot: `#${shot.shotNumber ?? "-"}`,
+    date: formatDate(shot.shotAt),
+    total: `${formatMetric(shotDistance(shot))} yd`,
+    carry: `${formatMetric(shot.carryYd)} yd`,
+    offline: formatSide(shot.sideCarryYd),
+    ballSpeed: `${formatMetric(shot.ballSpeedMph)} mph`,
+    launch: `${formatMetric(shot.launchAngleDeg)} deg`,
+    apex: `${formatMetric(shot.apexFt)} ft`,
+  }));
+}
+
+function flightProfileSummary(shot: LongestShot) {
+  return `${formatClubType(shot.clubType)} flight profile for shot #${shot.shotNumber ?? "-"}: ${formatMetric(
+    shot.carryYd,
+  )} yd carry, ${formatMetric(shotDistance(shot))} yd total, ${formatMetric(
+    shot.apexFt,
+  )} ft apex, ${formatMetric(shot.launchAngleDeg)} deg launch and ${formatSide(
+    shot.sideCarryYd,
+  )} offline.`;
+}
+
+function flightProfileRows(shot: LongestShot) {
+  return [
+    {
+      _key: shot.id,
+      club: formatClubType(shot.clubType),
+      carry: `${formatMetric(shot.carryYd)} yd`,
+      total: `${formatMetric(shotDistance(shot))} yd`,
+      apex: `${formatMetric(shot.apexFt)} ft`,
+      launch: `${formatMetric(shot.launchAngleDeg)} deg`,
+      descent: `${formatMetric(shot.descentAngleDeg)} deg`,
+      offline: formatSide(shot.sideCarryYd),
+      ballSpeed: `${formatMetric(shot.ballSpeedMph)} mph`,
+      spin: `${formatMetric(shot.spinRate)} rpm`,
+    },
+  ];
+}
+
+function shotDistance(shot: LongestShot) {
+  return shot.totalYd ?? shot.carryYd ?? null;
+}
+
+function shotDistanceValue(shot: LongestShot) {
+  return shotDistance(shot) ?? 0;
 }
 
 function pointForShot(

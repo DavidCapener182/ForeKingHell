@@ -30,7 +30,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         src="/assets/hole-350-aerial.jpg"
         alt=""
         fill
-        priority
+        loading="eager"
+        fetchPriority="high"
         sizes="100vw"
         className="-z-20 object-cover object-[center_34%] opacity-80 saturate-[1.05] brightness-[0.72]"
       />

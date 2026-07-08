@@ -30,7 +30,14 @@ export function DashboardCommandPalette({ routes }: { routes: DashboardCommandRo
       )
       .slice(0, 8);
   }, [query, routes]);
-  const suggestedQueries = ["driver", "import", "latest round", "friends", "7 iron", "course record"];
+  const suggestedQueries = [
+    "driver",
+    "import",
+    "latest round",
+    "friends",
+    "7 iron",
+    "course record",
+  ];
 
   useEffect(() => {
     const focusSearch = (event: KeyboardEvent) => {

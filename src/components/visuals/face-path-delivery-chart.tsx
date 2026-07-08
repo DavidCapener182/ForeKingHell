@@ -1,3 +1,4 @@
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { cn } from "@/lib/utils";
 
 export type FacePathDeliveryDatum = {
@@ -39,6 +40,7 @@ export function FacePathDeliveryChart({
   className,
   chartClassName,
   compact = false,
+  showAccessibleFallback = true,
   showMetricPills = true,
   targetWindow,
 }: {
@@ -47,6 +49,7 @@ export function FacePathDeliveryChart({
   className?: string;
   chartClassName?: string;
   compact?: boolean;
+  showAccessibleFallback?: boolean;
   showMetricPills?: boolean;
   targetWindow?: TargetWindow;
 }) {
@@ -164,6 +167,20 @@ export function FacePathDeliveryChart({
           />
         </div>
       ) : null}
+
+      {showAccessibleFallback ? (
+        <ChartAccessibleFallback
+          title={`${datum.label} face/path delivery`}
+          summary={facePathFallbackSummary(datum, targetWindow)}
+          columns={[
+            { key: "metric", label: "Metric" },
+            { key: "value", label: "Value" },
+            { key: "target", label: "Target" },
+            { key: "status", label: "Status" },
+          ]}
+          rows={facePathFallbackRows(datum, targetWindow)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -242,6 +259,66 @@ function angleTargetState(
     label: value > window.max ? "Slightly open" : "Slightly closed",
     tone: "amber",
   };
+}
+
+function facePathFallbackSummary(
+  datum: FacePathDeliveryDatum,
+  targetWindow: TargetWindow | undefined,
+) {
+  const sample =
+    typeof datum.sampleSize === "number" && Number.isFinite(datum.sampleSize)
+      ? ` from ${numberFormatter.format(datum.sampleSize)} measured shots`
+      : "";
+  const targetDetail = targetWindow
+    ? ` Target windows are ${targetWindow.path.label.toLowerCase()} ${formatAngleWindow(
+        targetWindow.path,
+      )} and ${targetWindow.face.label.toLowerCase()} ${formatAngleWindow(targetWindow.face)}.`
+    : "";
+
+  return `${datum.label} is classified as ${datum.patternLabel}${sample}. Club path is ${formatSignedDegrees(
+    datum.pathDeg,
+  )}, club face is ${formatSignedDegrees(datum.faceDeg)}, and face-to-path is ${formatSignedDegrees(
+    datum.faceToPathDeg,
+  )}.${targetDetail}`;
+}
+
+function facePathFallbackRows(
+  datum: FacePathDeliveryDatum,
+  targetWindow: TargetWindow | undefined,
+) {
+  return [
+    {
+      _key: "path",
+      metric: "Club path",
+      value: formatSignedDegrees(datum.pathDeg),
+      target: targetWindow ? formatAngleWindow(targetWindow.path) : "No target window",
+      status: targetWindow ? angleTargetState(datum.pathDeg, targetWindow.path).label : "Reference",
+    },
+    {
+      _key: "face",
+      metric: "Club face",
+      value: formatSignedDegrees(datum.faceDeg),
+      target: targetWindow ? formatAngleWindow(targetWindow.face) : "No target window",
+      status: targetWindow ? angleTargetState(datum.faceDeg, targetWindow.face).label : "Reference",
+    },
+    {
+      _key: "face-to-path",
+      metric: "Face-to-path",
+      value: formatSignedDegrees(datum.faceToPathDeg),
+      target: "Pattern balance",
+      status: datum.patternLabel,
+    },
+    {
+      _key: "sample",
+      metric: "Sample",
+      value:
+        typeof datum.sampleSize === "number" && Number.isFinite(datum.sampleSize)
+          ? numberFormatter.format(datum.sampleSize)
+          : "Not shown",
+      target: "Measured shots",
+      status: "Evidence",
+    },
+  ];
 }
 
 function formatAngleWindow(window: AngleWindow) {

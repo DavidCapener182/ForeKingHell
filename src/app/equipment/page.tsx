@@ -45,8 +45,15 @@ import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -90,10 +97,44 @@ const integerFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
 
+const equipmentHistoryColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "dates", label: "Dates" },
+  { id: "ball", label: "Ball" },
+  { id: "loft-lie", label: "Loft / lie" },
+  { id: "shaft", label: "Shaft" },
+  { id: "swing-weight", label: "Swing weight" },
+  { id: "status", label: "Status" },
+];
+
+const retiredClubColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "model", label: "Brand / model" },
+  { id: "shots", label: "Shots" },
+  { id: "last-shot", label: "Last shot" },
+  { id: "status", label: "Status" },
+];
+
+const equipmentSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Equipment history",
+    href: "#equipment-history-table",
+    detail: "Current and previous setup rows with ball, loft, lie and shaft details.",
+  },
+  {
+    title: "Retired clubs",
+    href: "#retired-clubs-table",
+    detail: "Clubs removed from the active bag with shot counts and last use.",
+  },
+  {
+    title: "Bag intelligence",
+    href: "/bag",
+    detail: "Compare setup changes against gapping and confidence.",
+  },
+];
 export default async function EquipmentPage({ searchParams }: EquipmentPageProps) {
   const params = await searchParams;
   const [data, featureData] = await Promise.all([getEquipmentData(), getFeatureIdeasData()]);
-  const activeHistory = data.history.filter((row) => row.effectiveTo === null);
   const intelligence = buildEquipmentIntelligence(data);
 
   return (
@@ -112,200 +153,198 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         </Button>
       </div>
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/bag" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Bag
-          </Link>
-        </Button>
-      </div>
+      <DesktopWorkbenchLayout scope="equipment">
+        <div className="hidden items-center justify-between gap-4 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/bag" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Bag
+            </Link>
+          </Button>
+        </div>
 
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Equipment centre</StatusPill>}
-        title="My Bag"
-        description="See whether the current setup is helping your golf, where the weak window is, and what upgrade would move the bag first."
-        visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-36" priority />}
-        metrics={[
-          {
-            label: "Bag fit",
-            value: `${intelligence.bagFitScore}%`,
-            detail: intelligence.nextUpgrade
-              ? `Next: ${intelligence.nextUpgrade}`
-              : "Current setup coverage",
-          },
-          {
-            label: "Confidence",
-            value: `${intelligence.averageConfidence}%`,
-            detail: intelligence.bestClub
-              ? `${formatClubType(intelligence.bestClub.club.type)} is most trusted`
-              : "Need shot samples",
-          },
-          {
-            label: "Strength",
-            value: intelligence.strength.label,
-            detail: intelligence.strength.detail,
-          },
-          {
-            label: "Weakness",
-            value: intelligence.weakness.label,
-            detail: intelligence.weakness.detail,
-          },
-        ]}
-      />
-
-      {params?.saved ? (
-        <Alert>
-          <CircleDot className="size-4" />
-          <AlertTitle>{equipmentSavedTitle(params.saved)}</AlertTitle>
-          <AlertDescription>
-            {equipmentSavedDescription(params.saved)}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <MobileBentoSummary
-        items={[
-          {
-            label: "Current setup",
-            value: intelligence.primarySetupLabel,
-            detail: `${data.activeClubs.length} clubs tracked`,
-            tone: "green",
-          },
-          {
-            label: "Bag fit",
-            value: `${intelligence.bagFitScore}%`,
-            detail: intelligence.fitDetail,
-            tone: "sky",
-          },
-          {
-            label: "Weak window",
-            value: intelligence.weakness.label,
-            detail: intelligence.weakness.detail,
-            tone: "amber",
-          },
-          {
-            label: "Next move",
-            value: intelligence.nextUpgrade ?? "Build sample",
-            detail: intelligence.nextUpgradeDetail,
-            tone: "slate",
-          },
-        ]}
-      />
-
-      <CurrentSetupStrip setup={intelligence.setup} ballModel={data.ballModels[0] ?? null} />
-      <VisualBagSlotsSection
-        clubs={buildBagOrderItems(intelligence.activeProfiles)}
-        snapshots={data.snapshots}
-      />
-      <CurrentBagScorePanel intelligence={intelligence} />
-      <BagFeaturePanel data={featureData} />
-      <ClubIntelligenceSection profiles={intelligence.activeProfiles} />
-      <BagTimelineSection profiles={intelligence.activeProfiles} />
-      <EquipmentImpactSection impacts={intelligence.impacts} />
-      <BagBuilderSection scenarios={intelligence.builderScenarios} />
-
-      {intelligence.retiredProfiles.length > 0 ? (
-        <ClubHistorySection
-          retiredProfiles={intelligence.retiredProfiles}
-          activeProfiles={intelligence.activeProfiles}
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Equipment centre</StatusPill>}
+          title="My Bag"
+          description="See whether the current setup is helping your golf, where the weak window is, and what upgrade would move the bag first."
+          visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-36" priority />}
+          metrics={[
+            {
+              label: "Bag fit",
+              value: `${intelligence.bagFitScore}%`,
+              detail: intelligence.nextUpgrade
+                ? `Next: ${intelligence.nextUpgrade}`
+                : "Current setup coverage",
+            },
+            {
+              label: "Confidence",
+              value: `${intelligence.averageConfidence}%`,
+              detail: intelligence.bestClub
+                ? `${formatClubType(intelligence.bestClub.club.type)} is most trusted`
+                : "Need shot samples",
+            },
+            {
+              label: "Strength",
+              value: intelligence.strength.label,
+              detail: intelligence.strength.detail,
+            },
+            {
+              label: "Weakness",
+              value: intelligence.weakness.label,
+              detail: intelligence.weakness.detail,
+            },
+          ]}
         />
-      ) : null}
 
-      <EquipmentMobileDisclosure
-        title="Add or edit setup"
-        description="Ball models, specs and retire controls."
-      >
-        <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Add ball model"
-              description="Use this when you switch balls and want to compare before/after launch data."
-              action={<CircleDot className="size-5 text-emerald-600" />}
-            />
-            <CardContent>
-              <form action={createBallModelAction} className="grid gap-3">
-                <FormField label="Brand" name="brand" placeholder="Titleist" />
-                <FormField label="Model" name="model" placeholder="Pro V1" required />
-                <Button
-                  type="submit"
-                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                >
-                  <Save className="size-4" />
-                  Save ball
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
+        {params?.saved ? (
+          <Alert>
+            <CircleDot className="size-4" />
+            <AlertTitle>{equipmentSavedTitle(params.saved)}</AlertTitle>
+            <AlertDescription>{equipmentSavedDescription(params.saved)}</AlertDescription>
+          </Alert>
+        ) : null}
 
-          <DataPanel>
-            <SectionHeader
-              title="Add club specification"
-              description="Saving a new active setup automatically closes the previous active setup for that club."
-              action={<Wrench className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              <form action={saveEquipmentHistoryAction} className="grid gap-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <SelectField
-                    label="Club"
-                    name="clubId"
-                    values={data.activeClubs.map((club) => ({
-                      value: club.id,
-                      label: formatClubType(club.type),
-                    }))}
+        <MobileBentoSummary
+          items={[
+            {
+              label: "Current setup",
+              value: intelligence.primarySetupLabel,
+              detail: `${data.activeClubs.length} clubs tracked`,
+              tone: "green",
+            },
+            {
+              label: "Bag fit",
+              value: `${intelligence.bagFitScore}%`,
+              detail: intelligence.fitDetail,
+              tone: "sky",
+            },
+            {
+              label: "Weak window",
+              value: intelligence.weakness.label,
+              detail: intelligence.weakness.detail,
+              tone: "amber",
+            },
+            {
+              label: "Next move",
+              value: intelligence.nextUpgrade ?? "Build sample",
+              detail: intelligence.nextUpgradeDetail,
+              tone: "slate",
+            },
+          ]}
+        />
+
+        <CurrentSetupStrip setup={intelligence.setup} ballModel={data.ballModels[0] ?? null} />
+        <VisualBagSlotsSection
+          clubs={buildBagOrderItems(intelligence.activeProfiles)}
+          snapshots={data.snapshots}
+        />
+        <CurrentBagScorePanel intelligence={intelligence} />
+        <BagFeaturePanel data={featureData} />
+        <ClubIntelligenceSection profiles={intelligence.activeProfiles} />
+        <BagTimelineSection profiles={intelligence.activeProfiles} />
+        <EquipmentImpactSection impacts={intelligence.impacts} />
+        <BagBuilderSection scenarios={intelligence.builderScenarios} />
+
+        {intelligence.retiredProfiles.length > 0 ? (
+          <ClubHistorySection
+            retiredProfiles={intelligence.retiredProfiles}
+            activeProfiles={intelligence.activeProfiles}
+          />
+        ) : null}
+
+        <EquipmentMobileDisclosure
+          title="Add or edit setup"
+          description="Ball models, specs and retire controls."
+        >
+          <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <DataPanel>
+              <SectionHeader
+                title="Add ball model"
+                description="Use this when you switch balls and want to compare before/after launch data."
+                action={<CircleDot className="size-5 text-emerald-600" />}
+              />
+              <CardContent>
+                <form action={createBallModelAction} className="grid gap-3">
+                  <FormField label="Brand" name="brand" placeholder="Titleist" />
+                  <FormField label="Model" name="model" placeholder="Pro V1" required />
+                  <Button
+                    type="submit"
+                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                  >
+                    <Save className="size-4" />
+                    Save ball
+                  </Button>
+                </form>
+              </CardContent>
+            </DataPanel>
+
+            <DataPanel>
+              <SectionHeader
+                title="Add club specification"
+                description="Saving a new active setup automatically closes the previous active setup for that club."
+                action={<Wrench className="size-5 text-sky-600" />}
+              />
+              <CardContent>
+                <form action={saveEquipmentHistoryAction} className="grid gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <SelectField
+                      label="Club"
+                      name="clubId"
+                      values={data.activeClubs.map((club) => ({
+                        value: club.id,
+                        label: formatClubType(club.type),
+                      }))}
+                    />
+                    <SelectField
+                      label="Ball model"
+                      name="ballModelId"
+                      optionalLabel="No ball model"
+                      values={data.ballModels.map((ball) => ({
+                        value: ball.id,
+                        label: [ball.brand, ball.model].filter(Boolean).join(" "),
+                      }))}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-4">
+                    <FormField label="Effective from" name="effectiveFrom" type="date" />
+                    <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
+                    <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
+                    <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
+                  </div>
+                  <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
+                  <FormField
+                    label="Notes"
+                    name="notes"
+                    placeholder="Grip, length, adapter setting, build notes"
                   />
-                  <SelectField
-                    label="Ball model"
-                    name="ballModelId"
-                    optionalLabel="No ball model"
-                    values={data.ballModels.map((ball) => ({
-                      value: ball.id,
-                      label: [ball.brand, ball.model].filter(Boolean).join(" "),
-                    }))}
-                  />
-                </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <FormField label="Effective from" name="effectiveFrom" type="date" />
-                  <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
-                  <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
-                  <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
-                </div>
-                <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
-                <FormField
-                  label="Notes"
-                  name="notes"
-                  placeholder="Grip, length, adapter setting, build notes"
-                />
-                <Button
-                  type="submit"
-                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                >
-                  <Save className="size-4" />
-                  Save specification
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
-        </section>
-      </EquipmentMobileDisclosure>
-
-      {data.retiredClubs.length > 0 ? (
-        <EquipmentMobileDisclosure title="Retired equipment" description="Historic club records">
-          <DataPanel>
-            <SectionHeader
-              title="Retired clubs"
-              description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
-              action={<Archive className="size-5 text-slate-500" />}
-            />
-            <CardContent>
-              <RetiredClubsTable retired={data.retiredClubs} />
-            </CardContent>
-          </DataPanel>
+                  <Button
+                    type="submit"
+                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                  >
+                    <Save className="size-4" />
+                    Save specification
+                  </Button>
+                </form>
+              </CardContent>
+            </DataPanel>
+          </section>
         </EquipmentMobileDisclosure>
-      ) : null}
 
-      {activeHistory.length > 0 || data.history.some((row) => row.effectiveTo !== null) ? (
+        {data.retiredClubs.length > 0 ? (
+          <EquipmentMobileDisclosure title="Retired equipment" description="Historic club records">
+            <DataPanel>
+              <SectionHeader
+                title="Retired clubs"
+                description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
+                action={<Archive className="size-5 text-slate-500" />}
+              />
+              <CardContent>
+                <RetiredClubsTable retired={data.retiredClubs} />
+              </CardContent>
+            </DataPanel>
+          </EquipmentMobileDisclosure>
+        ) : null}
+
         <EquipmentMobileDisclosure title="Setup history" description="Specification timeline">
           <DataPanel>
             <SectionHeader
@@ -317,7 +356,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
             </CardContent>
           </DataPanel>
         </EquipmentMobileDisclosure>
-      ) : null}
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -365,7 +404,7 @@ function CurrentSetupStrip({
     <section
       aria-label="Current setup"
       tabIndex={0}
-      className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 xl:grid-cols-5"
+      className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 2xl:grid-cols-5"
     >
       {setup.map((item) => {
         const primaryClub = item.profiles[0]?.club;
@@ -703,7 +742,7 @@ function EquipmentImpactSection({ impacts }: { impacts: EquipmentImpact[] }) {
         description="Before/after signals answer whether the club has actually changed performance."
         action={<ShieldCheck className="size-5 text-emerald-700" />}
       />
-      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {impacts.slice(0, 4).map((impact) => (
           <div
             key={`${impact.clubLabel}-${impact.equipmentName}-${impact.addedLabel}`}
@@ -816,71 +855,99 @@ function ClubHistorySection({
 
 function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
   return (
-    <DataTableFrame
-      mobile={
-        <MobileDataList
-          empty={
-            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No retired clubs.
-            </p>
-          }
-        >
-          {retired.map((club) => (
-            <MobileDataCard
-              key={club.id}
-              title={formatClubType(club.type)}
-              subtitle={[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
-              action={<StatusPill tone="slate">Retired</StatusPill>}
-            >
-              <DataPair label="Shots" value={club.shotCount.toLocaleString("en-GB")} />
-              <DataPair
-                label="Last shot"
-                value={club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
-              />
-            </MobileDataCard>
-          ))}
-        </MobileDataList>
-      }
-    >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Club</TableHead>
-            <TableHead>Brand / model</TableHead>
-            <TableHead className="text-right">Shots</TableHead>
-            <TableHead>Last shot</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {retired.length > 0 ? (
-            retired.map((club) => (
-              <TableRow key={club.id}>
-                <TableCell className="font-medium">{formatClubType(club.type)}</TableCell>
-                <TableCell>
-                  {[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {club.shotCount.toLocaleString("en-GB")}
-                </TableCell>
-                <TableCell>
-                  {club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
-                </TableCell>
-                <TableCell>
-                  <StatusPill tone="slate">Retired</StatusPill>
+    <section id="retired-clubs-table" className="grid gap-3" data-workbench-scope="retired-clubs">
+      <DesktopTableWorkbenchControls
+        viewKey="retired-clubs"
+        scope="retired-clubs"
+        currentViewLabel="Retired club inventory"
+        resultLabel={`${retired.length} retired clubs`}
+        columns={retiredClubColumns}
+        suggestedViews={equipmentSuggestedViews}
+        exportTableId="retired-clubs"
+        exportFileName="forekinghell-retired-clubs.csv"
+      />
+      <DataTableFrame
+        mainTableLabel="Retired club inventory table"
+        mobile={
+          <MobileDataList
+            empty={
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                No retired clubs.
+              </p>
+            }
+          >
+            {retired.map((club) => (
+              <MobileDataCard
+                key={club.id}
+                title={formatClubType(club.type)}
+                subtitle={[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
+                action={<StatusPill tone="slate">Retired</StatusPill>}
+              >
+                <DataPair label="Shots" value={club.shotCount.toLocaleString("en-GB")} />
+                <DataPair
+                  label="Last shot"
+                  value={club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
+                />
+              </MobileDataCard>
+            ))}
+          </MobileDataList>
+        }
+      >
+        <Table data-workbench-export-table="retired-clubs" aria-describedby="retired-clubs-summary">
+          <TableCaption id="retired-clubs-summary" className="sr-only">
+            Retired club inventory table showing club, model, shot count, last shot date and status.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="club"
+                className="sticky left-0 z-20 min-w-32 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Club
+              </TableHead>
+              <TableHead data-column="model">Brand / model</TableHead>
+              <TableHead data-column="shots" className="text-right">
+                Shots
+              </TableHead>
+              <TableHead data-column="last-shot">Last shot</TableHead>
+              <TableHead data-column="status">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {retired.length > 0 ? (
+              retired.map((club) => (
+                <TableRow key={club.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 min-w-32 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    {formatClubType(club.type)}
+                  </TableCell>
+                  <TableCell data-column="model">
+                    {[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
+                  </TableCell>
+                  <TableCell data-column="shots" className="text-right tabular-nums">
+                    {club.shotCount.toLocaleString("en-GB")}
+                  </TableCell>
+                  <TableCell data-column="last-shot">
+                    {club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
+                  </TableCell>
+                  <TableCell data-column="status">
+                    <StatusPill tone="slate">Retired</StatusPill>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                  No retired clubs.
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                No retired clubs.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </DataTableFrame>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -909,67 +976,67 @@ async function getEquipmentData() {
   const db = getDb();
   const [clubRows, ballRows, historyRows, shotCountRows, recentShotRows, snapshotRows] =
     await Promise.all([
-    db.select().from(clubs).where(eq(clubs.userId, userId)),
-    db
-      .select()
-      .from(ballModels)
-      .where(eq(ballModels.userId, userId))
-      .orderBy(desc(ballModels.createdAt)),
-    db
-      .select({
-        id: clubEquipmentHistory.id,
-        clubId: clubEquipmentHistory.clubId,
-        clubType: clubs.type,
-        clubBrand: clubs.brand,
-        clubModel: clubs.model,
-        ballBrand: ballModels.brand,
-        ballModel: ballModels.model,
-        effectiveFrom: clubEquipmentHistory.effectiveFrom,
-        effectiveTo: clubEquipmentHistory.effectiveTo,
-        loftDeg: clubEquipmentHistory.loftDeg,
-        lieDeg: clubEquipmentHistory.lieDeg,
-        shaft: clubEquipmentHistory.shaft,
-        swingWeight: clubEquipmentHistory.swingWeight,
-        notes: clubEquipmentHistory.notes,
-      })
-      .from(clubEquipmentHistory)
-      .leftJoin(clubs, eq(clubs.id, clubEquipmentHistory.clubId))
-      .leftJoin(ballModels, eq(ballModels.id, clubEquipmentHistory.ballModelId))
-      .where(eq(clubEquipmentHistory.userId, userId))
-      .orderBy(desc(clubEquipmentHistory.effectiveFrom)),
-    db
-      .select({
-        clubId: shots.clubId,
-        shotCount: count(),
-        lastShotAt: sql<Date | null>`max(${shots.shotAt})`,
-      })
-      .from(shots)
-      .where(eq(shots.userId, userId))
-      .groupBy(shots.clubId),
-    db
-      .select({
-        clubId: shots.clubId,
-        clubType: shots.clubType,
-        shotAt: shots.shotAt,
-        carryYd: shots.carryYd,
-        totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
-        ballSpeedMph: shots.ballSpeedMph,
-        launchAngleDeg: shots.launchAngleDeg,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-      })
-      .from(shots)
-      .where(eq(shots.userId, userId))
-      .orderBy(desc(shots.shotAt))
-      .limit(1600),
-    db
-      .select()
-      .from(equipmentSnapshots)
-      .where(eq(equipmentSnapshots.userId, userId))
-      .orderBy(desc(equipmentSnapshots.capturedAt))
-      .limit(6),
-  ]);
+      db.select().from(clubs).where(eq(clubs.userId, userId)),
+      db
+        .select()
+        .from(ballModels)
+        .where(eq(ballModels.userId, userId))
+        .orderBy(desc(ballModels.createdAt)),
+      db
+        .select({
+          id: clubEquipmentHistory.id,
+          clubId: clubEquipmentHistory.clubId,
+          clubType: clubs.type,
+          clubBrand: clubs.brand,
+          clubModel: clubs.model,
+          ballBrand: ballModels.brand,
+          ballModel: ballModels.model,
+          effectiveFrom: clubEquipmentHistory.effectiveFrom,
+          effectiveTo: clubEquipmentHistory.effectiveTo,
+          loftDeg: clubEquipmentHistory.loftDeg,
+          lieDeg: clubEquipmentHistory.lieDeg,
+          shaft: clubEquipmentHistory.shaft,
+          swingWeight: clubEquipmentHistory.swingWeight,
+          notes: clubEquipmentHistory.notes,
+        })
+        .from(clubEquipmentHistory)
+        .leftJoin(clubs, eq(clubs.id, clubEquipmentHistory.clubId))
+        .leftJoin(ballModels, eq(ballModels.id, clubEquipmentHistory.ballModelId))
+        .where(eq(clubEquipmentHistory.userId, userId))
+        .orderBy(desc(clubEquipmentHistory.effectiveFrom)),
+      db
+        .select({
+          clubId: shots.clubId,
+          shotCount: count(),
+          lastShotAt: sql<Date | null>`max(${shots.shotAt})`,
+        })
+        .from(shots)
+        .where(eq(shots.userId, userId))
+        .groupBy(shots.clubId),
+      db
+        .select({
+          clubId: shots.clubId,
+          clubType: shots.clubType,
+          shotAt: shots.shotAt,
+          carryYd: shots.carryYd,
+          totalYd: shots.totalYd,
+          sideCarryYd: shots.sideCarryYd,
+          ballSpeedMph: shots.ballSpeedMph,
+          launchAngleDeg: shots.launchAngleDeg,
+          shotCategory: shots.shotCategory,
+          qualityTag: shots.qualityTag,
+        })
+        .from(shots)
+        .where(eq(shots.userId, userId))
+        .orderBy(desc(shots.shotAt))
+        .limit(1600),
+      db
+        .select()
+        .from(equipmentSnapshots)
+        .where(eq(equipmentSnapshots.userId, userId))
+        .orderBy(desc(equipmentSnapshots.capturedAt))
+        .limit(6),
+    ]);
 
   const shotStatsByClubId = new Map(
     shotCountRows.map((row) => [
@@ -1836,75 +1903,118 @@ function EquipmentHistoryTable({
   history: Awaited<ReturnType<typeof getEquipmentData>>["history"];
 }) {
   return (
-    <DataTableFrame
-      mobile={
-        <MobileDataList
-          empty={
-            <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No equipment history yet.
-            </p>
-          }
-        >
-          {history.map((row) => (
-            <MobileDataCard
-              key={row.id}
-              title={formatClubType(row.clubType ?? "")}
-              subtitle={`${formatDate(row.effectiveFrom)} - ${row.effectiveTo ? formatDate(row.effectiveTo) : "current"}`}
-              action={
-                <StatusPill tone={row.effectiveTo ? "slate" : "green"}>
-                  {row.effectiveTo ? "Retired" : "Active"}
-                </StatusPill>
-              }
-            >
-              <DataPair label="Ball" value={formatBall(row.ballBrand, row.ballModel)} />
-              <DataPair
-                label="Loft / lie"
-                value={`${formatNumber(row.loftDeg)} / ${formatNumber(row.lieDeg)}`}
-              />
-              <DataPair label="Shaft" value={row.shaft ?? "--"} />
-            </MobileDataCard>
-          ))}
-        </MobileDataList>
-      }
+    <section
+      id="equipment-history-table"
+      className="grid gap-3"
+      data-workbench-scope="equipment-history"
     >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Club</TableHead>
-            <TableHead>Dates</TableHead>
-            <TableHead>Ball</TableHead>
-            <TableHead>Loft / lie</TableHead>
-            <TableHead>Shaft</TableHead>
-            <TableHead>Swing weight</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {history.length > 0 ? (
-            history.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium">{formatClubType(row.clubType ?? "")}</TableCell>
-                <TableCell>
-                  {formatDate(row.effectiveFrom)} -{" "}
-                  {row.effectiveTo ? formatDate(row.effectiveTo) : "current"}
-                </TableCell>
-                <TableCell>{formatBall(row.ballBrand, row.ballModel)}</TableCell>
-                <TableCell>
-                  {formatNumber(row.loftDeg)} / {formatNumber(row.lieDeg)}
-                </TableCell>
-                <TableCell>{row.shaft ?? "--"}</TableCell>
-                <TableCell>{row.swingWeight ?? "--"}</TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+      <DesktopTableWorkbenchControls
+        viewKey="equipment-history"
+        scope="equipment-history"
+        currentViewLabel="Equipment history"
+        resultLabel={`${history.length} setup rows`}
+        columns={equipmentHistoryColumns}
+        suggestedViews={equipmentSuggestedViews}
+        exportTableId="equipment-history"
+        exportFileName="forekinghell-equipment-history.csv"
+      />
+      <DataTableFrame
+        mainTable
+        mainTableLabel="Equipment history table"
+        mobile={
+          <MobileDataList
+            empty={
+              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
                 No equipment history yet.
-              </TableCell>
+              </p>
+            }
+          >
+            {history.map((row) => (
+              <MobileDataCard
+                key={row.id}
+                title={formatClubType(row.clubType ?? "")}
+                subtitle={`${formatDate(row.effectiveFrom)} - ${row.effectiveTo ? formatDate(row.effectiveTo) : "current"}`}
+                action={
+                  <StatusPill tone={row.effectiveTo ? "slate" : "green"}>
+                    {row.effectiveTo ? "Retired" : "Active"}
+                  </StatusPill>
+                }
+              >
+                <DataPair label="Ball" value={formatBall(row.ballBrand, row.ballModel)} />
+                <DataPair
+                  label="Loft / lie"
+                  value={`${formatNumber(row.loftDeg)} / ${formatNumber(row.lieDeg)}`}
+                />
+                <DataPair label="Shaft" value={row.shaft ?? "--"} />
+              </MobileDataCard>
+            ))}
+          </MobileDataList>
+        }
+      >
+        <Table
+          data-workbench-export-table="equipment-history"
+          aria-describedby="equipment-history-summary"
+        >
+          <TableCaption id="equipment-history-summary" className="sr-only">
+            Equipment history table showing club, effective dates, ball model, loft and lie, shaft,
+            swing weight and active or retired status.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="club"
+                className="sticky left-0 z-20 min-w-32 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Club
+              </TableHead>
+              <TableHead data-column="dates">Dates</TableHead>
+              <TableHead data-column="ball">Ball</TableHead>
+              <TableHead data-column="loft-lie">Loft / lie</TableHead>
+              <TableHead data-column="shaft">Shaft</TableHead>
+              <TableHead data-column="swing-weight">Swing weight</TableHead>
+              <TableHead data-column="status">Status</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </DataTableFrame>
+          </TableHeader>
+          <TableBody>
+            {history.length > 0 ? (
+              history.map((row) => (
+                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 min-w-32 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    {formatClubType(row.clubType ?? "")}
+                  </TableCell>
+                  <TableCell data-column="dates">
+                    {formatDate(row.effectiveFrom)} -{" "}
+                    {row.effectiveTo ? formatDate(row.effectiveTo) : "current"}
+                  </TableCell>
+                  <TableCell data-column="ball">
+                    {formatBall(row.ballBrand, row.ballModel)}
+                  </TableCell>
+                  <TableCell data-column="loft-lie">
+                    {formatNumber(row.loftDeg)} / {formatNumber(row.lieDeg)}
+                  </TableCell>
+                  <TableCell data-column="shaft">{row.shaft ?? "--"}</TableCell>
+                  <TableCell data-column="swing-weight">{row.swingWeight ?? "--"}</TableCell>
+                  <TableCell data-column="status">
+                    <StatusPill tone={row.effectiveTo ? "slate" : "green"}>
+                      {row.effectiveTo ? "Retired" : "Active"}
+                    </StatusPill>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                  No equipment history yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 

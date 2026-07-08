@@ -7,6 +7,11 @@ import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  DesktopWorkflowLayout,
+  type DesktopWorkflowHelpItem,
+  type DesktopWorkflowStep,
+} from "@/components/app/desktop-workbench";
+import {
   DataPanel,
   PageHeader,
   PageShell,
@@ -35,6 +40,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
+type ImportResultData = Awaited<ReturnType<typeof getImportResultData>>;
+
 export default async function ImportResultPage({ searchParams }: ImportResultPageProps) {
   const params = await searchParams;
   const sessionId = params?.sessionId;
@@ -47,107 +54,177 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
     getImportResultData(sessionId),
     getFeatureIdeasData(),
   ]);
+  const workflowSteps = importResultWorkflowSteps(result);
+  const helpItems = importResultHelpItems(result, featureData);
 
   return (
     <PageShell>
-      <PageHeader
-        eyebrow={<StatusPill tone="green">Import saved</StatusPill>}
-        title={`${integerFormatter.format(result.shotCount)} shots imported`}
-        description={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild className="premium-action rounded-lg">
-              <Link href={`/rounds/${result.id}`} prefetch={false}>
-                <CheckCircle2 className="size-4" />
-                Open session
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="rounded-lg">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import another
-              </Link>
-            </Button>
-          </div>
-        }
-      />
-
-      <section className="grid gap-4 md:grid-cols-4">
-        <ResultMetric label="Shots imported" value={result.shotCount} detail="Accepted shot rows" />
-        <ResultMetric label="Raw rows preserved" value={result.rawRowCount} detail="Audit trail" />
-        <ResultMetric label="Clubs updated" value={result.clubCount} detail="Bag map links" />
-        <ResultMetric
-          label="Questionable rows"
-          value={result.questionableRowCount}
-          detail="Stored as unknown rows"
-        />
-      </section>
-
-      {result.practiceReview ? <PracticePlanReviewCard review={result.practiceReview} /> : null}
-
-      <DataPanel>
-        <SectionHeader
-          title="Data trust score"
-          description="Plain-English confidence after this import."
-          action={
-            <StatusPill tone={featureData.dataHealth.tone}>
-              {featureData.dataHealth.metric}
-            </StatusPill>
+      <DesktopWorkflowLayout
+        steps={workflowSteps}
+        helpTitle="Import audit"
+        helpDescription="Receipt checks for the saved session"
+        helpItems={helpItems}
+      >
+        <PageHeader
+          eyebrow={<StatusPill tone="green">Import saved</StatusPill>}
+          title={`${integerFormatter.format(result.shotCount)} shots imported`}
+          description={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Button asChild className="premium-action rounded-lg">
+                <Link href={`/rounds/${result.id}`} prefetch={false}>
+                  <CheckCircle2 className="size-4" />
+                  Open session
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="rounded-lg">
+                <Link href="/import" prefetch={false}>
+                  <Upload className="size-4" />
+                  Import another
+                </Link>
+              </Button>
+            </div>
           }
         />
-        <CardContent className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
-          <div className="premium-command-surface rounded-lg p-4">
-            <p className="text-4xl font-semibold tracking-normal">
-              {featureData.dataHealth.score}/100
-            </p>
-            <p className="mt-2 text-sm font-medium">{featureData.dataHealth.status}</p>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {featureData.dataHealth.detail}
-            </p>
-          </div>
-          <div className="grid gap-2 md:grid-cols-2">
-            {featureData.dataHealth.checks.slice(0, 4).map((check) => (
-              <Link
-                key={check.title}
-                href={check.href ?? "/settings"}
-                prefetch={false}
-                className="premium-rail-card rounded-lg px-3 py-2 transition-colors hover:border-[#0B7A3B]"
-              >
-                <p className="text-xs text-muted-foreground">{check.title}</p>
-                <p className="mt-1 text-sm font-semibold">{check.metric}</p>
-                <p className="mt-2 text-sm leading-5 text-muted-foreground">{check.detail}</p>
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </DataPanel>
 
-      {featureData.practicePlan[0] ? (
-        <PracticePrescriptionCard plan={featureData.practicePlan[0]} />
-      ) : null}
+        <section className="grid gap-4 md:grid-cols-4">
+          <ResultMetric
+            label="Shots imported"
+            value={result.shotCount}
+            detail="Accepted shot rows"
+          />
+          <ResultMetric
+            label="Raw rows preserved"
+            value={result.rawRowCount}
+            detail="Audit trail"
+          />
+          <ResultMetric label="Clubs updated" value={result.clubCount} detail="Bag map links" />
+          <ResultMetric
+            label="Questionable rows"
+            value={result.questionableRowCount}
+            detail="Stored as unknown rows"
+          />
+        </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <ResultAction
-          href="/bag"
-          icon={<Target className="size-4" />}
-          title="Review bag confidence"
-          detail="See carry numbers, trust percentages and gaps after the import."
-        />
-        <ResultAction
-          href="/shots"
-          icon={<Database className="size-4" />}
-          title="Audit shot rows"
-          detail="Inspect normalized shots and preserved raw import rows."
-        />
-        <ResultAction
-          href="/settings#offline-storage"
-          icon={<ShieldCheck className="size-4" />}
-          title="Offline storage controls"
-          detail="Review queued imports and clear temporary device storage."
-        />
-      </section>
+        {result.practiceReview ? <PracticePlanReviewCard review={result.practiceReview} /> : null}
+
+        <DataPanel>
+          <SectionHeader
+            title="Data trust score"
+            description="Plain-English confidence after this import."
+            action={
+              <StatusPill tone={featureData.dataHealth.tone}>
+                {featureData.dataHealth.metric}
+              </StatusPill>
+            }
+          />
+          <CardContent className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
+            <div className="premium-command-surface rounded-lg p-4">
+              <p className="text-4xl font-semibold tracking-normal">
+                {featureData.dataHealth.score}/100
+              </p>
+              <p className="mt-2 text-sm font-medium">{featureData.dataHealth.status}</p>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                {featureData.dataHealth.detail}
+              </p>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {featureData.dataHealth.checks.slice(0, 4).map((check) => (
+                <Link
+                  key={check.title}
+                  href={check.href ?? "/settings"}
+                  prefetch={false}
+                  className="premium-rail-card rounded-lg px-3 py-2 transition-colors hover:border-[#0B7A3B]"
+                >
+                  <p className="text-xs text-muted-foreground">{check.title}</p>
+                  <p className="mt-1 text-sm font-semibold">{check.metric}</p>
+                  <p className="mt-2 text-sm leading-5 text-muted-foreground">{check.detail}</p>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </DataPanel>
+
+        {featureData.practicePlan[0] ? (
+          <PracticePrescriptionCard plan={featureData.practicePlan[0]} />
+        ) : null}
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <ResultAction
+            href="/bag"
+            icon={<Target className="size-4" />}
+            title="Review bag confidence"
+            detail="See carry numbers, trust percentages and gaps after the import."
+          />
+          <ResultAction
+            href="/shots"
+            icon={<Database className="size-4" />}
+            title="Audit shot rows"
+            detail="Inspect normalized shots and preserved raw import rows."
+          />
+          <ResultAction
+            href="/settings#offline-storage"
+            icon={<ShieldCheck className="size-4" />}
+            title="Offline storage controls"
+            detail="Review queued imports and clear temporary device storage."
+          />
+        </section>
+      </DesktopWorkflowLayout>
     </PageShell>
   );
+}
+
+function importResultWorkflowSteps(result: ImportResultData): DesktopWorkflowStep[] {
+  return [
+    {
+      title: "CSV saved",
+      detail: `${integerFormatter.format(result.rawRowCount)} raw rows preserved for audit.`,
+      status: "complete",
+      value: "Stored",
+    },
+    {
+      title: "Quality check",
+      detail:
+        result.questionableRowCount > 0
+          ? `${integerFormatter.format(result.questionableRowCount)} rows need review before trusting every recommendation.`
+          : "No questionable rows were flagged in this import receipt.",
+      status: "current",
+      value: result.questionableRowCount > 0 ? "Review" : "Clear",
+    },
+    {
+      title: "Session review",
+      detail: "Open the imported session to inspect shot rows and scoring context.",
+      status: "upcoming",
+    },
+    {
+      title: "Practice decision",
+      detail: "Use the updated bag map or practice prescription for the next measurable job.",
+      status: "upcoming",
+    },
+  ];
+}
+
+function importResultHelpItems(
+  result: ImportResultData,
+  featureData: FeatureIdeasData,
+): DesktopWorkflowHelpItem[] {
+  return [
+    {
+      title: "Data confidence",
+      detail: `${featureData.dataHealth.score}/100 · ${featureData.dataHealth.status}.`,
+    },
+    {
+      title: "Audit scope",
+      detail: `${integerFormatter.format(result.shotCount)} shots accepted from ${integerFormatter.format(result.rawRowCount)} preserved rows.`,
+    },
+    {
+      title: "Next evidence",
+      detail:
+        result.clubCount > 0
+          ? `${integerFormatter.format(result.clubCount)} clubs updated in the bag map.`
+          : "No clubs were updated; review the raw import mapping.",
+    },
+  ];
 }
 
 function PracticePlanReviewCard({
@@ -165,7 +242,9 @@ function PracticePlanReviewCard({
       <CardContent className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
         <div className="premium-hero rounded-lg p-4">
           <p className="text-sm font-semibold text-emerald-900">Matched plan</p>
-          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">{review.title}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">
+            {review.title}
+          </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.verdict}</p>
           <p className="mt-3 text-sm font-medium text-[#111611]">{review.nextAction}</p>
           <Button asChild className="mt-4 premium-action rounded-lg">
@@ -184,7 +263,9 @@ function PracticePlanReviewCard({
                   {decision.decision.replace("_", " ")}
                 </StatusPill>
               </div>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">Target: {decision.target}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Target: {decision.target}
+              </p>
               <p className="text-xs leading-5 text-muted-foreground">Actual: {decision.actual}</p>
             </div>
           ))}

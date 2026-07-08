@@ -125,7 +125,6 @@ const mobileRouteGroups = {
     { key: "coach", label: "Coach", href: "/coach" },
     { key: "data-chat", label: "Data Chat", href: "/data-chat" },
     { key: "achievements", label: "Achievements", href: "/achievements" },
-    { key: "settings", label: "Settings", href: "/settings" },
   ],
   social: [
     { key: "feed", label: "Feed", href: "/feed" },
@@ -137,8 +136,11 @@ const mobileRouteGroups = {
     { key: "recaps", label: "Recaps & Safety", href: "/social-intelligence" },
   ],
   platform: [
+    { key: "settings", label: "Settings", href: "/settings" },
     { key: "billing", label: "Billing", href: "/billing" },
     { key: "providers", label: "Providers", href: "/providers" },
+    { key: "partners", label: "Partners", href: "/partners" },
+    { key: "admin", label: "Admin", href: "/admin" },
   ],
 } satisfies Record<string, MobileTab[]>;
 

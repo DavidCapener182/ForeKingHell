@@ -11,7 +11,23 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { DataTableFrame } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { clubAccent } from "@/lib/club-format";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
@@ -48,6 +64,39 @@ type DistanceView = "carry" | "total";
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+
+const clubShotEvidenceColumns: DesktopWorkbenchColumn[] = [
+  { id: "shot", label: "Shot", locked: true },
+  { id: "date", label: "Date" },
+  { id: "carry", label: "Carry" },
+  { id: "total", label: "Total" },
+  { id: "offline", label: "Offline" },
+  { id: "ball-speed", label: "Ball speed" },
+  { id: "club-speed", label: "Club speed" },
+  { id: "launch", label: "Launch" },
+  { id: "path", label: "Path" },
+  { id: "face", label: "Face" },
+  { id: "quality", label: "Quality" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const clubShotEvidenceSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Selected range",
+    href: "#club-shot-evidence-table",
+    detail: "Every shot currently feeding the club profile metrics.",
+  },
+  {
+    title: "Dispersion",
+    href: "#club-dispersion",
+    detail: "Use the same shots on the dispersion map.",
+  },
+  {
+    title: "All shots",
+    href: "/shots",
+    detail: "Open the global shot explorer for deeper filtering.",
+  },
+];
 
 export function ClubAnalysisTabs({
   clubType,
@@ -167,6 +216,14 @@ export function ClubAnalysisTabs({
 
       {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
 
+      <ShotEvidenceWorkbench
+        shots={sortedShots}
+        selectedShotId={selectedShot?.id ?? ""}
+        clubModelName={clubModelName}
+        clubTypeLabel={clubTypeLabel}
+        onSelect={selectShot}
+      />
+
       <section className="premium-card p-3 sm:p-4">
         <SectionTitle
           icon={Activity}
@@ -203,6 +260,168 @@ export function ClubAnalysisTabs({
         onSelect={selectShot}
       />
     </div>
+  );
+}
+
+function ShotEvidenceWorkbench({
+  shots,
+  selectedShotId,
+  clubModelName,
+  clubTypeLabel,
+  onSelect,
+}: {
+  shots: AnalysisShot[];
+  selectedShotId: string;
+  clubModelName: string;
+  clubTypeLabel: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <section
+      id="club-shot-evidence-table"
+      className="hidden scroll-mt-28 gap-3 sm:grid"
+      data-workbench-scope="club-shot-evidence"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Shot evidence table</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Desktop review of the shots feeding this club profile, matched to the selected date
+            range.
+          </p>
+        </div>
+        <span className="w-fit rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
+          {shots.length} shot{shots.length === 1 ? "" : "s"} in view
+        </span>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey={`club-shot-evidence-${clubTypeLabel}`}
+        scope="club-shot-evidence"
+        currentViewLabel={`${clubModelName} shot evidence`}
+        resultLabel={`${shots.length} shots`}
+        columns={clubShotEvidenceColumns}
+        suggestedViews={clubShotEvidenceSuggestedViews}
+        exportTableId="club-shot-evidence"
+        exportFileName={`forekinghell-${clubTypeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-shot-evidence.csv`}
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Club shot evidence table">
+        <Table
+          className="min-w-[1180px]"
+          data-workbench-export-table="club-shot-evidence"
+          aria-describedby="club-shot-evidence-summary"
+        >
+          <TableCaption id="club-shot-evidence-summary" className="sr-only">
+            Club shot evidence table showing shot number, date, carry, total, offline distance, ball
+            speed, club speed, launch, path, face, quality and selected-shot action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="shot"
+                className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Shot
+              </TableHead>
+              <TableHead data-column="date">Date</TableHead>
+              <TableHead data-column="carry" className="text-right">
+                Carry
+              </TableHead>
+              <TableHead data-column="total" className="text-right">
+                Total
+              </TableHead>
+              <TableHead data-column="offline" className="text-right">
+                Offline
+              </TableHead>
+              <TableHead data-column="ball-speed" className="text-right">
+                Ball speed
+              </TableHead>
+              <TableHead data-column="club-speed" className="text-right">
+                Club speed
+              </TableHead>
+              <TableHead data-column="launch" className="text-right">
+                Launch
+              </TableHead>
+              <TableHead data-column="path" className="text-right">
+                Path
+              </TableHead>
+              <TableHead data-column="face" className="text-right">
+                Face
+              </TableHead>
+              <TableHead data-column="quality">Quality</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {shots.map((shot) => {
+              const selected = shot.id === selectedShotId;
+
+              return (
+                <TableRow
+                  key={shot.id}
+                  tabIndex={0}
+                  className={cn("focus-aaa outline-none", selected && "bg-emerald-50/80")}
+                >
+                  <TableCell
+                    data-column="shot"
+                    className="sticky left-0 z-10 min-w-28 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    #{shot.shotNumber ?? "-"}
+                    {selected ? (
+                      <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                        selected
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell data-column="date">{formatDate(shot.shotAt)}</TableCell>
+                  <TableCell data-column="carry" className="text-right">
+                    {formatMetric(shot.carryYd, " yd")}
+                  </TableCell>
+                  <TableCell data-column="total" className="text-right">
+                    {formatMetric(shot.totalYd, " yd")}
+                  </TableCell>
+                  <TableCell data-column="offline" className="text-right">
+                    {formatSide(shot.sideCarryYd)}
+                  </TableCell>
+                  <TableCell data-column="ball-speed" className="text-right">
+                    {formatMetric(shot.ballSpeedMph, " mph")}
+                  </TableCell>
+                  <TableCell data-column="club-speed" className="text-right">
+                    {formatMetric(shot.clubSpeedMph, " mph")}
+                  </TableCell>
+                  <TableCell data-column="launch" className="text-right">
+                    {formatMetric(shot.launchAngleDeg, " deg")}
+                  </TableCell>
+                  <TableCell data-column="path" className="text-right">
+                    {formatMetric(shot.clubPathDeg, " deg")}
+                  </TableCell>
+                  <TableCell data-column="face" className="text-right">
+                    {formatMetric(resolveClubFaceAngleDeg(shot), " deg")}
+                  </TableCell>
+                  <TableCell data-column="quality">
+                    {shot.qualityTag ?? shot.shotCategory ?? "Unclassified"}
+                  </TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    <Button
+                      type="button"
+                      variant={selected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onSelect(shot.id)}
+                      className={selected ? "bg-[#0B7A3B] text-white hover:bg-[#064E3B]" : ""}
+                    >
+                      {selected ? "Selected" : "Select"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -561,6 +780,23 @@ function DispersionPanel({
           </text>
         </g>
       </svg>
+      <ChartAccessibleFallback
+        title={`${clubType} dispersion map`}
+        summary={dispersionFallbackSummary({
+          plottedShotCount: plottedShots.length,
+          distanceView,
+          selectedShot: shots.find((shot) => shot.id === selectedShotId) ?? null,
+          ellipse,
+        })}
+        columns={[
+          { key: "shot", label: "Shot" },
+          { key: "distance", label: distanceView === "carry" ? "Carry" : "Total" },
+          { key: "offline", label: "Offline" },
+          { key: "status", label: "Status" },
+        ]}
+        rows={dispersionFallbackRows(plottedShots, selectedShotId, distanceView)}
+        className="mx-3 mb-3 bg-white/95"
+      />
     </div>
   );
 }
@@ -580,9 +816,16 @@ function TrajectoryPanel({
   const xFor = (distance: number | null) => 55 + ((distance ?? 0) / maxDistance) * 790;
   const yForApex = (apex: number | null) => 300 - ((apex ?? 0) / maxApex) * 245;
 
+  const trajectoryShots = shots.filter((shot) => (shot.carryYd ?? shot.totalYd) !== null);
+
   return (
-    <div className="apple-panel p-3 shadow-sm">
-      <svg viewBox="0 0 900 330" className="h-[320px] w-full">
+    <div className="apple-panel grid gap-3 p-3 shadow-sm">
+      <svg
+        viewBox="0 0 900 330"
+        className="h-[320px] w-full"
+        role="img"
+        aria-label="Club trajectory"
+      >
         <rect x="0" y="0" width="900" height="330" fill="#f7f8fb" />
         <path
           d="M40 260 C250 225 520 230 860 250 L860 300 L40 300 Z"
@@ -632,8 +875,91 @@ function TrajectoryPanel({
           );
         })}
       </svg>
+      <ChartAccessibleFallback
+        title="Club trajectory"
+        summary={trajectoryFallbackSummary(
+          trajectoryShots,
+          shots.find((shot) => shot.id === selectedShotId) ?? null,
+        )}
+        columns={[
+          { key: "shot", label: "Shot" },
+          { key: "carry", label: "Carry" },
+          { key: "total", label: "Total" },
+          { key: "apex", label: "Apex" },
+          { key: "status", label: "Status" },
+        ]}
+        rows={trajectoryFallbackRows(trajectoryShots, selectedShotId)}
+        className="bg-white/80"
+      />
     </div>
   );
+}
+
+function dispersionFallbackSummary({
+  plottedShotCount,
+  distanceView,
+  selectedShot,
+  ellipse,
+}: {
+  plottedShotCount: number;
+  distanceView: DistanceView;
+  selectedShot: AnalysisShot | null;
+  ellipse: ReturnType<typeof buildDispersionEllipse>;
+}) {
+  const selectedDistance = selectedShot ? distanceFor(selectedShot, distanceView) : null;
+  const selectedText = selectedShot
+    ? `Selected ${shotFallbackLabel(selectedShot)} is ${formatMetric(selectedDistance, " yd")} with ${formatSide(
+        selectedShot.sideCarryYd,
+      )} offline.`
+    : "No selected shot is available.";
+  const ellipseText = ellipse
+    ? "A stock-shot dispersion ellipse is visible for the clean stock sample."
+    : "Stock-shot ellipse needs more clean stock shots.";
+
+  return `${plottedShotCount} shots are plotted by ${distanceView} distance and offline carry. ${selectedText} ${ellipseText}`;
+}
+
+function dispersionFallbackRows(
+  plottedShots: Array<{ shot: AnalysisShot; distance: number; side: number }>,
+  selectedShotId: string,
+  distanceView: DistanceView,
+) {
+  return plottedShots.slice(0, 25).map((item, index) => ({
+    _key: item.shot.id,
+    shot: shotFallbackLabel(item.shot, index),
+    distance: formatMetric(item.distance, " yd"),
+    offline: formatSide(item.side),
+    status: item.shot.id === selectedShotId ? "Selected" : distanceView,
+  }));
+}
+
+function trajectoryFallbackSummary(shots: AnalysisShot[], selectedShot: AnalysisShot | null) {
+  const selectedText = selectedShot
+    ? `Selected ${shotFallbackLabel(selectedShot)} carries ${formatMetric(
+        selectedShot.carryYd,
+        " yd",
+      )}, totals ${formatMetric(selectedShot.totalYd, " yd")} and reaches ${formatMetric(
+        selectedShot.apexFt,
+        " ft",
+      )} apex.`
+    : "No selected shot is available.";
+
+  return `${shots.length} shots are plotted by distance and apex height. ${selectedText}`;
+}
+
+function trajectoryFallbackRows(shots: AnalysisShot[], selectedShotId: string) {
+  return shots.slice(0, 25).map((shot, index) => ({
+    _key: shot.id,
+    shot: shotFallbackLabel(shot, index),
+    carry: formatMetric(shot.carryYd, " yd"),
+    total: formatMetric(shot.totalYd, " yd"),
+    apex: formatMetric(shot.apexFt, " ft"),
+    status: shot.id === selectedShotId ? "Selected" : "Plotted",
+  }));
+}
+
+function shotFallbackLabel(shot: AnalysisShot, index = 0) {
+  return shot.shotNumber ? `Shot ${shot.shotNumber}` : `Shot ${index + 1}`;
 }
 
 function ClubDataPanel({

@@ -4,6 +4,11 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Check, Eye } from "lucide-react";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackColumn,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartFrame } from "@/components/premium";
 import {
@@ -111,6 +116,22 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
+const dispersionChartColumns: ChartFallbackColumn[] = [
+  { key: "club", label: "Club" },
+  { key: "shot", label: "Shot" },
+  { key: "carry", label: "Carry" },
+  { key: "side", label: "Left/right" },
+  { key: "total", label: "Total" },
+];
+
+const trajectoryChartColumns: ChartFallbackColumn[] = [
+  { key: "club", label: "Club" },
+  { key: "shot", label: "Shot" },
+  { key: "carry", label: "Carry" },
+  { key: "apex", label: "Apex" },
+  { key: "ballSpeed", label: "Ball speed" },
+];
+
 export function TodayShotCharts({
   shots,
   clubStatuses = [],
@@ -139,6 +160,10 @@ export function TodayShotCharts({
   );
   const visibleClubCount =
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
+  const dispersionSummary = buildDispersionChartSummary(visibleShots);
+  const trajectorySummary = buildTrajectoryChartSummary(visibleShots, trajectoryView);
+  const dispersionRows = buildDispersionChartRows(visibleShots);
+  const trajectoryRows = buildTrajectoryChartRows(visibleShots);
 
   return (
     <Card size="sm" className="premium-card today-shot-pattern-card">
@@ -276,6 +301,14 @@ export function TodayShotCharts({
             detail="Primary diagnostic: carry landing by left-right miss."
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} />}
+            fallback={
+              <ChartAccessibleFallback
+                title="Today dispersion"
+                summary={dispersionSummary}
+                columns={dispersionChartColumns}
+                rows={dispersionRows}
+              />
+            }
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <DispersionChart shots={visibleShots} />
@@ -289,6 +322,14 @@ export function TodayShotCharts({
             }
             empty={!visibleShots.some(hasTrajectoryData)}
             footer={<TrajectoryInsightCards shots={visibleShots} />}
+            fallback={
+              <ChartAccessibleFallback
+                title="Today trajectory"
+                summary={trajectorySummary}
+                columns={trajectoryChartColumns}
+                rows={trajectoryRows}
+              />
+            }
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <TrajectoryChart shots={visibleShots} view={trajectoryView} />
@@ -305,6 +346,7 @@ function ChartPanel({
   detail,
   empty,
   footer,
+  fallback,
   className,
   chartClassName,
   children,
@@ -313,6 +355,7 @@ function ChartPanel({
   detail: string;
   empty: boolean;
   footer?: ReactNode;
+  fallback?: ReactNode;
   className?: string;
   chartClassName?: string;
   children: ReactNode;
@@ -333,10 +376,98 @@ function ChartPanel({
         <div className="flex flex-1 flex-col gap-3">
           <ChartFrame className={chartClassName}>{children}</ChartFrame>
           {footer}
+          {fallback}
         </div>
       )}
     </div>
   );
+}
+
+function buildDispersionChartSummary(shots: ChartPoint[]) {
+  const points = shots.filter(hasDispersionData);
+
+  if (points.length === 0) {
+    return "No dispersion chart data is available for the visible club filter.";
+  }
+
+  const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd));
+  const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd));
+  const maxSide = dispersionSideMax(points);
+  const targetSide = dispersionTargetSide(maxSide);
+  const bestMarker = bestTargetCorridorShot(points, targetSide);
+  const worstShot = worstDispersionShot(points);
+
+  return `${points.length} plotted shot${points.length === 1 ? "" : "s"}. Average carry is ${formatNullable(
+    averageCarry,
+  )}; average left/right miss is ${formatSigned(averageSide)}. ${
+    bestMarker
+      ? `${bestMarker.label}: ${compactShotLabel(bestMarker.shot)}.`
+      : "No target-corridor shot is available."
+  } ${
+    worstShot
+      ? `Largest visible miss: ${compactShotLabel(worstShot)} at ${formatSigned(
+          worstShot.sideCarryYd,
+        )}.`
+      : ""
+  }`;
+}
+
+function buildTrajectoryChartSummary(shots: ChartPoint[], view: TrajectoryView) {
+  const points = shots.filter(hasTrajectoryData);
+
+  if (points.length === 0) {
+    return "No trajectory chart data is available for the visible club filter.";
+  }
+
+  const apexes = points.map((shot) => shot.apexFt ?? fallbackApex(shot)).filter(isNumber);
+  const averageApex = meanNumber(apexes);
+  const highestApex = max(apexes);
+  const longest = [...points]
+    .filter((shot) => isNumber(shot.carryYd) || isNumber(shot.totalYd))
+    .sort(
+      (left, right) => (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+    )[0];
+  const modeLabel = view === "averages" ? "club-average" : "individual-shot";
+
+  return `${points.length} ${modeLabel} trajectory point${points.length === 1 ? "" : "s"}. Average apex is ${formatFeet(
+    averageApex,
+  )}; highest apex is ${formatFeet(highestApex || null)}. ${
+    longest
+      ? `Longest visible flight: ${compactShotLabel(longest)} at ${formatNullable(
+          longest.carryYd ?? longest.totalYd ?? null,
+        )}.`
+      : "No carry distance is available."
+  }`;
+}
+
+function buildDispersionChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
+  return shots
+    .filter(hasDispersionData)
+    .slice(-12)
+    .map((shot) => ({
+      _key: shot.id,
+      club: shot.clubLabel,
+      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
+      carry: formatNullable(shot.carryYd),
+      side: formatSigned(shot.sideCarryYd),
+      total: formatNullable(shot.totalYd),
+    }));
+}
+
+function buildTrajectoryChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
+  return shots
+    .filter(hasTrajectoryData)
+    .slice(-12)
+    .map((shot) => ({
+      _key: shot.id,
+      club: shot.clubLabel,
+      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
+      carry: formatNullable(shot.carryYd ?? shot.totalYd ?? null),
+      apex: formatFeet(shot.apexFt ?? fallbackApex(shot)),
+      ballSpeed: isNumber(shot.ballSpeedMph)
+        ? `${numberFormatter.format(shot.ballSpeedMph)} mph`
+        : "-",
+    }));
 }
 
 function DispersionPanelFooter({ shots }: { shots: ChartPoint[] }) {

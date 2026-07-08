@@ -12,7 +12,13 @@ import {
 } from "lucide-react";
 
 import { addTournamentCommentAction, submitTournamentRoundAction } from "@/app/tournaments/actions";
-import { PageShell, StatusPill } from "@/components/premium";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import {
   BottomSheet,
   CompactLeaderboard,
@@ -29,6 +35,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
 import { formatLabel, getTournamentDetailData } from "@/lib/tournaments";
 
@@ -62,6 +77,36 @@ const roundDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
+const tournamentStandingsColumns: DesktopWorkbenchColumn[] = [
+  { id: "rank", label: "Rank", locked: true },
+  { id: "player", label: "Player" },
+  { id: "gross", label: "Gross" },
+  { id: "net", label: "Net" },
+  { id: "stableford", label: "Stableford" },
+  { id: "rounds", label: "Rounds" },
+  { id: "status", label: "Status" },
+  { id: "updated", label: "Updated" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const tournamentStandingsSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Standings",
+    href: "#standings",
+    detail: "Ranked event table with proof-aware totals.",
+  },
+  {
+    title: "Submit round",
+    href: "#submit-round",
+    detail: "Add the next round from a saved or manual scorecard.",
+  },
+  {
+    title: "Rules",
+    href: "#rules",
+    detail: "Review proof, mulligan and tiebreaker rules.",
+  },
+];
+
 export default async function TournamentDetailPage({
   params,
   searchParams,
@@ -93,7 +138,7 @@ export default async function TournamentDetailPage({
   const activeTab = parseTournamentDetailTab(query?.tab);
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title={data.tournament.title}
@@ -334,19 +379,19 @@ export default async function TournamentDetailPage({
         )}
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/tournaments" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Tournaments
-          </Link>
-        </Button>
-        <Badge variant={data.tournament.directRapsodoRequired ? "secondary" : "outline"}>
-          {data.tournament.directRapsodoRequired ? "Gold verification" : "Mixed verification"}
-        </Badge>
-      </div>
+      <DesktopWorkbenchLayout scope="tournament-detail" className="hidden sm:grid">
+        <div className="flex items-center justify-between gap-3">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/tournaments" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Tournaments
+            </Link>
+          </Button>
+          <Badge variant={data.tournament.directRapsodoRequired ? "secondary" : "outline"}>
+            {data.tournament.directRapsodoRequired ? "Gold verification" : "Mixed verification"}
+          </Badge>
+        </div>
 
-      <div className="hidden sm:contents">
         <header className="premium-hero p-4 sm:p-5">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
             <div>
@@ -632,7 +677,11 @@ export default async function TournamentDetailPage({
           </article>
 
           <section className="grid gap-4">
-            <section id="standings" className="premium-card scroll-mt-28 p-4">
+            <section
+              id="standings"
+              className="premium-card scroll-mt-28 p-4"
+              data-workbench-scope="tournament-standings"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold">Standings</p>
@@ -651,40 +700,11 @@ export default async function TournamentDetailPage({
                   </Button>
                 ) : null}
               </div>
-              <div className="mt-4 grid gap-2">
-                {visibleStandings.map(({ standing, profile }) => (
-                  <div
-                    key={standing.id}
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
-                  >
-                    <Badge variant={standing.rank === 1 ? "default" : "outline"}>
-                      #{standing.rank ?? "--"}
-                    </Badge>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ProfileNameLink
-                          profile={profile}
-                          className="block truncate font-medium hover:underline"
-                        />
-                        {isTourPlayerProfile(profile) ? (
-                          <Badge variant="secondary" className="shrink-0">
-                            Tour
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {standing.roundsCompleted}/{data.tournament.roundCount} rounds
-                      </p>
-                    </div>
-                    <p className="font-semibold">{standing.grossTotal}</p>
-                  </div>
-                ))}
-                {visibleStandings.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    No standings yet.
-                  </p>
-                ) : null}
-              </div>
+              <TournamentStandingsTable
+                rows={visibleStandings}
+                roundCount={data.tournament.roundCount}
+                tournamentId={data.tournament.id}
+              />
             </section>
 
             <section id="rules" className="premium-card scroll-mt-28 p-4">
@@ -736,8 +756,122 @@ export default async function TournamentDetailPage({
             </section>
           </section>
         </section>
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+type TournamentStandingRow = TournamentDetailData["standings"][number];
+
+function TournamentStandingsTable({
+  rows,
+  roundCount,
+  tournamentId,
+}: {
+  rows: TournamentStandingRow[];
+  roundCount: number;
+  tournamentId: string;
+}) {
+  return (
+    <div className="mt-4 grid gap-3">
+      <DesktopTableWorkbenchControls
+        viewKey={`tournament-standings-${tournamentId}`}
+        scope="tournament-standings"
+        currentViewLabel="Tournament standings"
+        resultLabel={`${rows.length} players`}
+        columns={tournamentStandingsColumns}
+        suggestedViews={tournamentStandingsSuggestedViews}
+        exportTableId="tournament-standings"
+        exportFileName="forekinghell-tournament-standings.csv"
+      />
+      <DataTableFrame mainTable mainTableLabel="Tournament standings table">
+        <Table
+          data-workbench-export-table="tournament-standings"
+          aria-describedby="tournament-standings-summary"
+        >
+          <TableCaption id="tournament-standings-summary" className="sr-only">
+            Tournament standings table showing rank, player, gross total, net total, stableford
+            total, rounds completed, status, last updated and profile action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="rank"
+                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Rank
+              </TableHead>
+              <TableHead data-column="player">Player</TableHead>
+              <TableHead data-column="gross">Gross</TableHead>
+              <TableHead data-column="net">Net</TableHead>
+              <TableHead data-column="stableford">Stableford</TableHead>
+              <TableHead data-column="rounds">Rounds</TableHead>
+              <TableHead data-column="status">Status</TableHead>
+              <TableHead data-column="updated">Updated</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map(({ standing, profile }) => (
+                <TableRow key={standing.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="rank"
+                    className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    #{standing.rank ?? "--"}
+                  </TableCell>
+                  <TableCell data-column="player">
+                    <div className="flex min-w-56 items-center gap-2">
+                      <ProfileNameLink
+                        profile={profile}
+                        className="font-medium text-emerald-700 hover:underline"
+                      />
+                      {isTourPlayerProfile(profile) ? (
+                        <Badge variant="secondary" className="shrink-0">
+                          Tour
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell data-column="gross" className="font-semibold">
+                    {standing.grossTotal}
+                  </TableCell>
+                  <TableCell data-column="net">{standing.netTotal ?? "--"}</TableCell>
+                  <TableCell data-column="stableford">{standing.stablefordTotal ?? "--"}</TableCell>
+                  <TableCell data-column="rounds">
+                    {standing.roundsCompleted}/{roundCount}
+                  </TableCell>
+                  <TableCell data-column="status">{standing.status.replace(/_/g, " ")}</TableCell>
+                  <TableCell data-column="updated">
+                    {dateFormatter.format(standing.calculatedAt)}
+                  </TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    {profileHref(profile) ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={profileHref(profile) ?? "#"} prefetch={false}>
+                          Open profile
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">No profile</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  No standings yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </div>
   );
 }
 

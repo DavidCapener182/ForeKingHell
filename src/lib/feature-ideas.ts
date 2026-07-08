@@ -63,11 +63,7 @@ type ShotRow = Pick<
 type ClubRow = Pick<typeof clubs.$inferSelect, "id" | "type" | "brand" | "model" | "active">;
 type StockRow = Pick<
   typeof stockYardages.$inferSelect,
-  | "clubId"
-  | "calculatedAt"
-  | "carryMedianYd"
-  | "confidenceScore"
-  | "recommendedPlayNumberYd"
+  "clubId" | "calculatedAt" | "carryMedianYd" | "confidenceScore" | "recommendedPlayNumberYd"
 >;
 type SessionRow = Pick<
   typeof sessions.$inferSelect,

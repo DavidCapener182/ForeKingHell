@@ -8,6 +8,7 @@ import {
   comparePlanWithShotSummaries,
   evaluatePracticePlanAgainstImportedSession,
   generatePracticePlan,
+  practicePlannerAchievementCandidateIds,
   scoreCompletedPractice,
   scorePracticePlanSessionMatch,
   shouldAutoLinkPracticePlanMatch,
@@ -62,11 +63,14 @@ describe("practice planner", () => {
   });
 
   it("does not over-prioritise low-confidence clubs unless they are roadmap items", () => {
-    const withoutRoadmap = buildPracticePriorityList(context({ includeLowConfidenceRoadmap: false }), {
-      sessionType: "range",
-      energy: "normal",
-      intent: "latest_weakness",
-    });
+    const withoutRoadmap = buildPracticePriorityList(
+      context({ includeLowConfidenceRoadmap: false }),
+      {
+        sessionType: "range",
+        energy: "normal",
+        intent: "latest_weakness",
+      },
+    );
     const withRoadmap = buildPracticePriorityList(context({ includeLowConfidenceRoadmap: true }), {
       sessionType: "range",
       energy: "normal",
@@ -94,13 +98,16 @@ describe("practice planner", () => {
   });
 
   it("creates driver delivery work when driver is the priority", () => {
-    const plan = generatePracticePlan(context({ driverRoadmap: true, latestOpportunity: "driver" }), {
-      sessionType: "range",
-      ballCount: 50,
-      timeMinutes: 45,
-      energy: "fresh",
-      intent: "round_preparation",
-    });
+    const plan = generatePracticePlan(
+      context({ driverRoadmap: true, latestOpportunity: "driver" }),
+      {
+        sessionType: "range",
+        ballCount: 50,
+        timeMinutes: 45,
+        energy: "fresh",
+        intent: "round_preparation",
+      },
+    );
 
     expect(plan.blocks.some((block) => block.title.toLowerCase().includes("driver delivery"))).toBe(
       true,
@@ -108,7 +115,14 @@ describe("practice planner", () => {
   });
 
   it("generates every supported session type", () => {
-    for (const sessionType of ["range", "short_game", "speed", "putting", "course_warmup", "mixed"] as const) {
+    for (const sessionType of [
+      "range",
+      "short_game",
+      "speed",
+      "putting",
+      "course_warmup",
+      "mixed",
+    ] as const) {
       const plan = generatePracticePlan(context(), {
         sessionType,
         ballCount: sessionType === "short_game" || sessionType === "putting" ? null : 50,
@@ -124,13 +138,16 @@ describe("practice planner", () => {
   });
 
   it("compares plan blocks against imported shot summaries", () => {
-    const plan = generatePracticePlan(context({ latestOpportunity: "driver", driverRoadmap: true }), {
-      sessionType: "range",
-      ballCount: 50,
-      timeMinutes: 45,
-      energy: "normal",
-      intent: "round_preparation",
-    });
+    const plan = generatePracticePlan(
+      context({ latestOpportunity: "driver", driverRoadmap: true }),
+      {
+        sessionType: "range",
+        ballCount: 50,
+        timeMinutes: 45,
+        energy: "normal",
+        intent: "round_preparation",
+      },
+    );
     const driverBlock = plan.blocks.find(
       (block) => block.clubs.includes("driver") && block.type === "technical",
     );
@@ -207,18 +224,57 @@ describe("practice planner", () => {
       ...row,
       shotNumber: null,
     }));
-    const comparison = comparePlanWithShotRows(mixedCasePlan, "session-1", {
-      shotCount: rows.length,
-      sessionType: "range",
-      dateLabel: "2026-07-01",
-      clubTypes: ["5w"],
-      shotRows: rows,
-    }, 45);
+    const comparison = comparePlanWithShotRows(
+      mixedCasePlan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      45,
+    );
     const decision = comparison.decisions.find((item) => item.blockId === fiveWoodBlock?.id);
 
     expect(decision?.actualBalls).toBe(1);
     expect(decision?.matchedPlannedVolume).toBe(false);
     expect(decision?.actual).toContain("from 1/20 matching shots");
+  });
+
+  it("awards practice achievements from uploaded drill wins", () => {
+    const ids = practicePlannerAchievementCandidateIds({
+      event: "completed",
+      planCount: 2,
+      completedCount: 1,
+      score: {
+        score: 77,
+        completionPercent: 96,
+        verdict: "Practice landed",
+        nextAction: "Maintain the main priority.",
+        mainPriority: "mixed",
+        transfer: "strong",
+      },
+      planBlockCount: 5,
+      blockResults: [
+        { blockId: "block-1", completionStatus: "complete", actualBalls: 10, passed: true },
+        { blockId: "block-2", completionStatus: "complete", actualBalls: 10, passed: true },
+        { blockId: "block-3", completionStatus: "complete", actualBalls: 10, passed: true },
+        { blockId: "block-4", completionStatus: "complete", actualBalls: 10, passed: true },
+        { blockId: "block-5", completionStatus: "complete", actualBalls: 10, passed: true },
+      ],
+    });
+
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "practice_planner_first_completed",
+        "practice_planner_drill_winner",
+        "practice_planner_three_drills_won",
+        "practice_planner_five_drills_won",
+        "practice_planner_clean_card",
+      ]),
+    );
   });
 
   it("scores an 82-shot import as a high-confidence match for an 80-ball plan", () => {
@@ -229,14 +285,17 @@ describe("practice planner", () => {
       energy: "normal",
       intent: "latest_weakness",
     });
-    const match = scorePracticePlanSessionMatch(savedPlan(plan), importedSession(82, [
-      ["5w", 20],
-      ["5i", 15],
-      ["sw", 15],
-      ["driver", 12],
-      ["pw", 10],
-      ["9i", 10],
-    ]));
+    const match = scorePracticePlanSessionMatch(
+      savedPlan(plan),
+      importedSession(82, [
+        ["5w", 20],
+        ["5i", 15],
+        ["sw", 15],
+        ["driver", 12],
+        ["pw", 10],
+        ["9i", 10],
+      ]),
+    );
 
     expect(match.score).toBeGreaterThanOrEqual(75);
     expect(shouldAutoLinkPracticePlanMatch(match.score)).toBe(true);
@@ -251,11 +310,14 @@ describe("practice planner", () => {
       energy: "normal",
       intent: "latest_weakness",
     });
-    const match = scorePracticePlanSessionMatch(savedPlan(plan), importedSession(24, [["putter", 24]], {
-      sessionType: "round",
-      plannedAt: "2026-06-20T12:00:00.000Z",
-      sessionDate: "2026-07-01T12:00:00.000Z",
-    }));
+    const match = scorePracticePlanSessionMatch(
+      savedPlan(plan),
+      importedSession(24, [["putter", 24]], {
+        sessionType: "round",
+        plannedAt: "2026-06-20T12:00:00.000Z",
+        sessionDate: "2026-07-01T12:00:00.000Z",
+      }),
+    );
 
     expect(match.score).toBeLessThan(75);
     expect(shouldAutoLinkPracticePlanMatch(match.score)).toBe(false);
@@ -315,13 +377,18 @@ describe("practice planner", () => {
       ...shotRows("5w", 9, 14, { offlineYd: 8, launchDirectionDeg: 2 }),
       ...shotRows("5w", 23, 8, { offlineYd: 10, launchDirectionDeg: 2 }),
     ];
-    const comparison = comparePlanWithShotRows(plan, "session-1", {
-      shotCount: rows.length,
-      sessionType: "range",
-      dateLabel: "2026-07-01",
-      clubTypes: ["pw", "5w"],
-      shotRows: rows,
-    }, 90);
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["pw", "5w"],
+        shotRows: rows,
+      },
+      90,
+    );
 
     expect(comparison.scoringMode).toBe("ordered");
     expect(comparison.decisions[0]?.actualBalls).toBe(8);
@@ -340,13 +407,18 @@ describe("practice planner", () => {
       ...row,
       shotNumber: null,
     }));
-    const comparison = comparePlanWithShotRows(plan, "session-1", {
-      shotCount: rows.length,
-      sessionType: "range",
-      dateLabel: "2026-07-01",
-      clubTypes: ["5w"],
-      shotRows: rows,
-    }, 80);
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      80,
+    );
     const fiveWoodDecision = comparison.decisions.find((decision) => decision.title.includes("5W"));
 
     expect(comparison.scoringMode).toBe("aggregate");
@@ -369,34 +441,43 @@ describe("practice planner", () => {
       intent: "latest_weakness",
     });
     const rows = shotRows("5i", 1, 5, { offlineYd: 8, launchDirectionDeg: 2 });
-    const comparison = comparePlanWithShotRows(plan, "session-1", {
-      shotCount: rows.length,
-      sessionType: "range",
-      dateLabel: "2026-07-01",
-      clubTypes: ["5i"],
-      shotRows: rows,
-    }, 45);
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5i"],
+        shotRows: rows,
+      },
+      45,
+    );
     const fiveIronDecision = comparison.decisions.find((decision) =>
       decision.title.toLowerCase().includes("5i"),
     );
-    const score = scoreCompletedPractice(plan, {
-      completionStatus: "partial",
-      actualBalls: rows.length,
-      actualMinutes: 45,
-      sourceSessionId: "session-1",
-      blockResults: comparison.decisions.map((decision) => ({
-        blockId: decision.blockId,
-        completionStatus: decision.matchedPlannedVolume
-          ? "complete"
-          : decision.actualBalls > 0
-            ? "partial"
-            : "missed",
-        actualBalls: decision.actualBalls,
-        actualMinutes: 0,
-        score: decision.matchedPlannedVolume ? 100 : decision.actualBalls > 0 ? 25 : 0,
-        passed: decision.result === "passed",
-      })),
-    }, comparison);
+    const score = scoreCompletedPractice(
+      plan,
+      {
+        completionStatus: "partial",
+        actualBalls: rows.length,
+        actualMinutes: 45,
+        sourceSessionId: "session-1",
+        blockResults: comparison.decisions.map((decision) => ({
+          blockId: decision.blockId,
+          completionStatus: decision.matchedPlannedVolume
+            ? "complete"
+            : decision.actualBalls > 0
+              ? "partial"
+              : "missed",
+          actualBalls: decision.actualBalls,
+          actualMinutes: 0,
+          score: decision.matchedPlannedVolume ? 100 : decision.actualBalls > 0 ? 25 : 0,
+          passed: decision.result === "passed",
+        })),
+      },
+      comparison,
+    );
 
     expect(comparison.scoringMode).toBe("aggregate");
     expect(fiveIronDecision).toMatchObject({
@@ -494,13 +575,18 @@ describe("practice planner", () => {
       ...row,
       shotNumber: null,
     }));
-    const comparison = comparePlanWithShotRows(plan, "session-1", {
-      shotCount: rows.length,
-      sessionType: "range",
-      dateLabel: "2026-07-01",
-      clubTypes: ["5w"],
-      shotRows: rows,
-    }, 80);
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      80,
+    );
     const fiveWoodDecision = comparison.decisions.find((decision) => decision.title.includes("5W"));
 
     expect(fiveWoodDecision?.actualBalls).toBe(20);
@@ -678,9 +764,33 @@ function context(
           matrixScore: 70,
           fullCarryYd: 90,
           rows: [
-            { key: "full", label: "Full", carryYd: 90, sampleSize: 8, status: "trusted", detail: "", tone: "green" },
-            { key: "threeQuarter", label: "3/4", carryYd: 77, sampleSize: 0, status: "target", detail: "", tone: "sky" },
-            { key: "half", label: "Half", carryYd: 63, sampleSize: 0, status: "target", detail: "", tone: "sky" },
+            {
+              key: "full",
+              label: "Full",
+              carryYd: 90,
+              sampleSize: 8,
+              status: "trusted",
+              detail: "",
+              tone: "green",
+            },
+            {
+              key: "threeQuarter",
+              label: "3/4",
+              carryYd: 77,
+              sampleSize: 0,
+              status: "target",
+              detail: "",
+              tone: "sky",
+            },
+            {
+              key: "half",
+              label: "Half",
+              carryYd: 63,
+              sampleSize: 0,
+              status: "target",
+              detail: "",
+              tone: "sky",
+            },
           ],
         },
       ],

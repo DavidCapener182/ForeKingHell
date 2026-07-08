@@ -47,8 +47,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       {
-        message:
-          error instanceof Error ? error.message : "Plays-like weather could not be loaded.",
+        message: error instanceof Error ? error.message : "Plays-like weather could not be loaded.",
       },
       { status: 502 },
     );

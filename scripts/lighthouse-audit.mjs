@@ -6,10 +6,27 @@ const execFileAsync = promisify(execFile);
 
 const port = process.env.LIGHTHOUSE_PORT ?? "3110";
 const baseUrl = process.env.LIGHTHOUSE_BASE_URL ?? `http://127.0.0.1:${port}`;
-const routes = (
-  process.env.LIGHTHOUSE_ROUTES ??
-  "/login,/dashboard,/today,/import,/rapsodo,/shots,/bag,/practice,/coach,/feed"
-)
+const defaultRoutes = [
+  "/login",
+  "/dashboard",
+  "/today",
+  "/import",
+  "/rapsodo",
+  "/providers",
+  "/shots",
+  "/bag",
+  "/progress",
+  "/strokes-gained",
+  "/compare",
+  "/rounds",
+  "/courses",
+  "/course-records",
+  "/practice",
+  "/coach",
+  "/data-chat",
+  "/feed",
+];
+const routes = (process.env.LIGHTHOUSE_ROUTES ?? defaultRoutes.join(","))
   .split(",")
   .map((route) => route.trim())
   .filter(Boolean);

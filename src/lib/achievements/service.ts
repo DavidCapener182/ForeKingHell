@@ -1034,108 +1034,108 @@ async function loadAchievementContext(userId: string) {
   const db = getDb();
   const [sessionRows, shotRows, clubRows, stockRows, speedSessionRows, speedGoalRows] =
     await Promise.all([
-    db
-      .select({
-        id: sessions.id,
-        source: sessions.source,
-        type: sessions.type,
-        date: sessions.date,
-        scorecardJson: sessions.scorecardJson,
-      })
-      .from(sessions)
-      .where(eq(sessions.userId, userId))
-      .orderBy(sessions.date),
-    db
-      .select({
-        id: shots.id,
-        userId: shots.userId,
-        sessionId: shots.sessionId,
-        sessionType: sessions.type,
-        clubId: shots.clubId,
-        shotAt: shots.shotAt,
-        clubType: shots.clubType,
-        shotNumber: shots.shotNumber,
-        carryYd: shots.carryYd,
-        totalYd: shots.totalYd,
-        ballSpeedMph: shots.ballSpeedMph,
-        clubSpeedMph: shots.clubSpeedMph,
-        launchAngleDeg: shots.launchAngleDeg,
-        launchDirectionDeg: shots.launchDirectionDeg,
-        apexFt: shots.apexFt,
-        sideCarryYd: shots.sideCarryYd,
-        courseHoleNumber: shots.courseHoleNumber,
-        attackAngleDeg: shots.attackAngleDeg,
-        clubPathDeg: shots.clubPathDeg,
-        descentAngleDeg: shots.descentAngleDeg,
-        smashFactor: shots.smashFactor,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-      })
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
-      .orderBy(shots.shotAt),
-    db
-      .select({
-        id: clubs.id,
-        type: clubs.type,
-        active: clubs.active,
-      })
-      .from(clubs)
-      .where(eq(clubs.userId, userId)),
-    db
-      .select({
-        clubId: stockYardages.clubId,
-        clubType: clubs.type,
-        calculatedAt: stockYardages.calculatedAt,
-        sampleSize: stockYardages.sampleSize,
-        carryMedianYd: stockYardages.carryMedianYd,
-        carryMeanYd: stockYardages.carryMeanYd,
-        totalMedianYd: stockYardages.totalMedianYd,
-        dispersionLeftYd: stockYardages.dispersionLeftYd,
-        dispersionRightYd: stockYardages.dispersionRightYd,
-        confidenceScore: stockYardages.confidenceScore,
-      })
-      .from(stockYardages)
-      .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
-      .where(eq(stockYardages.userId, userId))
-      .orderBy(stockYardages.calculatedAt),
-    db
-      .select({
-        id: speedTrainingSessions.id,
-        source: speedTrainingSessions.source,
-        sessionDate: speedTrainingSessions.sessionDate,
-        title: speedTrainingSessions.title,
-        clubId: speedTrainingSessions.clubId,
-        clubType: clubs.type,
-        implementKind: speedTrainingSessions.implementKind,
-        implementLabel: speedTrainingSessions.implementLabel,
-        speedSystem: speedTrainingSessions.speedSystem,
-        handedness: speedTrainingSessions.handedness,
-        swingCount: speedTrainingSessions.swingCount,
-        minSpeedMph: speedTrainingSessions.minSpeedMph,
-        avgSpeedMph: speedTrainingSessions.avgSpeedMph,
-        maxSpeedMph: speedTrainingSessions.maxSpeedMph,
-        targetSpeedMph: speedTrainingSessions.targetSpeedMph,
-      })
-      .from(speedTrainingSessions)
-      .leftJoin(clubs, eq(speedTrainingSessions.clubId, clubs.id))
-      .where(eq(speedTrainingSessions.userId, userId))
-      .orderBy(speedTrainingSessions.sessionDate),
-    db
-      .select({
-        id: speedTrainingGoals.id,
-        goalKey: speedTrainingGoals.goalKey,
-        clubId: speedTrainingGoals.clubId,
-        clubType: clubs.type,
-        targetSpeedMph: speedTrainingGoals.targetSpeedMph,
-        targetDate: speedTrainingGoals.targetDate,
-        notes: speedTrainingGoals.notes,
-      })
-      .from(speedTrainingGoals)
-      .leftJoin(clubs, eq(speedTrainingGoals.clubId, clubs.id))
-      .where(eq(speedTrainingGoals.userId, userId))
-      .orderBy(speedTrainingGoals.goalKey),
+      db
+        .select({
+          id: sessions.id,
+          source: sessions.source,
+          type: sessions.type,
+          date: sessions.date,
+          scorecardJson: sessions.scorecardJson,
+        })
+        .from(sessions)
+        .where(eq(sessions.userId, userId))
+        .orderBy(sessions.date),
+      db
+        .select({
+          id: shots.id,
+          userId: shots.userId,
+          sessionId: shots.sessionId,
+          sessionType: sessions.type,
+          clubId: shots.clubId,
+          shotAt: shots.shotAt,
+          clubType: shots.clubType,
+          shotNumber: shots.shotNumber,
+          carryYd: shots.carryYd,
+          totalYd: shots.totalYd,
+          ballSpeedMph: shots.ballSpeedMph,
+          clubSpeedMph: shots.clubSpeedMph,
+          launchAngleDeg: shots.launchAngleDeg,
+          launchDirectionDeg: shots.launchDirectionDeg,
+          apexFt: shots.apexFt,
+          sideCarryYd: shots.sideCarryYd,
+          courseHoleNumber: shots.courseHoleNumber,
+          attackAngleDeg: shots.attackAngleDeg,
+          clubPathDeg: shots.clubPathDeg,
+          descentAngleDeg: shots.descentAngleDeg,
+          smashFactor: shots.smashFactor,
+          shotCategory: shots.shotCategory,
+          qualityTag: shots.qualityTag,
+        })
+        .from(shots)
+        .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+        .where(eq(shots.userId, userId))
+        .orderBy(shots.shotAt),
+      db
+        .select({
+          id: clubs.id,
+          type: clubs.type,
+          active: clubs.active,
+        })
+        .from(clubs)
+        .where(eq(clubs.userId, userId)),
+      db
+        .select({
+          clubId: stockYardages.clubId,
+          clubType: clubs.type,
+          calculatedAt: stockYardages.calculatedAt,
+          sampleSize: stockYardages.sampleSize,
+          carryMedianYd: stockYardages.carryMedianYd,
+          carryMeanYd: stockYardages.carryMeanYd,
+          totalMedianYd: stockYardages.totalMedianYd,
+          dispersionLeftYd: stockYardages.dispersionLeftYd,
+          dispersionRightYd: stockYardages.dispersionRightYd,
+          confidenceScore: stockYardages.confidenceScore,
+        })
+        .from(stockYardages)
+        .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
+        .where(eq(stockYardages.userId, userId))
+        .orderBy(stockYardages.calculatedAt),
+      db
+        .select({
+          id: speedTrainingSessions.id,
+          source: speedTrainingSessions.source,
+          sessionDate: speedTrainingSessions.sessionDate,
+          title: speedTrainingSessions.title,
+          clubId: speedTrainingSessions.clubId,
+          clubType: clubs.type,
+          implementKind: speedTrainingSessions.implementKind,
+          implementLabel: speedTrainingSessions.implementLabel,
+          speedSystem: speedTrainingSessions.speedSystem,
+          handedness: speedTrainingSessions.handedness,
+          swingCount: speedTrainingSessions.swingCount,
+          minSpeedMph: speedTrainingSessions.minSpeedMph,
+          avgSpeedMph: speedTrainingSessions.avgSpeedMph,
+          maxSpeedMph: speedTrainingSessions.maxSpeedMph,
+          targetSpeedMph: speedTrainingSessions.targetSpeedMph,
+        })
+        .from(speedTrainingSessions)
+        .leftJoin(clubs, eq(speedTrainingSessions.clubId, clubs.id))
+        .where(eq(speedTrainingSessions.userId, userId))
+        .orderBy(speedTrainingSessions.sessionDate),
+      db
+        .select({
+          id: speedTrainingGoals.id,
+          goalKey: speedTrainingGoals.goalKey,
+          clubId: speedTrainingGoals.clubId,
+          clubType: clubs.type,
+          targetSpeedMph: speedTrainingGoals.targetSpeedMph,
+          targetDate: speedTrainingGoals.targetDate,
+          notes: speedTrainingGoals.notes,
+        })
+        .from(speedTrainingGoals)
+        .leftJoin(clubs, eq(speedTrainingGoals.clubId, clubs.id))
+        .where(eq(speedTrainingGoals.userId, userId))
+        .orderBy(speedTrainingGoals.goalKey),
     ]);
 
   return {

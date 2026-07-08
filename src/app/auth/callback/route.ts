@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ensureUserProfile } from "@/lib/current-user";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { clearSupabaseAuthCookies, createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -23,9 +23,20 @@ export async function GET(request: NextRequest) {
 
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  if (user) {
+  if (userError || !user) {
+    console.error("[auth] Session user lookup failed after callback sign-in", userError);
+    await clearCallbackSession(supabase);
+    return loginErrorRedirect(
+      requestUrl,
+      "Your sign-in was accepted, but the session could not be loaded. Try again in a moment.",
+      next,
+    );
+  }
+
+  try {
     await ensureUserProfile({
       id: user.id,
       email: user.email ?? null,
@@ -34,9 +45,41 @@ export async function GET(request: NextRequest) {
         stringMetadata(user.user_metadata?.full_name) ??
         stringMetadata(user.user_metadata?.display_name),
     });
+  } catch (error) {
+    console.error("[auth] Profile setup failed after callback sign-in", error);
+    await clearCallbackSession(supabase);
+    return loginErrorRedirect(
+      requestUrl,
+      "Your sign-in was accepted, but your golf profile could not be loaded. Try again in a moment.",
+      next,
+    );
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));
+}
+
+async function clearCallbackSession(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+) {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("[auth] Supabase sign-out failed after callback setup error", error);
+    }
+  } catch (error) {
+    console.error("[auth] Failed to clear callback session after setup error", error);
+  }
+
+  await clearSupabaseAuthCookies();
+}
+
+function loginErrorRedirect(requestUrl: URL, message: string, next: string) {
+  const url = new URL("/login", requestUrl.origin);
+  url.searchParams.set("error", message);
+  if (next !== "/dashboard") {
+    url.searchParams.set("next", next);
+  }
+  return NextResponse.redirect(url);
 }
 
 function safeNextPath(value: string) {

@@ -139,6 +139,7 @@ export function FacePathClubSelector({
           idPrefix={`dashboard-${selected.clubId}`}
           compact={compact}
           chartClassName="bg-white"
+          showAccessibleFallback={!compact}
           showMetricPills={!compact}
           targetWindow={targetWindow ?? undefined}
         />

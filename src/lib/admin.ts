@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { AnyPgColumn, AnyPgTable } from "drizzle-orm/pg-core";
 import { redirect } from "next/navigation";
 
@@ -55,6 +55,20 @@ export type AdminUserListItem = {
 
 const activeSubscriptionStatuses = ["active", "trialing"] as const;
 
+type AdminOperationsSnapshot = {
+  groups: number;
+  friendships: number;
+  friendRequests: number;
+  comments: number;
+  providerAccounts: number;
+  importJobs: number;
+  sponsors: number;
+  partnerOffers: number;
+  aiSummaries: number;
+  billingFailures: number;
+  providerImportFailures: number;
+};
+
 export async function isCurrentUserAdmin() {
   const userId = await getOptionalCurrentUserId();
 
@@ -92,54 +106,66 @@ export async function requireAdminUser() {
   return admin;
 }
 
+export async function getAdminOverviewData() {
+  await requireAdminUser();
+
+  const metrics = await getAdminOverviewMetrics();
+  const recentUsers = await getRecentAdminOverviewUsers(8);
+  const recentAuditRows = await getRecentAdminAuditRows(8);
+
+  return {
+    data: {
+      metrics: {
+        users: metrics.userCount,
+        sessions: metrics.sessionCount,
+        shots: metrics.shotCount,
+        feedItems: metrics.feedCount,
+        challenges: metrics.challengeCount,
+        openReports: metrics.openReportCount,
+        activeSubscriptions: metrics.activeSubscriptionCount,
+        lifetimeGrants: metrics.lifetimeGrantCount,
+        usageEvents: metrics.usageEventCount,
+      },
+      recentUsers,
+      recentAuditRows,
+    },
+    operations: adminOperationsFromMetrics(metrics),
+  };
+}
+
 export async function getAdminDashboardData() {
   await requireAdminUser();
   const db = getDb();
 
-  const userCount = await countRows(users);
-  const sessionCount = await countRows(sessions);
-  const shotCount = await countRows(shots);
-  const feedCount = await countRows(feedItems);
-  const challengeCount = await countRows(challenges);
-  const openReportCount = await countRows(socialReports, eq(socialReports.status, "open"));
-  const activeSubscriptionCount = await countRows(
-    subscriptions,
-    inArray(subscriptions.status, [...activeSubscriptionStatuses]),
-  );
-  const lifetimeGrantCount = await countRows(
-    entitlements,
-    and(
-      eq(entitlements.entitlementKey, "lifetime_full"),
-      sql`${entitlements.valueJson}->>'value' = 'true'`,
-    ),
-  );
-  const usageEventCount = await countRows(usageEvents);
-  const recentUsers = await getAdminUsers({ limit: 8 });
-  const recentAuditRows = await db
-    .select({
-      id: adminAuditLog.id,
-      action: adminAuditLog.action,
-      targetType: adminAuditLog.targetType,
-      targetId: adminAuditLog.targetId,
-      createdAt: adminAuditLog.createdAt,
-      actorEmail: users.email,
-    })
-    .from(adminAuditLog)
-    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
-    .orderBy(desc(adminAuditLog.createdAt))
-    .limit(8);
+  const [metrics, recentUsers, recentAuditRows] = await Promise.all([
+    getAdminDashboardMetrics(),
+    getAdminUsers({ limit: 8 }),
+    db
+      .select({
+        id: adminAuditLog.id,
+        action: adminAuditLog.action,
+        targetType: adminAuditLog.targetType,
+        targetId: adminAuditLog.targetId,
+        createdAt: adminAuditLog.createdAt,
+        actorEmail: users.email,
+      })
+      .from(adminAuditLog)
+      .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+      .orderBy(desc(adminAuditLog.createdAt))
+      .limit(8),
+  ]);
 
   return {
     metrics: {
-      users: userCount,
-      sessions: sessionCount,
-      shots: shotCount,
-      feedItems: feedCount,
-      challenges: challengeCount,
-      openReports: openReportCount,
-      activeSubscriptions: activeSubscriptionCount,
-      lifetimeGrants: lifetimeGrantCount,
-      usageEvents: usageEventCount,
+      users: metrics.userCount,
+      sessions: metrics.sessionCount,
+      shots: metrics.shotCount,
+      feedItems: metrics.feedCount,
+      challenges: metrics.challengeCount,
+      openReports: metrics.openReportCount,
+      activeSubscriptions: metrics.activeSubscriptionCount,
+      lifetimeGrants: metrics.lifetimeGrantCount,
+      usageEvents: metrics.usageEventCount,
     },
     recentUsers,
     recentAuditRows,
@@ -386,34 +412,9 @@ export async function getAdminChallengesData() {
 
 export async function getAdminOperationsSnapshot() {
   await requireAdminUser();
-  const groupCount = await countRows(groups);
-  const friendshipCount = await countRows(friendships);
-  const friendRequestCount = await countRows(friendRequests);
-  const commentCount = await countRows(feedComments);
-  const providerAccountCount = await countRows(providerAccounts);
-  const importJobCount = await countRows(importJobs);
-  const sponsorCount = await countRows(sponsors);
-  const partnerOfferCount = await countRows(partnerOffers);
-  const aiSummaryCount = await countRows(aiSocialSummaries);
-  const billingFailureCount = await countRows(
-    subscriptions,
-    inArray(subscriptions.status, ["past_due", "unpaid", "incomplete_expired"]),
-  );
-  const providerImportFailureCount = await countRows(importJobs, eq(importJobs.status, "failed"));
+  const metrics = await getAdminOperationsMetrics();
 
-  return {
-    groups: groupCount,
-    friendships: friendshipCount,
-    friendRequests: friendRequestCount,
-    comments: commentCount,
-    providerAccounts: providerAccountCount,
-    importJobs: importJobCount,
-    sponsors: sponsorCount,
-    partnerOffers: partnerOfferCount,
-    aiSummaries: aiSummaryCount,
-    billingFailures: billingFailureCount,
-    providerImportFailures: providerImportFailureCount,
-  };
+  return adminOperationsFromMetrics(metrics);
 }
 
 export async function grantLifetimeFullAccessByEmail(email: string) {
@@ -512,6 +513,46 @@ export async function resolveSocialReport(reportId: string) {
   });
 }
 
+export async function bulkResolveSocialReports(reportIds: string[]) {
+  const ids = normalizeAdminIds(reportIds);
+
+  if (ids.length === 0) {
+    throw new Error("Select at least one open report.");
+  }
+
+  const admin = await requireAdminUser();
+  const now = new Date();
+
+  return getDb().transaction(async (tx) => {
+    const openReports = await tx
+      .select({ id: socialReports.id })
+      .from(socialReports)
+      .where(and(inArray(socialReports.id, ids), eq(socialReports.status, "open")));
+    const openIds = openReports.map((report) => report.id);
+
+    if (openIds.length === 0) {
+      throw new Error("No selected open reports could be resolved.");
+    }
+
+    await tx
+      .update(socialReports)
+      .set({ status: "resolved", resolvedAt: now })
+      .where(and(inArray(socialReports.id, openIds), eq(socialReports.status, "open")));
+
+    await tx.insert(adminAuditLog).values(
+      openIds.map((reportId) => ({
+        actorUserId: admin.userId,
+        action: "social_report_resolved",
+        targetType: "social_report",
+        targetId: reportId,
+        metadataJson: { bulkCount: openIds.length },
+      })),
+    );
+
+    return openIds.length;
+  });
+}
+
 export async function resolveModerationEvent(eventId: string) {
   const admin = await requireAdminUser();
   const now = new Date();
@@ -528,6 +569,50 @@ export async function resolveModerationEvent(eventId: string) {
       targetId: eventId,
     });
   });
+}
+
+export async function bulkResolveModerationEvents(eventIds: string[]) {
+  const ids = normalizeAdminIds(eventIds);
+
+  if (ids.length === 0) {
+    throw new Error("Select at least one open moderation event.");
+  }
+
+  const admin = await requireAdminUser();
+  const now = new Date();
+
+  return getDb().transaction(async (tx) => {
+    const openEvents = await tx
+      .select({ id: moderationEvents.id })
+      .from(moderationEvents)
+      .where(and(inArray(moderationEvents.id, ids), eq(moderationEvents.status, "open")));
+    const openIds = openEvents.map((event) => event.id);
+
+    if (openIds.length === 0) {
+      throw new Error("No selected open moderation events could be resolved.");
+    }
+
+    await tx
+      .update(moderationEvents)
+      .set({ status: "resolved", resolvedAt: now })
+      .where(and(inArray(moderationEvents.id, openIds), eq(moderationEvents.status, "open")));
+
+    await tx.insert(adminAuditLog).values(
+      openIds.map((eventId) => ({
+        actorUserId: admin.userId,
+        action: "moderation_event_resolved",
+        targetType: "moderation_event",
+        targetId: eventId,
+        metadataJson: { bulkCount: openIds.length },
+      })),
+    );
+
+    return openIds.length;
+  });
+}
+
+function normalizeAdminIds(ids: string[]) {
+  return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean))).slice(0, 100);
 }
 
 async function grantLifetimeFullAccess(targetUserId: string, actorUserId: string) {
@@ -638,12 +723,277 @@ async function findUserByEmail(email: string) {
   return user ?? null;
 }
 
-async function countRows(table: AnyPgTable, where?: SQL) {
-  const query = getDb()
-    .select({ count: sql<number>`count(*)::int` })
-    .from(table);
-  const [row] = where ? await query.where(where) : await query;
-  return Number(row?.count ?? 0);
+async function getAdminDashboardMetrics() {
+  const rows = await getDb().execute<{
+    userCount: number;
+    sessionCount: number;
+    shotCount: number;
+    feedCount: number;
+    challengeCount: number;
+    openReportCount: number;
+    activeSubscriptionCount: number;
+    lifetimeGrantCount: number;
+    usageEventCount: number;
+  }>(sql`
+    select
+      (select count(*)::int from ${users}) as "userCount",
+      (select count(*)::int from ${sessions}) as "sessionCount",
+      (select count(*)::int from ${shots}) as "shotCount",
+      (select count(*)::int from ${feedItems}) as "feedCount",
+      (select count(*)::int from ${challenges}) as "challengeCount",
+      (select count(*)::int from ${socialReports} where ${socialReports.status} = 'open') as "openReportCount",
+      (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('active', 'trialing')) as "activeSubscriptionCount",
+      (select count(*)::int from ${entitlements} where ${entitlements.entitlementKey} = 'lifetime_full' and ${entitlements.valueJson}->>'value' = 'true') as "lifetimeGrantCount",
+      (select count(*)::int from ${usageEvents}) as "usageEventCount"
+  `);
+  const row = rows[0];
+
+  return {
+    userCount: Number(row?.userCount ?? 0),
+    sessionCount: Number(row?.sessionCount ?? 0),
+    shotCount: Number(row?.shotCount ?? 0),
+    feedCount: Number(row?.feedCount ?? 0),
+    challengeCount: Number(row?.challengeCount ?? 0),
+    openReportCount: Number(row?.openReportCount ?? 0),
+    activeSubscriptionCount: Number(row?.activeSubscriptionCount ?? 0),
+    lifetimeGrantCount: Number(row?.lifetimeGrantCount ?? 0),
+    usageEventCount: Number(row?.usageEventCount ?? 0),
+  };
+}
+
+async function getAdminOverviewMetrics() {
+  const rows = await getDb().execute<{
+    userCount: number;
+    sessionCount: number;
+    shotCount: number;
+    feedCount: number;
+    challengeCount: number;
+    openReportCount: number;
+    activeSubscriptionCount: number;
+    lifetimeGrantCount: number;
+    usageEventCount: number;
+    groupCount: number;
+    friendshipCount: number;
+    friendRequestCount: number;
+    commentCount: number;
+    providerAccountCount: number;
+    importJobCount: number;
+    sponsorCount: number;
+    partnerOfferCount: number;
+    aiSummaryCount: number;
+    billingFailureCount: number;
+    providerImportFailureCount: number;
+  }>(sql`
+    select
+      (select count(*)::int from ${users}) as "userCount",
+      (select count(*)::int from ${sessions}) as "sessionCount",
+      (select count(*)::int from ${shots}) as "shotCount",
+      (select count(*)::int from ${feedItems}) as "feedCount",
+      (select count(*)::int from ${challenges}) as "challengeCount",
+      (select count(*)::int from ${socialReports} where ${socialReports.status} = 'open') as "openReportCount",
+      (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('active', 'trialing')) as "activeSubscriptionCount",
+      (select count(*)::int from ${entitlements} where ${entitlements.entitlementKey} = 'lifetime_full' and ${entitlements.valueJson}->>'value' = 'true') as "lifetimeGrantCount",
+      (select count(*)::int from ${usageEvents}) as "usageEventCount",
+      (select count(*)::int from ${groups}) as "groupCount",
+      (select count(*)::int from ${friendships}) as "friendshipCount",
+      (select count(*)::int from ${friendRequests}) as "friendRequestCount",
+      (select count(*)::int from ${feedComments}) as "commentCount",
+      (select count(*)::int from ${providerAccounts}) as "providerAccountCount",
+      (select count(*)::int from ${importJobs}) as "importJobCount",
+      (select count(*)::int from ${sponsors}) as "sponsorCount",
+      (select count(*)::int from ${partnerOffers}) as "partnerOfferCount",
+      (select count(*)::int from ${aiSocialSummaries}) as "aiSummaryCount",
+      (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('past_due', 'unpaid', 'incomplete_expired')) as "billingFailureCount",
+      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount"
+  `);
+  const row = rows[0];
+
+  return {
+    userCount: Number(row?.userCount ?? 0),
+    sessionCount: Number(row?.sessionCount ?? 0),
+    shotCount: Number(row?.shotCount ?? 0),
+    feedCount: Number(row?.feedCount ?? 0),
+    challengeCount: Number(row?.challengeCount ?? 0),
+    openReportCount: Number(row?.openReportCount ?? 0),
+    activeSubscriptionCount: Number(row?.activeSubscriptionCount ?? 0),
+    lifetimeGrantCount: Number(row?.lifetimeGrantCount ?? 0),
+    usageEventCount: Number(row?.usageEventCount ?? 0),
+    groupCount: Number(row?.groupCount ?? 0),
+    friendshipCount: Number(row?.friendshipCount ?? 0),
+    friendRequestCount: Number(row?.friendRequestCount ?? 0),
+    commentCount: Number(row?.commentCount ?? 0),
+    providerAccountCount: Number(row?.providerAccountCount ?? 0),
+    importJobCount: Number(row?.importJobCount ?? 0),
+    sponsorCount: Number(row?.sponsorCount ?? 0),
+    partnerOfferCount: Number(row?.partnerOfferCount ?? 0),
+    aiSummaryCount: Number(row?.aiSummaryCount ?? 0),
+    billingFailureCount: Number(row?.billingFailureCount ?? 0),
+    providerImportFailureCount: Number(row?.providerImportFailureCount ?? 0),
+  };
+}
+
+async function getAdminOperationsMetrics() {
+  const rows = await getDb().execute<{
+    groupCount: number;
+    friendshipCount: number;
+    friendRequestCount: number;
+    commentCount: number;
+    providerAccountCount: number;
+    importJobCount: number;
+    sponsorCount: number;
+    partnerOfferCount: number;
+    aiSummaryCount: number;
+    billingFailureCount: number;
+    providerImportFailureCount: number;
+  }>(sql`
+    select
+      (select count(*)::int from ${groups}) as "groupCount",
+      (select count(*)::int from ${friendships}) as "friendshipCount",
+      (select count(*)::int from ${friendRequests}) as "friendRequestCount",
+      (select count(*)::int from ${feedComments}) as "commentCount",
+      (select count(*)::int from ${providerAccounts}) as "providerAccountCount",
+      (select count(*)::int from ${importJobs}) as "importJobCount",
+      (select count(*)::int from ${sponsors}) as "sponsorCount",
+      (select count(*)::int from ${partnerOffers}) as "partnerOfferCount",
+      (select count(*)::int from ${aiSocialSummaries}) as "aiSummaryCount",
+      (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('past_due', 'unpaid', 'incomplete_expired')) as "billingFailureCount",
+      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount"
+  `);
+  const row = rows[0];
+
+  return {
+    groupCount: Number(row?.groupCount ?? 0),
+    friendshipCount: Number(row?.friendshipCount ?? 0),
+    friendRequestCount: Number(row?.friendRequestCount ?? 0),
+    commentCount: Number(row?.commentCount ?? 0),
+    providerAccountCount: Number(row?.providerAccountCount ?? 0),
+    importJobCount: Number(row?.importJobCount ?? 0),
+    sponsorCount: Number(row?.sponsorCount ?? 0),
+    partnerOfferCount: Number(row?.partnerOfferCount ?? 0),
+    aiSummaryCount: Number(row?.aiSummaryCount ?? 0),
+    billingFailureCount: Number(row?.billingFailureCount ?? 0),
+    providerImportFailureCount: Number(row?.providerImportFailureCount ?? 0),
+  };
+}
+
+async function getRecentAdminOverviewUsers(limit: number): Promise<AdminUserListItem[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      createdAt: users.createdAt,
+      username: userProfiles.username,
+      profileDisplayName: userProfiles.displayName,
+      adminRole: adminUsers.role,
+      adminStatus: adminUsers.status,
+    })
+    .from(users)
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
+    .leftJoin(adminUsers, eq(adminUsers.userId, users.id))
+    .orderBy(desc(users.createdAt))
+    .limit(limit);
+
+  const ids = rows.map((row) => row.id);
+  const activeSubscriptions = ids.length
+    ? await db
+        .select({
+          userId: subscriptions.userId,
+          planKey: subscriptions.planKey,
+          status: subscriptions.status,
+          createdAt: subscriptions.createdAt,
+        })
+        .from(subscriptions)
+        .where(
+          and(
+            inArray(subscriptions.userId, ids),
+            inArray(subscriptions.status, [...activeSubscriptionStatuses]),
+          ),
+        )
+        .orderBy(desc(subscriptions.createdAt))
+    : [];
+  const fullEntitlements = ids.length
+    ? await db
+        .select({ userId: entitlements.userId })
+        .from(entitlements)
+        .where(
+          and(
+            inArray(entitlements.userId, ids),
+            eq(entitlements.entitlementKey, "lifetime_full"),
+            sql`${entitlements.valueJson}->>'value' = 'true'`,
+          ),
+        )
+    : [];
+  const subscriptionMap = new Map<string, string>();
+
+  for (const subscription of activeSubscriptions) {
+    if (!subscriptionMap.has(subscription.userId)) {
+      subscriptionMap.set(subscription.userId, subscription.planKey);
+    }
+  }
+
+  const fullGrantIds = new Set(fullEntitlements.map((row) => row.userId));
+
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    displayName:
+      safeAdminDisplayName(row.profileDisplayName) ??
+      safeAdminDisplayName(row.name) ??
+      "LM World Tour Player",
+    username: row.username && !isSharedDatabaseArtifact(row.username) ? row.username : null,
+    adminRole: row.adminStatus === "active" ? row.adminRole : null,
+    adminStatus: row.adminStatus,
+    activePlan: fullGrantIds.has(row.id) ? "full" : (subscriptionMap.get(row.id) ?? "free"),
+    sessionCount: 0,
+    feedCount: 0,
+    createdAt: row.createdAt,
+  }));
+}
+
+async function getRecentAdminAuditRows(limit: number) {
+  return getDb()
+    .select({
+      id: adminAuditLog.id,
+      action: adminAuditLog.action,
+      targetType: adminAuditLog.targetType,
+      targetId: adminAuditLog.targetId,
+      createdAt: adminAuditLog.createdAt,
+      actorEmail: users.email,
+    })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+    .orderBy(desc(adminAuditLog.createdAt))
+    .limit(limit);
+}
+
+function adminOperationsFromMetrics(metrics: {
+  groupCount: number;
+  friendshipCount: number;
+  friendRequestCount: number;
+  commentCount: number;
+  providerAccountCount: number;
+  importJobCount: number;
+  sponsorCount: number;
+  partnerOfferCount: number;
+  aiSummaryCount: number;
+  billingFailureCount: number;
+  providerImportFailureCount: number;
+}): AdminOperationsSnapshot {
+  return {
+    groups: metrics.groupCount,
+    friendships: metrics.friendshipCount,
+    friendRequests: metrics.friendRequestCount,
+    comments: metrics.commentCount,
+    providerAccounts: metrics.providerAccountCount,
+    importJobs: metrics.importJobCount,
+    sponsors: metrics.sponsorCount,
+    partnerOffers: metrics.partnerOfferCount,
+    aiSummaries: metrics.aiSummaryCount,
+    billingFailures: metrics.billingFailureCount,
+    providerImportFailures: metrics.providerImportFailureCount,
+  };
 }
 
 async function countByUser(column: AnyPgColumn, table: AnyPgTable, userIds: string[]) {

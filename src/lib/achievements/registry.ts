@@ -7,7 +7,7 @@ import type {
   AchievementTriggerType,
 } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-07-01-practice-planner-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-07-08-practice-drills-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -358,6 +358,46 @@ export const CORE_ACHIEVEMENTS: Achievement[] = (
       "progress",
       1,
       250,
+    ),
+    achievement(
+      "practice_planner_drill_winner",
+      "Drill Winner",
+      "Pass a drill block from a structured Practice Planner session.",
+      "coach",
+      "bronze",
+      "progress",
+      1,
+      100,
+    ),
+    achievement(
+      "practice_planner_three_drills_won",
+      "Block Hat-Trick",
+      "Pass 3 drill blocks in one structured Practice Planner session.",
+      "coach",
+      "silver",
+      "progress",
+      3,
+      200,
+    ),
+    achievement(
+      "practice_planner_five_drills_won",
+      "Range Sweep",
+      "Pass 5 drill blocks in one structured Practice Planner session.",
+      "coach",
+      "gold",
+      "progress",
+      5,
+      300,
+    ),
+    achievement(
+      "practice_planner_clean_card",
+      "Clean Card",
+      "Pass every scored block in a structured Practice Planner session.",
+      "coach",
+      "platinum",
+      "progress",
+      1,
+      400,
     ),
 
     achievement(

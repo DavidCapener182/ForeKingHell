@@ -8,7 +8,13 @@ import { cn } from "@/lib/utils";
 
 const achievementArtworkPath = "/assets/page-achievements.png";
 
-export function AchievementArtwork({ className }: { className?: string }) {
+export function AchievementArtwork({
+  className,
+  priority = false,
+}: {
+  className?: string;
+  priority?: boolean;
+}) {
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
@@ -25,6 +31,8 @@ export function AchievementArtwork({ className }: { className?: string }) {
             src={achievementArtworkPath}
             alt=""
             fill
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             sizes="(min-width: 1280px) 420px, (min-width: 768px) 320px, 0px"
             className="object-cover opacity-95 saturate-[0.96]"
             onError={() => setImageFailed(true)}

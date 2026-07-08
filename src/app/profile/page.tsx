@@ -35,6 +35,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { getDb } from "@/db/client";
@@ -59,7 +60,6 @@ import {
 } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
-
 type ProfilePageProps = {
   searchParams?: Promise<{
     saved?: string;
@@ -111,7 +111,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   ];
 
   return (
-    <PageShell size="6xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title="You"
@@ -263,379 +263,392 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         <ProfileFeaturePanel data={featureData} />
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={`/profile/${profile.username}`} prefetch={false}>
-            <UserRound className="size-4" />
-            Public view
-          </Link>
-        </Button>
-      </div>
+      <DesktopWorkbenchLayout scope="profile">
+        <div className="hidden items-center justify-between gap-3 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/profile/${profile.username}`} prefetch={false}>
+              <UserRound className="size-4" />
+              Public view
+            </Link>
+          </Button>
+        </div>
 
-      <div className="hidden sm:contents">
-        <PageHeader
-          eyebrow={<StatusPill tone="sky">Social profile</StatusPill>}
-          title="Profile"
-          description="Set your public identity, default feed visibility, and friend-safe privacy choices before joining leaderboards or challenges."
-          metrics={[
-            {
-              label: "Username",
-              value: `@${profile.username}`,
-              detail: profile.publicProfile ? "Public search enabled" : "Hidden from public search",
-            },
-            {
-              label: "Feed default",
-              value: titleCase(profile.feedVisibilityDefault),
-              detail: "Used for generated PB and achievement cards",
-            },
-            {
-              label: "Leaderboard",
-              value: titleCase(profile.leaderboardVisibility),
-              detail: "Still respects account leaderboard opt-in",
-            },
-            {
-              label: "Profile",
-              value: profile.friendProfile
-                ? "Friends"
-                : profile.publicProfile
-                  ? "Public"
-                  : "Private",
-              detail: "Private by default",
-            },
-          ]}
-        />
+        <div className="hidden sm:contents">
+          <PageHeader
+            eyebrow={<StatusPill tone="sky">Social profile</StatusPill>}
+            title="Profile"
+            description="Set your public identity, default feed visibility, and friend-safe privacy choices before joining leaderboards or challenges."
+            metrics={[
+              {
+                label: "Username",
+                value: `@${profile.username}`,
+                detail: profile.publicProfile
+                  ? "Public search enabled"
+                  : "Hidden from public search",
+              },
+              {
+                label: "Feed default",
+                value: titleCase(profile.feedVisibilityDefault),
+                detail: "Used for generated PB and achievement cards",
+              },
+              {
+                label: "Leaderboard",
+                value: titleCase(profile.leaderboardVisibility),
+                detail: "Still respects account leaderboard opt-in",
+              },
+              {
+                label: "Profile",
+                value: profile.friendProfile
+                  ? "Friends"
+                  : profile.publicProfile
+                    ? "Public"
+                    : "Private",
+                detail: "Private by default",
+              },
+            ]}
+          />
 
-        {params?.saved ? (
-          <Alert>
-            <ShieldCheck className="size-4" />
-            <AlertTitle>Profile saved</AlertTitle>
-            <AlertDescription>
-              Your social profile and privacy defaults are active.
-            </AlertDescription>
-          </Alert>
-        ) : null}
+          {params?.saved ? (
+            <Alert>
+              <ShieldCheck className="size-4" />
+              <AlertTitle>Profile saved</AlertTitle>
+              <AlertDescription>
+                Your social profile and privacy defaults are active.
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]">
-          <article className="premium-card overflow-hidden">
-            <ProfileMediaEditor
-              displayName={profile.displayName}
-              username={profile.username}
-              initialAvatarUrl={profile.avatarUrl}
-              initialHeaderImageUrl={profile.headerImageUrl}
-              publicHref={`/profile/${profile.username}`}
-              formId={profileFormId}
-            />
-            <div className="grid gap-4 p-5 pt-1">
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                {profile.bio ??
-                  "Add a short goal, home setup or favourite club so friends understand what you are working on."}
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <PreviewStat
-                  icon={<Target className="size-4 text-emerald-600" />}
-                  label="Home setup"
-                  value={profile.primaryLaunchMonitor ?? "Add device"}
-                />
-                <PreviewStat
-                  icon={<Trophy className="size-4 text-amber-600" />}
-                  label="Course champions"
-                  value={honours.championCount}
-                />
-                <PreviewStat
-                  icon={<ShieldCheck className="size-4 text-sky-600" />}
-                  label="Default share"
-                  value={titleCase(profile.feedVisibilityDefault)}
-                />
-              </div>
-            </div>
-          </article>
-
-          <article className="premium-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">Profile completion</p>
-              <Badge variant="secondary">{completion}%</Badge>
-            </div>
-            <Progress value={completion} className="mt-3" />
-            <div className="mt-4 grid gap-2 text-sm">
-              <ShowcaseRow
-                icon={<Award className="size-4 text-emerald-600" />}
-                label="PB showcase"
-                value={
-                  pbShowcase.length ? pbShowcase.map(pbLabel).join(" · ") : "Choose PBs to feature"
-                }
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]">
+            <article className="premium-card overflow-hidden">
+              <ProfileMediaEditor
+                displayName={profile.displayName}
+                username={profile.username}
+                initialAvatarUrl={profile.avatarUrl}
+                initialHeaderImageUrl={profile.headerImageUrl}
+                publicHref={`/profile/${profile.username}`}
+                formId={profileFormId}
               />
-              <ShowcaseRow
-                icon={<Trophy className="size-4 text-amber-600" />}
-                label="Achievements"
-                value={
-                  achievementShowcase.length
-                    ? achievementShowcase.join(" · ")
-                    : "Unlock and pin badges"
-                }
-              />
-              <ShowcaseRow
-                icon={<Target className="size-4 text-sky-600" />}
-                label="Entries"
-                value={`${challenges.mine.length} challenges · ${honours.tournaments.length} tournaments`}
-              />
-            </div>
-          </article>
-        </section>
-
-        <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
-        <DataHealthFeaturePanel data={featureData} />
-
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
-          <article className="premium-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Honours board</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Course champions, current records and tournament history define your golf
-                  identity.
+              <div className="grid gap-4 p-5 pt-1">
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                  {profile.bio ??
+                    "Add a short goal, home setup or favourite club so friends understand what you are working on."}
                 </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <PreviewStat
+                    icon={<Target className="size-4 text-emerald-600" />}
+                    label="Home setup"
+                    value={profile.primaryLaunchMonitor ?? "Add device"}
+                  />
+                  <PreviewStat
+                    icon={<Trophy className="size-4 text-amber-600" />}
+                    label="Course champions"
+                    value={honours.championCount}
+                  />
+                  <PreviewStat
+                    icon={<ShieldCheck className="size-4 text-sky-600" />}
+                    label="Default share"
+                    value={titleCase(profile.feedVisibilityDefault)}
+                  />
+                </div>
               </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/course-records" prefetch={false}>
-                  Records
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {honours.records.map((record) => (
-                <Link
-                  key={record.id}
-                  href={`/course-records/${record.recordId}`}
-                  prefetch={false}
-                  className={
-                    record.rank === 1
-                      ? "rounded-xl border border-amber-200 bg-amber-50 p-4"
-                      : "rounded-lg border bg-[#F5F6F4] p-4"
+            </article>
+
+            <aside aria-label="Profile completion rail" className="premium-card p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">Profile completion</p>
+                <Badge variant="secondary">{completion}%</Badge>
+              </div>
+              <Progress value={completion} className="mt-3" />
+              <div className="mt-4 grid gap-2 text-sm">
+                <ShowcaseRow
+                  icon={<Award className="size-4 text-emerald-600" />}
+                  label="PB showcase"
+                  value={
+                    pbShowcase.length
+                      ? pbShowcase.map(pbLabel).join(" · ")
+                      : "Choose PBs to feature"
                   }
-                >
-                  <Badge variant={record.rank === 1 ? "default" : "outline"}>
-                    {record.rank === 1 ? "Champion" : `#${record.rank}`}
-                  </Badge>
-                  <p className="mt-3 font-semibold tracking-normal">{record.courseName}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {record.categoryName} · {record.scoreLabel}
-                  </p>
-                </Link>
-              ))}
-              {honours.records.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-2">
-                  No course records yet.
-                </p>
-              ) : null}
-            </div>
-          </article>
-
-          <article className="premium-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Tournament history</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Major-style and open event finishes.
-                </p>
+                />
+                <ShowcaseRow
+                  icon={<Trophy className="size-4 text-amber-600" />}
+                  label="Achievements"
+                  value={
+                    achievementShowcase.length
+                      ? achievementShowcase.join(" · ")
+                      : "Unlock and pin badges"
+                  }
+                />
+                <ShowcaseRow
+                  icon={<Target className="size-4 text-sky-600" />}
+                  label="Entries"
+                  value={`${challenges.mine.length} challenges · ${honours.tournaments.length} tournaments`}
+                />
               </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/tournaments" prefetch={false}>
-                  Events
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-4 grid gap-2">
-              {honours.tournaments.map((event) => (
-                <Link
-                  key={event.id}
-                  href={`/tournaments/${event.tournamentId}`}
-                  prefetch={false}
-                  className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
-                >
-                  <p className="font-medium">{event.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    #{event.rank ?? "--"} · {event.grossTotal} gross · {event.roundsCompleted}{" "}
-                    rounds
+            </aside>
+          </section>
+
+          <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
+          <DataHealthFeaturePanel data={featureData} />
+
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
+            <article className="premium-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Honours board</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Course champions, current records and tournament history define your golf
+                    identity.
                   </p>
-                </Link>
-              ))}
-              {honours.tournaments.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  No tournament standings yet.
-                </p>
-              ) : null}
-            </div>
-          </article>
-        </section>
-
-        <ProfileFeaturePanel data={featureData} />
-
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
-          <DataPanel>
-            <SectionHeader
-              title="Identity and privacy"
-              description="Detailed shot data stays private unless you explicitly change the visibility for generated cards."
-              action={<UserRound className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              <form id={profileFormId} action={updateSocialProfileAction} className="grid gap-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    label="Username"
-                    name="username"
-                    defaultValue={profile.username}
-                    required
-                  />
-                  <FormField
-                    label="Display name"
-                    name="displayName"
-                    defaultValue={profile.displayName}
-                    required
-                  />
-                  <FormField
-                    label="Home course or venue"
-                    name="homeCourse"
-                    defaultValue={profile.homeCourse ?? ""}
-                  />
-                  <FormField
-                    label="Primary launch monitor"
-                    name="primaryLaunchMonitor"
-                    defaultValue={profile.primaryLaunchMonitor ?? ""}
-                  />
-                  <FormField
-                    label="Handicap band"
-                    name="handicapBand"
-                    defaultValue={profile.handicapBand ?? ""}
-                    placeholder="10-14, beginner, scratch"
-                  />
                 </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/course-records" prefetch={false}>
+                    Records
+                  </Link>
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {honours.records.map((record) => (
+                  <Link
+                    key={record.id}
+                    href={`/course-records/${record.recordId}`}
+                    prefetch={false}
+                    className={
+                      record.rank === 1
+                        ? "rounded-xl border border-amber-200 bg-amber-50 p-4"
+                        : "rounded-lg border bg-[#F5F6F4] p-4"
+                    }
+                  >
+                    <Badge variant={record.rank === 1 ? "default" : "outline"}>
+                      {record.rank === 1 ? "Champion" : `#${record.rank}`}
+                    </Badge>
+                    <p className="mt-3 font-semibold tracking-normal">{record.courseName}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {record.categoryName} · {record.scoreLabel}
+                    </p>
+                  </Link>
+                ))}
+                {honours.records.length === 0 ? (
+                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-2">
+                    No course records yet.
+                  </p>
+                ) : null}
+              </div>
+            </article>
 
-                <label className="grid gap-2 text-sm font-medium">
-                  <span>Bio</span>
-                  <textarea
-                    name="bio"
-                    defaultValue={profile.bio ?? ""}
-                    rows={4}
-                    className="rounded-lg border bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-
-                <fieldset className="grid gap-3 rounded-lg border bg-white p-4">
-                  <legend className="px-1 text-sm font-semibold">Discovery</legend>
-                  <CheckboxField
-                    name="publicProfile"
-                    label="Show my profile in public username search"
-                    defaultChecked={profile.publicProfile}
-                  />
-                  <CheckboxField
-                    name="friendProfile"
-                    label="Let friends view my profile details"
-                    defaultChecked={profile.friendProfile}
-                  />
-                </fieldset>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <SelectField
-                    label="Generated feed cards"
-                    name="feedVisibilityDefault"
-                    defaultValue={parseVisibility(profile.feedVisibilityDefault)}
-                  />
-                  <SelectField
-                    label="Leaderboard visibility"
-                    name="leaderboardVisibility"
-                    defaultValue={parseVisibility(profile.leaderboardVisibility)}
-                  />
+            <article className="premium-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Tournament history</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Major-style and open event finishes.
+                  </p>
                 </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/tournaments" prefetch={false}>
+                    Events
+                  </Link>
+                </Button>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {honours.tournaments.map((event) => (
+                  <Link
+                    key={event.id}
+                    href={`/tournaments/${event.tournamentId}`}
+                    prefetch={false}
+                    className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
+                  >
+                    <p className="font-medium">{event.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      #{event.rank ?? "--"} · {event.grossTotal} gross · {event.roundsCompleted}{" "}
+                      rounds
+                    </p>
+                  </Link>
+                ))}
+                {honours.tournaments.length === 0 ? (
+                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                    No tournament standings yet.
+                  </p>
+                ) : null}
+              </div>
+            </article>
+          </section>
 
-                <fieldset className="grid gap-4 rounded-lg border bg-white p-4">
-                  <legend className="px-1 text-sm font-semibold">What others can see</legend>
+          <ProfileFeaturePanel data={featureData} />
+
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
+            <DataPanel>
+              <SectionHeader
+                title="Identity and privacy"
+                description="Detailed shot data stays private unless you explicitly change the visibility for generated cards."
+                action={<UserRound className="size-5 text-sky-600" />}
+              />
+              <CardContent>
+                <form
+                  id={profileFormId}
+                  action={updateSocialProfileAction}
+                  aria-label="Identity and privacy settings"
+                  className="grid gap-5"
+                >
                   <div className="grid gap-4 md:grid-cols-2">
-                    <SelectField
-                      label="Rounds"
-                      name="roundsVisibility"
-                      defaultValue={parseVisibility(visibility.rounds)}
+                    <FormField
+                      label="Username"
+                      name="username"
+                      defaultValue={profile.username}
+                      required
                     />
-                    <SelectField
-                      label="PBs"
-                      name="pbsVisibility"
-                      defaultValue={parseVisibility(visibility.pbs, "friends")}
+                    <FormField
+                      label="Display name"
+                      name="displayName"
+                      defaultValue={profile.displayName}
+                      required
                     />
-                    <SelectField
-                      label="Bag"
-                      name="bagVisibility"
-                      defaultValue={parseVisibility(visibility.bag)}
+                    <FormField
+                      label="Home course or venue"
+                      name="homeCourse"
+                      defaultValue={profile.homeCourse ?? ""}
                     />
-                    <SelectField
-                      label="Achievements"
-                      name="achievementsVisibility"
-                      defaultValue={parseVisibility(visibility.achievements, "friends")}
+                    <FormField
+                      label="Primary launch monitor"
+                      name="primaryLaunchMonitor"
+                      defaultValue={profile.primaryLaunchMonitor ?? ""}
                     />
-                    <SelectField
-                      label="Handicap estimate"
-                      name="handicapVisibility"
-                      defaultValue={parseVisibility(visibility.handicap)}
-                    />
-                    <SelectField
-                      label="Practice activity"
-                      name="practiceVisibility"
-                      defaultValue={parseVisibility(visibility.practice, "friends")}
-                    />
-                    <SelectField
-                      label="Exact shot data"
-                      name="exactShotsVisibility"
-                      defaultValue={parseVisibility(visibility.exactShots)}
+                    <FormField
+                      label="Handicap band"
+                      name="handicapBand"
+                      defaultValue={profile.handicapBand ?? ""}
+                      placeholder="10-14, beginner, scratch"
                     />
                   </div>
-                </fieldset>
 
-                <Button
-                  type="submit"
-                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                >
-                  <ShieldCheck className="size-4" />
-                  Save profile
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
+                  <label className="grid gap-2 text-sm font-medium">
+                    <span>Bio</span>
+                    <textarea
+                      name="bio"
+                      defaultValue={profile.bio ?? ""}
+                      rows={4}
+                      className="rounded-lg border bg-white px-3 py-2 text-sm"
+                    />
+                  </label>
 
-          <DataPanel>
-            <SectionHeader
-              title="Invite link"
-              description="Share your profile URL or QR code with Rapsodo friends."
-              action={<QrCode className="size-5 text-emerald-600" />}
-            />
-            <CardContent className="grid gap-4">
-              <div className="rounded-lg border bg-white p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`/friends/qr/${profile.username}`}
-                  alt={`QR invite for @${profile.username}`}
-                  className="mx-auto aspect-square w-full max-w-56"
+                  <fieldset className="grid gap-3 rounded-lg border bg-white p-4">
+                    <legend className="px-1 text-sm font-semibold">Discovery</legend>
+                    <CheckboxField
+                      name="publicProfile"
+                      label="Show my profile in public username search"
+                      defaultChecked={profile.publicProfile}
+                    />
+                    <CheckboxField
+                      name="friendProfile"
+                      label="Let friends view my profile details"
+                      defaultChecked={profile.friendProfile}
+                    />
+                  </fieldset>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <SelectField
+                      label="Generated feed cards"
+                      name="feedVisibilityDefault"
+                      defaultValue={parseVisibility(profile.feedVisibilityDefault)}
+                    />
+                    <SelectField
+                      label="Leaderboard visibility"
+                      name="leaderboardVisibility"
+                      defaultValue={parseVisibility(profile.leaderboardVisibility)}
+                    />
+                  </div>
+
+                  <fieldset className="grid gap-4 rounded-lg border bg-white p-4">
+                    <legend className="px-1 text-sm font-semibold">What others can see</legend>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <SelectField
+                        label="Rounds"
+                        name="roundsVisibility"
+                        defaultValue={parseVisibility(visibility.rounds)}
+                      />
+                      <SelectField
+                        label="PBs"
+                        name="pbsVisibility"
+                        defaultValue={parseVisibility(visibility.pbs, "friends")}
+                      />
+                      <SelectField
+                        label="Bag"
+                        name="bagVisibility"
+                        defaultValue={parseVisibility(visibility.bag)}
+                      />
+                      <SelectField
+                        label="Achievements"
+                        name="achievementsVisibility"
+                        defaultValue={parseVisibility(visibility.achievements, "friends")}
+                      />
+                      <SelectField
+                        label="Handicap estimate"
+                        name="handicapVisibility"
+                        defaultValue={parseVisibility(visibility.handicap)}
+                      />
+                      <SelectField
+                        label="Practice activity"
+                        name="practiceVisibility"
+                        defaultValue={parseVisibility(visibility.practice, "friends")}
+                      />
+                      <SelectField
+                        label="Exact shot data"
+                        name="exactShotsVisibility"
+                        defaultValue={parseVisibility(visibility.exactShots)}
+                      />
+                    </div>
+                  </fieldset>
+
+                  <Button
+                    type="submit"
+                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                  >
+                    <ShieldCheck className="size-4" />
+                    Save profile
+                  </Button>
+                </form>
+              </CardContent>
+            </DataPanel>
+
+            <aside aria-label="Profile invite rail" className="min-w-0">
+              <DataPanel id="profile-invite">
+                <SectionHeader
+                  title="Invite link"
+                  description="Share your profile URL or QR code with Rapsodo friends."
+                  action={<QrCode className="size-5 text-emerald-600" />}
                 />
-              </div>
-              <div className="rounded-xl border bg-muted/50 p-3 text-sm">
-                <p className="font-medium">Invite URL</p>
-                <code className="mt-1 block break-all text-xs text-muted-foreground">
-                  {profileUrl}
-                </code>
-              </div>
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link href={profileUrl} prefetch={false}>
-                  <Copy className="size-4" />
-                  Open invite page
-                </Link>
-              </Button>
-            </CardContent>
-          </DataPanel>
-        </section>
-      </div>
+                <CardContent className="grid gap-4">
+                  <div className="rounded-lg border bg-white p-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/friends/qr/${profile.username}`}
+                      alt={`QR invite for @${profile.username}`}
+                      className="mx-auto aspect-square w-full max-w-56"
+                    />
+                  </div>
+                  <div className="rounded-xl border bg-muted/50 p-3 text-sm">
+                    <p className="font-medium">Invite URL</p>
+                    <code className="mt-1 block break-all text-xs text-muted-foreground">
+                      {profileUrl}
+                    </code>
+                  </div>
+                  <Button asChild variant="outline" className="rounded-xl">
+                    <Link href={profileUrl} prefetch={false}>
+                      <Copy className="size-4" />
+                      Open invite page
+                    </Link>
+                  </Button>
+                </CardContent>
+              </DataPanel>
+            </aside>
+          </section>
+        </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }

@@ -22,14 +22,37 @@ import {
   updateUserSettingsAction,
 } from "@/app/settings/actions";
 import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { DataHealthFeaturePanel, SocialFeaturePanel } from "@/components/features/feature-panels";
-import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  DataPanel,
+  DataTableFrame,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PageArtwork } from "@/components/visuals/page-artwork";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { accountInvitations, accountMemberships, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -68,6 +91,43 @@ const dashboardPinLabels: Record<(typeof dashboardPinOptions)[number], string> =
   achievements: "Achievements",
 };
 
+type SettingsAccessRow = {
+  id: string;
+  scope: string;
+  party: string;
+  role: string;
+  status: string;
+  detail: string;
+  action?: ReactNode;
+};
+
+const settingsAccessColumns: DesktopWorkbenchColumn[] = [
+  { id: "scope", label: "Scope", locked: true },
+  { id: "party", label: "Person or account" },
+  { id: "role", label: "Role" },
+  { id: "status", label: "Status" },
+  { id: "detail", label: "Detail" },
+  { id: "action", label: "Action" },
+];
+
+const settingsAccessSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Pending invitations",
+    href: "/settings#sharing-settings",
+    detail: "Coach, viewer and editor invites that have not been accepted.",
+  },
+  {
+    title: "Shared by me",
+    href: "/settings#sharing-settings",
+    detail: "Accepted collaborators who can access this account.",
+  },
+  {
+    title: "Shared with me",
+    href: "/settings#sharing-settings",
+    detail: "Accounts this login can open through role-scoped access.",
+  },
+];
+
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const requestHeaders = await headers();
@@ -78,422 +138,432 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const inviteUrl = params?.invite
     ? `${getRequestOrigin(requestHeaders)}/settings/invitations/${encodeURIComponent(params.invite)}`
     : null;
+  const accessRows: SettingsAccessRow[] = [
+    ...ownedInvitations.map((invitation) => ({
+      id: `invite-${invitation.id}`,
+      scope: "Pending invite",
+      party: invitation.invitedEmail,
+      role: titleCase(invitation.role),
+      status: "Pending",
+      detail: `Expires ${formatDate(invitation.expiresAt)}`,
+      action: (
+        <form action={cancelInvitationAction}>
+          <input type="hidden" name="invitationId" value={invitation.id} />
+          <Button type="submit" variant="ghost" size="sm">
+            Cancel
+          </Button>
+        </form>
+      ),
+    })),
+    ...ownedMemberships.map((membership) => {
+      const member = relatedUsersById.get(membership.memberUserId);
+
+      return {
+        id: `owned-${membership.id}`,
+        scope: "Shared by me",
+        party: member?.email ?? member?.name ?? membership.memberUserId,
+        role: titleCase(membership.role),
+        status: "Accepted",
+        detail: `Added ${formatDate(membership.createdAt)}`,
+        action: (
+          <form action={removeMembershipAction}>
+            <input type="hidden" name="membershipId" value={membership.id} />
+            <Button type="submit" variant="ghost" size="sm">
+              Remove
+            </Button>
+          </form>
+        ),
+      };
+    }),
+    ...receivedMemberships.map((membership) => {
+      const owner = relatedUsersById.get(membership.ownerUserId);
+
+      return {
+        id: `received-${membership.id}`,
+        scope: "Shared with me",
+        party: owner?.email ?? owner?.name ?? membership.ownerUserId,
+        role: titleCase(membership.role),
+        status: "Accepted",
+        detail: `Added ${formatDate(membership.createdAt)}`,
+        action: (
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/shared/${membership.ownerUserId}`} prefetch={false}>
+              Open
+            </Link>
+          </Button>
+        ),
+      };
+    }),
+  ];
 
   return (
-    <PageShell size="6xl">
+    <PageShell>
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
-      <MobileRouteHeader title="Coach" group="improve" activeKey="settings" />
+      <MobileRouteHeader title="Platform" group="platform" activeKey="settings" />
 
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Account</StatusPill>}
-        title="Settings"
-        description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
-        actions={
-          <Button
-            asChild
-            size="sm"
-            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-          >
-            <a href="#profile-settings">
-              <UserCog className="size-4" />
-              Profile
-            </a>
-          </Button>
-        }
-      />
-
-      {params?.saved ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Settings saved</AlertTitle>
-          <AlertDescription>
-            Your profile and preference changes are active for this account.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.deleted ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Account data deleted</AlertTitle>
-          <AlertDescription>
-            Your app data was removed. Signing in again recreates an empty profile.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.deleteError === "confirmation" ? (
-        <Alert variant="destructive">
-          <Trash2 className="size-4" />
-          <AlertTitle>Deletion was not run</AlertTitle>
-          <AlertDescription>
-            Type your account email exactly before deleting app data.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.inviteAccepted ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Invite accepted</AlertTitle>
-          <AlertDescription>The shared account is now available to this login.</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.inviteCancelled ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Invite cancelled</AlertTitle>
-          <AlertDescription>The pending invite link can no longer be accepted.</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.memberRemoved ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Access removed</AlertTitle>
-          <AlertDescription>The collaborator can no longer access shared data.</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.inviteError ? (
-        <Alert variant="destructive">
-          <X className="size-4" />
-          <AlertTitle>Invite not completed</AlertTitle>
-          <AlertDescription>{formatInviteError(params.inviteError)}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {inviteUrl ? (
-        <Alert>
-          <Link2 className="size-4" />
-          <AlertTitle>Invite link ready</AlertTitle>
-          <AlertDescription>
-            Share this link with the invited user:{" "}
-            <code className="break-all rounded bg-muted px-1 py-0.5 text-xs">{inviteUrl}</code>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <section className="hidden gap-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start">
-        <section className="premium-card sticky top-28 p-3">
-          <p className="px-2 text-sm font-semibold">Settings</p>
-          <nav className="mt-2 grid gap-1 text-sm">
-            <a
-              href="#profile-settings"
-              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+      <DesktopWorkbenchLayout scope="settings">
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Account</StatusPill>}
+          title="Settings"
+          description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
+          visual={<PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />}
+          actions={
+            <Button
+              asChild
+              size="sm"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
             >
-              Profile
-            </a>
-            <a
-              href="#sharing-settings"
-              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
-            >
-              Sharing
-            </a>
-            <a
-              href="#visibility-simulator"
-              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
-            >
-              Visibility
-            </a>
-            <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]">
-              Data export
-            </a>
-            <a
-              href="#offline-storage"
-              className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
-            >
-              Offline storage
-            </a>
-            <a
-              href="#danger-zone"
-              className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50"
-            >
-              Danger zone
-            </a>
-          </nav>
-        </section>
-
-        <section className="premium-card p-4">
-          <p className="flex items-center gap-2 text-sm font-semibold">
-            <ShieldCheck className="size-4 text-emerald-600" />
-            Privacy preview
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <SettingsPreviewRow
-              label="Public profile"
-              value={privacy.publicProfile ? "Allowed" : "Hidden"}
-            />
-            <SettingsPreviewRow
-              label="Leaderboard"
-              value={privacy.allowLeaderboard ? "Enabled" : "Off"}
-            />
-            <SettingsPreviewRow
-              label="Coach access"
-              value={privacy.allowCoachAccess ? "Allowed" : "Invite only"}
-            />
-          </div>
-        </section>
-
-        <section className="premium-card sticky top-28 min-w-0 p-4">
-          <p className="text-sm font-semibold">Account panel</p>
-          <div className="mt-3 grid gap-2 text-sm">
-            <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
-            <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
-            <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
-          </div>
-        </section>
-      </section>
-
-      <DataHealthFeaturePanel data={featureData} />
-      <VisibilitySimulatorPanel
-        privacy={privacy}
-        ownedMembershipCount={ownedMemberships.length}
-        receivedMembershipCount={receivedMemberships.length}
-      />
-      <OfflineStoragePanel />
-      <DataControlStatusPanel
-        profile={profile}
-        ownedInvitationCount={ownedInvitations.length}
-        ownedMembershipCount={ownedMemberships.length}
-        receivedMembershipCount={receivedMemberships.length}
-      />
-
-      <SettingsMobileDisclosure
-        id="profile-settings"
-        title="Profile"
-        description={`${profile.preferredUnits}, ${profile.tableDensity} tables`}
-        defaultOpen
-      >
-        <DataPanel>
-          <SectionHeader
-            title="Profile and preferences"
-            description="These settings are stored with your user profile and control dashboard pins, units, and table density."
-            action={<SlidersHorizontal className="size-5 text-sky-600" />}
-          />
-          <CardContent>
-            <form action={updateUserSettingsAction} className="grid gap-5">
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="Display name" name="name" defaultValue={profile.name ?? ""} />
-                <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <SelectField
-                  label="Preferred units"
-                  name="preferredUnits"
-                  defaultValue={profile.preferredUnits}
-                  values={preferredUnitOptions}
-                />
-                <SelectField
-                  label="Table density"
-                  name="tableDensity"
-                  defaultValue={profile.tableDensity}
-                  values={tableDensityOptions}
-                />
-              </div>
-
-              <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-                <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
-                <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
-                  {dashboardPinOptions.map((pin) => (
-                    <CheckboxField
-                      key={pin}
-                      name="dashboardPins"
-                      value={pin}
-                      label={dashboardPinLabels[pin]}
-                      defaultChecked={profile.dashboardPins.includes(pin)}
-                    />
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-                <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
-                <div className="grid gap-2">
-                  <CheckboxField
-                    name="allowCoachAccess"
-                    label="Allow invited coaches to read my golf data"
-                    defaultChecked={privacy.allowCoachAccess}
-                  />
-                  <CheckboxField
-                    name="allowLeaderboard"
-                    label="Include my profile in friend leaderboards"
-                    defaultChecked={privacy.allowLeaderboard}
-                  />
-                  <CheckboxField
-                    name="publicProfile"
-                    label="Allow a public profile if sharing is enabled later"
-                    defaultChecked={privacy.publicProfile}
-                  />
-                </div>
-              </fieldset>
-
-              <Button
-                type="submit"
-                className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-              >
+              <a href="#profile-settings">
                 <UserCog className="size-4" />
-                Save settings
-              </Button>
-            </form>
-          </CardContent>
-        </DataPanel>
-      </SettingsMobileDisclosure>
+                Profile
+              </a>
+            </Button>
+          }
+        />
 
-      <SettingsMobileDisclosure
-        id="sharing-settings"
-        title="Sharing"
-        description="Invites, coaches and shared accounts."
-      >
-        <DataPanel>
-          <SectionHeader
-            title="Sharing and collaboration"
-            description="Invite a coach, viewer, or editor. Invitations create role-scoped memberships before social and team features are enabled."
-            action={<UserPlus className="size-5 text-emerald-600" />}
-          />
-          <CardContent className="grid gap-5">
-            <form
-              action={createInvitationAction}
-              className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end"
-            >
-              <FormField
-                label="Invite email"
-                name="invitedEmail"
-                type="email"
-                placeholder="coach@example.com"
-                required
-              />
-              <SelectField
-                label="Role"
-                name="role"
-                defaultValue="viewer"
-                values={collaborationRoles}
-              />
-              <Button
-                type="submit"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+        {params?.saved ? (
+          <Alert>
+            <ShieldCheck className="size-4" />
+            <AlertTitle>Settings saved</AlertTitle>
+            <AlertDescription>
+              Your profile and preference changes are active for this account.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.deleted ? (
+          <Alert>
+            <ShieldCheck className="size-4" />
+            <AlertTitle>Account data deleted</AlertTitle>
+            <AlertDescription>
+              Your app data was removed. Signing in again recreates an empty profile.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.deleteError === "confirmation" ? (
+          <Alert variant="destructive">
+            <Trash2 className="size-4" />
+            <AlertTitle>Deletion was not run</AlertTitle>
+            <AlertDescription>
+              Type your account email exactly before deleting app data.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.inviteAccepted ? (
+          <Alert>
+            <ShieldCheck className="size-4" />
+            <AlertTitle>Invite accepted</AlertTitle>
+            <AlertDescription>The shared account is now available to this login.</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.inviteCancelled ? (
+          <Alert>
+            <ShieldCheck className="size-4" />
+            <AlertTitle>Invite cancelled</AlertTitle>
+            <AlertDescription>The pending invite link can no longer be accepted.</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.memberRemoved ? (
+          <Alert>
+            <ShieldCheck className="size-4" />
+            <AlertTitle>Access removed</AlertTitle>
+            <AlertDescription>The collaborator can no longer access shared data.</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {params?.inviteError ? (
+          <Alert variant="destructive">
+            <X className="size-4" />
+            <AlertTitle>Invite not completed</AlertTitle>
+            <AlertDescription>{formatInviteError(params.inviteError)}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {inviteUrl ? (
+          <Alert>
+            <Link2 className="size-4" />
+            <AlertTitle>Invite link ready</AlertTitle>
+            <AlertDescription>
+              Share this link with the invited user:{" "}
+              <code className="break-all rounded bg-muted px-1 py-0.5 text-xs">{inviteUrl}</code>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <section className="hidden gap-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_280px] lg:items-start">
+          <section className="premium-card sticky top-28 p-3">
+            <p className="px-2 text-sm font-semibold">Settings</p>
+            <nav className="mt-2 grid gap-1 text-sm">
+              <a
+                href="#profile-settings"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
               >
-                <UserPlus className="size-4" />
-                Create invite
-              </Button>
-            </form>
+                Profile
+              </a>
+              <a
+                href="#sharing-settings"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+              >
+                Sharing
+              </a>
+              <a
+                href="#visibility-simulator"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+              >
+                Visibility
+              </a>
+              <a
+                href="#data-export"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+              >
+                Data export
+              </a>
+              <a
+                href="#offline-storage"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+              >
+                Offline storage
+              </a>
+              <a
+                href="#danger-zone"
+                className="rounded-lg px-2 py-2 font-medium text-destructive hover:bg-red-50"
+              >
+                Danger zone
+              </a>
+            </nav>
+          </section>
 
-            <section className="grid gap-3 lg:grid-cols-3">
-              <CollaborationList
-                title="Pending invites"
-                empty="No pending invites."
-                rows={ownedInvitations.map((invitation) => ({
-                  id: invitation.id,
-                  primary: invitation.invitedEmail,
-                  secondary: `${titleCase(invitation.role)} access, expires ${formatDate(invitation.expiresAt)}`,
-                  action: (
-                    <form action={cancelInvitationAction}>
-                      <input type="hidden" name="invitationId" value={invitation.id} />
-                      <Button type="submit" variant="ghost" size="sm">
-                        Cancel
-                      </Button>
-                    </form>
-                  ),
-                }))}
+          <section className="premium-card p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <ShieldCheck className="size-4 text-emerald-600" />
+              Privacy preview
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <SettingsPreviewRow
+                label="Public profile"
+                value={privacy.publicProfile ? "Allowed" : "Hidden"}
               />
-              <CollaborationList
-                title="Shared by me"
-                empty="No accepted collaborators."
-                rows={ownedMemberships.map((membership) => {
-                  const member = relatedUsersById.get(membership.memberUserId);
-                  return {
-                    id: membership.id,
-                    primary: member?.email ?? member?.name ?? membership.memberUserId,
-                    secondary: `${titleCase(membership.role)} access`,
-                    action: (
-                      <form action={removeMembershipAction}>
-                        <input type="hidden" name="membershipId" value={membership.id} />
-                        <Button type="submit" variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </form>
-                    ),
-                  };
-                })}
+              <SettingsPreviewRow
+                label="Leaderboard"
+                value={privacy.allowLeaderboard ? "Enabled" : "Off"}
               />
-              <CollaborationList
-                title="Shared with me"
-                empty="No accounts shared with this login."
-                rows={receivedMemberships.map((membership) => {
-                  const owner = relatedUsersById.get(membership.ownerUserId);
-                  return {
-                    id: membership.id,
-                    primary: owner?.email ?? owner?.name ?? membership.ownerUserId,
-                    secondary: `${titleCase(membership.role)} access`,
-                    action: (
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/shared/${membership.ownerUserId}`} prefetch={false}>
-                          Open
-                        </Link>
-                      </Button>
-                    ),
-                  };
-                })}
+              <SettingsPreviewRow
+                label="Coach access"
+                value={privacy.allowCoachAccess ? "Allowed" : "Invite only"}
               />
-            </section>
-          </CardContent>
-        </DataPanel>
-      </SettingsMobileDisclosure>
+            </div>
+          </section>
 
-      <SocialFeaturePanel data={featureData} />
+          <section className="premium-card sticky top-28 min-w-0 p-4">
+            <p className="text-sm font-semibold">Account panel</p>
+            <div className="mt-3 grid gap-2 text-sm">
+              <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
+              <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
+              <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
+            </div>
+          </section>
+        </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
+        <DataHealthFeaturePanel data={featureData} />
+        <VisibilitySimulatorPanel
+          privacy={privacy}
+          ownedMembershipCount={ownedMemberships.length}
+          receivedMembershipCount={receivedMemberships.length}
+        />
+        <OfflineStoragePanel />
+        <DataControlStatusPanel
+          profile={profile}
+          ownedInvitationCount={ownedInvitations.length}
+          ownedMembershipCount={ownedMemberships.length}
+          receivedMembershipCount={receivedMemberships.length}
+        />
+
         <SettingsMobileDisclosure
-          id="data-export"
-          title="Data export"
-          description="Download a JSON copy."
+          id="profile-settings"
+          title="Profile"
+          description={`${profile.preferredUnits}, ${profile.tableDensity} tables`}
+          defaultOpen
         >
           <DataPanel>
             <SectionHeader
-              title="Data export"
-              description="Download a JSON copy of your user-owned data, including shots, rounds, clubs, achievements, and private courses."
-              action={<Download className="size-5 text-emerald-600" />}
+              title="Profile and preferences"
+              description="These settings are stored with your user profile and control dashboard pins, units, and table density."
+              action={<SlidersHorizontal className="size-5 text-sky-600" />}
             />
             <CardContent>
-              <Button asChild variant="outline" className="rounded-xl">
-                <Link href="/api/settings/export" prefetch={false}>
-                  <Download className="size-4" />
-                  Export my data
-                </Link>
-              </Button>
-            </CardContent>
-          </DataPanel>
-        </SettingsMobileDisclosure>
+              <form action={updateUserSettingsAction} className="grid gap-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField label="Display name" name="name" defaultValue={profile.name ?? ""} />
+                  <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
+                </div>
 
-        <SettingsMobileDisclosure
-          id="danger-zone"
-          title="Danger zone"
-          description="Delete app data."
-        >
-          <DataPanel>
-            <SectionHeader
-              title="Delete app data"
-              description="This removes LM World Tour data for the signed-in account. It does not delete the Supabase Auth login itself."
-              action={<Trash2 className="size-5 text-destructive" />}
-            />
-            <CardContent>
-              <form action={deleteAccountDataAction} className="grid gap-3">
-                <FormField
-                  label={`Type ${profile.email ?? profile.id} to confirm`}
-                  name="confirmation"
-                  autoComplete="off"
-                />
-                <Button type="submit" variant="destructive" className="w-full rounded-xl sm:w-fit">
-                  <Trash2 className="size-4" />
-                  Delete my app data
+                <div className="grid gap-4 md:grid-cols-2">
+                  <SelectField
+                    label="Preferred units"
+                    name="preferredUnits"
+                    defaultValue={profile.preferredUnits}
+                    values={preferredUnitOptions}
+                  />
+                  <SelectField
+                    label="Table density"
+                    name="tableDensity"
+                    defaultValue={profile.tableDensity}
+                    values={tableDensityOptions}
+                  />
+                </div>
+
+                <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                  <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
+                  <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
+                    {dashboardPinOptions.map((pin) => (
+                      <CheckboxField
+                        key={pin}
+                        name="dashboardPins"
+                        value={pin}
+                        label={dashboardPinLabels[pin]}
+                        defaultChecked={profile.dashboardPins.includes(pin)}
+                      />
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                  <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
+                  <div className="grid gap-2">
+                    <CheckboxField
+                      name="allowCoachAccess"
+                      label="Allow invited coaches to read my golf data"
+                      defaultChecked={privacy.allowCoachAccess}
+                    />
+                    <CheckboxField
+                      name="allowLeaderboard"
+                      label="Include my profile in friend leaderboards"
+                      defaultChecked={privacy.allowLeaderboard}
+                    />
+                    <CheckboxField
+                      name="publicProfile"
+                      label="Allow a public profile if sharing is enabled later"
+                      defaultChecked={privacy.publicProfile}
+                    />
+                  </div>
+                </fieldset>
+
+                <Button
+                  type="submit"
+                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                >
+                  <UserCog className="size-4" />
+                  Save settings
                 </Button>
               </form>
             </CardContent>
           </DataPanel>
         </SettingsMobileDisclosure>
-      </section>
+
+        <SettingsMobileDisclosure
+          id="sharing-settings"
+          title="Sharing"
+          description="Invites, coaches and shared accounts."
+        >
+          <DataPanel>
+            <SectionHeader
+              title="Sharing and collaboration"
+              description="Invite a coach, viewer, or editor. Invitations create role-scoped memberships before social and team features are enabled."
+              action={<UserPlus className="size-5 text-emerald-600" />}
+            />
+            <CardContent className="grid gap-5">
+              <form
+                action={createInvitationAction}
+                className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end"
+              >
+                <FormField
+                  label="Invite email"
+                  name="invitedEmail"
+                  type="email"
+                  placeholder="coach@example.com"
+                  required
+                />
+                <SelectField
+                  label="Role"
+                  name="role"
+                  defaultValue="viewer"
+                  values={collaborationRoles}
+                />
+                <Button
+                  type="submit"
+                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                >
+                  <UserPlus className="size-4" />
+                  Create invite
+                </Button>
+              </form>
+
+              <AccessManagementTable rows={accessRows} />
+            </CardContent>
+          </DataPanel>
+        </SettingsMobileDisclosure>
+
+        <SocialFeaturePanel data={featureData} />
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <SettingsMobileDisclosure
+            id="data-export"
+            title="Data export"
+            description="Download a JSON copy."
+          >
+            <DataPanel>
+              <SectionHeader
+                title="Data export"
+                description="Download a JSON copy of your user-owned data, including shots, rounds, clubs, achievements, and private courses."
+                action={<Download className="size-5 text-emerald-600" />}
+              />
+              <CardContent>
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link href="/api/settings/export" prefetch={false}>
+                    <Download className="size-4" />
+                    Export my data
+                  </Link>
+                </Button>
+              </CardContent>
+            </DataPanel>
+          </SettingsMobileDisclosure>
+
+          <SettingsMobileDisclosure
+            id="danger-zone"
+            title="Danger zone"
+            description="Delete app data."
+          >
+            <DataPanel>
+              <SectionHeader
+                title="Delete app data"
+                description="This removes LM World Tour data for the signed-in account. It does not delete the Supabase Auth login itself."
+                action={<Trash2 className="size-5 text-destructive" />}
+              />
+              <CardContent>
+                <form action={deleteAccountDataAction} className="grid gap-3">
+                  <FormField
+                    label={`Type ${profile.email ?? profile.id} to confirm`}
+                    name="confirmation"
+                    autoComplete="off"
+                  />
+                  <Button
+                    type="submit"
+                    variant="destructive"
+                    className="w-full rounded-xl sm:w-fit"
+                  >
+                    <Trash2 className="size-4" />
+                    Delete my app data
+                  </Button>
+                </form>
+              </CardContent>
+            </DataPanel>
+          </SettingsMobileDisclosure>
+        </section>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -639,6 +709,101 @@ function DataControlStatusPanel({
         </div>
       </DataPanel>
     </SettingsMobileDisclosure>
+  );
+}
+
+function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
+  return (
+    <section
+      id="settings-access-table"
+      data-workbench-scope="settings-access"
+      className="grid gap-3"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Account access ledger</p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            Review pending invites, accepted collaborators and accounts shared with this login.
+          </p>
+        </div>
+        <StatusPill tone={rows.length > 0 ? "green" : "slate"}>
+          {rows.length} access rows
+        </StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey="settings-access"
+        scope="settings-access"
+        currentViewLabel="Account access"
+        resultLabel={`${rows.length} access rows`}
+        columns={settingsAccessColumns}
+        suggestedViews={settingsAccessSuggestedViews}
+        exportTableId="settings-access"
+        exportFileName="forekinghell-account-access.csv"
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Account access table">
+        <Table
+          data-workbench-export-table="settings-access"
+          aria-describedby="settings-access-summary"
+        >
+          <TableCaption id="settings-access-summary" className="sr-only">
+            Account access table showing invitation and membership scope, person or account, role,
+            status, detail and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="scope"
+                className="sticky left-0 z-20 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Scope
+              </TableHead>
+              <TableHead data-column="party">Person or account</TableHead>
+              <TableHead data-column="role">Role</TableHead>
+              <TableHead data-column="status">Status</TableHead>
+              <TableHead data-column="detail">Detail</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="scope"
+                    className="sticky left-0 z-10 min-w-48 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    {row.scope}
+                  </TableCell>
+                  <TableCell data-column="party">
+                    <span className="block max-w-72 truncate">{row.party}</span>
+                  </TableCell>
+                  <TableCell data-column="role">{row.role}</TableCell>
+                  <TableCell data-column="status">
+                    <StatusPill tone={row.status === "Pending" ? "amber" : "green"}>
+                      {row.status}
+                    </StatusPill>
+                  </TableCell>
+                  <TableCell data-column="detail">{row.detail}</TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    {row.action}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  No invitations or shared account access yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -811,47 +976,6 @@ function CheckboxField({
       />
       <span>{label}</span>
     </label>
-  );
-}
-
-function CollaborationList({
-  title,
-  empty,
-  rows,
-}: {
-  title: string;
-  empty: string;
-  rows: Array<{
-    id: string;
-    primary: string;
-    secondary: string;
-    action?: ReactNode;
-  }>;
-}) {
-  return (
-    <div className="rounded-lg border bg-[#F5F6F4] p-4">
-      <h3 className="font-semibold">{title}</h3>
-      <div className="mt-3 grid gap-2">
-        {rows.length > 0 ? (
-          rows.map((row) => (
-            <div
-              key={row.id}
-              className="flex items-center justify-between gap-3 rounded-xl border bg-white px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{row.primary}</p>
-                <p className="text-xs text-muted-foreground">{row.secondary}</p>
-              </div>
-              {row.action}
-            </div>
-          ))
-        ) : (
-          <p className="rounded-xl border border-dashed px-3 py-4 text-sm text-muted-foreground">
-            {empty}
-          </p>
-        )}
-      </div>
-    </div>
   );
 }
 

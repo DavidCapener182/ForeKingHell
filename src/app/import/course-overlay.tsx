@@ -2,6 +2,11 @@
 
 import { Flag, MapPinned } from "lucide-react";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackColumn,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -194,6 +199,13 @@ function HoleOverlay({
           );
         })}
       </svg>
+      <ChartAccessibleFallback
+        title={`Hole ${hole.holeNumber} overlay`}
+        summary={holeOverlaySummary(hole)}
+        columns={holeOverlayColumns}
+        rows={holeOverlayRows(hole)}
+        className="rounded-none border-x-0 border-b-0 bg-emerald-50/25"
+      />
       <div className="grid grid-cols-3 border-t px-3 py-2 text-xs">
         <span className="text-muted-foreground">Progress</span>
         <span className="text-center font-medium">{formatMetric(hole.progressYd)} yd</span>
@@ -251,6 +263,35 @@ function HoleOverlay({
       </div>
     </div>
   );
+}
+
+const holeOverlayColumns: ChartFallbackColumn[] = [
+  { key: "shot", label: "Shot" },
+  { key: "category", label: "Category" },
+  { key: "distance", label: "Distance" },
+  { key: "progress", label: "Progress" },
+  { key: "side", label: "Side" },
+  { key: "remaining", label: "Remaining" },
+];
+
+function holeOverlaySummary(hole: InferredCourseHole) {
+  return `Hole ${hole.holeNumber} is a par ${hole.par} playing ${hole.yards.toLocaleString(
+    "en-GB",
+  )} yd. ${hole.shots.length} CSV shots are assigned, progress is ${formatMetric(
+    hole.progressYd,
+  )} yd, and ${formatMetric(hole.distanceRemainingYd)} yd remains.`;
+}
+
+function holeOverlayRows(hole: InferredCourseHole): ChartFallbackRow[] {
+  return hole.shots.map((shot) => ({
+    _key: `hole-${hole.holeNumber}-shot-${shot.holeShotNumber}`,
+    shot: `${shot.holeShotNumber}`,
+    category: shot.shotCategory,
+    distance: formatYardCell(shot.shotDistanceYd),
+    progress: formatYardCell(shot.progressAfterYd),
+    side: formatSignedYardCell(shot.displaySideYd),
+    remaining: formatYardCell(shot.distanceRemainingYd),
+  }));
 }
 
 function NumberField({
@@ -313,4 +354,20 @@ function categoryColour(shot: InferredCourseShot) {
 
 function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
+}
+
+function formatYardCell(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
+
+function formatSignedYardCell(value: number | null) {
+  if (value === null) {
+    return "--";
+  }
+
+  if (value === 0) {
+    return "0 yd";
+  }
+
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} yd`;
 }

@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 
 import { BRAND_NAME } from "@/lib/brand";
 import { ensureUserProfile } from "@/lib/current-user";
-import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
+import {
+  clearSupabaseAuthCookies,
+  createSupabaseServerClient,
+  isSupabaseAuthConfigured,
+} from "@/lib/supabase/server";
 
 export type LoginActionState = {
   message: string | null;
@@ -33,6 +37,7 @@ export async function sendMagicLinkAction(
     return { status: "error", message: "Enter an email address." };
   }
 
+  await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
   const redirectTo = new URL("/auth/callback", await siteOrigin());
   redirectTo.searchParams.set("next", next);
@@ -77,8 +82,20 @@ export async function signInWithPasswordAction(
     return { status: "error", message: "Enter your email and password." };
   }
 
+  await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  let authResult: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
+  try {
+    authResult = await supabase.auth.signInWithPassword({ email, password });
+  } catch (error) {
+    console.error("[login] Password sign-in request failed", error);
+    return {
+      status: "error",
+      message: "Sign-in could not reach the auth service. Try again in a moment.",
+    };
+  }
+
+  const { data, error } = authResult;
 
   if (error || !data.user) {
     return {
@@ -87,14 +104,32 @@ export async function signInWithPasswordAction(
     };
   }
 
-  await ensureUserProfile({
+  const authUser = {
     id: data.user.id,
     email: data.user.email ?? null,
     name:
       stringMetadata(data.user.user_metadata?.name) ??
       stringMetadata(data.user.user_metadata?.full_name) ??
       stringMetadata(data.user.user_metadata?.display_name),
-  });
+  };
+
+  try {
+    await ensureUserProfile(authUser);
+  } catch (error) {
+    console.error("[login] Profile setup failed after password sign-in", error);
+    try {
+      await supabase.auth.signOut();
+    } catch (signOutError) {
+      console.error("[login] Failed to clear session after profile setup error", signOutError);
+    }
+    await clearSupabaseAuthCookies();
+
+    return {
+      status: "error",
+      message:
+        "Your password was accepted, but your golf profile could not be loaded. Try again in a moment.",
+    };
+  }
 
   redirect(next);
 }
@@ -111,6 +146,7 @@ export async function signInWithOAuthAction(formData: FormData) {
     redirect("/login?error=Unsupported%20auth%20provider");
   }
 
+  await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
   const redirectTo = new URL("/auth/callback", await siteOrigin());
   redirectTo.searchParams.set("next", next);

@@ -3,6 +3,7 @@ import { ArrowLeft, MapPinned } from "lucide-react";
 import { asc, eq, or } from "drizzle-orm";
 
 import { createManualRoundAction } from "@/app/rounds/actions";
+import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,43 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { NewRoundForm, type RoundCourseOption } from "./new-round-form";
 
 export const dynamic = "force-dynamic";
+
+const roundWorkflowSteps = [
+  {
+    title: "Pick course and tee",
+    value: "Current",
+    detail: "Use a saved course/tee set so rating, slope and hole pars stay consistent.",
+    status: "current" as const,
+  },
+  {
+    title: "Enter hole scores",
+    detail: "Score, putts, fairway and green fields are keyboard-friendly on desktop.",
+  },
+  {
+    title: "Add conditions",
+    detail: "Weather, wind and equipment notes explain why the number changed.",
+  },
+  {
+    title: "Save and review",
+    detail: "The saved round opens the review workspace for edits, proof and records.",
+  },
+];
+
+const roundWorkflowHelpItems = [
+  {
+    title: "Handicap confidence",
+    detail:
+      "Rounds with rating and slope feed the WHS-style estimate; missing tee data stays visible.",
+  },
+  {
+    title: "Course map",
+    detail: "Scorecard-only rounds use estimated map markers until shot data is attached.",
+  },
+  {
+    title: "Next action",
+    detail: "After saving, review the scorecard before using it for records, challenges or proof.",
+  },
+];
 
 export default async function NewRoundPage() {
   const courseOptions = await getRoundCourseOptions();
@@ -68,15 +106,22 @@ export default async function NewRoundPage() {
         ]}
       />
 
-      <DataPanel>
-        <SectionHeader
-          title="Scorecard"
-          description="Enter the score and putting data you have now. You can edit every hole after saving."
-        />
-        <CardContent>
-          <NewRoundForm courses={courseOptions} createRoundAction={createManualRoundAction} />
-        </CardContent>
-      </DataPanel>
+      <DesktopWorkflowLayout
+        steps={roundWorkflowSteps}
+        helpTitle="Round entry help"
+        helpDescription="Keep the scorecard reliable"
+        helpItems={roundWorkflowHelpItems}
+      >
+        <DataPanel>
+          <SectionHeader
+            title="Scorecard"
+            description="Enter the score and putting data you have now. You can edit every hole after saving."
+          />
+          <CardContent>
+            <NewRoundForm courses={courseOptions} createRoundAction={createManualRoundAction} />
+          </CardContent>
+        </DataPanel>
+      </DesktopWorkflowLayout>
     </PageShell>
   );
 }

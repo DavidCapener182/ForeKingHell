@@ -15,6 +15,7 @@ export type FitnessFreshnessPoint = {
   fatigue: number;
   readiness: number;
   form: number;
+  sessionQuality?: number | null;
 };
 
 export type FitnessFreshnessOptions = {

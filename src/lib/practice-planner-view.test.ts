@@ -49,10 +49,32 @@ describe("practice planner view helpers", () => {
       title: "5W start line",
       clubLabel: "5W",
       volumeLabel: "10 balls",
-      statusLabel: "Matched from upload",
+      statusLabel: "Passed",
+      resultNote: "10 matching shots · planned volume met.",
       importedEvidence: "10/10 matching shots",
     });
     expect(row.successTarget).toContain("6 of 10");
+  });
+
+  it("separates repeat-once results from short planned volume", () => {
+    const row = compactPracticeBlockRow(blocks[1], {
+      decisions: [
+        {
+          blockId: "baseline",
+          actual: "7/6 inside corridor from 7/10 matching shots",
+          actualBalls: 7,
+          plannedBalls: 10,
+          matchedPlannedVolume: false,
+          result: "mixed",
+          confidence: "medium",
+          decision: "repeat_once",
+        },
+      ],
+    });
+
+    expect(row.statusLabel).toBe("Repeat once");
+    expect(row.resultNote).toBe("7/10 planned balls found · 3 short.");
+    expect(row.importedEvidence).toBe("7/6 inside corridor from 7/10 matching shots");
   });
 
   it("marks blocks as waiting when no uploaded shots are present", () => {
@@ -111,6 +133,8 @@ describe("practice planner view helpers", () => {
     );
 
     expect(source).toContain("SelectedBlockDetail");
+    expect(source).toContain("PracticeResultsOverview");
+    expect(source).toContain("Analysed from upload");
     expect(source).toContain("sm:grid-cols-12");
     expect(source).toContain("sm:col-span-5 xl:col-span-4");
     expect(source).toContain("sm:col-span-2 xl:col-span-3");
@@ -119,7 +143,7 @@ describe("practice planner view helpers", () => {
       source.indexOf("<SessionControlPanel"),
     );
     expect(source).not.toContain("Accordion");
-    expect(source).not.toContain("type=\"multiple\"");
+    expect(source).not.toContain('type="multiple"');
     expect(source).not.toContain("Adapt next");
     expect(source).not.toMatch(/<Input[\\s\\S]{0,240}(score|Score)/);
     expect(source).toContain("Practice score appears after upload.");
@@ -132,7 +156,9 @@ describe("practice planner view helpers", () => {
     const source = readFileSync(join(process.cwd(), "src/app/practice/page.tsx"), "utf8");
 
     expect(source).toContain("const initialPlan = latestOpenPracticePlan ?? generatedPlan");
-    expect(source).toContain("await getLatestPracticeSessionReviewSafely(userId, latestOpenPracticePlan)");
+    expect(source).toContain(
+      "await getLatestPracticeSessionReviewSafely(userId, latestOpenPracticePlan)",
+    );
     expect(source).not.toContain('status === "analysed" || plan.status === "completed"');
   });
 

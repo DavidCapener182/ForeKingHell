@@ -72,7 +72,10 @@ export function buildEquipmentSnapshotPayload(
 }
 
 function cleanSection(value: string | null | undefined) {
-  const normalized = value?.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "_");
   return normalized || null;
 }
 

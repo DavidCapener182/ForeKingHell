@@ -16,7 +16,11 @@ import {
   userAchievements,
   xpLedger,
 } from "@/db/schema";
-import { buildWedgeMatrix, type BagIntelligenceClub, type WedgeMatrixClub } from "@/lib/bag-intelligence";
+import {
+  buildWedgeMatrix,
+  type BagIntelligenceClub,
+  type WedgeMatrixClub,
+} from "@/lib/bag-intelligence";
 import { formatClubType } from "@/lib/club-format";
 import { getProgressData } from "@/lib/progress-data";
 import {
@@ -29,6 +33,8 @@ import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-sessio
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
 import type { TrainingStatusKey } from "@/lib/training/trainingStatus";
 import { normalizeClubType } from "@/lib/rapsodo/parser";
+import { getAchievement } from "@/lib/achievements/registry";
+import { xpForAchievement } from "@/lib/achievements/xp";
 
 export type PracticeSessionType =
   | "range"
@@ -512,7 +518,8 @@ export async function getPracticePlannerContext(userId: string): Promise<Practic
     speed: {
       currentSpeedMph: speedData?.summary.currentSpeedMph ?? null,
       targetSpeedMph: speedData?.summary.targetSpeedMph ?? null,
-      recommendation: speedData?.summary.prescription.recommendation ?? "Build speed baseline first.",
+      recommendation:
+        speedData?.summary.prescription.recommendation ?? "Build speed baseline first.",
       priority: speedData?.summary.prescription.priority ?? "Medium",
     },
     scoring,
@@ -556,10 +563,15 @@ export function buildPracticePriorityList(
           ? 12
           : 6;
     const roadmapPriority = roadmap
-      ? Math.max(14, 26 - context.progress.priorities.findIndex((p) => p.clubType === club.clubType) * 4)
+      ? Math.max(
+          14,
+          26 - context.progress.priorities.findIndex((p) => p.clubType === club.clubType) * 4,
+        )
       : 0;
-    const fatigueRisk = tired && (DRIVER_TYPES.has(club.clubType) || LONG_GAME_TYPES.has(club.clubType)) ? 9 : 0;
-    const latestBestAdjustment = latestBest === club.clubType && options.intent !== "confidence" ? -8 : 0;
+    const fatigueRisk =
+      tired && (DRIVER_TYPES.has(club.clubType) || LONG_GAME_TYPES.has(club.clubType)) ? 9 : 0;
+    const latestBestAdjustment =
+      latestBest === club.clubType && options.intent !== "confidence" ? -8 : 0;
     const score = Math.round(
       weaknessScore +
         trustGap +
@@ -576,7 +588,8 @@ export function buildPracticePriorityList(
       clubType: club.clubType,
       label: formatClubType(club.clubType),
       score: Math.max(0, score),
-      certainty: club.sampleSize >= 12 ? "high" : club.sampleSize >= 5 || roadmap ? "medium" : "low",
+      certainty:
+        club.sampleSize >= 12 ? "high" : club.sampleSize >= 5 || roadmap ? "medium" : "low",
       reason: priorityReason(club, roadmap, latestOpportunity === club.clubType),
       drill: club.practiceDrill,
       category: categoryForClub(club.clubType),
@@ -589,7 +602,8 @@ export function buildPracticePriorityList(
       key: "speed-driver",
       clubType: "driver",
       label: "Driver speed",
-      score: context.trainingLoad.highRecentLoad && !options.facility?.overrideTrainingLoad ? 12 : 72,
+      score:
+        context.trainingLoad.highRecentLoad && !options.facility?.overrideTrainingLoad ? 12 : 72,
       certainty: context.speed.currentSpeedMph ? "medium" : "low",
       reason: context.trainingLoad.highRecentLoad
         ? "Recent load says speed work should wait."
@@ -635,35 +649,53 @@ export function generateRangePracticePlan(
 ): PracticePlan {
   const totalBalls = normalizeBallCount(options.ballCount ?? 80);
   const allocation = rangeAllocation(totalBalls);
-  const main = selectPriority(priorities, (item) => item.category !== "speed") ?? fallbackPriority(context);
+  const main =
+    selectPriority(priorities, (item) => item.category !== "speed") ?? fallbackPriority(context);
   const secondary =
     selectPriority(priorities, (item) => item.key !== main.key && item.category !== "speed") ??
     fallbackSecondary(context, main);
-  const wedge = selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
-  const driver = selectPriority(priorities, (item) => item.category === "driver") ?? driverFallback(context);
-  const transferSequence = buildTransferSequence([main, secondary, wedge, driver], allocation.transfer ?? 0);
+  const wedge =
+    selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
+  const driver =
+    selectPriority(priorities, (item) => item.category === "driver") ?? driverFallback(context);
+  const transferSequence = buildTransferSequence(
+    [main, secondary, wedge, driver],
+    allocation.transfer ?? 0,
+  );
   const blocks: PracticeBlock[] = [];
 
   if (allocation.warmup) {
-    blocks.push(block("warmup", "Warm-up", ["pw", "8i", "6i"], allocation.warmup, 8, {
-      purpose: "Find rhythm and strike without chasing distance.",
-      drill: "Build from half-speed wedges to stock mid-irons. Stop after each shot and call playable or not.",
-      successTarget: `${Math.max(6, Math.round(allocation.warmup * 0.75))} of ${allocation.warmup} playable.`,
-      recordPrompt: "Playable count and any strike pattern.",
-      metric: "playable",
-      target: Math.max(6, Math.round(allocation.warmup * 0.75)),
-    }));
+    blocks.push(
+      block("warmup", "Warm-up", ["pw", "8i", "6i"], allocation.warmup, 8, {
+        purpose: "Find rhythm and strike without chasing distance.",
+        drill:
+          "Build from half-speed wedges to stock mid-irons. Stop after each shot and call playable or not.",
+        successTarget: `${Math.max(6, Math.round(allocation.warmup * 0.75))} of ${allocation.warmup} playable.`,
+        recordPrompt: "Playable count and any strike pattern.",
+        metric: "playable",
+        target: Math.max(6, Math.round(allocation.warmup * 0.75)),
+      }),
+    );
   }
 
   if (allocation.baseline) {
-    blocks.push(block("baseline", "Baseline check", [main.clubType ?? "7i", wedge.clubType ?? "sw"], allocation.baseline, 7, {
-      purpose: "Check whether today matches the latest data before changing anything.",
-      drill: "Alternate the main priority club and the scoring club. Normal stock swings only.",
-      successTarget: `${Math.ceil(allocation.baseline * 0.6)} playable or inside carry target.`,
-      recordPrompt: "Start line, carry miss, and whether the pattern matches the last import.",
-      metric: "baseline",
-      target: Math.ceil(allocation.baseline * 0.6),
-    }));
+    blocks.push(
+      block(
+        "baseline",
+        "Baseline check",
+        [main.clubType ?? "7i", wedge.clubType ?? "sw"],
+        allocation.baseline,
+        7,
+        {
+          purpose: "Check whether today matches the latest data before changing anything.",
+          drill: "Alternate the main priority club and the scoring club. Normal stock swings only.",
+          successTarget: `${Math.ceil(allocation.baseline * 0.6)} playable or inside carry target.`,
+          recordPrompt: "Start line, carry miss, and whether the pattern matches the last import.",
+          metric: "baseline",
+          target: Math.ceil(allocation.baseline * 0.6),
+        },
+      ),
+    );
   }
 
   blocks.push(priorityBlock(main, allocation.main, "Main priority"));
@@ -681,14 +713,16 @@ export function generateRangePracticePlan(
   }
 
   if (allocation.transfer) {
-    blocks.push(block("random", "Randomised scoring finish", transferSequence, allocation.transfer, 8, {
-      purpose: "Transfer the range work into one-ball course decisions.",
-      drill: `Random club every ball: ${transferSequence.map((club) => formatClubType(club)).join(", ")}.`,
-      successTarget: `${Math.round(allocation.transfer * 1.35)}+ points from ${allocation.transfer * 2} possible.`,
-      recordPrompt: "One point for playable, one bonus for target corridor.",
-      metric: "points",
-      target: Math.round(allocation.transfer * 1.35),
-    }));
+    blocks.push(
+      block("random", "Randomised scoring finish", transferSequence, allocation.transfer, 8, {
+        purpose: "Transfer the range work into one-ball course decisions.",
+        drill: `Random club every ball: ${transferSequence.map((club) => formatClubType(club)).join(", ")}.`,
+        successTarget: `${Math.round(allocation.transfer * 1.35)}+ points from ${allocation.transfer * 2} possible.`,
+        recordPrompt: "One point for playable, one bonus for target corridor.",
+        metric: "points",
+        target: Math.round(allocation.transfer * 1.35),
+      }),
+    );
   }
 
   return finalizePlan(context, options, {
@@ -704,11 +738,19 @@ export function generateRangePracticePlan(
 export function comparePlanWithShotSummaries(
   plan: PracticePlan,
   sourceSessionId: string | null,
-  summaries: Array<{ clubType: string; shotCount: number; playableRate: number | null; offlineAverageYd: number | null; carryAverageYd: number | null }>,
+  summaries: Array<{
+    clubType: string;
+    shotCount: number;
+    playableRate: number | null;
+    offlineAverageYd: number | null;
+    carryAverageYd: number | null;
+  }>,
 ): PracticeComparison {
   const decisions = plan.blocks.map((block) => {
     const blockClubs = new Set(uniqueClubs(block.clubs));
-    const clubSummaries = summaries.filter((summary) => blockClubs.has(normalizeClubType(summary.clubType)));
+    const clubSummaries = summaries.filter((summary) =>
+      blockClubs.has(normalizeClubType(summary.clubType)),
+    );
     const actualBalls = clubSummaries.reduce((total, summary) => total + summary.shotCount, 0);
     const clubSummary = aggregateBlockShotSummary(block, clubSummaries);
     const matchedPlannedVolume =
@@ -761,9 +803,7 @@ export function comparePlanWithShotRows(
   options: { scoringMode?: PracticeBlockScoringMode } = {},
 ): PracticeComparison {
   const ordered =
-    options.scoringMode === "aggregate"
-      ? false
-      : canUseOrderedBlockScoring(plan, session.shotRows);
+    options.scoringMode === "aggregate" ? false : canUseOrderedBlockScoring(plan, session.shotRows);
   const decisions = ordered
     ? evaluateOrderedPracticeBlocks(plan, session.shotRows)
     : evaluateAggregatePracticeBlocks(plan, session.shotRows);
@@ -797,14 +837,18 @@ function buildPracticeComparison(
   decisions: PracticeComparison["decisions"],
 ): PracticeComparison {
   const passed = decisions.filter(
-    (item) => item.result === "passed" || item.decision === "maintain" || item.decision === "move_down",
+    (item) =>
+      item.result === "passed" || item.decision === "maintain" || item.decision === "move_down",
   );
   const whatWorked = decisions
     .filter((item) => item.result === "passed")
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
   const needsWork = decisions
-    .filter((item) => item.result === "mixed" || item.result === "failed" || item.result === "insufficient_data")
+    .filter(
+      (item) =>
+        item.result === "mixed" || item.result === "failed" || item.result === "insufficient_data",
+    )
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
   const nextBlock = decisions.find((item) => item.result !== "passed");
@@ -847,7 +891,9 @@ function canUseOrderedBlockScoring(plan: PracticePlan, rows: ImportedPracticeSho
     return false;
   }
 
-  const plannedBalls = plan.totalBalls ?? plan.blocks.reduce((total, blockItem) => total + (blockItem.ballCount ?? 0), 0);
+  const plannedBalls =
+    plan.totalBalls ??
+    plan.blocks.reduce((total, blockItem) => total + (blockItem.ballCount ?? 0), 0);
 
   if (plannedBalls > 0 && rows.length < Math.ceil(plannedBalls * 0.65)) {
     return false;
@@ -868,7 +914,8 @@ function evaluateOrderedPracticeBlocks(
   let cursor = 0;
 
   return plan.blocks.map((blockItem) => {
-    const plannedBalls = blockItem.ballCount ?? Math.max(1, Math.round(rows.length / plan.blocks.length));
+    const plannedBalls =
+      blockItem.ballCount ?? Math.max(1, Math.round(rows.length / plan.blocks.length));
     const blockRows = orderedRows.slice(cursor, cursor + plannedBalls);
     cursor += plannedBalls;
 
@@ -882,9 +929,8 @@ function evaluateAggregatePracticeBlocks(
 ): PracticeComparison["decisions"] {
   return plan.blocks.map((blockItem) => {
     const blockClubs = new Set(uniqueClubs(blockItem.clubs));
-    const blockRows = blockItem.clubs.length > 0
-      ? rows.filter((row) => blockClubs.has(row.clubType))
-      : rows;
+    const blockRows =
+      blockItem.clubs.length > 0 ? rows.filter((row) => blockClubs.has(row.clubType)) : rows;
 
     return evaluatePracticeBlockFromShots(blockItem, blockRows, "aggregate");
   });
@@ -902,7 +948,8 @@ function evaluatePracticeBlockFromShots(
       : rows;
   const actualBalls = relevantRows.length;
   const plannedBalls = blockItem.ballCount;
-  const matchedPlannedVolume = plannedBalls === null ? actualBalls > 0 : actualBalls >= plannedBalls;
+  const matchedPlannedVolume =
+    plannedBalls === null ? actualBalls > 0 : actualBalls >= plannedBalls;
   const metrics = blockMetrics(blockItem, relevantRows);
   const result = evaluateBlockResult(blockItem, actualBalls, matchedPlannedVolume, metrics);
   const decision = blockDecisionFromResult(blockItem, result);
@@ -933,7 +980,9 @@ function evaluatePracticeBlockFromShots(
 
 function blockMetrics(blockItem: PracticeBlock, rows: ImportedPracticeShotRow[]) {
   const actualBalls = rows.length;
-  const playableRows = rows.filter((row) => row.offlineYd !== null && Math.abs(row.offlineYd) <= 32);
+  const playableRows = rows.filter(
+    (row) => row.offlineYd !== null && Math.abs(row.offlineYd) <= 32,
+  );
   const offlineRows = rows.filter((row) => row.offlineYd !== null);
   const launchRows = rows.filter((row) => row.launchDirectionDeg !== null);
   const corridorRows =
@@ -949,26 +998,35 @@ function blockMetrics(blockItem: PracticeBlock, rows: ImportedPracticeShotRow[])
     plannedBalls: blockItem.ballCount,
     actualBalls,
     playableCount: playableRows.length,
-    playableRate: actualBalls > 0 && offlineRows.length > 0 ? Math.round((playableRows.length / actualBalls) * 100) : null,
+    playableRate:
+      actualBalls > 0 && offlineRows.length > 0
+        ? Math.round((playableRows.length / actualBalls) * 100)
+        : null,
     corridorCount: corridorRows.length,
-    corridorRate: actualBalls > 0 && (launchRows.length > 0 || offlineRows.length > 0)
-      ? Math.round((corridorRows.length / actualBalls) * 100)
-      : null,
+    corridorRate:
+      actualBalls > 0 && (launchRows.length > 0 || offlineRows.length > 0)
+        ? Math.round((corridorRows.length / actualBalls) * 100)
+        : null,
     bigMisses: bigMissRows.length,
-    offlineAverageYd: offlineRows.length > 0
-      ? roundOne(offlineRows.reduce((total, row) => total + Math.abs(Number(row.offlineYd)), 0) / offlineRows.length)
-      : null,
-    carryAverageYd: carryRows.length > 0
-      ? roundOne(carryRows.reduce((total, row) => total + Number(row.carryYd), 0) / carryRows.length)
-      : null,
-    pathWindowRate: pathRows.length > 0 ? Math.round((pathWindowRows.length / pathRows.length) * 100) : null,
+    offlineAverageYd:
+      offlineRows.length > 0
+        ? roundOne(
+            offlineRows.reduce((total, row) => total + Math.abs(Number(row.offlineYd)), 0) /
+              offlineRows.length,
+          )
+        : null,
+    carryAverageYd:
+      carryRows.length > 0
+        ? roundOne(
+            carryRows.reduce((total, row) => total + Number(row.carryYd), 0) / carryRows.length,
+          )
+        : null,
+    pathWindowRate:
+      pathRows.length > 0 ? Math.round((pathWindowRows.length / pathRows.length) * 100) : null,
   };
 }
 
-function blockMetricPassLabel(
-  blockItem: PracticeBlock,
-  metrics: ReturnType<typeof blockMetrics>,
-) {
+function blockMetricPassLabel(blockItem: PracticeBlock, metrics: ReturnType<typeof blockMetrics>) {
   const target = blockItem.scoringRules.target;
 
   switch (blockItem.scoringRules.metric) {
@@ -1004,7 +1062,8 @@ function evaluateBlockResult(
   }
 
   const target = blockItem.scoringRules.target;
-  const maxBigMisses = blockItem.scoringRules.maxBigMisses ?? Math.max(1, Math.floor(plannedBalls * 0.18));
+  const maxBigMisses =
+    blockItem.scoringRules.maxBigMisses ?? Math.max(1, Math.floor(plannedBalls * 0.18));
   const metric = blockItem.scoringRules.metric;
   const metricPassed =
     metric === "corridor"
@@ -1019,7 +1078,11 @@ function evaluateBlockResult(
     return "passed";
   }
 
-  if (metricPassed || (metrics.playableRate ?? 0) >= 60 || metrics.corridorCount >= Math.ceil(target * 0.75)) {
+  if (
+    metricPassed ||
+    (metrics.playableRate ?? 0) >= 60 ||
+    metrics.corridorCount >= Math.ceil(target * 0.75)
+  ) {
     return "mixed";
   }
 
@@ -1119,17 +1182,13 @@ export async function comparePracticePlanToImport(
     return comparePlanWithShotSummaries(plan, sourceSessionId, []);
   }
 
-  return comparePlanWithShotRows(
-    plan,
-    sourceSessionId,
-    {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
-      clubTypes: sessionSummary.clubTypes,
-      shotRows: sessionSummary.shotRows,
-    },
-  );
+  return comparePlanWithShotRows(plan, sourceSessionId, {
+    shotCount: sessionSummary.shotCount,
+    sessionType: sessionSummary.sessionType,
+    dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+    clubTypes: sessionSummary.clubTypes,
+    shotRows: sessionSummary.shotRows,
+  });
 }
 
 export function evaluatePracticePlanAgainstImportedSession(
@@ -1207,35 +1266,67 @@ export async function getLatestPracticeSessionReview(
 export function scoreCompletedPractice(
   plan: PracticePlan,
   result: PracticeResultInput,
-  comparison: PracticeComparison = comparePlanWithShotSummaries(plan, result.sourceSessionId ?? null, []),
+  comparison: PracticeComparison = comparePlanWithShotSummaries(
+    plan,
+    result.sourceSessionId ?? null,
+    [],
+  ),
 ): PracticeScore {
-  const plannedBalls = plan.totalBalls ?? plan.blocks.reduce((total, item) => total + (item.ballCount ?? 0), 0);
-  const actualBalls = result.actualBalls ?? result.blockResults.reduce((total, item) => total + (item.actualBalls ?? 0), 0);
-  const completedBlocks = result.blockResults.filter((item) => item.completionStatus === "complete").length;
+  const plannedBalls =
+    plan.totalBalls ?? plan.blocks.reduce((total, item) => total + (item.ballCount ?? 0), 0);
+  const actualBalls =
+    result.actualBalls ??
+    result.blockResults.reduce((total, item) => total + (item.actualBalls ?? 0), 0);
+  const completedBlocks = result.blockResults.filter(
+    (item) => item.completionStatus === "complete",
+  ).length;
   const blockCompletion = plan.blocks.length > 0 ? completedBlocks / plan.blocks.length : 0;
-  const ballCompletion = plannedBalls > 0 ? Math.min(1, actualBalls / plannedBalls) : blockCompletion;
+  const ballCompletion =
+    plannedBalls > 0 ? Math.min(1, actualBalls / plannedBalls) : blockCompletion;
   const passedRate =
     result.blockResults.length > 0
-      ? result.blockResults.filter((item) => item.passed || (item.score ?? 0) >= 70).length / result.blockResults.length
+      ? result.blockResults.filter((item) => item.passed || (item.score ?? 0) >= 70).length /
+        result.blockResults.length
       : 0;
   const comparisonRate =
     comparison.decisions.length > 0
-      ? comparison.decisions.filter((item) => item.decision === "maintain" || item.decision === "move_down").length /
-        comparison.decisions.length
+      ? comparison.decisions.filter(
+          (item) => item.decision === "maintain" || item.decision === "move_down",
+        ).length / comparison.decisions.length
       : passedRate;
   const completionPercent = Math.round(((blockCompletion + ballCompletion) / 2) * 100);
-  const score = clamp(Math.round(completionPercent * 0.4 + passedRate * 35 + comparisonRate * 25), 0, 100);
-  const mainPriority = comparison.decisions[0]?.decision === "maintain" || passedRate >= 0.75 ? "improved" : score >= 55 ? "mixed" : "missed";
-  const transferBlock = plan.blocks.find((blockItem) => blockItem.type === "random" || blockItem.type === "test");
+  const score = clamp(
+    Math.round(completionPercent * 0.4 + passedRate * 35 + comparisonRate * 25),
+    0,
+    100,
+  );
+  const mainPriority =
+    comparison.decisions[0]?.decision === "maintain" || passedRate >= 0.75
+      ? "improved"
+      : score >= 55
+        ? "mixed"
+        : "missed";
+  const transferBlock = plan.blocks.find(
+    (blockItem) => blockItem.type === "random" || blockItem.type === "test",
+  );
   const transferResult = transferBlock
     ? result.blockResults.find((item) => item.blockId === transferBlock.id)
     : null;
-  const transfer = transferResult?.passed ? "strong" : (transferResult?.score ?? 0) >= 50 ? "mixed" : "missed";
+  const transfer = transferResult?.passed
+    ? "strong"
+    : (transferResult?.score ?? 0) >= 50
+      ? "mixed"
+      : "missed";
 
   return {
     score,
     completionPercent,
-    verdict: score >= 80 ? "Practice landed" : score >= 60 ? "Useful, repeat the weak block" : "Incomplete signal",
+    verdict:
+      score >= 80
+        ? "Practice landed"
+        : score >= 60
+          ? "Useful, repeat the weak block"
+          : "Incomplete signal",
     nextAction:
       mainPriority === "improved"
         ? "Maintain the main priority and move the next plan toward transfer scoring."
@@ -1548,12 +1639,12 @@ async function persistCompletedPracticePlan(
     })
     .returning();
 
-  await db
-    .delete(practiceBlockResults)
-    .where(eq(practiceBlockResults.practiceResultId, result.id));
+  await db.delete(practiceBlockResults).where(eq(practiceBlockResults.practiceResultId, result.id));
 
   if (input.blockResults.length > 0) {
-    const blockIdByOrderId = new Map(saved.blocks.map((blockItem) => [blockItem.id, blockItem.dbId]));
+    const blockIdByOrderId = new Map(
+      saved.blocks.map((blockItem) => [blockItem.id, blockItem.dbId]),
+    );
     await db.insert(practiceBlockResults).values(
       input.blockResults
         .map((blockResult) => {
@@ -1595,7 +1686,12 @@ async function persistCompletedPracticePlan(
       updatedAt: now,
     })
     .where(and(eq(practicePlans.id, saved.id), eq(practicePlans.userId, userId)));
-  await awardPracticePlannerAchievements(userId, "completed", score);
+  await awardPracticePlannerAchievements(userId, "completed", score, {
+    blockResults: input.blockResults,
+    comparison,
+    planBlockCount: plan.blocks.length,
+    sourceSessionId: input.sourceSessionId ?? comparison.sourceSessionId,
+  });
 
   return { score, comparison };
 }
@@ -1650,7 +1746,10 @@ export async function getPracticePlannerPageData(userId: string) {
   return { context, savedPlans, templates, importOptions };
 }
 
-export async function getSavedPracticePlans(userId: string, limit = 8): Promise<SavedPracticePlan[]> {
+export async function getSavedPracticePlans(
+  userId: string,
+  limit = 8,
+): Promise<SavedPracticePlan[]> {
   const rows = await getDb()
     .select({
       plan: practicePlans,
@@ -1785,7 +1884,11 @@ export async function getPracticePlannerProgressSummary(userId: string) {
     .limit(80);
   const completed = rows.filter((row) => row.status === "analysed" || row.status === "completed");
   const planned = rows.filter(
-    (row) => row.status === "planned" || row.status === "awaiting_import" || row.status === "match_found" || row.status === "active",
+    (row) =>
+      row.status === "planned" ||
+      row.status === "awaiting_import" ||
+      row.status === "match_found" ||
+      row.status === "active",
   );
   const focusCounts = new Map<string, number>();
 
@@ -1834,7 +1937,9 @@ export async function getPracticePlanForSourceSessions(userId: string, sessionId
     })
     .from(practicePlans)
     .leftJoin(practiceResults, eq(practiceResults.practicePlanId, practicePlans.id))
-    .where(and(eq(practicePlans.userId, userId), inArray(practicePlans.sourceSessionId, sessionIds)))
+    .where(
+      and(eq(practicePlans.userId, userId), inArray(practicePlans.sourceSessionId, sessionIds)),
+    )
     .orderBy(desc(practicePlans.completedAt))
     .limit(1);
   const row = rows[0];
@@ -1843,16 +1948,37 @@ export async function getPracticePlanForSourceSessions(userId: string, sessionId
     return null;
   }
 
+  const comparison = row.result ? parsePracticeComparison(row.result.comparisonJson) : null;
+  const decisions = comparison?.decisions ?? [];
+  const passedBlocks = decisions.filter(
+    (decision) =>
+      decision.result === "passed" ||
+      decision.decision === "maintain" ||
+      decision.decision === "move_down",
+  ).length;
+  const mixedBlocks = decisions.filter((decision) => decision.result === "mixed").length;
+  const incompleteBlocks = decisions.filter(
+    (decision) => decision.result === "failed" || decision.result === "insufficient_data",
+  ).length;
+
   return {
     id: row.plan.id,
     title: row.plan.title,
     score: row.plan.practiceScore,
     verdict: row.result?.verdict ?? "Plan followed",
     href: "/practice",
+    comparisonSummary: comparison?.summary ?? null,
+    totalBlocks: decisions.length,
+    passedBlocks,
+    mixedBlocks,
+    incompleteBlocks,
   };
 }
 
-export async function getPracticePlanReviewForSourceSession(userId: string, sourceSessionId: string) {
+export async function getPracticePlanReviewForSourceSession(
+  userId: string,
+  sourceSessionId: string,
+) {
   const rows = await getDb()
     .select({
       plan: practicePlans,
@@ -2021,7 +2147,8 @@ function generateShortGamePracticePlan(
   priorities: PracticePriorityItem[],
 ): PracticePlan {
   const minutes = options.timeMinutes;
-  const wedge = selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
+  const wedge =
+    selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
   const hasBunker = options.facility?.bunker !== false;
   const blocks = [
     timeBlock("warmup", "Landing spot warm-up", ["sw", "gw"], minutesPart(minutes, 0.18), {
@@ -2032,22 +2159,38 @@ function generateShortGamePracticePlan(
       metric: "landing_spot",
       target: 6,
     }),
-    timeBlock("short_game", "Main short-game priority", [wedge.clubType ?? "sw"], minutesPart(minutes, 0.28), {
-      purpose: wedge.reason,
-      drill: "Alternate stock chip and slightly higher flight. Keep the same landing zone.",
-      successTarget: "Beat 60% inside the scoring circle.",
-      recordPrompt: "Inside-circle count and strike quality.",
-      metric: "inside_circle",
-      target: 60,
-    }),
-    timeBlock("short_game", hasBunker ? "Bunker control" : "Up-and-down ladder", ["sw"], minutesPart(minutes, 0.22), {
-      purpose: hasBunker ? "Add sand control without chasing perfect contact." : "Turn technique into a one-ball scoring task.",
-      drill: hasBunker ? "Three long, three medium, three short bunker shots." : "Drop one ball in nine lies and finish each hole.",
-      successTarget: hasBunker ? "6 of 9 out with controlled distance." : "4 of 9 up-and-downs.",
-      recordPrompt: "Leave distance and one-word lie note.",
-      metric: hasBunker ? "bunker_out" : "up_down",
-      target: hasBunker ? 6 : 4,
-    }),
+    timeBlock(
+      "short_game",
+      "Main short-game priority",
+      [wedge.clubType ?? "sw"],
+      minutesPart(minutes, 0.28),
+      {
+        purpose: wedge.reason,
+        drill: "Alternate stock chip and slightly higher flight. Keep the same landing zone.",
+        successTarget: "Beat 60% inside the scoring circle.",
+        recordPrompt: "Inside-circle count and strike quality.",
+        metric: "inside_circle",
+        target: 60,
+      },
+    ),
+    timeBlock(
+      "short_game",
+      hasBunker ? "Bunker control" : "Up-and-down ladder",
+      ["sw"],
+      minutesPart(minutes, 0.22),
+      {
+        purpose: hasBunker
+          ? "Add sand control without chasing perfect contact."
+          : "Turn technique into a one-ball scoring task.",
+        drill: hasBunker
+          ? "Three long, three medium, three short bunker shots."
+          : "Drop one ball in nine lies and finish each hole.",
+        successTarget: hasBunker ? "6 of 9 out with controlled distance." : "4 of 9 up-and-downs.",
+        recordPrompt: "Leave distance and one-word lie note.",
+        metric: hasBunker ? "bunker_out" : "up_down",
+        target: hasBunker ? 6 : 4,
+      },
+    ),
     timeBlock("test", "Pressure finish", ["sw", "gw"], minutesPart(minutes, 0.22), {
       purpose: "Make the session competitive enough to matter.",
       drill: "Nine-ball up-and-down challenge. Change lie every ball.",
@@ -2063,7 +2206,10 @@ function generateShortGamePracticePlan(
     summary: `${minutes}-minute short-game session around landing spot control and pressure scoring.`,
     totalBalls: null,
     focus: compactFocus([wedge]),
-    why: [...planWhy(context, wedge, null), "Short-game sessions use time and scoring tasks instead of fixed ball count."],
+    why: [
+      ...planWhy(context, wedge, null),
+      "Short-game sessions use time and scoring tasks instead of fixed ball count.",
+    ],
     blocks: resequence(blocks),
   });
 }
@@ -2073,19 +2219,25 @@ function generateSpeedPracticePlan(
   options: GeneratePracticePlanOptions,
   priorities: PracticePriorityItem[],
 ): PracticePlan {
-  const blocked = (context.trainingLoad.highRecentLoad || options.energy === "tired" || options.energy === "niggle") && !options.facility?.overrideTrainingLoad;
+  const blocked =
+    (context.trainingLoad.highRecentLoad ||
+      options.energy === "tired" ||
+      options.energy === "niggle") &&
+    !options.facility?.overrideTrainingLoad;
   const minutes = options.timeMinutes;
-  const speed = selectPriority(priorities, (item) => item.category === "speed") ?? {
-    key: "speed-driver",
-    clubType: "driver",
-    label: "Driver speed",
-    score: 50,
-    certainty: "medium",
-    reason: context.speed.recommendation,
-    drill: "Fast swings with full rest.",
-    category: "speed",
-    roadmap: false,
-  } satisfies PracticePriorityItem;
+  const speed =
+    selectPriority(priorities, (item) => item.category === "speed") ??
+    ({
+      key: "speed-driver",
+      clubType: "driver",
+      label: "Driver speed",
+      score: 50,
+      certainty: "medium",
+      reason: context.speed.recommendation,
+      drill: "Fast swings with full rest.",
+      category: "speed",
+      roadmap: false,
+    } satisfies PracticePriorityItem);
   const blocks = blocked
     ? [
         timeBlock("warmup", "Mobility and rhythm", ["driver"], minutesPart(minutes, 0.25), {
@@ -2132,7 +2284,9 @@ function generateSpeedPracticePlan(
         }),
         timeBlock("speed", "Overspeed set", ["driver"], minutesPart(minutes, 0.24), {
           purpose: speed.reason,
-          drill: options.facility?.speedSticks ? "Dominant and non-dominant overspeed sets." : "No-ball driver swings, three sets of three.",
+          drill: options.facility?.speedSticks
+            ? "Dominant and non-dominant overspeed sets."
+            : "No-ball driver swings, three sets of three.",
           successTarget: "One swing beats baseline.",
           recordPrompt: "Best swing and fatigue note.",
           metric: "speed",
@@ -2140,7 +2294,8 @@ function generateSpeedPracticePlan(
         }),
         timeBlock("test", "Driver transfer", ["driver"], minutesPart(minutes, 0.25), {
           purpose: "Make the speed usable with a ball.",
-          drill: "Ten driver shots with full target routine. No more than one ball every 45 seconds.",
+          drill:
+            "Ten driver shots with full target routine. No more than one ball every 45 seconds.",
           successTarget: "6 of 10 playable while holding speed intent.",
           recordPrompt: "Playable count, best speed, and big misses.",
           metric: "playable",
@@ -2156,8 +2311,14 @@ function generateSpeedPracticePlan(
     totalBalls: blocked ? 15 : 10,
     focus: ["Driver"],
     why: blocked
-      ? ["Recent load is high, so the plan avoids overspeed intensity.", context.trainingLoad.advice]
-      : [context.speed.recommendation, `Current speed: ${formatSpeedValue(context.speed.currentSpeedMph)}. Target: ${formatSpeedValue(context.speed.targetSpeedMph)}.`],
+      ? [
+          "Recent load is high, so the plan avoids overspeed intensity.",
+          context.trainingLoad.advice,
+        ]
+      : [
+          context.speed.recommendation,
+          `Current speed: ${formatSpeedValue(context.speed.currentSpeedMph)}. Target: ${formatSpeedValue(context.speed.targetSpeedMph)}.`,
+        ],
     blocks: resequence(blocks),
   });
 }
@@ -2246,14 +2407,24 @@ function generateCourseWarmupPlan(
       metric: "big_miss",
       target: Math.max(1, Math.floor(allocations.long / 4)),
     }),
-    block("random", "Random targets", buildTransferSequence([main, wedgeFallback(context), driverFallback(context)], allocations.random), allocations.random, 5, {
-      purpose: "Finish by changing clubs and targets like the course.",
-      drill: "Every ball gets a new target and full routine.",
-      successTarget: `${Math.ceil(allocations.random * 0.65)} playable.`,
-      recordPrompt: "Playable count.",
-      metric: "playable",
-      target: Math.ceil(allocations.random * 0.65),
-    }),
+    block(
+      "random",
+      "Random targets",
+      buildTransferSequence(
+        [main, wedgeFallback(context), driverFallback(context)],
+        allocations.random,
+      ),
+      allocations.random,
+      5,
+      {
+        purpose: "Finish by changing clubs and targets like the course.",
+        drill: "Every ball gets a new target and full routine.",
+        successTarget: `${Math.ceil(allocations.random * 0.65)} playable.`,
+        recordPrompt: "Playable count.",
+        metric: "playable",
+        target: Math.ceil(allocations.random * 0.65),
+      },
+    ),
   ];
 
   return finalizePlan(context, options, {
@@ -2273,34 +2444,59 @@ function generateMixedPracticePlan(
 ): PracticePlan {
   const balls = normalizeBallCount(options.ballCount ?? 60, 30, 120);
   const main = priorities[0] ?? fallbackPriority(context);
-  const wedge = selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
+  const wedge =
+    selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
   const blocks = [
-    block("warmup", "Warm-up", ["pw", "8i"], Math.round(balls * 0.15), minutesPart(options.timeMinutes, 0.15), {
-      purpose: "Get loose and read today's strike.",
-      drill: "Half wedge, stock wedge, stock 8i.",
-      successTarget: "75% playable.",
-      recordPrompt: "Playable count.",
-      metric: "playable",
-      target: Math.round(balls * 0.11),
-    }),
+    block(
+      "warmup",
+      "Warm-up",
+      ["pw", "8i"],
+      Math.round(balls * 0.15),
+      minutesPart(options.timeMinutes, 0.15),
+      {
+        purpose: "Get loose and read today's strike.",
+        drill: "Half wedge, stock wedge, stock 8i.",
+        successTarget: "75% playable.",
+        recordPrompt: "Playable count.",
+        metric: "playable",
+        target: Math.round(balls * 0.11),
+      },
+    ),
     priorityBlock(main, Math.round(balls * 0.28), "Main priority"),
     wedgeBlock(context, wedge, Math.round(balls * 0.22)),
-    block("short_game", "Short-game transfer", ["sw"], Math.round(balls * 0.15), minutesPart(options.timeMinutes, 0.2), {
-      purpose: "Make scoring practice more than full swings.",
-      drill: "Landing spot challenge, then one-ball up-and-down reps.",
-      successTarget: "10+ points from 16.",
-      recordPrompt: "Landing hits and up-and-down points.",
-      metric: "points",
-      target: 10,
-    }),
-    block("random", "Randomised finish", buildTransferSequence([main, wedge, driverFallback(context)], balls - Math.round(balls * 0.8)), balls - Math.round(balls * 0.8), minutesPart(options.timeMinutes, 0.2), {
-      purpose: "End with course transfer.",
-      drill: "Random club every ball. Score playable and target corridor.",
-      successTarget: "70% playable.",
-      recordPrompt: "Playable and corridor points.",
-      metric: "playable",
-      target: Math.round((balls - Math.round(balls * 0.8)) * 0.7),
-    }),
+    block(
+      "short_game",
+      "Short-game transfer",
+      ["sw"],
+      Math.round(balls * 0.15),
+      minutesPart(options.timeMinutes, 0.2),
+      {
+        purpose: "Make scoring practice more than full swings.",
+        drill: "Landing spot challenge, then one-ball up-and-down reps.",
+        successTarget: "10+ points from 16.",
+        recordPrompt: "Landing hits and up-and-down points.",
+        metric: "points",
+        target: 10,
+      },
+    ),
+    block(
+      "random",
+      "Randomised finish",
+      buildTransferSequence(
+        [main, wedge, driverFallback(context)],
+        balls - Math.round(balls * 0.8),
+      ),
+      balls - Math.round(balls * 0.8),
+      minutesPart(options.timeMinutes, 0.2),
+      {
+        purpose: "End with course transfer.",
+        drill: "Random club every ball. Score playable and target corridor.",
+        successTarget: "70% playable.",
+        recordPrompt: "Playable and corridor points.",
+        metric: "playable",
+        target: Math.round((balls - Math.round(balls * 0.8)) * 0.7),
+      },
+    ),
   ];
 
   return finalizePlan(context, options, {
@@ -2313,21 +2509,32 @@ function generateMixedPracticePlan(
   });
 }
 
-function priorityBlock(priority: PracticePriorityItem, balls: number, label: string): PracticeBlock {
+function priorityBlock(
+  priority: PracticePriorityItem,
+  balls: number,
+  label: string,
+): PracticeBlock {
   const club = priority.clubType ?? "7i";
   const isDriver = DRIVER_TYPES.has(club);
 
-  return block("technical", `${label}: ${priority.label} ${isDriver ? "delivery" : "start line"}`, [club], balls, 12, {
-    purpose: priority.reason,
-    drill: isDriver
-      ? "Neutral delivery window. Track path and face-to-path, but only score playable shots."
-      : "Start-line gate. Pick a clear start window and hit stock swings only.",
-    successTarget: `${Math.ceil(balls * 0.6)} of ${balls} start inside the corridor. No more than ${Math.max(1, Math.floor(balls * 0.12))} big misses.`,
-    recordPrompt: "Corridor hits, big misses, and one miss pattern note.",
-    metric: "corridor",
-    target: Math.ceil(balls * 0.6),
-    maxBigMisses: Math.max(1, Math.floor(balls * 0.12)),
-  });
+  return block(
+    "technical",
+    `${label}: ${priority.label} ${isDriver ? "delivery" : "start line"}`,
+    [club],
+    balls,
+    12,
+    {
+      purpose: priority.reason,
+      drill: isDriver
+        ? "Neutral delivery window. Track path and face-to-path, but only score playable shots."
+        : "Start-line gate. Pick a clear start window and hit stock swings only.",
+      successTarget: `${Math.ceil(balls * 0.6)} of ${balls} start inside the corridor. No more than ${Math.max(1, Math.floor(balls * 0.12))} big misses.`,
+      recordPrompt: "Corridor hits, big misses, and one miss pattern note.",
+      metric: "corridor",
+      target: Math.ceil(balls * 0.6),
+      maxBigMisses: Math.max(1, Math.floor(balls * 0.12)),
+    },
+  );
 }
 
 function wedgeBlock(
@@ -2338,9 +2545,7 @@ function wedgeBlock(
   const wedge = priority.clubType && WEDGE_TYPES.has(priority.clubType) ? priority.clubType : "sw";
   const matrix = context.bag.wedgeMatrix.find((item) => item.clubType === wedge);
   const rows = matrix?.rows ?? [];
-  const targets = rows
-    .map((row) => `${row.label}: ${row.carryYd ?? "target"} yd`)
-    .join(", ");
+  const targets = rows.map((row) => `${row.label}: ${row.carryYd ?? "target"} yd`).join(", ");
 
   return block("scoring", `${formatClubType(wedge)} wedge ladder`, [wedge, "gw", "pw"], balls, 10, {
     purpose: "Turn the scoring-zone opportunity into measured carry control.",
@@ -2465,7 +2670,14 @@ function rangeAllocation(totalBalls: number) {
   }
 
   if (totalBalls <= 80) {
-    return { warmup: 10, baseline: 10, main: 20, secondary: 15, scoring: 15, transfer: totalBalls - 70 };
+    return {
+      warmup: 10,
+      baseline: 10,
+      main: 20,
+      secondary: 15,
+      scoring: 15,
+      transfer: totalBalls - 70,
+    };
   }
 
   const warmup = 12;
@@ -2515,14 +2727,18 @@ function normalizeOptions(
   context: PracticePlannerContext,
 ): GeneratePracticePlanOptions {
   const ballCount =
-    options.sessionType === "range" || options.sessionType === "mixed" || options.sessionType === "course_warmup"
+    options.sessionType === "range" ||
+    options.sessionType === "mixed" ||
+    options.sessionType === "course_warmup"
       ? normalizeBallCount(options.facility?.customBalls ?? options.ballCount ?? 80)
       : options.sessionType === "speed"
         ? 10
         : null;
   const sessionType =
     options.sessionType === "speed" &&
-    (context.trainingLoad.highRecentLoad || options.energy === "tired" || options.energy === "niggle") &&
+    (context.trainingLoad.highRecentLoad ||
+      options.energy === "tired" ||
+      options.energy === "niggle") &&
     !options.facility?.overrideTrainingLoad
       ? "speed"
       : options.sessionType;
@@ -2617,7 +2833,9 @@ function buildContextWedgeMatrix(clubs: Awaited<ReturnType<typeof getProgressDat
   return buildWedgeMatrix(inputs);
 }
 
-function volatilityScoreForClub(analytics: Awaited<ReturnType<typeof getProgressData>>["clubs"][number]["analytics"]) {
+function volatilityScoreForClub(
+  analytics: Awaited<ReturnType<typeof getProgressData>>["clubs"][number]["analytics"],
+) {
   return (
     (analytics.accuracy.bigMissRate ?? 0) * 0.8 +
     (analytics.accuracy.shotConeWidthYd ?? 0) * 0.55 +
@@ -2657,7 +2875,9 @@ async function getScoringContext(userId: string) {
   const weakest = [...rows]
     .filter((row) => Number(row.sampleSize) >= 3 && row.total !== null)
     .sort((left, right) => Number(left.total ?? 0) - Number(right.total ?? 0))[0];
-  const penalty = [...rows].sort((left, right) => Number(right.penalties ?? 0) - Number(left.penalties ?? 0))[0];
+  const penalty = [...rows].sort(
+    (left, right) => Number(right.penalties ?? 0) - Number(left.penalties ?? 0),
+  )[0];
 
   return {
     weakestCategory: weakest?.category ?? null,
@@ -2744,7 +2964,10 @@ function fallbackPriority(context: PracticePlannerContext): PracticePriorityItem
   };
 }
 
-function fallbackSecondary(context: PracticePlannerContext, main: PracticePriorityItem): PracticePriorityItem {
+function fallbackSecondary(
+  context: PracticePlannerContext,
+  main: PracticePriorityItem,
+): PracticePriorityItem {
   const club = context.bag.clubs.find((item) => item.clubType !== main.clubType);
 
   return {
@@ -2769,7 +2992,9 @@ function wedgeFallback(context: PracticePlannerContext): PracticePriorityItem {
     label: wedge?.label ?? "SW",
     score: 46,
     certainty: wedge && wedge.sampleSize >= 8 ? "medium" : "low",
-    reason: wedge ? `${wedge.label} is the scoring-zone calibration club.` : "Wedge control protects scoring.",
+    reason: wedge
+      ? `${wedge.label} is the scoring-zone calibration club.`
+      : "Wedge control protects scoring.",
     drill: "Wedge carry ladder.",
     category: "wedge",
     roadmap: false,
@@ -2785,7 +3010,9 @@ function driverFallback(context: PracticePlannerContext): PracticePriorityItem {
     label: "Driver",
     score: driver ? 42 : 20,
     certainty: driver && driver.sampleSize >= 8 ? "medium" : "low",
-    reason: driver ? "Driver maintenance keeps penalty risk visible." : "Driver baseline needs data.",
+    reason: driver
+      ? "Driver maintenance keeps penalty risk visible."
+      : "Driver baseline needs data.",
     drill: "Driver delivery window.",
     category: "driver",
     roadmap: false,
@@ -2827,12 +3054,18 @@ function planWhy(
   ];
 }
 
-function confidenceLabel(why: string[], context: PracticePlannerContext): PracticePlan["confidenceLabel"] {
+function confidenceLabel(
+  why: string[],
+  context: PracticePlannerContext,
+): PracticePlan["confidenceLabel"] {
   if (context.bag.clubs.length === 0) {
     return "Low";
   }
 
-  if (why.some((line) => line.includes("latest") || line.includes("roadmap")) && context.bag.clubs.some((club) => club.sampleSize >= 10)) {
+  if (
+    why.some((line) => line.includes("latest") || line.includes("roadmap")) &&
+    context.bag.clubs.some((club) => club.sampleSize >= 10)
+  ) {
     return "High";
   }
 
@@ -2841,14 +3074,18 @@ function confidenceLabel(why: string[], context: PracticePlannerContext): Practi
 
 function blockDecision(
   blockItem: PracticeBlock,
-  summary: { shotCount: number; playableRate: number | null; offlineAverageYd: number | null } | undefined,
+  summary:
+    | { shotCount: number; playableRate: number | null; offlineAverageYd: number | null }
+    | undefined,
 ): PracticeComparison["decisions"][number]["decision"] {
   if (!summary || summary.shotCount === 0) {
     return "keep_priority";
   }
 
   if (blockItem.ballCount !== null && summary.shotCount < blockItem.ballCount) {
-    return summary.shotCount >= Math.ceil(blockItem.ballCount * 0.65) ? "repeat_once" : "keep_priority";
+    return summary.shotCount >= Math.ceil(blockItem.ballCount * 0.65)
+      ? "repeat_once"
+      : "keep_priority";
   }
 
   if (summary.playableRate !== null && summary.playableRate >= 75) {
@@ -2918,12 +3155,16 @@ export function scorePracticePlanSessionMatch(
   const overlap = plannedClubs.filter((club) => sessionClubs.has(club)).length;
   const focusClubs = plan.focusClubs.map((club) => club.toLowerCase());
   const focusOverlap = focusClubs.filter((club) => sessionClubs.has(club)).length;
-  const clubMixScore = plannedClubs.length > 0 ? Math.round((overlap / plannedClubs.length) * 20) : 10;
+  const clubMixScore =
+    plannedClubs.length > 0 ? Math.round((overlap / plannedClubs.length) * 20) : 10;
   const focusClubScore =
     focusClubs.length > 0 ? Math.round((focusOverlap / focusClubs.length) * 20) : 10;
   const ballCountScore =
     plan.totalBalls && plan.totalBalls > 0
-      ? Math.max(0, 20 - Math.round(Math.abs(session.shotCount - plan.totalBalls) / plan.totalBalls * 20))
+      ? Math.max(
+          0,
+          20 - Math.round((Math.abs(session.shotCount - plan.totalBalls) / plan.totalBalls) * 20),
+        )
       : 12;
   const sessionTypeScore = sessionMatchesPlanType(plan.sessionType, session.sessionType) ? 10 : 0;
   const plannedTime = Date.parse(plan.plannedAt);
@@ -2948,10 +3189,14 @@ export function scorePracticePlanSessionMatch(
   );
   const reason = [
     sessionTypeScore > 0 ? "session type matched" : "session type was different",
-    sourceTypeScore > 0 ? `${session.sourceType} source matched` : `${session.sourceType} source was weaker evidence`,
+    sourceTypeScore > 0
+      ? `${session.sourceType} source matched`
+      : `${session.sourceType} source was weaker evidence`,
     `${focusOverlap}/${focusClubs.length || 1} focus clubs appeared`,
     `${overlap}/${plannedClubs.length || 1} planned club groups appeared`,
-    plan.totalBalls ? `${session.shotCount}/${plan.totalBalls} planned shots imported` : `${session.shotCount} shots imported`,
+    plan.totalBalls
+      ? `${session.shotCount}/${plan.totalBalls} planned shots imported`
+      : `${session.shotCount} shots imported`,
   ].join("; ");
 
   return { score, reason, breakdown };
@@ -2986,7 +3231,9 @@ function hasPartialPracticeEvidence(
   const importedClubCounts = new Map(
     session.clubSummaries.map((summary) => [summary.clubType.toLowerCase(), summary.shotCount]),
   );
-  const hasPlannedClubShots = [...plannedClubs].some((club) => (importedClubCounts.get(club) ?? 0) > 0);
+  const hasPlannedClubShots = [...plannedClubs].some(
+    (club) => (importedClubCounts.get(club) ?? 0) > 0,
+  );
   const hasFocusClubShots = [...focusClubs].some((club) => (importedClubCounts.get(club) ?? 0) > 0);
   const samePracticeWindow =
     Math.abs(session.sessionDate.getTime() - Date.parse(plan.plannedAt)) <= 7 * 24 * 60 * 60 * 1000;
@@ -3018,7 +3265,9 @@ function sessionMatchesPlanType(planType: PracticeSessionType, sessionType: stri
   }
 
   if (planType === "mixed") {
-    return sessionType === "range" || sessionType === "simulator" || sessionType === "simulated_course";
+    return (
+      sessionType === "range" || sessionType === "simulator" || sessionType === "simulated_course"
+    );
   }
 
   if (planType === "speed") {
@@ -3050,12 +3299,11 @@ function buildPracticeResultFromImport(
 
       return {
         blockId: blockItem.id,
-        completionStatus:
-          decision?.matchedPlannedVolume
-            ? "complete"
-            : actualBalls > 0 || blockItem.ballCount === null
-              ? "partial"
-              : "missed",
+        completionStatus: decision?.matchedPlannedVolume
+          ? "complete"
+          : actualBalls > 0 || blockItem.ballCount === null
+            ? "partial"
+            : "missed",
         actualBalls: blockItem.ballCount === null ? null : actualBalls,
         actualMinutes: blockItem.timeMinutes,
         score,
@@ -3091,7 +3339,9 @@ function importedDecisionScore(
   return Math.max(0, Math.round(blockItem.scoringRules.target * 0.55));
 }
 
-function dbBlockToView(blockRow: typeof practiceBlocks.$inferSelect & { dbId?: string }): PracticeBlock & { dbId: string } {
+function dbBlockToView(
+  blockRow: typeof practiceBlocks.$inferSelect & { dbId?: string },
+): PracticeBlock & { dbId: string } {
   return {
     id: slug(`${blockRow.blockOrder}-${blockRow.title}`),
     dbId: blockRow.id,
@@ -3109,7 +3359,10 @@ function dbBlockToView(blockRow: typeof practiceBlocks.$inferSelect & { dbId?: s
       metric: String(blockRow.scoringRulesJson.metric ?? "completion"),
       target: asNumber(blockRow.scoringRulesJson.target) ?? 1,
       maxBigMisses: asNumber(blockRow.scoringRulesJson.maxBigMisses) ?? undefined,
-      unit: typeof blockRow.scoringRulesJson.unit === "string" ? blockRow.scoringRulesJson.unit : undefined,
+      unit:
+        typeof blockRow.scoringRulesJson.unit === "string"
+          ? blockRow.scoringRulesJson.unit
+          : undefined,
     },
   };
 }
@@ -3183,10 +3436,16 @@ function parsePlanGeneration(value: unknown): PracticePlanGeneration {
 
   return {
     source,
-    label: typeof value.label === "string" && value.label.trim() ? value.label.trim() : source === "openai" ? "OpenAI coach copy" : "Rules engine",
+    label:
+      typeof value.label === "string" && value.label.trim()
+        ? value.label.trim()
+        : source === "openai"
+          ? "OpenAI coach copy"
+          : "Rules engine",
     model: typeof value.model === "string" && value.model.trim() ? value.model.trim() : null,
     cached: value.cached === true,
-    creditsCharged: typeof value.creditsCharged === "number" ? Math.max(0, value.creditsCharged) : 0,
+    creditsCharged:
+      typeof value.creditsCharged === "number" ? Math.max(0, value.creditsCharged) : 0,
     creditsRemaining:
       typeof value.creditsRemaining === "number" ? Math.max(0, value.creditsRemaining) : null,
     note: typeof value.note === "string" && value.note.trim() ? value.note.trim() : null,
@@ -3256,7 +3515,8 @@ function parsePracticeComparison(value: unknown): PracticeComparison | null {
         }
 
         return {
-          blockId: typeof item.blockId === "string" ? item.blockId : slug(String(item.title ?? "block")),
+          blockId:
+            typeof item.blockId === "string" ? item.blockId : slug(String(item.title ?? "block")),
           title: typeof item.title === "string" ? item.title : "Practice block",
           target: typeof item.target === "string" ? item.target : "Target saved",
           actual: typeof item.actual === "string" ? item.actual : "Imported data saved",
@@ -3268,10 +3528,7 @@ function parsePracticeComparison(value: unknown): PracticeComparison | null {
           scoringMode: item.scoringMode === "ordered" ? "ordered" : scoringMode,
           linkedShotIds: parseStringArray(item.linkedShotIds),
           metrics: isRecord(item.metrics) ? item.metrics : {},
-          summary:
-            typeof item.summary === "string"
-              ? item.summary
-              : "Imported block result saved.",
+          summary: typeof item.summary === "string" ? item.summary : "Imported block result saved.",
           decision: decision as PracticeComparison["decisions"][number]["decision"],
         };
       })
@@ -3280,11 +3537,16 @@ function parsePracticeComparison(value: unknown): PracticeComparison | null {
 }
 
 function parseStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function parseBlockEvaluationResult(value: unknown): PracticeBlockEvaluationResult {
-  return value === "passed" || value === "mixed" || value === "failed" || value === "insufficient_data"
+  return value === "passed" ||
+    value === "mixed" ||
+    value === "failed" ||
+    value === "insufficient_data"
     ? value
     : "insufficient_data";
 }
@@ -3331,10 +3593,104 @@ function plannerContextSnapshot(context: PracticePlannerContext) {
   };
 }
 
+type PracticePlannerAchievementAwardContext = {
+  blockResults?: PracticeBlockResultInput[];
+  comparison?: PracticeComparison;
+  planBlockCount?: number;
+  sourceSessionId?: string | null;
+};
+
+type PracticePlannerAchievementStats = {
+  wonDrills: number;
+  scoredDrills: number;
+  planBlocks: number;
+};
+
+export function practicePlannerAchievementCandidateIds(input: {
+  event: "created" | "completed";
+  planCount: number;
+  completedCount: number;
+  score?: PracticeScore;
+  blockResults?: PracticeBlockResultInput[];
+  comparison?: PracticeComparison;
+  planBlockCount?: number;
+}) {
+  const stats = practicePlannerAchievementStats(
+    input.blockResults ?? [],
+    input.comparison,
+    input.planBlockCount,
+  );
+
+  return [
+    input.event === "created" && input.planCount >= 1 ? "practice_planner_first_plan" : null,
+    input.event === "completed" && input.completedCount >= 1
+      ? "practice_planner_first_completed"
+      : null,
+    input.event === "completed" && input.completedCount >= 5
+      ? "practice_planner_five_completed"
+      : null,
+    input.event === "completed" && (input.score?.score ?? 0) >= 80
+      ? "practice_planner_target_beaten"
+      : null,
+    input.event === "completed" && input.score?.mainPriority === "improved"
+      ? "practice_planner_priority_fixed"
+      : null,
+    input.event === "completed" && stats.wonDrills >= 1 ? "practice_planner_drill_winner" : null,
+    input.event === "completed" && stats.wonDrills >= 3
+      ? "practice_planner_three_drills_won"
+      : null,
+    input.event === "completed" && stats.wonDrills >= 5 ? "practice_planner_five_drills_won" : null,
+    input.event === "completed" &&
+    stats.planBlocks >= 3 &&
+    stats.scoredDrills >= stats.planBlocks &&
+    stats.wonDrills === stats.planBlocks
+      ? "practice_planner_clean_card"
+      : null,
+  ].filter((item): item is string => Boolean(item));
+}
+
+function practicePlannerAchievementStats(
+  blockResults: PracticeBlockResultInput[],
+  comparison: PracticeComparison | undefined,
+  planBlockCount: number | undefined,
+): PracticePlannerAchievementStats {
+  const decisionsByBlockId = new Map(
+    (comparison?.decisions ?? []).map((decision) => [decision.blockId, decision]),
+  );
+  const blockIds = new Set([
+    ...blockResults.map((blockResult) => blockResult.blockId),
+    ...decisionsByBlockId.keys(),
+  ]);
+  let wonDrills = 0;
+  let scoredDrills = 0;
+
+  for (const blockId of blockIds) {
+    const blockResult = blockResults.find((item) => item.blockId === blockId);
+    const decision = decisionsByBlockId.get(blockId);
+    const actualBalls = blockResult?.actualBalls ?? decision?.actualBalls ?? 0;
+    const result = blockResult?.result ?? decision?.result;
+
+    if (actualBalls > 0 || result === "passed" || result === "mixed" || result === "failed") {
+      scoredDrills += 1;
+    }
+
+    if (blockResult?.passed || result === "passed") {
+      wonDrills += 1;
+    }
+  }
+
+  return {
+    wonDrills,
+    scoredDrills,
+    planBlocks: planBlockCount ?? Math.max(blockResults.length, comparison?.decisions.length ?? 0),
+  };
+}
+
 async function awardPracticePlannerAchievements(
   userId: string,
   event: "created" | "completed",
   score?: PracticeScore,
+  context: PracticePlannerAchievementAwardContext = {},
 ) {
   const db = getDb();
   const now = new Date();
@@ -3344,36 +3700,67 @@ async function awardPracticePlannerAchievements(
     .where(eq(practicePlans.userId, userId));
   const [completedCountRow] = await db
     .select({ count: sql<number>`count(*)::int` })
-    .from(practicePlans)
-    .where(and(eq(practicePlans.userId, userId), eq(practicePlans.status, "completed")));
-  const candidates = [
-    event === "created" && Number(planCountRow?.count ?? 0) >= 1 ? "practice_planner_first_plan" : null,
-    event === "completed" && Number(completedCountRow?.count ?? 0) >= 1 ? "practice_planner_first_completed" : null,
-    event === "completed" && Number(completedCountRow?.count ?? 0) >= 5 ? "practice_planner_five_completed" : null,
-    event === "completed" && (score?.score ?? 0) >= 80 ? "practice_planner_target_beaten" : null,
-    event === "completed" && score?.mainPriority === "improved" ? "practice_planner_priority_fixed" : null,
-  ].filter((item): item is string => Boolean(item));
+    .from(practiceResults)
+    .where(
+      and(
+        eq(practiceResults.userId, userId),
+        eq(practiceResults.completionStatus, "complete"),
+        sql`${practiceResults.sourceSessionId} is not null`,
+      ),
+    );
+  const stats = practicePlannerAchievementStats(
+    context.blockResults ?? [],
+    context.comparison,
+    context.planBlockCount,
+  );
+  const sourceSessionId = context.sourceSessionId ?? context.comparison?.sourceSessionId ?? null;
+  const candidates = practicePlannerAchievementCandidateIds({
+    event,
+    planCount: Number(planCountRow?.count ?? 0),
+    completedCount: Number(completedCountRow?.count ?? 0),
+    score,
+    blockResults: context.blockResults,
+    comparison: context.comparison,
+    planBlockCount: context.planBlockCount,
+  });
 
   for (const achievementId of candidates) {
     const [existing] = await db
       .select({ achievementId: userAchievements.achievementId })
       .from(userAchievements)
-      .where(and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievementId)))
+      .where(
+        and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievementId)),
+      )
       .limit(1);
 
     if (existing) {
       continue;
     }
 
-    const xp = achievementId === "practice_planner_five_completed" ? 200 : 100;
+    const achievement = getAchievement(achievementId);
+
+    if (!achievement) {
+      continue;
+    }
+
+    const metadata = {
+      source: "practice_planner",
+      event,
+      practiceScore: score?.score ?? null,
+      wonDrills: stats.wonDrills,
+      scoredDrills: stats.scoredDrills,
+      planBlocks: stats.planBlocks,
+    };
+    const xp = xpForAchievement(achievement.xp, false);
     await db.insert(userAchievements).values({
       userId,
       achievementId,
       firstUnlockedAt: now,
       lastUnlockedAt: now,
       unlockCount: 1,
+      sourceSessionId,
       xpAwarded: xp,
-      metadataJson: { source: "practice_planner" },
+      metadataJson: metadata,
       createdAt: now,
       updatedAt: now,
     });
@@ -3384,8 +3771,12 @@ async function awardPracticePlannerAchievements(
         amount: xp,
         reason: "achievement",
         achievementId,
+        sessionId: sourceSessionId,
         dedupeKey: `achievement:${achievementId}`,
-        metadataJson: { source: "practice_planner" },
+        metadataJson: {
+          achievementName: achievement.name,
+          ...metadata,
+        },
         createdAt: now,
       })
       .onConflictDoNothing({
@@ -3416,7 +3807,8 @@ const STATIC_PRACTICE_TEMPLATES: PracticeTemplateView[] = [
   {
     id: "template-80-range",
     title: "80-ball range session",
-    description: "Full structured range session with main, secondary, scoring, and randomised finish.",
+    description:
+      "Full structured range session with main, secondary, scoring, and randomised finish.",
     sessionType: "range",
     ballCount: 80,
     timeMinutes: 45,
@@ -3446,7 +3838,13 @@ function emptyContext(): PracticePlannerContext {
   return {
     generatedAt: new Date().toISOString(),
     latestPractice: emptyLatestPractice(),
-    progress: { priorities: [], trustLadder: [], mostVolatile: null, weakestSignal: null, currentForm: null },
+    progress: {
+      priorities: [],
+      trustLadder: [],
+      mostVolatile: null,
+      weakestSignal: null,
+      currentForm: null,
+    },
     bag: { clubs: [], issues: [], wedgeMatrix: [] },
     trainingLoad: {
       statusKey: "balanced",
@@ -3468,7 +3866,14 @@ function emptyContext(): PracticePlannerContext {
 }
 
 function parseIntent(value: string): PracticeIntent {
-  return ["scoring", "confidence", "latest_weakness", "round_preparation", "distance_mapping", "speed"].includes(value)
+  return [
+    "scoring",
+    "confidence",
+    "latest_weakness",
+    "round_preparation",
+    "distance_mapping",
+    "speed",
+  ].includes(value)
     ? (value as PracticeIntent)
     : "latest_weakness";
 }
@@ -3502,11 +3907,7 @@ function slug(value: string) {
 
 function uniqueClubs(clubs: string[]) {
   return [
-    ...new Set(
-      clubs
-        .map((club) => (club.trim() ? normalizeClubType(club) : ""))
-        .filter(Boolean),
-    ),
+    ...new Set(clubs.map((club) => (club.trim() ? normalizeClubType(club) : "")).filter(Boolean)),
   ];
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { cn } from "@/lib/utils";
 
 export type CourseScorecardSvgHole = {
@@ -45,6 +46,8 @@ export function CourseScorecardSvg({
   const totalScore = sumNullable(orderedHoles.map((hole) => hole.score ?? null));
   const totalPutts = sumNullable(orderedHoles.map((hole) => hole.putts ?? null));
   const toPar = totalScore === null ? null : totalScore - totalPar;
+  const totalShots = sumNullable(orderedHoles.map((hole) => hole.shotCount ?? null));
+  const totalPenalties = sumNullable(orderedHoles.map((hole) => hole.penalties ?? null));
 
   if (variant === "compact") {
     return (
@@ -56,6 +59,7 @@ export function CourseScorecardSvg({
         totalPar={totalPar}
         totalPutts={totalPutts}
         totalScore={totalScore}
+        totalShots={totalShots}
         totalYards={totalYards}
         toPar={toPar}
       />
@@ -67,8 +71,6 @@ export function CourseScorecardSvg({
   const groupHeight = 38 + rowsPerGroup * 48 + 24;
   const width = 1120;
   const height = 200 + groups.length * groupHeight;
-  const totalShots = sumNullable(orderedHoles.map((hole) => hole.shotCount ?? null));
-  const totalPenalties = sumNullable(orderedHoles.map((hole) => hole.penalties ?? null));
 
   return (
     <div
@@ -162,6 +164,25 @@ export function CourseScorecardSvg({
           ]}
         />
       </svg>
+      <ChartAccessibleFallback
+        title="Course scorecard"
+        summary={scorecardSummary({
+          courseName,
+          holes: orderedHoles,
+          showPenalties,
+          showShotCounts,
+          totalPar,
+          totalPenalties,
+          totalPutts,
+          totalScore,
+          totalShots,
+          totalYards,
+          toPar,
+        })}
+        columns={scorecardFallbackColumns(showShotCounts, showPenalties)}
+        rows={scorecardFallbackRows(orderedHoles, showShotCounts, showPenalties)}
+        className="mt-2 bg-white/95"
+      />
     </div>
   );
 }
@@ -174,6 +195,7 @@ function CompactCourseScorecardSvg({
   totalPar,
   totalPutts,
   totalScore,
+  totalShots,
   totalYards,
   toPar,
 }: {
@@ -184,6 +206,7 @@ function CompactCourseScorecardSvg({
   totalPar: number;
   totalPutts: number | null;
   totalScore: number | null;
+  totalShots: number | null;
   totalYards: number;
   toPar: number | null;
 }) {
@@ -257,6 +280,25 @@ function CompactCourseScorecardSvg({
         <CompactTotal label="Putts" value={formatNullable(totalPutts)} x="198" y={height - 30} />
         <CompactTotal label="Yards" value={totalYards.toString()} x="280" y={height - 30} />
       </svg>
+      <ChartAccessibleFallback
+        title="Course scorecard"
+        summary={scorecardSummary({
+          courseName,
+          holes,
+          showPenalties: false,
+          showShotCounts: totalShots !== null,
+          totalPar,
+          totalPenalties: null,
+          totalPutts,
+          totalScore,
+          totalShots,
+          totalYards,
+          toPar,
+        })}
+        columns={scorecardFallbackColumns(totalShots !== null, false)}
+        rows={scorecardFallbackRows(holes, totalShots !== null, false)}
+        className="mt-2 bg-white/95"
+      />
     </div>
   );
 }
@@ -908,6 +950,90 @@ function scoreMarkForHole(score: number | null, par: number) {
   }
 
   return "none";
+}
+
+function scorecardSummary({
+  courseName,
+  holes,
+  showPenalties,
+  showShotCounts,
+  totalPar,
+  totalPenalties,
+  totalPutts,
+  totalScore,
+  totalShots,
+  totalYards,
+  toPar,
+}: {
+  courseName: string;
+  holes: CourseScorecardSvgHole[];
+  showPenalties: boolean;
+  showShotCounts: boolean;
+  totalPar: number;
+  totalPenalties: number | null;
+  totalPutts: number | null;
+  totalScore: number | null;
+  totalShots: number | null;
+  totalYards: number;
+  toPar: number | null;
+}) {
+  const scoredHoles = holes.filter((hole) => typeof hole.score === "number").length;
+  const puttHoles = holes.filter((hole) => typeof hole.putts === "number").length;
+  const scoreText =
+    totalScore === null
+      ? "No saved score is available yet"
+      : `${totalScore} strokes (${formatToPar(toPar)}) across ${scoredHoles}/${holes.length} scored holes`;
+  const puttText =
+    totalPutts === null
+      ? "putts are not saved"
+      : `${totalPutts} putts across ${puttHoles}/${holes.length} holes`;
+  const shotText =
+    showShotCounts && totalShots !== null
+      ? ` Launch-monitor rows account for ${totalShots} linked shots.`
+      : "";
+  const penaltyText =
+    showPenalties && totalPenalties !== null ? ` Penalties total ${totalPenalties}.` : "";
+
+  return `${courseName} scorecard shows ${holes.length} holes, par ${totalPar}, ${totalYards} yd. ${scoreText}; ${puttText}.${shotText}${penaltyText}`;
+}
+
+function scorecardFallbackColumns(showShotCounts: boolean, showPenalties: boolean) {
+  return [
+    { key: "hole", label: "Hole" },
+    { key: "par", label: "Par" },
+    { key: "yards", label: "Yards" },
+    { key: "score", label: "Score" },
+    { key: "toPar", label: "To par" },
+    { key: "putts", label: "Putts" },
+    ...(showShotCounts ? [{ key: "shots", label: "Shots" }] : []),
+    ...(showPenalties ? [{ key: "penalties", label: "Penalties" }] : []),
+  ];
+}
+
+function scorecardFallbackRows(
+  holes: CourseScorecardSvgHole[],
+  showShotCounts: boolean,
+  showPenalties: boolean,
+) {
+  return holes.map((hole) => ({
+    _key: `hole-${hole.holeNumber}`,
+    hole: hole.holeNumber.toString(),
+    par: hole.par.toString(),
+    yards: hole.yards.toString(),
+    score: formatNullable(hole.score ?? null),
+    toPar: formatHoleToPar(hole.score ?? null, hole.par),
+    putts: formatNullable(hole.putts ?? null),
+    ...(showShotCounts ? { shots: formatNullable(hole.shotCount ?? null) } : {}),
+    ...(showPenalties ? { penalties: formatNullable(hole.penalties ?? null) } : {}),
+  }));
+}
+
+function formatHoleToPar(score: number | null, par: number) {
+  if (score === null) {
+    return "--";
+  }
+
+  return formatToPar(score - par);
 }
 
 function numberOrNull(value: string) {

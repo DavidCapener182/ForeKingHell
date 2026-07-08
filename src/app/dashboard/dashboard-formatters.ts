@@ -40,12 +40,10 @@ export function formatScoreVsPar(score: number | null, par: number | null) {
 }
 
 export function getRoundHoleHighlights(latestRound: {
-  scorecardJson:
-    | Array<{
-        par: number;
-        score?: number | null;
-      }>
-    | null;
+  scorecardJson: Array<{
+    par: number;
+    score?: number | null;
+  }> | null;
 }) {
   const holes = (latestRound.scorecardJson ?? [])
     .map((hole, index) => ({

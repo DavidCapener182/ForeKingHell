@@ -19,7 +19,18 @@ import {
 } from "lucide-react";
 
 import {
+  ChartAccessibleFallback,
+  type ChartFallbackColumn,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
   DataPanel,
+  DataTableFrame,
   EmptyState,
   MobileSectionChips,
   SectionHeader,
@@ -34,9 +45,23 @@ import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
 import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
 import { TRAINING_RANGE_OPTIONS, type TrainingRangeKey } from "@/lib/training/ranges";
-import type { TrainingEfficiencyCard, TrainingOverTimeData } from "@/lib/training/trainingData";
+import type { FitnessFreshnessPoint } from "@/lib/training/fitnessFreshness";
+import type {
+  TrainingEfficiencyCard,
+  TrainingOverTimeData,
+  TrainingSessionListItem,
+} from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
 
 type TrainingLoadRangeViewProps = {
@@ -50,6 +75,53 @@ const integerFormatter = new Intl.NumberFormat("en-GB", {
 const weekdayFormatter = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
 });
+const chartDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+});
+
+const trainingStatusChartColumns: ChartFallbackColumn[] = [
+  { key: "date", label: "Date" },
+  { key: "form", label: "Golf Form" },
+  { key: "sessionQuality", label: "Session Quality" },
+  { key: "fitness", label: "Training Fitness" },
+  { key: "fatigue", label: "Recent Load" },
+];
+
+const dailyLoadChartColumns: ChartFallbackColumn[] = [
+  { key: "date", label: "Date" },
+  { key: "load", label: "Session load" },
+  { key: "band", label: "Load band" },
+];
+
+const trainingSessionColumns: DesktopWorkbenchColumn[] = [
+  { id: "date", label: "Date", locked: true },
+  { id: "session", label: "Session", locked: true },
+  { id: "source", label: "Source" },
+  { id: "load", label: "Load" },
+  { id: "rpe", label: "RPE" },
+  { id: "volume", label: "Volume" },
+  { id: "conditions", label: "Conditions" },
+  { id: "notes", label: "Notes" },
+];
+
+const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Heavy golf load",
+    href: "/stats/training-over-time?range=90d#training-load-sessions",
+    detail: "High-load rounds, range work and speed sessions",
+  },
+  {
+    title: "Recent practice rhythm",
+    href: "/stats/training-over-time?range=30d#training-load-sessions",
+    detail: "Last month of logged golf workload",
+  },
+  {
+    title: "Season build",
+    href: "/stats/training-over-time?range=1y#training-load-sessions",
+    detail: "Long-range fitness, fatigue and form evidence",
+  },
+];
 
 export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
   const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);
@@ -57,6 +129,10 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
     () => selectTrainingRangeData(data, activeRangeKey),
     [activeRangeKey, data],
   );
+  const trainingStatusSummary = buildTrainingStatusChartSummary(displayData.series);
+  const dailyLoadSummary = buildDailyLoadChartSummary(displayData.series);
+  const trainingStatusRows = buildTrainingStatusChartRows(displayData.series);
+  const dailyLoadRows = buildDailyLoadChartRows(displayData.series);
 
   function handleRangeChange(rangeKey: TrainingRangeKey) {
     setActiveRangeKey(rangeKey);
@@ -75,6 +151,7 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
           { label: "Balance", href: "#balance" },
           { label: "Streak", href: "#streak" },
           { label: "Load", href: "#load" },
+          { label: "Ledger", href: "#training-load-sessions" },
           { label: "Log", href: "#log-load" },
           { label: "Recent", href: "#recent" },
         ]}
@@ -95,7 +172,7 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
       <DataPanel id="chart">
         <SectionHeader
           title="Training Status"
-          description="Golf Form is the headline signal. Training Fitness and Recent Load show the workload behind it."
+          description="Golf Form is the trend signal. Session Quality shows how good each scored session was."
           action={
             <StatusPill tone={displayData.status.tone}>{displayData.status.label}</StatusPill>
           }
@@ -104,6 +181,13 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
           <TrainingOverTimeChart
             data={displayData.series}
             sessionMarkers={displayData.sessionMarkers}
+          />
+          <ChartAccessibleFallback
+            title="Training Status"
+            summary={trainingStatusSummary}
+            columns={trainingStatusChartColumns}
+            rows={trainingStatusRows}
+            className="mt-3"
           />
         </CardContent>
       </DataPanel>
@@ -125,8 +209,16 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
         <CardContent className="grid gap-3">
           <LoadLegend />
           <TrainingLoadBars data={displayData.series} />
+          <ChartAccessibleFallback
+            title="Daily swing load"
+            summary={dailyLoadSummary}
+            columns={dailyLoadChartColumns}
+            rows={dailyLoadRows}
+          />
         </CardContent>
       </DataPanel>
+
+      <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
 
       <TrainingStatusCard
         latest={displayData.latest}
@@ -591,6 +683,134 @@ function LogGolfLoadPanel({ rangeKey, today }: { rangeKey: TrainingRangeKey; tod
         </div>
       </details>
     </DataPanel>
+  );
+}
+
+function TrainingSessionLedger({
+  sessions,
+  rangeKey,
+}: {
+  sessions: TrainingSessionListItem[];
+  rangeKey: TrainingRangeKey;
+}) {
+  const rangeLabel =
+    TRAINING_RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? rangeKey;
+
+  return (
+    <section
+      id="training-load-sessions"
+      className="hidden scroll-mt-28 gap-3 sm:grid"
+      data-workbench-scope="training-load-sessions"
+    >
+      <DataPanel className="gap-0 py-0">
+        <SectionHeader
+          title="Training load ledger"
+          description="Range, round, speed and manual workload rows behind the selected Training Status range."
+          action={<StatusPill tone="sky">{rangeLabel}</StatusPill>}
+        />
+        <CardContent className="grid gap-3 p-3">
+          <DesktopTableWorkbenchControls
+            viewKey="training-load-sessions"
+            scope="training-load-sessions"
+            currentViewLabel={`${rangeLabel} training load`}
+            resultLabel={`${integerFormatter.format(sessions.length)} session${
+              sessions.length === 1 ? "" : "s"
+            }`}
+            columns={trainingSessionColumns}
+            suggestedViews={trainingSessionSuggestedViews}
+            exportTableId="training-load-sessions"
+            exportFileName={`forekinghell-training-load-${rangeKey}.csv`}
+          />
+          <DataTableFrame mainTable mainTableLabel="Training load session table">
+            <Table
+              data-workbench-export-table="training-load-sessions"
+              aria-describedby="training-load-sessions-summary"
+            >
+              <TableCaption id="training-load-sessions-summary" className="sr-only">
+                Training load session table showing date, session, source, workload, RPE, volume,
+                conditions and notes for the selected range.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                <TableRow>
+                  <TableHead
+                    data-column="date"
+                    className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    Date
+                  </TableHead>
+                  <TableHead data-column="session" className="min-w-64">
+                    Session
+                  </TableHead>
+                  <TableHead data-column="source">Source</TableHead>
+                  <TableHead data-column="load" className="text-right">
+                    Load
+                  </TableHead>
+                  <TableHead data-column="rpe" className="text-right">
+                    RPE
+                  </TableHead>
+                  <TableHead data-column="volume">Volume</TableHead>
+                  <TableHead data-column="conditions">Conditions</TableHead>
+                  <TableHead data-column="notes" className="min-w-72">
+                    Notes
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessions.length > 0 ? (
+                  sessions.map((session) => (
+                    <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="date"
+                        className="sticky left-0 z-10 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        {formatLedgerDate(session.sessionDate)}
+                      </TableCell>
+                      <TableCell data-column="session">
+                        <div className="min-w-0">
+                          <p className="max-w-72 truncate font-semibold text-foreground">
+                            {session.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {session.competition ? "Competition" : "Training"} -{" "}
+                            {session.sourceId ? session.sourceId.slice(0, 8) : "manual entry"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell data-column="source">
+                        <StatusPill tone={trainingSourceTone(session.sourceType)}>
+                          {formatTrainingSource(session.sourceType)}
+                        </StatusPill>
+                      </TableCell>
+                      <TableCell data-column="load" className="text-right tabular-nums">
+                        {integerFormatter.format(Math.round(session.sessionLoad))}
+                      </TableCell>
+                      <TableCell data-column="rpe" className="text-right tabular-nums">
+                        {session.rpe}
+                      </TableCell>
+                      <TableCell data-column="volume">{formatTrainingVolume(session)}</TableCell>
+                      <TableCell data-column="conditions">
+                        {formatTrainingConditions(session)}
+                      </TableCell>
+                      <TableCell data-column="notes">
+                        <span className="block max-w-80 truncate text-muted-foreground">
+                          {session.notes?.trim() || "No notes"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                      No training load sessions are logged in this range.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </CardContent>
+      </DataPanel>
+    </section>
   );
 }
 
@@ -1079,8 +1299,167 @@ function reportGradeDotClass(tone: ReturnType<typeof gradeTone>) {
   }
 }
 
+function formatLedgerDate(dateKey: string) {
+  return chartDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
+function formatTrainingSource(sourceType: TrainingSessionListItem["sourceType"]) {
+  switch (sourceType) {
+    case "launch_monitor":
+      return "Launch monitor";
+    case "imported":
+      return "Imported";
+    case "practice":
+      return "Practice";
+    case "round":
+      return "Round";
+    case "manual":
+      return "Manual";
+  }
+}
+
+function trainingSourceTone(sourceType: TrainingSessionListItem["sourceType"]) {
+  switch (sourceType) {
+    case "round":
+      return "green";
+    case "manual":
+      return "amber";
+    default:
+      return "sky";
+  }
+}
+
+function formatTrainingVolume(session: TrainingSessionListItem) {
+  if (session.holesPlayed) {
+    return `${integerFormatter.format(session.holesPlayed)} holes`;
+  }
+
+  if (session.totalSwings) {
+    return `${integerFormatter.format(session.totalSwings)} swings`;
+  }
+
+  if (session.durationMinutes) {
+    return `${integerFormatter.format(session.durationMinutes)} min`;
+  }
+
+  return "Manual";
+}
+
+function formatTrainingConditions(session: TrainingSessionListItem) {
+  const conditions = [
+    session.walked ? "Walked" : session.usedCart ? "Cart" : null,
+    session.fullSwings ? `${integerFormatter.format(session.fullSwings)} full` : null,
+    session.shortGameSwings ? `${integerFormatter.format(session.shortGameSwings)} short` : null,
+    session.puttingSwings ? `${integerFormatter.format(session.puttingSwings)} putts` : null,
+    session.mentalPressure ? `Pressure ${session.mentalPressure}` : null,
+    session.physicalDemand ? `Demand ${session.physicalDemand}` : null,
+  ].filter(Boolean);
+
+  return conditions.length > 0 ? conditions.join(" / ") : "Not recorded";
+}
+
+function buildTrainingStatusChartSummary(series: FitnessFreshnessPoint[]) {
+  const latest = series.at(-1);
+
+  if (!latest) {
+    return "No Training Status chart data is available yet.";
+  }
+
+  const comparison = series[Math.max(0, series.length - 8)];
+  const formChange = latest.form - comparison.form;
+  const latestQuality = latestSessionQualityPoint(series);
+  const qualityCopy = latestQuality
+    ? ` Latest scored session quality is ${formatMetric(latestQuality.sessionQuality)}/100 on ${formatChartDate(
+        latestQuality.date,
+      )}.`
+    : " No scored session quality is visible in this range.";
+
+  return `Latest ${formatChartDate(latest.date)}: Golf Form ${formatMetric(latest.form)}, Training Fitness ${formatMetric(latest.fitness)}, Recent Load ${formatMetric(latest.fatigue)}. Golf Form is ${formatSigned(
+    formChange,
+  )} versus the nearest 7-day comparison point.${qualityCopy}`;
+}
+
+function buildDailyLoadChartSummary(series: FitnessFreshnessPoint[]) {
+  if (series.length === 0) {
+    return "No Daily swing load chart data is available yet.";
+  }
+
+  const activeDays = series.filter((point) => point.load > 0);
+  const totalLoad = series.reduce((total, point) => total + point.load, 0);
+  const peak = series.reduce<FitnessFreshnessPoint | null>(
+    (highest, point) => (!highest || point.load > highest.load ? point : highest),
+    null,
+  );
+
+  if (!peak || activeDays.length === 0) {
+    return `This range has no logged swing load across ${series.length} chart day${series.length === 1 ? "" : "s"}.`;
+  }
+
+  return `${activeDays.length} active day${activeDays.length === 1 ? "" : "s"} in this chart, ${formatMetric(
+    totalLoad,
+  )} total load. The highest day is ${formatChartDate(peak.date)} at ${formatMetric(
+    peak.load,
+  )} load, marked ${loadBand(peak.load).toLowerCase()}.`;
+}
+
+function buildTrainingStatusChartRows(series: FitnessFreshnessPoint[]): ChartFallbackRow[] {
+  return series.slice(-10).map((point) => ({
+    date: formatChartDate(point.date),
+    form: formatMetric(point.form),
+    sessionQuality: formatOptionalMetric(point.sessionQuality),
+    fitness: formatMetric(point.fitness),
+    fatigue: formatMetric(point.fatigue),
+  }));
+}
+
+function latestSessionQualityPoint(series: FitnessFreshnessPoint[]) {
+  return [...series].reverse().find(
+    (
+      point,
+    ): point is FitnessFreshnessPoint & {
+      sessionQuality: number;
+    } => typeof point.sessionQuality === "number" && Number.isFinite(point.sessionQuality),
+  );
+}
+
+function buildDailyLoadChartRows(series: FitnessFreshnessPoint[]): ChartFallbackRow[] {
+  return series.slice(-10).map((point) => ({
+    date: formatChartDate(point.date),
+    load: formatMetric(point.load),
+    band: loadBand(point.load),
+  }));
+}
+
+function loadBand(load: number) {
+  if (load >= 500) {
+    return "Very heavy";
+  }
+
+  if (load >= 300) {
+    return "Heavy";
+  }
+
+  if (load > 0) {
+    return "Normal";
+  }
+
+  return "No load";
+}
+
+function formatChartDate(dateKey: string) {
+  return chartDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
 function formatMetric(value: number) {
   return integerFormatter.format(Math.round(value));
+}
+
+function formatOptionalMetric(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "Not scored";
+  }
+
+  return formatMetric(value);
 }
 
 function formatSigned(value: number) {

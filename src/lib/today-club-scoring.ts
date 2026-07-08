@@ -5,6 +5,7 @@ export type TodayClubMetricSnapshot = {
   offlineAverageYd: number | null;
   straightRate: number | null;
   carryStdDevYd: number | null;
+  carryRobustStdDevYd?: number | null;
 };
 
 export type TodayClubMetricDeltas = {
@@ -88,6 +89,10 @@ export function clubTypeCurrentPerformanceScore(
   };
 
   return roundOne(weightedScore(SCORE_WEIGHTS[profile], components));
+}
+
+export function clubTypeCarryConsistencyScore(clubType: string, carryStdDevYd: number | null) {
+  return carryConsistencyScore(clubType, carryStdDevYd);
 }
 
 export function clubTypeImprovementScore(clubType: string, deltas: TodayClubMetricDeltas) {

@@ -105,11 +105,7 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
             className="h-11 rounded-lg bg-white"
           />
           {message ? <p className="text-sm text-[#DC2626]">{message}</p> : null}
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="premium-action rounded-lg"
-          >
+          <Button type="submit" disabled={isPending} className="premium-action rounded-lg">
             {isPending ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
             Sign in to Rapsodo
           </Button>

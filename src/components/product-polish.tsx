@@ -74,7 +74,7 @@ export function ProofChecklistPanel({
           )
         }
       />
-      <div className="grid gap-2 p-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-2 p-4 sm:grid-cols-2 min-[1800px]:grid-cols-3 min-[2400px]:grid-cols-5">
         {items.map((item) => {
           const status = item.status ?? "ready";
           const content = (
@@ -129,7 +129,7 @@ export function DataFirstFlowPanel({
           ) : null
         }
       />
-      <div className="grid gap-2 p-4 md:grid-cols-5">
+      <div className="grid gap-2 p-4 sm:grid-cols-2 min-[1800px]:grid-cols-3 min-[2400px]:grid-cols-5">
         {steps.map((step, index) => {
           const status = step.status ?? (index === 0 ? "ready" : "optional");
           const stepCard = (

@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, CircleDot } from "lucide-react";
 
+import {
+  ChartAccessibleFallback,
+  type ChartFallbackRow,
+} from "@/components/app/chart-accessible-fallback";
 import { Badge } from "@/components/ui/badge";
 import type { GappingMatrixRow, SimulatorLabTone } from "@/lib/simulator-lab";
 import { cn } from "@/lib/utils";
@@ -10,6 +14,7 @@ import { cn } from "@/lib/utils";
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
   const [selectedClubId, setSelectedClubId] = useState(rows[0]?.clubId ?? "");
@@ -21,8 +26,17 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-        Import simulator shots to build the WITB carry matrix.
+      <div className="space-y-3">
+        <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+          Import simulator shots to build the WITB carry matrix.
+        </div>
+        <ChartAccessibleFallback
+          title="Simulator gapping matrix"
+          summary="No simulator gapping rows are available yet; import launch-monitor stock shots to build the WITB carry matrix."
+          columns={gappingMatrixColumns}
+          rows={[]}
+          className="bg-white/70"
+        />
       </div>
     );
   }
@@ -47,9 +61,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">{row.clubLabel}</p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {row.confidenceLabel}
-                </p>
+                <p className="truncate text-[11px] text-muted-foreground">{row.confidenceLabel}</p>
               </div>
               <div className="min-w-0">
                 <div className="h-7 rounded-full bg-[#E9EEE8] p-1">
@@ -109,8 +121,47 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
           </div>
         </aside>
       ) : null}
+      <div className="xl:col-span-2">
+        <ChartAccessibleFallback
+          title="Simulator gapping matrix"
+          summary={gappingMatrixSummary(rows)}
+          columns={gappingMatrixColumns}
+          rows={gappingMatrixRows(rows)}
+          className="bg-white/70"
+        />
+      </div>
     </div>
   );
+}
+
+const gappingMatrixColumns = [
+  { key: "club", label: "Club" },
+  { key: "recommended", label: "Recommended" },
+  { key: "bestStock", label: "Best stock" },
+  { key: "latest", label: "Latest reliable" },
+  { key: "gap", label: "Gap" },
+  { key: "confidence", label: "Confidence" },
+];
+
+function gappingMatrixSummary(rows: GappingMatrixRow[]) {
+  const flagged = rows.filter((row) => row.gapStatus === "danger" || row.gapStatus === "overlap");
+  const bestSupported = [...rows].sort(
+    (left, right) => right.confidenceScore - left.confidenceScore,
+  )[0];
+
+  return `${integerFormatter.format(rows.length)} active clubs are shown in the simulator gapping matrix. ${integerFormatter.format(flagged.length)} clubs have overlap or missing-window flags${bestSupported ? `; strongest confidence is ${bestSupported.clubLabel} at ${bestSupported.confidenceScore}%` : ""}.`;
+}
+
+function gappingMatrixRows(rows: GappingMatrixRow[]): ChartFallbackRow[] {
+  return rows.map((row) => ({
+    _key: row.clubId,
+    club: row.clubLabel,
+    recommended: formatYards(row.recommendedCarryYd),
+    bestStock: formatYards(row.bestStockCarryYd),
+    latest: formatYards(row.latestReliableCarryYd),
+    gap: row.nextClubType ? `${row.gapLabel} / ${gapCopy(row)}` : row.gapLabel,
+    confidence: `${row.confidenceScore}% / ${row.confidenceLabel}`,
+  }));
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

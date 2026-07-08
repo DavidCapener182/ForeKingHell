@@ -1,7 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
+  ArrowDown,
   ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
   CalendarDays,
   Flag,
   Globe2,
@@ -39,8 +42,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -74,6 +84,8 @@ type LeaderboardPageProps = {
     tab?: string;
     provider?: string;
     verification?: string;
+    sort?: string;
+    dir?: string;
   }>;
 };
 
@@ -122,10 +134,132 @@ type TournamentBoard = {
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
+type LeaderboardSortDirection = "asc" | "desc";
+type PlayerLeaderboardSortMetric =
+  | "rank"
+  | "player"
+  | "total-xp"
+  | "monthly-xp"
+  | "monthly-shots"
+  | "best-round"
+  | "longest-drive"
+  | "source";
+type ChallengeLeaderboardSortMetric =
+  | "challenge"
+  | "template"
+  | "participants"
+  | "leader"
+  | "score"
+  | "source";
+type PlayerLeaderboardSortState = {
+  metric: PlayerLeaderboardSortMetric;
+  dir: LeaderboardSortDirection;
+};
+type ChallengeLeaderboardSortState = {
+  metric: ChallengeLeaderboardSortMetric;
+  dir: LeaderboardSortDirection;
+};
+
+const leaderboardPlayerColumns: DesktopWorkbenchColumn[] = [
+  { id: "rank", label: "Rank", locked: true },
+  { id: "player", label: "Player", locked: true },
+  { id: "total-xp", label: "Total XP" },
+  { id: "monthly-xp", label: "Monthly XP" },
+  { id: "monthly-shots", label: "Monthly shots" },
+  { id: "best-round", label: "Best round" },
+  { id: "longest-drive", label: "Longest drive" },
+  { id: "source", label: "Source" },
+];
+
+const playerSortLabels: Record<PlayerLeaderboardSortMetric, string> = {
+  rank: "Rank",
+  player: "Player",
+  "total-xp": "Total XP",
+  "monthly-xp": "Monthly XP",
+  "monthly-shots": "Monthly shots",
+  "best-round": "Best round",
+  "longest-drive": "Longest drive",
+  source: "Source",
+};
+
+const playerSortDefaultDirections: Record<PlayerLeaderboardSortMetric, LeaderboardSortDirection> = {
+  rank: "asc",
+  player: "asc",
+  "total-xp": "desc",
+  "monthly-xp": "desc",
+  "monthly-shots": "desc",
+  "best-round": "asc",
+  "longest-drive": "desc",
+  source: "asc",
+};
+
+const leaderboardSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Monthly XP race",
+    href: "/leaderboard?tab=monthly",
+    detail: "Rank by the current month with monthly shots and movement context.",
+  },
+  {
+    title: "Verified leaderboard rows",
+    href: "/leaderboard?tab=monthly&verification=verified",
+    detail: "Show rows backed by launch-monitor or official-source evidence.",
+  },
+  {
+    title: "Public opt-in board",
+    href: "/leaderboard?tab=public",
+    detail: "Compare only privacy-safe public leaderboard profiles.",
+  },
+];
+
+const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
+  { id: "challenge", label: "Challenge", locked: true },
+  { id: "template", label: "Template" },
+  { id: "participants", label: "Participants" },
+  { id: "leader", label: "Leader" },
+  { id: "score", label: "Score" },
+  { id: "source", label: "Source" },
+];
+
+const challengeSortLabels: Record<ChallengeLeaderboardSortMetric, string> = {
+  challenge: "Challenge",
+  template: "Template",
+  participants: "Participants",
+  leader: "Leader",
+  score: "Score",
+  source: "Source",
+};
+
+const challengeSortDefaultDirections: Record<
+  ChallengeLeaderboardSortMetric,
+  LeaderboardSortDirection
+> = {
+  challenge: "asc",
+  template: "asc",
+  participants: "desc",
+  leader: "asc",
+  score: "desc",
+  source: "asc",
+};
+
+const challengeLeaderboardSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Active challenge boards",
+    href: "/leaderboard?tab=challenges",
+    detail: "Review live challenge leaders, participant count and proof source.",
+  },
+  {
+    title: "Create a climb route",
+    href: "/challenges",
+    detail: "Use challenges to turn leaderboard movement into an action plan.",
+  },
+];
+
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams;
   const activeTab = parseTab(params?.tab);
   const filters = parseLeaderboardFilters(params);
+  const playerSort = parsePlayerLeaderboardSort(params?.sort, params?.dir);
+  const challengeSort = parseChallengeLeaderboardSort(params?.sort, params?.dir);
   const [data, featureData] = await Promise.all([
     getLeaderboardData(activeTab, filters),
     getFeatureIdeasData(),
@@ -192,6 +326,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             >
               <form className="grid gap-3" action="/leaderboard">
                 <input type="hidden" name="tab" value={activeTab} />
+                <input type="hidden" name="sort" value={playerSort.metric} />
+                <input type="hidden" name="dir" value={playerSort.dir} />
                 <label className="grid gap-1 text-sm font-medium">
                   Source
                   <select
@@ -297,239 +433,244 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         <LeaderboardClimbPanel data={featureData} />
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/profile" prefetch={false}>
-            <ShieldCheck className="size-4" />
-            Leaderboard privacy
-          </Link>
-        </Button>
-      </div>
-
-      <div className="hidden sm:contents">
-        <PageHeader
-          eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
-          title="Leaderboards"
-          description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
-          metrics={[
-            {
-              label: "Visible players",
-              value: integerFormatter.format(data.players.length),
-              detail: `${titleCase(activeTab)} scope`,
-            },
-            {
-              label: "Friends",
-              value: integerFormatter.format(data.friendCount),
-              detail: "Accepted friendships only",
-            },
-            {
-              label: "Monthly shots",
-              value: integerFormatter.format(data.monthlyShotTotal),
-              detail: formatMonth(data.monthStart),
-            },
-            {
-              label: "Course champions",
-              value: integerFormatter.format(data.courseChampionBoards.length),
-              detail: "Verified record holders",
-            },
-          ]}
-        />
-
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Leader",
-              value:
-                activeTab === "courses"
-                  ? (data.courseChampionBoards[0]?.champion.displayName ?? "--")
-                  : activeTab === "tournaments"
-                    ? (data.tournamentBoards[0]?.champion.displayName ?? "--")
-                    : (data.players[0]?.displayName ?? "--"),
-              detail:
-                activeTab === "courses"
-                  ? (data.courseChampionBoards[0]?.courseName ?? "No course champions yet.")
-                  : activeTab === "tournaments"
-                    ? (data.tournamentBoards[0]?.title ?? "No tournament leaders yet.")
-                    : data.players[0]
-                      ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
-                      : "No visible players.",
-              tone: "amber",
-            },
-            {
-              label: "You",
-              value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
-              detail: "Profile-controlled visibility",
-              tone: "green",
-            },
-            {
-              label: "Monthly shots",
-              value: integerFormatter.format(data.monthlyShotTotal),
-              detail: formatMonth(data.monthStart),
-              tone: "sky",
-            },
-            {
-              label: "Boards",
-              value: integerFormatter.format(
-                data.courseChampionBoards.length +
-                  data.challengeBoards.length +
-                  data.tournamentBoards.length,
-              ),
-              detail: "Records, challenges, events",
-              tone: "slate",
-            },
-          ]}
-        />
-
-        <DataFirstFlowPanel
-          title="Leaderboard order"
-          description="Keep the first screen summary-led before filters and full tables."
-          steps={leaderboardOrderSteps}
-          actionHref="/challenges"
-          actionLabel="Ways to climb"
-        />
-
-        <LeaderboardClimbPanel data={featureData} />
-
-        <section className="hidden gap-4 sm:grid md:grid-cols-3">
-          <MetricCard
-            label="Monthly XP"
-            value={data.monthlyLeader?.displayName ?? "--"}
-            detail={
-              data.monthlyLeader
-                ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.`
-                : "No monthly XP yet."
-            }
-            icon={CalendarDays}
-            tone="green"
-          />
-          <MetricCard
-            label="Longest verified drive"
-            value={data.longDriveLeader?.displayName ?? "--"}
-            detail={
-              data.longDriveLeader?.longestDriveYd
-                ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}`
-                : "No driver shots yet."
-            }
-            icon={Medal}
-            tone="amber"
-          />
-          <MetricCard
-            label="Challenge leader"
-            value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
-            detail={
-              data.challengeBoards[0]?.leader
-                ? data.challengeBoards[0].title
-                : "No challenge results yet."
-            }
-            icon={Trophy}
-            tone="sky"
-          />
-        </section>
-
-        <div className="flex flex-wrap gap-2">
-          <TabLink
-            tab="friends"
-            activeTab={activeTab}
-            icon={<Users className="size-4" />}
-            label="Friends"
-          />
-          <TabLink
-            tab="monthly"
-            activeTab={activeTab}
-            icon={<CalendarDays className="size-4" />}
-            label="Monthly"
-          />
-          <TabLink
-            tab="courses"
-            activeTab={activeTab}
-            icon={<Medal className="size-4" />}
-            label="Course Champions"
-          />
-          <TabLink
-            tab="challenges"
-            activeTab={activeTab}
-            icon={<Trophy className="size-4" />}
-            label="Challenges"
-          />
-          <TabLink
-            tab="tournaments"
-            activeTab={activeTab}
-            icon={<Flag className="size-4" />}
-            label="Tournaments"
-          />
-          <TabLink
-            tab="public"
-            activeTab={activeTab}
-            icon={<Globe2 className="size-4" />}
-            label="Public opt-in"
-          />
+      <DesktopWorkbenchLayout scope="leaderboard">
+        <div className="hidden items-center justify-between gap-4 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/profile" prefetch={false}>
+              <ShieldCheck className="size-4" />
+              Leaderboard privacy
+            </Link>
+          </Button>
         </div>
 
-        {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
-          <section className="premium-card p-3">
-            <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
-              <input type="hidden" name="tab" value={activeTab} />
-              <label className="grid gap-1 text-xs font-medium">
-                <span>Source</span>
-                <select
-                  name="provider"
-                  defaultValue={filters.provider}
-                  className="h-9 rounded-lg border bg-white px-2 text-sm"
-                >
-                  <option value="all">All</option>
-                  <option value="espn">ESPN</option>
-                  <option value="rapsodo">Rapsodo file</option>
-                  <option value="rapsodo_cloud">Rapsodo Cloud</option>
-                  <option value="manual">Manual</option>
-                </select>
-              </label>
-              <label className="grid gap-1 text-xs font-medium">
-                <span>Verification</span>
-                <select
-                  name="verification"
-                  defaultValue={filters.verification}
-                  className="h-9 rounded-lg border bg-white px-2 text-sm"
-                >
-                  <option value="all">All</option>
-                  <option value="verified">Verified only</option>
-                  <option value="mixed">Mixed</option>
-                  <option value="manual">Manual only</option>
-                </select>
-              </label>
-              <Button type="submit" variant="outline" size="sm">
-                Apply filters
-              </Button>
-              <Badge variant="outline" className="px-3 py-1.5">
-                Scope: {titleCase(activeTab)}
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1.5">
-                Month: {formatMonth(data.monthStart)}
-              </Badge>
-            </form>
-          </section>
-        ) : null}
-
-        {activeTab === "challenges" ? (
-          <ChallengeBoards boards={data.challengeBoards} />
-        ) : activeTab === "courses" ? (
-          <CourseChampionBoards boards={data.courseChampionBoards} />
-        ) : activeTab === "tournaments" ? (
-          <TournamentBoards boards={data.tournamentBoards} />
-        ) : (
-          <PlayerLeaderboard
-            players={data.players}
-            activeTab={activeTab}
-            monthStart={data.monthStart}
-            filters={filters}
+        <div className="hidden sm:contents">
+          <PageHeader
+            eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
+            title="Leaderboards"
+            description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
+            metrics={[
+              {
+                label: "Visible players",
+                value: integerFormatter.format(data.players.length),
+                detail: `${titleCase(activeTab)} scope`,
+              },
+              {
+                label: "Friends",
+                value: integerFormatter.format(data.friendCount),
+                detail: "Accepted friendships only",
+              },
+              {
+                label: "Monthly shots",
+                value: integerFormatter.format(data.monthlyShotTotal),
+                detail: formatMonth(data.monthStart),
+              },
+              {
+                label: "Course champions",
+                value: integerFormatter.format(data.courseChampionBoards.length),
+                detail: "Verified record holders",
+              },
+            ]}
           />
-        )}
-      </div>
+
+          <MobileBentoSummary
+            items={[
+              {
+                label: "Leader",
+                value:
+                  activeTab === "courses"
+                    ? (data.courseChampionBoards[0]?.champion.displayName ?? "--")
+                    : activeTab === "tournaments"
+                      ? (data.tournamentBoards[0]?.champion.displayName ?? "--")
+                      : (data.players[0]?.displayName ?? "--"),
+                detail:
+                  activeTab === "courses"
+                    ? (data.courseChampionBoards[0]?.courseName ?? "No course champions yet.")
+                    : activeTab === "tournaments"
+                      ? (data.tournamentBoards[0]?.title ?? "No tournament leaders yet.")
+                      : data.players[0]
+                        ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
+                        : "No visible players.",
+                tone: "amber",
+              },
+              {
+                label: "You",
+                value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
+                detail: "Profile-controlled visibility",
+                tone: "green",
+              },
+              {
+                label: "Monthly shots",
+                value: integerFormatter.format(data.monthlyShotTotal),
+                detail: formatMonth(data.monthStart),
+                tone: "sky",
+              },
+              {
+                label: "Boards",
+                value: integerFormatter.format(
+                  data.courseChampionBoards.length +
+                    data.challengeBoards.length +
+                    data.tournamentBoards.length,
+                ),
+                detail: "Records, challenges, events",
+                tone: "slate",
+              },
+            ]}
+          />
+
+          <DataFirstFlowPanel
+            title="Leaderboard order"
+            description="Keep the first screen summary-led before filters and full tables."
+            steps={leaderboardOrderSteps}
+            actionHref="/challenges"
+            actionLabel="Ways to climb"
+          />
+
+          <LeaderboardClimbPanel data={featureData} />
+
+          <section className="hidden gap-4 sm:grid md:grid-cols-3">
+            <MetricCard
+              label="Monthly XP"
+              value={data.monthlyLeader?.displayName ?? "--"}
+              detail={
+                data.monthlyLeader
+                  ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.`
+                  : "No monthly XP yet."
+              }
+              icon={CalendarDays}
+              tone="green"
+            />
+            <MetricCard
+              label="Longest verified drive"
+              value={data.longDriveLeader?.displayName ?? "--"}
+              detail={
+                data.longDriveLeader?.longestDriveYd
+                  ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}`
+                  : "No driver shots yet."
+              }
+              icon={Medal}
+              tone="amber"
+            />
+            <MetricCard
+              label="Challenge leader"
+              value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
+              detail={
+                data.challengeBoards[0]?.leader
+                  ? data.challengeBoards[0].title
+                  : "No challenge results yet."
+              }
+              icon={Trophy}
+              tone="sky"
+            />
+          </section>
+
+          <div className="flex flex-wrap gap-2">
+            <TabLink
+              tab="friends"
+              activeTab={activeTab}
+              icon={<Users className="size-4" />}
+              label="Friends"
+            />
+            <TabLink
+              tab="monthly"
+              activeTab={activeTab}
+              icon={<CalendarDays className="size-4" />}
+              label="Monthly"
+            />
+            <TabLink
+              tab="courses"
+              activeTab={activeTab}
+              icon={<Medal className="size-4" />}
+              label="Course Champions"
+            />
+            <TabLink
+              tab="challenges"
+              activeTab={activeTab}
+              icon={<Trophy className="size-4" />}
+              label="Challenges"
+            />
+            <TabLink
+              tab="tournaments"
+              activeTab={activeTab}
+              icon={<Flag className="size-4" />}
+              label="Tournaments"
+            />
+            <TabLink
+              tab="public"
+              activeTab={activeTab}
+              icon={<Globe2 className="size-4" />}
+              label="Public opt-in"
+            />
+          </div>
+
+          {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
+            <section className="premium-card p-3">
+              <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
+                <input type="hidden" name="tab" value={activeTab} />
+                <label className="grid gap-1 text-xs font-medium">
+                  <span>Source</span>
+                  <select
+                    name="provider"
+                    defaultValue={filters.provider}
+                    className="h-9 rounded-lg border bg-white px-2 text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="espn">ESPN</option>
+                    <option value="rapsodo">Rapsodo file</option>
+                    <option value="rapsodo_cloud">Rapsodo Cloud</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-xs font-medium">
+                  <span>Verification</span>
+                  <select
+                    name="verification"
+                    defaultValue={filters.verification}
+                    className="h-9 rounded-lg border bg-white px-2 text-sm"
+                  >
+                    <option value="all">All</option>
+                    <option value="verified">Verified only</option>
+                    <option value="mixed">Mixed</option>
+                    <option value="manual">Manual only</option>
+                  </select>
+                </label>
+                <input type="hidden" name="sort" value={playerSort.metric} />
+                <input type="hidden" name="dir" value={playerSort.dir} />
+                <Button type="submit" variant="outline" size="sm">
+                  Apply filters
+                </Button>
+                <Badge variant="outline" className="px-3 py-1.5">
+                  Scope: {titleCase(activeTab)}
+                </Badge>
+                <Badge variant="outline" className="px-3 py-1.5">
+                  Month: {formatMonth(data.monthStart)}
+                </Badge>
+              </form>
+            </section>
+          ) : null}
+
+          {activeTab === "challenges" ? (
+            <ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />
+          ) : activeTab === "courses" ? (
+            <CourseChampionBoards boards={data.courseChampionBoards} />
+          ) : activeTab === "tournaments" ? (
+            <TournamentBoards boards={data.tournamentBoards} />
+          ) : (
+            <PlayerLeaderboard
+              players={data.players}
+              activeTab={activeTab}
+              monthStart={data.monthStart}
+              filters={filters}
+              sortState={playerSort}
+            />
+          )}
+        </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -823,15 +964,19 @@ function PlayerLeaderboard({
   activeTab,
   monthStart,
   filters,
+  sortState,
 }: {
   players: PlayerRow[];
   activeTab: LeaderboardTab;
   monthStart: Date;
   filters: LeaderboardFilters;
+  sortState: PlayerLeaderboardSortState;
 }) {
   const currentUserIndex = players.findIndex((player) => player.isCurrentUser);
   const currentUser = currentUserIndex >= 0 ? players[currentUserIndex] : null;
   const podium = players.slice(0, 3);
+  const rankByUserId = new Map(players.map((player, index) => [player.userId, index + 1]));
+  const tablePlayers = sortPlayerLeaderboard(players, sortState);
 
   return (
     <section className="grid gap-4">
@@ -900,57 +1045,144 @@ function PlayerLeaderboard({
           action={<Badge variant="outline">{formatMonth(monthStart)}</Badge>}
         />
         <CardContent>
-          <DataTableFrame>
-            <Table>
-              <TableHeader>
+          <DesktopTableWorkbenchControls
+            viewKey={`leaderboard-${activeTab}`}
+            scope="leaderboard"
+            currentViewLabel={leaderboardViewLabel(activeTab)}
+            resultLabel={`${integerFormatter.format(players.length)} players`}
+            columns={leaderboardPlayerColumns}
+            suggestedViews={leaderboardSuggestedViews}
+            exportTableId="leaderboard-players"
+            exportFileName="forekinghell-leaderboard-players-view.csv"
+            className="mb-3"
+          />
+          <DataTableFrame mainTable mainTableLabel="Leaderboard player table">
+            <Table
+              className="min-w-[920px]"
+              data-workbench-export-table="leaderboard-players"
+              aria-describedby="leaderboard-player-table-summary"
+            >
+              <TableCaption id="leaderboard-player-table-summary" className="sr-only">
+                Leaderboard rows with rank, player, total XP, monthly XP, monthly shots, best round,
+                longest drive and source verification.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
                 <TableRow>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>Player</TableHead>
-                  <TableHead className="text-right">Total XP</TableHead>
-                  <TableHead className="text-right">Monthly XP</TableHead>
-                  <TableHead className="text-right">Monthly shots</TableHead>
-                  <TableHead className="text-right">Best round</TableHead>
-                  <TableHead className="text-right">Longest drive</TableHead>
-                  <TableHead className="text-right">Source</TableHead>
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    columnId="rank"
+                    filters={filters}
+                    metric="rank"
+                    sortState={sortState}
+                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    columnId="player"
+                    filters={filters}
+                    metric="player"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="total-xp"
+                    filters={filters}
+                    metric="total-xp"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="monthly-xp"
+                    filters={filters}
+                    metric="monthly-xp"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="monthly-shots"
+                    filters={filters}
+                    metric="monthly-shots"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="best-round"
+                    filters={filters}
+                    metric="best-round"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="longest-drive"
+                    filters={filters}
+                    metric="longest-drive"
+                    sortState={sortState}
+                  />
+                  <SortablePlayerHead
+                    activeTab={activeTab}
+                    align="right"
+                    columnId="source"
+                    filters={filters}
+                    metric="source"
+                    sortState={sortState}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {players.map((player, index) => (
-                  <TableRow key={player.userId}>
-                    <TableCell>
-                      <Badge variant={index === 0 ? "default" : "outline"}>{index + 1}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <Link
-                          href={`/profile/${player.username}`}
-                          prefetch={false}
-                          className="font-medium hover:underline"
-                        >
-                          {player.displayName}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">{player.relationship}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {integerFormatter.format(player.totalXp)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {integerFormatter.format(player.monthlyXp)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {integerFormatter.format(player.monthlyShots)}
-                    </TableCell>
-                    <TableCell className="text-right">{player.bestRoundScore ?? "--"}</TableCell>
-                    <TableCell className="text-right">
-                      {player.longestDriveYd
-                        ? `${numberFormatter.format(player.longestDriveYd)} yd`
-                        : "--"}
-                    </TableCell>
-                    <TableCell className="text-right">{player.verificationLabel}</TableCell>
-                  </TableRow>
-                ))}
-                {players.length === 0 ? (
+                {tablePlayers.map((player) => {
+                  const rank = rankByUserId.get(player.userId) ?? 0;
+
+                  return (
+                    <TableRow key={player.userId} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="rank"
+                        className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        <Badge variant={rank === 1 ? "default" : "outline"}>
+                          {rank > 0 ? rank : "--"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell data-column="player">
+                        <div>
+                          <Link
+                            href={`/profile/${player.username}`}
+                            prefetch={false}
+                            className="font-medium hover:underline"
+                          >
+                            {player.displayName}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">{player.relationship}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell data-column="total-xp" className="text-right">
+                        {integerFormatter.format(player.totalXp)}
+                      </TableCell>
+                      <TableCell data-column="monthly-xp" className="text-right">
+                        {integerFormatter.format(player.monthlyXp)}
+                      </TableCell>
+                      <TableCell data-column="monthly-shots" className="text-right">
+                        {integerFormatter.format(player.monthlyShots)}
+                      </TableCell>
+                      <TableCell data-column="best-round" className="text-right">
+                        {player.bestRoundScore ?? "--"}
+                      </TableCell>
+                      <TableCell data-column="longest-drive" className="text-right">
+                        {player.longestDriveYd
+                          ? `${numberFormatter.format(player.longestDriveYd)} yd`
+                          : "--"}
+                      </TableCell>
+                      <TableCell data-column="source" className="text-right">
+                        {player.verificationLabel}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {tablePlayers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                       No opted-in players in this scope yet.
@@ -964,6 +1196,369 @@ function PlayerLeaderboard({
       </DataPanel>
     </section>
   );
+}
+
+function SortablePlayerHead({
+  activeTab,
+  align = "left",
+  className,
+  columnId,
+  filters,
+  metric,
+  sortState,
+}: {
+  activeTab: LeaderboardTab;
+  align?: "left" | "right";
+  className?: string;
+  columnId: string;
+  filters: LeaderboardFilters;
+  metric: PlayerLeaderboardSortMetric;
+  sortState: PlayerLeaderboardSortState;
+}) {
+  const active = sortState.metric === metric;
+
+  return (
+    <TableHead
+      data-column={columnId}
+      className={sortableHeadClassName(align, className)}
+      aria-sort={active ? sortAriaValue(sortState.dir) : "none"}
+    >
+      <SortablePlayerHeadLink
+        activeTab={activeTab}
+        align={align}
+        filters={filters}
+        metric={metric}
+        sortState={sortState}
+      />
+    </TableHead>
+  );
+}
+
+function SortablePlayerHeadLink({
+  activeTab,
+  align = "left",
+  filters,
+  metric,
+  sortState,
+}: {
+  activeTab: LeaderboardTab;
+  align?: "left" | "right";
+  filters: LeaderboardFilters;
+  metric: PlayerLeaderboardSortMetric;
+  sortState: PlayerLeaderboardSortState;
+}) {
+  const active = sortState.metric === metric;
+  const nextDir: LeaderboardSortDirection = active
+    ? sortState.dir === "desc"
+      ? "asc"
+      : "desc"
+    : playerSortDefaultDirections[metric];
+  const Icon = active ? (sortState.dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+  const label = playerSortLabels[metric];
+
+  return (
+    <Link
+      href={leaderboardTableSortHref({
+        activeTab,
+        dir: nextDir,
+        filters,
+        metric,
+      })}
+      prefetch={false}
+      className={`focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground ${
+        align === "right" ? "justify-end" : "justify-start"
+      }`}
+      aria-label={`Sort leaderboard players by ${label}, ${playerSortDirectionCopy(metric, nextDir)}`}
+    >
+      {label}
+      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+    </Link>
+  );
+}
+
+function SortableChallengeHead({
+  align = "left",
+  className,
+  columnId,
+  metric,
+  sortState,
+}: {
+  align?: "left" | "right";
+  className?: string;
+  columnId: string;
+  metric: ChallengeLeaderboardSortMetric;
+  sortState: ChallengeLeaderboardSortState;
+}) {
+  const active = sortState.metric === metric;
+
+  return (
+    <TableHead
+      data-column={columnId}
+      className={sortableHeadClassName(align, className)}
+      aria-sort={active ? sortAriaValue(sortState.dir) : "none"}
+    >
+      <SortableChallengeHeadLink align={align} metric={metric} sortState={sortState} />
+    </TableHead>
+  );
+}
+
+function SortableChallengeHeadLink({
+  align = "left",
+  metric,
+  sortState,
+}: {
+  align?: "left" | "right";
+  metric: ChallengeLeaderboardSortMetric;
+  sortState: ChallengeLeaderboardSortState;
+}) {
+  const active = sortState.metric === metric;
+  const nextDir: LeaderboardSortDirection = active
+    ? sortState.dir === "desc"
+      ? "asc"
+      : "desc"
+    : challengeSortDefaultDirections[metric];
+  const Icon = active ? (sortState.dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+  const label = challengeSortLabels[metric];
+
+  return (
+    <Link
+      href={leaderboardTableSortHref({
+        activeTab: "challenges",
+        dir: nextDir,
+        metric,
+      })}
+      prefetch={false}
+      className={`focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold text-muted-foreground outline-none transition-colors hover:text-foreground ${
+        align === "right" ? "justify-end" : "justify-start"
+      }`}
+      aria-label={`Sort challenge leaderboards by ${label}, ${challengeSortDirectionCopy(metric, nextDir)}`}
+    >
+      {label}
+      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+    </Link>
+  );
+}
+
+function leaderboardTableSortHref({
+  activeTab,
+  dir,
+  filters,
+  metric,
+}: {
+  activeTab: LeaderboardTab;
+  dir: LeaderboardSortDirection;
+  filters?: LeaderboardFilters;
+  metric: PlayerLeaderboardSortMetric | ChallengeLeaderboardSortMetric;
+}) {
+  const params = new URLSearchParams();
+  params.set("tab", activeTab);
+
+  if (filters?.provider && filters.provider !== "all") {
+    params.set("provider", filters.provider);
+  }
+
+  if (filters?.verification && filters.verification !== "all") {
+    params.set("verification", filters.verification);
+  }
+
+  params.set("sort", metric);
+  params.set("dir", dir);
+
+  return `/leaderboard?${params.toString()}`;
+}
+
+function sortPlayerLeaderboard(players: PlayerRow[], sortState: PlayerLeaderboardSortState) {
+  const rankByUserId = new Map(players.map((player, index) => [player.userId, index + 1]));
+
+  return [...players].sort((left, right) => {
+    const result = comparePlayerLeaderboardValues(left, right, sortState, rankByUserId);
+
+    if (result !== 0) {
+      return result;
+    }
+
+    return compareLeaderboardNumbers(
+      rankByUserId.get(left.userId) ?? 0,
+      rankByUserId.get(right.userId) ?? 0,
+      "asc",
+    );
+  });
+}
+
+function comparePlayerLeaderboardValues(
+  left: PlayerRow,
+  right: PlayerRow,
+  sortState: PlayerLeaderboardSortState,
+  rankByUserId: Map<string, number>,
+) {
+  switch (sortState.metric) {
+    case "rank":
+      return compareLeaderboardNumbers(
+        rankByUserId.get(left.userId) ?? 0,
+        rankByUserId.get(right.userId) ?? 0,
+        sortState.dir,
+      );
+    case "player":
+      return compareLeaderboardStrings(left.displayName, right.displayName, sortState.dir);
+    case "total-xp":
+      return compareLeaderboardNumbers(left.totalXp, right.totalXp, sortState.dir);
+    case "monthly-xp":
+      return compareLeaderboardNumbers(left.monthlyXp, right.monthlyXp, sortState.dir);
+    case "monthly-shots":
+      return compareLeaderboardNumbers(left.monthlyShots, right.monthlyShots, sortState.dir);
+    case "best-round":
+      return compareNullableLeaderboardNumbers(
+        left.bestRoundScore,
+        right.bestRoundScore,
+        sortState.dir,
+      );
+    case "longest-drive":
+      return compareNullableLeaderboardNumbers(
+        left.longestDriveYd,
+        right.longestDriveYd,
+        sortState.dir,
+      );
+    case "source":
+      return compareLeaderboardStrings(
+        left.verificationLabel,
+        right.verificationLabel,
+        sortState.dir,
+      );
+  }
+}
+
+type ChallengeLeaderboardBoard = Awaited<
+  ReturnType<typeof getLeaderboardData>
+>["challengeBoards"][number];
+
+function sortChallengeLeaderboardBoards(
+  boards: ChallengeLeaderboardBoard[],
+  sortState: ChallengeLeaderboardSortState,
+) {
+  return [...boards].sort((left, right) => {
+    const result = compareChallengeLeaderboardValues(left, right, sortState);
+
+    if (result !== 0) {
+      return result;
+    }
+
+    return compareLeaderboardStrings(left.title, right.title, "asc");
+  });
+}
+
+function compareChallengeLeaderboardValues(
+  left: ChallengeLeaderboardBoard,
+  right: ChallengeLeaderboardBoard,
+  sortState: ChallengeLeaderboardSortState,
+) {
+  switch (sortState.metric) {
+    case "challenge":
+      return compareLeaderboardStrings(left.title, right.title, sortState.dir);
+    case "template":
+      return compareLeaderboardStrings(left.templateName, right.templateName, sortState.dir);
+    case "participants":
+      return compareLeaderboardNumbers(
+        left.participantCount,
+        right.participantCount,
+        sortState.dir,
+      );
+    case "leader":
+      return compareLeaderboardStrings(
+        left.leader?.displayName ?? null,
+        right.leader?.displayName ?? null,
+        sortState.dir,
+      );
+    case "score":
+      return compareNullableLeaderboardNumbers(
+        challengeScoreValue(left),
+        challengeScoreValue(right),
+        sortState.dir,
+      );
+    case "source":
+      return compareLeaderboardStrings(
+        left.leader?.verificationLabel ?? null,
+        right.leader?.verificationLabel ?? null,
+        sortState.dir,
+      );
+  }
+}
+
+function challengeScoreValue(board: ChallengeLeaderboardBoard) {
+  const match = board.leader?.scoreLabel.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function compareLeaderboardNumbers(left: number, right: number, dir: LeaderboardSortDirection) {
+  return dir === "asc" ? left - right : right - left;
+}
+
+function compareNullableLeaderboardNumbers(
+  left: number | null,
+  right: number | null,
+  dir: LeaderboardSortDirection,
+) {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return compareLeaderboardNumbers(left, right, dir);
+}
+
+function compareLeaderboardStrings(
+  left: string | null,
+  right: string | null,
+  dir: LeaderboardSortDirection,
+) {
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+
+  const result = left.localeCompare(right);
+  return dir === "asc" ? result : -result;
+}
+
+function sortableHeadClassName(align: "left" | "right", className?: string) {
+  return (
+    [className, align === "right" ? "text-right" : null].filter(Boolean).join(" ") || undefined
+  );
+}
+
+function sortAriaValue(dir: LeaderboardSortDirection) {
+  return dir === "desc" ? "descending" : "ascending";
+}
+
+function playerSortDirectionCopy(
+  metric: PlayerLeaderboardSortMetric,
+  dir: LeaderboardSortDirection,
+) {
+  if (metric === "rank") {
+    return dir === "asc" ? "top rank first" : "bottom rank first";
+  }
+
+  if (metric === "player" || metric === "source") {
+    return dir === "asc" ? "A to Z" : "Z to A";
+  }
+
+  if (metric === "best-round") {
+    return dir === "asc" ? "lowest score first" : "highest score first";
+  }
+
+  return dir === "desc" ? "high to low" : "low to high";
+}
+
+function challengeSortDirectionCopy(
+  metric: ChallengeLeaderboardSortMetric,
+  dir: LeaderboardSortDirection,
+) {
+  if (
+    metric === "challenge" ||
+    metric === "template" ||
+    metric === "leader" ||
+    metric === "source"
+  ) {
+    return dir === "asc" ? "A to Z" : "Z to A";
+  }
+
+  return dir === "desc" ? "high to low" : "low to high";
 }
 
 function mobileYourRankLabel(players: PlayerRow[], activeTab: LeaderboardTab) {
@@ -1024,9 +1619,13 @@ function LeaderboardPodiumCard({
 
 function ChallengeBoards({
   boards,
+  sortState,
 }: {
   boards: Awaited<ReturnType<typeof getLeaderboardData>>["challengeBoards"];
+  sortState: ChallengeLeaderboardSortState;
 }) {
+  const sortedBoards = sortChallengeLeaderboardBoards(boards, sortState);
+
   return (
     <DataPanel>
       <SectionHeader
@@ -1035,22 +1634,73 @@ function ChallengeBoards({
         action={<Target className="size-5 text-emerald-600" />}
       />
       <CardContent>
-        <DataTableFrame>
-          <Table>
-            <TableHeader>
+        <DesktopTableWorkbenchControls
+          viewKey="leaderboard-challenges"
+          scope="leaderboard"
+          currentViewLabel="Challenge leaderboards"
+          resultLabel={`${integerFormatter.format(boards.length)} boards`}
+          columns={challengeLeaderboardColumns}
+          suggestedViews={challengeLeaderboardSuggestedViews}
+          exportTableId="leaderboard-challenges"
+          exportFileName="forekinghell-challenge-leaderboards-view.csv"
+          className="mb-3"
+        />
+        <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table">
+          <Table
+            className="min-w-[840px]"
+            data-workbench-export-table="leaderboard-challenges"
+            aria-describedby="challenge-leaderboard-table-summary"
+          >
+            <TableCaption id="challenge-leaderboard-table-summary" className="sr-only">
+              Challenge leaderboard boards with template, participant count, leader, score and
+              verification source.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
-                <TableHead>Challenge</TableHead>
-                <TableHead>Template</TableHead>
-                <TableHead className="text-right">Participants</TableHead>
-                <TableHead className="text-right">Leader</TableHead>
-                <TableHead className="text-right">Score</TableHead>
-                <TableHead className="text-right">Source</TableHead>
+                <SortableChallengeHead
+                  columnId="challenge"
+                  metric="challenge"
+                  sortState={sortState}
+                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                />
+                <SortableChallengeHead
+                  columnId="template"
+                  metric="template"
+                  sortState={sortState}
+                />
+                <SortableChallengeHead
+                  align="right"
+                  columnId="participants"
+                  metric="participants"
+                  sortState={sortState}
+                />
+                <SortableChallengeHead
+                  align="right"
+                  columnId="leader"
+                  metric="leader"
+                  sortState={sortState}
+                />
+                <SortableChallengeHead
+                  align="right"
+                  columnId="score"
+                  metric="score"
+                  sortState={sortState}
+                />
+                <SortableChallengeHead
+                  align="right"
+                  columnId="source"
+                  metric="source"
+                  sortState={sortState}
+                />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {boards.map((board) => (
-                <TableRow key={board.id}>
-                  <TableCell>
+              {sortedBoards.map((board) => (
+                <TableRow key={board.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="challenge"
+                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
                     <Link
                       href={`/challenges/${board.id}`}
                       prefetch={false}
@@ -1059,9 +1709,11 @@ function ChallengeBoards({
                       {board.title}
                     </Link>
                   </TableCell>
-                  <TableCell>{board.templateName}</TableCell>
-                  <TableCell className="text-right">{board.participantCount}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="template">{board.templateName}</TableCell>
+                  <TableCell data-column="participants" className="text-right">
+                    {board.participantCount}
+                  </TableCell>
+                  <TableCell data-column="leader" className="text-right">
                     {board.leader ? (
                       <Link
                         href={`/profile/${board.leader.username}`}
@@ -1074,13 +1726,15 @@ function ChallengeBoards({
                       "--"
                     )}
                   </TableCell>
-                  <TableCell className="text-right">{board.leader?.scoreLabel ?? "--"}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="score" className="text-right">
+                    {board.leader?.scoreLabel ?? "--"}
+                  </TableCell>
+                  <TableCell data-column="source" className="text-right">
                     {board.leader?.verificationLabel ?? "--"}
                   </TableCell>
                 </TableRow>
               ))}
-              {boards.length === 0 ? (
+              {sortedBoards.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                     No challenge results yet.
@@ -1376,6 +2030,18 @@ function scoreForTab(player: PlayerRow, tab: LeaderboardTab) {
   return tab === "monthly" ? player.monthlyXp : player.totalXp;
 }
 
+function leaderboardViewLabel(tab: LeaderboardTab) {
+  if (tab === "monthly") {
+    return "Monthly leaderboard";
+  }
+
+  if (tab === "public") {
+    return "Public opt-in leaderboard";
+  }
+
+  return "Friend leaderboard";
+}
+
 function movementLabel(player: PlayerRow) {
   const delta = player.monthlyXp - player.previousMonthlyXp;
 
@@ -1433,6 +2099,71 @@ function parseTab(value: string | undefined): LeaderboardTab {
     value === "public"
     ? value
     : "friends";
+}
+
+function parsePlayerLeaderboardSort(
+  metricValue: string | undefined,
+  dirValue: string | undefined,
+): PlayerLeaderboardSortState {
+  const metric = parsePlayerLeaderboardSortMetric(metricValue);
+
+  return {
+    metric,
+    dir: parseLeaderboardSortDirection(dirValue, playerSortDefaultDirections[metric]),
+  };
+}
+
+function parsePlayerLeaderboardSortMetric(value: string | undefined): PlayerLeaderboardSortMetric {
+  if (
+    value === "rank" ||
+    value === "player" ||
+    value === "total-xp" ||
+    value === "monthly-xp" ||
+    value === "monthly-shots" ||
+    value === "best-round" ||
+    value === "longest-drive" ||
+    value === "source"
+  ) {
+    return value;
+  }
+
+  return "rank";
+}
+
+function parseChallengeLeaderboardSort(
+  metricValue: string | undefined,
+  dirValue: string | undefined,
+): ChallengeLeaderboardSortState {
+  const metric = parseChallengeLeaderboardSortMetric(metricValue);
+
+  return {
+    metric,
+    dir: parseLeaderboardSortDirection(dirValue, challengeSortDefaultDirections[metric]),
+  };
+}
+
+function parseChallengeLeaderboardSortMetric(
+  value: string | undefined,
+): ChallengeLeaderboardSortMetric {
+  if (
+    value === "challenge" ||
+    value === "template" ||
+    value === "participants" ||
+    value === "leader" ||
+    value === "score" ||
+    value === "source"
+  ) {
+    return value;
+  }
+
+  return "challenge";
+}
+
+function parseLeaderboardSortDirection(
+  value: string | undefined,
+  fallback: LeaderboardSortDirection,
+): LeaderboardSortDirection {
+  return value === "asc" || value === "desc" ? value : fallback;
 }
 
 function parseLeaderboardFilters(

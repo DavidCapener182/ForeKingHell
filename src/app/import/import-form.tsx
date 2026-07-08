@@ -58,10 +58,7 @@ import {
   parseScorecardText,
 } from "@/lib/course-scorecard";
 import { ColumnMappingPanel } from "@/app/import/column-mapping-panel";
-import {
-  type DistanceUnit,
-  type RapsodoColumnMapping,
-} from "@/lib/rapsodo/parser";
+import { type DistanceUnit, type RapsodoColumnMapping } from "@/lib/rapsodo/parser";
 import type {
   LongestShotNotification,
   SaveRapsodoImportInput,
@@ -700,7 +697,12 @@ export function ImportForm({
                 detail: "Selected",
                 tone: "green",
               },
-              { label: "Rows", value: aggregate.rowCount.toString(), detail: "Parsed", tone: "sky" },
+              {
+                label: "Rows",
+                value: aggregate.rowCount.toString(),
+                detail: "Parsed",
+                tone: "sky",
+              },
               {
                 label: "Shots",
                 value: aggregate.shotCount.toString(),

@@ -18,6 +18,7 @@ import {
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -376,25 +377,44 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame>
-          <Table className={BENCHMARK_TABLE_CLASS}>
+        <DataTableFrame label="Distance benchmark carry table">
+          <Table
+            className={BENCHMARK_TABLE_CLASS}
+            aria-describedby="distance-benchmark-carry-summary"
+          >
+            <TableCaption id="distance-benchmark-carry-summary" className="sr-only">
+              Carry benchmark table comparing each club with inferred level, next target, benchmark
+              band, tour anchor and sample confidence.
+            </TableCaption>
             <BenchmarkTableColumns />
-            <TableHeader>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
-                <TableHead>Club</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-right">Your carry</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Next</TableHead>
-                <TableHead>Benchmark band</TableHead>
-                <TableHead>Tour anchor</TableHead>
-                <TableHead className="text-right">Sample</TableHead>
+                <TableHead
+                  data-column="club"
+                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  Club
+                </TableHead>
+                <TableHead data-column="model">Model</TableHead>
+                <TableHead data-column="your-carry" className="text-right">
+                  Your carry
+                </TableHead>
+                <TableHead data-column="level">Level</TableHead>
+                <TableHead data-column="next">Next</TableHead>
+                <TableHead data-column="benchmark-band">Benchmark band</TableHead>
+                <TableHead data-column="tour-anchor">Tour anchor</TableHead>
+                <TableHead data-column="sample" className="text-right">
+                  Sample
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => (
-                <TableRow key={row.clubId}>
-                  <TableCell>
+                <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
                     <Link
                       href={`/bag/${row.clubId}`}
                       className="font-semibold text-foreground underline-offset-4 hover:underline"
@@ -402,27 +422,30 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                       {formatClubType(row.clubType)}
                     </Link>
                   </TableCell>
-                  <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                  <TableCell
+                    data-column="model"
+                    className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground"
+                  >
                     {row.brandModel}
                   </TableCell>
-                  <TableCell className="text-right font-semibold">
+                  <TableCell data-column="your-carry" className="text-right font-semibold">
                     {formatMetric(row.carryYd)}
                     {row.carryYd === null ? "" : " yd"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="level">
                     <BenchmarkBadge row={row} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell data-column="next" className="text-sm text-muted-foreground">
                     <span className="block">{benchmarkNextText(row)}</span>
                     <span className="block text-xs">{benchmarkFloorText(row)}</span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="benchmark-band">
                     <BenchmarkMeter row={row} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell data-column="tour-anchor" className="text-sm text-muted-foreground">
                     {tourAnchorText(row, CARRY_METRIC)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="sample" className="text-right">
                     <span className="font-medium">{row.sampleSize}</span>
                     <span className="ml-2 text-muted-foreground">{row.confidenceScore}%</span>
                   </TableCell>
@@ -517,25 +540,48 @@ function LevelMetricContent({
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame>
-          <Table className={BENCHMARK_TABLE_CLASS}>
+        <DataTableFrame label={`${metric.shortLabel} benchmark table`}>
+          <Table
+            className={BENCHMARK_TABLE_CLASS}
+            aria-describedby={`${metric.key}-benchmark-summary`}
+          >
+            <TableCaption id={`${metric.key}-benchmark-summary`} className="sr-only">
+              {metric.shortLabel} benchmark table comparing each club with the current value, level,
+              target, benchmark band, tour anchor and sample confidence.
+            </TableCaption>
             <BenchmarkTableColumns />
-            <TableHeader>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
-                <TableHead>Club</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead className="text-right">Your {metric.shortLabel.toLowerCase()}</TableHead>
-                <TableHead>{metricLevelLabel(metric)}</TableHead>
-                <TableHead>{metricTargetLabel(metric)}</TableHead>
-                <TableHead>{metricBandLabel(metric)}</TableHead>
-                <TableHead>Tour anchor</TableHead>
-                <TableHead className="text-right">Sample</TableHead>
+                <TableHead
+                  data-column="club"
+                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  Club
+                </TableHead>
+                <TableHead data-column="model">Model</TableHead>
+                <TableHead data-column="current-value" className="text-right">
+                  Your {metric.shortLabel.toLowerCase()}
+                </TableHead>
+                <TableHead data-column="metric-level">{metricLevelLabel(metric)}</TableHead>
+                <TableHead data-column="metric-target">{metricTargetLabel(metric)}</TableHead>
+                <TableHead data-column="metric-band">{metricBandLabel(metric)}</TableHead>
+                <TableHead data-column="tour-anchor">Tour anchor</TableHead>
+                <TableHead data-column="sample" className="text-right">
+                  Sample
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {comparisons.map((comparison) => (
-                <TableRow key={comparison.row.clubId}>
-                  <TableCell>
+                <TableRow
+                  key={comparison.row.clubId}
+                  tabIndex={0}
+                  className="focus-aaa outline-none"
+                >
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
                     <Link
                       href={`/bag/${comparison.row.clubId}`}
                       className="font-semibold text-foreground underline-offset-4 hover:underline"
@@ -543,25 +589,28 @@ function LevelMetricContent({
                       {formatClubType(comparison.row.clubType)}
                     </Link>
                   </TableCell>
-                  <TableCell className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground">
+                  <TableCell
+                    data-column="model"
+                    className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground"
+                  >
                     {comparison.row.brandModel}
                   </TableCell>
-                  <TableCell className="text-right font-semibold">
+                  <TableCell data-column="current-value" className="text-right font-semibold">
                     {formatMetricValue(comparison.actual, metric)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="metric-level">
                     <MetricLevelBadge comparison={comparison} metric={metric} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell data-column="metric-target" className="text-sm text-muted-foreground">
                     {metricNextText(comparison, metric)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="metric-band">
                     <MetricLevelMeter comparison={comparison} metric={metric} />
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell data-column="tour-anchor" className="text-sm text-muted-foreground">
                     {comparison.tourAnchorLabel}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="sample" className="text-right">
                     <span className="font-medium">{comparison.row.sampleSize}</span>
                     <span className="ml-2 text-muted-foreground">
                       {comparison.row.confidenceScore}%
@@ -669,23 +718,47 @@ function PeerComparisonContent({
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame>
-          <Table className="min-w-[1080px]">
-            <TableHeader>
+        <DataTableFrame label="Peer benchmark comparison table">
+          <Table className="min-w-[1080px]" aria-describedby="peer-benchmark-comparison-summary">
+            <TableCaption id="peer-benchmark-comparison-summary" className="sr-only">
+              Peer benchmark comparison table showing each club metric beside peer median, top 25
+              percent value, percentile and peer sample.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
-                <TableHead>Club</TableHead>
-                <TableHead>Metric</TableHead>
-                <TableHead className="text-right">You</TableHead>
-                <TableHead className="text-right">Peer median</TableHead>
-                <TableHead className="text-right">Top 25%</TableHead>
-                <TableHead>Percentile</TableHead>
-                <TableHead className="text-right">Peer sample</TableHead>
+                <TableHead
+                  data-column="club"
+                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  Club
+                </TableHead>
+                <TableHead data-column="metric">Metric</TableHead>
+                <TableHead data-column="you" className="text-right">
+                  You
+                </TableHead>
+                <TableHead data-column="peer-median" className="text-right">
+                  Peer median
+                </TableHead>
+                <TableHead data-column="top-quartile" className="text-right">
+                  Top 25%
+                </TableHead>
+                <TableHead data-column="percentile">Percentile</TableHead>
+                <TableHead data-column="peer-sample" className="text-right">
+                  Peer sample
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {peerRows.map((peerRow) => (
-                <TableRow key={`${peerRow.row.clubId}-${peerRow.metric.key}`}>
-                  <TableCell>
+                <TableRow
+                  key={`${peerRow.row.clubId}-${peerRow.metric.key}`}
+                  tabIndex={0}
+                  className="focus-aaa outline-none"
+                >
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
                     <Link
                       href={`/bag/${peerRow.row.clubId}`}
                       className="font-semibold text-foreground underline-offset-4 hover:underline"
@@ -693,22 +766,25 @@ function PeerComparisonContent({
                       {formatClubType(peerRow.row.clubType)}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell data-column="metric" className="text-muted-foreground">
                     {peerRow.metric.shortLabel}
                   </TableCell>
-                  <TableCell className="text-right font-semibold">
+                  <TableCell data-column="you" className="text-right font-semibold">
                     {formatMetricValue(peerRow.actual, peerRow.metric)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="peer-median" className="text-right">
                     {formatMetricValue(peerRow.peer?.peerMedian ?? null, peerRow.metric)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-column="top-quartile" className="text-right">
                     {formatMetricValue(peerRow.peer?.topQuartile ?? null, peerRow.metric)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-column="percentile">
                     <PeerPercentileBadge percentile={peerRow.peer?.percentile ?? null} />
                   </TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
+                  <TableCell
+                    data-column="peer-sample"
+                    className="text-right text-sm text-muted-foreground"
+                  >
                     {peerSampleText(peerRow.peer)}
                   </TableCell>
                 </TableRow>

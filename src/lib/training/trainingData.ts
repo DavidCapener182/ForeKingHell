@@ -21,6 +21,7 @@ import {
 import { getTrainingStatus, getTrainingTrend } from "@/lib/training/trainingStatus";
 import type { TrainingStatus, TrainingTrend } from "@/lib/training/trainingStatus";
 import { calculateSessionLoad, calculateSessionVolume } from "@/lib/training/trainingLoad";
+import { buildSessionQualityByDate } from "@/lib/training/sessionQuality";
 import { trainingRangeDays, type TrainingRangeKey } from "@/lib/training/ranges";
 import {
   aggregateSessionFormSnapshots,
@@ -140,6 +141,7 @@ export type TrainingOverTimeData = {
   trend: TrainingTrend;
   sessionFormSignal: SessionFormSignal;
   sessionMarkers: TrainingSessionMarker[];
+  sessions: TrainingSessionListItem[];
   recentSessions: TrainingSessionListItem[];
   suggestions: TrainingSourceSuggestion[];
   hasTrainingData: boolean;
@@ -313,6 +315,7 @@ export async function getTrainingOverTimeData(
     snapshotGroups,
   );
   const formAdjustments = buildHistoricalSessionFormAdjustments(snapshotGroups);
+  const sessionQualityByDate = buildSessionQualityByDate(snapshotGroups);
   const confidence = buildTrainingConfidence(formSessions, sessionFormSignal, today);
   const firstTrainingDataDate = firstDateKey([
     ...dailyRows.map((row) => toDateKey(row.date)),
@@ -327,13 +330,23 @@ export async function getTrainingOverTimeData(
     fitnessDays: CONDITIONING_DAYS,
     minimumDays: rangeDays + WARMUP_DAYS,
     formAdjustments,
-  });
+  }).map((point) => ({
+    ...point,
+    sessionQuality: sessionQualityByDate.get(point.date) ?? null,
+  }));
   const previousWeek = series.at(Math.max(0, series.length - 8)) ?? null;
   const latest = series.at(-1) ?? null;
   const visibleSeries = sliceTrainingSeries(series, rangeDays).filter(
     (point) => point.date >= visibleStartDate,
   );
   const visibleSessionMarkers = sessionMarkers.filter((marker) => marker.date >= visibleStartDate);
+  const visibleSessions = formSessions
+    .filter((session) => session.sessionDate >= visibleStartDate)
+    .sort((a, b) =>
+      a.sessionDate === b.sessionDate
+        ? a.title.localeCompare(b.title)
+        : b.sessionDate.localeCompare(a.sessionDate),
+    );
   const status = latest
     ? getTrainingStatus(latest.fitness, latest.fatigue, latest.form)
     : getTrainingStatus(0, 0, 0);
@@ -369,6 +382,7 @@ export async function getTrainingOverTimeData(
     trend,
     sessionFormSignal,
     sessionMarkers: visibleSessionMarkers,
+    sessions: visibleSessions,
     recentSessions,
     suggestions: filteredSuggestions,
     hasTrainingData: recentSessionRows.length > 0,

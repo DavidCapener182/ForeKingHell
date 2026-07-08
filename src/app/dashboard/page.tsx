@@ -36,7 +36,13 @@ import {
   DashboardCommandPalette,
   type DashboardCommandRoute,
 } from "@/app/dashboard/dashboard-command-palette";
+import {
+  DashboardWorkspace,
+  DashboardWorkspacePanel,
+  type DashboardWorkspacePanelConfig,
+} from "@/app/dashboard/dashboard-workspace-layout";
 import { FacePathClubSelector } from "@/app/dashboard/face-path-club-selector";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
 import {
   CompactReadoutGrid,
@@ -200,7 +206,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     whatChanged: data.whatChanged,
     currentPracticePlan,
   });
-
   const metrics = [
     {
       pin: "shots" as const,
@@ -208,7 +213,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       value: integerFormatter.format(data.stats.shotCount),
       detail: latestSession
         ? `+${integerFormatter.format(latestSession.shotCount)} from latest import`
-        : `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
+        : `${integerFormatter.format(data.stats.sessionCount)} saved sessions`,
       insight: "Feeds club distances, practice priorities, and shot history.",
       actionLabel: "Open shots",
       href: "/shots",
@@ -259,7 +264,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       pin: "shots" as const,
       label: "Golf database",
       value: integerFormatter.format(data.stats.shotCount),
-      detail: `${integerFormatter.format(data.stats.rawRowCount)} raw CSV rows`,
+      detail: `${integerFormatter.format(data.stats.sessionCount)} saved sessions`,
       href: "/shots",
       icon: BarChart3,
       tone: "sky" as const,
@@ -504,6 +509,100 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       accent: "text-rose-600 bg-rose-50",
     },
   ];
+  const desktopPanels: DashboardWorkspacePanelConfig[] = [
+    {
+      id: "practice-plan",
+      label: "Practice Planner",
+      detail: currentPracticePlan ? "Saved plan loaded" : "Next session starter",
+      executive: true,
+    },
+    ...(pinnedDashboardSections.has("coach")
+      ? [
+          {
+            id: "coach-priority" as const,
+            label: "Practice task",
+            detail: data.coachPreview ? data.coachPreview.clubName : "Coach signal",
+            executive: true,
+          },
+        ]
+      : []),
+    {
+      id: "driver-status",
+      label: "Driver status",
+      detail: "Path and face-to-path trend",
+      executive: true,
+    },
+    ...(metrics.length > 0
+      ? [
+          {
+            id: "performance-snapshot" as const,
+            label: "Performance snapshot",
+            detail: `${metrics.length} pinned metrics`,
+            executive: true,
+          },
+        ]
+      : []),
+    {
+      id: "scoring-zones",
+      label: "Scoring zones",
+      detail: "Bag scoring-zone readiness",
+    },
+    {
+      id: "course-decisions",
+      label: "Course decisions",
+      detail: "Today’s course-use calls",
+      executive: true,
+    },
+    {
+      id: "latest-practice",
+      label: "Latest practice",
+      detail: latestSession
+        ? `${integerFormatter.format(latestSession.shotCount)} shots`
+        : "No import yet",
+      executive: true,
+    },
+    {
+      id: "environment-baseline",
+      label: "Environment",
+      detail: "Plays-like context",
+    },
+    {
+      id: "plays-like",
+      label: "Plays-like",
+      detail: "Wind, elevation and weather",
+    },
+    ...(pinnedDashboardSections.has("bag")
+      ? [
+          {
+            id: "bag-confidence" as const,
+            label: "Bag confidence",
+            detail: `${integerFormatter.format(data.bagPreview.length)} mapped clubs`,
+            executive: true,
+          },
+        ]
+      : []),
+    ...(pinnedDashboardSections.has("rounds")
+      ? [
+          {
+            id: "latest-round" as const,
+            label: "Latest round",
+            detail: data.latestRound ? "Scorecard spotlight" : "No round yet",
+            executive: true,
+          },
+        ]
+      : []),
+    {
+      id: "action-centre",
+      label: "Action centre",
+      detail: `${featureData.dashboardActions.length} action prompts`,
+      executive: true,
+    },
+    {
+      id: "social-tools",
+      label: "Social and tools",
+      detail: "Pulse and shortcuts",
+    },
+  ];
   return (
     <PageShell>
       <DashboardMobileLayout
@@ -520,7 +619,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         aiCaddieBrief={aiCaddieBrief}
       />
 
-      <div className="hidden flex-col gap-5 sm:flex">
+      <DesktopWorkbenchLayout scope="dashboard" className="hidden sm:grid">
         <DashboardSummaryHero
           latestSession={latestSession}
           bestClub={bestClub}
@@ -548,36 +647,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           latestRound={data.latestRound}
         />
 
-        <DashboardBentoGrid>
-          <DashboardBentoItem span={4}>
+        <DashboardWorkspace panels={desktopPanels}>
+          <DashboardWorkspacePanel panelId="practice-plan" span={4}>
             <PracticePlannerDashboardCard plan={currentPracticePlan} className="h-full" />
-          </DashboardBentoItem>
+          </DashboardWorkspacePanel>
           {pinnedDashboardSections.has("coach") ? (
-            <DashboardBentoItem span={4}>
+            <DashboardWorkspacePanel panelId="coach-priority" span={4}>
               <PracticeRecommendationCard
                 coachPreview={data.coachPreview}
                 primaryAction={primaryAction}
                 primaryActionLabel={primaryActionLabel}
               />
-            </DashboardBentoItem>
+            </DashboardWorkspacePanel>
           ) : null}
-          <DashboardBentoItem span={4}>
+          <DashboardWorkspacePanel panelId="driver-status" span={4}>
             <DriverStatusPanel pathTrend={data.pathTrend} className="h-full" />
-          </DashboardBentoItem>
+          </DashboardWorkspacePanel>
 
           {metrics.length > 0 ? (
-            <DashboardBentoItem span={8}>
+            <DashboardWorkspacePanel panelId="performance-snapshot" span={8}>
               <PerformanceSnapshot metrics={metrics} className="h-full" />
-            </DashboardBentoItem>
+            </DashboardWorkspacePanel>
           ) : null}
-          <DashboardBentoItem span={4}>
+          <DashboardWorkspacePanel panelId="scoring-zones" span={4}>
             <ScoringZonePanel bagSummary={data.bagSummary} className="h-full" />
-          </DashboardBentoItem>
+          </DashboardWorkspacePanel>
 
-          <DashboardBentoItem span={8}>
+          <DashboardWorkspacePanel panelId="course-decisions" span={8}>
             <CourseDecisionPanel items={data.courseAdvice} className="h-full" />
-          </DashboardBentoItem>
-          <DashboardBentoItem span={4}>
+          </DashboardWorkspacePanel>
+          <DashboardWorkspacePanel panelId="latest-practice" span={4}>
             <LatestPracticeSignalPanel
               compact
               latestSession={latestSession}
@@ -586,17 +685,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               latestRound={data.latestRound}
               className="h-full"
             />
-          </DashboardBentoItem>
-          <DashboardBentoItem span={4}>
+          </DashboardWorkspacePanel>
+          <DashboardWorkspacePanel panelId="environment-baseline" span={4}>
             <EnvironmentBaselinePanel summary={data.playContextSummary} className="h-full" />
-          </DashboardBentoItem>
-          <DashboardBentoItem span={8}>
+          </DashboardWorkspacePanel>
+          <DashboardWorkspacePanel panelId="plays-like" span={8}>
             <PlaysLikeAdjustmentPanel playsLike={data.playsLike} className="h-full" />
-          </DashboardBentoItem>
+          </DashboardWorkspacePanel>
 
           {pinnedDashboardSections.has("bag") ? (
-            <DashboardBentoItem
-              id="bag"
+            <DashboardWorkspacePanel
+              htmlId="bag"
+              panelId="bag-confidence"
               span={pinnedDashboardSections.has("rounds") ? 8 : 12}
               className="scroll-mt-28"
             >
@@ -606,18 +706,25 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 bagAlert={featureData.bagAlerts[0] ?? null}
                 className="h-full"
               />
-            </DashboardBentoItem>
+            </DashboardWorkspacePanel>
           ) : null}
           {pinnedDashboardSections.has("rounds") ? (
-            <DashboardBentoItem span={pinnedDashboardSections.has("bag") ? 4 : 12}>
+            <DashboardWorkspacePanel
+              panelId="latest-round"
+              span={pinnedDashboardSections.has("bag") ? 4 : 12}
+            >
               <LatestRoundPanel latestRound={data.latestRound} className="h-full" />
-            </DashboardBentoItem>
+            </DashboardWorkspacePanel>
           ) : null}
 
-          <DashboardBentoItem span={8} className="[&>[data-slot=card]]:h-full">
+          <DashboardWorkspacePanel
+            panelId="action-centre"
+            span={8}
+            className="[&>[data-slot=card]]:h-full"
+          >
             <DashboardActionCentrePanel data={featureData} />
-          </DashboardBentoItem>
-          <DashboardBentoItem span={4}>
+          </DashboardWorkspacePanel>
+          <DashboardWorkspacePanel panelId="social-tools" span={4}>
             <div className="grid h-full auto-rows-fr gap-5">
               <DashboardSocialPulse social={social} compact className="h-full" />
               <QuickActions
@@ -626,11 +733,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 className="h-full"
               />
             </div>
-          </DashboardBentoItem>
-        </DashboardBentoGrid>
+          </DashboardWorkspacePanel>
+        </DashboardWorkspace>
 
         {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
-      </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -653,41 +760,6 @@ type DashboardMetric = {
   icon: LucideIcon;
   tone: DashboardTone;
 };
-
-type DashboardBentoSpan = 4 | 8 | 12;
-
-function dashboardBentoSpan(span: DashboardBentoSpan): CSSProperties {
-  return { gridColumn: `span ${span} / span ${span}` };
-}
-
-function DashboardBentoGrid({ children }: { children: ReactNode }) {
-  return (
-    <div
-      className="grid auto-rows-auto items-stretch gap-5"
-      style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function DashboardBentoItem({
-  children,
-  className,
-  id,
-  span,
-}: {
-  children: ReactNode;
-  className?: string;
-  id?: string;
-  span: DashboardBentoSpan;
-}) {
-  return (
-    <div id={id} className={cn("min-w-0 h-full", className)} style={dashboardBentoSpan(span)}>
-      {children}
-    </div>
-  );
-}
 
 function DashboardTodayCompanionHero({
   inbox,
@@ -1661,7 +1733,10 @@ function DashboardPanel({
   return (
     <section
       id={id}
-      className={cn("premium-card flex h-full scroll-mt-28 flex-col rounded-lg", className)}
+      className={cn(
+        "@container/dashboard-card premium-card flex h-full scroll-mt-28 flex-col rounded-lg",
+        className,
+      )}
     >
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-6 py-5">
         <div className="min-w-0">
@@ -2518,9 +2593,9 @@ function DriverStatusPanel({
         </Button>
       }
     >
-      <div className="grid gap-4">
-        <div className="flex items-start justify-between gap-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
-          <div>
+      <div className="grid min-w-0 gap-4">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
+          <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
               Current trend
             </p>
@@ -2531,8 +2606,8 @@ function DriverStatusPanel({
           </div>
           <StatusPill tone={status.tone}>{pathTrend.label}</StatusPill>
         </div>
-        <div className="rounded-lg border border-[#DFE7DF] bg-white px-4 py-3">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="min-w-0 rounded-lg border border-[#DFE7DF] bg-white px-4 py-3">
+          <div className="grid min-w-0 gap-2 @[34rem]/dashboard-card:grid-cols-3">
             <DataPair
               label="Previous"
               value={formatSignedDegrees(previousPoint?.pathDeg ?? null)}
@@ -2542,7 +2617,7 @@ function DriverStatusPanel({
           </div>
           <DriverPathProgress previous={previousPoint?.pathDeg ?? null} current={status.pathDeg} />
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid min-w-0 gap-2 @[34rem]/dashboard-card:grid-cols-3">
           <DataPair label="Path" value={formatSignedDegrees(status.pathDeg)} />
           <DataPair label="Window" value="+/-5 deg" />
           <DataPair label="F-P" value={formatSignedDegrees(status.faceToPathDeg)} />
@@ -2619,7 +2694,9 @@ function ScoringZonePanel({
   const zones = bagSummary.scoringZones.slice(0, 3);
 
   return (
-    <section className={cn("premium-card flex flex-col rounded-lg", className)}>
+    <section
+      className={cn("@container/scoring-zone premium-card flex flex-col rounded-lg", className)}
+    >
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-[19px] font-semibold leading-6 tracking-normal text-foreground">
@@ -2662,7 +2739,7 @@ function ScoringZonePanel({
                     {formatYards(zone.fullCarryYd)}
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid gap-2 @[30rem]/scoring-zone:grid-cols-3">
                   {zone.rows.map((row) => (
                     <span
                       key={`${zone.id}-${row.key}`}
@@ -2784,7 +2861,7 @@ function TodayCommandBrief({
         </div>
         <StatusPill className="bg-background text-muted-foreground ring-border">Context</StatusPill>
       </div>
-      <div className="grid gap-3 lg:grid-cols-4">
+      <div className="grid gap-3 xl:grid-cols-2 min-[1900px]:grid-cols-4">
         {items.map((item) => {
           const Icon = item.icon;
 
@@ -3041,7 +3118,7 @@ function PlaysLikeAdjustmentPanel({
         </StatusPill>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+      <div className="grid gap-4 @[44rem]/dashboard-card:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
         <div className="rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
           <div className="flex items-center gap-2 text-[#087A3D]">
             <Wind className="size-5" />
@@ -3192,7 +3269,7 @@ function PracticeRecommendationCard({
       className={cn("premium-card scroll-mt-28 rounded-lg p-5 lg:p-6", className)}
     >
       {coachPreview ? (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_310px] xl:items-start">
+        <div className="grid gap-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <span className="grid size-11 place-items-center rounded-xl bg-[#E8F7EE] text-[#087A3D] shadow-[inset_0_0_0_1px_rgba(8,122,61,0.06)]">
@@ -3226,7 +3303,6 @@ function PracticeRecommendationCard({
               ) : null}
             </div>
             <PracticeReasonText reason={coachPreview.reason} />
-            <TargetLaneVisual coachPreview={coachPreview} />
           </div>
 
           <section className="premium-command-surface rounded-lg p-5">
@@ -3288,9 +3364,11 @@ function PracticePlannerDashboardCard({
   plan: SavedPracticePlan | null;
   className?: string;
 }) {
+  const blocks = plan?.blocks.slice(0, 3) ?? [];
+
   return (
     <DataPanel className={className}>
-      <CardContent className="grid h-full content-between gap-4 p-4">
+      <CardContent className="grid gap-4 p-4">
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-3">
             <StatusPill
@@ -3308,6 +3386,36 @@ function PracticePlannerDashboardCard({
               "Turn latest practice, bag trust, progress priorities and training load into a structured session."}
           </p>
         </div>
+
+        {blocks.length > 0 ? (
+          <div className="grid gap-2">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
+              Session blocks
+            </p>
+            <div className="grid gap-2">
+              {blocks.map((block) => (
+                <div
+                  key={block.id}
+                  className="grid gap-1 rounded-lg border border-[#DFE7DF] bg-white px-3 py-2.5"
+                >
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <p className="truncate text-sm font-semibold leading-5 text-[#111827]">
+                      {block.title}
+                    </p>
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-[0.08em] text-[#087A3D]">
+                      {block.ballCount ? `${block.ballCount} balls` : `${block.timeMinutes}m`}
+                    </span>
+                  </div>
+                  <p className="line-clamp-1 text-xs leading-5 text-muted-foreground">
+                    {block.clubs.length > 0 ? block.clubs.join(", ") : "All clubs"} ·{" "}
+                    {block.successTarget}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid gap-3">
           <div className="grid grid-cols-3 gap-2">
             <PracticePayoffPill
@@ -3378,84 +3486,6 @@ function practiceTaskParagraphs(taskCopy: string) {
     .filter(Boolean);
 }
 
-type PracticeMissSide = "left" | "right" | "neutral";
-
-function TargetLaneVisual({
-  coachPreview,
-}: {
-  coachPreview: NonNullable<DashboardData["coachPreview"]>;
-}) {
-  const missSide = getPracticeMissSide(coachPreview);
-  const markerPosition =
-    missSide === "left" ? "left-[34%]" : missSide === "right" ? "left-[66%]" : "left-1/2";
-  const markerLabel =
-    missSide === "left"
-      ? "Left miss trend"
-      : missSide === "right"
-        ? "Right miss trend"
-        : "Current pattern";
-  const markerTone =
-    missSide === "right"
-      ? "border-[#2563EB] bg-[#2563EB]"
-      : missSide === "left"
-        ? "border-[#8A4B00] bg-[#8A4B00]"
-        : "border-[#087A3D] bg-[#087A3D]";
-
-  return (
-    <div className="premium-command-surface mt-8 rounded-lg p-4">
-      <div className="mb-3 grid grid-cols-[24%_50%_26%] px-1 text-sm font-bold uppercase tracking-[0.12em] text-[#667085]">
-        <span>Left miss</span>
-        <span className="text-center">Playable window</span>
-        <span className="text-right">Right miss</span>
-      </div>
-      <div className="relative h-32 overflow-hidden rounded-xl border border-[#DFE7DF] bg-white">
-        <div className="absolute inset-y-0 left-0 w-[24%] bg-[linear-gradient(135deg,#FFF2D8_0%,#FFF8E8_100%)]" />
-        <div className="absolute inset-y-0 left-[24%] w-[50%] bg-[linear-gradient(135deg,#E7F6EF_0%,#F3FBF7_100%)]" />
-        <div className="absolute inset-y-0 right-0 w-[26%] bg-[linear-gradient(135deg,#EAF1FF_0%,#F4F7FF_100%)]" />
-        <div className="absolute left-[24%] top-0 h-full border-l border-dashed border-[#EA6A00]" />
-        <div className="absolute left-[74%] top-0 h-full border-l border-dashed border-[#2563EB]" />
-        <div className="absolute left-1/2 top-0 h-full border-l border-[#087A3D]" />
-        <span className="absolute left-1/2 top-4 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[#087A3D] shadow-[0_8px_18px_rgba(15,23,42,0.1)]">
-          Target
-        </span>
-        <div
-          className={cn(
-            "absolute bottom-5 flex -translate-x-1/2 flex-col items-center",
-            markerPosition,
-          )}
-        >
-          <span className="whitespace-nowrap rounded-full border border-[#DFE7DF] bg-white px-3 py-1.5 text-xs font-semibold text-[#111827] shadow-[0_8px_18px_rgba(15,23,42,0.1)]">
-            {markerLabel}
-          </span>
-          <span className={cn("h-5 w-px", markerTone)} />
-          <span
-            className={cn(
-              "size-4 rounded-full border-[3px] border-white shadow-[0_0_0_7px_rgba(17,24,39,0.10)]",
-              markerTone,
-            )}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function getPracticeMissSide(
-  coachPreview: NonNullable<DashboardData["coachPreview"]>,
-): PracticeMissSide {
-  const reason = coachPreview.reason.toLowerCase();
-
-  if (/\bleft miss\b|\bleft miss tendency\b|\bleft tendency\b/.test(reason)) {
-    return "left";
-  }
-
-  if (/\bright miss\b|\bright miss tendency\b|\bright tendency\b/.test(reason)) {
-    return "right";
-  }
-
-  return "neutral";
-}
-
 function PerformanceSnapshot({
   metrics,
   paired = false,
@@ -3483,7 +3513,9 @@ function PerformanceSnapshot({
       <div
         className={cn(
           "grid auto-rows-fr gap-4 px-5 pb-5",
-          paired ? "grid-cols-2" : "md:grid-cols-2 xl:grid-cols-4",
+          paired
+            ? "grid-cols-2"
+            : "@[42rem]/dashboard-panel:grid-cols-2 @[72rem]/dashboard-panel:grid-cols-4",
         )}
       >
         {metrics.map((metric) => {
@@ -4072,7 +4104,7 @@ function CourseDecisionPanel({
         </Button>
       }
     >
-      <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid auto-rows-fr gap-3 @[42rem]/dashboard-card:grid-cols-2 @[72rem]/dashboard-card:grid-cols-4">
         {items.map((item, index) => (
           <Link
             key={item.label}
@@ -4148,7 +4180,7 @@ function DashboardActionCentrePanel({
         </Button>
       }
     >
-      <div className="grid h-full gap-4 lg:grid-cols-2">
+      <div className="grid h-full gap-4 @[44rem]/dashboard-card:grid-cols-2">
         <DashboardActionGroup title="Practice" items={practice} empty="No practice action yet." />
         <DashboardActionGroup
           title="Maintenance"

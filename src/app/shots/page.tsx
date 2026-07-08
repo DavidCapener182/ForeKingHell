@@ -1,9 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowDown,
   ArrowLeft,
-  ArrowUp,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +12,14 @@ import {
 import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { DateFilterPopover } from "@/components/app/date-filter-popover";
+import {
+  DesktopInsightRail,
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { SavedShotViewsPanel } from "@/components/features/feature-panels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +44,11 @@ import { MobileRouteHeader } from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
 import {
+  ShotsMasterDetailTable,
+  type ShotMasterDetailRow,
+  type ShotTableSort,
+} from "@/app/shots/shots-master-detail-table";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -55,7 +66,7 @@ import {
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
-import { requireCurrentUserId } from "@/lib/current-user";
+import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +86,36 @@ type ShotFilters = {
 };
 
 const PAGE_SIZE = 25;
+const shotWorkbenchColumns: DesktopWorkbenchColumn[] = [
+  { id: "date", label: "Date", locked: true },
+  { id: "file", label: "File" },
+  { id: "shot", label: "Shot #" },
+  { id: "hole", label: "Hole" },
+  { id: "club", label: "Club", locked: true },
+  { id: "carry", label: "Carry" },
+  { id: "total", label: "Total" },
+  { id: "side", label: "Side" },
+  { id: "launch", label: "Launch" },
+  { id: "ballSpeed", label: "Ball speed" },
+  { id: "advanced", label: "Advanced" },
+];
+const shotSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Driver misses right",
+    href: "/shots?club=driver&sort=side",
+    detail: "Start from tee shots and side-carry movement.",
+  },
+  {
+    title: "7 iron stock shots",
+    href: "/shots?club=7i",
+    detail: "Approach-club evidence for stock carry checks.",
+  },
+  {
+    title: "Latest launch numbers",
+    href: "/shots?sort=launch",
+    detail: "Sort the archive by launch angle for delivery review.",
+  },
+];
 const shotSortMetrics = [
   "recent",
   "shot",
@@ -136,6 +177,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
   ] = await Promise.all([getShotDatabase(filters), getFeatureIdeasData()]);
   const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
   const activeFilterChips = buildActiveFilterChips(filters, clubsForFilter, sessionSummaries);
+  const currentViewLabel = buildShotCurrentViewLabel(filters, activeFilterChips);
+  const desktopShotRows = savedShots.map(serializeShotForMasterDetail);
+  const desktopShotSorts = buildShotTableSorts(filters);
   const filterForm = (
     <ShotFilterFields
       filters={filters}
@@ -452,38 +496,103 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
         </div>
       </section>
 
-      <Card id="shots" className="premium-card order-2 scroll-mt-28 sm:order-none">
-        <CardHeader>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle>Shot explorer</CardTitle>
-              <CardDescription>
-                {integerFormatter.format(totalFilteredShots)} matching rows. Showing page{" "}
-                {filters.page} of {totalPages}.
-              </CardDescription>
+      <DesktopWorkbenchLayout
+        scope="shots"
+        rail={
+          <DesktopInsightRail
+            title="AI shot analyst"
+            description="Use the current filter, table columns and visible rows as the evidence set."
+            metrics={[
+              {
+                label: "Matching rows",
+                value: integerFormatter.format(totalFilteredShots),
+                detail:
+                  totalFilteredShots > 0
+                    ? `${PAGE_SIZE} rows per page. Export uses the visible table columns.`
+                    : "No rows match this filter; reset before asking for trend analysis.",
+                tone: totalFilteredShots > 0 ? "green" : "amber",
+              },
+              {
+                label: "Data scope",
+                value: integerFormatter.format(stats.shotCount),
+                detail: `${integerFormatter.format(stats.sessionCount)} sessions and ${integerFormatter.format(
+                  stats.clubCount,
+                )} tracked clubs feed this page.`,
+                tone: stats.shotCount > 0 ? "sky" : "slate",
+              },
+              {
+                label: "Current view",
+                value: activeFilterChips.length > 0 ? "Filtered" : "All shots",
+                detail: currentViewLabel,
+                tone: activeFilterChips.length > 0 ? "amber" : "slate",
+              },
+            ]}
+            evidence={[
+              "The table is scoped to the signed-in player and current filters.",
+              "Column control changes what is exported, not the underlying saved data.",
+              "Low sample filters should be treated as low confidence in AI answers.",
+            ]}
+            prompts={commonAiPrompts("shots explorer")}
+            actions={[
+              {
+                label: "Compare sessions",
+                href: "/compare",
+                detail: "Build a before/after view from this evidence.",
+                icon: ArrowUpDown,
+              },
+              {
+                label: "Open bag impact",
+                href: "/bag",
+                detail: "See how shot rows affect club trust.",
+                icon: Flag,
+              },
+            ]}
+          />
+        }
+      >
+        <Card id="shots" className="premium-card order-2 scroll-mt-28 sm:order-none">
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Shot explorer</CardTitle>
+                <CardDescription>
+                  {integerFormatter.format(totalFilteredShots)} matching rows. Showing page{" "}
+                  {filters.page} of {totalPages}.
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button asChild variant="outline" size="sm" aria-disabled={filters.page <= 1}>
+                  <Link href={pageHref(filters, Math.max(1, filters.page - 1))}>
+                    <ChevronLeft className="size-4" /> Previous
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  aria-disabled={filters.page >= totalPages}
+                >
+                  <Link href={pageHref(filters, Math.min(totalPages, filters.page + 1))}>
+                    Next <ChevronRight className="size-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" aria-disabled={filters.page <= 1}>
-                <Link href={pageHref(filters, Math.max(1, filters.page - 1))}>
-                  <ChevronLeft className="size-4" /> Previous
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                aria-disabled={filters.page >= totalPages}
-              >
-                <Link href={pageHref(filters, Math.min(totalPages, filters.page + 1))}>
-                  Next <ChevronRight className="size-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <DataTableFrame
-            mobile={
+            <DesktopTableWorkbenchControls
+              viewKey="shots"
+              scope="shots"
+              currentViewLabel={currentViewLabel}
+              resultLabel={`${integerFormatter.format(totalFilteredShots)} rows`}
+              columns={shotWorkbenchColumns}
+              suggestedViews={shotSuggestedViews}
+              exportTableId="shots"
+              exportFileName="forekinghell-shots-view.csv"
+              className="mt-2"
+            />
+          </CardHeader>
+          <CardContent>
+            <ShotsMasterDetailTable shots={desktopShotRows} sorts={desktopShotSorts} />
+            <div className="min-w-0 overflow-hidden sm:hidden">
               <MobileDataList>
                 {savedShots.length > 0 ? (
                   savedShots.map((shot) => (
@@ -534,89 +643,10 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                   </div>
                 )}
               </MobileDataList>
-            }
-          >
-            <Table className="min-w-[980px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>File</TableHead>
-                  <SortableShotHead filters={filters} metric="shot" label="Shot" />
-                  <TableHead>Hole</TableHead>
-                  <TableHead>Club</TableHead>
-                  <SortableShotHead filters={filters} metric="carry" label="Carry" />
-                  <SortableShotHead filters={filters} metric="total" label="Total" />
-                  <SortableShotHead filters={filters} metric="side" label="Side" />
-                  <SortableShotHead filters={filters} metric="launch" label="Launch" />
-                  <SortableShotHead filters={filters} metric="ballSpeed" label="Ball mph" />
-                  <TableHead>Advanced</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {savedShots.map((shot) => (
-                  <TableRow key={shot.id}>
-                    <TableCell>{formatDate(shot.shotAt)}</TableCell>
-                    <TableCell className="max-w-48 truncate">{shot.fileName ?? "--"}</TableCell>
-                    <TableCell className="text-right">{shot.shotNumber ?? "--"}</TableCell>
-                    <TableCell>
-                      {formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="max-w-48">
-                        <p className="truncate">{formatShotClub(shot)}</p>
-                        {formatShotClub(shot) !== formatClubType(shot.clubType) ? (
-                          <p className="truncate text-xs font-normal text-muted-foreground">
-                            {formatClubType(shot.clubType)}
-                          </p>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
-                    <TableCell className="text-right">
-                      {formatMetric(shot.launchAngleDeg)}
-                    </TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
-                    <TableCell>
-                      <details className="text-xs">
-                        <summary className="cursor-pointer text-emerald-700">More</summary>
-                        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-muted-foreground">
-                          <dt>Club speed</dt>
-                          <dd>{formatMetric(shot.clubSpeedMph)}</dd>
-                          <dt>Direction</dt>
-                          <dd>{formatMetric(shot.launchDirectionDeg)}</dd>
-                          <dt>Apex</dt>
-                          <dd>{formatMetric(shot.apexFt)}</dd>
-                          <dt>Attack</dt>
-                          <dd>{formatMetric(shot.attackAngleDeg)}</dd>
-                          <dt>Path</dt>
-                          <dd>{formatMetric(shot.clubPathDeg)}</dd>
-                          <dt>Face</dt>
-                          <dd>{formatMetric(shot.faceAngleDeg)}</dd>
-                          <dt>Descent</dt>
-                          <dd>{formatMetric(shot.descentAngleDeg)}</dd>
-                          <dt>Smash</dt>
-                          <dd>{formatMetric(shot.smashFactor)}</dd>
-                          <dt>Est</dt>
-                          <dd>{shot.clubDataEstType ?? "--"}</dd>
-                        </dl>
-                      </details>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {savedShots.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
-                      No shots match these filters.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      </DesktopWorkbenchLayout>
       <StickyMobileAction>
         <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="#filters">Filter / sort shots</Link>
@@ -800,7 +830,13 @@ function ShotFilterFields({
           <InputGroupAddon>
             <Search className="size-4" />
           </InputGroupAddon>
-          <InputGroupInput name="q" defaultValue={filters.q} placeholder="Session name" />
+          <InputGroupInput
+            name="q"
+            defaultValue={filters.q}
+            placeholder="Session name"
+            data-page-search
+            data-filter-search
+          />
         </InputGroup>
       </Field>
       <Field>
@@ -885,6 +921,19 @@ function ShotFilterFields({
 }
 
 async function getShotDatabase(filters: ShotFilters) {
+  try {
+    return await getLiveShotDatabase(filters);
+  } catch (error) {
+    if (isPlaywrightE2eAuthBypassEnabled()) {
+      console.warn("[shots] Falling back to empty Playwright shot database", error);
+      return emptyShotDatabase();
+    }
+
+    throw error;
+  }
+}
+
+async function getLiveShotDatabase(filters: ShotFilters) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const where = buildShotWhere(filters, userId);
@@ -1019,6 +1068,24 @@ async function getShotDatabase(filters: ShotFilters) {
   };
 }
 
+function emptyShotDatabase() {
+  return {
+    stats: {
+      shotCount: 0,
+      rawRowCount: 0,
+      sessionCount: 0,
+      clubCount: 0,
+    },
+    rowTypes: [],
+    sessionSummaries: [],
+    savedShots: [],
+    dispersionShots: [],
+    totalFilteredShots: 0,
+    clubsForFilter: [],
+    categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
+  };
+}
+
 function buildShotWhere(filters: ShotFilters, userId: string) {
   const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId)];
 
@@ -1144,6 +1211,21 @@ function buildActiveFilterChips(
   return chips;
 }
 
+function buildShotCurrentViewLabel(
+  filters: ShotFilters,
+  chips: Array<{ label: string; href: string }>,
+) {
+  if (chips.length > 0) {
+    return chips.map((chip) => chip.label.replace(/\s*x$/, "")).join(" + ");
+  }
+
+  if (filters.sort !== "recent") {
+    return `${shotSortLabels[filters.sort]} · ${sortDirectionLabel(filters.dir)}`;
+  }
+
+  return "All shots · newest first";
+}
+
 function filterHref(filters: ShotFilters, omitKey: keyof ShotFilters) {
   const next = { ...filters, page: 1 };
 
@@ -1203,37 +1285,92 @@ function sortHref(filters: ShotFilters, sort: ShotSortMetric) {
   return shotsHref({ ...filters, page: 1, sort, dir });
 }
 
-function SortableShotHead({
-  filters,
-  metric,
-  label,
-}: {
-  filters: ShotFilters;
-  metric: ShotSortMetric;
-  label: string;
-}) {
-  const active = filters.sort === metric;
-  const dir = active ? filters.dir : "desc";
-  const nextDir = active && filters.dir === "desc" ? "low to high" : "high to low";
-  const Icon = active ? (dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
+function buildShotTableSorts(filters: ShotFilters): ShotTableSort[] {
+  const columns: Array<Pick<ShotTableSort, "metric" | "label">> = [
+    { metric: "shot", label: "Shot" },
+    { metric: "carry", label: "Carry" },
+    { metric: "total", label: "Total" },
+    { metric: "side", label: "Side" },
+    { metric: "launch", label: "Launch" },
+    { metric: "ballSpeed", label: "Ball mph" },
+  ];
 
-  return (
-    <TableHead className="text-right" aria-sort={active ? sortAriaValue(dir) : "none"}>
-      <Link
-        href={sortHref(filters, metric)}
-        className="inline-flex w-full items-center justify-end gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-        aria-label={`Sort by ${label}, ${nextDir}`}
-        prefetch={false}
-      >
-        {label}
-        <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} />
-      </Link>
-    </TableHead>
-  );
+  return columns.map((item) => ({
+    ...item,
+    href: sortHref(filters, item.metric),
+    active: filters.sort === item.metric,
+    dir: filters.sort === item.metric ? filters.dir : "desc",
+  }));
 }
 
-function sortAriaValue(dir: ShotSortDirection) {
-  return dir === "desc" ? "descending" : "ascending";
+function serializeShotForMasterDetail(shot: {
+  id: string;
+  fileName: string | null;
+  shotAt: Date;
+  shotNumber: number | null;
+  courseHoleNumber: number | null;
+  courseHoleShotNumber: number | null;
+  clubType: string;
+  clubBrand: string | null;
+  clubModel: string | null;
+  carryYd: number | null;
+  totalYd: number | null;
+  ballSpeedMph: number | null;
+  clubSpeedMph: number | null;
+  launchAngleDeg: number | null;
+  launchDirectionDeg: number | null;
+  apexFt: number | null;
+  sideCarryYd: number | null;
+  attackAngleDeg: number | null;
+  clubPathDeg: number | null;
+  faceAngleDeg: number | null;
+  descentAngleDeg: number | null;
+  smashFactor: number | null;
+  clubDataEstType: string | null;
+}): ShotMasterDetailRow {
+  return {
+    id: shot.id,
+    shotAtLabel: formatDate(shot.shotAt),
+    fileNameLabel: shot.fileName ?? "--",
+    shotNumberLabel: shot.shotNumber?.toString() ?? "--",
+    holeLabel: formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber),
+    clubLabel: formatShotClub(shot),
+    clubTypeLabel: formatClubType(shot.clubType),
+    clubType: shot.clubType,
+    carryLabel: formatMetric(shot.carryYd),
+    totalLabel: formatMetric(shot.totalYd),
+    sideLabel: formatMetric(shot.sideCarryYd),
+    launchLabel: formatMetric(shot.launchAngleDeg),
+    ballSpeedLabel: formatMetric(shot.ballSpeedMph),
+    clubSpeedLabel: formatMetric(shot.clubSpeedMph),
+    launchDirectionLabel: formatMetric(shot.launchDirectionDeg),
+    apexLabel: formatMetric(shot.apexFt),
+    attackLabel: formatMetric(shot.attackAngleDeg),
+    pathLabel: formatMetric(shot.clubPathDeg),
+    faceLabel: formatMetric(shot.faceAngleDeg),
+    descentLabel: formatMetric(shot.descentAngleDeg),
+    smashLabel: formatMetric(shot.smashFactor),
+    estimateLabel: shot.clubDataEstType ?? "--",
+    sideTone: sideCarryTone(shot.sideCarryYd),
+  };
+}
+
+function sideCarryTone(value: number | null): ShotMasterDetailRow["sideTone"] {
+  if (value === null) {
+    return "slate";
+  }
+
+  const offline = Math.abs(value);
+
+  if (offline <= 8) {
+    return "green";
+  }
+
+  if (offline <= 20) {
+    return "amber";
+  }
+
+  return "red";
 }
 
 function sortDirectionLabel(dir: ShotSortDirection) {

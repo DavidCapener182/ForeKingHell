@@ -3,10 +3,26 @@ import type { ReactNode } from "react";
 import { Check, CreditCard, Sparkles, Trophy, Zap } from "lucide-react";
 
 import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageArtwork } from "@/components/visuals/page-artwork";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getBillingPageData, type BillingPlan } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -19,141 +35,288 @@ type BillingPageProps = {
   }>;
 };
 
+type BillingPageData = Awaited<ReturnType<typeof getBillingPageData>>;
+type BillingPlanLimit = BillingPageData["planLimits"][number];
+
+const billingLimitColumns: DesktopWorkbenchColumn[] = [
+  { id: "plan", label: "Plan", locked: true },
+  { id: "limit", label: "Limit" },
+  { id: "value", label: "Value" },
+  { id: "status", label: "Current status" },
+];
+
+const billingLimitSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "AI allowances",
+    href: "/billing#billing-limits",
+    detail: "Compare AI credits, chat messages and scorecard extracts.",
+  },
+  {
+    title: "Private play access",
+    href: "/billing#billing-limits",
+    detail: "Review private challenges, boards and friend tournament limits.",
+  },
+  {
+    title: "Provider and admin access",
+    href: "/billing#billing-limits",
+    detail: "Check device adapter, coach and operations entitlements.",
+  },
+];
+
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams;
   const data = await getBillingPageData();
   const visiblePlans = data.plans.filter(
     (plan) => !plan.internal || plan.key === data.activePlanKey,
   );
+  const visiblePlanKeys = new Set<string>(visiblePlans.map((plan) => plan.key));
+  const visiblePlanLimits = data.planLimits.filter((limit) => visiblePlanKeys.has(limit.planKey));
 
   return (
     <PageShell size="full">
       <MobileRouteHeader title="Platform" group="platform" activeKey="billing" />
 
-      <header className="premium-hero p-3 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <StatusPill tone="sky">Pricing</StatusPill>
-            <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">
-              Choose the plan for your golf network
-            </h1>
-            <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
-              Social basics stay free. Upgrade when you need deeper analytics, AI coaching, private
-              leagues, provider adapters or coach/club tools.
-            </p>
-          </div>
-          <div className="grid shrink-0 gap-2">
-            {data.latestSubscription ? (
-              <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
-                <CreditCard className="size-3" />
-                Current plan: {planLabel(data.plans, data.activePlanKey)}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="hidden gap-1 sm:inline-flex">
-                <CreditCard className="size-3" />
-                Free plan
-              </Badge>
-            )}
-            <div data-primary-action>
-              <Button asChild size="sm" variant="outline" className="w-full rounded-lg bg-white">
-                <a href="#plans">
-                  <Sparkles className="size-4" />
-                  Compare plans
-                </a>
-              </Button>
+      <DesktopWorkbenchLayout scope="billing">
+        <header className="premium-hero p-3 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <StatusPill tone="sky">Pricing</StatusPill>
+              <h1 className="mt-2 text-lg font-semibold leading-tight tracking-normal sm:mt-3 sm:text-3xl">
+                Choose the plan for your golf network
+              </h1>
+              <p className="mt-1 hidden max-w-3xl text-sm leading-5 text-muted-foreground sm:mt-2 sm:block sm:leading-6">
+                Social basics stay free. Upgrade when you need deeper analytics, AI coaching,
+                private leagues, provider adapters or coach/club tools.
+              </p>
             </div>
-          </div>
-        </div>
-        {params?.checkout || params?.portal ? (
-          <div className="mt-4 rounded-lg border bg-[#F5F6F4] px-4 py-3 text-sm text-muted-foreground">
-            {billingStatusMessage(params.checkout, params.portal, params.plan)}
-          </div>
-        ) : null}
-      </header>
-
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-        <section id="plans" className="grid scroll-mt-28 gap-4 md:grid-cols-2">
-          {visiblePlans.map((plan) => (
-            <PlanCard
-              key={plan.key}
-              plan={plan}
-              active={plan.key === data.activePlanKey}
-              stripeConfigured={data.stripeConfigured}
-              limits={planLimitsForDisplay(
-                data.planLimits.filter((limit) => limit.planKey === plan.key),
-              )}
+            <PageArtwork
+              variant="billing"
+              alt=""
+              className="hidden h-28 w-48 shrink-0 lg:block"
+              sizes="192px"
+              priority
             />
-          ))}
+            <div className="grid shrink-0 gap-2">
+              {data.latestSubscription ? (
+                <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
+                  <CreditCard className="size-3" />
+                  Current plan: {planLabel(data.plans, data.activePlanKey)}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="hidden gap-1 sm:inline-flex">
+                  <CreditCard className="size-3" />
+                  Free plan
+                </Badge>
+              )}
+              <div data-primary-action>
+                <Button asChild size="sm" variant="outline" className="w-full rounded-lg bg-white">
+                  <a href="#plans">
+                    <Sparkles className="size-4" />
+                    Compare plans
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+          {params?.checkout || params?.portal ? (
+            <div className="mt-4 rounded-lg border bg-[#F5F6F4] px-4 py-3 text-sm text-muted-foreground">
+              {billingStatusMessage(params.checkout, params.portal, params.plan)}
+            </div>
+          ) : null}
+        </header>
+
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <section id="plans" className="grid scroll-mt-28 gap-4 md:grid-cols-2">
+            {visiblePlans.map((plan) => (
+              <PlanCard
+                key={plan.key}
+                plan={plan}
+                active={plan.key === data.activePlanKey}
+                stripeConfigured={data.stripeConfigured}
+                limits={planLimitsForDisplay(
+                  data.planLimits.filter((limit) => limit.planKey === plan.key),
+                )}
+              />
+            ))}
+          </section>
+
+          <section className="grid gap-4 lg:sticky lg:top-28">
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Current plan</p>
+              <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
+                <p className="text-2xl font-semibold tracking-normal">
+                  {planLabel(data.plans, data.activePlanKey)}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {data.activePlanKey === "full"
+                    ? "Lifetime full access."
+                    : data.latestSubscription
+                      ? `${data.latestSubscription.status} subscription`
+                      : "No paid subscription yet."}
+                </p>
+              </div>
+              <form action={openCustomerPortalAction} className="mt-3">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="w-full"
+                  disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
+                >
+                  <CreditCard className="size-4" />
+                  Customer portal
+                </Button>
+              </form>
+            </section>
+
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Upgrade prompts</p>
+              <div className="mt-3 grid gap-2">
+                <Prompt
+                  icon={<Trophy className="size-4 text-amber-600" />}
+                  text="Plus unlocks private course records and friend tournaments."
+                />
+                <Prompt
+                  icon={<Sparkles className="size-4 text-emerald-600" />}
+                  text="Pro adds AI tournament prep, record strategy and verification analytics."
+                />
+                <Prompt
+                  icon={<CreditCard className="size-4 text-sky-600" />}
+                  text="Coach / Club can host leagues, majors and evidence review queues."
+                />
+              </div>
+            </section>
+
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Manage access</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Plan changes update access automatically. Social privacy stays controlled from your
+                profile.
+              </p>
+              <div className="mt-3 grid gap-2">
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/profile" prefetch={false}>
+                    Profile privacy
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/providers" prefetch={false}>
+                    Provider adapters
+                  </Link>
+                </Button>
+              </div>
+            </section>
+          </section>
         </section>
 
-        <section className="grid gap-4 lg:sticky lg:top-28">
-          <section className="premium-card p-4">
-            <p className="text-sm font-semibold">Current plan</p>
-            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
-              <p className="text-2xl font-semibold tracking-normal">
-                {planLabel(data.plans, data.activePlanKey)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {data.activePlanKey === "full"
-                  ? "Lifetime full access."
-                  : data.latestSubscription
-                    ? `${data.latestSubscription.status} subscription`
-                    : "No paid subscription yet."}
-              </p>
-            </div>
-            <form action={openCustomerPortalAction} className="mt-3">
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full"
-                disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
-              >
-                <CreditCard className="size-4" />
-                Customer portal
-              </Button>
-            </form>
-          </section>
-
-          <section className="premium-card p-4">
-            <p className="text-sm font-semibold">Upgrade prompts</p>
-            <div className="mt-3 grid gap-2">
-              <Prompt
-                icon={<Trophy className="size-4 text-amber-600" />}
-                text="Plus unlocks private course records and friend tournaments."
-              />
-              <Prompt
-                icon={<Sparkles className="size-4 text-emerald-600" />}
-                text="Pro adds AI tournament prep, record strategy and verification analytics."
-              />
-              <Prompt
-                icon={<CreditCard className="size-4 text-sky-600" />}
-                text="Coach / Club can host leagues, majors and evidence review queues."
-              />
-            </div>
-          </section>
-
-          <section className="premium-card p-4">
-            <p className="text-sm font-semibold">Manage access</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Plan changes update access automatically. Social privacy stays controlled from your
-              profile.
-            </p>
-            <div className="mt-3 grid gap-2">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/profile" prefetch={false}>
-                  Profile privacy
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/providers" prefetch={false}>
-                  Provider adapters
-                </Link>
-              </Button>
-            </div>
-          </section>
-        </section>
-      </section>
+        <BillingLimitsTable
+          limits={visiblePlanLimits}
+          plans={visiblePlans}
+          activePlanKey={data.activePlanKey}
+        />
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function BillingLimitsTable({
+  limits,
+  plans,
+  activePlanKey,
+}: {
+  limits: BillingPlanLimit[];
+  plans: BillingPlan[];
+  activePlanKey: string;
+}) {
+  return (
+    <section
+      id="billing-limits"
+      data-workbench-scope="billing-limits"
+      className="premium-card scroll-mt-28 p-4"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">Plan limits ledger</p>
+          <p className="mt-1 max-w-3xl text-sm leading-5 text-muted-foreground">
+            Source-backed entitlements and limits for the visible plans, ready for desktop review
+            and export.
+          </p>
+        </div>
+        <StatusPill tone={limits.length > 0 ? "green" : "slate"}>{limits.length} rows</StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey="billing-limits"
+        scope="billing-limits"
+        currentViewLabel="Billing limits"
+        resultLabel={`${limits.length} limits`}
+        columns={billingLimitColumns}
+        suggestedViews={billingLimitSuggestedViews}
+        exportTableId="billing-limits"
+        exportFileName="forekinghell-billing-limits.csv"
+        className="my-3"
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Billing plan limits table">
+        <Table
+          data-workbench-export-table="billing-limits"
+          aria-describedby="billing-limits-summary"
+        >
+          <TableCaption id="billing-limits-summary" className="sr-only">
+            Billing plan limits table showing plan, entitlement or limit, source-backed value and
+            whether the row belongs to the current plan.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="plan"
+                className="sticky left-0 z-20 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Plan
+              </TableHead>
+              <TableHead data-column="limit">Limit</TableHead>
+              <TableHead data-column="value">Value</TableHead>
+              <TableHead data-column="status">Current status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {limits.length > 0 ? (
+              limits.map((limit) => {
+                const isCurrent = limit.planKey === activePlanKey;
+
+                return (
+                  <TableRow
+                    key={limit.id}
+                    tabIndex={0}
+                    className="focus-aaa outline-none"
+                    aria-label={`${planLabel(plans, limit.planKey)} ${label(limit.limitKey)} limit`}
+                  >
+                    <TableCell
+                      data-column="plan"
+                      className="sticky left-0 z-10 min-w-48 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      {planLabel(plans, limit.planKey)}
+                    </TableCell>
+                    <TableCell data-column="limit">{label(limit.limitKey)}</TableCell>
+                    <TableCell data-column="value">{limitValue(limit.limitValueJson)}</TableCell>
+                    <TableCell data-column="status">
+                      <StatusPill tone={isCurrent ? "green" : "slate"}>
+                        {isCurrent ? "Current plan" : "Upgrade option"}
+                      </StatusPill>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  No billing limits are configured yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 

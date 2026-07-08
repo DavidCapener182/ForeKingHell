@@ -27,6 +27,50 @@ describe("selectTrainingRangeData", () => {
         { date: "2026-07-03", sessionCount: 1, totalLoad: 30, title: "Old range" },
         { date: "2026-07-05", sessionCount: 1, totalLoad: 50, title: "Range" },
       ],
+      sessions: [
+        {
+          id: "old",
+          sourceType: "practice",
+          sourceId: null,
+          title: "Old range",
+          sessionDate: "2026-07-03",
+          durationMinutes: 60,
+          holesPlayed: null,
+          totalSwings: 80,
+          fullSwings: 60,
+          shortGameSwings: 20,
+          puttingSwings: null,
+          walked: null,
+          usedCart: null,
+          competition: false,
+          rpe: 4,
+          mentalPressure: null,
+          physicalDemand: null,
+          sessionLoad: 30,
+          notes: null,
+        },
+        {
+          id: "current",
+          sourceType: "practice",
+          sourceId: null,
+          title: "Range",
+          sessionDate: "2026-07-05",
+          durationMinutes: 60,
+          holesPlayed: null,
+          totalSwings: 80,
+          fullSwings: 60,
+          shortGameSwings: 20,
+          puttingSwings: null,
+          walked: null,
+          usedCart: null,
+          competition: false,
+          rpe: 4,
+          mentalPressure: null,
+          physicalDemand: null,
+          sessionLoad: 50,
+          notes: null,
+        },
+      ],
     } as TrainingOverTimeData;
 
     const selected = selectTrainingRangeData(baseData, "7d");
@@ -44,6 +88,7 @@ describe("selectTrainingRangeData", () => {
       "2026-07-10",
     ]);
     expect(selected.sessionMarkers.map((marker) => marker.date)).toEqual(["2026-07-05"]);
+    expect(selected.sessions.map((session) => session.id)).toEqual(["current"]);
     expect(selected.averageTrainingLoad).toBe(70);
     expect(baseData.rangeKey).toBe("1y");
     expect(baseData.series).toHaveLength(10);

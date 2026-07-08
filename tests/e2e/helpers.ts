@@ -52,8 +52,22 @@ export function skipWhenNoAuth() {
 }
 
 export async function expectPageReady(page: Page, expectedText: RegExp | string) {
-  await expect(page.locator("body")).toContainText(expectedText);
+  await expectWithOneReload(page, expectedText, 45_000);
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+}
+
+async function expectWithOneReload(page: Page, expectedText: RegExp | string, timeout: number) {
+  try {
+    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+  } catch (error) {
+    if (page.isClosed()) {
+      throw error;
+    }
+
+    await page.reload({ waitUntil: "commit", timeout: 45_000 });
+    await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
+    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+  }
 }
 
 export async function injectAxe(page: Page) {

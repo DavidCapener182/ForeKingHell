@@ -7,11 +7,11 @@ import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { AchievementArtwork } from "@/components/visuals/achievement-artwork";
 import { Button } from "@/components/ui/button";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { getDashboardFeedPreview } from "@/lib/social";
 import { getAchievementPageData } from "@/lib/achievements/service";
 
 export const dynamic = "force-dynamic";
-
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function AchievementsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -31,131 +31,133 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
     <PageShell>
       <MobileRouteHeader title="Coach" group="improve" activeKey="achievements" />
 
-      <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard">
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
-          <Button asChild variant="outline">
-            <Link href="/course-records">
-              <Award className="size-4" />
-              Records
+      <DesktopWorkbenchLayout scope="achievements">
+        <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard">
+              <ArrowLeft className="size-4" />
+              Dashboard
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/tournaments">
-              <Trophy className="size-4" />
-              Events
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/rounds">
-              <Flag className="size-4" />
-              Rounds
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/bag">
-              <Target className="size-4" />
-              Bag
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/import">
-              <Upload className="size-4" />
-              Import
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <section className="premium-card p-3 sm:hidden">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              Achievements
-            </p>
-            <h1 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h1>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
-              {data.totalXp.toLocaleString("en-GB")} XP
-            </p>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+            <Button asChild variant="outline">
+              <Link href="/course-records">
+                <Award className="size-4" />
+                Records
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/tournaments">
+                <Trophy className="size-4" />
+                Events
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/rounds">
+                <Flag className="size-4" />
+                Rounds
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/bag">
+                <Target className="size-4" />
+                Bag
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/import">
+                <Upload className="size-4" />
+                Import
+              </Link>
+            </Button>
           </div>
-          <StatusPill tone="green">Progress</StatusPill>
         </div>
-        <Button
-          asChild
-          size="sm"
-          className="mt-3 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-          data-primary-action
-        >
-          <Link href="/today" prefetch={false}>
-            Open today&apos;s practice
-          </Link>
-        </Button>
-      </section>
 
-      <div className="hidden sm:block">
-        <PageHeader
-          eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
-          title="Progress worth tracking"
-          description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
-          visual={<AchievementArtwork className="h-full min-h-44" />}
+        <section className="premium-card p-3 sm:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Achievements
+              </p>
+              <h1 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h1>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
+                {data.totalXp.toLocaleString("en-GB")} XP
+              </p>
+            </div>
+            <StatusPill tone="green">Progress</StatusPill>
+          </div>
+          <Button
+            asChild
+            size="sm"
+            className="mt-3 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            data-primary-action
+          >
+            <Link href="/today" prefetch={false}>
+              Open today&apos;s practice
+            </Link>
+          </Button>
+        </section>
+
+        <div className="hidden sm:block">
+          <PageHeader
+            eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
+            title="Progress worth tracking"
+            description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
+            visual={<AchievementArtwork className="h-full min-h-44" priority />}
+          />
+        </div>
+
+        <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
+
+        <DataFirstFlowPanel
+          title="Achievement categories"
+          description="The badge catalogue is grouped by golfer progress, not generic activity."
+          steps={[
+            {
+              title: "Data",
+              detail: "Imports, mapped clubs and clean samples.",
+              href: "/import",
+              status: "ready",
+            },
+            {
+              title: "Practice",
+              detail: "Drills, PBs and launch-window work.",
+              href: "/today",
+              status: "ready",
+            },
+            {
+              title: "Rounds",
+              detail: "Completed scorecards and handicap-ready rounds.",
+              href: "/rounds",
+              status: "ready",
+            },
+            {
+              title: "Course Records",
+              detail: "Verified course champions and board attempts.",
+              href: "/course-records",
+              status: "ready",
+            },
+            {
+              title: "Tournaments",
+              detail: "Daily, weekly and major-style event results.",
+              href: "/tournaments",
+              status: "ready",
+            },
+            {
+              title: "Social",
+              detail: "Friends, groups, kudos and shared moments.",
+              href: "/feed",
+              status: "optional",
+            },
+          ]}
         />
-      </div>
 
-      <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
-
-      <DataFirstFlowPanel
-        title="Achievement categories"
-        description="The badge catalogue is grouped by golfer progress, not generic activity."
-        steps={[
-          {
-            title: "Data",
-            detail: "Imports, mapped clubs and clean samples.",
-            href: "/import",
-            status: "ready",
-          },
-          {
-            title: "Practice",
-            detail: "Drills, PBs and launch-window work.",
-            href: "/today",
-            status: "ready",
-          },
-          {
-            title: "Rounds",
-            detail: "Completed scorecards and handicap-ready rounds.",
-            href: "/rounds",
-            status: "ready",
-          },
-          {
-            title: "Course Records",
-            detail: "Verified course champions and board attempts.",
-            href: "/course-records",
-            status: "ready",
-          },
-          {
-            title: "Tournaments",
-            detail: "Daily, weekly and major-style event results.",
-            href: "/tournaments",
-            status: "ready",
-          },
-          {
-            title: "Social",
-            detail: "Friends, groups, kudos and shared moments.",
-            href: "/feed",
-            status: "optional",
-          },
-        ]}
-      />
-
-      <AchievementSocialPanel
-        data={data}
-        latestFeedItemId={latestAchievementFeedItem?.id ?? null}
-      />
+        <AchievementSocialPanel
+          data={data}
+          latestFeedItemId={latestAchievementFeedItem?.id ?? null}
+        />
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }

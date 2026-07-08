@@ -2,16 +2,25 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Award,
+  Brain,
   ClipboardCheck,
   Database,
+  FileText,
   Flag,
+  Lightbulb,
   Plus,
+  Target,
   Trophy,
   Upload,
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { createLatestRoundRecapAction } from "@/app/feature-actions";
+import {
+  DesktopInsightRail,
+  DesktopWorkbenchLayout,
+  commonAiPrompts,
+} from "@/components/app/desktop-workbench";
 import { RoundOpportunityFeaturePanel } from "@/components/features/feature-panels";
 import { Button } from "@/components/ui/button";
 import { MobileSectionChips, PageShell, StatusPill } from "@/components/premium";
@@ -19,7 +28,7 @@ import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { requireCurrentUserId } from "@/lib/current-user";
+import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import {
@@ -37,6 +46,34 @@ const handicapDeltaFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
   minimumFractionDigits: 1,
 });
+
+const roundWorkbenchPrompts = [
+  {
+    label: "Explain latest round",
+    prompt:
+      "Explain my latest round from saved scorecard and shot-linked evidence. Cite the round, score, data status and weak evidence.",
+    icon: Lightbulb,
+  },
+  {
+    label: "What cost shots?",
+    prompt:
+      "Find what most likely cost shots across my saved rounds. Separate real rounds from simulator rounds and avoid inventing missing strokes-gained numbers.",
+    icon: Target,
+  },
+  {
+    label: "Build cleanup plan",
+    prompt:
+      "Build a round cleanup plan: scorecards needing shot data, rounds worth reviewing, and the next action before the next tee time.",
+    icon: ClipboardCheck,
+  },
+  {
+    label: "Generate round report",
+    prompt:
+      "Generate a round performance report with latest result, handicap context, scorecard-only caveats, and one practice action.",
+    icon: FileText,
+  },
+  ...commonAiPrompts("rounds"),
+];
 
 export default async function RoundsPage() {
   const [rounds, featureData] = await Promise.all([getRounds(), getFeatureIdeasData()]);
@@ -70,37 +107,95 @@ export default async function RoundsPage() {
         </Button>
       </div>
 
-      <RoundsHero
-        combinedHandicap={combinedHandicap}
-        latestRound={latestRound}
-        realHandicap={realHandicap}
-        realRounds={realRounds.length}
-        roundsSaved={rounds.length}
-        simHandicap={simHandicap}
-        simulatorRounds={simulatorRounds.length}
-      />
-
-      <RoundTasks latestRound={latestRound} scorecardOnlyRounds={scorecardOnlyRounds} />
-
-      <RoundOpportunityFeaturePanel data={featureData} />
-
-      <MobileSectionChips
-        items={[
-          { label: "Tasks", href: "#tasks" },
-          { label: "History", href: "#history" },
-          { label: "Types", href: "#types" },
-        ]}
-      />
-
-      <RoundsWorkspace rounds={roundsForWorkspace}>
-        <RoundTypeBreakdown
+      <DesktopWorkbenchLayout
+        scope="rounds"
+        rail={
+          <DesktopInsightRail
+            title="AI round rail"
+            description="Explain round form, scorecard trust, cleanup tasks and what to review before the next tee time."
+            metrics={[
+              {
+                label: "Latest round",
+                value: latestRound ? formatScoreSummary(latestRound) : "None",
+                detail: latestRound
+                  ? `${roundTitle(latestRound)} · ${formatDate(latestRound.date)}`
+                  : "Add or import a round to start the review loop.",
+                tone: latestRound ? "green" : "slate",
+              },
+              {
+                label: "Cleanup",
+                value:
+                  scorecardOnlyRounds.length > 0
+                    ? integerFormatter.format(scorecardOnlyRounds.length)
+                    : "Clear",
+                detail:
+                  scorecardOnlyRounds.length > 0
+                    ? "Scorecard-only rounds need shot data before deeper analysis."
+                    : "Saved rounds have shot-linked review paths or no active cleanup.",
+                tone: scorecardOnlyRounds.length > 0 ? "amber" : "green",
+              },
+              {
+                label: "Handicap context",
+                value: formatHandicapValue(combinedHandicap.value),
+                detail: handicapTrendText(combinedHandicap),
+              },
+            ]}
+            evidence={[
+              "Latest scorecard and score-to-par",
+              "Real vs simulator round split",
+              "Scorecard-only vs shot-linked data status",
+              "Handicap differential sample size",
+            ]}
+            prompts={roundWorkbenchPrompts.slice(0, 5)}
+            actions={[
+              {
+                label: "Add real round",
+                href: "/rounds/new",
+                detail: "Keyboard-friendly scorecard entry.",
+                icon: Plus,
+              },
+              {
+                label: "Coach review",
+                href: "/coach",
+                detail: "Turn the round into drills and follow-up work.",
+                icon: Brain,
+              },
+            ]}
+          />
+        }
+      >
+        <RoundsHero
+          combinedHandicap={combinedHandicap}
+          latestRound={latestRound}
+          realHandicap={realHandicap}
           realRounds={realRounds.length}
-          scorecardOnlyRounds={scorecardOnlyRounds.length}
-          shotCountTotal={shotCountTotal}
-          shotLinkedRounds={shotLinkedRounds.length}
+          roundsSaved={rounds.length}
+          simHandicap={simHandicap}
           simulatorRounds={simulatorRounds.length}
         />
-      </RoundsWorkspace>
+
+        <RoundTasks latestRound={latestRound} scorecardOnlyRounds={scorecardOnlyRounds} />
+
+        <RoundOpportunityFeaturePanel data={featureData} />
+
+        <MobileSectionChips
+          items={[
+            { label: "Tasks", href: "#tasks" },
+            { label: "History", href: "#history" },
+            { label: "Types", href: "#types" },
+          ]}
+        />
+
+        <RoundsWorkspace rounds={roundsForWorkspace}>
+          <RoundTypeBreakdown
+            realRounds={realRounds.length}
+            scorecardOnlyRounds={scorecardOnlyRounds.length}
+            shotCountTotal={shotCountTotal}
+            shotLinkedRounds={shotLinkedRounds.length}
+            simulatorRounds={simulatorRounds.length}
+          />
+        </RoundsWorkspace>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
@@ -467,6 +562,19 @@ function BreakdownCard({ detail, label, value }: { detail: string; label: string
 }
 
 async function getRounds() {
+  try {
+    return await getLiveRounds();
+  } catch (error) {
+    if (isPlaywrightE2eAuthBypassEnabled()) {
+      console.warn("[rounds] Falling back to empty Playwright round history", error);
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+async function getLiveRounds() {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const [sessionRows, shotCounts] = await Promise.all([
@@ -541,12 +649,14 @@ function toWorkspaceRound(
     courseName: round.courseName,
     fileName: round.fileName,
     dateLabel: formatDate(round.date),
+    dateIso: round.date.toISOString(),
     type: round.type,
     typeLabel: formatSessionType(round.type),
     roundStatus: round.roundStatus,
     totalScore: round.totalScore,
     totalPar: round.totalPar,
     totalPutts: round.totalPutts,
+    handicapDifferential: round.handicapDifferential,
     handicapDifferentialLabel: formatHandicapValue(round.handicapDifferential),
     scoreSummary: formatScoreSummary(round),
     shotCount: round.shotCount,

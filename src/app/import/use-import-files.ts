@@ -3,10 +3,7 @@
 import { useEffect, useState } from "react";
 
 import type { UploadedCsv } from "@/app/import/import-types";
-import {
-  type DistanceUnit,
-  type RapsodoColumnMapping,
-} from "@/lib/rapsodo/parser";
+import { type DistanceUnit, type RapsodoColumnMapping } from "@/lib/rapsodo/parser";
 import {
   parseLaunchMonitorImportCsv,
   type ParsedLaunchMonitorImportResult,

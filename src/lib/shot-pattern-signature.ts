@@ -59,9 +59,7 @@ export function buildDangerHeatSummary(
     ["short", shortCount],
     ["long", longCount],
   ] as const;
-  const [dominantMiss, dominantCount] = [...dominant].sort(
-    (left, right) => right[1] - left[1],
-  )[0];
+  const [dominantMiss, dominantCount] = [...dominant].sort((left, right) => right[1] - left[1])[0];
   const riskScore =
     included.length === 0 ? 0 : Math.round((trouble.length / included.length) * 100);
 

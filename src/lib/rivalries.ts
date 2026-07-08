@@ -115,7 +115,11 @@ export function buildRivalryPairings(standings: RivalryStanding[]): RivalryPairi
       userBLabel: userB?.displayName ?? "Bye",
       userAScore: userA.points,
       userBScore: userB?.points ?? null,
-      winnerUserId: userB ? (userA.points >= userB.points ? userA.userId : userB.userId) : userA.userId,
+      winnerUserId: userB
+        ? userA.points >= userB.points
+          ? userA.userId
+          : userB.userId
+        : userA.userId,
       summary: userB
         ? `${userA.displayName} ${userA.points} - ${userB.points} ${userB.displayName}`
         : `${userA.displayName} holds the bye`,

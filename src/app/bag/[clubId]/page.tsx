@@ -4,6 +4,7 @@ import { ArrowLeft, Upload } from "lucide-react";
 import { and, desc, eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell } from "@/components/premium";
 import { clubs, sessions, shots } from "@/db/schema";
@@ -32,24 +33,26 @@ export default async function ClubDetailPage({ params }: PageProps) {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/bag">
-            <ArrowLeft className="size-4" />
-            Bag map
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/import">
-            <Upload className="size-4" />
-            Import CSV
-          </Link>
-        </Button>
-      </div>
+      <DesktopWorkbenchLayout scope="club-profile">
+        <div className="flex items-center justify-between gap-4">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/bag">
+              <ArrowLeft className="size-4" />
+              Bag map
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/import">
+              <Upload className="size-4" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
 
-      <ClubDetailClient club={club}>
-        <BagFeaturePanel data={featureData} />
-      </ClubDetailClient>
+        <ClubDetailClient club={club}>
+          <BagFeaturePanel data={featureData} />
+        </ClubDetailClient>
+      </DesktopWorkbenchLayout>
     </PageShell>
   );
 }

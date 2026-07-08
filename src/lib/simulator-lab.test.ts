@@ -143,17 +143,21 @@ describe("simulator lab analytics", () => {
   });
 
   it("extracts golf-only roast facts from latest session outliers", () => {
-    const facts = buildSessionRoastFacts(session(), [
-      labShot({
-        id: "wild-driver",
-        clubType: "driver",
-        sideCarryYd: 46,
-        smashFactor: 1.18,
-        qualityTag: "top",
-      }),
-      labShot({ id: "low-smash-7i", clubType: "7i", sideCarryYd: -12, smashFactor: 1.21 }),
-      labShot({ id: "normal-8i", clubType: "8i", sideCarryYd: 3, smashFactor: 1.32 }),
-    ], []);
+    const facts = buildSessionRoastFacts(
+      session(),
+      [
+        labShot({
+          id: "wild-driver",
+          clubType: "driver",
+          sideCarryYd: 46,
+          smashFactor: 1.18,
+          qualityTag: "top",
+        }),
+        labShot({ id: "low-smash-7i", clubType: "7i", sideCarryYd: -12, smashFactor: 1.21 }),
+        labShot({ id: "normal-8i", clubType: "8i", sideCarryYd: 3, smashFactor: 1.32 }),
+      ],
+      [],
+    );
 
     expect(facts).toEqual(
       expect.arrayContaining([

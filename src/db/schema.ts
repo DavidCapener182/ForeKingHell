@@ -1439,10 +1439,7 @@ export const weatherSnapshots = pgTable(
     latitude: doublePrecision("latitude").notNull(),
     longitude: doublePrecision("longitude").notNull(),
     elevationM: doublePrecision("elevation_m"),
-    conditionsJson: jsonb("conditions_json")
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
+    conditionsJson: jsonb("conditions_json").$type<Record<string, unknown>>().notNull().default({}),
     sourceJson: jsonb("source_json").$type<Record<string, unknown>>().notNull().default({}),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -2728,10 +2725,7 @@ export const practiceResults = pgTable(
     verdict: varchar("verdict", { length: 80 }).notNull(),
     nextAction: text("next_action").notNull(),
     notes: text("notes"),
-    comparisonJson: jsonb("comparison_json")
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default({}),
+    comparisonJson: jsonb("comparison_json").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

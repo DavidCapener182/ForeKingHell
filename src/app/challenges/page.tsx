@@ -13,12 +13,34 @@ import {
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
-import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  DataPanel,
+  DataTableFrame,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -27,6 +49,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import {
@@ -42,6 +65,47 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+type ChallengeHubTab = "live" | "joined" | "templates" | "past";
+type ChallengeTemplateItem = Awaited<ReturnType<typeof getChallengesPageData>>["templates"][number];
+type ChallengeBoardRow =
+  | { kind: "challenge"; id: string; challenge: ChallengeListItem }
+  | { kind: "template"; id: string; template: ChallengeTemplateItem };
+
+const challengeBoardColumns: DesktopWorkbenchColumn[] = [
+  { id: "board", label: "Board", locked: true },
+  { id: "status", label: "Status" },
+  { id: "visibility", label: "Visibility" },
+  { id: "template", label: "Template" },
+  { id: "window", label: "Window" },
+  { id: "players", label: "Players" },
+  { id: "leader", label: "Leader" },
+  { id: "proof", label: "Proof" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const challengeBoardSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Live boards",
+    href: "/challenges",
+    detail: "Open boards ready to join or review.",
+  },
+  {
+    title: "Joined",
+    href: "/challenges?tab=joined",
+    detail: "Boards where your entry already counts.",
+  },
+  {
+    title: "Templates",
+    href: "/challenges?tab=templates",
+    detail: "Launch-monitor friendly challenge formats.",
+  },
+  {
+    title: "Past boards",
+    href: "/challenges?tab=past",
+    detail: "Closed or expired boards kept for review.",
+  },
+];
 
 type ChallengesPageProps = {
   searchParams?: Promise<{ tab?: string }>;
@@ -61,6 +125,12 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
   const drillStatuses = await getCoachDrillAwardStatuses(drillChallenges);
   const activeTab = parseChallengeHubTab(params?.tab);
   const featured = data.active[0] ?? data.challenges[0] ?? null;
+  const challengeBoardRows = buildChallengeBoardRows({
+    activeTab,
+    challenges: data.challenges,
+    mine: data.mine,
+    templates: data.templates,
+  });
   const friendsCompeting = data.challenges
     .filter((challenge) => !challenge.viewerJoined && challenge.participantCount > 0)
     .slice(0, 4);
@@ -109,7 +179,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
   ];
 
   return (
-    <PageShell size="7xl">
+    <PageShell>
       <MobileAppShell>
         <MobileTopBar title="Challenges" />
         <MobileRouteTabs group="social" activeKey="challenges" />
@@ -227,305 +297,537 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
         <CompetitionFeaturePanel data={featureData} />
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-3 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/leaderboard?tab=challenges" prefetch={false}>
-            <Trophy className="size-4" />
-            Challenge boards
-          </Link>
-        </Button>
-      </div>
+      <DesktopWorkbenchLayout scope="challenges">
+        <div className="hidden items-center justify-between gap-3 sm:flex">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/leaderboard?tab=challenges" prefetch={false}>
+              <Trophy className="size-4" />
+              Challenge boards
+            </Link>
+          </Button>
+        </div>
 
-      <div className="hidden sm:contents">
-        <PageHeader
-          eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
-          title="Competition hub"
-          description="Join monthly boards, follow friends competing, and create private launch-monitor challenges without exposing account access."
-          metrics={[
-            { label: "Active", value: data.active.length, detail: "Visible open challenges" },
-            { label: "Joined", value: data.mine.length, detail: "Your active entries" },
-            {
-              label: "Templates",
-              value: data.templates.length,
-              detail: "Launch-monitor friendly formats",
-            },
-            { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
-          ]}
-        />
+        <div className="hidden sm:contents">
+          <PageHeader
+            eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
+            title="Competition hub"
+            description="Join monthly boards, follow friends competing, and create private launch-monitor challenges without exposing account access."
+            visual={
+              <PageArtwork variant="challenges" alt="" className="h-full min-h-36" priority />
+            }
+            metrics={[
+              { label: "Active", value: data.active.length, detail: "Visible open challenges" },
+              { label: "Joined", value: data.mine.length, detail: "Your active entries" },
+              {
+                label: "Templates",
+                value: data.templates.length,
+                detail: "Launch-monitor friendly formats",
+              },
+              { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
+            ]}
+          />
 
-        {featured ? (
-          <section className="premium-card overflow-hidden">
-            <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-              <div>
-                <StatusPill tone="green">Featured monthly challenge</StatusPill>
-                <h2 className="mt-3 text-3xl font-semibold tracking-normal">{featured.title}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  {featured.description ??
-                    `${featured.templateName} board with ${featured.participantCount} players entered.`}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="secondary">{featured.templateName}</Badge>
-                  <Badge variant="outline">
-                    {featured.viewerJoined ? "Entered" : "Not entered"}
-                  </Badge>
-                  <Badge variant="outline">{featured.participantCount} friends and players</Badge>
-                  {featured.viewerRank ? (
-                    <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge>
-                  ) : null}
-                </div>
-              </div>
-              <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-                {featured.leader ? (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current leader</p>
-                    <p className="mt-1 text-xl font-semibold tracking-normal">
-                      {featured.leader.displayName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {featured.leader.scoreLabel} · {featured.leader.verificationLabel}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Awaiting qualifying imports. New imported shots update the board automatically.
+          {featured ? (
+            <section className="premium-card overflow-hidden">
+              <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+                <div>
+                  <StatusPill tone="green">Featured monthly challenge</StatusPill>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-normal">{featured.title}</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {featured.description ??
+                      `${featured.templateName} board with ${featured.participantCount} players entered.`}
                   </p>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild>
-                    <Link href={`/challenges/${featured.id}`} prefetch={false}>
-                      <Trophy className="size-4" />
-                      Open event
-                    </Link>
-                  </Button>
-                  {!featured.viewerJoined ? (
-                    <form action={joinChallengeAction}>
-                      <input type="hidden" name="challengeId" value={featured.id} />
-                      <Button type="submit" variant="outline">
-                        Join challenge
-                      </Button>
-                    </form>
-                  ) : null}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Badge variant="secondary">{featured.templateName}</Badge>
+                    <Badge variant="outline">
+                      {featured.viewerJoined ? "Entered" : "Not entered"}
+                    </Badge>
+                    <Badge variant="outline">{featured.participantCount} friends and players</Badge>
+                    {featured.viewerRank ? (
+                      <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                  {featured.leader ? (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current leader</p>
+                      <p className="mt-1 text-xl font-semibold tracking-normal">
+                        {featured.leader.displayName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {featured.leader.scoreLabel} · {featured.leader.verificationLabel}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Awaiting qualifying imports. New imported shots update the board
+                      automatically.
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild>
+                      <Link href={`/challenges/${featured.id}`} prefetch={false}>
+                        <Trophy className="size-4" />
+                        Open event
+                      </Link>
+                    </Button>
+                    {!featured.viewerJoined ? (
+                      <form action={joinChallengeAction}>
+                        <input type="hidden" name="challengeId" value={featured.id} />
+                        <Button type="submit" variant="outline">
+                          Join challenge
+                        </Button>
+                      </form>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        ) : null}
+            </section>
+          ) : null}
 
-        <DataFirstFlowPanel
-          title="Daily micro challenges"
-          description="Short Rapsodo-friendly drills for testers who want a clear session target before creating a private board."
-          steps={dailyMicroChallengeSteps}
-          actionHref="/coach#more-drills"
-          actionLabel="Open drills"
-        />
+          <DataFirstFlowPanel
+            title="Daily micro challenges"
+            description="Short Rapsodo-friendly drills for testers who want a clear session target before creating a private board."
+            steps={dailyMicroChallengeSteps}
+            actionHref="/coach#more-drills"
+            actionLabel="Open drills"
+          />
 
-        <CompetitionFeaturePanel data={featureData} />
+          <CompetitionFeaturePanel data={featureData} />
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)]">
-          <DataPanel>
-            <SectionHeader
-              title="My active entries"
-              description="Challenges you have joined or created."
-              action={<Trophy className="size-5 text-amber-600" />}
-            />
-            <CardContent>
-              <ChallengeGrid
-                challenges={data.mine}
-                empty="Join a public board or create a private friend challenge."
-              />
-            </CardContent>
-          </DataPanel>
+          <ChallengeBoardTable activeTab={activeTab} rows={challengeBoardRows} />
 
-          <DataPanel>
-            <SectionHeader
-              title="Friends competing"
-              description="Boards with activity from visible players."
-              action={<Users className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              <ChallengeGrid
-                challenges={friendsCompeting}
-                empty="No friends are competing on visible boards yet."
-              />
-            </CardContent>
-          </DataPanel>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <DataPanel>
-            <SectionHeader
-              title="Public and friend boards"
-              description="Import-scored boards you can open or join."
-              action={<Trophy className="size-5 text-amber-600" />}
-            />
-            <CardContent>
-              <ChallengeGrid challenges={data.challenges} empty="No challenges are visible yet." />
-            </CardContent>
-          </DataPanel>
-
-          <div className="grid gap-4">
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)]">
             <DataPanel>
               <SectionHeader
-                title="Templates"
-                description="Rapsodo-friendly formats for private leagues and public boards."
+                title="My active entries"
+                description="Challenges you have joined or created."
+                action={<Trophy className="size-5 text-amber-600" />}
               />
-              <CardContent className="grid gap-2">
-                {data.templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm"
-                  >
-                    <p className="font-medium">{template.name}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {template.description}
-                    </p>
-                  </div>
-                ))}
+              <CardContent>
+                <ChallengeGrid
+                  challenges={data.mine}
+                  empty="Join a public board or create a private friend challenge."
+                />
               </CardContent>
             </DataPanel>
 
             <DataPanel>
               <SectionHeader
-                title="Create private challenge"
-                description="Start with a template, then invite friends from the event page."
-                action={<Plus className="size-5 text-emerald-600" />}
+                title="Friends competing"
+                description="Boards with activity from visible players."
+                action={<Users className="size-5 text-sky-600" />}
               />
               <CardContent>
-                <div className="mb-3 rounded-lg border bg-[#F5F6F4] p-3 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-semibold">Private challenge entitlement</p>
-                      <p className="mt-1 text-muted-foreground">
-                        Current plan: {activePlanName}. Limit: {privateChallengeLimitText}.
+                <ChallengeGrid
+                  challenges={friendsCompeting}
+                  empty="No friends are competing on visible boards yet."
+                />
+              </CardContent>
+            </DataPanel>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <DataPanel>
+              <SectionHeader
+                title="Public and friend boards"
+                description="Import-scored boards you can open or join."
+                action={<Trophy className="size-5 text-amber-600" />}
+              />
+              <CardContent>
+                <ChallengeGrid
+                  challenges={data.challenges}
+                  empty="No challenges are visible yet."
+                />
+              </CardContent>
+            </DataPanel>
+
+            <div className="grid gap-4">
+              <DataPanel>
+                <SectionHeader
+                  title="Templates"
+                  description="Rapsodo-friendly formats for private leagues and public boards."
+                />
+                <CardContent className="grid gap-2">
+                  {data.templates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm"
+                    >
+                      <p className="font-medium">{template.name}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {template.description}
                       </p>
                     </div>
-                    {showPrivateChallengeUpgrade ? (
-                      <Button asChild variant="outline" size="sm">
+                  ))}
+                </CardContent>
+              </DataPanel>
+
+              <DataPanel>
+                <SectionHeader
+                  title="Create private challenge"
+                  description="Start with a template, then invite friends from the event page."
+                  action={<Plus className="size-5 text-emerald-600" />}
+                />
+                <CardContent>
+                  <div
+                    id="create-challenge"
+                    className="mb-3 scroll-mt-28 rounded-lg border bg-[#F5F6F4] p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-semibold">Private challenge entitlement</p>
+                        <p className="mt-1 text-muted-foreground">
+                          Current plan: {activePlanName}. Limit: {privateChallengeLimitText}.
+                        </p>
+                      </div>
+                      {showPrivateChallengeUpgrade ? (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href="/billing" prefetch={false}>
+                            <Sparkles className="size-4" />
+                            Upgrade
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary">Private leagues enabled</Badge>
+                      )}
+                    </div>
+                  </div>
+                  {showPrivateChallengeUpgrade ? (
+                    <div className="rounded-xl border border-dashed bg-white p-4 text-sm">
+                      <p className="font-semibold">Upgrade to create friend and private leagues.</p>
+                      <p className="mt-1 text-muted-foreground">
+                        Free players can join public boards and social challenges. Plus unlocks
+                        private friend challenges.
+                      </p>
+                      <Button asChild className="mt-3" variant="outline">
                         <Link href="/billing" prefetch={false}>
                           <Sparkles className="size-4" />
-                          Upgrade
+                          View plans
                         </Link>
                       </Button>
-                    ) : (
-                      <Badge variant="secondary">Private leagues enabled</Badge>
-                    )}
-                  </div>
-                </div>
-                {showPrivateChallengeUpgrade ? (
-                  <div className="rounded-xl border border-dashed bg-white p-4 text-sm">
-                    <p className="font-semibold">Upgrade to create friend and private leagues.</p>
-                    <p className="mt-1 text-muted-foreground">
-                      Free players can join public boards and social challenges. Plus unlocks
-                      private friend challenges.
-                    </p>
-                    <Button asChild className="mt-3" variant="outline">
-                      <Link href="/billing" prefetch={false}>
-                        <Sparkles className="size-4" />
-                        View plans
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <Sheet>
-                    <SheetTrigger
-                      type="button"
-                      className={cn(
-                        buttonVariants(),
-                        "w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
-                      )}
-                    >
-                      <Plus className="size-4" />
-                      Create challenge
-                    </SheetTrigger>
-                    <SheetContent className="overflow-y-auto sm:max-w-lg">
-                      <SheetHeader>
-                        <SheetTitle>Create challenge</SheetTitle>
-                        <SheetDescription>
-                          Start with a template, then invite friends from the event page.
-                        </SheetDescription>
-                      </SheetHeader>
-                      <form action={createChallengeAction} className="grid gap-4 px-4 pb-4">
-                        <label className="grid gap-2 text-sm font-medium">
-                          <span>Template</span>
-                          <select
-                            name="templateId"
-                            className="h-10 rounded-lg border bg-white px-3 text-sm"
-                          >
-                            {data.templates.map((template) => (
-                              <option key={template.id} value={template.id}>
-                                {template.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <label className="grid gap-2 text-sm font-medium">
-                          <span>Title</span>
-                          <Input
-                            name="title"
-                            placeholder="May Wedge Control Challenge"
-                            className="h-10 rounded-xl bg-white"
-                            required
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm font-medium">
-                          <span>Description</span>
-                          <textarea
-                            name="description"
-                            rows={3}
-                            className="rounded-lg border bg-white px-3 py-2 text-sm"
-                          />
-                        </label>
-                        <label className="grid gap-2 text-sm font-medium">
-                          <span>Visibility</span>
-                          <select
-                            name="visibility"
-                            defaultValue="friends"
-                            className="h-10 rounded-lg border bg-white px-3 text-sm"
-                          >
-                            {socialVisibilityOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {titleCase(option)}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <div className="grid gap-4 sm:grid-cols-2">
+                    </div>
+                  ) : (
+                    <Sheet>
+                      <SheetTrigger
+                        type="button"
+                        className={cn(
+                          buttonVariants(),
+                          "w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
+                        )}
+                      >
+                        <Plus className="size-4" />
+                        Create challenge
+                      </SheetTrigger>
+                      <SheetContent className="overflow-y-auto sm:max-w-lg">
+                        <SheetHeader>
+                          <SheetTitle>Create challenge</SheetTitle>
+                          <SheetDescription>
+                            Start with a template, then invite friends from the event page.
+                          </SheetDescription>
+                        </SheetHeader>
+                        <form action={createChallengeAction} className="grid gap-4 px-4 pb-4">
                           <label className="grid gap-2 text-sm font-medium">
-                            <span>Starts</span>
+                            <span>Template</span>
+                            <select
+                              name="templateId"
+                              className="h-10 rounded-lg border bg-white px-3 text-sm"
+                            >
+                              {data.templates.map((template) => (
+                                <option key={template.id} value={template.id}>
+                                  {template.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="grid gap-2 text-sm font-medium">
+                            <span>Title</span>
                             <Input
-                              name="startsAt"
-                              type="date"
+                              name="title"
+                              placeholder="May Wedge Control Challenge"
                               className="h-10 rounded-xl bg-white"
+                              required
                             />
                           </label>
                           <label className="grid gap-2 text-sm font-medium">
-                            <span>Ends</span>
-                            <Input name="endsAt" type="date" className="h-10 rounded-xl bg-white" />
+                            <span>Description</span>
+                            <textarea
+                              name="description"
+                              rows={3}
+                              className="rounded-lg border bg-white px-3 py-2 text-sm"
+                            />
                           </label>
-                        </div>
-                        <Button
-                          type="submit"
-                          className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                        >
-                          <Plus className="size-4" />
-                          Create
-                        </Button>
-                      </form>
-                    </SheetContent>
-                  </Sheet>
-                )}
-              </CardContent>
-            </DataPanel>
-          </div>
-        </section>
-      </div>
+                          <label className="grid gap-2 text-sm font-medium">
+                            <span>Visibility</span>
+                            <select
+                              name="visibility"
+                              defaultValue="friends"
+                              className="h-10 rounded-lg border bg-white px-3 text-sm"
+                            >
+                              {socialVisibilityOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {titleCase(option)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="grid gap-2 text-sm font-medium">
+                              <span>Starts</span>
+                              <Input
+                                name="startsAt"
+                                type="date"
+                                className="h-10 rounded-xl bg-white"
+                              />
+                            </label>
+                            <label className="grid gap-2 text-sm font-medium">
+                              <span>Ends</span>
+                              <Input
+                                name="endsAt"
+                                type="date"
+                                className="h-10 rounded-xl bg-white"
+                              />
+                            </label>
+                          </div>
+                          <Button
+                            type="submit"
+                            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                          >
+                            <Plus className="size-4" />
+                            Create
+                          </Button>
+                        </form>
+                      </SheetContent>
+                    </Sheet>
+                  )}
+                </CardContent>
+              </DataPanel>
+            </div>
+          </section>
+        </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function ChallengeBoardTable({
+  activeTab,
+  rows,
+}: {
+  activeTab: ChallengeHubTab;
+  rows: ChallengeBoardRow[];
+}) {
+  return (
+    <section
+      id="challenge-board-table"
+      className="grid gap-3"
+      data-workbench-scope="challenge-board"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Challenge board</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Review live boards, joined entries, templates and closed challenges from one exportable
+            desktop table.
+          </p>
+        </div>
+        <StatusPill tone={rows.length > 0 ? "green" : "slate"}>{rows.length} rows</StatusPill>
+      </div>
+
+      <ChallengeBoardFilterTabs activeTab={activeTab} />
+
+      <DesktopTableWorkbenchControls
+        viewKey={`challenge-board-${activeTab}`}
+        scope="challenge-board"
+        currentViewLabel={challengeBoardViewLabel(activeTab)}
+        resultLabel={`${rows.length} rows`}
+        columns={challengeBoardColumns}
+        suggestedViews={challengeBoardSuggestedViews}
+        exportTableId="challenge-board"
+        exportFileName={`forekinghell-challenge-board-${activeTab}.csv`}
+      />
+      <DataTableFrame mainTable mainTableLabel="Challenge board table">
+        <Table
+          data-workbench-export-table="challenge-board"
+          aria-describedby="challenge-board-summary"
+        >
+          <TableCaption id="challenge-board-summary" className="sr-only">
+            Challenge board table showing board, status, visibility, template, event window, player
+            count, leader, proof label and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="board"
+                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Board
+              </TableHead>
+              <TableHead data-column="status">Status</TableHead>
+              <TableHead data-column="visibility">Visibility</TableHead>
+              <TableHead data-column="template">Template</TableHead>
+              <TableHead data-column="window">Window</TableHead>
+              <TableHead data-column="players">Players</TableHead>
+              <TableHead data-column="leader">Leader</TableHead>
+              <TableHead data-column="proof">Proof</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="board"
+                    className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <ChallengeBoardTitle row={row} />
+                  </TableCell>
+                  <TableCell data-column="status">
+                    <Badge variant={row.kind === "challenge" ? "secondary" : "outline"}>
+                      {row.kind === "challenge"
+                        ? row.challenge.status.replace(/_/g, " ")
+                        : "Template"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-column="visibility">
+                    {row.kind === "challenge" ? titleCase(row.challenge.visibility) : "Reusable"}
+                  </TableCell>
+                  <TableCell data-column="template">
+                    {row.kind === "challenge" ? row.challenge.templateName : row.template.name}
+                  </TableCell>
+                  <TableCell data-column="window">
+                    {row.kind === "challenge" ? formatChallengeWindow(row.challenge) : "--"}
+                  </TableCell>
+                  <TableCell data-column="players">
+                    {row.kind === "challenge" ? row.challenge.participantCount : "--"}
+                  </TableCell>
+                  <TableCell data-column="leader">{challengeBoardLeader(row)}</TableCell>
+                  <TableCell data-column="proof">{challengeBoardProof(row)}</TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    <ChallengeBoardAction row={row} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
+                  No challenge rows match this view.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
+  );
+}
+
+function ChallengeBoardFilterTabs({ activeTab }: { activeTab: ChallengeHubTab }) {
+  const tabs: Array<{ key: ChallengeHubTab; label: string; href: string }> = [
+    { key: "live", label: "Live", href: "/challenges" },
+    { key: "joined", label: "Joined", href: "/challenges?tab=joined" },
+    { key: "templates", label: "Templates", href: "/challenges?tab=templates" },
+    { key: "past", label: "Past", href: "/challenges?tab=past" },
+  ];
+
+  return (
+    <nav aria-label="Challenge board views" className="flex flex-wrap gap-2">
+      {tabs.map((tab) => {
+        const active = activeTab === tab.key;
+
+        return (
+          <Link
+            key={tab.key}
+            href={tab.href}
+            prefetch={false}
+            aria-current={active ? "page" : undefined}
+            className={
+              active
+                ? "inline-flex min-h-10 items-center rounded-xl bg-[#0B7A3B] px-3 text-sm font-semibold text-white"
+                : "inline-flex min-h-10 items-center rounded-xl border bg-white px-3 text-sm font-semibold text-foreground hover:bg-[#F5F6F4]"
+            }
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function ChallengeBoardTitle({ row }: { row: ChallengeBoardRow }) {
+  if (row.kind === "template") {
+    return (
+      <div className="min-w-0">
+        <p className="font-semibold">{row.template.name}</p>
+        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+          {row.template.description}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-w-0">
+      <Link
+        href={`/challenges/${row.challenge.id}`}
+        prefetch={false}
+        className="font-semibold text-emerald-700 hover:underline"
+      >
+        {row.challenge.title}
+      </Link>
+      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+        {row.challenge.description ?? row.challenge.templateName}
+      </p>
+    </div>
+  );
+}
+
+function ChallengeBoardAction({ row }: { row: ChallengeBoardRow }) {
+  if (row.kind === "template") {
+    return (
+      <Button asChild variant="outline" size="sm">
+        <Link href="#create-challenge" prefetch={false}>
+          Create
+        </Link>
+      </Button>
+    );
+  }
+
+  if (!row.challenge.viewerJoined) {
+    return (
+      <div className="flex justify-end gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/challenges/${row.challenge.id}`} prefetch={false}>
+            Open
+          </Link>
+        </Button>
+        <form action={joinChallengeAction}>
+          <input type="hidden" name="challengeId" value={row.challenge.id} />
+          <Button type="submit" size="sm">
+            Join
+          </Button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <Button asChild variant="outline" size="sm">
+      <Link href={`/challenges/${row.challenge.id}`} prefetch={false}>
+        Open entry
+      </Link>
+    </Button>
   );
 }
 
@@ -1009,11 +1311,89 @@ function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(value);
 }
 
+function buildChallengeBoardRows(input: {
+  activeTab: ChallengeHubTab;
+  challenges: ChallengeListItem[];
+  mine: ChallengeListItem[];
+  templates: ChallengeTemplateItem[];
+}): ChallengeBoardRow[] {
+  if (input.activeTab === "templates") {
+    return input.templates.map((template) => ({
+      kind: "template",
+      id: `template:${template.id}`,
+      template,
+    }));
+  }
+
+  const challenges =
+    input.activeTab === "joined"
+      ? input.mine
+      : input.activeTab === "past"
+        ? input.challenges.filter(isPastChallenge)
+        : input.challenges.filter((challenge) => !isPastChallenge(challenge));
+
+  return challenges.map((challenge) => ({
+    kind: "challenge",
+    id: `challenge:${challenge.id}`,
+    challenge,
+  }));
+}
+
+function isPastChallenge(challenge: ChallengeListItem) {
+  return (
+    challenge.status === "completed" ||
+    challenge.status === "closed" ||
+    challenge.status === "finished" ||
+    Boolean(challenge.endsAt && challenge.endsAt.getTime() < Date.now())
+  );
+}
+
+function challengeBoardViewLabel(activeTab: ChallengeHubTab) {
+  if (activeTab === "joined") {
+    return "Joined challenge boards";
+  }
+
+  if (activeTab === "templates") {
+    return "Challenge templates";
+  }
+
+  if (activeTab === "past") {
+    return "Past challenge boards";
+  }
+
+  return "Live challenge boards";
+}
+
+function formatChallengeWindow(challenge: ChallengeListItem) {
+  const startsAt = formatDate(challenge.startsAt);
+  const endsAt = challenge.endsAt ? formatDate(challenge.endsAt) : "open";
+
+  return `${startsAt} to ${endsAt}`;
+}
+
+function challengeBoardLeader(row: ChallengeBoardRow) {
+  if (row.kind === "template") {
+    return "Use imported proof";
+  }
+
+  return row.challenge.leader
+    ? `${row.challenge.leader.displayName} · ${row.challenge.leader.scoreLabel}`
+    : "No score yet";
+}
+
+function challengeBoardProof(row: ChallengeBoardRow) {
+  if (row.kind === "template") {
+    return row.template.scoringDirection === "asc" ? "Lower is better" : "Higher is better";
+  }
+
+  return row.challenge.leader?.verificationLabel ?? "Awaiting proof";
+}
+
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function parseChallengeHubTab(value?: string) {
+function parseChallengeHubTab(value?: string): ChallengeHubTab {
   if (value === "joined" || value === "templates" || value === "past") {
     return value;
   }

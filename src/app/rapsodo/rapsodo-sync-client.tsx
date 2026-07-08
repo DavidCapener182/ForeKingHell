@@ -57,11 +57,20 @@ import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkflowLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+  type DesktopWorkflowHelpItem,
+  type DesktopWorkflowStep,
+} from "@/components/app/desktop-workbench";
 import {
   formatCourseScorecardText,
   type InferredCourseShot,
@@ -124,6 +133,47 @@ type RapsodoMobileStep =
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const RAPSODO_SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const SAVE_CONFIRMATION_DISMISS_MS = 14000;
+const rapsodoSessionColumns: DesktopWorkbenchColumn[] = [
+  { id: "session", label: "Session", locked: true },
+  { id: "type", label: "Type" },
+  { id: "date", label: "Date" },
+  { id: "shots", label: "Shots" },
+  { id: "action", label: "Action", locked: true },
+];
+const rapsodoSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "New R-Cloud sessions",
+    href: "/rapsodo#rapsodo-sessions",
+    detail: "Load unimported sessions, then preview before saving.",
+  },
+  {
+    title: "Course sessions",
+    href: "/rapsodo#rapsodo-sessions",
+    detail: "Use the Course filter for scorecard and hole-mapping review.",
+  },
+  {
+    title: "Manual CSV fallback",
+    href: "/import?source=csv#csv-import",
+    detail: "Use the CSV import wizard when cloud sync is unavailable.",
+  },
+];
+const rapsodoWorkflowHelpItems = [
+  {
+    title: "Token privacy",
+    detail:
+      "Rapsodo credentials are exchanged for a short-lived encrypted token; the password is not stored.",
+  },
+  {
+    title: "Review before save",
+    detail:
+      "Preview sessions, club matches and course context before the data changes bag trust or coach priorities.",
+  },
+  {
+    title: "Avoid duplicates",
+    detail:
+      "Imported R-Cloud sessions are hidden from the inbox and linked back to LM World Tour shot evidence.",
+  },
+] satisfies DesktopWorkflowHelpItem[];
 
 export function RapsodoSyncClient({
   initialStatus,
@@ -387,6 +437,16 @@ export function RapsodoSyncClient({
       )[0] ?? null,
     [availableSessions],
   );
+  const rapsodoWorkflowSteps = buildRapsodoWorkflowSteps({
+    availableCount: availableSessions.length,
+    canSave,
+    connected: status.connected,
+    courseReady,
+    everyShotHasClub,
+    previewShotCount: preview?.shotCount ?? null,
+    saveStatus: visibleSaveStatus?.kind ?? null,
+    totalSessions: sessions.length,
+  });
 
   const loadSessions = useCallback(
     async (options: { silent?: boolean } = {}) => {
@@ -747,333 +807,156 @@ export function RapsodoSyncClient({
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
 
-        <div className="hidden items-center justify-between gap-4 sm:flex">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/import">
-              <Upload className="size-4" />
-              Manual CSV
-            </Link>
-          </Button>
-        </div>
-
-        <RapsodoInboxPrimaryCard
-          session={latestUnimportedSession}
-          connected={status.connected}
-          availableCount={availableSessions.length}
-          newSessionCount={newSessionCount}
-          isPending={isPending}
-          loadingLabel={loadingLabel}
-          onConnect={() => setMobileStep("connect")}
-          onLoadSessions={() => void loadSessions()}
-          onPreviewSession={previewSession}
-        />
-
-        <header className="premium-hero hidden p-5 sm:block sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl space-y-2">
-              <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                Experimental R-Cloud connector
-              </Badge>
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                Rapsodo cloud sync
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
-                World Tour.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-4 lg:min-w-[640px]">
-              <StatusTile
-                label="Connection"
-                value={status.connected ? "Connected" : "Signed out"}
-              />
-              <StatusTile label="Available" value={availableSessions.length.toString()} />
-              <StatusTile label="New" value={newSessionCount.toString()} />
-              <StatusTile label="Preview" value={preview ? preview.shotCount.toString() : "--"} />
-            </div>
+        <DesktopWorkflowLayout
+          steps={rapsodoWorkflowSteps}
+          helpTitle="Rapsodo sync help"
+          helpDescription="Keep provider imports deterministic"
+          helpItems={rapsodoWorkflowHelpItems}
+        >
+          <div className="hidden items-center justify-between gap-4 sm:flex">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/dashboard">
+                <ArrowLeft className="size-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/import">
+                <Upload className="size-4" />
+                Manual CSV
+              </Link>
+            </Button>
           </div>
-        </header>
 
-        {!status.connected ? (
-          <section className="premium-command-surface hidden rounded-2xl p-5 sm:grid sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center">
-            <div className="space-y-2">
-              <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                Why connect
-              </Badge>
-              <h2 className="text-2xl font-semibold tracking-normal text-foreground">
-                Connect Rapsodo to unlock your bag and coach
-              </h2>
-              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                Pull latest sessions, confirm clubs, update bag trust and unlock coach
-                recommendations from the same reviewed launch-monitor data.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  title: "Pull latest sessions",
-                  detail: "Find waiting R-Cloud exports.",
-                  icon: CloudUpload,
-                },
-                {
-                  title: "Confirm clubs",
-                  detail: "Map Rapsodo labels before save.",
-                  icon: ShieldCheck,
-                },
-                {
-                  title: "Update bag + coach",
-                  detail: "Refresh trust and drill signals.",
-                  icon: Sparkles,
-                },
-              ].map((item) => (
-                <div key={item.title} className="rounded-xl border bg-white/80 p-3">
-                  <item.icon className="size-5 text-emerald-700" />
-                  <p className="mt-3 text-sm font-semibold">{item.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        {showMobileReviewChrome ? (
-          <RapsodoMobileStepper
-            steps={mobileSteps}
-            step={visibleMobileStep}
-            onStepChange={setMobileStep}
+          <RapsodoInboxPrimaryCard
+            session={latestUnimportedSession}
+            connected={status.connected}
+            availableCount={availableSessions.length}
+            newSessionCount={newSessionCount}
+            isPending={isPending}
+            loadingLabel={loadingLabel}
+            onConnect={() => setMobileStep("connect")}
+            onLoadSessions={() => void loadSessions()}
+            onPreviewSession={previewSession}
           />
-        ) : null}
 
-        {showMobileReviewChrome ? (
-          <MobileBentoSummary
-            items={[
-              {
-                label: "Connection",
-                value: status.connected ? "On" : "Off",
-                detail: "R-Cloud",
-                tone: status.connected ? "green" : "slate",
-              },
-              {
-                label: "Available",
-                value: availableSessions.length.toString(),
-                detail: "Sessions",
-                tone: "sky",
-              },
-              {
-                label: "New",
-                value: newSessionCount.toString(),
-                detail: "Since last sync",
-                tone: newSessionCount > 0 ? "amber" : "slate",
-              },
-              {
-                label: "Preview",
-                value: preview ? preview.shotCount.toString() : "--",
-                detail: "Shots",
-                tone: "pink",
-              },
-            ]}
-          />
-        ) : null}
-
-        {status.connected ? (
-          <MobileAccordionSection
-            title="Filters"
-            description="Date range and session type."
-            count={sessionFilter === "all" ? "All" : sessionFilter}
-          >
-            <div className="grid gap-2">
-              <select
-                aria-label="Remote session type"
-                className="h-10 rounded-md border bg-background px-3 text-sm"
-                value={sessionFilter}
-                onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
-              >
-                <option value="all">All</option>
-                <option value="range">Range</option>
-                <option value="course">Course</option>
-              </select>
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  aria-label="Session start date"
-                  type="date"
-                  value={dateFilter.startDate}
-                  onChange={(event) =>
-                    setDateFilter((current) => ({ ...current, startDate: event.target.value }))
-                  }
+          <header className="premium-hero hidden p-5 sm:block sm:p-7">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl space-y-2">
+                <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  Experimental R-Cloud connector
+                </Badge>
+                <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
+                  Rapsodo cloud sync
+                </h1>
+                <p className="text-base leading-7 text-muted-foreground">
+                  Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
+                  World Tour.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-4 lg:min-w-[640px]">
+                <StatusTile
+                  label="Connection"
+                  value={status.connected ? "Connected" : "Signed out"}
                 />
-                <Input
-                  aria-label="Session end date"
-                  type="date"
-                  value={dateFilter.endDate}
-                  onChange={(event) =>
-                    setDateFilter((current) => ({ ...current, endDate: event.target.value }))
-                  }
-                />
+                <StatusTile label="Available" value={availableSessions.length.toString()} />
+                <StatusTile label="New" value={newSessionCount.toString()} />
+                <StatusTile label="Preview" value={preview ? preview.shotCount.toString() : "--"} />
               </div>
             </div>
-          </MobileAccordionSection>
-        ) : null}
+          </header>
 
-        {notice.kind !== "idle" ? (
-          <div ref={noticeRef} className="scroll-mt-4">
-            <Alert variant={notice.kind === "error" ? "destructive" : "default"}>
-              {notice.kind === "error" ? (
-                <AlertCircle className="size-4" />
-              ) : (
-                <CheckCircle2 className="size-4" />
-              )}
-              <AlertTitle>{notice.title}</AlertTitle>
-              <AlertDescription>
-                <span>{notice.message}</span>
-                {notice.kind === "error" ? (
-                  <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
-                    <Link href="/import">
-                      <ExternalLink className="size-4" />
-                      Use manual import
-                    </Link>
-                  </Button>
-                ) : notice.sessionId ? (
-                  <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
-                    <Link href={`/shots?sessionId=${encodeURIComponent(notice.sessionId)}`}>
-                      <Database className="size-4" />
-                      View shots
-                    </Link>
-                  </Button>
-                ) : null}
-              </AlertDescription>
-            </Alert>
-          </div>
-        ) : null}
-
-        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card
-            className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden sm:flex")}
-          >
-            <CardHeader>
-              <CardTitle>Connection</CardTitle>
-              <CardDescription>
-                We do not store your Rapsodo password. It is exchanged for a short-lived encrypted
-                token. You can disconnect at any time.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {status.connected ? (
-                <div className="space-y-4">
-                  <div className="trust-indicator rounded-lg p-3 text-sm">
-                    <div className="flex items-center gap-2 font-medium">
-                      <ShieldCheck className="size-4" />
-                      Token saved
-                    </div>
-                    <p className="mt-1 text-emerald-800">
-                      {status.expiresAt
-                        ? `Expires ${formatDateTime(status.expiresAt)}.`
-                        : "Expires automatically."}
-                    </p>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Button type="button" onClick={() => void loadSessions()} disabled={isPending}>
-                      {loadingLabel === "Loading sessions" ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="size-4" />
-                      )}
-                      Load sessions
-                    </Button>
-                    {browserNotificationState !== "granted" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={enableBrowserNotifications}
-                        disabled={browserNotificationState === "unsupported"}
-                      >
-                        <Bell className="size-4" />
-                        Notifications
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={disconnect}
-                      disabled={isPending}
-                    >
-                      <LogOut className="size-4" />
-                      Disconnect
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <form
-                  className="space-y-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    login();
-                  }}
-                >
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    placeholder="Rapsodo email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                  <Input
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Rapsodo password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <Button type="submit" className="premium-action w-full" disabled={isPending}>
-                    {loadingLabel === "Signing in" ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Cloud className="size-4" />
-                    )}
-                    Sign in to R-Cloud
-                  </Button>
-                </form>
-              )}
-
-              <div className="hidden gap-2 sm:grid sm:grid-cols-2">
-                <Input
-                  aria-label="Session start date"
-                  type="date"
-                  value={dateFilter.startDate}
-                  onChange={(event) =>
-                    setDateFilter((current) => ({ ...current, startDate: event.target.value }))
-                  }
-                />
-                <Input
-                  aria-label="Session end date"
-                  type="date"
-                  value={dateFilter.endDate}
-                  onChange={(event) =>
-                    setDateFilter((current) => ({ ...current, endDate: event.target.value }))
-                  }
-                />
+          {!status.connected ? (
+            <section className="premium-command-surface hidden rounded-2xl p-5 sm:grid sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center">
+              <div className="space-y-2">
+                <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                  Why connect
+                </Badge>
+                <h2 className="text-2xl font-semibold tracking-normal text-foreground">
+                  Connect Rapsodo to unlock your bag and coach
+                </h2>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                  Pull latest sessions, confirm clubs, update bag trust and unlock coach
+                  recommendations from the same reviewed launch-monitor data.
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    title: "Pull latest sessions",
+                    detail: "Find waiting R-Cloud exports.",
+                    icon: CloudUpload,
+                  },
+                  {
+                    title: "Confirm clubs",
+                    detail: "Map Rapsodo labels before save.",
+                    icon: ShieldCheck,
+                  },
+                  {
+                    title: "Update bag + coach",
+                    detail: "Refresh trust and drill signals.",
+                    icon: Sparkles,
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="rounded-xl border bg-white/80 p-3">
+                    <item.icon className="size-5 text-emerald-700" />
+                    <p className="mt-3 text-sm font-semibold">{item.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-          <Card className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden sm:flex")}>
-            <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <CardTitle>Remote sessions</CardTitle>
-                  <CardDescription>
-                    Choose a session, export its CSV, then review before saving. Imported sessions
-                    are hidden from this inbox.
-                  </CardDescription>
-                </div>
+          {showMobileReviewChrome ? (
+            <RapsodoMobileStepper
+              steps={mobileSteps}
+              step={visibleMobileStep}
+              onStepChange={setMobileStep}
+            />
+          ) : null}
+
+          {showMobileReviewChrome ? (
+            <MobileBentoSummary
+              items={[
+                {
+                  label: "Connection",
+                  value: status.connected ? "On" : "Off",
+                  detail: "R-Cloud",
+                  tone: status.connected ? "green" : "slate",
+                },
+                {
+                  label: "Available",
+                  value: availableSessions.length.toString(),
+                  detail: "Sessions",
+                  tone: "sky",
+                },
+                {
+                  label: "New",
+                  value: newSessionCount.toString(),
+                  detail: "Since last sync",
+                  tone: newSessionCount > 0 ? "amber" : "slate",
+                },
+                {
+                  label: "Preview",
+                  value: preview ? preview.shotCount.toString() : "--",
+                  detail: "Shots",
+                  tone: "pink",
+                },
+              ]}
+            />
+          ) : null}
+
+          {status.connected ? (
+            <MobileAccordionSection
+              title="Filters"
+              description="Date range and session type."
+              count={sessionFilter === "all" ? "All" : sessionFilter}
+            >
+              <div className="grid gap-2">
                 <select
                   aria-label="Remote session type"
-                  className="hidden h-9 rounded-md border bg-background px-3 text-sm sm:block"
+                  className="h-10 rounded-md border bg-background px-3 text-sm"
                   value={sessionFilter}
                   onChange={(event) => setSessionFilter(event.target.value as typeof sessionFilter)}
                 >
@@ -1081,384 +964,551 @@ export function RapsodoSyncClient({
                   <option value="range">Range</option>
                   <option value="course">Course</option>
                 </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    aria-label="Session start date"
+                    type="date"
+                    value={dateFilter.startDate}
+                    onChange={(event) =>
+                      setDateFilter((current) => ({ ...current, startDate: event.target.value }))
+                    }
+                  />
+                  <Input
+                    aria-label="Session end date"
+                    type="date"
+                    value={dateFilter.endDate}
+                    onChange={(event) =>
+                      setDateFilter((current) => ({ ...current, endDate: event.target.value }))
+                    }
+                  />
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <MobileDataList className="sm:hidden">
-                {filteredSessions.length > 0 ? (
-                  filteredSessions.map((session) => (
-                    <MobileDataCard
-                      key={`${session.providerKind}-${session.providerSessionId}`}
-                      title={session.title}
-                      subtitle={session.dateIso ? formatDate(session.dateIso) : "No date"}
-                      action={
-                        session.isNew && !session.importedSessionId ? (
-                          <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
-                        ) : null
-                      }
-                    >
-                      <DataPair label="Type" value={formatSessionKind(session)} />
-                      <DataPair
-                        label="Shots"
-                        value={session.shotCount === null ? "--" : session.shotCount}
-                      />
+            </MobileAccordionSection>
+          ) : null}
+
+          {notice.kind !== "idle" ? (
+            <div ref={noticeRef} className="scroll-mt-4">
+              <Alert variant={notice.kind === "error" ? "destructive" : "default"}>
+                {notice.kind === "error" ? (
+                  <AlertCircle className="size-4" />
+                ) : (
+                  <CheckCircle2 className="size-4" />
+                )}
+                <AlertTitle>{notice.title}</AlertTitle>
+                <AlertDescription>
+                  <span>{notice.message}</span>
+                  {notice.kind === "error" ? (
+                    <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
+                      <Link href="/import">
+                        <ExternalLink className="size-4" />
+                        Use manual import
+                      </Link>
+                    </Button>
+                  ) : notice.sessionId ? (
+                    <Button asChild variant="outline" size="sm" className="mt-3 flex w-fit">
+                      <Link href={`/shots?sessionId=${encodeURIComponent(notice.sessionId)}`}>
+                        <Database className="size-4" />
+                        View shots
+                      </Link>
+                    </Button>
+                  ) : null}
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : null}
+
+          <section
+            id="rapsodo-sessions"
+            className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]"
+          >
+            <Card
+              className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden sm:flex")}
+            >
+              <CardHeader>
+                <CardTitle>Connection</CardTitle>
+                <CardDescription>
+                  We do not store your Rapsodo password. It is exchanged for a short-lived encrypted
+                  token. You can disconnect at any time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {status.connected ? (
+                  <div className="space-y-4">
+                    <div className="trust-indicator rounded-lg p-3 text-sm">
+                      <div className="flex items-center gap-2 font-medium">
+                        <ShieldCheck className="size-4" />
+                        Token saved
+                      </div>
+                      <p className="mt-1 text-emerald-800">
+                        {status.expiresAt
+                          ? `Expires ${formatDateTime(status.expiresAt)}.`
+                          : "Expires automatically."}
+                      </p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button
+                        type="button"
+                        onClick={() => void loadSessions()}
+                        disabled={isPending}
+                      >
+                        {loadingLabel === "Loading sessions" ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="size-4" />
+                        )}
+                        Load sessions
+                      </Button>
+                      {browserNotificationState !== "granted" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={enableBrowserNotifications}
+                          disabled={browserNotificationState === "unsupported"}
+                        >
+                          <Bell className="size-4" />
+                          Notifications
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         variant="outline"
-                        size="sm"
-                        onClick={() => previewSession(session)}
+                        onClick={disconnect}
                         disabled={isPending}
                       >
-                        Preview
+                        <LogOut className="size-4" />
+                        Disconnect
                       </Button>
-                    </MobileDataCard>
-                  ))
-                ) : (
-                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                    {status.connected
-                      ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
-                      : "Sign in to load sessions."}
+                    </div>
                   </div>
+                ) : (
+                  <form
+                    className="space-y-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      login();
+                    }}
+                  >
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      placeholder="Rapsodo email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                    />
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Rapsodo password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <Button type="submit" className="premium-action w-full" disabled={isPending}>
+                      {loadingLabel === "Signing in" ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Cloud className="size-4" />
+                      )}
+                      Sign in to R-Cloud
+                    </Button>
+                  </form>
                 )}
-              </MobileDataList>
-              <div className="hidden overflow-hidden rounded-lg border sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Session</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Shots</TableHead>
-                      <TableHead className="w-28">
-                        <span className="sr-only">Action</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSessions.map((session) => (
-                      <TableRow key={`${session.providerKind}-${session.providerSessionId}`}>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{session.title}</span>
-                            {session.isNew && !session.importedSessionId ? (
-                              <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
-                                New
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                            {session.importedSessionId ? (
-                              <Link
-                                href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
-                                className="text-emerald-700 underline-offset-4 hover:underline"
-                              >
-                                Imported
-                              </Link>
-                            ) : null}
-                            {session.firstSeenAt ? (
-                              <span className="text-muted-foreground">
-                                Seen {formatDate(session.firstSeenAt)}
-                              </span>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatSessionKind(session)}</TableCell>
-                        <TableCell>
-                          {session.dateIso ? formatDate(session.dateIso) : "--"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {session.shotCount === null ? "--" : session.shotCount}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => previewSession(session)}
-                            disabled={isPending}
-                          >
-                            Preview
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredSessions.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                          {status.connected
-                            ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
-                            : "Sign in to load sessions."}
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
 
-        <MobileAccordionSection
-          title="Provider health"
-          description="Connection and latest sync status."
-          count={status.connected ? "Connected" : "Signed out"}
-        >
-          <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="font-semibold">Provider import health</span>
-              <Badge
-                className={cn(
-                  status.connected
-                    ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-100",
-                )}
-              >
-                {status.connected ? "Connected" : "Signed out"}
-              </Badge>
-            </div>
-            <p className="text-xs leading-5 text-muted-foreground">
-              {status.connected
-                ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
-                : "Sign in or use manual CSV import when R-Cloud is unavailable."}
-            </p>
-          </section>
-        </MobileAccordionSection>
+                <div className="hidden gap-2 sm:grid sm:grid-cols-2">
+                  <Input
+                    aria-label="Session start date"
+                    type="date"
+                    value={dateFilter.startDate}
+                    onChange={(event) =>
+                      setDateFilter((current) => ({ ...current, startDate: event.target.value }))
+                    }
+                  />
+                  <Input
+                    aria-label="Session end date"
+                    type="date"
+                    value={dateFilter.endDate}
+                    onChange={(event) =>
+                      setDateFilter((current) => ({ ...current, endDate: event.target.value }))
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
-        {preview ? (
-          <section
-            ref={previewSectionRef}
-            className={cn(
-              "space-y-4 scroll-mt-4",
-              ["preview", "clubs", "course", "import", "review"].includes(visibleMobileStep)
-                ? "block"
-                : "hidden sm:block",
-            )}
-          >
-            <Card className="premium-card">
+            <Card
+              className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden sm:flex")}
+            >
               <CardHeader>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <CardTitle>{preview.session.title}</CardTitle>
+                    <CardTitle>Remote sessions</CardTitle>
                     <CardDescription>
-                      {preview.shotCount} shots, {preview.rawRowCount} raw rows,{" "}
-                      {preview.distanceUnit}
+                      Choose a session, export its CSV, then review before saving. Imported sessions
+                      are hidden from this inbox.
                     </CardDescription>
                   </div>
-                  <Button
-                    type="button"
-                    onClick={savePreview}
-                    disabled={!canSave}
-                    className="premium-action"
+                  <select
+                    aria-label="Remote session type"
+                    className="hidden h-9 rounded-md border bg-background px-3 text-sm sm:block"
+                    value={sessionFilter}
+                    onChange={(event) =>
+                      setSessionFilter(event.target.value as typeof sessionFilter)
+                    }
                   >
-                    {isSavingPreview ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : previewAlreadyImported ? (
-                      <CheckCircle2 className="size-4" />
-                    ) : (
-                      <Upload className="size-4" />
-                    )}
-                    {saveButtonLabel}
-                  </Button>
+                    <option value="all">All</option>
+                    <option value="range">Range</option>
+                    <option value="course">Course</option>
+                  </select>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {visibleSaveStatus ? <SaveStatusPanel status={visibleSaveStatus} /> : null}
-                <div
-                  className={cn(
-                    "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
-                    visibleMobileStep === "clubs" ? "grid" : "hidden sm:grid",
-                  )}
-                >
-                  <Button
-                    type="button"
-                    variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
-                    className={clubSelectionMode === "recommendations" ? "premium-action" : ""}
-                    onClick={() => applyClubSelectionMode("recommendations")}
-                    disabled={isPending}
-                  >
-                    <Sparkles className="size-4" />
-                    Use recommendations
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={clubSelectionMode === "rapsodo" ? "default" : "outline"}
-                    className={clubSelectionMode === "rapsodo" ? "premium-action" : ""}
-                    onClick={() => applyClubSelectionMode("rapsodo")}
-                    disabled={isPending}
-                  >
-                    <ShieldCheck className="size-4" />
-                    Use Rapsodo clubs
-                  </Button>
-                  <label
-                    className={`flex min-h-10 items-center gap-3 rounded-md border bg-white/75 px-3 py-2 text-sm ${
-                      rapsodoWritebackRows.updatableCount === 0 ? "opacity-60" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      checked={updateRapsodoClubs}
-                      disabled={rapsodoWritebackRows.updatableCount === 0 || isPending}
-                      onChange={(event) => setUpdateRapsodoClubs(event.target.checked)}
-                    />
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2 font-medium leading-tight">
-                        <CloudUpload className="size-4" />
-                        Update Rapsodo first
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {rapsodoWritebackRows.updatableCount}/{preview.shotCount} shots can be
-                        matched back to R-Cloud.
-                      </span>
-                    </span>
-                  </label>
-                </div>
-                <div
-                  className={cn(
-                    "grid gap-2 sm:grid-cols-4",
-                    visibleMobileStep === "preview" ||
-                      visibleMobileStep === "import" ||
-                      visibleMobileStep === "review"
-                      ? "grid"
-                      : "hidden sm:grid",
-                  )}
-                >
-                  <CompactSummaryTile
-                    label="Type"
-                    value={
-                      courseShotOnlyImport ? "Shot-only" : formatPreviewType(preview.sessionType)
-                    }
-                  />
-                  <CompactSummaryTile label="Date" value={formatDate(preview.sessionDate)} />
-                  <CompactSummaryTile
-                    label="Clubs"
-                    value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`}
-                  />
-                  <CompactSummaryTile label="Duplicate" value={preview.rawCsvHash.slice(0, 12)} />
-                </div>
-                {visibleMobileStep === "review" ? (
-                  <div className="premium-command-surface grid gap-3 rounded-lg p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold">Review trust</p>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          Confirmed clubs, duplicate hash, warnings and save status decide whether
-                          this session is trusted for bag numbers, coach scoring and challenge
-                          proof.
-                        </p>
-                      </div>
-                      <Badge
-                        variant={visibleSaveStatus?.kind === "success" ? "default" : "secondary"}
-                      >
-                        {visibleSaveStatus?.kind === "success" ? "Trusted" : "Reviewing"}
-                      </Badge>
-                    </div>
-                    <div className="grid gap-2 text-sm">
-                      <DataPair
-                        label="Club mapping"
-                        value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount} confirmed`}
-                      />
-                      <DataPair
-                        label="Warnings"
-                        value={
-                          preview.warnings.length === 0 ? "None" : `${preview.warnings.length}`
-                        }
-                      />
-                      <DataPair
-                        label="Save status"
-                        value={visibleSaveStatus?.title ?? "Not imported yet"}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                {preview.warnings.length > 0 ? (
-                  <Alert>
-                    <AlertCircle className="size-4" />
-                    <AlertTitle>CSV warnings</AlertTitle>
-                    <AlertDescription>{preview.warnings.join(" ")}</AlertDescription>
-                  </Alert>
-                ) : null}
-                <MobileAccordionSection
-                  title="Review shots"
-                  description="Raw row audit and club confirmation."
-                  count={preview.shots.length}
-                >
-                  <div className="grid gap-2">
-                    {preview.shots.slice(0, 8).map((shot) => (
+              <CardContent>
+                <MobileDataList className="sm:hidden">
+                  {filteredSessions.length > 0 ? (
+                    filteredSessions.map((session) => (
                       <MobileDataCard
-                        key={shot.rowNumber}
-                        title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
-                        subtitle={shot.reportedClubLabel}
+                        key={`${session.providerKind}-${session.providerSessionId}`}
+                        title={session.title}
+                        subtitle={session.dateIso ? formatDate(session.dateIso) : "No date"}
                         action={
-                          <Badge
-                            variant={shot.suggestion.confidence === "low" ? "secondary" : "default"}
-                          >
-                            {shot.suggestion.confidenceScore}%
-                          </Badge>
+                          session.isNew && !session.importedSessionId ? (
+                            <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
+                          ) : null
                         }
                       >
-                        <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
-                        <DataPair label="Total" value={formatMetric(shot.totalYd)} />
-                        <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-                          Confirmed club
-                          <select
-                            aria-label={`Confirmed club for shot ${
-                              shot.shotNumber ?? shot.rowNumber
-                            }`}
-                            className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
-                            value={selectedClubByRow[shot.rowNumber] ?? ""}
-                            onChange={(event) => {
-                              setClubSelectionMode("custom");
-                              setSelectedClubByRow((current) => ({
-                                ...current,
-                                [shot.rowNumber]: event.target.value,
-                              }));
-                            }}
-                          >
-                            <option value="">Choose club</option>
-                            {preview.clubChoices.map((choice) => (
-                              <option
-                                key={`${shot.rowNumber}-${choice.clubKey}`}
-                                value={choice.clubKey}
-                              >
-                                {choice.clubLabel}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        <DataPair label="Type" value={formatSessionKind(session)} />
+                        <DataPair
+                          label="Shots"
+                          value={session.shotCount === null ? "--" : session.shotCount}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => previewSession(session)}
+                          disabled={isPending}
+                        >
+                          Preview
+                        </Button>
                       </MobileDataCard>
-                    ))}
-                  </div>
-                </MobileAccordionSection>
-                <div className="hidden rounded-lg border sm:block">
-                  <Table className="text-xs">
+                    ))
+                  ) : (
+                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                      {status.connected
+                        ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
+                        : "Sign in to load sessions."}
+                    </div>
+                  )}
+                </MobileDataList>
+                <DesktopTableWorkbenchControls
+                  viewKey="rapsodo-sessions"
+                  scope="rapsodo"
+                  currentViewLabel={`R-Cloud ${sessionFilter === "all" ? "sessions" : `${sessionFilter} sessions`}`}
+                  resultLabel={`${filteredSessions.length} sessions`}
+                  columns={rapsodoSessionColumns}
+                  suggestedViews={rapsodoSessionSuggestedViews}
+                  exportTableId="rapsodo-sessions"
+                  exportFileName="forekinghell-rapsodo-sessions.csv"
+                  className="mb-3"
+                />
+                <div className="hidden overflow-hidden rounded-lg border sm:block">
+                  <Table
+                    data-main-table-target="true"
+                    data-workbench-export-table="rapsodo-sessions"
+                    aria-label="Rapsodo remote sessions table"
+                    aria-describedby="rapsodo-sessions-summary"
+                    tabIndex={-1}
+                  >
+                    <TableCaption id="rapsodo-sessions-summary" className="sr-only">
+                      Unimported Rapsodo cloud sessions with type, date, shot count and preview
+                      action.
+                    </TableCaption>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="h-8 w-14 px-3">Shot</TableHead>
-                        <TableHead className="h-8 w-24 px-2">Rapsodo</TableHead>
-                        <TableHead className="h-8 w-64 px-2">Confirmed club</TableHead>
-                        <TableHead className="h-8 w-20 px-2 text-right">Carry</TableHead>
-                        <TableHead className="h-8 w-20 px-2 text-right">Total</TableHead>
-                        <TableHead className="h-8 px-2">Match</TableHead>
+                        <TableHead data-column="session">Session</TableHead>
+                        <TableHead data-column="type">Type</TableHead>
+                        <TableHead data-column="date">Date</TableHead>
+                        <TableHead data-column="shots" className="text-right">
+                          Shots
+                        </TableHead>
+                        <TableHead data-column="action" className="w-28">
+                          <span className="sr-only">Action</span>
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {preview.shots.map((shot) => (
-                        <TableRow key={shot.rowNumber}>
-                          <TableCell className="px-3 py-1.5">
-                            {shot.shotNumber ?? shot.rowNumber}
-                          </TableCell>
-                          <TableCell className="px-2 py-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <span>{shot.reportedClubLabel}</span>
+                      {filteredSessions.map((session) => (
+                        <TableRow key={`${session.providerKind}-${session.providerSessionId}`}>
+                          <TableCell data-column="session">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">{session.title}</span>
+                              {session.isNew && !session.importedSessionId ? (
+                                <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
+                                  New
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                              {session.importedSessionId ? (
+                                <Link
+                                  href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
+                                  className="text-emerald-700 underline-offset-4 hover:underline"
+                                >
+                                  Imported
+                                </Link>
+                              ) : null}
+                              {session.firstSeenAt ? (
+                                <span className="text-muted-foreground">
+                                  Seen {formatDate(session.firstSeenAt)}
+                                </span>
+                              ) : null}
                             </div>
                           </TableCell>
-                          <TableCell className="px-2 py-1.5">
+                          <TableCell data-column="type">{formatSessionKind(session)}</TableCell>
+                          <TableCell data-column="date">
+                            {session.dateIso ? formatDate(session.dateIso) : "--"}
+                          </TableCell>
+                          <TableCell data-column="shots" className="text-right">
+                            {session.shotCount === null ? "--" : session.shotCount}
+                          </TableCell>
+                          <TableCell data-column="action">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => previewSession(session)}
+                              disabled={isPending}
+                            >
+                              Preview
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredSessions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            {status.connected
+                              ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
+                              : "Sign in to load sessions."}
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <MobileAccordionSection
+            title="Provider health"
+            description="Connection and latest sync status."
+            count={status.connected ? "Connected" : "Signed out"}
+          >
+            <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-semibold">Provider import health</span>
+                <Badge
+                  className={cn(
+                    status.connected
+                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-100",
+                  )}
+                >
+                  {status.connected ? "Connected" : "Signed out"}
+                </Badge>
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {status.connected
+                  ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
+                  : "Sign in or use manual CSV import when R-Cloud is unavailable."}
+              </p>
+            </section>
+          </MobileAccordionSection>
+
+          {preview ? (
+            <section
+              id="rapsodo-preview"
+              ref={previewSectionRef}
+              className={cn(
+                "space-y-4 scroll-mt-4",
+                ["preview", "clubs", "course", "import", "review"].includes(visibleMobileStep)
+                  ? "block"
+                  : "hidden sm:block",
+              )}
+            >
+              <Card className="premium-card">
+                <CardHeader>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <CardTitle>{preview.session.title}</CardTitle>
+                      <CardDescription>
+                        {preview.shotCount} shots, {preview.rawRowCount} raw rows,{" "}
+                        {preview.distanceUnit}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={savePreview}
+                      disabled={!canSave}
+                      className="premium-action"
+                    >
+                      {isSavingPreview ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : previewAlreadyImported ? (
+                        <CheckCircle2 className="size-4" />
+                      ) : (
+                        <Upload className="size-4" />
+                      )}
+                      {saveButtonLabel}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {visibleSaveStatus ? <SaveStatusPanel status={visibleSaveStatus} /> : null}
+                  <div
+                    className={cn(
+                      "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
+                      visibleMobileStep === "clubs" ? "grid" : "hidden sm:grid",
+                    )}
+                  >
+                    <Button
+                      type="button"
+                      variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
+                      className={clubSelectionMode === "recommendations" ? "premium-action" : ""}
+                      onClick={() => applyClubSelectionMode("recommendations")}
+                      disabled={isPending}
+                    >
+                      <Sparkles className="size-4" />
+                      Use recommendations
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={clubSelectionMode === "rapsodo" ? "default" : "outline"}
+                      className={clubSelectionMode === "rapsodo" ? "premium-action" : ""}
+                      onClick={() => applyClubSelectionMode("rapsodo")}
+                      disabled={isPending}
+                    >
+                      <ShieldCheck className="size-4" />
+                      Use Rapsodo clubs
+                    </Button>
+                    <label
+                      className={`flex min-h-10 items-center gap-3 rounded-md border bg-white/75 px-3 py-2 text-sm ${
+                        rapsodoWritebackRows.updatableCount === 0 ? "opacity-60" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={updateRapsodoClubs}
+                        disabled={rapsodoWritebackRows.updatableCount === 0 || isPending}
+                        onChange={(event) => setUpdateRapsodoClubs(event.target.checked)}
+                      />
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 font-medium leading-tight">
+                          <CloudUpload className="size-4" />
+                          Update Rapsodo first
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {rapsodoWritebackRows.updatableCount}/{preview.shotCount} shots can be
+                          matched back to R-Cloud.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  <div
+                    className={cn(
+                      "grid gap-2 sm:grid-cols-4",
+                      visibleMobileStep === "preview" ||
+                        visibleMobileStep === "import" ||
+                        visibleMobileStep === "review"
+                        ? "grid"
+                        : "hidden sm:grid",
+                    )}
+                  >
+                    <CompactSummaryTile
+                      label="Type"
+                      value={
+                        courseShotOnlyImport ? "Shot-only" : formatPreviewType(preview.sessionType)
+                      }
+                    />
+                    <CompactSummaryTile label="Date" value={formatDate(preview.sessionDate)} />
+                    <CompactSummaryTile
+                      label="Clubs"
+                      value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`}
+                    />
+                    <CompactSummaryTile label="Duplicate" value={preview.rawCsvHash.slice(0, 12)} />
+                  </div>
+                  {visibleMobileStep === "review" ? (
+                    <div className="premium-command-surface grid gap-3 rounded-lg p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold">Review trust</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            Confirmed clubs, duplicate hash, warnings and save status decide whether
+                            this session is trusted for bag numbers, coach scoring and challenge
+                            proof.
+                          </p>
+                        </div>
+                        <Badge
+                          variant={visibleSaveStatus?.kind === "success" ? "default" : "secondary"}
+                        >
+                          {visibleSaveStatus?.kind === "success" ? "Trusted" : "Reviewing"}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-2 text-sm">
+                        <DataPair
+                          label="Club mapping"
+                          value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount} confirmed`}
+                        />
+                        <DataPair
+                          label="Warnings"
+                          value={
+                            preview.warnings.length === 0 ? "None" : `${preview.warnings.length}`
+                          }
+                        />
+                        <DataPair
+                          label="Save status"
+                          value={visibleSaveStatus?.title ?? "Not imported yet"}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  {preview.warnings.length > 0 ? (
+                    <Alert>
+                      <AlertCircle className="size-4" />
+                      <AlertTitle>CSV warnings</AlertTitle>
+                      <AlertDescription>{preview.warnings.join(" ")}</AlertDescription>
+                    </Alert>
+                  ) : null}
+                  <MobileAccordionSection
+                    title="Review shots"
+                    description="Raw row audit and club confirmation."
+                    count={preview.shots.length}
+                  >
+                    <div className="grid gap-2">
+                      {preview.shots.slice(0, 8).map((shot) => (
+                        <MobileDataCard
+                          key={shot.rowNumber}
+                          title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
+                          subtitle={shot.reportedClubLabel}
+                          action={
+                            <Badge
+                              variant={
+                                shot.suggestion.confidence === "low" ? "secondary" : "default"
+                              }
+                            >
+                              {shot.suggestion.confidenceScore}%
+                            </Badge>
+                          }
+                        >
+                          <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
+                          <DataPair label="Total" value={formatMetric(shot.totalYd)} />
+                          <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                            Confirmed club
                             <select
                               aria-label={`Confirmed club for shot ${
                                 shot.shotNumber ?? shot.rowNumber
                               }`}
-                              className="h-8 w-56 rounded-md border bg-background px-2 text-xs"
+                              className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
                               value={selectedClubByRow[shot.rowNumber] ?? ""}
                               onChange={(event) => {
                                 setClubSelectionMode("custom");
@@ -1475,247 +1525,303 @@ export function RapsodoSyncClient({
                                   value={choice.clubKey}
                                 >
                                   {choice.clubLabel}
-                                  {choice.clubBrand || choice.clubModel
-                                    ? ` - ${[choice.clubBrand, choice.clubModel].filter(Boolean).join(" ")}`
-                                    : ""}
-                                  {choice.active === false ? " (retired)" : ""}
                                 </option>
                               ))}
                             </select>
-                          </TableCell>
-                          <TableCell className="px-2 py-1.5 text-right">
-                            {formatMetric(shot.carryYd)}
-                          </TableCell>
-                          <TableCell className="px-2 py-1.5 text-right">
-                            {formatMetric(shot.totalYd)}
-                          </TableCell>
-                          <TableCell className="min-w-[360px] px-2 py-1.5">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Badge
-                                variant={
-                                  shot.suggestion.confidence === "low" ? "secondary" : "default"
-                                }
-                                className="shrink-0"
-                              >
-                                {shot.suggestion.confidenceScore}%
-                              </Badge>
-                              <span className="truncate">{shot.suggestion.reason}</span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                          </label>
+                        </MobileDataCard>
                       ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {isCoursePreview ? (
-              <Card
-                className={cn(
-                  "premium-card",
-                  visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
-                )}
-              >
-                <CardHeader>
-                  <CardTitle>Course import</CardTitle>
-                  <CardDescription>
-                    Save club data only, or add scorecard detail when it should become a round.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Button
-                      type="button"
-                      variant={courseImportMode === "shot_only" ? "default" : "outline"}
-                      className={courseImportMode === "shot_only" ? "premium-action" : ""}
-                      onClick={() => setCourseImportMode("shot_only")}
-                      disabled={isPending}
-                    >
-                      <Database className="size-4" />
-                      Shot data only
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={courseImportMode === "scored_round" ? "default" : "outline"}
-                      className={courseImportMode === "scored_round" ? "premium-action" : ""}
-                      onClick={() => setCourseImportMode("scored_round")}
-                      disabled={isPending}
-                    >
-                      <ShieldCheck className="size-4" />
-                      Scored round
-                    </Button>
-                  </div>
-                  {courseImportMode === "shot_only" ? (
-                    <div className="premium-command-surface rounded-lg p-3 text-sm text-muted-foreground">
-                      These shots will save as a shot-linked course round without scorecard detail.
                     </div>
-                  ) : (
-                    <>
-                      <div
-                        className={cn(
-                          "grid gap-3",
-                          usingSavedCourseScorecard ? "" : "lg:grid-cols-[0.8fr_1.2fr]",
-                        )}
-                      >
-                        <Input
-                          value={courseName}
-                          placeholder="Course name"
-                          onChange={(event) => setCourseName(event.target.value)}
-                        />
-                        {usingSavedCourseScorecard ? (
-                          <div className="premium-command-surface rounded-lg px-3 py-2 text-sm">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-medium">
-                                {scorecard.holes.length} saved holes
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                par {scorecardTotalPar}, {scorecardTotalYards} yards
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <textarea
-                            className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                            placeholder="Hole, par, yards"
-                            value={scorecardText}
-                            onChange={(event) => setScorecardText(event.target.value)}
-                          />
-                        )}
-                      </div>
-                      <div className="premium-command-surface rounded-lg p-3 text-sm">
-                        {scorecard.holes.length === 0 ? (
-                          <p className="text-muted-foreground">
-                            Add scorecard rows before saving this course session.
-                          </p>
-                        ) : (
-                          <div className="space-y-1">
-                            <p>
-                              {assignedCourseShots}/{preview.shotCount} shots assigned across{" "}
-                              {scorecard.holes.length} holes.
-                            </p>
-                            {scoredRoundNeedsScores ? (
-                              <>
-                                <p className="text-xs text-muted-foreground">
-                                  {courseScoringSummary.scoreCount}/{courseScoringSummary.holeCount}{" "}
-                                  scores · derived {courseScoringSummary.puttCount}/
-                                  {courseScoringSummary.holeCount} putts
-                                  {courseScoringSummary.isComplete &&
-                                  courseScoringSummary.totalScore !== null &&
-                                  courseScoringSummary.totalPutts !== null
-                                    ? ` · total ${courseScoringSummary.totalScore}, ${courseScoringSummary.totalPutts} putts`
-                                    : ""}
-                                </p>
-                                {!courseScoringSummary.isComplete ? (
-                                  <p className="text-xs font-medium text-amber-700">
-                                    Enter a score for every hole before saving as a scored round.
-                                  </p>
-                                ) : null}
-                              </>
-                            ) : null}
-                          </div>
-                        )}
-                        {scorecard.warnings.length > 0 ? (
-                          <p className="mt-2 text-amber-700">{scorecard.warnings.join(" ")}</p>
-                        ) : null}
-                      </div>
-                    </>
-                  )}
-                  {courseImportMode === "scored_round" && scorecard.holes.length > 0 ? (
-                    <CourseScorecardSvg
-                      courseName={courseName.trim() || preview.courseName || "Course scorecard"}
-                      editable
-                      holes={courseScorecardSvgHoles}
-                      onPenaltiesChange={(holeNumber, value) =>
-                        updateHoleReview(holeNumber, { penalties: value })
-                      }
-                      onScoreChange={(holeNumber, value) =>
-                        updateHoleReview(holeNumber, { score: value })
-                      }
-                      onShotCountChange={(holeNumber, value) =>
-                        updateHoleReview(holeNumber, { shotCount: value })
-                      }
-                      playerName="ForeKingHell"
-                      showPenalties
-                      showShotCounts
-                      subtitle={
-                        usingSavedCourseScorecard
-                          ? "Saved course card · enter scores"
-                          : "Manual card · enter scores"
-                      }
-                    />
-                  ) : null}
+                  </MobileAccordionSection>
+                  <div className="hidden rounded-lg border sm:block">
+                    <Table className="text-xs">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="h-8 w-14 px-3">Shot</TableHead>
+                          <TableHead className="h-8 w-24 px-2">Rapsodo</TableHead>
+                          <TableHead className="h-8 w-64 px-2">Confirmed club</TableHead>
+                          <TableHead className="h-8 w-20 px-2 text-right">Carry</TableHead>
+                          <TableHead className="h-8 w-20 px-2 text-right">Total</TableHead>
+                          <TableHead className="h-8 px-2">Match</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {preview.shots.map((shot) => (
+                          <TableRow key={shot.rowNumber}>
+                            <TableCell className="px-3 py-1.5">
+                              {shot.shotNumber ?? shot.rowNumber}
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span>{shot.reportedClubLabel}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5">
+                              <select
+                                aria-label={`Confirmed club for shot ${
+                                  shot.shotNumber ?? shot.rowNumber
+                                }`}
+                                className="h-8 w-56 rounded-md border bg-background px-2 text-xs"
+                                value={selectedClubByRow[shot.rowNumber] ?? ""}
+                                onChange={(event) => {
+                                  setClubSelectionMode("custom");
+                                  setSelectedClubByRow((current) => ({
+                                    ...current,
+                                    [shot.rowNumber]: event.target.value,
+                                  }));
+                                }}
+                              >
+                                <option value="">Choose club</option>
+                                {preview.clubChoices.map((choice) => (
+                                  <option
+                                    key={`${shot.rowNumber}-${choice.clubKey}`}
+                                    value={choice.clubKey}
+                                  >
+                                    {choice.clubLabel}
+                                    {choice.clubBrand || choice.clubModel
+                                      ? ` - ${[choice.clubBrand, choice.clubModel].filter(Boolean).join(" ")}`
+                                      : ""}
+                                    {choice.active === false ? " (retired)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 text-right">
+                              {formatMetric(shot.carryYd)}
+                            </TableCell>
+                            <TableCell className="px-2 py-1.5 text-right">
+                              {formatMetric(shot.totalYd)}
+                            </TableCell>
+                            <TableCell className="min-w-[360px] px-2 py-1.5">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Badge
+                                  variant={
+                                    shot.suggestion.confidence === "low" ? "secondary" : "default"
+                                  }
+                                  className="shrink-0"
+                                >
+                                  {shot.suggestion.confidenceScore}%
+                                </Badge>
+                                <span className="truncate">{shot.suggestion.reason}</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
-            ) : null}
-          </section>
-        ) : null}
 
-        {showStickyReviewBar ? (
-          <StickyMobileAction>
-            <div className="grid grid-cols-[auto_1fr] gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-xl"
-                disabled={activeMobileStepIndex <= 0}
-                onClick={() =>
-                  setMobileStep(mobileSteps[Math.max(0, activeMobileStepIndex - 1)].id)
-                }
-              >
-                Back
-              </Button>
-              {visibleMobileStep === "review" ? (
-                <Button asChild className="premium-action rounded-lg">
-                  <Link
-                    href={
-                      visibleSaveStatus?.kind === "success" && visibleSaveStatus.sessionId
-                        ? `/shots?sessionId=${encodeURIComponent(visibleSaveStatus.sessionId)}`
-                        : "/shots"
-                    }
-                  >
-                    View trusted shots
-                  </Link>
-                </Button>
-              ) : visibleMobileStep === "import" ? (
-                <Button
-                  type="button"
-                  disabled={!canSave}
-                  onClick={savePreview}
-                  className="premium-action rounded-lg"
-                >
-                  {isSavingPreview ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : previewAlreadyImported ? (
-                    <CheckCircle2 className="size-4" />
-                  ) : (
-                    <Upload className="size-4" />
+              {isCoursePreview ? (
+                <Card
+                  className={cn(
+                    "premium-card",
+                    visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
                   )}
-                  {saveButtonLabel}
-                </Button>
-              ) : (
+                >
+                  <CardHeader>
+                    <CardTitle>Course import</CardTitle>
+                    <CardDescription>
+                      Save club data only, or add scorecard detail when it should become a round.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Button
+                        type="button"
+                        variant={courseImportMode === "shot_only" ? "default" : "outline"}
+                        className={courseImportMode === "shot_only" ? "premium-action" : ""}
+                        onClick={() => setCourseImportMode("shot_only")}
+                        disabled={isPending}
+                      >
+                        <Database className="size-4" />
+                        Shot data only
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={courseImportMode === "scored_round" ? "default" : "outline"}
+                        className={courseImportMode === "scored_round" ? "premium-action" : ""}
+                        onClick={() => setCourseImportMode("scored_round")}
+                        disabled={isPending}
+                      >
+                        <ShieldCheck className="size-4" />
+                        Scored round
+                      </Button>
+                    </div>
+                    {courseImportMode === "shot_only" ? (
+                      <div className="premium-command-surface rounded-lg p-3 text-sm text-muted-foreground">
+                        These shots will save as a shot-linked course round without scorecard
+                        detail.
+                      </div>
+                    ) : (
+                      <>
+                        <div
+                          className={cn(
+                            "grid gap-3",
+                            usingSavedCourseScorecard ? "" : "lg:grid-cols-[0.8fr_1.2fr]",
+                          )}
+                        >
+                          <Input
+                            value={courseName}
+                            placeholder="Course name"
+                            onChange={(event) => setCourseName(event.target.value)}
+                          />
+                          {usingSavedCourseScorecard ? (
+                            <div className="premium-command-surface rounded-lg px-3 py-2 text-sm">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-medium">
+                                  {scorecard.holes.length} saved holes
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  par {scorecardTotalPar}, {scorecardTotalYards} yards
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <textarea
+                              className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              placeholder="Hole, par, yards"
+                              value={scorecardText}
+                              onChange={(event) => setScorecardText(event.target.value)}
+                            />
+                          )}
+                        </div>
+                        <div className="premium-command-surface rounded-lg p-3 text-sm">
+                          {scorecard.holes.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              Add scorecard rows before saving this course session.
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              <p>
+                                {assignedCourseShots}/{preview.shotCount} shots assigned across{" "}
+                                {scorecard.holes.length} holes.
+                              </p>
+                              {scoredRoundNeedsScores ? (
+                                <>
+                                  <p className="text-xs text-muted-foreground">
+                                    {courseScoringSummary.scoreCount}/
+                                    {courseScoringSummary.holeCount} scores · derived{" "}
+                                    {courseScoringSummary.puttCount}/
+                                    {courseScoringSummary.holeCount} putts
+                                    {courseScoringSummary.isComplete &&
+                                    courseScoringSummary.totalScore !== null &&
+                                    courseScoringSummary.totalPutts !== null
+                                      ? ` · total ${courseScoringSummary.totalScore}, ${courseScoringSummary.totalPutts} putts`
+                                      : ""}
+                                  </p>
+                                  {!courseScoringSummary.isComplete ? (
+                                    <p className="text-xs font-medium text-amber-700">
+                                      Enter a score for every hole before saving as a scored round.
+                                    </p>
+                                  ) : null}
+                                </>
+                              ) : null}
+                            </div>
+                          )}
+                          {scorecard.warnings.length > 0 ? (
+                            <p className="mt-2 text-amber-700">{scorecard.warnings.join(" ")}</p>
+                          ) : null}
+                        </div>
+                      </>
+                    )}
+                    {courseImportMode === "scored_round" && scorecard.holes.length > 0 ? (
+                      <CourseScorecardSvg
+                        courseName={courseName.trim() || preview.courseName || "Course scorecard"}
+                        editable
+                        holes={courseScorecardSvgHoles}
+                        onPenaltiesChange={(holeNumber, value) =>
+                          updateHoleReview(holeNumber, { penalties: value })
+                        }
+                        onScoreChange={(holeNumber, value) =>
+                          updateHoleReview(holeNumber, { score: value })
+                        }
+                        onShotCountChange={(holeNumber, value) =>
+                          updateHoleReview(holeNumber, { shotCount: value })
+                        }
+                        playerName="ForeKingHell"
+                        showPenalties
+                        showShotCounts
+                        subtitle={
+                          usingSavedCourseScorecard
+                            ? "Saved course card · enter scores"
+                            : "Manual card · enter scores"
+                        }
+                      />
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </section>
+          ) : null}
+
+          {showStickyReviewBar ? (
+            <StickyMobileAction>
+              <div className="grid grid-cols-[auto_1fr] gap-2">
                 <Button
                   type="button"
-                  className="premium-action rounded-lg"
+                  variant="outline"
+                  className="rounded-xl"
+                  disabled={activeMobileStepIndex <= 0}
                   onClick={() =>
-                    setMobileStep(
-                      mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
-                    )
+                    setMobileStep(mobileSteps[Math.max(0, activeMobileStepIndex - 1)].id)
                   }
                 >
-                  Next
+                  Back
                 </Button>
-              )}
-            </div>
-          </StickyMobileAction>
-        ) : null}
-        {saveConfirmation ? (
-          <SaveConfirmationToast
-            confirmation={saveConfirmation}
-            onDismiss={() => setSaveConfirmation(null)}
-          />
-        ) : null}
-        {children}
+                {visibleMobileStep === "review" ? (
+                  <Button asChild className="premium-action rounded-lg">
+                    <Link
+                      href={
+                        visibleSaveStatus?.kind === "success" && visibleSaveStatus.sessionId
+                          ? `/shots?sessionId=${encodeURIComponent(visibleSaveStatus.sessionId)}`
+                          : "/shots"
+                      }
+                    >
+                      View trusted shots
+                    </Link>
+                  </Button>
+                ) : visibleMobileStep === "import" ? (
+                  <Button
+                    type="button"
+                    disabled={!canSave}
+                    onClick={savePreview}
+                    className="premium-action rounded-lg"
+                  >
+                    {isSavingPreview ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : previewAlreadyImported ? (
+                      <CheckCircle2 className="size-4" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
+                    {saveButtonLabel}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    className="premium-action rounded-lg"
+                    onClick={() =>
+                      setMobileStep(
+                        mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
+                      )
+                    }
+                  >
+                    Next
+                  </Button>
+                )}
+              </div>
+            </StickyMobileAction>
+          ) : null}
+          {saveConfirmation ? (
+            <SaveConfirmationToast
+              confirmation={saveConfirmation}
+              onDismiss={() => setSaveConfirmation(null)}
+            />
+          ) : null}
+          {children}
+        </DesktopWorkflowLayout>
       </div>
     </main>
   );
@@ -2083,6 +2189,73 @@ function isSameRapsodoSession(
   return (
     left.providerKind === right.providerKind && left.providerSessionId === right.providerSessionId
   );
+}
+
+function buildRapsodoWorkflowSteps({
+  availableCount,
+  canSave,
+  connected,
+  courseReady,
+  everyShotHasClub,
+  previewShotCount,
+  saveStatus,
+  totalSessions,
+}: {
+  availableCount: number;
+  canSave: boolean;
+  connected: boolean;
+  courseReady: boolean;
+  everyShotHasClub: boolean;
+  previewShotCount: number | null;
+  saveStatus: SaveStatus["kind"] | null;
+  totalSessions: number;
+}): DesktopWorkflowStep[] {
+  const hasPreview = previewShotCount !== null;
+  const saveComplete = saveStatus === "success";
+  const hasSessions = totalSessions > 0 || availableCount > 0;
+
+  return [
+    {
+      title: "Connect R-Cloud",
+      detail: "Exchange Rapsodo credentials for a short-lived token before loading sessions.",
+      status: connected ? "complete" : "current",
+      value: connected ? "Connected" : "Sign in",
+    },
+    {
+      title: "Load sessions",
+      detail: "Pull unimported R-Cloud sessions and hide anything already linked.",
+      status: hasSessions ? "complete" : connected ? "current" : "upcoming",
+      value: hasSessions ? `${availableCount} available` : undefined,
+    },
+    {
+      title: "Preview shots",
+      detail: "Open the selected export and check shot count, session type and date.",
+      status: hasPreview ? "complete" : hasSessions ? "current" : "upcoming",
+      value: hasPreview ? `${previewShotCount} shots` : undefined,
+    },
+    {
+      title: "Map clubs",
+      detail: "Choose Rapsodo labels, LM World Tour recommendations or custom club matches.",
+      status: everyShotHasClub && hasPreview ? "complete" : hasPreview ? "current" : "upcoming",
+      value: everyShotHasClub && hasPreview ? "Mapped" : undefined,
+    },
+    {
+      title: "Save import",
+      detail: "Save only when club mapping and course context are deterministic.",
+      status: saveComplete
+        ? "complete"
+        : canSave || (hasPreview && courseReady)
+          ? "current"
+          : "upcoming",
+      value: saveComplete ? "Saved" : canSave ? "Ready" : undefined,
+    },
+    {
+      title: "Review trust",
+      detail: "Use the saved shots for bag confidence, coach evidence and practice scoring.",
+      status: saveComplete ? "current" : "upcoming",
+      value: saveComplete ? "Open evidence" : undefined,
+    },
+  ];
 }
 
 function sessionTimestamp(session: RapsodoSessionListItem) {

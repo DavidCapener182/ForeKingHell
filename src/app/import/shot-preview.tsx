@@ -6,6 +6,7 @@ import { DataPair, DataTableFrame, MobileDataCard, MobileDataList } from "@/comp
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -92,47 +93,90 @@ export function ShotPreview({
               )}
             </MobileDataList>
           }
+          label="Import shot preview table"
         >
-          <Table>
-            <TableHeader>
+          <Table aria-describedby="import-shot-preview-summary">
+            <TableCaption id="import-shot-preview-summary" className="sr-only">
+              Parsed shot preview before import. Distances are stored in yards and course uploads
+              include hole mapping when available.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
-                <TableHead>File</TableHead>
-                <TableHead>Shot</TableHead>
-                {isCourseUpload ? <TableHead>Hole</TableHead> : null}
-                <TableHead>Club</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead className="text-right">Carry yd</TableHead>
-                <TableHead className="text-right">Total yd</TableHead>
-                <TableHead className="text-right">Ball mph</TableHead>
-                <TableHead className="text-right">Launch</TableHead>
-                <TableHead className="text-right">Side yd</TableHead>
-                {isCourseUpload ? <TableHead className="text-right">Remain</TableHead> : null}
+                <TableHead
+                  data-column="file"
+                  className="sticky left-0 z-20 min-w-40 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  File
+                </TableHead>
+                <TableHead data-column="shot">Shot</TableHead>
+                {isCourseUpload ? <TableHead data-column="hole">Hole</TableHead> : null}
+                <TableHead data-column="club">Club</TableHead>
+                <TableHead data-column="brand">Brand</TableHead>
+                <TableHead data-column="carry" className="text-right">
+                  Carry yd
+                </TableHead>
+                <TableHead data-column="total" className="text-right">
+                  Total yd
+                </TableHead>
+                <TableHead data-column="ball-speed" className="text-right">
+                  Ball mph
+                </TableHead>
+                <TableHead data-column="launch" className="text-right">
+                  Launch
+                </TableHead>
+                <TableHead data-column="side" className="text-right">
+                  Side yd
+                </TableHead>
+                {isCourseUpload ? (
+                  <TableHead data-column="remain" className="text-right">
+                    Remain
+                  </TableHead>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
               {shots.length > 0 ? (
                 shots.map((shot) => (
-                  <TableRow key={`${shot.fileName}-${shot.rowNumber}-${shot.clubKey}`}>
-                    <TableCell className="max-w-40 truncate">{shot.fileName}</TableCell>
-                    <TableCell>{shot.fileShotNumber}</TableCell>
+                  <TableRow
+                    key={`${shot.fileName}-${shot.rowNumber}-${shot.clubKey}`}
+                    tabIndex={0}
+                    className="focus-aaa outline-none"
+                  >
+                    <TableCell
+                      data-column="file"
+                      className="sticky left-0 z-10 max-w-40 truncate bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      {shot.fileName}
+                    </TableCell>
+                    <TableCell data-column="shot">{shot.fileShotNumber}</TableCell>
                     {isCourseUpload ? (
-                      <TableCell>
+                      <TableCell data-column="hole">
                         {shot.courseShot
                           ? `${shot.courseShot.holeNumber}.${shot.courseShot.holeShotNumber}`
                           : "--"}
                       </TableCell>
                     ) : null}
-                    <TableCell className="font-medium">{shot.clubLabel}</TableCell>
-                    <TableCell>{shot.clubBrand ?? "--"}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.carryYd)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.totalYd)}</TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.ballSpeedMph)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell data-column="club" className="font-medium">
+                      {shot.clubLabel}
+                    </TableCell>
+                    <TableCell data-column="brand">{shot.clubBrand ?? "--"}</TableCell>
+                    <TableCell data-column="carry" className="text-right">
+                      {formatMetric(shot.carryYd)}
+                    </TableCell>
+                    <TableCell data-column="total" className="text-right">
+                      {formatMetric(shot.totalYd)}
+                    </TableCell>
+                    <TableCell data-column="ball-speed" className="text-right">
+                      {formatMetric(shot.ballSpeedMph)}
+                    </TableCell>
+                    <TableCell data-column="launch" className="text-right">
                       {formatMetric(shot.launchAngleDeg)}
                     </TableCell>
-                    <TableCell className="text-right">{formatMetric(shot.sideCarryYd)}</TableCell>
+                    <TableCell data-column="side" className="text-right">
+                      {formatMetric(shot.sideCarryYd)}
+                    </TableCell>
                     {isCourseUpload ? (
-                      <TableCell className="text-right">
+                      <TableCell data-column="remain" className="text-right">
                         {formatMetric(shot.courseShot?.distanceRemainingYd ?? null)}
                       </TableCell>
                     ) : null}

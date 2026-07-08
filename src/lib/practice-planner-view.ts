@@ -19,7 +19,11 @@ export type PracticeComparisonViewLike = {
     blockId: string;
     actual: string;
     actualBalls: number;
+    plannedBalls?: number | null;
     matchedPlannedVolume: boolean;
+    result?: "passed" | "mixed" | "failed" | "insufficient_data";
+    confidence?: "high" | "medium" | "low";
+    summary?: string;
     decision: "maintain" | "repeat_once" | "keep_priority" | "move_down";
   }>;
 } | null;
@@ -94,8 +98,9 @@ export function buildPracticeFocusSummary(plan: PracticePlanViewLike): PracticeF
     plan.blocks.find((block) => block.id !== main?.id && block.type === "technical") ??
     null;
   const scoring =
-    plan.blocks.find((block) => block.type === "scoring" || /wedge|ladder|scoring/i.test(block.title)) ??
-    null;
+    plan.blocks.find(
+      (block) => block.type === "scoring" || /wedge|ladder|scoring/i.test(block.title),
+    ) ?? null;
   const maintenance =
     plan.blocks.find(
       (block) =>
@@ -106,7 +111,9 @@ export function buildPracticeFocusSummary(plan: PracticePlanViewLike): PracticeF
   const transfer =
     plan.blocks.find((block) => block.type === "random" || /transfer|finish/i.test(block.title)) ??
     null;
-  const howToPractice = uniqueLabels([main, scoring, transfer].map((block) => block && drillLabel(block)))
+  const howToPractice = uniqueLabels(
+    [main, scoring, transfer].map((block) => block && drillLabel(block)),
+  )
     .slice(0, 3)
     .join(" -> ");
 
@@ -137,15 +144,15 @@ export function compactPracticeBlockRow(
     volumeLabel: block.ballCount === null ? `${block.timeMinutes} min` : `${block.ballCount} balls`,
     successTarget: block.successTarget,
     importStatus,
-    statusLabel: importStatusLabel(importStatus),
+    statusLabel: practiceResultLabel(decision, importStatus),
+    resultNote: practiceResultNote(block, decision),
     importedEvidence: decision?.actual ?? "Scored after upload.",
   };
 }
 
 export function scoredFromLabel(block: PracticeBlockViewLike) {
-  const clubLabel = block.clubs.length > 0
-    ? block.clubs.map((club) => club.toUpperCase()).join(", ")
-    : "matching";
+  const clubLabel =
+    block.clubs.length > 0 ? block.clubs.map((club) => club.toUpperCase()).join(", ") : "matching";
 
   return `${clubLabel} imported shots after upload.`;
 }
@@ -208,6 +215,18 @@ function blockImportStatus(
     return decision ? "no_matching_shots" : "waiting_for_upload";
   }
 
+  if (decision.result === "passed") {
+    return "matched_from_upload";
+  }
+
+  if (
+    decision.result === "mixed" ||
+    decision.result === "failed" ||
+    decision.result === "insufficient_data"
+  ) {
+    return "needs_more_data";
+  }
+
   return decision.matchedPlannedVolume ? "matched_from_upload" : "needs_more_data";
 }
 
@@ -222,4 +241,63 @@ function importStatusLabel(status: PracticeBlockImportStatus) {
     case "waiting_for_upload":
       return "Waiting for upload";
   }
+}
+
+function practiceResultLabel(
+  decision: NonNullable<PracticeComparisonViewLike>["decisions"][number] | null,
+  status: PracticeBlockImportStatus,
+) {
+  if (!decision || decision.actualBalls === 0) {
+    return importStatusLabel(status);
+  }
+
+  switch (decision.result) {
+    case "passed":
+      return "Passed";
+    case "mixed":
+      return "Repeat once";
+    case "failed":
+      return "Missed target";
+    case "insufficient_data":
+      return "Low evidence";
+  }
+
+  switch (decision.decision) {
+    case "maintain":
+    case "move_down":
+      return decision.matchedPlannedVolume ? "Passed" : "Target met";
+    case "repeat_once":
+      return "Repeat once";
+    case "keep_priority":
+      return "Keep priority";
+  }
+}
+
+function practiceResultNote(
+  block: PracticeBlockViewLike,
+  decision: NonNullable<PracticeComparisonViewLike>["decisions"][number] | null,
+) {
+  if (!decision) {
+    return "Upload matching launch-monitor shots to score this block.";
+  }
+
+  if (decision.actualBalls === 0) {
+    return "No matching imported shots found for this block.";
+  }
+
+  const plannedBalls = block.ballCount ?? decision.plannedBalls ?? null;
+
+  if (plannedBalls === null) {
+    return `${decision.actualBalls} matching shots found.`;
+  }
+
+  if (decision.matchedPlannedVolume) {
+    return `${decision.actualBalls} matching shots · planned volume met.`;
+  }
+
+  const shortBy = Math.max(0, plannedBalls - decision.actualBalls);
+
+  return shortBy > 0
+    ? `${decision.actualBalls}/${plannedBalls} planned balls found · ${shortBy} short.`
+    : `${decision.actualBalls} matching shots found.`;
 }

@@ -200,9 +200,7 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
           const carryDeltaLeft = Math.min(currentCarryPercent, projectedCarryPercent);
           const carryDeltaWidth = Math.abs(projectedCarryPercent - currentCarryPercent);
           const projectedClubSpeed =
-            rowSpeedModel && rowSelectedSpeed !== null
-              ? rowSelectedSpeed
-              : row.currentClubSpeedMph;
+            rowSpeedModel && rowSelectedSpeed !== null ? rowSelectedSpeed : row.currentClubSpeedMph;
           const projectedSpeedBenchmark =
             projectedClubSpeed !== null
               ? getClubSpeedBenchmarkTarget(row.clubType, projectedClubSpeed)
@@ -284,8 +282,7 @@ function buildSelectedSpeedModel(
 
   const baselineSpeed = row.currentClubSpeedMph;
   const tourSpeed = getTourSpeedBenchmark(row.clubType) ?? baselineSpeed + 5;
-  const driverTarget =
-    row.clubType === "driver" && targetSpeedMph !== null ? targetSpeedMph : null;
+  const driverTarget = row.clubType === "driver" && targetSpeedMph !== null ? targetSpeedMph : null;
   const targetSpeed =
     driverTarget !== null
       ? Math.max(baselineSpeed, Math.min(driverTarget, tourSpeed))

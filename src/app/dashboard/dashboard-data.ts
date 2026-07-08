@@ -35,11 +35,7 @@ import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
-import {
-  playContextEvidenceLabel,
-  playContextLabel,
-  type PlayContext,
-} from "@/lib/play-context";
+import { playContextEvidenceLabel, playContextLabel, type PlayContext } from "@/lib/play-context";
 import {
   getLivePlaysLikeSnapshotForCourse,
   type LivePlaysLikeSnapshot,
@@ -50,7 +46,6 @@ export async function getDashboardData() {
   const userId = await requireCurrentUserId();
   const [
     [shotCount],
-    [rawRowCount],
     [sessionCount],
     [profile],
     recentSessionRows,
@@ -64,7 +59,6 @@ export async function getDashboardData() {
     pendingRapsodoRows,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
-    db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
     db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
     db
       .select({ dashboardPins: users.dashboardPins })
@@ -348,7 +342,6 @@ export async function getDashboardData() {
     dashboardPins: normalizeDashboardPins(profile?.dashboardPins),
     stats: {
       shotCount: shotCount?.value ?? 0,
-      rawRowCount: rawRowCount?.value ?? 0,
       sessionCount: sessionCount?.value ?? 0,
       clubCount: clubRows.length,
       roundCount: roundSummaries.length,

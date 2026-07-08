@@ -21,15 +21,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import {
   CompactReadoutGrid,
   DataPair,
   DataPanel,
+  DataTableFrame,
   EmptyState,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   getSpeedCentrePageData,
@@ -69,9 +86,22 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+
+const speedEvidenceColumns: DesktopWorkbenchColumn[] = [
+  { id: "session", label: "Session", locked: true },
+  { id: "date", label: "Date" },
+  { id: "source", label: "Source" },
+  { id: "count", label: "Count" },
+  { id: "avg", label: "Avg" },
+  { id: "max", label: "Max" },
+  { id: "min", label: "Min" },
+  { id: "target", label: "Target/type" },
+  { id: "action", label: "Action", locked: true },
+];
 
 export default async function SpeedCentrePage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
@@ -125,854 +155,965 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
 
   return (
     <PageShell>
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Speed Centre</StatusPill>}
-        title="Athletic speed tracking"
-        description="Uploaded range shots feed with-ball speed, PBs, and projections. No-ball speed sessions stay separate so speed work does not distort bag numbers."
-        metrics={[
-          {
-            label: "Playing speed",
-            value: formatSpeed(summary.currentSpeedMph),
-            detail: currentSpeedSourceText(summary.currentSpeedSource),
-          },
-          {
-            label: "PB",
-            value: formatSpeed(summary.personalBestMph),
-            detail: "Fastest no-ball or with-ball",
-          },
-          {
-            label: "No-ball last 20",
-            value: formatSpeed(summary.last20AvgMph),
-            detail: "Training swings without a ball",
-          },
-          {
-            label: "With ball",
-            value: formatSpeed(summary.shotSpeed.last20DriverAvgMph),
-            detail: "Uploaded driver shots",
-          },
-        ]}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/rapsodo" prefetch={false}>
-              <Cloud aria-hidden="true" />
-              R-Cloud
-            </Link>
-          </Button>
-        }
-      />
-
-      {speedError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900">
-          {speedError}
-        </div>
-      ) : null}
-      {speedSaved ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
-          {speedSavedMessage(speedSaved)}
-        </div>
-      ) : null}
-
-      <CompactReadoutGrid
-        columnsClassName="sm:grid-cols-2 xl:grid-cols-7"
-        items={[
-          {
-            label: "Playing speed",
-            value: formatSpeed(summary.currentSpeedMph),
-            detail: currentSpeedSourceText(summary.currentSpeedSource),
-            tone: "sky",
-          },
-          {
-            label: "No-ball training avg",
-            value: formatSpeed(summary.trainingCurrentSpeedMph),
-            detail: "Latest speed session without a ball",
-            tone: "slate",
-          },
-          {
-            label: "7-day average",
-            value: formatSpeed(summary.sevenDayAvgMph),
-            detail: "Training sessions",
-            tone: "green",
-          },
-          {
-            label: "30-day training",
-            value: formatSpeed(summary.thirtyDayAvgMph),
-            detail: `${summary.sessionsLast7Days} sessions this week`,
-            tone: "green",
-          },
-          {
-            label: "Personal best",
-            value: formatSpeed(summary.personalBestMph),
-            detail: "Max logged speed",
-            tone: "amber",
-          },
-          {
-            label: "Speed index",
-            value:
-              summary.speedIndex.value === null
-                ? "Set target"
-                : `${Math.round(summary.speedIndex.value * 100)}%`,
-            detail: summary.speedIndex.label,
-            tone: summary.speedIndex.tone,
-          },
-          {
-            label: "Target",
-            value: formatSpeed(summary.targetSpeedMph),
-            detail:
-              summary.currentSpeedMph && summary.targetSpeedMph
-                ? `${formatGap(summary.targetSpeedMph - summary.currentSpeedMph)} gap`
-                : "Add a target",
-            tone: "green",
-          },
-        ]}
-      />
-
-      <DataPanel>
-        <SectionHeader
-          title="Club focus"
-          description="No-ball training speed, with-ball speed, targets, and carry potential by selected club."
-          action={<StatusPill tone="sky">{data.clubSpeedRows.length} clubs</StatusPill>}
-        />
-        {data.clubSpeedRows.length === 0 ? (
-          <div className="p-4">
-            <EmptyState
-              icon={<Gauge className="size-5" aria-hidden="true" />}
-              title="No clubs to focus yet"
-              description="Club-specific speed scores appear once clubs or shot-speed samples exist."
-            />
-          </div>
-        ) : (
-          <ClubSpeedFocus
-            rows={data.clubSpeedRows}
-            goals={data.goals}
-            futureBag={data.futureBag}
-            driverTargetSpeedMph={summary.targetSpeedMph}
-            selectedClubId={selectedClub?.row.clubId ?? null}
-          />
-        )}
-      </DataPanel>
-
-      <DataPanel>
-        <SectionHeader
-          title="Speed goals"
-          description="Recommended goals auto-advance through the bag benchmark ladder. Saved values override them."
-          action={
-            summary.targetDateIso ? (
-              <StatusPill tone="green">{formatShortDate(summary.targetDateIso)}</StatusPill>
-            ) : (
-              <CalendarDays className="size-4 text-primary" aria-hidden="true" />
-            )
+      <DesktopWorkbenchLayout scope="speed">
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Speed Centre</StatusPill>}
+          title="Athletic speed tracking"
+          description="Uploaded range shots feed with-ball speed, PBs, and projections. No-ball speed sessions stay separate so speed work does not distort bag numbers."
+          visual={<PageArtwork variant="speed" alt="" className="h-full min-h-36" priority />}
+          metrics={[
+            {
+              label: "Playing speed",
+              value: formatSpeed(summary.currentSpeedMph),
+              detail: currentSpeedSourceText(summary.currentSpeedSource),
+            },
+            {
+              label: "PB",
+              value: formatSpeed(summary.personalBestMph),
+              detail: "Fastest no-ball or with-ball",
+            },
+            {
+              label: "No-ball last 20",
+              value: formatSpeed(summary.last20AvgMph),
+              detail: "Training swings without a ball",
+            },
+            {
+              label: "With ball",
+              value: formatSpeed(summary.shotSpeed.last20DriverAvgMph),
+              detail: "Uploaded driver shots",
+            },
+          ]}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/rapsodo" prefetch={false}>
+                <Cloud aria-hidden="true" />
+                R-Cloud
+              </Link>
+            </Button>
           }
         />
-        <form action={updateSpeedGoalsAction} className="grid gap-4 p-4">
-          <div className="grid gap-3 lg:grid-cols-[160px_170px_minmax(0,1fr)_auto]">
-            <Field label="Driver goal">
-              <Input
-                name="driverGlobalTarget"
-                inputMode="decimal"
-                placeholder={systemTargetPlaceholder(driverSystemTarget)}
-                defaultValue={goalDefault(data.goals, "driver_global", "target")}
-              />
-            </Field>
-            <Field label="Target date">
-              <Input
-                name="driverGlobalDate"
-                type="date"
-                defaultValue={goalDefault(data.goals, "driver_global", "date")}
-              />
-            </Field>
-            <Field label="Goal notes">
-              <Input
-                name="driverGlobalNotes"
-                placeholder="Driver playing speed goal"
-                defaultValue={goalDefault(data.goals, "driver_global", "notes")}
-              />
-            </Field>
-            <Button type="submit" className="self-end">
-              <Save aria-hidden="true" />
-              Save goals
-            </Button>
+
+        {speedError ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900">
+            {speedError}
           </div>
+        ) : null}
+        {speedSaved ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
+            {speedSavedMessage(speedSaved)}
+          </div>
+        ) : null}
 
-          <details className="rounded-lg border border-border/70 bg-white/65 p-3">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-950">
-              Optional per-club target overrides
-            </summary>
-            <div className="mt-3 grid gap-2">
-              {data.clubOptions.map((club) => (
-                <div
-                  key={club.id}
-                  className="grid gap-2 rounded-lg border border-border/60 bg-white/70 p-2 sm:grid-cols-[minmax(0,1fr)_130px_150px]"
-                >
-                  <div className="min-w-0 self-center">
-                    <p className="truncate text-sm font-semibold text-slate-950">{club.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {systemTargetCopy(data.clubSpeedRows, club.id)}
-                    </p>
-                  </div>
-                  <Input
-                    name={`clubTarget:${club.id}`}
-                    inputMode="decimal"
-                    placeholder={systemTargetPlaceholder(
-                      data.clubSpeedRows.find((row) => row.clubId === club.id)?.benchmarkTarget ??
-                        null,
-                    )}
-                    defaultValue={goalDefault(data.goals, clubGoalKey(club.id), "target")}
-                  />
-                  <Input
-                    name={`clubTargetDate:${club.id}`}
-                    type="date"
-                    defaultValue={goalDefault(data.goals, clubGoalKey(club.id), "date")}
-                  />
-                </div>
-              ))}
-            </div>
-          </details>
-        </form>
-      </DataPanel>
-
-      <DataPanel>
-        <SectionHeader
-          title="Club speed by club"
-          description="No-ball speed sessions against actual with-ball speed for every active club."
-          action={<StatusPill tone="sky">{data.clubSpeedRows.length} clubs</StatusPill>}
+        <CompactReadoutGrid
+          columnsClassName="sm:grid-cols-2 xl:grid-cols-7"
+          items={[
+            {
+              label: "Playing speed",
+              value: formatSpeed(summary.currentSpeedMph),
+              detail: currentSpeedSourceText(summary.currentSpeedSource),
+              tone: "sky",
+            },
+            {
+              label: "No-ball training avg",
+              value: formatSpeed(summary.trainingCurrentSpeedMph),
+              detail: "Latest speed session without a ball",
+              tone: "slate",
+            },
+            {
+              label: "7-day average",
+              value: formatSpeed(summary.sevenDayAvgMph),
+              detail: "Training sessions",
+              tone: "green",
+            },
+            {
+              label: "30-day training",
+              value: formatSpeed(summary.thirtyDayAvgMph),
+              detail: `${summary.sessionsLast7Days} sessions this week`,
+              tone: "green",
+            },
+            {
+              label: "Personal best",
+              value: formatSpeed(summary.personalBestMph),
+              detail: "Max logged speed",
+              tone: "amber",
+            },
+            {
+              label: "Speed index",
+              value:
+                summary.speedIndex.value === null
+                  ? "Set target"
+                  : `${Math.round(summary.speedIndex.value * 100)}%`,
+              detail: summary.speedIndex.label,
+              tone: summary.speedIndex.tone,
+            },
+            {
+              label: "Target",
+              value: formatSpeed(summary.targetSpeedMph),
+              detail:
+                summary.currentSpeedMph && summary.targetSpeedMph
+                  ? `${formatGap(summary.targetSpeedMph - summary.currentSpeedMph)} gap`
+                  : "Add a target",
+              tone: "green",
+            },
+          ]}
         />
-        <div className="grid gap-2 p-4">
+
+        <DataPanel>
+          <SectionHeader
+            title="Club focus"
+            description="No-ball training speed, with-ball speed, targets, and carry potential by selected club."
+            action={<StatusPill tone="sky">{data.clubSpeedRows.length} clubs</StatusPill>}
+          />
           {data.clubSpeedRows.length === 0 ? (
-            <EmptyState
-              icon={<Gauge className="size-5" aria-hidden="true" />}
-              title="No clubs to show yet"
-              description="Add clubs or import shots with club speed, then log speed sessions against the club used."
-            />
+            <div className="p-4">
+              <EmptyState
+                icon={<Gauge className="size-5" aria-hidden="true" />}
+                title="No clubs to focus yet"
+                description="Club-specific speed scores appear once clubs or shot-speed samples exist."
+              />
+            </div>
           ) : (
-            data.clubSpeedRows.map((row) => (
-              <ClubSpeedRowCard key={row.clubId ?? "unassigned"} row={row} />
-            ))
-          )}
-        </div>
-      </DataPanel>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <DataPanel>
-          <SectionHeader
-            title={selectedClub ? `${selectedClub.shortLabel} speed evidence` : "Speed evidence"}
-            description={
-              selectedClub
-                ? `No-ball ${selectedClub.shortLabel} training stays separate from uploaded with-ball range shots.`
-                : "No-ball training stays separate from uploaded with-ball driver shots."
-            }
-            action={
-              <StatusPill tone={selectedPrescription.priority === "High" ? "amber" : "sky"}>
-                {selectedPrescription.priority}
-              </StatusPill>
-            }
-          />
-          <div
-            className={cn(
-              "grid gap-4 p-4",
-              hasSelectedSpeedTrend
-                ? "lg:grid-cols-[minmax(0,1fr)_320px]"
-                : "lg:grid-cols-[minmax(0,1fr)_340px]",
-            )}
-          >
-            {hasSelectedSpeedTrend ? (
-              <SpeedTrendChart
-                points={selectedTrend}
-                targetSpeedMph={selectedClub?.target.value ?? summary.targetSpeedMph}
-                personalBestMph={
-                  selectedClub
-                    ? maxOrNull(
-                        [selectedClub.row.trainingPbMph, selectedClub.row.shotPbMph].filter(
-                          (value): value is number => value !== null,
-                        ),
-                      )
-                    : summary.personalBestMph
-                }
-              />
-            ) : (
-              <SpeedTrendStarterCard
-                sessionCount={selectedClub?.sessions.length ?? data.sessions.length}
-                currentAverageMph={
-                  selectedClub?.row.trainingAvgMph ??
-                  summary.trainingCurrentSpeedMph ??
-                  summary.last20AvgMph
-                }
-                personalBestMph={selectedClub?.row.trainingPbMph ?? summary.personalBestMph}
-              />
-            )}
-            <div className="grid content-start gap-3">
-              <SpeedPrescriptionCard
-                headline={selectedPrescription.headline}
-                recommendation={selectedPrescription.recommendation}
-                goal={selectedPrescription.goal}
-              />
-              <RangeShotSpeedCard
-                readout={selectedShotReadout}
-                sessionCount={selectedShotSessions.length}
-              />
-              <div className="grid gap-2">
-                <DataPair label="Forecast basis" value={forecastText(selectedTrend)} />
-                <DataPair
-                  label="7-day no-ball avg"
-                  value={formatSpeed(selectedRolling.sevenDayAvgMph)}
-                />
-                <DataPair
-                  label="30-day no-ball avg"
-                  value={formatSpeed(selectedRolling.thirtyDayAvgMph)}
-                />
-                <DataPair
-                  label="Speed gain"
-                  value={
-                    selectedRolling.speedGainPercent === null
-                      ? "Need trend"
-                      : `${formatSignedNumber(selectedRolling.speedGainPercent)}%`
-                  }
-                />
-                <DataPair
-                  label="Speed conversion"
-                  value={
-                    selectedClub
-                      ? strikeEfficiencyLabel(selectedClub.transferInsight)
-                      : summary.driverEfficiency.verdict
-                  }
-                />
-                <DataPair
-                  label={selectedClub ? `With-ball ${selectedClub.shortLabel}` : "With-ball driver"}
-                  value={formatSpeed(
-                    selectedClub?.row.shotLast20AvgMph ?? summary.shotSpeed.last20DriverAvgMph,
-                  )}
-                />
-                <DataPair
-                  label="No-ball vs with-ball"
-                  value={
-                    selectedClub
-                      ? formatTransferGap(selectedClub.transferInsight.gapMph)
-                      : formatTrainingToShotGap(
-                          summary.trainingCurrentSpeedMph,
-                          summary.shotSpeed.last20DriverAvgMph,
-                        )
-                  }
-                />
-                {selectedClub?.row.clubType === "driver" || !selectedClub ? (
-                  <DataPair
-                    label="Recent driver smash"
-                    value={
-                      summary.driverEfficiency.smashFactor
-                        ? numberFormatter.format(summary.driverEfficiency.smashFactor)
-                        : "No data"
-                    }
-                  />
-                ) : (
-                  <DataPair
-                    label="Shot sample"
-                    value={
-                      selectedClub.row.shotSampleSize > 0
-                        ? `${selectedClub.row.shotSampleSize} shots`
-                        : "No shot-speed samples"
-                    }
-                  />
-                )}
-              </div>
-              {selectedRolling.monthlyPoints.length > 0 ? (
-                <div className="rounded-lg border border-border/70 bg-white/65 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Monthly training
-                  </p>
-                  <div className="mt-2 grid gap-2">
-                    {selectedRolling.monthlyPoints.map((point) => (
-                      <div
-                        key={point.label}
-                        className="grid grid-cols-[44px_1fr_1fr] gap-2 text-sm"
-                      >
-                        <span className="font-medium text-slate-950">{point.label}</span>
-                        <span className="tabular-nums text-muted-foreground">
-                          Avg {formatSpeedCompact(point.avgSpeedMph)}
-                        </span>
-                        <span className="tabular-nums text-muted-foreground">
-                          PB {formatSpeedCompact(point.pbSpeedMph)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </DataPanel>
-
-        <DataPanel>
-          <SectionHeader
-            title={selectedClub ? `${selectedClub.shortLabel} speed potential` : "Speed potential"}
-            description={
-              selectedClub
-                ? `Projected ${selectedClub.shortLabel} carry from the selected club speed target.`
-                : "A practical driver carry estimate from speed gain."
-            }
-            action={<Target className="size-4 text-primary" aria-hidden="true" />}
-          />
-          <div className="grid gap-3 p-4">
-            <div className="grid grid-cols-3 gap-2">
-              <PotentialMetric
-                label="Current"
-                value={formatCarry(selectedCarryProjection.currentCarryYd)}
-              />
-              <PotentialMetric
-                label="Target"
-                value={formatCarry(selectedCarryProjection.targetCarryYd)}
-              />
-              <PotentialMetric
-                label="Gain"
-                value={
-                  selectedCarryProjection.carryGainYd === null
-                    ? "-"
-                    : `+${selectedCarryProjection.carryGainYd} yd`
-                }
-              />
-            </div>
-            <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-              {selectedCarryProjection.basis}. Current gain model is{" "}
-              {numberFormatter.format(selectedCarryProjection.yardsPerMph)} carry yards per mph.
-            </div>
-            <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-              {selectedClub ? selectedPotentialFocus(selectedClub) : summary.driverEfficiency.focus}
-            </div>
-            {selectedSpeedMilestones.length > 0 ? (
-              <div className="rounded-lg border border-border/70 bg-white/65 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-950">Speed milestones</p>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Same carry model
-                  </span>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {selectedSpeedMilestones.map((milestone) => (
-                    <div
-                      key={milestone.speedMph}
-                      className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-lg border border-border/60 bg-white/70 p-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold tabular-nums text-slate-950">
-                          {formatMilestoneSpeed(milestone.speedMph)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{milestone.label}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold tabular-nums text-slate-950">
-                          {milestone.projectedCarryYd} yd
-                        </p>
-                        <p className="text-xs font-medium tabular-nums text-emerald-800">
-                          {formatCarryGain(milestone.carryGainYd)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-              Uploaded with-ball range shots feed playing speed, PBs, carry potential, and club
-              comparisons. Speed Centre sessions do not write back into shots, bag yardages, or
-              stock gapping.
-            </div>
-          </div>
-        </DataPanel>
-      </div>
-
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.75fr)]">
-        <DataPanel>
-          <SectionHeader
-            title={
-              selectedClub && selectedClub.row.clubType !== "driver"
-                ? `${selectedClub.shortLabel} Athletic Development`
-                : "Athletic Development"
-            }
-            description={
-              selectedClub
-                ? "The coach-facing speed card for the selected club."
-                : "The coach-facing speed card."
-            }
-            action={
-              <StatusPill tone={selectedPrescription.priority === "High" ? "amber" : "green"}>
-                Coach
-              </StatusPill>
-            }
-          />
-          <div className="grid gap-3 p-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <PotentialMetric
-                label="Current"
-                value={formatSpeed(selectedClub?.currentSpeedMph ?? summary.currentSpeedMph)}
-              />
-              <PotentialMetric
-                label="No-ball avg"
-                value={formatSpeed(
-                  selectedClub?.row.trainingAvgMph ?? summary.trainingCurrentSpeedMph,
-                )}
-              />
-              <PotentialMetric
-                label="Target"
-                value={formatSpeed(selectedClub?.target.value ?? summary.targetSpeedMph)}
-              />
-              <PotentialMetric
-                label={selectedClub ? "Gap" : "Progress"}
-                value={
-                  selectedClub
-                    ? formatTargetGap(selectedClub.currentSpeedMph, selectedClub.target.value)
-                    : formatNullableGap(summary.forecast.progressThisMonthMph)
-                }
-              />
-            </div>
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-              <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
-                {selectedClub?.transferInsight.coachMessage ?? summary.transferInsight.coachMessage}
-              </div>
-              <div className="grid gap-2">
-                <DataPair
-                  label="Strike efficiency"
-                  value={strikeEfficiencyLabel(
-                    selectedClub?.transferInsight ?? summary.transferInsight,
-                  )}
-                />
-                <DataPair
-                  label="No-ball to with-ball"
-                  value={formatTransferRatio(
-                    selectedClub?.transferInsight.ratioPercent ??
-                      summary.transferInsight.ratioPercent,
-                  )}
-                />
-                <DataPair
-                  label="Speed gap"
-                  value={formatTransferGap(
-                    selectedClub?.transferInsight.gapMph ?? summary.transferInsight.gapMph,
-                  )}
-                />
-                <DataPair
-                  label="Confidence"
-                  value={selectedClub?.confidenceLabel ?? summary.forecast.confidenceLabel}
-                />
-              </div>
-            </div>
-            <SpeedTimelineCard
-              milestones={selectedSpeedTimeline}
-              hasMeasuredTrend={hasSelectedSpeedTrend}
-            />
-          </div>
-        </DataPanel>
-
-        <DataPanel>
-          <SectionHeader
-            title={
-              selectedClub && selectedClub.row.clubType !== "driver"
-                ? `${selectedClub.shortLabel} speed profile`
-                : "Speed profile"
-            }
-            description={
-              selectedClub
-                ? "No-ball sessions for the selected club by side and implement."
-                : "Dominant side, non-dominant side, and overspeed markers."
-            }
-            action={<Dumbbell className="size-4 text-primary" aria-hidden="true" />}
-          />
-          <div className="grid gap-3 p-4">
-            <div className="grid grid-cols-2 gap-2">
-              <PotentialMetric
-                label="Dominant"
-                value={formatSpeed(
-                  selectedClub?.sideSummary.dominantAvgMph ?? summary.sideSummary.dominantAvgMph,
-                )}
-              />
-              <PotentialMetric
-                label="Non-dominant"
-                value={formatSpeed(
-                  selectedClub?.sideSummary.nonDominantAvgMph ??
-                    summary.sideSummary.nonDominantAvgMph,
-                )}
-              />
-            </div>
-            {(selectedClub?.sideSummary.sideBalancePercent ??
-              summary.sideSummary.sideBalancePercent) !== null ? (
-              <DataPair
-                label="Side balance"
-                value={`${
-                  selectedClub?.sideSummary.sideBalancePercent ??
-                  summary.sideSummary.sideBalancePercent
-                }%`}
-              />
-            ) : null}
-            {(selectedClub?.sideSummary.overspeedMaxMph ?? summary.sideSummary.overspeedMaxMph) !==
-            null ? (
-              <DataPair
-                label="Overspeed max"
-                value={formatSpeed(
-                  selectedClub?.sideSummary.overspeedMaxMph ?? summary.sideSummary.overspeedMaxMph,
-                )}
-              />
-            ) : null}
-            {(selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio) !==
-            null ? (
-              <DataPair
-                label="Overspeed ratio"
-                value={`${(
-                  selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio
-                )?.toFixed(2)}x`}
-              />
-            ) : null}
-            {(selectedClub?.sideSummary.sideBalancePercent ??
-              summary.sideSummary.sideBalancePercent) === null ||
-            (selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio) ===
-              null ? (
-              <SpeedProfileUnlocks
-                needsNonDominant={
-                  (selectedClub?.sideSummary.sideBalancePercent ??
-                    summary.sideSummary.sideBalancePercent) === null
-                }
-                needsOverspeed={
-                  (selectedClub?.sideSummary.overspeedRatio ??
-                    summary.sideSummary.overspeedRatio) === null
-                }
-              />
-            ) : null}
-          </div>
-        </DataPanel>
-      </div>
-
-      <DataPanel>
-        <SectionHeader
-          title="What happens if I get faster?"
-          description="Select one club at a time to project carry changes without changing saved bag numbers."
-          action={<TrendingUp className="size-4 text-primary" aria-hidden="true" />}
-        />
-        <div className="p-4">
-          {data.futureBag.length > 0 ? (
-            <FutureBagSlider
-              key={selectedClub?.row.clubId ?? "default-club"}
-              rows={data.futureBag}
-              targetSpeedMph={summary.targetSpeedMph}
+            <ClubSpeedFocus
+              rows={data.clubSpeedRows}
+              goals={data.goals}
+              futureBag={data.futureBag}
+              driverTargetSpeedMph={summary.targetSpeedMph}
               selectedClubId={selectedClub?.row.clubId ?? null}
             />
-          ) : (
-            <EmptyState
-              icon={<Gauge className="size-5" aria-hidden="true" />}
-              title="Future Bag needs stock yardages"
-              description="Build stock carry numbers first, then Speed Centre can project the bag forward."
-            />
           )}
-        </div>
-      </DataPanel>
+        </DataPanel>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(340px,0.85fr)_minmax(0,1.15fr)]">
         <DataPanel>
           <SectionHeader
-            title="Add speed session"
-            description="Use a real club, speed stick, weighted club, or another implement."
-            action={<Plus className="size-4 text-primary" aria-hidden="true" />}
+            title="Speed goals"
+            description="Recommended goals auto-advance through the bag benchmark ladder. Saved values override them."
+            action={
+              summary.targetDateIso ? (
+                <StatusPill tone="green">{formatShortDate(summary.targetDateIso)}</StatusPill>
+              ) : (
+                <CalendarDays className="size-4 text-primary" aria-hidden="true" />
+              )
+            }
           />
-          <form action={createManualSpeedSessionAction} className="grid gap-4 p-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Date">
-                <Input name="sessionDate" type="date" defaultValue={todayDateInput()} />
+          <form action={updateSpeedGoalsAction} className="grid gap-4 p-4">
+            <div className="grid gap-3 lg:grid-cols-[160px_170px_minmax(0,1fr)_auto]">
+              <Field label="Driver goal">
+                <Input
+                  name="driverGlobalTarget"
+                  inputMode="decimal"
+                  placeholder={systemTargetPlaceholder(driverSystemTarget)}
+                  defaultValue={goalDefault(data.goals, "driver_global", "target")}
+                />
               </Field>
-              <Field label="Title">
-                <Input name="title" placeholder="R-Speed" />
+              <Field label="Target date">
+                <Input
+                  name="driverGlobalDate"
+                  type="date"
+                  defaultValue={goalDefault(data.goals, "driver_global", "date")}
+                />
               </Field>
-              <Field label="Implement">
-                <NativeSelect name="implementKind" defaultValue="club">
-                  <option value="club">Golf club</option>
-                  <option value="speed_stick">Speed stick</option>
-                  <option value="weighted_club">Weighted club</option>
-                  <option value="other">Other</option>
-                </NativeSelect>
+              <Field label="Goal notes">
+                <Input
+                  name="driverGlobalNotes"
+                  placeholder="Driver playing speed goal"
+                  defaultValue={goalDefault(data.goals, "driver_global", "notes")}
+                />
               </Field>
-              <Field label="Side">
-                <NativeSelect name="handedness" defaultValue="dominant">
-                  <option value="dominant">Dominant side</option>
-                  <option value="non_dominant">Non-dominant side</option>
-                  <option value="both">Both sides</option>
-                </NativeSelect>
-              </Field>
-              <Field label="Speed system">
-                <NativeSelect name="speedSystem" defaultValue="">
-                  <option value="">Standard club speed</option>
-                  <option value="R-Speed">R-Speed</option>
-                  <option value="Light speed stick">Light speed stick</option>
-                  <option value="Medium speed stick">Medium speed stick</option>
-                  <option value="Heavy speed stick">Heavy speed stick</option>
-                  <option value="Stack">Stack</option>
-                  <option value="Other">Other</option>
-                </NativeSelect>
-              </Field>
+              <Button type="submit" className="self-end">
+                <Save aria-hidden="true" />
+                Save goals
+              </Button>
             </div>
 
-            <Field label="Club used">
-              <NativeSelect name="clubId" defaultValue="">
-                <option value="">Not in bag / speed stick</option>
+            <details className="rounded-lg border border-border/70 bg-white/65 p-3">
+              <summary className="cursor-pointer text-sm font-semibold text-slate-950">
+                Optional per-club target overrides
+              </summary>
+              <div className="mt-3 grid gap-2">
                 {data.clubOptions.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.label}
-                  </option>
+                  <div
+                    key={club.id}
+                    className="grid gap-2 rounded-lg border border-border/60 bg-white/70 p-2 sm:grid-cols-[minmax(0,1fr)_130px_150px]"
+                  >
+                    <div className="min-w-0 self-center">
+                      <p className="truncate text-sm font-semibold text-slate-950">{club.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {systemTargetCopy(data.clubSpeedRows, club.id)}
+                      </p>
+                    </div>
+                    <Input
+                      name={`clubTarget:${club.id}`}
+                      inputMode="decimal"
+                      placeholder={systemTargetPlaceholder(
+                        data.clubSpeedRows.find((row) => row.clubId === club.id)?.benchmarkTarget ??
+                          null,
+                      )}
+                      defaultValue={goalDefault(data.goals, clubGoalKey(club.id), "target")}
+                    />
+                    <Input
+                      name={`clubTargetDate:${club.id}`}
+                      type="date"
+                      defaultValue={goalDefault(data.goals, clubGoalKey(club.id), "date")}
+                    />
+                  </div>
                 ))}
-              </NativeSelect>
-            </Field>
-
-            <Field label="Implement label">
-              <Input
-                name="implementLabel"
-                placeholder="Only needed if no club is selected: speed stick, Stack 195g, etc."
-              />
-            </Field>
-
-            <SpeedReadingsField />
-
-            <div className="grid gap-3 sm:grid-cols-4">
-              <Field label="Min">
-                <Input name="minSpeedMph" inputMode="decimal" placeholder="73" />
-              </Field>
-              <Field label="Average">
-                <Input name="avgSpeedMph" inputMode="decimal" placeholder="81" />
-              </Field>
-              <Field label="Max">
-                <Input name="maxSpeedMph" inputMode="decimal" placeholder="87" />
-              </Field>
-              <Field label="Count">
-                <Input name="swingCount" inputMode="numeric" placeholder="15" />
-              </Field>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-              <Field label="Target speed">
-                <Input name="targetSpeedMph" inputMode="decimal" placeholder="95" />
-              </Field>
-              <Field label="Notes">
-                <Input name="notes" placeholder="Felt strongest with driver, no speed sticks" />
-              </Field>
-            </div>
-
-            <Button type="submit" className="w-full sm:w-fit">
-              <Plus aria-hidden="true" />
-              Save speed session
-            </Button>
+              </div>
+            </details>
           </form>
         </DataPanel>
 
-        <div className="grid gap-4">
+        <DataPanel>
+          <SectionHeader
+            title="Club speed by club"
+            description="No-ball speed sessions against actual with-ball speed for every active club."
+            action={<StatusPill tone="sky">{data.clubSpeedRows.length} clubs</StatusPill>}
+          />
+          <div className="grid gap-2 p-4">
+            {data.clubSpeedRows.length === 0 ? (
+              <EmptyState
+                icon={<Gauge className="size-5" aria-hidden="true" />}
+                title="No clubs to show yet"
+                description="Add clubs or import shots with club speed, then log speed sessions against the club used."
+              />
+            ) : (
+              data.clubSpeedRows.map((row) => (
+                <ClubSpeedRowCard key={row.clubId ?? "unassigned"} row={row} />
+              ))
+            )}
+          </div>
+        </DataPanel>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
           <DataPanel>
             <SectionHeader
-              title="R-Cloud speed sessions"
-              description="R-Speed is visible separately from normal Rapsodo shots."
+              title={selectedClub ? `${selectedClub.shortLabel} speed evidence` : "Speed evidence"}
+              description={
+                selectedClub
+                  ? `No-ball ${selectedClub.shortLabel} training stays separate from uploaded with-ball range shots.`
+                  : "No-ball training stays separate from uploaded with-ball driver shots."
+              }
               action={
-                data.rapsodo.connected ? (
-                  <StatusPill tone={data.rapsodo.error ? "amber" : "green"}>Connected</StatusPill>
-                ) : (
-                  <StatusPill tone="amber">Not connected</StatusPill>
-                )
+                <StatusPill tone={selectedPrescription.priority === "High" ? "amber" : "sky"}>
+                  {selectedPrescription.priority}
+                </StatusPill>
               }
             />
-            <div className="grid gap-3 p-4">
-              {data.rapsodo.error ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                  {data.rapsodo.error}
-                </div>
-              ) : null}
-              {!data.rapsodo.connected ? (
-                <RCloudConnectCard />
-              ) : data.rapsodo.items.length === 0 && !data.rapsodo.error ? (
-                <EmptyState
-                  icon={<ShieldCheck className="size-5" aria-hidden="true" />}
-                  title="No R-Speed detail found"
-                  description="R-Cloud is connected, but the speed-session list did not return no-ball training rows."
+            <div
+              className={cn(
+                "grid gap-4 p-4",
+                hasSelectedSpeedTrend
+                  ? "lg:grid-cols-[minmax(0,1fr)_320px]"
+                  : "lg:grid-cols-[minmax(0,1fr)_340px]",
+              )}
+            >
+              {hasSelectedSpeedTrend ? (
+                <SpeedTrendChart
+                  points={selectedTrend}
+                  targetSpeedMph={selectedClub?.target.value ?? summary.targetSpeedMph}
+                  personalBestMph={
+                    selectedClub
+                      ? maxOrNull(
+                          [selectedClub.row.trainingPbMph, selectedClub.row.shotPbMph].filter(
+                            (value): value is number => value !== null,
+                          ),
+                        )
+                      : summary.personalBestMph
+                  }
                 />
               ) : (
-                <>
-                  <div className="rounded-lg border border-border/70 bg-white/65 px-3 py-2 text-sm leading-6 text-muted-foreground">
-                    R-Cloud can list speed sessions, but checked detail rows may still come back
-                    empty. When that happens, use the manual readings box for the club or implement
-                    used.
-                  </div>
-                  <div className="grid gap-2">
-                    {data.rapsodo.items.map((item) => (
-                      <div
-                        key={item.providerSessionId}
-                        className="grid gap-2 rounded-lg border border-border/70 bg-white/65 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">
-                            {item.title}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {formatDate(item.dateIso)} · {item.swingCount ?? "-"} swings ·{" "}
-                            {item.speedSystem ?? "System unknown"}
-                          </p>
-                        </div>
-                        <StatusPill tone={item.detailStatus === "available" ? "green" : "amber"}>
-                          {item.detailStatus === "available"
-                            ? `${item.detailSwingCount} detail rows`
-                            : item.detailStatus === "empty"
-                              ? "No detail rows"
-                              : "Detail unchecked"}
-                        </StatusPill>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <SpeedTrendStarterCard
+                  sessionCount={selectedClub?.sessions.length ?? data.sessions.length}
+                  currentAverageMph={
+                    selectedClub?.row.trainingAvgMph ??
+                    summary.trainingCurrentSpeedMph ??
+                    summary.last20AvgMph
+                  }
+                  personalBestMph={selectedClub?.row.trainingPbMph ?? summary.personalBestMph}
+                />
               )}
+              <div className="grid content-start gap-3">
+                <SpeedPrescriptionCard
+                  headline={selectedPrescription.headline}
+                  recommendation={selectedPrescription.recommendation}
+                  goal={selectedPrescription.goal}
+                />
+                <RangeShotSpeedCard
+                  readout={selectedShotReadout}
+                  sessionCount={selectedShotSessions.length}
+                />
+                <div className="grid gap-2">
+                  <DataPair label="Forecast basis" value={forecastText(selectedTrend)} />
+                  <DataPair
+                    label="7-day no-ball avg"
+                    value={formatSpeed(selectedRolling.sevenDayAvgMph)}
+                  />
+                  <DataPair
+                    label="30-day no-ball avg"
+                    value={formatSpeed(selectedRolling.thirtyDayAvgMph)}
+                  />
+                  <DataPair
+                    label="Speed gain"
+                    value={
+                      selectedRolling.speedGainPercent === null
+                        ? "Need trend"
+                        : `${formatSignedNumber(selectedRolling.speedGainPercent)}%`
+                    }
+                  />
+                  <DataPair
+                    label="Speed conversion"
+                    value={
+                      selectedClub
+                        ? strikeEfficiencyLabel(selectedClub.transferInsight)
+                        : summary.driverEfficiency.verdict
+                    }
+                  />
+                  <DataPair
+                    label={
+                      selectedClub ? `With-ball ${selectedClub.shortLabel}` : "With-ball driver"
+                    }
+                    value={formatSpeed(
+                      selectedClub?.row.shotLast20AvgMph ?? summary.shotSpeed.last20DriverAvgMph,
+                    )}
+                  />
+                  <DataPair
+                    label="No-ball vs with-ball"
+                    value={
+                      selectedClub
+                        ? formatTransferGap(selectedClub.transferInsight.gapMph)
+                        : formatTrainingToShotGap(
+                            summary.trainingCurrentSpeedMph,
+                            summary.shotSpeed.last20DriverAvgMph,
+                          )
+                    }
+                  />
+                  {selectedClub?.row.clubType === "driver" || !selectedClub ? (
+                    <DataPair
+                      label="Recent driver smash"
+                      value={
+                        summary.driverEfficiency.smashFactor
+                          ? numberFormatter.format(summary.driverEfficiency.smashFactor)
+                          : "No data"
+                      }
+                    />
+                  ) : (
+                    <DataPair
+                      label="Shot sample"
+                      value={
+                        selectedClub.row.shotSampleSize > 0
+                          ? `${selectedClub.row.shotSampleSize} shots`
+                          : "No shot-speed samples"
+                      }
+                    />
+                  )}
+                </div>
+                {selectedRolling.monthlyPoints.length > 0 ? (
+                  <div className="rounded-lg border border-border/70 bg-white/65 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Monthly training
+                    </p>
+                    <div className="mt-2 grid gap-2">
+                      {selectedRolling.monthlyPoints.map((point) => (
+                        <div
+                          key={point.label}
+                          className="grid grid-cols-[44px_1fr_1fr] gap-2 text-sm"
+                        >
+                          <span className="font-medium text-slate-950">{point.label}</span>
+                          <span className="tabular-nums text-muted-foreground">
+                            Avg {formatSpeedCompact(point.avgSpeedMph)}
+                          </span>
+                          <span className="tabular-nums text-muted-foreground">
+                            PB {formatSpeedCompact(point.pbSpeedMph)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </DataPanel>
 
           <DataPanel>
             <SectionHeader
-              title="Recent sessions"
-              description="No-ball speed work plus imported shot sessions with club speed."
-              action={<Activity className="size-4 text-primary" aria-hidden="true" />}
+              title={
+                selectedClub ? `${selectedClub.shortLabel} speed potential` : "Speed potential"
+              }
+              description={
+                selectedClub
+                  ? `Projected ${selectedClub.shortLabel} carry from the selected club speed target.`
+                  : "A practical driver carry estimate from speed gain."
+              }
+              action={<Target className="size-4 text-primary" aria-hidden="true" />}
             />
-            <div className="grid gap-2 p-4">
-              {recentSpeedEvidenceRows.length === 0 ? (
-                <EmptyState
-                  icon={<Gauge className="size-5" aria-hidden="true" />}
-                  title="No speed evidence yet"
-                  description="Import shots with club speed or add a no-ball speed session to build the speed history."
+            <div className="grid gap-3 p-4">
+              <div className="grid grid-cols-3 gap-2">
+                <PotentialMetric
+                  label="Current"
+                  value={formatCarry(selectedCarryProjection.currentCarryYd)}
                 />
-              ) : (
-                recentSpeedEvidenceRows.map((session) => (
-                  <div
-                    key={session.key}
-                    className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-3 md:grid-cols-[minmax(0,1fr)_repeat(4,88px)_auto]"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-950">
-                        {session.title}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDate(session.dateIso)} · {session.countLabel} · {session.sourceLabel}
-                      </p>
-                    </div>
-                    <MetricCell label="Avg" value={formatSpeedCompact(session.avgSpeedMph)} />
-                    <MetricCell label="Max" value={formatSpeedCompact(session.maxSpeedMph)} />
-                    <MetricCell label="Min" value={formatSpeedCompact(session.minSpeedMph)} />
-                    <MetricCell
-                      label={session.kind === "shot" ? "Type" : "Target"}
-                      value={
-                        session.kind === "shot"
-                          ? "With ball"
-                          : formatSpeedCompact(session.targetSpeedMph)
-                      }
-                    />
-                    <Button asChild variant="outline" size="sm" className="self-center">
-                      <Link href={session.href} prefetch={false}>
-                        {session.kind === "shot" ? (
-                          <Gauge aria-hidden="true" />
-                        ) : (
-                          <Pencil aria-hidden="true" />
-                        )}
-                        {session.kind === "shot" ? "View shots" : "Edit"}
-                      </Link>
-                    </Button>
+                <PotentialMetric
+                  label="Target"
+                  value={formatCarry(selectedCarryProjection.targetCarryYd)}
+                />
+                <PotentialMetric
+                  label="Gain"
+                  value={
+                    selectedCarryProjection.carryGainYd === null
+                      ? "-"
+                      : `+${selectedCarryProjection.carryGainYd} yd`
+                  }
+                />
+              </div>
+              <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
+                {selectedCarryProjection.basis}. Current gain model is{" "}
+                {numberFormatter.format(selectedCarryProjection.yardsPerMph)} carry yards per mph.
+              </div>
+              <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
+                {selectedClub
+                  ? selectedPotentialFocus(selectedClub)
+                  : summary.driverEfficiency.focus}
+              </div>
+              {selectedSpeedMilestones.length > 0 ? (
+                <div className="rounded-lg border border-border/70 bg-white/65 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">Speed milestones</p>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Same carry model
+                    </span>
                   </div>
-                ))
-              )}
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {selectedSpeedMilestones.map((milestone) => (
+                      <div
+                        key={milestone.speedMph}
+                        className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-lg border border-border/60 bg-white/70 p-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold tabular-nums text-slate-950">
+                            {formatMilestoneSpeed(milestone.speedMph)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{milestone.label}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold tabular-nums text-slate-950">
+                            {milestone.projectedCarryYd} yd
+                          </p>
+                          <p className="text-xs font-medium tabular-nums text-emerald-800">
+                            {formatCarryGain(milestone.carryGainYd)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
+                Uploaded with-ball range shots feed playing speed, PBs, carry potential, and club
+                comparisons. Speed Centre sessions do not write back into shots, bag yardages, or
+                stock gapping.
+              </div>
             </div>
           </DataPanel>
         </div>
-      </div>
+
+        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.75fr)]">
+          <DataPanel>
+            <SectionHeader
+              title={
+                selectedClub && selectedClub.row.clubType !== "driver"
+                  ? `${selectedClub.shortLabel} Athletic Development`
+                  : "Athletic Development"
+              }
+              description={
+                selectedClub
+                  ? "The coach-facing speed card for the selected club."
+                  : "The coach-facing speed card."
+              }
+              action={
+                <StatusPill tone={selectedPrescription.priority === "High" ? "amber" : "green"}>
+                  Coach
+                </StatusPill>
+              }
+            />
+            <div className="grid gap-3 p-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <PotentialMetric
+                  label="Current"
+                  value={formatSpeed(selectedClub?.currentSpeedMph ?? summary.currentSpeedMph)}
+                />
+                <PotentialMetric
+                  label="No-ball avg"
+                  value={formatSpeed(
+                    selectedClub?.row.trainingAvgMph ?? summary.trainingCurrentSpeedMph,
+                  )}
+                />
+                <PotentialMetric
+                  label="Target"
+                  value={formatSpeed(selectedClub?.target.value ?? summary.targetSpeedMph)}
+                />
+                <PotentialMetric
+                  label={selectedClub ? "Gap" : "Progress"}
+                  value={
+                    selectedClub
+                      ? formatTargetGap(selectedClub.currentSpeedMph, selectedClub.target.value)
+                      : formatNullableGap(summary.forecast.progressThisMonthMph)
+                  }
+                />
+              </div>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="rounded-lg border border-border/70 bg-white/65 p-3 text-sm leading-6 text-muted-foreground">
+                  {selectedClub?.transferInsight.coachMessage ??
+                    summary.transferInsight.coachMessage}
+                </div>
+                <div className="grid gap-2">
+                  <DataPair
+                    label="Strike efficiency"
+                    value={strikeEfficiencyLabel(
+                      selectedClub?.transferInsight ?? summary.transferInsight,
+                    )}
+                  />
+                  <DataPair
+                    label="No-ball to with-ball"
+                    value={formatTransferRatio(
+                      selectedClub?.transferInsight.ratioPercent ??
+                        summary.transferInsight.ratioPercent,
+                    )}
+                  />
+                  <DataPair
+                    label="Speed gap"
+                    value={formatTransferGap(
+                      selectedClub?.transferInsight.gapMph ?? summary.transferInsight.gapMph,
+                    )}
+                  />
+                  <DataPair
+                    label="Confidence"
+                    value={selectedClub?.confidenceLabel ?? summary.forecast.confidenceLabel}
+                  />
+                </div>
+              </div>
+              <SpeedTimelineCard
+                milestones={selectedSpeedTimeline}
+                hasMeasuredTrend={hasSelectedSpeedTrend}
+              />
+            </div>
+          </DataPanel>
+
+          <DataPanel>
+            <SectionHeader
+              title={
+                selectedClub && selectedClub.row.clubType !== "driver"
+                  ? `${selectedClub.shortLabel} speed profile`
+                  : "Speed profile"
+              }
+              description={
+                selectedClub
+                  ? "No-ball sessions for the selected club by side and implement."
+                  : "Dominant side, non-dominant side, and overspeed markers."
+              }
+              action={<Dumbbell className="size-4 text-primary" aria-hidden="true" />}
+            />
+            <div className="grid gap-3 p-4">
+              <div className="grid grid-cols-2 gap-2">
+                <PotentialMetric
+                  label="Dominant"
+                  value={formatSpeed(
+                    selectedClub?.sideSummary.dominantAvgMph ?? summary.sideSummary.dominantAvgMph,
+                  )}
+                />
+                <PotentialMetric
+                  label="Non-dominant"
+                  value={formatSpeed(
+                    selectedClub?.sideSummary.nonDominantAvgMph ??
+                      summary.sideSummary.nonDominantAvgMph,
+                  )}
+                />
+              </div>
+              {(selectedClub?.sideSummary.sideBalancePercent ??
+                summary.sideSummary.sideBalancePercent) !== null ? (
+                <DataPair
+                  label="Side balance"
+                  value={`${
+                    selectedClub?.sideSummary.sideBalancePercent ??
+                    summary.sideSummary.sideBalancePercent
+                  }%`}
+                />
+              ) : null}
+              {(selectedClub?.sideSummary.overspeedMaxMph ??
+                summary.sideSummary.overspeedMaxMph) !== null ? (
+                <DataPair
+                  label="Overspeed max"
+                  value={formatSpeed(
+                    selectedClub?.sideSummary.overspeedMaxMph ??
+                      summary.sideSummary.overspeedMaxMph,
+                  )}
+                />
+              ) : null}
+              {(selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio) !==
+              null ? (
+                <DataPair
+                  label="Overspeed ratio"
+                  value={`${(
+                    selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio
+                  )?.toFixed(2)}x`}
+                />
+              ) : null}
+              {(selectedClub?.sideSummary.sideBalancePercent ??
+                summary.sideSummary.sideBalancePercent) === null ||
+              (selectedClub?.sideSummary.overspeedRatio ?? summary.sideSummary.overspeedRatio) ===
+                null ? (
+                <SpeedProfileUnlocks
+                  needsNonDominant={
+                    (selectedClub?.sideSummary.sideBalancePercent ??
+                      summary.sideSummary.sideBalancePercent) === null
+                  }
+                  needsOverspeed={
+                    (selectedClub?.sideSummary.overspeedRatio ??
+                      summary.sideSummary.overspeedRatio) === null
+                  }
+                />
+              ) : null}
+            </div>
+          </DataPanel>
+        </div>
+
+        <DataPanel>
+          <SectionHeader
+            title="What happens if I get faster?"
+            description="Select one club at a time to project carry changes without changing saved bag numbers."
+            action={<TrendingUp className="size-4 text-primary" aria-hidden="true" />}
+          />
+          <div className="p-4">
+            {data.futureBag.length > 0 ? (
+              <FutureBagSlider
+                key={selectedClub?.row.clubId ?? "default-club"}
+                rows={data.futureBag}
+                targetSpeedMph={summary.targetSpeedMph}
+                selectedClubId={selectedClub?.row.clubId ?? null}
+              />
+            ) : (
+              <EmptyState
+                icon={<Gauge className="size-5" aria-hidden="true" />}
+                title="Future Bag needs stock yardages"
+                description="Build stock carry numbers first, then Speed Centre can project the bag forward."
+              />
+            )}
+          </div>
+        </DataPanel>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(340px,0.85fr)_minmax(0,1.15fr)]">
+          <DataPanel id="add-speed-session">
+            <SectionHeader
+              title="Add speed session"
+              description="Use a real club, speed stick, weighted club, or another implement."
+              action={<Plus className="size-4 text-primary" aria-hidden="true" />}
+            />
+            <form action={createManualSpeedSessionAction} className="grid gap-4 p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Date">
+                  <Input name="sessionDate" type="date" defaultValue={todayDateInput()} />
+                </Field>
+                <Field label="Title">
+                  <Input name="title" placeholder="R-Speed" />
+                </Field>
+                <Field label="Implement">
+                  <NativeSelect name="implementKind" defaultValue="club">
+                    <option value="club">Golf club</option>
+                    <option value="speed_stick">Speed stick</option>
+                    <option value="weighted_club">Weighted club</option>
+                    <option value="other">Other</option>
+                  </NativeSelect>
+                </Field>
+                <Field label="Side">
+                  <NativeSelect name="handedness" defaultValue="dominant">
+                    <option value="dominant">Dominant side</option>
+                    <option value="non_dominant">Non-dominant side</option>
+                    <option value="both">Both sides</option>
+                  </NativeSelect>
+                </Field>
+                <Field label="Speed system">
+                  <NativeSelect name="speedSystem" defaultValue="">
+                    <option value="">Standard club speed</option>
+                    <option value="R-Speed">R-Speed</option>
+                    <option value="Light speed stick">Light speed stick</option>
+                    <option value="Medium speed stick">Medium speed stick</option>
+                    <option value="Heavy speed stick">Heavy speed stick</option>
+                    <option value="Stack">Stack</option>
+                    <option value="Other">Other</option>
+                  </NativeSelect>
+                </Field>
+              </div>
+
+              <Field label="Club used">
+                <NativeSelect name="clubId" defaultValue="">
+                  <option value="">Not in bag / speed stick</option>
+                  {data.clubOptions.map((club) => (
+                    <option key={club.id} value={club.id}>
+                      {club.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+
+              <Field label="Implement label">
+                <Input
+                  name="implementLabel"
+                  placeholder="Only needed if no club is selected: speed stick, Stack 195g, etc."
+                />
+              </Field>
+
+              <SpeedReadingsField />
+
+              <div className="grid gap-3 sm:grid-cols-4">
+                <Field label="Min">
+                  <Input name="minSpeedMph" inputMode="decimal" placeholder="73" />
+                </Field>
+                <Field label="Average">
+                  <Input name="avgSpeedMph" inputMode="decimal" placeholder="81" />
+                </Field>
+                <Field label="Max">
+                  <Input name="maxSpeedMph" inputMode="decimal" placeholder="87" />
+                </Field>
+                <Field label="Count">
+                  <Input name="swingCount" inputMode="numeric" placeholder="15" />
+                </Field>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[160px_minmax(0,1fr)]">
+                <Field label="Target speed">
+                  <Input name="targetSpeedMph" inputMode="decimal" placeholder="95" />
+                </Field>
+                <Field label="Notes">
+                  <Input name="notes" placeholder="Felt strongest with driver, no speed sticks" />
+                </Field>
+              </div>
+
+              <Button type="submit" className="w-full sm:w-fit">
+                <Plus aria-hidden="true" />
+                Save speed session
+              </Button>
+            </form>
+          </DataPanel>
+
+          <div className="grid gap-4">
+            <DataPanel>
+              <SectionHeader
+                title="R-Cloud speed sessions"
+                description="R-Speed is visible separately from normal Rapsodo shots."
+                action={
+                  data.rapsodo.connected ? (
+                    <StatusPill tone={data.rapsodo.error ? "amber" : "green"}>Connected</StatusPill>
+                  ) : (
+                    <StatusPill tone="amber">Not connected</StatusPill>
+                  )
+                }
+              />
+              <div className="grid gap-3 p-4">
+                {data.rapsodo.error ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    {data.rapsodo.error}
+                  </div>
+                ) : null}
+                {!data.rapsodo.connected ? (
+                  <RCloudConnectCard />
+                ) : data.rapsodo.items.length === 0 && !data.rapsodo.error ? (
+                  <EmptyState
+                    icon={<ShieldCheck className="size-5" aria-hidden="true" />}
+                    title="No R-Speed detail found"
+                    description="R-Cloud is connected, but the speed-session list did not return no-ball training rows."
+                  />
+                ) : (
+                  <>
+                    <div className="rounded-lg border border-border/70 bg-white/65 px-3 py-2 text-sm leading-6 text-muted-foreground">
+                      R-Cloud can list speed sessions, but checked detail rows may still come back
+                      empty. When that happens, use the manual readings box for the club or
+                      implement used.
+                    </div>
+                    <div className="grid gap-2">
+                      {data.rapsodo.items.map((item) => (
+                        <div
+                          key={item.providerSessionId}
+                          className="grid gap-2 rounded-lg border border-border/70 bg-white/65 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatDate(item.dateIso)} · {item.swingCount ?? "-"} swings ·{" "}
+                              {item.speedSystem ?? "System unknown"}
+                            </p>
+                          </div>
+                          <StatusPill tone={item.detailStatus === "available" ? "green" : "amber"}>
+                            {item.detailStatus === "available"
+                              ? `${item.detailSwingCount} detail rows`
+                              : item.detailStatus === "empty"
+                                ? "No detail rows"
+                                : "Detail unchecked"}
+                          </StatusPill>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </DataPanel>
+
+            <DataPanel>
+              <SectionHeader
+                title="Recent sessions"
+                description="No-ball speed work plus imported shot sessions with club speed."
+                action={<Activity className="size-4 text-primary" aria-hidden="true" />}
+              />
+              <div className="grid gap-2 p-4">
+                {recentSpeedEvidenceRows.length === 0 ? (
+                  <EmptyState
+                    icon={<Gauge className="size-5" aria-hidden="true" />}
+                    title="No speed evidence yet"
+                    description="Import shots with club speed or add a no-ball speed session to build the speed history."
+                  />
+                ) : (
+                  <SpeedEvidenceLedger rows={recentSpeedEvidenceRows} />
+                )}
+              </div>
+            </DataPanel>
+          </div>
+        </div>
+      </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function SpeedEvidenceLedger({ rows }: { rows: RecentSpeedEvidenceRow[] }) {
+  return (
+    <div className="grid min-w-0 gap-3" data-speed-evidence-ledger>
+      <DesktopTableWorkbenchControls
+        viewKey="speed-evidence"
+        scope="speed"
+        currentViewLabel="Recent speed evidence"
+        resultLabel={`${integerFormatter.format(rows.length)} sessions`}
+        columns={speedEvidenceColumns}
+        exportTableId="speed-evidence"
+        exportFileName="forekinghell-speed-evidence.csv"
+      />
+      <DataTableFrame
+        mainTable
+        mainTableLabel="Speed evidence session ledger"
+        mobile={
+          <div className="grid gap-2">
+            {rows.map((session) => (
+              <SpeedEvidenceCard key={session.key} session={session} />
+            ))}
+          </div>
+        }
+      >
+        <Table
+          data-workbench-export-table="speed-evidence"
+          aria-describedby="speed-evidence-summary"
+          className="min-w-[820px]"
+        >
+          <TableCaption id="speed-evidence-summary" className="sr-only">
+            Recent no-ball speed sessions and imported shot sessions with date, source, count,
+            average speed, max speed, min speed, target or type, and action.
+          </TableCaption>
+          <TableHeader className="sticky top-0 z-10 bg-white">
+            <TableRow>
+              <TableHead
+                data-column="session"
+                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Session
+              </TableHead>
+              <TableHead data-column="date">Date</TableHead>
+              <TableHead data-column="source">Source</TableHead>
+              <TableHead data-column="count">Count</TableHead>
+              <TableHead data-column="avg" className="text-right">
+                Avg
+              </TableHead>
+              <TableHead data-column="max" className="text-right">
+                Max
+              </TableHead>
+              <TableHead data-column="min" className="text-right">
+                Min
+              </TableHead>
+              <TableHead data-column="target">Target/type</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((session) => (
+              <TableRow
+                key={session.key}
+                tabIndex={0}
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <TableCell
+                  data-column="session"
+                  className="sticky left-0 z-10 max-w-[16rem] bg-white font-medium text-slate-950 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  <span className="block truncate">{session.title}</span>
+                </TableCell>
+                <TableCell data-column="date">{formatDate(session.dateIso)}</TableCell>
+                <TableCell data-column="source">{session.sourceLabel}</TableCell>
+                <TableCell data-column="count">{session.countLabel}</TableCell>
+                <TableCell data-column="avg" className="text-right tabular-nums">
+                  {formatSpeedCompact(session.avgSpeedMph)}
+                </TableCell>
+                <TableCell data-column="max" className="text-right tabular-nums">
+                  {formatSpeedCompact(session.maxSpeedMph)}
+                </TableCell>
+                <TableCell data-column="min" className="text-right tabular-nums">
+                  {formatSpeedCompact(session.minSpeedMph)}
+                </TableCell>
+                <TableCell data-column="target">
+                  {session.kind === "shot"
+                    ? "With ball"
+                    : formatSpeedCompact(session.targetSpeedMph)}
+                </TableCell>
+                <TableCell data-column="action" className="text-right">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={session.href} prefetch={false}>
+                      {session.kind === "shot" ? (
+                        <Gauge aria-hidden="true" />
+                      ) : (
+                        <Pencil aria-hidden="true" />
+                      )}
+                      {session.kind === "shot" ? "View shots" : "Edit"}
+                    </Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </div>
+  );
+}
+
+function SpeedEvidenceCard({ session }: { session: RecentSpeedEvidenceRow }) {
+  return (
+    <div className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-3 md:grid-cols-[minmax(0,1fr)_repeat(4,88px)_auto]">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-slate-950">{session.title}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {formatDate(session.dateIso)} · {session.countLabel} · {session.sourceLabel}
+        </p>
+      </div>
+      <MetricCell label="Avg" value={formatSpeedCompact(session.avgSpeedMph)} />
+      <MetricCell label="Max" value={formatSpeedCompact(session.maxSpeedMph)} />
+      <MetricCell label="Min" value={formatSpeedCompact(session.minSpeedMph)} />
+      <MetricCell
+        label={session.kind === "shot" ? "Type" : "Target"}
+        value={session.kind === "shot" ? "With ball" : formatSpeedCompact(session.targetSpeedMph)}
+      />
+      <Button asChild variant="outline" size="sm" className="self-center">
+        <Link href={session.href} prefetch={false}>
+          {session.kind === "shot" ? <Gauge aria-hidden="true" /> : <Pencil aria-hidden="true" />}
+          {session.kind === "shot" ? "View shots" : "Edit"}
+        </Link>
+      </Button>
+    </div>
   );
 }
 
@@ -987,9 +1128,13 @@ function SpeedTrendStarterCard({
 }) {
   const sessionsNeeded = Math.max(0, 2 - sessionCount);
   const sessionNeedCopy = sessionsNeeded === 1 ? "Need 1 more" : `Need ${sessionsNeeded} sessions`;
+  const starterSummary =
+    currentAverageMph === null
+      ? `No Speed trend chart can be drawn yet because ${sessionCount} no-ball ${sessionCount === 1 ? "session is" : "sessions are"} recorded. Log two no-ball speed sessions to compare movement.`
+      : `No Speed trend chart can be drawn yet because ${sessionCount} no-ball ${sessionCount === 1 ? "session is" : "sessions are"} recorded. Current average is ${formatSpeed(currentAverageMph)} and personal best is ${formatSpeed(personalBestMph)}.`;
 
   return (
-    <div className="rounded-lg border border-border/70 bg-white/65 p-4">
+    <div className="grid min-w-0 gap-4 overflow-hidden rounded-lg border border-border/70 bg-white/65 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-950">No-ball training trend</p>
@@ -1016,6 +1161,38 @@ function SpeedTrendStarterCard({
           ? "Add one more no-ball speed session and this switches from a baseline card to the trend graph."
           : "Log two no-ball speed sessions and this switches from a baseline card to the trend graph."}
       </p>
+      <ChartAccessibleFallback
+        title="Speed trend"
+        summary={starterSummary}
+        columns={[
+          { key: "metric", label: "Metric" },
+          { key: "value", label: "Value" },
+          { key: "detail", label: "Detail" },
+        ]}
+        rows={[
+          {
+            _key: "current-average",
+            metric: "Current average",
+            value: formatSpeed(currentAverageMph),
+            detail: `${sessionCount} no-ball ${sessionCount === 1 ? "session" : "sessions"} recorded`,
+          },
+          {
+            _key: "personal-best",
+            metric: "Personal best",
+            value: formatSpeed(personalBestMph),
+            detail: personalBestMph === null ? "Needs measured speed evidence" : "Current marker",
+          },
+          {
+            _key: "next-target",
+            metric: "Next target",
+            value:
+              currentAverageMph === null
+                ? "Log session"
+                : `Beat ${formatSpeedCompact(currentAverageMph)}`,
+            detail: "Two sessions are required before drawing the visual trend",
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -1236,16 +1413,34 @@ function SpeedTrendChart({
       return `${x},${y}`;
     })
     .join(" ");
-  const targetBandTop =
-    signature.targetBand === null ? null : valueToY(signature.targetBand.high);
+  const targetBandTop = signature.targetBand === null ? null : valueToY(signature.targetBand.high);
   const targetBandBottom =
     signature.targetBand === null ? null : valueToY(signature.targetBand.low);
   const ghostY = signature.ghostAverage === null ? null : valueToY(signature.ghostAverage);
-  const pbY =
-    signature.personalBest === null ? null : valueToY(signature.personalBest.value);
+  const pbY = signature.personalBest === null ? null : valueToY(signature.personalBest.value);
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
+  const speedChange = lastPoint.value - firstPoint.value;
+  const speedChartSummary = [
+    `Average club speed moved ${formatGap(speedChange)} from ${firstPoint.label} to ${lastPoint.label} across ${points.length} sessions.`,
+    `Latest speed is ${formatSpeed(lastPoint.value)}.`,
+    targetSpeedMph !== null
+      ? `Target is ${formatSpeed(targetSpeedMph)}.`
+      : "No target speed is set.",
+    signature.personalBest
+      ? `Personal best marker is ${formatSpeed(signature.personalBest.value)}.`
+      : "No personal-best marker is available.",
+  ].join(" ");
+  const speedChartRows = points.map((point, index) => ({
+    _key: `${point.label}-${point.value}-${index}`,
+    session: point.label,
+    averageSpeed: formatSpeed(point.value),
+    changeFromFirst: formatGap(point.value - firstPoint.value),
+    targetGap: targetSpeedMph !== null ? formatGap(point.value - targetSpeedMph) : "-",
+  }));
 
   return (
-    <div className="rounded-lg border border-border/70 bg-[#111611] p-4 text-white">
+    <div className="min-w-0 overflow-hidden rounded-lg border border-border/70 bg-[#111611] p-4 text-white">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Average club speed</p>
@@ -1347,6 +1542,18 @@ function SpeedTrendChart({
           </g>
         ) : null}
       </svg>
+      <ChartAccessibleFallback
+        title="Speed trend"
+        summary={speedChartSummary}
+        columns={[
+          { key: "session", label: "Session" },
+          { key: "averageSpeed", label: "Average speed" },
+          { key: "changeFromFirst", label: "Change from first" },
+          { key: "targetGap", label: "Target gap" },
+        ]}
+        rows={speedChartRows}
+        className="mt-4 border-white/20 bg-white/95"
+      />
     </div>
   );
 }

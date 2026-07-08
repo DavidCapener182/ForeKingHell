@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 
+import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -564,6 +565,29 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
             </div>
           </div>
         </div>
+        {selectedHole ? (
+          <ChartAccessibleFallback
+            title="Round shot map"
+            summary={roundShotMapSummary({
+              distanceMode,
+              hole: selectedHole,
+              projectedShots: visibleProjectedShots,
+              selectedShot,
+              showAllHoleShots,
+            })}
+            columns={[
+              { key: "shot", label: "Shot" },
+              { key: "club", label: "Club" },
+              { key: "plotted", label: "Plotted" },
+              { key: "carry", label: "Carry" },
+              { key: "total", label: "Total" },
+              { key: "side", label: "Side" },
+              { key: "remaining", label: "Remaining" },
+            ]}
+            rows={roundShotMapRows(visibleProjectedShots, selectedShot?.id ?? null, distanceMode)}
+            className="bg-white/82"
+          />
+        ) : null}
         {selectedShot ? (
           <div className="apple-panel-strong p-3 text-[#111827]">
             <div className="flex items-start justify-between gap-3">
@@ -808,6 +832,57 @@ function HoleVectorFallback({
       ) : null}
     </div>
   );
+}
+
+function roundShotMapSummary({
+  distanceMode,
+  hole,
+  projectedShots,
+  selectedShot,
+  showAllHoleShots,
+}: {
+  distanceMode: DistanceMode;
+  hole: RoundMapHole;
+  projectedShots: ProjectedShot[];
+  selectedShot: RoundMapShot | null;
+  showAllHoleShots: boolean;
+}) {
+  const selectedText = selectedShot
+    ? ` Selected ${formatShotLabel(selectedShot)} is ${formatClubType(
+        selectedShot.clubType,
+      )}, ${formatMetric(shotDistanceForMode(selectedShot, distanceMode))} yd in ${distanceMode} view, ${formatSide(
+        selectedShot.sideCarryYd,
+      )} offline.`
+    : " No selected shot is available.";
+
+  return `Hole ${hole.holeNumber} is a par ${hole.par}, ${hole.yards} yd hole. ${
+    showAllHoleShots ? "All hole shots" : "Selected-hole shots"
+  } are visible; ${projectedShots.length} projected shot rows are in the map table.${selectedText}`;
+}
+
+function roundShotMapRows(
+  projectedShots: ProjectedShot[],
+  selectedShotId: string | null,
+  distanceMode: DistanceMode,
+) {
+  return projectedShots.slice(0, 30).map((projected) => ({
+    _key: projected.shot.id,
+    shot: formatShotLabel(projected.shot),
+    club: formatClubType(projected.shot.clubType),
+    plotted: `${formatMetric(shotDistanceForMode(projected.shot, distanceMode))} yd`,
+    carry: `${formatMetric(projected.shot.carryYd)} yd`,
+    total: `${formatMetric(projected.shot.totalYd)} yd`,
+    side: formatSide(projected.shot.sideCarryYd),
+    remaining: `${formatMetric(projected.shot.distanceRemainingYd)} yd${
+      projected.shot.id === selectedShotId ? " - selected" : ""
+    }`,
+  }));
+}
+
+function formatShotLabel(shot: RoundMapShot) {
+  const shotNumber = shot.holeShotNumber ?? shot.shotNumber;
+
+  return shotNumber ? `Shot ${shotNumber}` : "Shot";
 }
 
 function MapMetric({ label, value }: { label: string; value: string }) {

@@ -356,7 +356,7 @@ export function BagFeaturePanel({
           </div>
         </MobileAccordionSection>
       </div>
-      <div className="hidden gap-4 p-4 sm:grid xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="hidden gap-4 p-4 sm:grid min-[2400px]:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3 md:grid-cols-2">
           {data.bagAlerts.slice(0, 4).map((item, index) => (
             <InsightCard key={featureInsightKey(item, index)} item={item} compact />
@@ -807,7 +807,7 @@ export function CourseRecordFeaturePanel({ data }: { data: FeatureIdeasData }) {
         description="Set a goal, track friend targets, and keep notify-when-beaten enabled for followed boards."
         action={<StatusPill tone="amber">{data.courseRecordGoals.length} goals</StatusPill>}
       />
-      <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 p-4 lg:grid-cols-2 2xl:grid-cols-3">
         {data.courseRecordGoals.map((item) => (
           <InsightCard key={item.title} item={item} compact />
         ))}
@@ -1025,8 +1025,8 @@ export function SocialFeaturePanel({ data }: { data: FeatureIdeasData }) {
       >
         <SocialPreferencesForm data={data} />
       </MobileAccordionSection>
-      <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="hidden gap-4 p-4 sm:grid xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-3 min-[1500px]:grid-cols-2">
           {socialItems.map((item) => (
             <InsightCard key={item.title} item={item} compact />
           ))}
