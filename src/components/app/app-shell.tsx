@@ -375,13 +375,25 @@ function MainTableSkipLink({ pathname }: { pathname: string }) {
       className="sr-only fixed left-3 top-24 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only max-sm:hidden"
       onClick={() => {
         const target = resolveMainTableTarget();
-        target?.focus({ preventScroll: true });
-        target?.scrollIntoView({ block: "start" });
+        focusMainTableTarget(target);
       }}
     >
       Skip to main table
     </button>
   );
+}
+
+function focusMainTableTarget(target: HTMLElement | null) {
+  if (!target) {
+    return;
+  }
+
+  if (!target.hasAttribute("tabindex")) {
+    target.tabIndex = -1;
+  }
+
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: "start" });
 }
 
 function resolveMainTableTarget() {

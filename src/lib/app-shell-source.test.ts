@@ -44,6 +44,11 @@ describe("app shell account data", () => {
     expect(source).toContain("Skip to sidebar");
     expect(source).toContain("<MainTableSkipLink pathname={pathname} />");
     expect(source).toContain("Skip to main table");
+    expect(source).toContain("function focusMainTableTarget(target: HTMLElement | null)");
+    expect(source).toContain('if (!target.hasAttribute("tabindex"))');
+    expect(source).toContain("target.tabIndex = -1");
+    expect(source).toContain("target.focus({ preventScroll: true })");
+    expect(source).toContain('target.scrollIntoView({ block: "start" })');
     expect(source).toContain("function resolveMainTableTarget()");
     expect(source).toContain(
       "document.querySelector<HTMLElement>(\"[data-main-table-target='true']\")",
