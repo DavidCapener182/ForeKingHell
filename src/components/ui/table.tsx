@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 function Table({
   className,
   containerClassName,
+  "aria-describedby": ariaDescribedBy,
   ...props
 }: React.ComponentProps<"table"> & { containerClassName?: string }) {
   return (
@@ -14,11 +15,13 @@ function Table({
       data-slot="table-container"
       tabIndex={0}
       aria-label="Scrollable data table"
+      aria-describedby={ariaDescribedBy}
       className={cn("data-table-scroll relative w-full overflow-x-auto", containerClassName)}
     >
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
+        aria-describedby={ariaDescribedBy}
         {...props}
       />
     </div>
