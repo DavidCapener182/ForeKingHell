@@ -55,14 +55,21 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 function TableRow({
   className,
   "aria-selected": ariaSelected,
+  "aria-keyshortcuts": ariaKeyShortcuts,
   "data-state": dataState,
+  tabIndex,
   ...props
 }: React.ComponentProps<"tr">) {
+  const rowKeyShortcuts =
+    tabIndex !== undefined ? "Enter Space ArrowDown ArrowUp Home End" : undefined;
+
   return (
     <tr
       data-slot="table-row"
       data-state={dataState}
       aria-selected={ariaSelected ?? (dataState === "selected" ? true : undefined)}
+      aria-keyshortcuts={ariaKeyShortcuts ?? rowKeyShortcuts}
+      tabIndex={tabIndex}
       className={cn(
         "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
         className,

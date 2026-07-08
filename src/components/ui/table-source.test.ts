@@ -36,4 +36,18 @@ describe("shared table semantics", () => {
       'aria-selected={ariaSelected ?? (dataState === "selected" ? true : undefined)}',
     );
   });
+
+  it("advertises shell keyboard shortcuts on focusable table rows", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/ui/table.tsx"), "utf8");
+    const tableRowBlock =
+      source.match(/function TableRow\([\s\S]*?\n}\n\nfunction TableHead/)?.[0] ?? "";
+
+    expect(tableRowBlock).toContain('"aria-keyshortcuts": ariaKeyShortcuts');
+    expect(tableRowBlock).toContain("tabIndex,");
+    expect(tableRowBlock).toContain(
+      'tabIndex !== undefined ? "Enter Space ArrowDown ArrowUp Home End" : undefined',
+    );
+    expect(tableRowBlock).toContain("aria-keyshortcuts={ariaKeyShortcuts ?? rowKeyShortcuts}");
+    expect(tableRowBlock).toContain("tabIndex={tabIndex}");
+  });
 });
