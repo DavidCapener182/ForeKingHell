@@ -38,11 +38,11 @@ describe("club analytics desktop evidence ledger", () => {
     }
   });
 
-  it("keeps the contextual AI rail on the deep club analytics route", () => {
+  it("keeps the contextual AI rail as shared wide-monitor support", () => {
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI club rail"');
     expect(source).toContain('scope="club-analytics"');
-    expect(source).not.toContain('railBreakpoint="wide"');
+    expect(source).not.toContain("railBreakpoint=");
   });
 
   it("keeps deep club analytics charts explainable with fallback tables", () => {

@@ -82,7 +82,7 @@ export function DesktopWorkbenchLayout({
   rail,
   scope,
   className,
-  railBreakpoint = "xl",
+  railBreakpoint = "wide",
 }: {
   children: ReactNode;
   rail?: ReactNode;

@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/courses/page.tsx"), "utf8");
 
 describe("courses desktop workspace source", () => {
-  it("keeps the course directory as a desktop workbench with contextual rail", () => {
+  it("keeps the course directory as a desktop workbench with shared wide-monitor rail", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="courses"');
-    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(layoutBlock).not.toContain("railBreakpoint=");
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI course rail"');
     expect(layoutBlock).toContain("rail={");

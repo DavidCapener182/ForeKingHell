@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/strokes-gained/page.tsx"), "utf8");
 
 describe("strokes gained desktop workbench", () => {
-  it("keeps the AI strokes-gained rail visible on standard desktop workbenches", () => {
+  it("keeps the AI strokes-gained rail as shared wide-monitor context", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="strokes-gained"');
-    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(layoutBlock).not.toContain("railBreakpoint=");
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI strokes-gained rail"');
   });

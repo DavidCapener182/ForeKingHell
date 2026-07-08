@@ -8,7 +8,7 @@ describe("course records desktop board", () => {
   it("keeps a table-first desktop board with saved views, columns and export", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');
-    expect(source).not.toContain('railBreakpoint="wide"');
+    expect(source).not.toContain("railBreakpoint=");
     expect(source).toContain('title="AI course records rail"');
     expect(source).toContain("CourseRecordBoardTable");
     expect(source).toContain("DesktopTableWorkbenchControls");

@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/shots/page.tsx"), "utf8");
 
 describe("shots desktop workbench page", () => {
-  it("keeps the shot explorer table-first on laptop and standard desktop widths", () => {
+  it("keeps the shot explorer table-first until the shared wide-monitor rail appears", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="shots"');
-    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(layoutBlock).not.toContain("railBreakpoint=");
     expect(layoutBlock).toContain('title="AI shot analyst"');
     expect(layoutBlock).toContain("DesktopTableWorkbenchControls");
     expect(layoutBlock).toContain('viewKey="shots"');

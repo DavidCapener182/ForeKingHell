@@ -10,7 +10,7 @@ const source = readFileSync(
 describe("desktop workbench workflow layout", () => {
   it("keeps rails opt-in and excludes dense dashboard workspaces", () => {
     expect(source).toContain('type DesktopRailBreakpoint = "xl" | "2xl" | "wide"');
-    expect(source).toContain('railBreakpoint = "xl"');
+    expect(source).toContain('railBreakpoint = "wide"');
     expect(source).toContain("railBreakpoint?: DesktopRailBreakpoint");
     const railScopeBlock =
       source.match(/const desktopInsightRailScopes = new Set\(\[[\s\S]*?\]\);/)?.[0] ?? "";
@@ -21,10 +21,10 @@ describe("desktop workbench workflow layout", () => {
     expect(source).toContain(
       "min-[2200px]:grid-cols-[minmax(0,1fr)_22rem] min-[2200px]:items-start",
     );
+    expect(source).toContain('"hidden min-[2200px]:block"');
     expect(source).toContain("2xl:grid-cols-[minmax(0,1fr)_22rem] 2xl:items-start");
     expect(source).toContain("xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start");
     expect(source).toContain('railBreakpoint === "wide"');
-    expect(source).toContain('"hidden min-[2200px]:block"');
     expect(source).toContain('railBreakpoint === "2xl"');
     expect(source).toContain('"hidden 2xl:block"');
   });

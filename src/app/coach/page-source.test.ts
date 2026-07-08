@@ -35,7 +35,7 @@ describe("coach desktop evidence workbench", () => {
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI coach rail"');
     expect(source).toContain("coachWorkbenchPrompts");
-    expect(source).not.toContain('railBreakpoint="wide"');
+    expect(source).not.toContain("railBreakpoint=");
     expect(source).toContain("rail={");
   });
 });

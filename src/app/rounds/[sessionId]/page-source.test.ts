@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/rounds/[sessionId]/page.tsx"), "utf8");
 
 describe("round detail desktop workspace source", () => {
-  it("keeps round review inside the desktop workbench with a contextual AI rail", () => {
+  it("keeps round review inside the desktop workbench with shared wide-monitor rail", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="round-detail"');
-    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(layoutBlock).not.toContain("railBreakpoint=");
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI round rail"');
     expect(layoutBlock).toContain("roundDetailPrompts");
