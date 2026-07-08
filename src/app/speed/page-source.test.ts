@@ -18,6 +18,7 @@ describe("speed centre desktop evidence ledger", () => {
     expect(source).toContain('exportTableId="speed-evidence"');
     expect(source).toContain('data-workbench-export-table="speed-evidence"');
     expect(source).toContain('mainTableLabel="Speed evidence session ledger"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("forekinghell-speed-evidence.csv");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");

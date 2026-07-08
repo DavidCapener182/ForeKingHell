@@ -295,7 +295,7 @@ function PublicProfileActivityLedger({
         exportFileName={`forekinghell-profile-${profile.username}-activity.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Profile activity ledger table">
+      <DataTableFrame mainTable mainTableLabel="Profile activity ledger table" stickyFirstColumn>
         <Table
           data-workbench-export-table="profile-activity-ledger"
           aria-describedby="profile-activity-ledger-summary"
@@ -409,7 +409,7 @@ function PublicProfileBagComparison({
         exportFileName={`forekinghell-profile-${profile.username}-bag.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Profile visible bag comparison table">
+      <DataTableFrame mainTableLabel="Profile visible bag comparison table" stickyFirstColumn>
         <Table
           data-workbench-export-table="profile-bag-comparison"
           aria-describedby="profile-bag-comparison-summary"

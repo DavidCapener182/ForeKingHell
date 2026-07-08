@@ -195,7 +195,11 @@ function CoachDiagnosisEvidenceTable({ cards }: { cards: CoachClubCard[] }) {
             exportTableId="coach-diagnosis-evidence"
             exportFileName="forekinghell-coach-diagnosis.csv"
           />
-          <DataTableFrame mainTable mainTableLabel="Coach diagnosis evidence table">
+          <DataTableFrame
+            mainTable
+            mainTableLabel="Coach diagnosis evidence table"
+            stickyFirstColumn
+          >
             <Table
               data-workbench-export-table="coach-diagnosis-evidence"
               aria-describedby="coach-diagnosis-evidence-summary"

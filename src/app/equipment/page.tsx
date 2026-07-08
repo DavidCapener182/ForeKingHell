@@ -868,6 +868,7 @@ function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
       />
       <DataTableFrame
         mainTableLabel="Retired club inventory table"
+        stickyFirstColumn
         mobile={
           <MobileDataList
             empty={
@@ -1921,6 +1922,7 @@ function EquipmentHistoryTable({
       <DataTableFrame
         mainTable
         mainTableLabel="Equipment history table"
+        stickyFirstColumn
         mobile={
           <MobileDataList
             empty={

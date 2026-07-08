@@ -13,6 +13,7 @@ describe("simulator lab desktop workbench", () => {
     expect(source).toContain('exportTableId="simulator-session-deltas"');
     expect(source).toContain('data-workbench-export-table="simulator-session-deltas"');
     expect(source).toContain('mainTableLabel="Simulator session delta table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("forekinghell-simulator-session-deltas.csv");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
@@ -29,6 +30,7 @@ describe("simulator lab desktop workbench", () => {
     expect(source).toContain('exportTableId="simulator-equipment-impact"');
     expect(source).toContain('data-workbench-export-table="simulator-equipment-impact"');
     expect(source).toContain('label="Simulator equipment impact table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("forekinghell-simulator-equipment-impact.csv");
 
     for (const column of ["change", "samples", "carry", "ball", "smash", "offline", "verdict"]) {

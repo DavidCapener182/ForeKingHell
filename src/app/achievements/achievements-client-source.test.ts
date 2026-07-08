@@ -21,6 +21,7 @@ describe("achievements desktop unlock ledger", () => {
     expect(clientSource).toContain('exportTableId="achievement-unlocks"');
     expect(clientSource).toContain('data-workbench-export-table="achievement-unlocks"');
     expect(clientSource).toContain('mainTableLabel="Achievement unlock ledger table"');
+    expect(clientSource).toContain("stickyFirstColumn");
     expect(clientSource).toContain("forekinghell-achievement-unlocks.csv");
     expect(clientSource).toContain("<TableCaption");
     expect(clientSource).toContain("tabIndex={0}");

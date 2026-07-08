@@ -16,6 +16,7 @@ describe("coach diagnosis desktop workbench", () => {
     expect(source).toContain('exportFileName="forekinghell-coach-diagnosis.csv"');
     expect(source).toContain('data-workbench-export-table="coach-diagnosis-evidence"');
     expect(source).toContain('mainTableLabel="Coach diagnosis evidence table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

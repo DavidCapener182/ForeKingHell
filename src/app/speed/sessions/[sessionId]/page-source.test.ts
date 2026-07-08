@@ -22,6 +22,7 @@ describe("speed session desktop swing log", () => {
     expect(source).toContain('data-workbench-scope="speed-session-swings"');
     expect(source).toContain('data-workbench-export-table="speed-session-swings"');
     expect(source).toContain('mainTableLabel="Speed session swing log table"');
+    expect(source).toContain('mainTableLabel="Speed session swing log table" stickyFirstColumn');
     expect(source).toContain("tabIndex={0}");
   });
 

@@ -22,6 +22,7 @@ describe("shared account desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-shared-sessions.csv"');
     expect(source).toContain('data-workbench-export-table="shared-sessions"');
     expect(source).toContain('mainTableLabel="Shared account recent sessions table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

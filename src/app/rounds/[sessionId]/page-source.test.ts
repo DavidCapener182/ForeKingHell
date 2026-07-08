@@ -29,6 +29,7 @@ describe("round detail desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-round-shot-corrections.csv"');
     expect(source).toContain('data-workbench-export-table="round-shots"');
     expect(source).toContain('mainTableLabel="Round shot club corrections table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

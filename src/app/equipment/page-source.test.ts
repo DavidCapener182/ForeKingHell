@@ -10,6 +10,7 @@ describe("equipment desktop tables", () => {
     expect(source).toContain('data-workbench-scope="equipment-history"');
     expect(source).toContain('data-workbench-export-table="equipment-history"');
     expect(source).toContain('mainTableLabel="Equipment history table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-scope="retired-clubs"');
     expect(source).toContain('data-workbench-export-table="retired-clubs"');
     expect(source).toContain('mainTableLabel="Retired club inventory table"');

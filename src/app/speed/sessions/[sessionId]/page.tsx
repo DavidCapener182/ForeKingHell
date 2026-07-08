@@ -365,7 +365,7 @@ function SwingLogWorkbench({ data }: { data: SpeedSessionDetailPageData }) {
         exportFileName={`forekinghell-speed-session-${data.session.id}-swings.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Speed session swing log table">
+      <DataTableFrame mainTable mainTableLabel="Speed session swing log table" stickyFirstColumn>
         <Table
           data-workbench-export-table="speed-session-swings"
           aria-describedby="speed-session-swing-log-summary"

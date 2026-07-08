@@ -997,6 +997,7 @@ function SpeedEvidenceLedger({ rows }: { rows: RecentSpeedEvidenceRow[] }) {
       <DataTableFrame
         mainTable
         mainTableLabel="Speed evidence session ledger"
+        stickyFirstColumn
         mobile={
           <div className="grid gap-2">
             {rows.map((session) => (

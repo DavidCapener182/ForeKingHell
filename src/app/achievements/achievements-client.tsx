@@ -894,7 +894,11 @@ function AchievementUnlockLedger({ achievements }: { achievements: AchievementVi
                   Import provider sessions or complete round scorecards to start the XP ledger.
                 </div>
               ) : (
-                <DataTableFrame mainTable mainTableLabel="Achievement unlock ledger table">
+                <DataTableFrame
+                  mainTable
+                  mainTableLabel="Achievement unlock ledger table"
+                  stickyFirstColumn
+                >
                   <Table
                     className="min-w-[880px]"
                     data-workbench-export-table="achievement-unlocks"

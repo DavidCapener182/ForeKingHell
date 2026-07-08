@@ -8,6 +8,7 @@ describe("shared round page source", () => {
   it("keeps the public scorecard table captioned and keyboardable", () => {
     expect(source).toContain("TableCaption");
     expect(source).toContain('label="Shared scorecard table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('aria-describedby="shared-scorecard-summary"');
     expect(source).toContain('id="shared-scorecard-summary"');
     expect(source).toContain("Shared round scorecard");

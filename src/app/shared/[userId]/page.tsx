@@ -200,6 +200,7 @@ export default async function SharedAccountPage({ params }: PageProps) {
               <DataTableFrame
                 mainTable
                 mainTableLabel="Shared account recent sessions table"
+                stickyFirstColumn
                 mobile={
                   <MobileDataList>
                     {data.recentRounds.map((round) => (

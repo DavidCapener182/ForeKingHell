@@ -13,8 +13,12 @@ describe("public profile desktop route", () => {
     expect(source).toContain('data-workbench-scope="profile-activity"');
     expect(source).toContain('data-workbench-export-table="profile-activity-ledger"');
     expect(source).toContain('mainTableLabel="Profile activity ledger table"');
+    expect(source).toContain('mainTableLabel="Profile activity ledger table" stickyFirstColumn');
     expect(source).toContain('data-workbench-scope="profile-bag-comparison"');
     expect(source).toContain('data-workbench-export-table="profile-bag-comparison"');
+    expect(source).toContain(
+      'mainTableLabel="Profile visible bag comparison table" stickyFirstColumn',
+    );
     expect(source).toContain("Privacy-filtered activity");
     expect(source).toContain("Bag numbers are private or do not have enough trusted shots yet.");
     expect(source).toContain("tabIndex={0}");

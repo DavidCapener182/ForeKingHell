@@ -373,7 +373,7 @@ function DeltaTable({
         exportFileName="forekinghell-club-comparison-metrics.csv"
         className="mb-3"
       />
-      <DataTableFrame mainTable mainTableLabel="Club comparison metrics table">
+      <DataTableFrame mainTable mainTableLabel="Club comparison metrics table" stickyFirstColumn>
         <Table
           className="min-w-[920px]"
           data-workbench-export-table="club-comparison-metrics"

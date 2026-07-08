@@ -30,6 +30,9 @@ describe("compare desktop workbench", () => {
     expect(clubClientSource).toContain('exportTableId="club-comparison-metrics"');
     expect(clubClientSource).toContain('data-workbench-export-table="club-comparison-metrics"');
     expect(clubClientSource).toContain('mainTableLabel="Club comparison metrics table"');
+    expect(clubClientSource).toContain(
+      'mainTableLabel="Club comparison metrics table" stickyFirstColumn',
+    );
     expect(clubClientSource).toContain('className="min-w-[920px]"');
     expect(clubClientSource).toContain("<TableCaption");
     expect(clubClientSource).toContain("tabIndex={0}");

@@ -797,6 +797,7 @@ export default async function RoundDetailPage({ params }: PageProps) {
               <DataTableFrame
                 mainTable
                 mainTableLabel="Round shot club corrections table"
+                stickyFirstColumn
                 mobile={
                   <MobileDataList>
                     {round.shots.length > 0 ? (

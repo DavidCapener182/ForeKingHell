@@ -266,6 +266,7 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
       <DataTableFrame
         mainTable
         mainTableLabel="Simulator session delta table"
+        stickyFirstColumn
         mobile={
           <MobileDataList>
             {rows.map((row) => (
@@ -377,6 +378,7 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
       />
       <DataTableFrame
         label="Simulator equipment impact table"
+        stickyFirstColumn
         mobile={
           <MobileDataList>
             {impacts.map((impact) => (

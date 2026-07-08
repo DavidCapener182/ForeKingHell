@@ -137,6 +137,7 @@ export default async function SharedRoundPage({ params }: PageProps) {
                 </MobileDataList>
               }
               label="Shared scorecard table"
+              stickyFirstColumn
             >
               <Table className="min-w-[720px]" aria-describedby="shared-scorecard-summary">
                 <TableCaption id="shared-scorecard-summary" className="sr-only">
