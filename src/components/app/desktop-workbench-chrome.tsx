@@ -822,7 +822,13 @@ export function DesktopWorkbenchChrome({
           </div>
           <div className="grid min-h-0 gap-0 md:grid-cols-[minmax(0,1fr)_18rem]">
             <ScrollArea className="max-h-[29rem]">
-              <div id="command-palette-results" className="grid gap-2 p-3" data-command-results>
+              <div
+                id="command-palette-results"
+                className="grid gap-2 p-3"
+                role="listbox"
+                aria-label="Command palette results"
+                data-command-results
+              >
                 {filteredCommands.length > 0 ? (
                   filteredCommands.map((command, index) => (
                     <CommandLink
@@ -1051,6 +1057,9 @@ function CommandLink({
 
   return (
     <div
+      id={commandOptionId(index)}
+      role="option"
+      aria-selected={active}
       className={cn(
         "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-white/72 transition-[border-color,background-color,box-shadow] hover:border-emerald-300 hover:bg-white",
         active
@@ -1060,7 +1069,6 @@ function CommandLink({
       data-command-active={active ? "true" : undefined}
     >
       <Link
-        id={commandOptionId(index)}
         href={command.href}
         prefetch={false}
         onClick={handleClick}

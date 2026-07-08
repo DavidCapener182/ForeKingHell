@@ -248,4 +248,24 @@ describe("desktop workbench chrome source", () => {
     expect(dialogBlock).toContain("shortcutRows.map");
     expect(dialogBlock).toContain("<ShortcutKey");
   });
+
+  it("exposes command-palette results as a keyboard-readable listbox", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+    const dialogBlock =
+      source.match(/<Dialog open={commandOpen}[\s\S]*?<Sheet open={assistantSheetOpen}/)?.[0] ?? "";
+    const commandLinkBlock =
+      source.match(/function CommandLink\([\s\S]*?function commandOptionId/)?.[0] ?? "";
+
+    expect(dialogBlock).toContain('role="combobox"');
+    expect(dialogBlock).toContain('aria-controls="command-palette-results"');
+    expect(dialogBlock).toContain("aria-activedescendant");
+    expect(dialogBlock).toContain('role="listbox"');
+    expect(dialogBlock).toContain('aria-label="Command palette results"');
+    expect(commandLinkBlock).toContain("id={commandOptionId(index)}");
+    expect(commandLinkBlock).toContain('role="option"');
+    expect(commandLinkBlock).toContain("aria-selected={active}");
+  });
 });
