@@ -98,6 +98,19 @@ export function DesktopWorkbenchControls({
   const hydrated = hydratedStorageSignature === storageSignature;
 
   const visibleCount = visibleColumnIds.size;
+  const exportStatusMessage =
+    exportStatus === "done"
+      ? `Exported ${exportFileName}.`
+      : exportStatus === "missing"
+        ? "No exportable table found for this view."
+        : "";
+  const copyStatusMessage =
+    copyStatus === "done"
+      ? "Current view link copied."
+      : copyStatus === "failed"
+        ? "Current view link could not be copied."
+        : "";
+  const actionStatusMessage = [exportStatusMessage, copyStatusMessage].filter(Boolean).join(" ");
   const lockedIds = useMemo(
     () => new Set(columns.filter((column) => column.locked).map((column) => column.id)),
     [columns],
@@ -461,6 +474,14 @@ export function DesktopWorkbenchControls({
                 ? "Copy failed"
                 : "Copy link"}
           </Button>
+          <span
+            className="sr-only"
+            aria-live="polite"
+            aria-atomic="true"
+            data-workbench-action-status
+          >
+            {actionStatusMessage}
+          </span>
         </div>
       </div>
 

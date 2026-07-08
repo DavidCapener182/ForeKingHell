@@ -27,6 +27,11 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("data-filter-control");
     expect(source).toContain("data-export-current-view");
     expect(source).toContain("data-copy-current-view");
+    expect(source).toContain("data-workbench-action-status");
+    expect(source).toContain('aria-live="polite"');
+    expect(source).toContain('aria-atomic="true"');
+    expect(source).toContain("No exportable table found for this view.");
+    expect(source).toContain("Current view link could not be copied.");
   });
 
   it("lets desktop users reset table layout back to default columns and comfortable density", () => {
