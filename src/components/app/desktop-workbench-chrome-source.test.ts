@@ -278,6 +278,8 @@ describe("desktop workbench chrome source", () => {
     expect(dialogBlock).toContain('role="combobox"');
     expect(dialogBlock).toContain('aria-controls="command-palette-results"');
     expect(dialogBlock).toContain("aria-activedescendant");
+    expect(dialogBlock).toContain("commandOptionId(safeActiveCommandIndex)");
+    expect(dialogBlock).not.toContain("commandOptionId(activeCommandIndex)");
     expect(dialogBlock).toContain('role="listbox"');
     expect(dialogBlock).toContain('aria-label="Command palette results"');
     expect(commandLinkBlock).toContain("id={commandOptionId(index)}");

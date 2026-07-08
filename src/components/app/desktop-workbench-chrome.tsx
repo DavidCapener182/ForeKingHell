@@ -817,7 +817,7 @@ export function DesktopWorkbenchChrome({
                 aria-expanded={commandOpen}
                 aria-controls="command-palette-results"
                 aria-activedescendant={
-                  activeCommand ? commandOptionId(activeCommandIndex) : undefined
+                  activeCommand ? commandOptionId(safeActiveCommandIndex) : undefined
                 }
                 className="min-w-0 bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground"
               />
