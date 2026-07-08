@@ -360,8 +360,7 @@ export function TodayShotCharts({
                 rows={shapeRows}
               />
             }
-            className="lg:col-span-2"
-            chartClassName="grid place-items-center overflow-hidden"
+            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <TopDownShapeChart shots={visibleShots} />
           </ChartPanel>
@@ -1119,47 +1118,67 @@ function TopDownShapeChart({ shots }: { shots: ChartPoint[] }) {
   const model = buildTopDownShapeModel(shots);
   const yTicks = ticks(model.maxCarry, 4);
   const xTicks = [-model.maxSide, -model.maxSide / 2, 0, model.maxSide / 2, model.maxSide];
-  const yForTick = (value: number) => clampPercent(88 - (value / model.maxCarry) * 72, 8, 90);
-  const xForTick = (value: number) => clampPercent(50 + (value / model.maxSide) * 38, 5, 95);
+  const centerZone = dispersionTargetSide(model.maxSide);
+  const xScale = (value: number) =>
+    padding.left + ((value + model.maxSide) / (model.maxSide * 2)) * plotWidth;
+  const yScale = (value: number) =>
+    padding.top + plotHeight - (value / model.maxCarry) * plotHeight;
 
   return (
     <svg
-      viewBox="0 0 100 100"
-      preserveAspectRatio="xMidYMid meet"
-      className="mx-auto block aspect-square w-full max-w-[640px]"
+      viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+      className="block h-auto w-full"
       role="img"
       aria-label="Top-down shot shape chart"
     >
-      <rect x={0} y={0} width={100} height={100} fill="#eef6ef" />
-      <image
-        href="/assets/fairway-dispersion-bg.svg"
-        x={0}
-        y={0}
-        width={100}
-        height={100}
-        preserveAspectRatio="xMidYMid slice"
-        opacity={0.95}
-      />
-      <rect x={0} y={0} width={100} height={100} fill="rgba(255,255,255,0.12)" />
+      <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
       <rect
-        x={xForTick(-10)}
-        y={8}
-        width={xForTick(10) - xForTick(-10)}
-        height={80}
-        fill="rgba(16,185,129,0.1)"
+        x={xScale(-centerZone)}
+        y={padding.top}
+        width={xScale(centerZone) - xScale(-centerZone)}
+        height={plotHeight}
+        fill="#ecfdf5"
+        opacity={0.72}
       />
+      <text
+        x={xScale(-model.maxSide * 0.72)}
+        y={padding.top + 16}
+        textAnchor="middle"
+        className="fill-slate-500 text-[11px]"
+      >
+        left miss
+      </text>
+      <text
+        x={xScale(model.maxSide * 0.72)}
+        y={padding.top + 16}
+        textAnchor="middle"
+        className="fill-slate-500 text-[11px]"
+      >
+        right miss
+      </text>
+      <text
+        x={xScale(0)}
+        y={padding.top + 14}
+        textAnchor="middle"
+        className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
+      >
+        Target corridor
+      </text>
       {yTicks.map((tick) => (
         <g key={`shape-y-${tick}`}>
           <line
-            x1={8}
-            x2={95}
-            y1={yForTick(tick)}
-            y2={yForTick(tick)}
-            stroke="rgba(15,23,42,0.12)"
-            strokeWidth={0.28}
-            vectorEffect="non-scaling-stroke"
+            x1={padding.left}
+            x2={chartWidth - padding.right}
+            y1={yScale(tick)}
+            y2={yScale(tick)}
+            stroke="#e5e7eb"
           />
-          <text x={7} y={yForTick(tick) + 1.2} textAnchor="end" fill="#475569" fontSize={2.4}>
+          <text
+            x={padding.left - 10}
+            y={yScale(tick) + 4}
+            textAnchor="end"
+            className="fill-slate-600 text-[12px]"
+          >
             {tick}
           </text>
         </g>
@@ -1167,45 +1186,48 @@ function TopDownShapeChart({ shots }: { shots: ChartPoint[] }) {
       {xTicks.map((tick) => (
         <g key={`shape-x-${tick}`}>
           <line
-            x1={xForTick(tick)}
-            x2={xForTick(tick)}
-            y1={8}
-            y2={90}
-            stroke={tick === 0 ? "rgba(15,23,42,0.5)" : "rgba(15,23,42,0.14)"}
-            strokeDasharray={tick === 0 ? undefined : "1.2 1.4"}
-            strokeWidth={tick === 0 ? 0.42 : 0.28}
-            vectorEffect="non-scaling-stroke"
+            x1={xScale(tick)}
+            x2={xScale(tick)}
+            y1={padding.top}
+            y2={chartHeight - padding.bottom}
+            stroke={tick === 0 ? "#111827" : "#e5e7eb"}
+            strokeDasharray={tick === 0 ? undefined : "4 4"}
+            opacity={tick === 0 ? 0.5 : 1}
           />
-          <text x={xForTick(tick)} y={96} textAnchor="middle" fill="#475569" fontSize={2.4}>
+          <text
+            x={xScale(tick)}
+            y={chartHeight - 18}
+            textAnchor="middle"
+            className="fill-slate-600 text-[12px]"
+          >
             {formatTick(tick)}
           </text>
         </g>
       ))}
-      <text x={8} y={5} fill="#475569" fontSize={2.5}>
+      <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
         carry yd
       </text>
-      <text x={50} y={99} textAnchor="middle" fill="#475569" fontSize={2.5}>
+      <text
+        x={chartWidth / 2}
+        y={chartHeight - 5}
+        textAnchor="middle"
+        className="fill-slate-600 text-[12px]"
+      >
         left / right yd
       </text>
-      <path
-        d="M 50 88 L 50 8"
-        fill="none"
-        stroke="rgba(15,23,42,0.22)"
-        strokeDasharray="1.5 1.8"
-        strokeLinecap="round"
-        strokeWidth={0.4}
-        vectorEffect="non-scaling-stroke"
-      />
       {model.traces.map(({ shot, trace }) => (
         <path
           key={`shape-trace-${shot.id}`}
-          d={trace.path}
+          d={chartShapePath({
+            shot,
+            xScale,
+            yScale,
+          })}
           fill="none"
           stroke={trace.source === "estimated" ? shot.color : "rgba(15,23,42,0.45)"}
           strokeLinecap="round"
-          strokeWidth={trace.source === "estimated" ? 0.74 : 0.48}
-          strokeOpacity={trace.source === "estimated" ? 0.74 : 0.44}
-          vectorEffect="non-scaling-stroke"
+          strokeWidth={trace.source === "estimated" ? 1.6 : 1.1}
+          strokeOpacity={trace.source === "estimated" ? 0.36 : 0.24}
         >
           <title>{`${shotTitle(shot)}; ${shapeTraceTitle(trace)}`}</title>
         </path>
@@ -1215,24 +1237,22 @@ function TopDownShapeChart({ shots }: { shots: ChartPoint[] }) {
           key={`shape-point-${shot.id}`}
           cx={trace.landingX}
           cy={trace.landingY}
-          r={1.05}
+          r={4.8}
           fill={shot.color}
-          fillOpacity={0.92}
+          fillOpacity={0.84}
           stroke="white"
-          strokeWidth={0.42}
-          vectorEffect="non-scaling-stroke"
+          strokeWidth={1.5}
         >
           <title>{shotTitle(shot)}</title>
         </circle>
       ))}
       <circle
-        cx={50}
-        cy={88}
-        r={1.25}
-        fill="#ffffff"
+        cx={xScale(0)}
+        cy={yScale(0)}
+        r={6.5}
+        fill="white"
         stroke="#0f172a"
-        strokeWidth={0.45}
-        vectorEffect="non-scaling-stroke"
+        strokeWidth={1.8}
       />
     </svg>
   );
@@ -1252,16 +1272,27 @@ function buildTopDownShapeModel(shots: ChartPoint[]) {
   const maxSide = dispersionSideMax(points);
   const traces = points
     .map((shot) => {
+      const carryYd = shot.carryYd ?? shot.totalYd ?? null;
+      const sideCarryYd = shot.sideCarryYd;
       const trace = buildShotShapeTrace({
         id: shot.id,
-        carryYd: shot.carryYd ?? shot.totalYd ?? null,
-        sideCarryYd: shot.sideCarryYd,
+        carryYd,
+        sideCarryYd,
         launchDirectionDeg: shot.launchDirectionDeg,
         maxCarryYd: maxCarry,
         maxSideYd: maxSide,
       });
 
-      return trace ? { shot, trace } : null;
+      return trace && isNumber(carryYd) && isNumber(sideCarryYd)
+        ? {
+            shot,
+            trace: {
+              ...trace,
+              landingX: padding.left + ((sideCarryYd + maxSide) / (maxSide * 2)) * plotWidth,
+              landingY: padding.top + plotHeight - (carryYd / maxCarry) * plotHeight,
+            },
+          }
+        : null;
     })
     .filter((item): item is RenderedTopDownShapeTrace => item !== null);
 
@@ -1271,6 +1302,33 @@ function buildTopDownShapeModel(shots: ChartPoint[]) {
     maxCarry,
     maxSide,
   };
+}
+
+function chartShapePath({
+  shot,
+  xScale,
+  yScale,
+}: {
+  shot: ChartPoint;
+  xScale: (value: number) => number;
+  yScale: (value: number) => number;
+}) {
+  const carryYd = shot.carryYd ?? shot.totalYd ?? 0;
+  const sideCarryYd = shot.sideCarryYd ?? 0;
+
+  if (carryYd <= 0 || !isNumber(shot.launchDirectionDeg)) {
+    return `M ${xScale(0)} ${yScale(0)} L ${xScale(sideCarryYd)} ${yScale(carryYd)}`;
+  }
+
+  const theta = (shot.launchDirectionDeg * Math.PI) / 180;
+  const startSlope = Math.tan(theta);
+  const bendCoefficient = (sideCarryYd - startSlope * carryYd) / (carryYd * carryYd);
+
+  return Array.from({ length: 41 }, (_, index) => {
+    const downrangeYd = carryYd * (index / 40);
+    const offlineYd = bendCoefficient * downrangeYd * downrangeYd + startSlope * downrangeYd;
+    return `${index === 0 ? "M" : "L"} ${xScale(offlineYd)} ${yScale(downrangeYd)}`;
+  }).join(" ");
 }
 
 function averageDispersionPoints(points: ChartPoint[]): AverageDispersion[] {
@@ -1513,10 +1571,6 @@ function dispersionTargetSide(maxSide: number) {
 
 function niceTrajectoryMax(value: number) {
   return Math.min(150, Math.max(60, niceMax(value + 10, 10)));
-}
-
-function clampPercent(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function ticks(maxValue: number, count: number) {
