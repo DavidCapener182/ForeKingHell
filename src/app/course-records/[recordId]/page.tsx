@@ -472,7 +472,7 @@ function CourseRecordLeaderboardTable({
         exportTableId="course-record-leaderboard"
         exportFileName="forekinghell-course-record-leaderboard.csv"
       />
-      <DataTableFrame mainTable mainTableLabel="Course record leaderboard table">
+      <DataTableFrame mainTable mainTableLabel="Course record leaderboard table" stickyFirstColumn>
         <Table
           data-workbench-export-table="course-record-leaderboard"
           aria-describedby="course-record-leaderboard-summary"

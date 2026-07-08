@@ -503,7 +503,11 @@ function CourseRecordCourseTable({
         exportTableId="course-record-course-board"
         exportFileName="forekinghell-course-record-board.csv"
       />
-      <DataTableFrame mainTable mainTableLabel="Course-specific record board table">
+      <DataTableFrame
+        mainTable
+        mainTableLabel="Course-specific record board table"
+        stickyFirstColumn
+      >
         <Table
           data-workbench-export-table="course-record-course-board"
           aria-describedby="course-record-course-board-summary"

@@ -577,7 +577,7 @@ function ChallengeLeaderboardTable({
         exportFileName={`forekinghell-challenge-${data.challenge.id}-leaderboard.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table">
+      <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table" stickyFirstColumn>
         <Table
           data-workbench-export-table="challenge-leaderboard"
           aria-describedby="challenge-leaderboard-summary"
@@ -689,7 +689,7 @@ function ChallengeAttemptEvidenceTable({ data }: { data: ChallengeDetail }) {
         exportFileName={`forekinghell-challenge-${data.challenge.id}-attempts.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Challenge imported shot evidence table">
+      <DataTableFrame mainTableLabel="Challenge imported shot evidence table" stickyFirstColumn>
         <Table
           data-workbench-export-table="challenge-attempts"
           aria-describedby="challenge-attempts-summary"

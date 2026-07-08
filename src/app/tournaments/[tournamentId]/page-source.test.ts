@@ -19,6 +19,7 @@ describe("tournament detail desktop standings", () => {
     expect(source).toContain('exportTableId="tournament-standings"');
     expect(source).toContain('data-workbench-export-table="tournament-standings"');
     expect(source).toContain('mainTableLabel="Tournament standings table"');
+    expect(source).toContain('mainTableLabel="Tournament standings table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

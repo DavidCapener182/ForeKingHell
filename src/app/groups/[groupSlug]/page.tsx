@@ -497,7 +497,7 @@ function GroupMemberTable({
         exportFileName={`forekinghell-group-${group.slug}-members.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Group member roster table">
+      <DataTableFrame mainTable mainTableLabel="Group member roster table" stickyFirstColumn>
         <Table
           data-workbench-export-table="group-member-roster"
           aria-describedby="group-member-roster-summary"
@@ -622,7 +622,7 @@ function GroupChallengeTable({
         exportFileName={`forekinghell-group-${group.slug}-challenges.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Group linked challenges table">
+      <DataTableFrame mainTableLabel="Group linked challenges table" stickyFirstColumn>
         <Table
           data-workbench-export-table="group-linked-challenges"
           aria-describedby="group-linked-challenges-summary"

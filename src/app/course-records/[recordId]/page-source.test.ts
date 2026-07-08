@@ -20,6 +20,7 @@ describe("course record detail desktop board", () => {
     expect(source).toContain('exportTableId="course-record-leaderboard"');
     expect(source).toContain('data-workbench-export-table="course-record-leaderboard"');
     expect(source).toContain('mainTableLabel="Course record leaderboard table"');
+    expect(source).toContain('mainTableLabel="Course record leaderboard table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

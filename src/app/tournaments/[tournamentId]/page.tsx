@@ -784,7 +784,7 @@ function TournamentStandingsTable({
         exportTableId="tournament-standings"
         exportFileName="forekinghell-tournament-standings.csv"
       />
-      <DataTableFrame mainTable mainTableLabel="Tournament standings table">
+      <DataTableFrame mainTable mainTableLabel="Tournament standings table" stickyFirstColumn>
         <Table
           data-workbench-export-table="tournament-standings"
           aria-describedby="tournament-standings-summary"

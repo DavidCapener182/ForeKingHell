@@ -12,8 +12,10 @@ describe("group detail desktop route", () => {
     expect(source).toContain('data-workbench-scope="group-members"');
     expect(source).toContain('data-workbench-export-table="group-member-roster"');
     expect(source).toContain('mainTableLabel="Group member roster table"');
+    expect(source).toContain('mainTableLabel="Group member roster table" stickyFirstColumn');
     expect(source).toContain('data-workbench-scope="group-challenges"');
     expect(source).toContain('data-workbench-export-table="group-linked-challenges"');
+    expect(source).toContain('mainTableLabel="Group linked challenges table" stickyFirstColumn');
     expect(source).toContain("Desktop roster, rivalry and linked challenge controls");
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain("DesktopInsightRail");
