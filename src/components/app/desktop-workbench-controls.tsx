@@ -241,6 +241,15 @@ export function DesktopWorkbenchControls({
     setVisibleColumnIds(new Set(columns.map((column) => column.id)));
   }
 
+  function resetTableLayout() {
+    const allColumnIds = columns.map((column) => column.id);
+
+    setVisibleColumnIds(new Set(allColumnIds));
+    setDensity("comfortable");
+    window.localStorage.setItem(visibleColumnsKey, JSON.stringify(allColumnIds));
+    window.localStorage.setItem(densityStorageKey, "comfortable");
+  }
+
   function exportCurrentTable() {
     const table = document.querySelector<HTMLTableElement>(
       `table[data-workbench-export-table="${cssAttribute(exportTableId)}"]`,
@@ -416,6 +425,11 @@ export function DesktopWorkbenchControls({
               >
                 Compact
               </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={resetTableLayout}>
+                <LayoutDashboard className="size-4" />
+                Reset table layout
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 

@@ -28,4 +28,12 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("data-export-current-view");
     expect(source).toContain("data-copy-current-view");
   });
+
+  it("lets desktop users reset table layout back to default columns and comfortable density", () => {
+    expect(source).toContain("function resetTableLayout()");
+    expect(source).toContain("Reset table layout");
+    expect(source).toContain('setDensity("comfortable")');
+    expect(source).toContain('window.localStorage.setItem(densityStorageKey, "comfortable")');
+    expect(source).toContain("window.localStorage.setItem(visibleColumnsKey");
+  });
 });
