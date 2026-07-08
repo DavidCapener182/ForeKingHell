@@ -88,7 +88,7 @@ export const navGroups: AppNavGroup[] = [
       },
       {
         href: "/course-records",
-        label: "Records",
+        label: "Course records",
         icon: Trophy,
         isActive: (pathname) => pathname.startsWith("/course-records"),
       },

@@ -70,6 +70,9 @@ describe("desktop navigation groups", () => {
       "/tournaments",
       "/handicap",
     ]);
+    expect(
+      groups.find((group) => group.label === "Play")?.items.map((item) => item.label),
+    ).toContain("Course records");
     expect(itemHrefsByGroup.Improve).toEqual([
       "/practice",
       "/coach",
