@@ -2444,7 +2444,7 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI latest-practice rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Latest Practice/i }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(page.getByText(/AI latest-practice workbench/i)).toBeHidden();
     await expect(
       page.getByRole("region", { name: /Today dispersion chart accessibility/i }),
