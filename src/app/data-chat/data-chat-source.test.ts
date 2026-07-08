@@ -56,6 +56,9 @@ describe("data chat desktop workbench", () => {
     expect(panelSource).toContain("forekinghell-performance-report.md");
     expect(panelSource).toContain("navigator.clipboard.writeText(draft)");
     expect(panelSource).toContain("navigator.share");
+    expect(panelSource).toContain('role="status"');
+    expect(panelSource).toContain('aria-live="polite"');
+    expect(panelSource).toContain('aria-atomic="true"');
     expect(panelSource).toContain("Report copied.");
     expect(panelSource).toContain("Markdown report exported.");
     expect(panelSource).toContain("No cited records yet.");

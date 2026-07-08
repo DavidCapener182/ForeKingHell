@@ -537,7 +537,12 @@ function PerformanceReportBuilder({
         data-performance-report-preview
       />
 
-      <p className="min-h-5 text-xs font-medium text-emerald-950/75" role="status">
+      <p
+        className="min-h-5 text-xs font-medium text-emerald-950/75"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         {reportShareStatusText(shareStatus)}
       </p>
     </section>
