@@ -50,10 +50,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  DesktopInsightRail,
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  commonAiPrompts,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
@@ -98,34 +96,6 @@ const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
 });
-const progressWorkbenchPrompts = [
-  {
-    label: "Explain progress trend",
-    prompt:
-      "Explain my ForeKingHell progress trend using the visible trust, bag movement, practice plan and weekly recap metrics. Do not invent missing numbers.",
-    icon: LineChart,
-  },
-  {
-    label: "Compare with last month",
-    prompt:
-      "Compare my current progress evidence with last month. Focus on clubs that changed, confidence, and the action I should take next.",
-    icon: TrendingUp,
-  },
-  {
-    label: "Build practice plan",
-    prompt:
-      "Build a practice plan from this progress page. Use uploaded shot evidence as the source of truth and mark low-confidence recommendations.",
-    icon: Target,
-  },
-  {
-    label: "Save this insight",
-    prompt:
-      "Save the most useful insight from this progress page with the visible evidence, confidence level, and one next action.",
-    icon: Bookmark,
-  },
-  ...commonAiPrompts("progress command centre").slice(3, 4),
-];
-
 const progressBagMovementColumns: DesktopWorkbenchColumn[] = [
   { id: "club", label: "Club", locked: true },
   { id: "trust", label: "Trust" },
@@ -163,9 +133,6 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
   const summary = buildProgressSummary(data.clubs);
   const mostImproved = summary.rankings.mostImproved;
   const bagFilter = parseBagMovementFilter(params?.bag);
-  const topPracticePriority = summary.practicePlan[0] ?? null;
-  const currentProgressScore = progressScore(summary);
-  const currentProgressMomentum = progressScoreMomentum(summary);
 
   return (
     <PageShell>
@@ -181,87 +148,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
         ]}
       />
 
-      <DesktopWorkbenchLayout
-        scope="progress"
-        railBreakpoint="wide"
-        rail={
-          <DesktopInsightRail
-            title="AI progress rail"
-            description="Weekly movement, bag trust and next-practice decisions stay available while reviewing progress."
-            metrics={[
-              {
-                label: "Progress score",
-                value: `${currentProgressScore}/100`,
-                detail: progressScoreReadout(summary, currentProgressMomentum),
-                tone:
-                  currentProgressScore >= 70
-                    ? "green"
-                    : currentProgressScore >= 45
-                      ? "amber"
-                      : "pink",
-              },
-              {
-                label: "Bag trust",
-                value: `${summary.totals.averageTrust}%`,
-                detail: `${integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots across ${integerFormatter.format(summary.totals.clubs)} clubs.`,
-                tone: summary.totals.averageTrust >= 70 ? "green" : "amber",
-              },
-              {
-                label: "Practice focus",
-                value: topPracticePriority
-                  ? formatClubType(topPracticePriority.clubType)
-                  : "Baseline",
-                detail:
-                  topPracticePriority?.reason ??
-                  "Import more clean stock shots to separate the next practice priority.",
-                tone: topPracticePriority?.tone ?? "slate",
-              },
-              {
-                label: "Data confidence",
-                value:
-                  summary.dataGaps.length > 0
-                    ? `${integerFormatter.format(summary.dataGaps.length)} gaps`
-                    : "Usable",
-                detail:
-                  summary.dataGaps[0]?.detail ??
-                  "No major club baseline gap is blocking the current progress readout.",
-                tone: summary.dataGaps.length > 0 ? "amber" : "green",
-              },
-            ]}
-            evidence={[
-              `${integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots feed the progress model.`,
-              summary.bestSignal
-                ? `${summary.bestSignal.title}: ${summary.bestSignal.detail}`
-                : "No single progress signal has separated yet.",
-              topPracticePriority
-                ? `Top practice priority: ${topPracticePriority.title}.`
-                : "First useful action is building a reliable baseline.",
-              `${integerFormatter.format(summary.dataGaps.length)} club data gaps are visible before AI advice.`,
-            ]}
-            prompts={progressWorkbenchPrompts}
-            actions={[
-              {
-                label: "Shot explorer",
-                href: "/shots",
-                detail: "Review the raw evidence behind progress.",
-                icon: Table2,
-              },
-              {
-                label: "Coach desk",
-                href: "/coach",
-                detail: "Turn the signal into diagnosis and drills.",
-                icon: Brain,
-              },
-              {
-                label: "Practice planner",
-                href: "/practice",
-                detail: "Build the next measurable session.",
-                icon: ClipboardCheck,
-              },
-            ]}
-          />
-        }
-      >
+      <DesktopWorkbenchLayout scope="progress">
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>

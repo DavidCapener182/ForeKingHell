@@ -70,7 +70,6 @@ const desktopInsightRailScopes = new Set([
   "course-records",
   "courses",
   "data-chat",
-  "progress",
   "round-detail",
   "rounds",
   "shots",

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/progress/page.tsx"), "utf8");
 
 describe("progress desktop workbench source", () => {
-  it("keeps the AI progress rail and practice split from crowding laptop workbenches", () => {
+  it("keeps progress full width and practice split from crowding laptop workbenches", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
     const practicePanelBlock =
@@ -13,9 +13,9 @@ describe("progress desktop workbench source", () => {
       "";
 
     expect(layoutBlock).toContain('scope="progress"');
-    expect(layoutBlock).toContain('railBreakpoint="wide"');
-    expect(layoutBlock).toContain("DesktopInsightRail");
-    expect(layoutBlock).toContain('title="AI progress rail"');
+    expect(layoutBlock).not.toContain("DesktopInsightRail");
+    expect(layoutBlock).not.toContain("rail={");
+    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
 
     expect(practicePanelBlock).toContain(
       "min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]",
