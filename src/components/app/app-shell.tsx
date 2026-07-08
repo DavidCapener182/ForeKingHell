@@ -492,7 +492,7 @@ function SidebarDensityMenu({
           type="button"
           variant="outline"
           className="w-full justify-start rounded-lg px-2 group-data-[collapsible=icon]:justify-center"
-          aria-label="Sidebar density"
+          aria-label={`Sidebar density: ${densityLabel}`}
         >
           {density === "icon" ? (
             <PanelLeftIcon className="size-4" aria-hidden />

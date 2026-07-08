@@ -61,6 +61,14 @@ describe("app shell account data", () => {
     expect(source).toContain("window.localStorage.getItem(sidebarDensityStorageKey)");
     expect(source).toContain("window.localStorage.setItem(sidebarDensityStorageKey, nextDensity)");
     expect(source).toContain("data-sidebar-density={sidebarDensity}");
+    expect(source).toContain('type SidebarDensity = "comfortable" | "compact" | "icon"');
+    expect(source).toContain(
+      'density === "compact" ? "Compact" : density === "icon" ? "Icon-only" : "Comfortable"',
+    );
+    expect(source).toContain("aria-label={`Sidebar density: ${densityLabel}`}");
+    expect(source).toContain('<DropdownMenuRadioItem value="comfortable">');
+    expect(source).toContain('<DropdownMenuRadioItem value="compact">');
+    expect(source).toContain('<DropdownMenuRadioItem value="icon">');
     expect(source).toContain('event.key !== "ArrowDown"');
     expect(source).toContain('event.key !== "ArrowUp"');
     expect(source).toContain('event.key !== "Home"');
