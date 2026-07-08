@@ -388,7 +388,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             <MobileAccordionSection
               title="Charts"
               count={`${integerFormatter.format(chartShots.length)} shots`}
-              description="Dispersion, trajectory and top-down shape stay available without pushing the prescription down."
+              description="Dispersion now includes top-down shape lines, with trajectory beside it."
             >
               <TodayShotCharts
                 shots={chartShots}

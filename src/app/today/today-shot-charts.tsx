@@ -123,6 +123,8 @@ const dispersionChartColumns: ChartFallbackColumn[] = [
   { key: "shot", label: "Shot" },
   { key: "carry", label: "Carry" },
   { key: "side", label: "Left/right" },
+  { key: "start", label: "Start line" },
+  { key: "curve", label: "Curve" },
   { key: "total", label: "Total" },
 ];
 
@@ -132,15 +134,6 @@ const trajectoryChartColumns: ChartFallbackColumn[] = [
   { key: "carry", label: "Carry" },
   { key: "apex", label: "Apex" },
   { key: "ballSpeed", label: "Ball speed" },
-];
-
-const shapeChartColumns: ChartFallbackColumn[] = [
-  { key: "club", label: "Club" },
-  { key: "shot", label: "Shot" },
-  { key: "carry", label: "Carry" },
-  { key: "side", label: "Left/right" },
-  { key: "start", label: "Start line" },
-  { key: "curve", label: "Curve" },
 ];
 
 export function TodayShotCharts({
@@ -173,10 +166,8 @@ export function TodayShotCharts({
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
   const dispersionSummary = buildDispersionChartSummary(visibleShots);
   const trajectorySummary = buildTrajectoryChartSummary(visibleShots, trajectoryView);
-  const shapeSummary = buildShapeChartSummary(visibleShots);
   const dispersionRows = buildDispersionChartRows(visibleShots);
   const trajectoryRows = buildTrajectoryChartRows(visibleShots);
-  const shapeRows = buildShapeChartRows(visibleShots);
 
   return (
     <Card size="sm" className="premium-card today-shot-pattern-card">
@@ -311,7 +302,7 @@ export function TodayShotCharts({
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <ChartPanel
             title="Dispersion"
-            detail="Primary diagnostic: carry landing by left-right miss."
+            detail="Carry landing by left-right miss, with launch-direction traces when available."
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} />}
             fallback={
@@ -346,23 +337,6 @@ export function TodayShotCharts({
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
             <TrajectoryChart shots={visibleShots} view={trajectoryView} />
-          </ChartPanel>
-          <ChartPanel
-            title="Top-down shape"
-            detail="Launch-direction curves over the same carry and left-right landing points."
-            empty={!visibleShots.some(hasDispersionData)}
-            footer={<TopDownShapeInsightCards shots={visibleShots} />}
-            fallback={
-              <ChartAccessibleFallback
-                title="Today top-down shape"
-                summary={shapeSummary}
-                columns={shapeChartColumns}
-                rows={shapeRows}
-              />
-            }
-            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
-          >
-            <TopDownShapeChart shots={visibleShots} />
           </ChartPanel>
         </div>
         <ClubLegend clubs={clubGroups} />
@@ -422,12 +396,15 @@ function buildDispersionChartSummary(shots: ChartPoint[]) {
 
   const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd));
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd));
+  const shapeModel = buildTopDownShapeModel(points);
   const maxSide = dispersionSideMax(points);
   const targetSide = dispersionTargetSide(maxSide);
   const bestMarker = bestTargetCorridorShot(points, targetSide);
   const worstShot = worstDispersionShot(points);
 
-  return `${points.length} plotted shot${points.length === 1 ? "" : "s"}. Average carry is ${formatNullable(
+  return `${points.length} plotted shot${points.length === 1 ? "" : "s"}. ${
+    shapeModel.estimatedCount
+  } launch-direction trace${shapeModel.estimatedCount === 1 ? "" : "s"} visible. Average carry is ${formatNullable(
     averageCarry,
   )}; average left/right miss is ${formatSigned(averageSide)}. ${
     bestMarker
@@ -480,6 +457,8 @@ function buildDispersionChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
       shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
       carry: formatNullable(shot.carryYd),
       side: formatSigned(shot.sideCarryYd),
+      start: formatDegrees(shot.launchDirectionDeg),
+      curve: formatShotCurve(shot),
       total: formatNullable(shot.totalYd),
     }));
 }
@@ -497,39 +476,6 @@ function buildTrajectoryChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
       ballSpeed: isNumber(shot.ballSpeedMph)
         ? `${numberFormatter.format(shot.ballSpeedMph)} mph`
         : "-",
-    }));
-}
-
-function buildShapeChartSummary(shots: ChartPoint[]) {
-  const model = buildTopDownShapeModel(shots);
-
-  if (model.traces.length === 0) {
-    return "No top-down shot-shape data is available for the visible club filter.";
-  }
-
-  const straightCount = model.traces.length - model.estimatedCount;
-  const averageCurve = meanNumber(
-    model.traces.map(({ trace }) => (trace.source === "estimated" ? trace.curveYd : null)),
-  );
-
-  return `${model.traces.length} landing point${model.traces.length === 1 ? "" : "s"} plotted. ${
-    model.estimatedCount
-  } launch-derived curve${model.estimatedCount === 1 ? "" : "s"}; ${straightCount} straight landing line${
-    straightCount === 1 ? "" : "s"
-  } without start direction. Average curve is ${formatSigned(averageCurve)}.`;
-}
-
-function buildShapeChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
-  return buildTopDownShapeModel(shots)
-    .traces.slice(-12)
-    .map(({ shot, trace }) => ({
-      _key: shot.id,
-      club: shot.clubLabel,
-      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
-      carry: formatNullable(shot.carryYd ?? shot.totalYd ?? null),
-      side: formatSigned(shot.sideCarryYd),
-      start: formatDegrees(shot.launchDirectionDeg),
-      curve: trace.curveYd === null ? "Straight line" : formatSigned(trace.curveYd),
     }));
 }
 
@@ -680,37 +626,6 @@ function TrajectoryInsight({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TopDownShapeInsightCards({ shots }: { shots: ChartPoint[] }) {
-  const model = buildTopDownShapeModel(shots);
-  const straightCount = model.traces.length - model.estimatedCount;
-  const averageCurve = meanNumber(
-    model.traces.map(({ trace }) => (trace.source === "estimated" ? trace.curveYd : null)),
-  );
-  const playableCount = model.traces.filter(
-    ({ shot }) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) <= 20,
-  ).length;
-
-  if (model.traces.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-      <TrajectoryInsight
-        label="Shape curves"
-        value={`${model.estimatedCount}/${model.traces.length}`}
-      />
-      <TrajectoryInsight label="Landing lines" value={`${straightCount}`} />
-      <TrajectoryInsight label="Playable" value={`${playableCount}/${model.traces.length}`} />
-      <TrajectoryInsight label="Avg curve" value={formatSigned(averageCurve)} />
-      <p className="col-span-2 text-[11px] text-muted-foreground sm:col-span-4">
-        Curves require launch direction. Rows with carry and left-right landing only stay as
-        straight lines to the dispersion point.
-      </p>
-    </div>
-  );
-}
-
 function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
   if (clubs.length === 0) {
     return null;
@@ -744,6 +659,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
+  const shapeModel = buildTopDownShapeModel(points);
   const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
 
@@ -838,6 +754,23 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
       >
         left / right yd
       </text>
+      {shapeModel.traces.map(({ shot, trace }) => (
+        <path
+          key={`shape-trace-${shot.id}`}
+          d={chartShapePath({
+            shot,
+            xScale,
+            yScale,
+          })}
+          fill="none"
+          stroke={trace.source === "estimated" ? shot.color : "rgba(15,23,42,0.45)"}
+          strokeLinecap="round"
+          strokeWidth={trace.source === "estimated" ? 1.55 : 1.05}
+          strokeOpacity={trace.source === "estimated" ? 0.32 : 0.2}
+        >
+          <title>{`${shotTitle(shot)}; ${shapeTraceTitle(trace)}`}</title>
+        </path>
+      ))}
       {points.map((shot) => {
         const carry = shot.carryYd ?? shot.totalYd ?? 0;
         const side = shot.sideCarryYd ?? 0;
@@ -1110,150 +1043,6 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
             );
           })
         : null}
-    </svg>
-  );
-}
-
-function TopDownShapeChart({ shots }: { shots: ChartPoint[] }) {
-  const model = buildTopDownShapeModel(shots);
-  const yTicks = ticks(model.maxCarry, 4);
-  const xTicks = [-model.maxSide, -model.maxSide / 2, 0, model.maxSide / 2, model.maxSide];
-  const centerZone = dispersionTargetSide(model.maxSide);
-  const xScale = (value: number) =>
-    padding.left + ((value + model.maxSide) / (model.maxSide * 2)) * plotWidth;
-  const yScale = (value: number) =>
-    padding.top + plotHeight - (value / model.maxCarry) * plotHeight;
-
-  return (
-    <svg
-      viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-      className="block h-auto w-full"
-      role="img"
-      aria-label="Top-down shot shape chart"
-    >
-      <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
-      <rect
-        x={xScale(-centerZone)}
-        y={padding.top}
-        width={xScale(centerZone) - xScale(-centerZone)}
-        height={plotHeight}
-        fill="#ecfdf5"
-        opacity={0.72}
-      />
-      <text
-        x={xScale(-model.maxSide * 0.72)}
-        y={padding.top + 16}
-        textAnchor="middle"
-        className="fill-slate-500 text-[11px]"
-      >
-        left miss
-      </text>
-      <text
-        x={xScale(model.maxSide * 0.72)}
-        y={padding.top + 16}
-        textAnchor="middle"
-        className="fill-slate-500 text-[11px]"
-      >
-        right miss
-      </text>
-      <text
-        x={xScale(0)}
-        y={padding.top + 14}
-        textAnchor="middle"
-        className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
-      >
-        Target corridor
-      </text>
-      {yTicks.map((tick) => (
-        <g key={`shape-y-${tick}`}>
-          <line
-            x1={padding.left}
-            x2={chartWidth - padding.right}
-            y1={yScale(tick)}
-            y2={yScale(tick)}
-            stroke="#e5e7eb"
-          />
-          <text
-            x={padding.left - 10}
-            y={yScale(tick) + 4}
-            textAnchor="end"
-            className="fill-slate-600 text-[12px]"
-          >
-            {tick}
-          </text>
-        </g>
-      ))}
-      {xTicks.map((tick) => (
-        <g key={`shape-x-${tick}`}>
-          <line
-            x1={xScale(tick)}
-            x2={xScale(tick)}
-            y1={padding.top}
-            y2={chartHeight - padding.bottom}
-            stroke={tick === 0 ? "#111827" : "#e5e7eb"}
-            strokeDasharray={tick === 0 ? undefined : "4 4"}
-            opacity={tick === 0 ? 0.5 : 1}
-          />
-          <text
-            x={xScale(tick)}
-            y={chartHeight - 18}
-            textAnchor="middle"
-            className="fill-slate-600 text-[12px]"
-          >
-            {formatTick(tick)}
-          </text>
-        </g>
-      ))}
-      <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
-        carry yd
-      </text>
-      <text
-        x={chartWidth / 2}
-        y={chartHeight - 5}
-        textAnchor="middle"
-        className="fill-slate-600 text-[12px]"
-      >
-        left / right yd
-      </text>
-      {model.traces.map(({ shot, trace }) => (
-        <path
-          key={`shape-trace-${shot.id}`}
-          d={chartShapePath({
-            shot,
-            xScale,
-            yScale,
-          })}
-          fill="none"
-          stroke={trace.source === "estimated" ? shot.color : "rgba(15,23,42,0.45)"}
-          strokeLinecap="round"
-          strokeWidth={trace.source === "estimated" ? 1.6 : 1.1}
-          strokeOpacity={trace.source === "estimated" ? 0.36 : 0.24}
-        >
-          <title>{`${shotTitle(shot)}; ${shapeTraceTitle(trace)}`}</title>
-        </path>
-      ))}
-      {model.traces.slice(0, 120).map(({ shot, trace }) => (
-        <circle
-          key={`shape-point-${shot.id}`}
-          cx={trace.landingX}
-          cy={trace.landingY}
-          r={4.8}
-          fill={shot.color}
-          fillOpacity={0.84}
-          stroke="white"
-          strokeWidth={1.5}
-        >
-          <title>{shotTitle(shot)}</title>
-        </circle>
-      ))}
-      <circle
-        cx={xScale(0)}
-        cy={yScale(0)}
-        r={6.5}
-        fill="white"
-        stroke="#0f172a"
-        strokeWidth={1.8}
-      />
     </svg>
   );
 }
@@ -1601,6 +1390,22 @@ function formatFeet(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} ft`;
 }
 
+function formatShotCurve(shot: TodayChartShot) {
+  const carryYd = shot.carryYd ?? shot.totalYd;
+
+  if (
+    !isNumber(carryYd) ||
+    carryYd <= 0 ||
+    !isNumber(shot.sideCarryYd) ||
+    !isNumber(shot.launchDirectionDeg)
+  ) {
+    return "Landing line";
+  }
+
+  const startSlope = Math.tan((shot.launchDirectionDeg * Math.PI) / 180);
+  return formatSigned(roundOne(shot.sideCarryYd - startSlope * carryYd));
+}
+
 function formatDegrees(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} deg`;
 }
@@ -1609,6 +1414,10 @@ function formatSigned(value: number | null) {
   if (value === null) return "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${numberFormatter.format(value)} yd`;
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 function formatPercent(value: number) {
