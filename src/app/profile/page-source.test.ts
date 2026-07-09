@@ -13,6 +13,15 @@ describe("profile desktop editor", () => {
     expect(source).toContain('aria-label="Identity and privacy settings"');
     expect(source).toContain("PublicSharePreviewPanel");
     expect(source).toContain("ProfileMediaEditor");
+    expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("profileEvidenceColumns");
+    expect(source).toContain("profileEvidenceSavedViews");
+    expect(source).toContain('data-workbench-scope="profile-evidence"');
+    expect(source).toContain('data-workbench-export-table="profile-evidence-ledger"');
+    expect(source).toContain('mainTableLabel="Profile evidence ledger table"');
+    expect(source).toContain('mainTableLabel="Profile evidence ledger table" stickyFirstColumn');
+    expect(source).toContain('id="profile-evidence-ledger-summary"');
+    expect(source).toContain('id="identity-privacy"');
     expect(source).toContain("profile-settings-form");
     expect(source).not.toContain('<PageShell size="6xl">');
   });

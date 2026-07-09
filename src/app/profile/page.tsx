@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Award,
   Copy,
+  ExternalLink,
   Plus,
   QrCode,
   Settings,
@@ -29,15 +30,36 @@ import {
   PBCard,
   ProgressCard,
 } from "@/components/mobile-sports";
-import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  DataPanel,
+  DataTableFrame,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { PublicSharePreviewPanel } from "@/components/product-polish";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getDb } from "@/db/client";
 import {
   courseRecordCategories,
@@ -66,6 +88,38 @@ type ProfilePageProps = {
     tab?: string;
   }>;
 };
+
+const profileEvidenceColumns: DesktopWorkbenchColumn[] = [
+  { id: "evidence", label: "Evidence", locked: true },
+  { id: "type", label: "Type" },
+  { id: "result", label: "Result" },
+  { id: "visibility", label: "Visibility" },
+  { id: "proof", label: "Proof" },
+  { id: "action", label: "Action", locked: true },
+];
+
+const profileEvidenceSavedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Public preview",
+    href: "#profile-evidence-ledger",
+    detail: "Records and tournament rows that can shape the public profile.",
+  },
+  {
+    title: "Course records",
+    href: "/course-records",
+    detail: "Open the full records board behind the profile honours.",
+  },
+  {
+    title: "Tournament history",
+    href: "/tournaments",
+    detail: "Review event standings and multi-round context.",
+  },
+  {
+    title: "Privacy settings",
+    href: "#identity-privacy",
+    detail: "Control which profile evidence friends or public viewers can see.",
+  },
+];
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const [params, requestHeaders, profile, challenges, progressData, featureData] =
@@ -396,93 +450,16 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
           <DataHealthFeaturePanel data={featureData} />
 
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(280px,0.42fr)]">
-            <article className="premium-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Honours board</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Course champions, current records and tournament history define your golf
-                    identity.
-                  </p>
-                </div>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/course-records" prefetch={false}>
-                    Records
-                  </Link>
-                </Button>
-              </div>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {honours.records.map((record) => (
-                  <Link
-                    key={record.id}
-                    href={`/course-records/${record.recordId}`}
-                    prefetch={false}
-                    className={
-                      record.rank === 1
-                        ? "rounded-xl border border-amber-200 bg-amber-50 p-4"
-                        : "rounded-lg border bg-[#F5F6F4] p-4"
-                    }
-                  >
-                    <Badge variant={record.rank === 1 ? "default" : "outline"}>
-                      {record.rank === 1 ? "Champion" : `#${record.rank}`}
-                    </Badge>
-                    <p className="mt-3 font-semibold tracking-normal">{record.courseName}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {record.categoryName} · {record.scoreLabel}
-                    </p>
-                  </Link>
-                ))}
-                {honours.records.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-2">
-                    No course records yet.
-                  </p>
-                ) : null}
-              </div>
-            </article>
-
-            <article className="premium-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Tournament history</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Major-style and open event finishes.
-                  </p>
-                </div>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/tournaments" prefetch={false}>
-                    Events
-                  </Link>
-                </Button>
-              </div>
-              <div className="mt-4 grid gap-2">
-                {honours.tournaments.map((event) => (
-                  <Link
-                    key={event.id}
-                    href={`/tournaments/${event.tournamentId}`}
-                    prefetch={false}
-                    className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm"
-                  >
-                    <p className="font-medium">{event.title}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      #{event.rank ?? "--"} · {event.grossTotal} gross · {event.roundsCompleted}{" "}
-                      rounds
-                    </p>
-                  </Link>
-                ))}
-                {honours.tournaments.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    No tournament standings yet.
-                  </p>
-                ) : null}
-              </div>
-            </article>
-          </section>
+          <ProfileEvidenceLedger
+            username={profile.username}
+            records={honours.records}
+            tournaments={honours.tournaments}
+          />
 
           <ProfileFeaturePanel data={featureData} />
 
           <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
-            <DataPanel>
+            <DataPanel id="identity-privacy">
               <SectionHeader
                 title="Identity and privacy"
                 description="Detailed shot data stays private unless you explicitly change the visibility for generated cards."
@@ -651,6 +628,162 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type ProfileHonoursData = Awaited<ReturnType<typeof getProfileHonoursData>>;
+type ProfileEvidenceRecord = ProfileHonoursData["records"][number];
+type ProfileEvidenceTournament = ProfileHonoursData["tournaments"][number];
+
+type ProfileEvidenceRow = {
+  id: string;
+  type: "Course record" | "Tournament";
+  title: string;
+  detail: string;
+  result: string;
+  visibility: string;
+  proof: string;
+  href: string;
+  actionLabel: string;
+};
+
+function ProfileEvidenceLedger({
+  username,
+  records,
+  tournaments,
+}: {
+  username: string;
+  records: ProfileEvidenceRecord[];
+  tournaments: ProfileEvidenceTournament[];
+}) {
+  const rows = buildProfileEvidenceRows(records, tournaments);
+
+  return (
+    <section
+      id="profile-evidence-ledger"
+      className="grid gap-3"
+      data-workbench-scope="profile-evidence"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-normal">Profile evidence ledger</h2>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Course records and tournament rows that shape your public preview before you adjust
+            privacy.
+          </p>
+        </div>
+        <StatusPill tone={rows.length > 0 ? "green" : "slate"}>{rows.length} rows</StatusPill>
+      </div>
+
+      <DesktopTableWorkbenchControls
+        viewKey={`profile-evidence-${username}`}
+        scope="profile-evidence"
+        currentViewLabel={`@${username} profile evidence`}
+        resultLabel={`${rows.length} evidence rows`}
+        columns={profileEvidenceColumns}
+        suggestedViews={profileEvidenceSavedViews}
+        exportTableId="profile-evidence-ledger"
+        exportFileName={`forekinghell-profile-${username}-evidence.csv`}
+      />
+
+      <DataTableFrame mainTable mainTableLabel="Profile evidence ledger table" stickyFirstColumn>
+        <Table
+          data-workbench-export-table="profile-evidence-ledger"
+          aria-describedby="profile-evidence-ledger-summary"
+        >
+          <TableCaption id="profile-evidence-ledger-summary" className="sr-only">
+            Profile evidence ledger showing record or tournament evidence, type, result, visibility,
+            proof context and action.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="evidence"
+                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Evidence
+              </TableHead>
+              <TableHead data-column="type">Type</TableHead>
+              <TableHead data-column="result">Result</TableHead>
+              <TableHead data-column="visibility">Visibility</TableHead>
+              <TableHead data-column="proof">Proof</TableHead>
+              <TableHead data-column="action" className="text-right">
+                Action
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="evidence"
+                    className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <p className="font-semibold">{row.title}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                      {row.detail}
+                    </p>
+                  </TableCell>
+                  <TableCell data-column="type">
+                    <Badge variant={row.type === "Course record" ? "secondary" : "outline"}>
+                      {row.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell data-column="result">{row.result}</TableCell>
+                  <TableCell data-column="visibility">{row.visibility}</TableCell>
+                  <TableCell data-column="proof">{row.proof}</TableCell>
+                  <TableCell data-column="action" className="text-right">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={row.href} prefetch={false}>
+                        <ExternalLink className="size-4" />
+                        {row.actionLabel}
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                  No course records or tournament standings are ready for the profile preview yet.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
+  );
+}
+
+function buildProfileEvidenceRows(
+  records: ProfileEvidenceRecord[],
+  tournaments: ProfileEvidenceTournament[],
+): ProfileEvidenceRow[] {
+  return [
+    ...records.map((record): ProfileEvidenceRow => ({
+      id: `record-${record.id}`,
+      type: "Course record",
+      title: record.courseName,
+      detail: record.categoryName,
+      result: record.scoreLabel,
+      visibility: "Public all-time board",
+      proof: record.rank === 1 ? "Champion" : `Rank #${record.rank ?? "--"}`,
+      href: `/course-records/${record.recordId}`,
+      actionLabel: "Open record",
+    })),
+    ...tournaments.map((event): ProfileEvidenceRow => ({
+      id: `tournament-${event.id}`,
+      type: "Tournament",
+      title: event.title,
+      detail: `${event.roundsCompleted} rounds completed`,
+      result: `#${event.rank ?? "--"} - ${event.grossTotal ?? "--"} gross`,
+      visibility: "Event board",
+      proof: `${event.roundsCompleted} scored rounds`,
+      href: `/tournaments/${event.tournamentId}`,
+      actionLabel: "Open event",
+    })),
+  ];
 }
 
 function FormField({

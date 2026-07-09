@@ -1980,6 +1980,35 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("form", { name: /Identity and privacy settings/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Public view/i })).toBeVisible();
     await expect(profileWorkbench.getByText(/Public sees/i)).toBeVisible();
+    const profileEvidence = profileWorkbench.locator(
+      '[data-workbench-scope="profile-evidence"]',
+    );
+    await expect(profileEvidence).toBeVisible();
+    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
+      "aria-label",
+      "Profile evidence ledger table",
+    );
+    await expect(
+      profileEvidence.locator('table[data-workbench-export-table="profile-evidence-ledger"]'),
+    ).toBeVisible();
+
+    await profileEvidence.getByRole("button", { name: /Saved views/i }).click();
+    await expect(page.getByRole("menuitem", { name: /Course records/i })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: /Privacy settings/i })).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await profileEvidence.getByRole("button", { name: /Columns/i }).click();
+    await page.getByRole("menuitemcheckbox", { name: /^Proof$/i }).click();
+    await expect(profileEvidence.locator('th[data-column="proof"]')).toBeHidden();
+    await page.keyboard.press("Escape");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      profileEvidence.getByRole("button", { name: /^Export$/i }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(
+      /^forekinghell-profile-[a-z0-9-]+-evidence\.csv$/,
+    );
     await expect(page.getByRole("button", { name: /Save profile/i })).toBeVisible();
   });
 
