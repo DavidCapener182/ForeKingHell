@@ -27,6 +27,7 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('scope="leaderboard"');
     expect(source).toContain('exportTableId="leaderboard-players"');
     expect(source).toContain('exportFileName="forekinghell-leaderboard-players-view.csv"');
+    expect(source).toContain('data-workbench-scope="leaderboard"');
     expect(source).toContain('data-workbench-export-table="leaderboard-players"');
     expect(source).toContain('mainTableLabel="Leaderboard player table"');
     expect(playerTableBlock).toContain("stickyFirstColumn");
@@ -58,6 +59,7 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('viewKey="leaderboard-challenges"');
     expect(source).toContain('exportTableId="leaderboard-challenges"');
     expect(source).toContain('exportFileName="forekinghell-challenge-leaderboards-view.csv"');
+    expect(source).toContain('data-workbench-scope="leaderboard"');
     expect(source).toContain('data-workbench-export-table="leaderboard-challenges"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
     expect(challengeTableBlock).toContain("stickyFirstColumn");

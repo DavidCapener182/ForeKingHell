@@ -901,6 +901,7 @@ function AchievementUnlockLedger({ achievements }: { achievements: AchievementVi
                 >
                   <Table
                     className="min-w-[880px]"
+                    data-workbench-scope="achievements"
                     data-workbench-export-table="achievement-unlocks"
                     aria-describedby="achievement-unlock-ledger-summary"
                   >
@@ -933,7 +934,7 @@ function AchievementUnlockLedger({ achievements }: { achievements: AchievementVi
                         <TableRow
                           key={achievement.id}
                           tabIndex={0}
-                          className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="focus-aaa outline-none"
                         >
                           <TableCell
                             data-column="achievement"

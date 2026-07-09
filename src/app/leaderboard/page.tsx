@@ -1059,6 +1059,7 @@ function PlayerLeaderboard({
           <DataTableFrame mainTable mainTableLabel="Leaderboard player table" stickyFirstColumn>
             <Table
               className="min-w-[920px]"
+              data-workbench-scope="leaderboard"
               data-workbench-export-table="leaderboard-players"
               aria-describedby="leaderboard-player-table-summary"
             >
@@ -1648,6 +1649,7 @@ function ChallengeBoards({
         <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table" stickyFirstColumn>
           <Table
             className="min-w-[840px]"
+            data-workbench-scope="leaderboard"
             data-workbench-export-table="leaderboard-challenges"
             aria-describedby="challenge-leaderboard-table-summary"
           >
