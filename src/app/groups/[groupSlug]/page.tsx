@@ -622,7 +622,7 @@ function GroupChallengeTable({
         exportFileName={`forekinghell-group-${group.slug}-challenges.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Group linked challenges table" stickyFirstColumn>
+      <DataTableFrame label="Group linked challenges table" stickyFirstColumn>
         <Table
           data-workbench-export-table="group-linked-challenges"
           aria-describedby="group-linked-challenges-summary"

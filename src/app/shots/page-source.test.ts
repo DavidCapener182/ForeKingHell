@@ -35,6 +35,7 @@ describe("shots desktop workbench page", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('id="shots-session-imports-summary"');
     expect(source).toContain('aria-describedby="shots-session-imports-summary"');
+    expect(source).toContain('label="Latest inferred shot shape rows"');
     expect(source).toContain('data-workbench-scope="shots-shape-evidence"');
     expect(source).toContain('id="shots-shape-evidence-summary"');
     expect(source).toContain('aria-describedby="shots-shape-evidence-summary"');

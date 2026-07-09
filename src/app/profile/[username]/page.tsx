@@ -409,7 +409,7 @@ function PublicProfileBagComparison({
         exportFileName={`forekinghell-profile-${profile.username}-bag.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Profile visible bag comparison table" stickyFirstColumn>
+      <DataTableFrame label="Profile visible bag comparison table" stickyFirstColumn>
         <Table
           data-workbench-export-table="profile-bag-comparison"
           aria-describedby="profile-bag-comparison-summary"

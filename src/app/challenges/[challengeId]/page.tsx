@@ -689,7 +689,7 @@ function ChallengeAttemptEvidenceTable({ data }: { data: ChallengeDetail }) {
         exportFileName={`forekinghell-challenge-${data.challenge.id}-attempts.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Challenge imported shot evidence table" stickyFirstColumn>
+      <DataTableFrame label="Challenge imported shot evidence table" stickyFirstColumn>
         <Table
           data-workbench-export-table="challenge-attempts"
           aria-describedby="challenge-attempts-summary"

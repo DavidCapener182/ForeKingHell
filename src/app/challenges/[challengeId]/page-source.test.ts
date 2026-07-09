@@ -20,9 +20,7 @@ describe("challenge detail desktop route", () => {
     expect(source).toContain('mainTableLabel="Challenge leaderboard table" stickyFirstColumn');
     expect(source).toContain('data-workbench-scope="challenge-attempts"');
     expect(source).toContain('data-workbench-export-table="challenge-attempts"');
-    expect(source).toContain(
-      'mainTableLabel="Challenge imported shot evidence table" stickyFirstColumn',
-    );
+    expect(source).toContain('label="Challenge imported shot evidence table" stickyFirstColumn');
     expect(source).toContain("Exportable leaderboard and imported-shot evidence");
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain("DesktopInsightRail");

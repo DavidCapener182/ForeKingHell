@@ -380,7 +380,7 @@ function ShotPatternClubTable({
         exportFileName={`forekinghell-shot-pattern-${courseId}-clubs.csv`}
       />
 
-      <DataTableFrame mainTableLabel="Shot pattern club evidence table" stickyFirstColumn>
+      <DataTableFrame label="Shot pattern club evidence table" stickyFirstColumn>
         <Table
           data-workbench-export-table="shot-pattern-clubs"
           aria-describedby="shot-pattern-clubs-summary"

@@ -16,9 +16,7 @@ describe("public profile desktop route", () => {
     expect(source).toContain('mainTableLabel="Profile activity ledger table" stickyFirstColumn');
     expect(source).toContain('data-workbench-scope="profile-bag-comparison"');
     expect(source).toContain('data-workbench-export-table="profile-bag-comparison"');
-    expect(source).toContain(
-      'mainTableLabel="Profile visible bag comparison table" stickyFirstColumn',
-    );
+    expect(source).toContain('label="Profile visible bag comparison table" stickyFirstColumn');
     expect(source).toContain("Privacy-filtered activity");
     expect(source).toContain("Bag numbers are private or do not have enough trusted shots yet.");
     expect(source).toContain("tabIndex={0}");
