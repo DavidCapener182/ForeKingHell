@@ -509,6 +509,7 @@ function CourseRecordCourseTable({
         stickyFirstColumn
       >
         <Table
+          data-workbench-scope="course-records-course"
           data-workbench-export-table="course-record-course-board"
           aria-describedby="course-record-course-board-summary"
         >

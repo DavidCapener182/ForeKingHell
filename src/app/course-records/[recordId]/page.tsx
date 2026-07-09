@@ -474,6 +474,7 @@ function CourseRecordLeaderboardTable({
       />
       <DataTableFrame mainTable mainTableLabel="Course record leaderboard table" stickyFirstColumn>
         <Table
+          data-workbench-scope="course-record-detail"
           data-workbench-export-table="course-record-leaderboard"
           aria-describedby="course-record-leaderboard-summary"
         >

@@ -867,6 +867,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
               >
                 <Table
                   className="min-w-[980px]"
+                  data-workbench-scope="courses"
                   data-workbench-export-table="courses"
                   aria-describedby="courses-table-summary"
                 >

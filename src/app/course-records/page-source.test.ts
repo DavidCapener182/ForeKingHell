@@ -15,10 +15,12 @@ describe("course records desktop board", () => {
     expect(source).toContain('viewKey="course-records-board"');
     expect(source).toContain('scope="course-records"');
     expect(source).toContain('exportTableId="course-records-board"');
+    expect(source).toContain('data-workbench-scope="course-records"');
     expect(source).toContain('data-workbench-export-table="course-records-board"');
     expect(source).toContain('mainTableLabel="Course records board table"');
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
+    expect(source).toContain("tabIndex={0}");
 
     for (const column of [
       "course",

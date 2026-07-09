@@ -527,6 +527,7 @@ function CourseRecordBoardTable({ courses }: { courses: CourseRecordsHubCourse[]
       />
       <DataTableFrame mainTable mainTableLabel="Course records board table" stickyFirstColumn>
         <Table
+          data-workbench-scope="course-records"
           data-workbench-export-table="course-records-board"
           aria-describedby="course-records-board-summary"
         >
@@ -562,7 +563,7 @@ function CourseRecordBoardTable({ courses }: { courses: CourseRecordsHubCourse[]
           <TableBody>
             {courses.length > 0 ? (
               courses.map((course) => (
-                <TableRow key={course.id}>
+                <TableRow key={course.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="course"
                     className="sticky left-0 z-10 min-w-64 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"

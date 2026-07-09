@@ -18,6 +18,7 @@ describe("course-specific records desktop board", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
     expect(source).toContain('exportTableId="course-record-course-board"');
+    expect(source).toContain('data-workbench-scope="course-records-course"');
     expect(source).toContain('data-workbench-export-table="course-record-course-board"');
     expect(source).toContain('mainTableLabel="Course-specific record board table"');
     expect(source).toContain("stickyFirstColumn");
