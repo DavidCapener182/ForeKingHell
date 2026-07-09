@@ -584,7 +584,7 @@ test.describe("desktop workbench", () => {
   test("AI rail saved insights appear in the command palette rail", async ({ page }) => {
     skipWhenNoDesktopAuth();
 
-    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/coach");
     await expectPageReady(page, /AI coach rail/i);
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-saved-insights"));
@@ -909,7 +909,7 @@ test.describe("desktop workbench", () => {
     }
   });
 
-  test("shots workbench exposes saved views, columns, density, export and AI rail", async ({
+  test("shots workbench exposes saved views, columns, density, export and assistant entry", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
@@ -929,36 +929,45 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/shots?club=driver&sort=carry&dir=desc");
     await expectPageReady(page, /Shot explorer/i);
 
-    await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.getByRole("complementary", { name: /AI shot analyst/i })).toBeVisible();
+    const shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    const shotsToolbar = shotsWorkbench.locator("[data-desktop-workbench-toolbar]");
 
-    await page.getByRole("button", { name: /Saved views/i }).click();
+    await expect(shotsToolbar).toBeVisible();
+    await expectNoAiRail(page, /AI shot analyst/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Shots/i }),
+    ).toBeVisible();
+
+    await shotsToolbar.getByRole("button", { name: /Saved views/i }).click();
     await expect(page.getByRole("menuitem", { name: /Save current view/i })).toBeVisible();
     await expect(page.getByText(/AI suggested filters/i)).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: /Columns/i }).click();
+    await shotsToolbar.getByRole("button", { name: /Columns/i }).click();
     await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
     await expect(page.locator('th[data-column="launch"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Density", exact: true }).click();
+    await shotsToolbar.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
     await page.keyboard.press("Escape");
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: /^Export$/i }).click(),
+      shotsToolbar.getByRole("button", { name: /^Export$/i }).click(),
     ]);
     expect(download.suggestedFilename()).toBe("forekinghell-shots-view.csv");
-    await expect(page.getByRole("button", { name: /Exported/i })).toBeVisible();
+    await expect(shotsToolbar.getByRole("button", { name: /Exported/i })).toBeVisible();
 
-    await page.getByRole("button", { name: /Copy link/i }).click();
-    await expect(page.getByRole("button", { name: /Copied/i })).toBeVisible();
+    await shotsToolbar.getByRole("button", { name: /Copy link/i }).click();
+    await expect(shotsToolbar.getByRole("button", { name: /Copied/i })).toBeVisible();
+    const expectedCopiedViewLink = await page.evaluate(
+      () => `${window.location.origin}${window.location.pathname}${window.location.search}`,
+    );
     await expect
       .poll(() => page.evaluate(() => window.localStorage.getItem("fkh:e2e-copied-view-link")))
-      .toBe(`${baseUrl.origin}/shots?club=driver&sort=carry&dir=desc`);
+      .toBe(expectedCopiedViewLink);
   });
 
   test("shots workbench supports selected-shot master detail", async ({ page }) => {
@@ -1081,14 +1090,19 @@ test.describe("desktop workbench", () => {
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
   });
 
-  test("rounds workbench supports saved filters, columns, export and AI rail", async ({ page }) => {
+  test("rounds workbench supports saved filters, columns, export and assistant entry", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/rounds?filter=scorecard-only");
     await expectPageReady(page, /AI round rail/i);
 
-    await expect(page.getByRole("complementary", { name: /AI round rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI round rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
+    ).toBeVisible();
     await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
     await expect(page.getByRole("button", { name: /Scorecard only/i }).first()).toHaveAttribute(
       "data-variant",
@@ -1138,7 +1152,10 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/courses?tab=patterns");
     await expectPageReady(page, /AI course rail/i);
 
-    await expect(page.getByRole("complementary", { name: /AI course rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI course rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Courses/i }),
+    ).toBeVisible();
     await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
     await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
       "aria-label",
@@ -1448,7 +1465,7 @@ test.describe("desktop workbench", () => {
       "/bag",
     );
     await expect(clubBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Club analytics/i);
-    await expect(page.getByRole("complementary", { name: /AI club rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI club rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Club analytics/i }),
     ).toBeVisible();
@@ -2038,7 +2055,10 @@ test.describe("desktop workbench", () => {
       "/rounds",
     );
     await expect(roundBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Round review/i);
-    await expect(page.getByRole("complementary", { name: /AI round rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI round rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
+    ).toBeVisible();
     await expect(page.locator("#scorecard")).toBeVisible();
     await expect(page.locator("#course-link")).toBeVisible();
     await expect(page.getByRole("link", { name: /Scorecard/i }).first()).toBeVisible();
@@ -2405,7 +2425,10 @@ test.describe("desktop workbench", () => {
 
     const desktopPanel = page.locator('[data-data-chat-panel="desktop"]');
 
-    await expect(page.getByRole("complementary", { name: /AI data rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI data rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Data Chat/i }),
+    ).toBeVisible();
     await expect(desktopPanel.locator("#desktop-data-chat-question")).toHaveValue(prompt);
     await expect(desktopPanel.locator("[data-initial-data-chat-prompt]")).toBeVisible();
     await expect(
