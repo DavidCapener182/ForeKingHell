@@ -15,6 +15,7 @@ import { archiveImportFileAction } from "@/app/import/actions";
 import { ImportForm } from "@/app/import/import-form";
 import { MobileRapsodoConnect } from "@/app/import/mobile-rapsodo-connect";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { ImportQualityFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
@@ -771,10 +772,17 @@ function ImportFileLibrary({
                       <TableCell data-column="actions" className="text-right">
                         <form action={archiveImportFileAction}>
                           <input type="hidden" name="importFileId" value={file.id} />
-                          <Button type="submit" variant="ghost" size="sm">
+                          <ConfirmSubmitButton
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            confirmTitle="Archive import file"
+                            confirmMessage={`Archive ${file.fileName}? This removes it from the active import library without deleting linked session evidence.`}
+                            confirmActionLabel="Archive file"
+                          >
                             <Archive className="size-4" />
                             Archive
-                          </Button>
+                          </ConfirmSubmitButton>
                         </form>
                       </TableCell>
                     </TableRow>

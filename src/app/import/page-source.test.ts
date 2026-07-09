@@ -35,6 +35,11 @@ describe("import desktop file library", () => {
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("focus-aaa outline-none");
     expect(source).toContain("sticky left-0 z-20");
+    expect(source).toContain("ConfirmSubmitButton");
+    expect(source).toContain('confirmTitle="Archive import file"');
+    expect(source).toContain("confirmMessage={`Archive ${file.fileName}?");
+    expect(source).toContain("without deleting linked session evidence");
+    expect(source).toContain('confirmActionLabel="Archive file"');
 
     for (const column of ["file", "status", "session", "parse", "actions"]) {
       expect(source).toContain(`data-column="${column}"`);
