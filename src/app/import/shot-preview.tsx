@@ -1,6 +1,11 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataPair, DataTableFrame, MobileDataCard, MobileDataList } from "@/components/premium";
 import {
@@ -16,6 +21,38 @@ import {
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+
+const importShotPreviewColumns: DesktopWorkbenchColumn[] = [
+  { id: "file", label: "File", locked: true },
+  { id: "shot", label: "Shot" },
+  { id: "hole", label: "Hole" },
+  { id: "club", label: "Club" },
+  { id: "brand", label: "Brand" },
+  { id: "carry", label: "Carry" },
+  { id: "total", label: "Total" },
+  { id: "ball-speed", label: "Ball speed" },
+  { id: "launch", label: "Launch" },
+  { id: "side", label: "Side" },
+  { id: "remain", label: "Remain" },
+];
+
+const importShotPreviewSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Import library",
+    href: "/import#files",
+    detail: "Return to file status, parse results and saved import batches.",
+  },
+  {
+    title: "Shot explorer",
+    href: "/shots",
+    detail: "Review imported rows once this batch is saved.",
+  },
+  {
+    title: "Provider health",
+    href: "/providers",
+    detail: "Check sync status before blaming the CSV data.",
+  },
+];
 
 export type ShotPreviewRow = {
   fileName: string;
@@ -53,7 +90,19 @@ export function ShotPreview({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <DesktopTableWorkbenchControls
+          viewKey="import-shot-preview"
+          scope="import-shot-preview"
+          currentViewLabel="Import shot preview"
+          resultLabel={`${shots.length} parsed rows`}
+          columns={importShotPreviewColumns}
+          suggestedViews={importShotPreviewSuggestedViews}
+          exportTableId="import-shot-preview"
+          exportFileName="forekinghell-import-shot-preview.csv"
+          className="mb-3"
+        />
         <DataTableFrame
+          stickyFirstColumn
           mobile={
             <MobileDataList>
               {shots.length > 0 ? (
@@ -95,7 +144,11 @@ export function ShotPreview({
           }
           label="Import shot preview table"
         >
-          <Table aria-describedby="import-shot-preview-summary">
+          <Table
+            data-workbench-scope="import-shot-preview"
+            data-workbench-export-table="import-shot-preview"
+            aria-describedby="import-shot-preview-summary"
+          >
             <TableCaption id="import-shot-preview-summary" className="sr-only">
               Parsed shot preview before import. Distances are stored in yards and course uploads
               include hole mapping when available.
