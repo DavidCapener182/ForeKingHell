@@ -44,8 +44,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  DesktopInsightRail,
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
+  commonAiPrompts,
+  type DesktopInsightMetric,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
@@ -658,7 +661,34 @@ function TodayDesktopDashboard({
   const hasShots = data.shots.length > 0;
 
   return (
-    <DesktopWorkbenchLayout scope="today" className="hidden sm:grid">
+    <DesktopWorkbenchLayout
+      scope="today"
+      className="hidden sm:grid"
+      railBreakpoint="2xl"
+      rail={
+        <DesktopInsightRail
+          title="AI latest-practice rail"
+          description="Explain the latest practice, compare it with baseline and turn visible evidence into the next drill."
+          metrics={todayInsightMetrics(data, linkedPracticePlan)}
+          evidence={todayInsightEvidence(data, linkedPracticePlan)}
+          prompts={commonAiPrompts("latest practice review")}
+          actions={[
+            {
+              label: "Open shot rows",
+              href: shotDatabaseHref,
+              detail: "Filter, compare and export the underlying launch-monitor rows.",
+              icon: Database,
+            },
+            {
+              label: "Open planner",
+              href: "/practice",
+              detail: "Turn the latest practice readout into the next range block.",
+              icon: Dumbbell,
+            },
+          ]}
+        />
+      }
+    >
       <div
         className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
         style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
@@ -761,6 +791,99 @@ function TodayDesktopDashboard({
       </div>
     </DesktopWorkbenchLayout>
   );
+}
+
+function todayInsightMetrics(
+  data: TodayPracticeData,
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>,
+): DesktopInsightMetric[] {
+  const score = practiceScoreSummary(data);
+  const driver = driverHealthSummary(data);
+  const focus = practiceFocus(data);
+  const planResult = buildPlanResultReadout(linkedPracticePlan);
+  const metrics: DesktopInsightMetric[] = [
+    {
+      label: "Session quality",
+      value: `${score.score}/100`,
+      detail: score.sessionQualityDetail,
+      tone: score.tone,
+    },
+    {
+      label: "Scoring control",
+      value: score.scoringControlLabel,
+      detail: score.scoringDetail,
+      tone: score.scoringScore >= 8 ? "green" : score.scoringScore >= 6.5 ? "amber" : "sky",
+    },
+    {
+      label: "Driver delivery",
+      value: driver.status,
+      detail: driver.detail,
+      tone: driver.tone,
+    },
+    {
+      label: "Next action",
+      value: data.shots.length > 0 ? focus.clubText : "Import",
+      detail:
+        data.shots.length > 0
+          ? focus.problem
+          : "Import a tracked practice session before asking the assistant for a plan.",
+      tone: data.shots.length > 0 ? "amber" : "slate",
+    },
+  ];
+
+  if (planResult) {
+    metrics.splice(2, 0, {
+      label: "Plan result",
+      value: planResult.scoreLabel,
+      detail: `${planResult.label}: ${planResult.detail}`,
+      tone: planResult.tone,
+    });
+  }
+
+  return metrics;
+}
+
+function todayInsightEvidence(
+  data: TodayPracticeData,
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>,
+) {
+  const score = practiceScoreSummary(data);
+  const work = needsWorkComparison(data.clubComparisons);
+  const best = bestClubComparison(data.clubComparisons);
+  const planResult = buildPlanResultReadout(linkedPracticePlan);
+  const evidence = [
+    `${integerFormatter.format(data.shots.length)} clean shots from ${integerFormatter.format(
+      selectedClubCount(data),
+    )} clubs on ${data.dateLabel}.`,
+    `${formatRate(data.overall.today.playableRate)} playable, ${formatRate(
+      data.overall.today.straightRate,
+    )} straight and ${formatYards(data.overall.today.offlineAverageYd)} offline.`,
+    `Session quality ${score.score}/100; scoring control ${score.scoringControlLabel.toLowerCase()}.`,
+  ];
+
+  if (best) {
+    evidence.push(
+      `${best.clubLabel} was the strongest current read: ${bestPerformerDetail(best)}.`,
+    );
+  }
+
+  if (work) {
+    evidence.push(`${work.clubLabel} is the first practice job: ${opportunityShortDetail(work)}.`);
+  }
+
+  if (data.dataCleaning.excludedShotCount > 0) {
+    evidence.push(
+      `Clean scoring excluded ${integerFormatter.format(
+        data.dataCleaning.excludedShotCount,
+      )} ${data.dataCleaning.reasonLabel.toLowerCase()} shot rows.`,
+    );
+  }
+
+  if (planResult) {
+    evidence.push(`Linked practice plan result: ${planResult.label} (${planResult.scoreLabel}).`);
+  }
+
+  return evidence.slice(0, 6);
 }
 
 function TodayDesktopFilterBar({

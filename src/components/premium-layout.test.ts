@@ -62,8 +62,8 @@ describe("PageShell layout contract", () => {
     expect(railScopeBlock).toContain('"courses"');
     expect(railScopeBlock).toContain('"rounds"');
     expect(railScopeBlock).toContain('"admin"');
+    expect(railScopeBlock).toContain('"today"');
     expect(railScopeBlock).not.toContain('"dashboard"');
-    expect(railScopeBlock).not.toContain('"today"');
     expect(railScopeBlock).not.toContain('"progress"');
     expect(railScopeBlock).not.toContain('"practice"');
     expect(railScopeBlock).not.toContain('"speed"');
@@ -110,7 +110,6 @@ describe("PageShell layout contract", () => {
       "src/app/social-intelligence/page.tsx",
       "src/app/speed/page.tsx",
       "src/app/stats/training-over-time/page.tsx",
-      "src/app/today/page.tsx",
       "src/app/tournaments/page.tsx",
     ];
 

@@ -15,7 +15,7 @@ describe("desktop workbench workflow layout", () => {
     const railScopeBlock =
       source.match(/const desktopInsightRailScopes = new Set\(\[[\s\S]*?\]\);/)?.[0] ?? "";
     expect(railScopeBlock).not.toContain('"dashboard"');
-    for (const scope of ["shots", "bag", "coach", "data-chat", "admin"]) {
+    for (const scope of ["today", "shots", "bag", "coach", "data-chat", "admin"]) {
       expect(railScopeBlock).toContain(`"${scope}"`);
     }
     expect(source).toContain(

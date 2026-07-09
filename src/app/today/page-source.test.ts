@@ -5,10 +5,17 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/today/page.tsx"), "utf8");
 
 describe("latest practice desktop dashboard", () => {
-  it("keeps latest practice out of the persistent AI rail pattern", () => {
-    expect(source).toContain('<DesktopWorkbenchLayout scope="today"');
-    expect(source).not.toContain("DesktopInsightRail");
-    expect(source).not.toContain("rail={");
+  it("uses the optional desktop AI rail for latest practice evidence", () => {
+    expect(source).toContain("DesktopWorkbenchLayout");
+    expect(source).toContain('scope="today"');
+    expect(source).toContain("DesktopInsightRail");
+    expect(source).toContain('title="AI latest-practice rail"');
+    expect(source).toContain('railBreakpoint="2xl"');
+    expect(source).toContain("todayInsightMetrics(data, linkedPracticePlan)");
+    expect(source).toContain("todayInsightEvidence(data, linkedPracticePlan)");
+    expect(source).toContain('commonAiPrompts("latest practice review")');
+    expect(source).toContain('label: "Open shot rows"');
+    expect(source).toContain('label: "Open planner"');
   });
 
   it("does not split compact practice cards until very wide screens", () => {

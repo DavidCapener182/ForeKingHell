@@ -74,6 +74,7 @@ const desktopInsightRailScopes = new Set([
   "rounds",
   "shots",
   "strokes-gained",
+  "today",
 ]);
 
 export function DesktopWorkbenchLayout({
