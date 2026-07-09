@@ -24,6 +24,7 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("todayRawShotColumns");
     expect(source).toContain("todaySavedViews");
     expect(source).toContain("TableCaption");
+    expect(source).toContain("mainTable");
     expect(source).toContain('label="Club performance comparison table"');
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-scope="today-club-performance"');

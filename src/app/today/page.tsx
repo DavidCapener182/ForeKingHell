@@ -2503,6 +2503,7 @@ function ClubPerformancePanel({
           />
         </div>
         <DataTableFrame
+          mainTable
           label="Club performance comparison table"
           stickyFirstColumn
           className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
