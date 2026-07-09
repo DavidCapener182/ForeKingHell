@@ -105,6 +105,7 @@ export function ShotsMasterDetailTable({
         <ScrollArea className="w-full">
           <Table
             className="min-w-[980px]"
+            data-workbench-scope="shots"
             data-workbench-export-table="shots"
             aria-describedby="shots-table-summary"
           >

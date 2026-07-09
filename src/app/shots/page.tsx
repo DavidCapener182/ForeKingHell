@@ -58,6 +58,7 @@ import {
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -115,6 +116,29 @@ const shotSuggestedViews: DesktopSavedViewSuggestion[] = [
     title: "Latest launch numbers",
     href: "/shots?sort=launch",
     detail: "Sort the archive by launch angle for delivery review.",
+  },
+];
+const shotSessionImportColumns: DesktopWorkbenchColumn[] = [
+  { id: "file", label: "File", locked: true },
+  { id: "date", label: "Date" },
+  { id: "type", label: "Type" },
+  { id: "shots", label: "Shots", locked: true },
+];
+const shotSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Latest practice",
+    href: "/today",
+    detail: "Review the newest imported session before drilling into rows.",
+  },
+  {
+    title: "Import centre",
+    href: "/import",
+    detail: "Upload or inspect raw CSV quality before it affects analysis.",
+  },
+  {
+    title: "Rapsodo inbox",
+    href: "/rapsodo",
+    detail: "Check provider sync status and mapping issues.",
   },
 ];
 const shotSortMetrics = [
@@ -400,7 +424,21 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div data-workbench-scope="shots-session-imports" className="mb-3">
+                <DesktopTableWorkbenchControls
+                  viewKey="shots-session-imports"
+                  scope="shots-session-imports"
+                  currentViewLabel="Recent session imports"
+                  resultLabel={`${integerFormatter.format(sessionSummaries.length)} imports`}
+                  columns={shotSessionImportColumns}
+                  suggestedViews={shotSessionSuggestedViews}
+                  exportTableId="shots-session-imports"
+                  exportFileName="forekinghell-shot-session-imports.csv"
+                />
+              </div>
               <DataTableFrame
+                label="Session imports table"
+                stickyFirstColumn
                 mobile={
                   <MobileDataList>
                     {sessionSummaries.slice(0, 8).length > 0 ? (
@@ -432,19 +470,37 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                   </MobileDataList>
                 }
               >
-                <Table>
+                <Table
+                  data-workbench-scope="shots-session-imports"
+                  data-workbench-export-table="shots-session-imports"
+                  aria-describedby="shots-session-imports-summary"
+                >
+                  <TableCaption id="shots-session-imports-summary" className="sr-only">
+                    Recent session import table showing file, date, session type and saved shot
+                    count for each import.
+                  </TableCaption>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>File</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead className="text-right">Shots</TableHead>
+                      <TableHead
+                        data-column="file"
+                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
+                        File
+                      </TableHead>
+                      <TableHead data-column="date">Date</TableHead>
+                      <TableHead data-column="type">Type</TableHead>
+                      <TableHead data-column="shots" className="text-right">
+                        Shots
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sessionSummaries.slice(0, 8).map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell className="max-w-64 truncate font-medium">
+                      <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
+                        <TableCell
+                          data-column="file"
+                          className="sticky left-0 z-10 max-w-64 truncate bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        >
                           {isRoundSession(session.type) ? (
                             <Link href={`/rounds/${session.id}`} className="hover:underline">
                               {session.fileName ?? "Untitled import"}
@@ -453,9 +509,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                             (session.fileName ?? "Untitled import")
                           )}
                         </TableCell>
-                        <TableCell>{formatDate(session.date)}</TableCell>
-                        <TableCell>{formatSessionType(session.type)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell data-column="date">{formatDate(session.date)}</TableCell>
+                        <TableCell data-column="type">{formatSessionType(session.type)}</TableCell>
+                        <TableCell data-column="shots" className="text-right">
                           {integerFormatter.format(session.shotCount)}
                         </TableCell>
                       </TableRow>
@@ -837,25 +893,36 @@ function DesktopShotDispersionMap({
             ]}
           />
           <DataTableFrame mainTableLabel="Latest inferred shot shape rows">
-            <Table>
+            <Table
+              data-workbench-scope="shots-shape-evidence"
+              aria-describedby="shots-shape-evidence-summary"
+            >
+              <TableCaption id="shots-shape-evidence-summary" className="sr-only">
+                Latest inferred shot-shape evidence table showing shot, side distance and launch
+                telemetry used for the desktop shot-shape map.
+              </TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Shot</TableHead>
-                  <TableHead>Side</TableHead>
-                  <TableHead>Shape evidence</TableHead>
+                  <TableHead data-column="shot">Shot</TableHead>
+                  <TableHead data-column="side">Side</TableHead>
+                  <TableHead data-column="shape">Shape evidence</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {latestRows.map((shot) => (
-                  <TableRow key={`desktop-shape-${shot.id}`}>
-                    <TableCell className="font-medium">
+                  <TableRow
+                    key={`desktop-shape-${shot.id}`}
+                    tabIndex={0}
+                    className="focus-aaa outline-none"
+                  >
+                    <TableCell data-column="shot" className="font-medium">
                       <span className="block">{formatClubType(shot.clubType)}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatYards(shot.carryYd)} · {formatDate(shot.shotAt)}
                       </span>
                     </TableCell>
-                    <TableCell>{formatSignedYards(shot.sideCarryYd)}</TableCell>
-                    <TableCell>
+                    <TableCell data-column="side">{formatSignedYards(shot.sideCarryYd)}</TableCell>
+                    <TableCell data-column="shape">
                       {formatShapeTelemetry(shot.launchDirectionDeg, shot.spinAxis)}
                     </TableCell>
                   </TableRow>
