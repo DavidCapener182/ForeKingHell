@@ -21,6 +21,7 @@ describe("course holes desktop workspace", () => {
     expect(source).toContain('mainTableLabel="Course hole geometry table"');
     expect(source).toContain('mainTableLabel="Course hole geometry table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
+    expect(source).toContain('tabIndex={0} className="focus-aaa outline-none"');
     expect(source).toContain("#desktop-hole-form-${holeNumber}");
     expect(source).not.toContain('<PageShell size="wide">');
     expect(source).not.toContain("DesktopInsightRail");

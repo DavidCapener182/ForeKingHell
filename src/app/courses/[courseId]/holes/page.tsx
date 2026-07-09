@@ -773,7 +773,7 @@ function HoleGeometryTable({
               </TableHeader>
               <TableBody>
                 {holeRows.map(({ holeNumber, hole }) => (
-                  <TableRow key={holeNumber}>
+                  <TableRow key={holeNumber} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="hole"
                       className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
