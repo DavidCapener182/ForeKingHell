@@ -19,6 +19,7 @@ import {
   Brain,
   Check,
   Clock3,
+  Database,
   Download,
   FileText,
   Flag,
@@ -1925,6 +1926,10 @@ function deepRouteLabel(pathname: string) {
 }
 
 function getPrimaryAction(pathname: string): { label: string; href: string; icon: LucideIcon } {
+  if (pathname.startsWith("/today")) {
+    return { label: "Shot rows", href: "/shots", icon: Database };
+  }
+
   if (pathname.startsWith("/rounds")) {
     return { label: "Add round", href: "/rounds/new", icon: FileText };
   }

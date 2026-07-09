@@ -64,6 +64,21 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain('return "Event leaderboard"');
   });
 
+  it("uses a latest-practice primary action instead of a generic import action", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+    const primaryActionBlock =
+      source.match(/function getPrimaryAction[\s\S]*?\n}\n\nfunction getAssistantContext/)?.[0] ??
+      "";
+
+    expect(primaryActionBlock).toContain('pathname.startsWith("/today")');
+    expect(primaryActionBlock).toContain('label: "Shot rows"');
+    expect(primaryActionBlock).toContain('href: "/shots"');
+    expect(primaryActionBlock).toContain("icon: Database");
+  });
+
   it("keeps excluded routes out of the assistant context resolver", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
