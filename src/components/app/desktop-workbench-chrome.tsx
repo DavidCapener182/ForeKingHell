@@ -922,8 +922,8 @@ export function DesktopWorkbenchChrome({
               <SheetHeader className="border-b border-border p-4 text-left">
                 <SheetTitle>AI assistant</SheetTitle>
                 <SheetDescription>
-                  Open Latest practice, Shots, Bag, Rounds, Progress, Coach or Data Chat for
-                  contextual help.
+                  Open Dashboard, Latest practice, Shots, Bag, Rounds, Courses, Progress, Coach,
+                  Data Chat or Admin for contextual help.
                 </SheetDescription>
               </SheetHeader>
             </>

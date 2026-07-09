@@ -178,6 +178,10 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain(
       "const assistantSheetOpen = assistantOpen && Boolean(assistantContext)",
     );
+    expect(source).toContain(
+      "Open Dashboard, Latest practice, Shots, Bag, Rounds, Courses, Progress, Coach,",
+    );
+    expect(source).toContain("Data Chat or Admin for contextual help.");
     expect(source).toContain("setAssistantOpen(false)");
     expect(source).toContain("[assistantContext, assistantOpen]");
     expect(source).toContain("<Sheet open={assistantSheetOpen}");
