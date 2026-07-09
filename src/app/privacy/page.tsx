@@ -42,7 +42,7 @@ const privacySections = [
 
 export default function PrivacyPage() {
   return (
-    <PageShell size="6xl">
+    <PageShell>
       <Button asChild variant="ghost" className="w-fit px-0">
         <Link href="/login" prefetch={false}>
           <ArrowLeft className="size-4" />
