@@ -177,11 +177,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 />
                 <Prompt
                   icon={<Sparkles className="size-4 text-emerald-600" />}
-                  text="Pro adds AI tournament prep, record strategy and verification analytics."
+                  text="Pro adds AI coaching, Data Chat, course strategy and deeper analytics."
                 />
                 <Prompt
                   icon={<CreditCard className="size-4 text-sky-600" />}
-                  text="Coach / Club can host leagues, majors and evidence review queues."
+                  text="Coach / Club adds 25 player seats, hosted events and evidence review."
                 />
               </div>
             </section>
