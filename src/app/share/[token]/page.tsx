@@ -4,6 +4,11 @@ import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { ArrowLeft, Link2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,6 +48,16 @@ type SharedScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecard
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const sharedScorecardColumns = [
+  { id: "hole", label: "Hole", locked: true },
+  { id: "par", label: "Par" },
+  { id: "yards", label: "Yards" },
+  { id: "score", label: "Score" },
+  { id: "putts", label: "Putts" },
+  { id: "penalties", label: "Penalties" },
+  { id: "fir", label: "FIR" },
+  { id: "gir", label: "GIR" },
+] satisfies DesktopWorkbenchColumn[];
 
 export default async function SharedRoundPage({ params }: PageProps) {
   const { token } = await params;
@@ -118,7 +133,20 @@ export default async function SharedRoundPage({ params }: PageProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <DesktopTableWorkbenchControls
+              viewKey="shared-scorecard"
+              scope="shared-scorecard"
+              currentViewLabel="Shared scorecard"
+              resultLabel={`${round.holes.length} holes`}
+              columns={sharedScorecardColumns}
+              suggestedViews={sharedScorecardSuggestedViews(token)}
+              exportTableId="shared-scorecard"
+              exportFileName="forekinghell-shared-scorecard.csv"
+              className="mb-3"
+            />
             <DataTableFrame
+              mainTable
+              mainTableLabel="Shared scorecard table"
               mobile={
                 <MobileDataList>
                   {round.holes.map((hole) => (
@@ -136,12 +164,13 @@ export default async function SharedRoundPage({ params }: PageProps) {
                   ))}
                 </MobileDataList>
               }
-              label="Shared scorecard table"
               stickyFirstColumn
             >
               <Table
+                id="shared-scorecard"
                 className="min-w-[720px]"
                 data-workbench-scope="shared-scorecard"
+                data-workbench-export-table="shared-scorecard"
                 aria-describedby="shared-scorecard-summary"
               >
                 <TableCaption id="shared-scorecard-summary" className="sr-only">
@@ -248,6 +277,28 @@ export default async function SharedRoundPage({ params }: PageProps) {
       </section>
     </PageShell>
   );
+}
+
+function sharedScorecardSuggestedViews(token: string): DesktopSavedViewSuggestion[] {
+  const baseHref = `/share/${encodeURIComponent(token)}`;
+
+  return [
+    {
+      title: "Scorecard",
+      href: `${baseHref}#shared-scorecard`,
+      detail: "Hole, par, score and scoring proof.",
+    },
+    {
+      title: "Putting review",
+      href: `${baseHref}#shared-scorecard`,
+      detail: "Keep putts visible for the shared round.",
+    },
+    {
+      title: "FIR / GIR check",
+      href: `${baseHref}#shared-scorecard`,
+      detail: "Review fairway and green-in-regulation calls.",
+    },
+  ];
 }
 
 async function getSharedRound(token: string) {
