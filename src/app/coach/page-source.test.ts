@@ -39,4 +39,17 @@ describe("coach desktop evidence workbench", () => {
     expect(source).not.toContain("railBreakpoint=");
     expect(source).toContain("rail={");
   });
+
+  it("loads social challenge context only when the coach desk asks for it", () => {
+    expect(source).toContain("type CoachSocialContext");
+    expect(source).toContain("shouldLoadCoachSocial(first(params.social))");
+    expect(source).toContain("socialLoaded ? getChallengesPageData() : Promise.resolve(null)");
+    expect(source).toContain("const socialContext: CoachSocialContext");
+    expect(source).toContain('id="coach-social-comparison"');
+    expect(source).toContain("open={socialContext.loaded ? true : undefined}");
+    expect(source).toContain("socialContext={socialContext}");
+    expect(source).toContain('loadHref="/coach?social=1#coach-social-comparison"');
+    expect(source).toContain("Social comparison is on demand");
+    expect(source).toContain("Load challenge context");
+  });
 });

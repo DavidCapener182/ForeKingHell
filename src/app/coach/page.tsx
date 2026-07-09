@@ -83,6 +83,12 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+type CoachSearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+type CoachSocialContext = {
+  loaded: boolean;
+  challenges: ChallengeListItem[];
+};
+
 const coachEvidenceColumns: DesktopWorkbenchColumn[] = [
   { id: "club", label: "Club", locked: true },
   { id: "issue", label: "Issue" },
@@ -113,12 +119,24 @@ const coachEvidenceSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-export default async function CoachPage() {
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+function shouldLoadCoachSocial(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+export default async function CoachPage({ searchParams }: { searchParams: CoachSearchParams }) {
+  const params = await searchParams;
+  const socialLoaded = shouldLoadCoachSocial(first(params.social));
   const userId = await requireCurrentUserId();
   const [data, activePlanKey, challengeData, featureData, speedCoachData] = await Promise.all([
     getProgressData(userId),
     getActivePlanKeyForUser(userId),
-    getChallengesPageData(),
+    socialLoaded ? getChallengesPageData() : Promise.resolve(null),
     getFeatureIdeasData(),
     getSpeedCoachCardData(userId),
   ]);
@@ -132,6 +150,10 @@ export default async function CoachPage() {
   );
   const aiPayload = buildAiCoachPayload(coach);
   const canUseAiCoach = planAllowsAiCoach(activePlanKey);
+  const socialContext: CoachSocialContext = {
+    loaded: socialLoaded,
+    challenges: challengeData?.active ?? [],
+  };
   const coachPromptContext = topClub
     ? `${topClub.clubName}: ${topClub.issueLabel}. ${topClub.reason}`
     : "my current ForeKingHell coach baseline";
@@ -451,20 +473,31 @@ export default async function CoachPage() {
                 className="coach-ai-grid-item"
               />
 
-              <details className="group min-w-0" style={bentoSpan(6)}>
+              <details
+                id="coach-social-comparison"
+                className="group min-w-0 scroll-mt-28"
+                open={socialContext.loaded ? true : undefined}
+                style={bentoSpan(6)}
+              >
                 <summary className="premium-card grid h-full cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
                   <span>
                     <span className="block text-lg font-semibold tracking-normal">
                       Social comparison
                     </span>
                     <span className="mt-1 block text-sm text-muted-foreground">
-                      Hidden by default so this page stays focused on your game.
+                      Challenge context loads only when you ask for it.
                     </span>
                   </span>
-                  <StatusPill tone="amber">Secondary</StatusPill>
+                  <StatusPill tone={socialContext.loaded ? "green" : "amber"}>
+                    {socialContext.loaded ? "Loaded" : "On demand"}
+                  </StatusPill>
                 </summary>
                 <div className="mt-4">
-                  <CoachSocialPrompt topClub={topClub} challenges={challengeData.active} />
+                  <CoachSocialPrompt
+                    topClub={topClub}
+                    socialContext={socialContext}
+                    loadHref="/coach?social=1#coach-social-comparison"
+                  />
                 </div>
               </details>
             </>
@@ -573,12 +606,16 @@ function CompactCoachEmptyState() {
 
 function CoachSocialPrompt({
   topClub,
-  challenges,
+  socialContext,
+  loadHref,
 }: {
   topClub: CoachClubCard | null;
-  challenges: ChallengeListItem[];
+  socialContext: CoachSocialContext;
+  loadHref: string;
 }) {
-  const challenge = findRelevantChallenge(challenges, topClub?.clubType);
+  const challenge = socialContext.loaded
+    ? findRelevantChallenge(socialContext.challenges, topClub?.clubType)
+    : null;
 
   return (
     <DataPanel>
@@ -589,17 +626,31 @@ function CoachSocialPrompt({
       />
       <CardContent className="grid gap-3">
         <p className="trust-indicator rounded-lg p-3 text-sm leading-6 text-slate-700">
-          {topClub
-            ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
-            : "Build a clean club baseline before comparing with friends or entering verified boards."}
+          {!socialContext.loaded
+            ? "Social comparison is on demand. Load challenge context when you want a challenge, record attempt, or event next step."
+            : topClub
+              ? `${topClub.clubName} is the current practice priority. Use it to pick a challenge, plan a record attempt, or prepare for an event.`
+              : "Build a clean club baseline before comparing with friends or entering verified boards."}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="w-fit">
-            <Link href={challenge ? `/challenges/${challenge.id}` : "/challenges"} prefetch={false}>
-              <Trophy className="size-4" />
-              {challenge ? `Suggested: ${challenge.title}` : "Open challenges"}
-            </Link>
-          </Button>
+          {!socialContext.loaded ? (
+            <Button asChild variant="outline" className="w-fit">
+              <Link href={loadHref} prefetch={false}>
+                <Trophy className="size-4" />
+                Load challenge context
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" className="w-fit">
+              <Link
+                href={challenge ? `/challenges/${challenge.id}` : "/challenges"}
+                prefetch={false}
+              >
+                <Trophy className="size-4" />
+                {challenge ? `Suggested: ${challenge.title}` : "Open challenges"}
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="outline" className="w-fit">
             <Link href="/course-records" prefetch={false}>
               <Award className="size-4" />
