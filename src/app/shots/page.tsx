@@ -892,7 +892,7 @@ function DesktopShotDispersionMap({
               },
             ]}
           />
-          <DataTableFrame label="Latest inferred shot shape rows">
+          <DataTableFrame label="Latest inferred shot shape rows" stickyFirstColumn>
             <Table
               data-workbench-scope="shots-shape-evidence"
               aria-describedby="shots-shape-evidence-summary"
