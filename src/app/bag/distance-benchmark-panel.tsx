@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { BarChart3 } from "lucide-react";
 
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import { CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -144,6 +149,56 @@ const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
 const METRIC_BY_KEY = new Map(METRICS.map((metric) => [metric.key, metric]));
 const CARRY_METRIC = metricByKey("carryYd");
 const FLIGHT_METRIC_KEYS = new Set<ClubBenchmarkMetricKey>(["maxHeightYd", "landAngleDeg"]);
+
+const benchmarkCarryColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "model", label: "Model" },
+  { id: "your-carry", label: "Your carry" },
+  { id: "level", label: "Level" },
+  { id: "next", label: "Next" },
+  { id: "benchmark-band", label: "Benchmark band" },
+  { id: "tour-anchor", label: "Tour anchor" },
+  { id: "sample", label: "Sample" },
+];
+
+const benchmarkMetricColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "model", label: "Model" },
+  { id: "current-value", label: "Current value" },
+  { id: "metric-level", label: "Level" },
+  { id: "metric-target", label: "Target" },
+  { id: "metric-band", label: "Benchmark band" },
+  { id: "tour-anchor", label: "Tour anchor" },
+  { id: "sample", label: "Sample" },
+];
+
+const benchmarkPeerColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "metric", label: "Metric" },
+  { id: "you", label: "You" },
+  { id: "peer-median", label: "Peer median" },
+  { id: "top-quartile", label: "Top 25%" },
+  { id: "percentile", label: "Percentile" },
+  { id: "peer-sample", label: "Peer sample" },
+];
+
+const benchmarkSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Full bag gapping",
+    href: "/bag#bag-gapping-table",
+    detail: "Compare benchmark context with playable stock distances.",
+  },
+  {
+    title: "PB evidence",
+    href: "/bag/longest#longest-shot-pb-table",
+    detail: "Audit the longest-shot records behind the bag ceiling.",
+  },
+  {
+    title: "Shot explorer",
+    href: "/shots",
+    detail: "Filter and export the launch-monitor rows that feed these benchmarks.",
+  },
+];
 
 export function DistanceBenchmarkPanel({
   rows,
@@ -377,9 +432,22 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame label="Distance benchmark carry table">
+        <DesktopTableWorkbenchControls
+          viewKey="distance-benchmark-carry"
+          scope="distance-benchmark-carry"
+          currentViewLabel="Carry benchmark table"
+          resultLabel={`${rows.length} clubs`}
+          columns={benchmarkCarryColumns}
+          suggestedViews={benchmarkSuggestedViews}
+          exportTableId="distance-benchmark-carry"
+          exportFileName="forekinghell-distance-benchmark-carry.csv"
+          className="mb-3"
+        />
+        <DataTableFrame label="Distance benchmark carry table" stickyFirstColumn>
           <Table
             className={BENCHMARK_TABLE_CLASS}
+            data-workbench-scope="distance-benchmark-carry"
+            data-workbench-export-table="distance-benchmark-carry"
             aria-describedby="distance-benchmark-carry-summary"
           >
             <TableCaption id="distance-benchmark-carry-summary" className="sr-only">
@@ -540,9 +608,22 @@ function LevelMetricContent({
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame label={`${metric.shortLabel} benchmark table`}>
+        <DesktopTableWorkbenchControls
+          viewKey={`distance-benchmark-${metric.key}`}
+          scope={`distance-benchmark-${metric.key}`}
+          currentViewLabel={`${metric.shortLabel} benchmark table`}
+          resultLabel={`${comparisons.length} clubs`}
+          columns={benchmarkMetricColumns}
+          suggestedViews={benchmarkSuggestedViews}
+          exportTableId={`distance-benchmark-${metric.key}`}
+          exportFileName={`forekinghell-${metric.key}-benchmark.csv`}
+          className="mb-3"
+        />
+        <DataTableFrame label={`${metric.shortLabel} benchmark table`} stickyFirstColumn>
           <Table
             className={BENCHMARK_TABLE_CLASS}
+            data-workbench-scope={`distance-benchmark-${metric.key}`}
+            data-workbench-export-table={`distance-benchmark-${metric.key}`}
             aria-describedby={`${metric.key}-benchmark-summary`}
           >
             <TableCaption id={`${metric.key}-benchmark-summary`} className="sr-only">
@@ -718,8 +799,24 @@ function PeerComparisonContent({
       </MobileAccordionSection>
 
       <div className="hidden sm:block">
-        <DataTableFrame label="Peer benchmark comparison table">
-          <Table className="min-w-[1080px]" aria-describedby="peer-benchmark-comparison-summary">
+        <DesktopTableWorkbenchControls
+          viewKey="distance-benchmark-peers"
+          scope="distance-benchmark-peers"
+          currentViewLabel="Peer benchmark comparison"
+          resultLabel={`${peerRows.length} rows`}
+          columns={benchmarkPeerColumns}
+          suggestedViews={benchmarkSuggestedViews}
+          exportTableId="distance-benchmark-peers"
+          exportFileName="forekinghell-distance-benchmark-peers.csv"
+          className="mb-3"
+        />
+        <DataTableFrame label="Peer benchmark comparison table" stickyFirstColumn>
+          <Table
+            className="min-w-[1080px]"
+            data-workbench-scope="distance-benchmark-peers"
+            data-workbench-export-table="distance-benchmark-peers"
+            aria-describedby="peer-benchmark-comparison-summary"
+          >
             <TableCaption id="peer-benchmark-comparison-summary" className="sr-only">
               Peer benchmark comparison table showing each club metric beside peer median, top 25
               percent value, percentile and peer sample.

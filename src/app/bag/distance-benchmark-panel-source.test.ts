@@ -9,7 +9,13 @@ const source = readFileSync(
 
 describe("distance benchmark panel source", () => {
   it("keeps benchmark comparison tables captioned and keyboardable", () => {
+    expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("benchmarkCarryColumns");
+    expect(source).toContain("benchmarkMetricColumns");
+    expect(source).toContain("benchmarkPeerColumns");
+    expect(source).toContain("benchmarkSuggestedViews");
     expect(source).toContain("TableCaption");
+    expect(source).toContain("stickyFirstColumn");
 
     for (const summaryId of [
       "distance-benchmark-carry-summary",
@@ -22,6 +28,15 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("Carry benchmark table comparing each club");
     expect(source).toContain("benchmark table comparing each club");
     expect(source).toContain("Peer benchmark comparison table");
+    expect(source).toContain('viewKey="distance-benchmark-carry"');
+    expect(source).toContain('data-workbench-scope="distance-benchmark-carry"');
+    expect(source).toContain('data-workbench-export-table="distance-benchmark-carry"');
+    expect(source).toContain('viewKey="distance-benchmark-peers"');
+    expect(source).toContain('data-workbench-scope="distance-benchmark-peers"');
+    expect(source).toContain('data-workbench-export-table="distance-benchmark-peers"');
+    expect(source).toContain("viewKey={`distance-benchmark-${metric.key}`}");
+    expect(source).toContain("data-workbench-scope={`distance-benchmark-${metric.key}`}");
+    expect(source).toContain("data-workbench-export-table={`distance-benchmark-${metric.key}`}");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("focus-aaa outline-none");
     expect(source).toContain("sticky left-0 z-20");
