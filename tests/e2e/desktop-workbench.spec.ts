@@ -2951,6 +2951,24 @@ test.describe("desktop workbench", () => {
       "href",
       "/providers#provider-jobs",
     );
+    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
+      "aria-label",
+      "Admin system checks table",
+    );
+    await expect(
+      page.locator('table[data-workbench-export-table="admin-system-checks"]'),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await page.getByRole("menuitemcheckbox", { name: /Impact/i }).click();
+    await expect(page.locator('th[data-column="impact"]')).toBeHidden();
+    await page.keyboard.press("Escape");
+    const [systemChecksDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: /^Export$/i }).click(),
+    ]);
+    expect(systemChecksDownload.suggestedFilename()).toBe(
+      "forekinghell-admin-system-checks.csv",
+    );
 
     await page.setViewportSize({ width: 2048, height: 1100 });
     await gotoAppRoute(page, "/admin");
