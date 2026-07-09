@@ -2778,6 +2778,43 @@ test.describe("desktop workbench", () => {
     }
   });
 
+  test("dashboard and latest practice keep laptop workspaces readable without AI rails", async ({
+    page,
+  }) => {
+    skipWhenNoDesktopAuth();
+    test.setTimeout(120_000);
+
+    const routes = [
+      {
+        path: "/dashboard",
+        scope: "dashboard",
+        ready: /Quick answers/i,
+        rail: /AI performance rail/i,
+      },
+      {
+        path: "/today",
+        scope: "today",
+        ready: /Best performer|Practice score/i,
+        rail: /AI latest-practice rail/i,
+      },
+    ];
+
+    for (const viewport of [
+      { width: 1280, height: 720, label: "1280x720" },
+      { width: 1440, height: 900, label: "1440x900" },
+    ]) {
+      await page.setViewportSize(viewport);
+
+      for (const route of routes) {
+        await gotoAppRoute(page, route.path);
+        await expectAppText(page, route.ready, 45_000);
+        await expectNoAiRail(page, route.rail);
+        await expectNoHorizontalOverflow(page, `${viewport.label} ${route.path}`);
+        await expectNoCrampedWorkbenchText(page, route.scope, `${viewport.label} ${route.path}`);
+      }
+    }
+  });
+
   test("small-laptop desktop routes avoid inline AI workbench slabs", async ({ page }) => {
     skipWhenNoDesktopAuth();
     test.setTimeout(240_000);

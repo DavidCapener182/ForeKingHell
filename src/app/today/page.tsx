@@ -4519,7 +4519,7 @@ function confidenceMeterReadout(
     ((comparison.today.offlineAverageYd ?? 0) >= 10 || (comparison.today.straightRate ?? 100) < 50)
   ) {
     return {
-      label: "Trust for play - monitor start line",
+      label: "Monitor start line",
       reason,
       tone: "amber",
     };
@@ -4527,7 +4527,7 @@ function confidenceMeterReadout(
 
   if (clubControlLabel(comparison.today) === "Playable but not scoring-tight") {
     return {
-      label: "Playable only - tighten start line",
+      label: "Tighten start line",
       reason,
       tone: "amber",
     };

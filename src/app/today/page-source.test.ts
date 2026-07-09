@@ -93,8 +93,8 @@ describe("latest practice desktop dashboard", () => {
 
   it("uses scoring-trust language instead of generic confidence copy", () => {
     expect(source).toContain("Scoring trust");
-    expect(source).toContain("Trust for play - monitor start line");
-    expect(source).toContain("Playable only - tighten start line");
+    expect(source).toContain("Monitor start line");
+    expect(source).toContain("Tighten start line");
     expect(source).not.toContain("Which clubs can you trust?");
   });
 
