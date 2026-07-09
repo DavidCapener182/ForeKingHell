@@ -20,7 +20,8 @@ describe("latest practice desktop dashboard", () => {
 
   it("does not split compact practice cards until very wide screens", () => {
     expect(source).toContain("min-[1900px]:grid-cols-2");
-    expect(source).toContain("2xl:flex-row");
+    expect(source).toContain("min-[1900px]:flex-row");
+    expect(source).not.toContain("2xl:flex-row");
     expect(source).toContain("md:grid-cols-2 2xl:grid-cols-3");
     expect(source).not.toContain("md:grid-cols-2 xl:grid-cols-3");
   });

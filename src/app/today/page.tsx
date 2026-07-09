@@ -1116,7 +1116,7 @@ function TodayPracticeModePanel({
   return (
     <DataPanel className="h-full gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
       <div className="grid gap-3 p-3 lg:p-4">
-        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
+        <div className="flex flex-col gap-3 min-[1900px]:flex-row min-[1900px]:items-start min-[1900px]:justify-between">
           <div className="flex min-w-0 gap-3">
             <PracticeCardIllustration kind="target" tone="green" size="sm" />
             <div className="min-w-0">
