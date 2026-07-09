@@ -43,7 +43,12 @@ import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import {
+  DesktopTableWorkbenchControls,
+  DesktopWorkbenchLayout,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
 import {
   Table,
   TableBody,
@@ -110,6 +115,50 @@ type HighlightKind = "record" | "tie" | "close";
 type ClubSort = "bag" | "best" | "worst";
 type ReviewTone = "green" | "sky" | "pink" | "amber" | "slate";
 type PracticeReviewMode = "clean" | "raw";
+
+const todayClubPerformanceColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "call", label: "Call" },
+  { id: "shots", label: "Shots" },
+  { id: "carry", label: "Carry" },
+  { id: "offline", label: "Offline" },
+  { id: "straight", label: "Straight" },
+  { id: "playable", label: "Playable" },
+  { id: "signal", label: "Signal" },
+];
+
+const todayRawShotColumns: DesktopWorkbenchColumn[] = [
+  { id: "session", label: "Session", locked: true },
+  { id: "shot", label: "Shot" },
+  { id: "club", label: "Club" },
+  { id: "type", label: "Type" },
+  { id: "quality", label: "Quality" },
+  { id: "carry", label: "Carry" },
+  { id: "total", label: "Total" },
+  { id: "side", label: "Side" },
+  { id: "start", label: "Start" },
+  { id: "launch", label: "Launch" },
+  { id: "ball", label: "Ball speed" },
+  { id: "smash", label: "Smash" },
+];
+
+const todaySavedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Latest practice",
+    href: "/today",
+    detail: "Review the freshest import, club calls and clean scoring evidence.",
+  },
+  {
+    title: "Worst clubs first",
+    href: "/today?clubSort=worst",
+    detail: "Put the practice opportunities at the top of the comparison board.",
+  },
+  {
+    title: "Shot explorer",
+    href: "/shots",
+    detail: "Open the underlying launch-monitor rows with full filters and export.",
+  },
+];
 
 type ClubHighlight = {
   id: string;
@@ -2441,8 +2490,21 @@ function ClubPerformancePanel({
           </p>
           <ClubSortControls data={data} activeSort={sort} />
         </div>
+        <div data-workbench-scope="today-club-performance">
+          <DesktopTableWorkbenchControls
+            viewKey="today-club-performance"
+            scope="today-club-performance"
+            currentViewLabel="Latest practice club performance"
+            resultLabel={`${integerFormatter.format(comparisons.length)} compared clubs`}
+            columns={todayClubPerformanceColumns}
+            suggestedViews={todaySavedViews}
+            exportTableId="today-club-performance"
+            exportFileName="forekinghell-latest-practice-club-performance.csv"
+          />
+        </div>
         <DataTableFrame
           label="Club performance comparison table"
+          stickyFirstColumn
           className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
           mobile={
             <MobileHorizontalRail
@@ -2498,6 +2560,8 @@ function ClubPerformancePanel({
           <Table
             className="w-full"
             containerClassName="overflow-x-visible"
+            data-workbench-scope="today-club-performance"
+            data-workbench-export-table="today-club-performance"
             aria-describedby="today-club-performance-summary"
           >
             <TableCaption id="today-club-performance-summary" className="sr-only">
@@ -2858,8 +2922,25 @@ function TodayRawShotListPanel({
           <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
         </summary>
         <div className="border-t border-slate-200 p-3">
-          <DataTableFrame label="Raw shot preview table">
-            <Table className="min-w-[1040px]" aria-describedby="today-raw-shot-preview-summary">
+          <div data-workbench-scope="today-raw-shot-preview" className="mb-3">
+            <DesktopTableWorkbenchControls
+              viewKey="today-raw-shot-preview"
+              scope="today-raw-shot-preview"
+              currentViewLabel="Latest practice raw shots"
+              resultLabel={`${integerFormatter.format(data.rawShots.length)} imported rows`}
+              columns={todayRawShotColumns}
+              suggestedViews={todaySavedViews}
+              exportTableId="today-raw-shot-preview"
+              exportFileName="forekinghell-latest-practice-raw-shots.csv"
+            />
+          </div>
+          <DataTableFrame label="Raw shot preview table" stickyFirstColumn>
+            <Table
+              className="min-w-[1040px]"
+              data-workbench-scope="today-raw-shot-preview"
+              data-workbench-export-table="today-raw-shot-preview"
+              aria-describedby="today-raw-shot-preview-summary"
+            >
               <TableCaption id="today-raw-shot-preview-summary" className="sr-only">
                 Raw shot preview table for the selected latest-practice shots with session, club,
                 shot type, quality, carry, total, side, start, launch, ball speed and smash values.

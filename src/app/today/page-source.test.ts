@@ -19,11 +19,22 @@ describe("latest practice desktop dashboard", () => {
   });
 
   it("keeps embedded latest-practice tables captioned and keyboardable", () => {
+    expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("todayClubPerformanceColumns");
+    expect(source).toContain("todayRawShotColumns");
+    expect(source).toContain("todaySavedViews");
     expect(source).toContain("TableCaption");
     expect(source).toContain('label="Club performance comparison table"');
+    expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain('data-workbench-scope="today-club-performance"');
+    expect(source).toContain('data-workbench-export-table="today-club-performance"');
+    expect(source).toContain('exportFileName="forekinghell-latest-practice-club-performance.csv"');
     expect(source).toContain('aria-describedby="today-club-performance-summary"');
     expect(source).toContain('id="today-club-performance-summary"');
     expect(source).toContain('label="Raw shot preview table"');
+    expect(source).toContain('data-workbench-scope="today-raw-shot-preview"');
+    expect(source).toContain('data-workbench-export-table="today-raw-shot-preview"');
+    expect(source).toContain('exportFileName="forekinghell-latest-practice-raw-shots.csv"');
     expect(source).toContain('aria-describedby="today-raw-shot-preview-summary"');
     expect(source).toContain('id="today-raw-shot-preview-summary"');
     expect(source).toContain("tabIndex={0}");
