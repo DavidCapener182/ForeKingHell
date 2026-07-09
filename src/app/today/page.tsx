@@ -664,7 +664,7 @@ function TodayDesktopDashboard({
     <DesktopWorkbenchLayout
       scope="today"
       className="hidden sm:grid"
-      railBreakpoint="2xl"
+      railBreakpoint="wide"
       rail={
         <DesktopInsightRail
           title="AI latest-practice rail"

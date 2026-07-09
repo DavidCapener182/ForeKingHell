@@ -2815,6 +2815,27 @@ test.describe("desktop workbench", () => {
     }
   });
 
+  test("latest practice rail waits for wide desktop and stays readable", async ({ page }) => {
+    skipWhenNoDesktopAuth();
+    test.setTimeout(90_000);
+
+    await page.setViewportSize({ width: 1536, height: 900 });
+    await gotoAppRoute(page, "/today");
+    await expectAppText(page, /Best performer|Practice score/i, 45_000);
+    await expectNoAiRail(page, /AI latest-practice rail/i);
+    await expectNoHorizontalOverflow(page, "1536 /today");
+    await expectNoCrampedWorkbenchText(page, "today", "1536 /today");
+
+    await page.setViewportSize({ width: 2200, height: 1100 });
+    await gotoAppRoute(page, "/today");
+    await expectAppText(page, /Best performer|Practice score/i, 45_000);
+    await expect(
+      page.getByRole("complementary", { name: /AI latest-practice rail/i }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page, "2200 /today");
+    await expectNoCrampedWorkbenchText(page, "today", "2200 /today");
+  });
+
   test("small-laptop desktop routes avoid inline AI workbench slabs", async ({ page }) => {
     skipWhenNoDesktopAuth();
     test.setTimeout(240_000);

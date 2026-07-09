@@ -10,7 +10,7 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain('scope="today"');
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI latest-practice rail"');
-    expect(source).toContain('railBreakpoint="2xl"');
+    expect(source).toContain('railBreakpoint="wide"');
     expect(source).toContain("todayInsightMetrics(data, linkedPracticePlan)");
     expect(source).toContain("todayInsightEvidence(data, linkedPracticePlan)");
     expect(source).toContain('commonAiPrompts("latest practice review")');
