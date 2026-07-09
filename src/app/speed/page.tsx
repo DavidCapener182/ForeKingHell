@@ -1007,6 +1007,7 @@ function SpeedEvidenceLedger({ rows }: { rows: RecentSpeedEvidenceRow[] }) {
         }
       >
         <Table
+          data-workbench-scope="speed"
           data-workbench-export-table="speed-evidence"
           aria-describedby="speed-evidence-summary"
           className="min-w-[820px]"
@@ -1043,11 +1044,7 @@ function SpeedEvidenceLedger({ rows }: { rows: RecentSpeedEvidenceRow[] }) {
           </TableHeader>
           <TableBody>
             {rows.map((session) => (
-              <TableRow
-                key={session.key}
-                tabIndex={0}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
+              <TableRow key={session.key} tabIndex={0} className="focus-aaa outline-none">
                 <TableCell
                   data-column="session"
                   className="sticky left-0 z-10 max-w-[16rem] bg-white font-medium text-slate-950 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
