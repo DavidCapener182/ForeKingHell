@@ -234,6 +234,7 @@ const actionCommands: CommandItem[] = [
 const shortcutRows = [
   { keys: ["⌘", "K"], altKeys: ["Ctrl", "K"], action: "Open command palette" },
   { keys: ["G", "D"], action: "Dashboard" },
+  { keys: ["G", "T"], action: "Latest practice" },
   { keys: ["G", "B"], action: "Bag" },
   { keys: ["G", "S"], action: "Shots" },
   { keys: ["G", "R"], action: "Rounds" },
@@ -250,6 +251,7 @@ const shortcutRows = [
 
 const shortcutRoutes = new Map([
   ["d", "/dashboard"],
+  ["t", "/today"],
   ["b", "/bag"],
   ["s", "/shots"],
   ["r", "/rounds"],

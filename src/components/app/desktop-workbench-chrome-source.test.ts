@@ -234,6 +234,7 @@ describe("desktop workbench chrome source", () => {
     for (const shortcut of [
       "Open command palette",
       "Dashboard",
+      "Latest practice",
       "Bag",
       "Shots",
       "Rounds",
@@ -261,6 +262,7 @@ describe("desktop workbench chrome source", () => {
 
     for (const route of [
       '["d", "/dashboard"]',
+      '["t", "/today"]',
       '["b", "/bag"]',
       '["s", "/shots"]',
       '["r", "/rounds"]',
