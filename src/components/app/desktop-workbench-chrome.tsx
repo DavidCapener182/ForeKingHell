@@ -532,11 +532,7 @@ export function DesktopWorkbenchChrome({
       }
 
       if (!event.metaKey && !event.ctrlKey && !event.altKey && key === "e") {
-        const element = findFirstElement([
-          "[data-export-current-view]",
-          "main a[href*='export']",
-          "main button[name='export']",
-        ]);
+        const element = findCurrentExportControl();
 
         if (element) {
           event.preventDefault();
@@ -2554,4 +2550,42 @@ function findFirstElement(selectors: string[]) {
   }
 
   return null;
+}
+
+function findCurrentExportControl() {
+  const mainTableId = findMainExportTableId();
+
+  if (mainTableId) {
+    const mainExportButton = findFirstElement([
+      `[data-export-current-view][data-export-table-id="${cssAttribute(mainTableId)}"]`,
+    ]);
+
+    if (mainExportButton) {
+      return mainExportButton;
+    }
+  }
+
+  return findFirstElement([
+    "[data-export-current-view]",
+    "main a[href*='export']",
+    "main button[name='export']",
+  ]);
+}
+
+function findMainExportTableId() {
+  const mainTableTarget = document.querySelector<HTMLElement>("[data-main-table-target='true']");
+
+  if (!mainTableTarget) {
+    return null;
+  }
+
+  const exportTable = mainTableTarget.matches("table[data-workbench-export-table]")
+    ? mainTableTarget
+    : mainTableTarget.querySelector<HTMLElement>("table[data-workbench-export-table]");
+
+  return exportTable?.getAttribute("data-workbench-export-table") ?? null;
+}
+
+function cssAttribute(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

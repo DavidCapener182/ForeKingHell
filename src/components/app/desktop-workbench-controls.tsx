@@ -510,6 +510,7 @@ export function DesktopWorkbenchControls({
             size="sm"
             onClick={exportCurrentTable}
             data-export-current-view
+            data-export-table-id={exportTableId}
           >
             <Download className="size-4" />
             {exportStatus === "done"

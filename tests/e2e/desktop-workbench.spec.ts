@@ -960,6 +960,12 @@ test.describe("desktop workbench", () => {
     expect(download.suggestedFilename()).toBe("forekinghell-shots-view.csv");
     await expect(shotsToolbar.getByRole("button", { name: /Exported/i })).toBeVisible();
 
+    const [shortcutDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.keyboard.press("E"),
+    ]);
+    expect(shortcutDownload.suggestedFilename()).toBe("forekinghell-shots-view.csv");
+
     await shotsToolbar.getByRole("button", { name: /Copy link/i }).click();
     await expect(shotsToolbar.getByRole("button", { name: /Copied/i })).toBeVisible();
     const expectedCopiedViewLink = await page.evaluate(

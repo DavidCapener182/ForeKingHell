@@ -349,7 +349,12 @@ describe("desktop workbench chrome source", () => {
     expect(keydownBlock).toContain('key === "/"');
     expect(keydownBlock).toContain('key === "f"');
     expect(keydownBlock).toContain('key === "e"');
+    expect(keydownBlock).toContain("findCurrentExportControl()");
     expect(keydownBlock).toContain('key === "g"');
+    expect(source).toContain("function findCurrentExportControl()");
+    expect(source).toContain("function findMainExportTableId()");
+    expect(source).toContain('document.querySelector<HTMLElement>("[data-main-table-target');
+    expect(source).toContain("[data-export-current-view][data-export-table-id=");
 
     for (const route of [
       '["d", "/dashboard"]',
