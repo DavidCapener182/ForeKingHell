@@ -10,6 +10,16 @@ describe("partners desktop operations board", () => {
     expect(source).toContain("visual={<PageArtwork");
   });
 
+  it("summarises campaign, asset and plan requirements from existing partner data", () => {
+    expect(source).toContain("PartnerOperationsSummary");
+    expect(source).toContain("activeContextualOffers");
+    expect(source).toContain("sponsorAssetCount");
+    expect(source).toContain("Campaign, asset and plan requirements");
+    expect(source).toContain("Plan requirements");
+    expect(source).toContain("Owner + label");
+    expect(source).toContain("Recent clicks");
+  });
+
   it("keeps the sponsor pipeline as an exportable desktop table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="partner-sponsors"');

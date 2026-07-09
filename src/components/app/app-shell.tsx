@@ -325,8 +325,6 @@ function MainTableSkipLink({ pathname }: { pathname: string }) {
   const [hasMainTable, setHasMainTable] = useState(false);
 
   useEffect(() => {
-    setHasMainTable(false);
-
     const findMainTable = () => Boolean(resolveMainTableTarget());
     let observer: MutationObserver | null = null;
     let initialTimer: number | null = null;
@@ -347,6 +345,7 @@ function MainTableSkipLink({ pathname }: { pathname: string }) {
     };
 
     initialTimer = window.setTimeout(() => {
+      setHasMainTable(false);
       observer = new MutationObserver(syncMainTable);
       observer.observe(document.body, { childList: true, subtree: true });
       syncMainTable();

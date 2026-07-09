@@ -12,7 +12,14 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/premium";
+import {
+  DataPair,
+  DataPanel,
+  DataTableFrame,
+  PageHeader,
+  PageShell,
+  StatusPill,
+} from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +75,10 @@ const sponsorPipelineSuggestedViews: DesktopSavedViewSuggestion[] = [
 
 export default async function PartnersPage() {
   const data = await getPartnersPageData();
+  const activeContextualOffers = data.offers.filter((offer) => Boolean(offer.targetContext)).length;
+  const sponsorAssetCount = data.sponsors.filter(
+    (sponsor) => Boolean(sponsor.websiteUrl) || Boolean(sponsor.contactEmail),
+  ).length;
 
   return (
     <PageShell>
@@ -84,6 +95,14 @@ export default async function PartnersPage() {
             { label: "Active offers", value: data.offers.length },
             { label: "Label policy", value: "Required" },
           ]}
+        />
+
+        <PartnerOperationsSummary
+          activeContextualOffers={activeContextualOffers}
+          offerCount={data.offers.length}
+          recentClickCount={data.recentClicks.length}
+          sponsorAssetCount={sponsorAssetCount}
+          sponsorCount={data.sponsors.length}
         />
 
         <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
@@ -224,6 +243,55 @@ export default async function PartnersPage() {
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function PartnerOperationsSummary({
+  activeContextualOffers,
+  offerCount,
+  recentClickCount,
+  sponsorAssetCount,
+  sponsorCount,
+}: {
+  activeContextualOffers: number;
+  offerCount: number;
+  recentClickCount: number;
+  sponsorAssetCount: number;
+  sponsorCount: number;
+}) {
+  return (
+    <DataPanel>
+      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center">
+        <div>
+          <StatusPill tone="amber">Partner operations</StatusPill>
+          <h2 className="mt-3 text-2xl font-semibold tracking-normal">
+            Campaign, asset and plan requirements
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Promote offers only when the sponsor has a contact route, the offer is clearly labelled
+            and the campaign has a golf context such as wedge, challenge or range credit.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <DataPair
+            label="Campaigns"
+            value={`${activeContextualOffers} / ${offerCount} contextual`}
+          />
+          <DataPair
+            label="Sponsor assets"
+            value={`${sponsorAssetCount} / ${sponsorCount} contactable`}
+          />
+          <DataPair
+            label="Plan requirements"
+            value="Owner + label"
+          />
+          <DataPair
+            label="Recent clicks"
+            value={`${recentClickCount} recent`}
+          />
+        </div>
+      </div>
+    </DataPanel>
   );
 }
 

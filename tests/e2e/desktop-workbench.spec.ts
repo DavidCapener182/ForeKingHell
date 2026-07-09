@@ -3083,6 +3083,15 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/partners");
     await expectAppText(page, /Sponsors and partner offers/i, 45_000);
+    await expect(page.getByText(/Campaign, asset and plan requirements/i)).toBeVisible();
+    await expect(page.getByText("Plan requirements", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
+      "aria-label",
+      "Sponsor pipeline table",
+    );
+    await expect(
+      page.locator('table[data-workbench-export-table="partner-sponsors"]'),
+    ).toBeVisible();
     await expectNoAiRail(page, /AI partner rail/i);
 
     await gotoAppRoute(page, "/admin/users");
