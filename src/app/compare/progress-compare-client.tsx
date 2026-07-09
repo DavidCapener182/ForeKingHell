@@ -8,12 +8,24 @@ import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
-import { DataPanel, SectionHeader, StatusPill, type Tone } from "@/components/premium";
+import {
+  DesktopTableWorkbenchControls,
+  type DesktopSavedViewSuggestion,
+  type DesktopWorkbenchColumn,
+} from "@/components/app/desktop-workbench";
+import {
+  DataPanel,
+  DataTableFrame,
+  SectionHeader,
+  StatusPill,
+  type Tone,
+} from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -33,6 +45,46 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+
+const compareFocusClubColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "current", label: "Last 7 days" },
+  { id: "baseline", label: "Baseline" },
+  { id: "carry", label: "Carry" },
+  { id: "playable", label: "Playable" },
+  { id: "big-misses", label: "Big misses" },
+  { id: "shot-cone", label: "Shot cone" },
+  { id: "signal", label: "Overall signal" },
+];
+
+const comparePeriodColumns: DesktopWorkbenchColumn[] = [
+  { id: "period", label: "Period", locked: true },
+  { id: "shots", label: "Shots" },
+  { id: "clubs", label: "Clubs" },
+  { id: "carry", label: "Carry" },
+  { id: "playable", label: "Playable" },
+  { id: "big-misses", label: "Big misses" },
+  { id: "shot-cone", label: "Shot cone" },
+  { id: "previous", label: "Vs previous" },
+];
+
+const compareProgressSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Control movement",
+    href: "/compare#compare-focus-clubs",
+    detail: "Review playable, big-miss and shot-cone deltas for the latest period.",
+  },
+  {
+    title: "Distance movement",
+    href: "/compare#compare-focus-clubs",
+    detail: "Keep carry and current/baseline sample columns visible.",
+  },
+  {
+    title: "Report export",
+    href: "/compare#compare-period-history",
+    detail: "Export focus-club and period rows for a comparison report.",
+  },
+];
 
 export function ProgressCompareClient({ data }: { data: ProgressCompareData }) {
   const [baselineView, setBaselineView] = useState<BaselineView>("previousWeek");
@@ -134,7 +186,7 @@ export function ProgressCompareClient({ data }: { data: ProgressCompareData }) {
           </div>
         )}
 
-        <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+        <section className="grid gap-4 min-[1900px]:grid-cols-[0.8fr_1.2fr]">
           <PeriodTrendStrip periods={periods} />
           <PeriodTable periods={periods} mode={periodMode} />
         </section>
@@ -200,53 +252,114 @@ function ProgressMetric({
 
 function FocusClubTable({ rows }: { rows: CompareClubRow[] }) {
   return (
-    <div className="overflow-hidden rounded-[8px] border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Club</TableHead>
-            <TableHead className="text-right">Last 7 days</TableHead>
-            <TableHead className="text-right">Baseline</TableHead>
-            <TableHead className="text-right">Carry</TableHead>
-            <TableHead className="text-right">Playable</TableHead>
-            <TableHead className="text-right">Big misses</TableHead>
-            <TableHead className="text-right">Shot cone</TableHead>
-            <TableHead className="text-right">Overall signal</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.clubId}>
-              <TableCell className="min-w-40 font-medium">{row.label}</TableCell>
-              <TableCell className="text-right">
-                <StackedValue
-                  value={formatYards(row.focus.carryMedianYd)}
-                  detail={formatShotCount(row.focus.stockShots)}
-                />
-              </TableCell>
-              <TableCell className="text-right">
-                <StackedValue
-                  value={formatYards(row.baseline.carryMedianYd)}
-                  detail={formatShotCount(row.baseline.stockShots)}
-                />
-              </TableCell>
-              <DeltaCell value={row.delta.carryDeltaYd} direction="higher" unit="yd" />
-              <DeltaCell value={row.delta.playableRateDelta} direction="higher" unit="pts" />
-              <DeltaCell value={row.delta.bigMissRateDelta} direction="lower" unit="pts" />
-              <StackedDeltaCell
-                value={row.delta.coneDeltaYd}
-                direction="lower"
-                unit="yd"
-                detail={`${formatYards(row.baseline.shotConeWidthYd)} -> ${formatYards(row.focus.shotConeWidthYd)}`}
-              />
-              <TableCell className="text-right">
-                <StatusPill tone={scoreTone(row)}>{scoreLabel(row)}</StatusPill>
-              </TableCell>
+    <section id="compare-focus-clubs" data-workbench-scope="compare-focus-clubs">
+      <DesktopTableWorkbenchControls
+        viewKey="compare-focus-clubs"
+        scope="compare-focus-clubs"
+        currentViewLabel="Compare focus clubs"
+        resultLabel={`${rows.length} clubs`}
+        columns={compareFocusClubColumns}
+        suggestedViews={compareProgressSuggestedViews}
+        exportTableId="compare-focus-clubs"
+        exportFileName="forekinghell-compare-focus-clubs.csv"
+        className="mb-3"
+      />
+      <DataTableFrame label="Compare focus-club movement table" stickyFirstColumn>
+        <Table
+          className="min-w-[980px]"
+          data-workbench-export-table="compare-focus-clubs"
+          aria-describedby="compare-focus-clubs-summary"
+        >
+          <TableCaption id="compare-focus-clubs-summary" className="sr-only">
+            Compare focus-club movement table showing club, latest sample, baseline, carry,
+            playable, big misses, shot cone and overall signal.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="club"
+                className="sticky left-0 z-20 min-w-40 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                Club
+              </TableHead>
+              <TableHead data-column="current" className="text-right">
+                Last 7 days
+              </TableHead>
+              <TableHead data-column="baseline" className="text-right">
+                Baseline
+              </TableHead>
+              <TableHead data-column="carry" className="text-right">
+                Carry
+              </TableHead>
+              <TableHead data-column="playable" className="text-right">
+                Playable
+              </TableHead>
+              <TableHead data-column="big-misses" className="text-right">
+                Big misses
+              </TableHead>
+              <TableHead data-column="shot-cone" className="text-right">
+                Shot cone
+              </TableHead>
+              <TableHead data-column="signal" className="text-right">
+                Overall signal
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
+                <TableCell
+                  data-column="club"
+                  className="sticky left-0 z-10 min-w-40 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  {row.label}
+                </TableCell>
+                <TableCell data-column="current" className="text-right">
+                  <StackedValue
+                    value={formatYards(row.focus.carryMedianYd)}
+                    detail={formatShotCount(row.focus.stockShots)}
+                  />
+                </TableCell>
+                <TableCell data-column="baseline" className="text-right">
+                  <StackedValue
+                    value={formatYards(row.baseline.carryMedianYd)}
+                    detail={formatShotCount(row.baseline.stockShots)}
+                  />
+                </TableCell>
+                <DeltaCell
+                  columnId="carry"
+                  value={row.delta.carryDeltaYd}
+                  direction="higher"
+                  unit="yd"
+                />
+                <DeltaCell
+                  columnId="playable"
+                  value={row.delta.playableRateDelta}
+                  direction="higher"
+                  unit="pts"
+                />
+                <DeltaCell
+                  columnId="big-misses"
+                  value={row.delta.bigMissRateDelta}
+                  direction="lower"
+                  unit="pts"
+                />
+                <StackedDeltaCell
+                  columnId="shot-cone"
+                  value={row.delta.coneDeltaYd}
+                  direction="lower"
+                  unit="yd"
+                  detail={`${formatYards(row.baseline.shotConeWidthYd)} -> ${formatYards(row.focus.shotConeWidthYd)}`}
+                />
+                <TableCell data-column="signal" className="text-right">
+                  <StatusPill tone={scoreTone(row)}>{scoreLabel(row)}</StatusPill>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -344,60 +457,103 @@ function periodTrendChartRows(periods: ProgressPeriod[]): ChartFallbackRow[] {
 
 function PeriodTable({ periods, mode }: { periods: ProgressPeriod[]; mode: ProgressPeriodMode }) {
   return (
-    <div className="overflow-hidden rounded-[8px] border">
-      <Table className="min-w-[920px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead>{mode === "week" ? "Week" : "Month"}</TableHead>
-            <TableHead className="text-right">Shots</TableHead>
-            <TableHead className="text-right">Clubs</TableHead>
-            <TableHead className="text-right">Carry</TableHead>
-            <TableHead className="text-right">Playable</TableHead>
-            <TableHead className="text-right">Big misses</TableHead>
-            <TableHead className="text-right">Shot cone</TableHead>
-            <TableHead className="min-w-36 text-right">Vs previous</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {periods.length > 0 ? (
-            periods.map((period) => (
-              <TableRow key={period.key}>
-                <TableCell className="min-w-36 font-medium">
-                  <StackedValue value={period.label} detail={period.detail} />
-                </TableCell>
-                <TableCell className="text-right">
-                  {integerFormatter.format(period.summary.stockShots)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {integerFormatter.format(period.summary.clubs)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatYards(period.summary.carryMedianYd)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatRate(period.summary.playableRate)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatRate(period.summary.bigMissRate)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatYards(period.summary.shotConeWidthYd)}
-                </TableCell>
-                <TableCell className="min-w-36 text-right">
-                  <StackedDelta delta={period.deltaFromPrevious} />
+    <section id="compare-period-history" data-workbench-scope="compare-period-history">
+      <DesktopTableWorkbenchControls
+        viewKey="compare-period-history"
+        scope="compare-period-history"
+        currentViewLabel={`${mode === "week" ? "Weekly" : "Monthly"} compare history`}
+        resultLabel={`${periods.length} ${mode === "week" ? "weeks" : "months"}`}
+        columns={comparePeriodColumns}
+        suggestedViews={compareProgressSuggestedViews}
+        exportTableId="compare-period-history"
+        exportFileName={`forekinghell-compare-${mode}-history.csv`}
+        className="mb-3"
+      />
+      <DataTableFrame label="Compare period history table" stickyFirstColumn>
+        <Table
+          className="min-w-[980px]"
+          data-workbench-export-table="compare-period-history"
+          aria-describedby="compare-period-history-summary"
+        >
+          <TableCaption id="compare-period-history-summary" className="sr-only">
+            Compare period history table showing period, shots, clubs, carry, playable rate, big
+            misses, shot cone and movement against the previous period.
+          </TableCaption>
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableRow>
+              <TableHead
+                data-column="period"
+                className="sticky left-0 z-20 min-w-36 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
+                {mode === "week" ? "Week" : "Month"}
+              </TableHead>
+              <TableHead data-column="shots" className="text-right">
+                Shots
+              </TableHead>
+              <TableHead data-column="clubs" className="text-right">
+                Clubs
+              </TableHead>
+              <TableHead data-column="carry" className="text-right">
+                Carry
+              </TableHead>
+              <TableHead data-column="playable" className="text-right">
+                Playable
+              </TableHead>
+              <TableHead data-column="big-misses" className="text-right">
+                Big misses
+              </TableHead>
+              <TableHead data-column="shot-cone" className="text-right">
+                Shot cone
+              </TableHead>
+              <TableHead data-column="previous" className="min-w-36 text-right">
+                Vs previous
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {periods.length > 0 ? (
+              periods.map((period) => (
+                <TableRow key={period.key} tabIndex={0} className="focus-aaa outline-none">
+                  <TableCell
+                    data-column="period"
+                    className="sticky left-0 z-10 min-w-36 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    <StackedValue value={period.label} detail={period.detail} />
+                  </TableCell>
+                  <TableCell data-column="shots" className="text-right">
+                    {integerFormatter.format(period.summary.stockShots)}
+                  </TableCell>
+                  <TableCell data-column="clubs" className="text-right">
+                    {integerFormatter.format(period.summary.clubs)}
+                  </TableCell>
+                  <TableCell data-column="carry" className="text-right">
+                    {formatYards(period.summary.carryMedianYd)}
+                  </TableCell>
+                  <TableCell data-column="playable" className="text-right">
+                    {formatRate(period.summary.playableRate)}
+                  </TableCell>
+                  <TableCell data-column="big-misses" className="text-right">
+                    {formatRate(period.summary.bigMissRate)}
+                  </TableCell>
+                  <TableCell data-column="shot-cone" className="text-right">
+                    {formatYards(period.summary.shotConeWidthYd)}
+                  </TableCell>
+                  <TableCell data-column="previous" className="min-w-36 text-right">
+                    <StackedDelta delta={period.deltaFromPrevious} />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                  No period history yet.
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
-                No period history yet.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </div>
+            )}
+          </TableBody>
+        </Table>
+      </DataTableFrame>
+    </section>
   );
 }
 
@@ -411,34 +567,38 @@ function StackedValue({ value, detail }: { value: string; detail: string }) {
 }
 
 function DeltaCell({
+  columnId,
   value,
   direction,
   unit,
 }: {
+  columnId: string;
   value: number | null;
   direction: "higher" | "lower";
   unit: "yd" | "pts";
 }) {
   return (
-    <TableCell className={deltaClass(value, direction)}>
+    <TableCell data-column={columnId} className={deltaClass(value, direction)}>
       {unit === "yd" ? formatSignedYards(value) : formatSignedRate(value)}
     </TableCell>
   );
 }
 
 function StackedDeltaCell({
+  columnId,
   value,
   direction,
   unit,
   detail,
 }: {
+  columnId: string;
   value: number | null;
   direction: "higher" | "lower";
   unit: "yd" | "pts";
   detail: string;
 }) {
   return (
-    <TableCell className={deltaClass(value, direction)}>
+    <TableCell data-column={columnId} className={deltaClass(value, direction)}>
       <span className="inline-flex min-w-0 flex-col items-end">
         <span>{unit === "yd" ? formatSignedYards(value) : formatSignedRate(value)}</span>
         <span className="max-w-40 truncate text-xs font-normal text-muted-foreground">
