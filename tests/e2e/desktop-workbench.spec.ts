@@ -2904,6 +2904,18 @@ test.describe("desktop workbench", () => {
     await expectAppText(page, /Operating pages|Admin/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
 
+    await gotoAppRoute(page, "/admin/system-checks");
+    await expectAppText(page, /Provider health and platform checks/i, 45_000);
+    await expectNoAiRail(page, /AI admin rail/i);
+    await expect(page.getByRole("link", { name: /Open provider console/i })).toHaveAttribute(
+      "href",
+      "/providers#provider-health",
+    );
+    await expect(page.getByRole("link", { name: /Review provider jobs/i })).toHaveAttribute(
+      "href",
+      "/providers#provider-jobs",
+    );
+
     await page.setViewportSize({ width: 2048, height: 1100 });
     await gotoAppRoute(page, "/admin");
     await expectAppText(page, /AI admin rail/i, 45_000);
