@@ -278,7 +278,11 @@ export function RoundsWorkspace({
                   </MobileDataList>
                 }
               >
-                <Table data-workbench-export-table="rounds" aria-describedby="rounds-table-summary">
+                <Table
+                  data-workbench-scope="rounds"
+                  data-workbench-export-table="rounds"
+                  aria-describedby="rounds-table-summary"
+                >
                   <TableCaption id="rounds-table-summary" className="sr-only">
                     Round history table showing course, date, type, score, differential, putts, data
                     status and actions for the current filter.
@@ -337,8 +341,8 @@ export function RoundsWorkspace({
                         key={round.id}
                         className={
                           round.id === selectedRound?.id
-                            ? "cursor-pointer bg-emerald-50/45"
-                            : "cursor-pointer"
+                            ? "focus-aaa cursor-pointer bg-emerald-50/45 outline-none"
+                            : "focus-aaa cursor-pointer outline-none"
                         }
                         data-state={round.id === selectedRound?.id ? "selected" : undefined}
                         tabIndex={0}
