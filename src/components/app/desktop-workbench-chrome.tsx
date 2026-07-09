@@ -2181,6 +2181,116 @@ function getAssistantContext(pathname: string): AssistantContext | null {
     });
   }
 
+  if (pathname.startsWith("/admin/users")) {
+    return assistantContext({
+      label: "Admin users",
+      route: pathname,
+      summary:
+        "Use account search, plan state, admin role status, recent activity and confirmation copy before recommending access changes.",
+      evidence: ["User account table", "Plan and activity columns", "Admin role actions"],
+      actionPrompt: {
+        label: "Review access change",
+        prompt:
+          "Review the visible ForeKingHell admin users table and recommend the next access-management action. Call out risky lifetime or admin-role changes.",
+        icon: UserRound,
+      },
+      reportPrompt: {
+        label: "Generate access report",
+        prompt:
+          "Generate an admin access report from the visible ForeKingHell users table, including plans, admin roles, activity gaps and confirmation-sensitive actions.",
+        icon: Download,
+      },
+    });
+  }
+
+  if (pathname.startsWith("/admin/billing")) {
+    return assistantContext({
+      label: "Admin billing",
+      route: pathname,
+      summary:
+        "Use subscription status, plan, renewal, billing failure and lifetime access evidence before recommending entitlement changes.",
+      evidence: ["Subscription table", "Billing failure metrics", "Lifetime access grant form"],
+      actionPrompt: {
+        label: "Review entitlement action",
+        prompt:
+          "Review the visible ForeKingHell admin billing table and recommend the next entitlement or billing action without inventing plan data.",
+        icon: CreditCard,
+      },
+      reportPrompt: {
+        label: "Generate billing report",
+        prompt:
+          "Generate an admin billing report from the visible ForeKingHell subscription, failure and entitlement evidence.",
+        icon: Download,
+      },
+    });
+  }
+
+  if (pathname.startsWith("/admin/moderation")) {
+    return assistantContext({
+      label: "Admin moderation",
+      route: pathname,
+      summary:
+        "Use report queues, moderation events, selected rows, bulk-action confirmations and audit language before recommending operator action.",
+      evidence: ["User reports table", "Moderation events table", "Bulk action confirmation"],
+      actionPrompt: {
+        label: "Prioritise queue action",
+        prompt:
+          "Prioritise the visible ForeKingHell moderation queue and recommend the safest next operator action. Cite open reports, selected rows and audit impact.",
+        icon: ShieldCheckIcon,
+      },
+      reportPrompt: {
+        label: "Generate moderation report",
+        prompt:
+          "Generate a moderation operations report from the visible ForeKingHell reports, events and audit evidence.",
+        icon: Download,
+      },
+    });
+  }
+
+  if (pathname.startsWith("/admin/challenges")) {
+    return assistantContext({
+      label: "Admin challenges",
+      route: pathname,
+      summary:
+        "Use challenge board status, participant counts, proof requirements and moderation links before recommending competition actions.",
+      evidence: ["Challenge board table", "Status and participant columns", "Moderation links"],
+      actionPrompt: {
+        label: "Review challenge action",
+        prompt:
+          "Review the visible ForeKingHell admin challenge board and recommend the next competition operation. Cite proof or moderation gaps.",
+        icon: Flag,
+      },
+      reportPrompt: {
+        label: "Generate challenge report",
+        prompt:
+          "Generate an admin challenge report from the visible ForeKingHell challenge board evidence.",
+        icon: Download,
+      },
+    });
+  }
+
+  if (pathname.startsWith("/admin/system-checks")) {
+    return assistantContext({
+      label: "System checks",
+      route: pathname,
+      summary:
+        "Use provider health, billing failures, moderation load, audit activity and recommended admin actions before escalating issues.",
+      evidence: ["Provider health", "Billing and moderation metrics", "Next admin actions"],
+      actionPrompt: {
+        label: "Prioritise system issue",
+        prompt:
+          "Prioritise the visible ForeKingHell system-check issue and recommend the next admin action using only current console evidence.",
+        icon: Gauge,
+      },
+      reportPrompt: {
+        label: "Generate system report",
+        prompt:
+          "Generate a system health report from the visible ForeKingHell provider, billing, moderation and audit evidence.",
+        icon: Download,
+      },
+    });
+  }
+
   if (pathname.startsWith("/admin")) {
     return assistantContext({
       label: "Admin",

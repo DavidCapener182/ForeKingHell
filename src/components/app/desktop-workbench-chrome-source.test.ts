@@ -200,6 +200,57 @@ describe("desktop workbench chrome source", () => {
     );
   });
 
+  it("uses route-specific assistant contexts for admin console subroutes", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+    const contextBlock =
+      source.match(/function getAssistantContext[\s\S]*?\n}\n\nfunction assistantContext/)?.[0] ??
+      "";
+
+    for (const expected of [
+      'pathname.startsWith("/admin/users")',
+      'label: "Admin users"',
+      "Review access change",
+      "User account table",
+      'pathname.startsWith("/admin/billing")',
+      'label: "Admin billing"',
+      "Review entitlement action",
+      "Subscription table",
+      'pathname.startsWith("/admin/moderation")',
+      'label: "Admin moderation"',
+      "Prioritise queue action",
+      "User reports table",
+      'pathname.startsWith("/admin/challenges")',
+      'label: "Admin challenges"',
+      "Review challenge action",
+      "Challenge board table",
+      'pathname.startsWith("/admin/system-checks")',
+      'label: "System checks"',
+      "Prioritise system issue",
+      "Provider health",
+    ]) {
+      expect(contextBlock).toContain(expected);
+    }
+
+    expect(contextBlock.indexOf('label: "Admin users"')).toBeLessThan(
+      contextBlock.indexOf('label: "Admin"'),
+    );
+    expect(contextBlock.indexOf('label: "Admin billing"')).toBeLessThan(
+      contextBlock.indexOf('label: "Admin"'),
+    );
+    expect(contextBlock.indexOf('label: "Admin moderation"')).toBeLessThan(
+      contextBlock.indexOf('label: "Admin"'),
+    );
+    expect(contextBlock.indexOf('label: "Admin challenges"')).toBeLessThan(
+      contextBlock.indexOf('label: "Admin"'),
+    );
+    expect(contextBlock.indexOf('label: "System checks"')).toBeLessThan(
+      contextBlock.indexOf('label: "Admin"'),
+    );
+  });
+
   it("refreshes command-palette saved insights after rail saves", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
