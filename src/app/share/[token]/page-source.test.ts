@@ -6,6 +6,8 @@ const source = readFileSync(join(process.cwd(), "src/app/share/[token]/page.tsx"
 
 describe("shared round page source", () => {
   it("keeps the public scorecard table captioned and keyboardable", () => {
+    expect(source).toContain("<PageShell>");
+    expect(source).not.toContain('<PageShell size="6xl">');
     expect(source).toContain("TableCaption");
     expect(source).toContain('label="Shared scorecard table"');
     expect(source).toContain("stickyFirstColumn");

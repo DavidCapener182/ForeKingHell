@@ -53,7 +53,7 @@ export default async function SharedRoundPage({ params }: PageProps) {
   }
 
   return (
-    <PageShell size="6xl">
+    <PageShell>
       <div className="flex items-center justify-between gap-3">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/login">
