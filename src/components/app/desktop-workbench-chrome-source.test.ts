@@ -214,6 +214,7 @@ describe("desktop workbench chrome source", () => {
     expect(viewsBlock).toContain('label: "Admin console"');
     expect(viewsBlock).toContain('href: "/admin"');
     expect(viewsBlock).toContain('pathname.startsWith("/partners")');
+    expect(source).toContain('href: "/admin/system-checks"');
   });
 
   it("keeps desktop keyboard shortcuts discoverable and wired to implemented handlers", () => {

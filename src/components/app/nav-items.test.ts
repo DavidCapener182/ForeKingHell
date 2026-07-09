@@ -39,6 +39,7 @@ describe("desktop navigation groups", () => {
     ).toEqual([
       "/admin",
       "/partners",
+      "/admin/system-checks",
       "/admin/users",
       "/admin/moderation",
       "/admin/billing",

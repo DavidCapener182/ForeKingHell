@@ -283,6 +283,13 @@ export const adminNavGroup: AppNavGroup = {
     adminNavItem,
     partnerNavItem,
     {
+      href: "/admin/system-checks",
+      label: "System checks",
+      icon: Cable,
+      badge: "Admin",
+      isActive: (pathname) => pathname.startsWith("/admin/system-checks"),
+    },
+    {
       href: "/admin/users",
       label: "Users",
       icon: Users,

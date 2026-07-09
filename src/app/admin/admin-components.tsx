@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Activity, CreditCard, Flag, ShieldCheck, Users } from "lucide-react";
+import { Activity, Cable, CreditCard, Flag, ShieldCheck, Users } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import { StatusPill, type Tone } from "@/components/premium";
 
 const adminLinks = [
   { href: "/admin", label: "Overview", icon: Activity },
+  { href: "/admin/system-checks", label: "System checks", icon: Cable },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/billing", label: "Billing", icon: CreditCard },
   { href: "/admin/moderation", label: "Moderation", icon: ShieldCheck },

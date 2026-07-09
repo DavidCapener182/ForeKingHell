@@ -1604,7 +1604,7 @@ function buildCommandItems(
     ? [
         {
           title: "System checks",
-          href: "/admin",
+          href: "/admin/system-checks",
           detail: "Provider health, moderation and role controls.",
           group: "Admin",
           keywords: "admin system checks provider moderation role audit",
