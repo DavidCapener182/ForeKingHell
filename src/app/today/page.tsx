@@ -98,6 +98,10 @@ import {
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
+type TodaySocialContext = {
+  loaded: boolean;
+  challenges: ChallengeListItem[];
+};
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -265,18 +269,23 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 
   const params = await searchParams;
   const userId = await requireCurrentUserId();
+  const socialLoaded = shouldLoadTodaySocial(first(params.social));
   const [data, challengeData] = await Promise.all([
     getTodayPracticeData({
       date: first(params.date),
       sessionId: first(params.session),
       club: first(params.club),
     }),
-    getChallengesPageData(),
+    socialLoaded ? getChallengesPageData() : Promise.resolve(null),
   ]);
   const linkedPracticePlan = await getPracticePlanForSourceSessions(
     userId,
     data.sessions.map((session) => session.id),
   );
+  const socialContext: TodaySocialContext = {
+    loaded: socialLoaded,
+    challenges: challengeData?.active ?? [],
+  };
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(data.shots);
   const chartClubStatuses = toChartClubStatuses(data.clubComparisons);
@@ -372,7 +381,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 
       <TodayDesktopDashboard
         data={data}
-        challenges={challengeData.active}
+        socialContext={socialContext}
         shotDatabaseHref={shotDatabaseHref}
         chartShots={chartShots}
         chartClubStatuses={chartClubStatuses}
@@ -637,7 +646,7 @@ function TodayBentoItem({
 
 function TodayDesktopDashboard({
   data,
-  challenges,
+  socialContext,
   shotDatabaseHref,
   chartShots,
   chartClubStatuses,
@@ -648,7 +657,7 @@ function TodayDesktopDashboard({
   linkedPracticePlan,
 }: {
   data: TodayPracticeData;
-  challenges: ChallengeListItem[];
+  socialContext: TodaySocialContext;
   shotDatabaseHref: string;
   chartShots: TodayChartShot[];
   chartClubStatuses: TodayChartClubStatus[];
@@ -778,7 +787,12 @@ function TodayDesktopDashboard({
             </TodayBentoItem>
             <TodayBentoItem span={12}>
               <div className="grid h-full items-stretch gap-4 lg:grid-cols-2">
-                <TodaySocialLine data={data} challenges={challenges} className="h-full" />
+                <TodaySocialLine
+                  data={data}
+                  socialContext={socialContext}
+                  loadHref={todaySocialHref(data, clubSort)}
+                  className="h-full"
+                />
                 <TodayRawShotListPanel
                   data={data}
                   shotDatabaseHref={shotDatabaseHref}
@@ -2960,11 +2974,13 @@ function EmptyToday() {
 function TodaySocialLine({
   className = "",
   data,
-  challenges,
+  socialContext,
+  loadHref,
 }: {
   className?: string;
   data: TodayPracticeData;
-  challenges: ChallengeListItem[];
+  socialContext: TodaySocialContext;
+  loadHref: string;
 }) {
   if (data.shots.length === 0) {
     return null;
@@ -2973,26 +2989,42 @@ function TodaySocialLine({
   const bestClubRow = bestClubComparison(data.clubComparisons);
   const bestClub = bestClubRow?.clubLabel ?? data.clubs[0]?.label ?? "This session";
   const bestClubType = bestClubRow?.clubType ?? data.clubs[0]?.type ?? "";
-  const challenge = findRelevantChallenge(challenges, bestClubType);
+  const challenge = socialContext.loaded
+    ? findRelevantChallenge(socialContext.challenges, bestClubType)
+    : null;
 
   return (
-    <section className={`rounded-xl border bg-white p-3 shadow-sm ${className}`}>
+    <section
+      id="social-context"
+      className={`scroll-mt-28 rounded-xl border bg-white p-3 shadow-sm ${className}`}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Compare this session</p>
           <p className="mt-1 text-sm font-medium text-slate-800">
-            {challenge
-              ? `Recommended: ${bestClub} straightness stood out. Compare it against ${challenge.title}.`
-              : `Recommended: ${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots ready for records, events and tour-style challenges.`}
+            {!socialContext.loaded
+              ? `Social comparison is on demand. Load challenge context when ${bestClub} is ready for records, events or tour-style challenges.`
+              : challenge
+                ? `Recommended: ${bestClub} straightness stood out. Compare it against ${challenge.title}.`
+                : `Recommended: ${bestClub} has ${integerFormatter.format(data.shots.length)} selected shots ready for records, events and tour-style challenges.`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
-              <Trophy className="size-4" />
-              {challenge ? challenge.title : "Open feed"}
-            </Link>
-          </Button>
+          {!socialContext.loaded ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={loadHref} prefetch={false}>
+                <Trophy className="size-4" />
+                Load challenge context
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm">
+              <Link href={challenge ? `/challenges/${challenge.id}` : "/feed"} prefetch={false}>
+                <Trophy className="size-4" />
+                {challenge ? challenge.title : "Open feed"}
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="outline" size="sm">
             <Link href="/course-records" prefetch={false}>
               <Award className="size-4" />
@@ -3789,6 +3821,12 @@ function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
+function shouldLoadTodaySocial(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
 function shotDatabaseLink(data: TodayPracticeData) {
   const params = new URLSearchParams({
     from: data.dateKey,
@@ -3804,6 +3842,27 @@ function shotDatabaseLink(data: TodayPracticeData) {
   }
 
   return `/shots?${params.toString()}`;
+}
+
+function todaySocialHref(data: TodayPracticeData, sort: ClubSort) {
+  const params = new URLSearchParams({
+    date: data.dateKey,
+    social: "1",
+  });
+
+  if (data.filters.sessionId) {
+    params.set("session", data.filters.sessionId);
+  }
+
+  if (data.filters.club) {
+    params.set("club", data.filters.club);
+  }
+
+  if (sort !== "bag") {
+    params.set("clubSort", sort);
+  }
+
+  return `/today?${params.toString()}#social-context`;
 }
 
 function buildTodayFilterChips(data: TodayPracticeData) {

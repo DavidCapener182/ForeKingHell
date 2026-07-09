@@ -71,6 +71,20 @@ describe("latest practice desktop dashboard", () => {
     }
   });
 
+  it("loads social challenge context only when latest practice asks for it", () => {
+    expect(source).toContain("type TodaySocialContext");
+    expect(source).toContain("shouldLoadTodaySocial(first(params.social))");
+    expect(source).toContain("socialLoaded ? getChallengesPageData() : Promise.resolve(null)");
+    expect(source).toContain("const socialContext: TodaySocialContext");
+    expect(source).toContain("socialContext={socialContext}");
+    expect(source).toContain("todaySocialHref(data, clubSort)");
+    expect(source).toContain('social: "1"');
+    expect(source).toContain('id="social-context"');
+    expect(source).toContain("socialContext.loaded");
+    expect(source).toContain("Social comparison is on demand");
+    expect(source).toContain("Load challenge context");
+  });
+
   it("separates session quality from plan result and scoring control", () => {
     expect(source).toContain("Session quality");
     expect(source).toContain("Scoring control");
