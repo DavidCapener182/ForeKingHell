@@ -1651,7 +1651,12 @@ function ChallengeBoards({
           exportFileName="forekinghell-challenge-leaderboards-view.csv"
           className="mb-3"
         />
-        <DataTableFrame label="Challenge leaderboard table" stickyFirstColumn>
+        <DataTableFrame
+          mainTable
+          mainTableId="challenge-leaderboard-main-table"
+          mainTableLabel="Challenge leaderboard table"
+          stickyFirstColumn
+        >
           <Table
             className="min-w-[840px]"
             data-workbench-scope="leaderboard"

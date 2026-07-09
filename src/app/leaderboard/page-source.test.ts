@@ -32,7 +32,10 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('mainTableId="leaderboard-player-main-table"');
     expect(source).toContain('mainTableLabel="Leaderboard player table"');
     expect(playerTableBlock).toContain("stickyFirstColumn");
-    expect((source.match(/\bmainTable\b/g) ?? []).length).toBe(1);
+    expect(source).toContain('activeTab === "challenges" ? (');
+    expect(source).toContain(
+      "<ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />",
+    );
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 
@@ -53,7 +56,7 @@ describe("leaderboard desktop workspace source", () => {
   it("keeps challenge leaderboards exportable for desktop users", () => {
     const challengeTableBlock =
       source.match(
-        /<DataTableFrame[^>]*label="Challenge leaderboard table"[^>]*>[\s\S]*?<\/DataTableFrame>/,
+        /<DataTableFrame[\s\S]*?mainTableId="challenge-leaderboard-main-table"[\s\S]*?mainTableLabel="Challenge leaderboard table"[\s\S]*?<\/DataTableFrame>/,
       )?.[0] ?? "";
 
     expect(source).toContain("challengeLeaderboardColumns");
@@ -63,9 +66,10 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain('exportFileName="forekinghell-challenge-leaderboards-view.csv"');
     expect(source).toContain('data-workbench-scope="leaderboard"');
     expect(source).toContain('data-workbench-export-table="leaderboard-challenges"');
-    expect(source).toContain('label="Challenge leaderboard table"');
+    expect(source).toContain('mainTableId="challenge-leaderboard-main-table"');
+    expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
     expect(challengeTableBlock).toContain("stickyFirstColumn");
-    expect(challengeTableBlock).not.toContain("mainTable");
+    expect(challengeTableBlock).toContain("mainTable");
 
     for (const column of ["challenge", "template", "participants", "leader", "score", "source"]) {
       expect(source).toContain(`data-column="${column}"`);
