@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  DataTableFrame,
   DataPair,
   MobileAccordionSection,
   MobileBentoSummary,
@@ -1198,101 +1199,120 @@ export function RapsodoSyncClient({
                     </div>
                   )}
                 </MobileDataList>
-                <DesktopTableWorkbenchControls
-                  viewKey="rapsodo-sessions"
-                  scope="rapsodo"
-                  currentViewLabel={`R-Cloud ${sessionFilter === "all" ? "sessions" : `${sessionFilter} sessions`}`}
-                  resultLabel={`${filteredSessions.length} sessions`}
-                  columns={rapsodoSessionColumns}
-                  suggestedViews={rapsodoSessionSuggestedViews}
-                  exportTableId="rapsodo-sessions"
-                  exportFileName="forekinghell-rapsodo-sessions.csv"
-                  className="mb-3"
-                />
-                <div className="hidden overflow-hidden rounded-lg border sm:block">
-                  <Table
-                    data-main-table-target="true"
-                    data-workbench-export-table="rapsodo-sessions"
-                    aria-label="Rapsodo remote sessions table"
-                    aria-describedby="rapsodo-sessions-summary"
-                    tabIndex={-1}
+                <div data-workbench-scope="rapsodo">
+                  <DesktopTableWorkbenchControls
+                    viewKey="rapsodo-sessions"
+                    scope="rapsodo"
+                    currentViewLabel={`R-Cloud ${sessionFilter === "all" ? "sessions" : `${sessionFilter} sessions`}`}
+                    resultLabel={`${filteredSessions.length} sessions`}
+                    columns={rapsodoSessionColumns}
+                    suggestedViews={rapsodoSessionSuggestedViews}
+                    exportTableId="rapsodo-sessions"
+                    exportFileName="forekinghell-rapsodo-sessions.csv"
+                    className="mb-3"
+                  />
+                  <DataTableFrame
+                    mainTable
+                    mainTableLabel="Rapsodo remote sessions table"
+                    stickyFirstColumn
+                    className="hidden sm:block"
                   >
-                    <TableCaption id="rapsodo-sessions-summary" className="sr-only">
-                      Unimported Rapsodo cloud sessions with type, date, shot count and preview
-                      action.
-                    </TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead data-column="session">Session</TableHead>
-                        <TableHead data-column="type">Type</TableHead>
-                        <TableHead data-column="date">Date</TableHead>
-                        <TableHead data-column="shots" className="text-right">
-                          Shots
-                        </TableHead>
-                        <TableHead data-column="action" className="w-28">
-                          <span className="sr-only">Action</span>
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredSessions.map((session) => (
-                        <TableRow key={`${session.providerKind}-${session.providerSessionId}`}>
-                          <TableCell data-column="session">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-medium">{session.title}</span>
-                              {session.isNew && !session.importedSessionId ? (
-                                <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
-                                  New
-                                </Badge>
-                              ) : null}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                              {session.importedSessionId ? (
-                                <Link
-                                  href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
-                                  className="text-emerald-700 underline-offset-4 hover:underline"
-                                >
-                                  Imported
-                                </Link>
-                              ) : null}
-                              {session.firstSeenAt ? (
-                                <span className="text-muted-foreground">
-                                  Seen {formatDate(session.firstSeenAt)}
-                                </span>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell data-column="type">{formatSessionKind(session)}</TableCell>
-                          <TableCell data-column="date">
-                            {session.dateIso ? formatDate(session.dateIso) : "--"}
-                          </TableCell>
-                          <TableCell data-column="shots" className="text-right">
-                            {session.shotCount === null ? "--" : session.shotCount}
-                          </TableCell>
-                          <TableCell data-column="action">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => previewSession(session)}
-                              disabled={isPending}
-                            >
-                              Preview
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {filteredSessions.length === 0 ? (
+                    <Table
+                      data-workbench-export-table="rapsodo-sessions"
+                      aria-describedby="rapsodo-sessions-summary"
+                    >
+                      <TableCaption id="rapsodo-sessions-summary" className="sr-only">
+                        Unimported Rapsodo cloud sessions with type, date, shot count and preview
+                        action.
+                      </TableCaption>
+                      <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
                         <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                            {status.connected
-                              ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
-                              : "Sign in to load sessions."}
-                          </TableCell>
+                          <TableHead
+                            data-column="session"
+                            className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          >
+                            Session
+                          </TableHead>
+                          <TableHead data-column="type">Type</TableHead>
+                          <TableHead data-column="date">Date</TableHead>
+                          <TableHead data-column="shots" className="text-right">
+                            Shots
+                          </TableHead>
+                          <TableHead data-column="action" className="w-28">
+                            <span className="sr-only">Action</span>
+                          </TableHead>
                         </TableRow>
-                      ) : null}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredSessions.map((session) => (
+                          <TableRow
+                            key={`${session.providerKind}-${session.providerSessionId}`}
+                            tabIndex={0}
+                            className="focus-aaa outline-none"
+                          >
+                            <TableCell
+                              data-column="session"
+                              className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-medium">{session.title}</span>
+                                {session.isNew && !session.importedSessionId ? (
+                                  <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
+                                    New
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                {session.importedSessionId ? (
+                                  <Link
+                                    href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
+                                    className="text-emerald-700 underline-offset-4 hover:underline"
+                                  >
+                                    Imported
+                                  </Link>
+                                ) : null}
+                                {session.firstSeenAt ? (
+                                  <span className="text-muted-foreground">
+                                    Seen {formatDate(session.firstSeenAt)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell data-column="type">{formatSessionKind(session)}</TableCell>
+                            <TableCell data-column="date">
+                              {session.dateIso ? formatDate(session.dateIso) : "--"}
+                            </TableCell>
+                            <TableCell data-column="shots" className="text-right">
+                              {session.shotCount === null ? "--" : session.shotCount}
+                            </TableCell>
+                            <TableCell data-column="action">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => previewSession(session)}
+                                disabled={isPending}
+                              >
+                                Preview
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {filteredSessions.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={5}
+                              className="h-24 text-center text-muted-foreground"
+                            >
+                              {status.connected
+                                ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
+                                : "Sign in to load sessions."}
+                            </TableCell>
+                          </TableRow>
+                        ) : null}
+                      </TableBody>
+                    </Table>
+                  </DataTableFrame>
                 </div>
               </CardContent>
             </Card>

@@ -28,9 +28,13 @@ describe("rapsodo desktop provider console", () => {
     expect(source).toContain('viewKey="rapsodo-sessions"');
     expect(source).toContain('scope="rapsodo"');
     expect(source).toContain('exportTableId="rapsodo-sessions"');
+    expect(source).toContain("DataTableFrame");
+    expect(source).toContain('data-workbench-scope="rapsodo"');
     expect(source).toContain('data-workbench-export-table="rapsodo-sessions"');
-    expect(source).toContain('aria-label="Rapsodo remote sessions table"');
-    expect(source).toContain('data-main-table-target="true"');
+    expect(source).toContain('mainTableLabel="Rapsodo remote sessions table"');
+    expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("focus-aaa outline-none");
     expect(source).not.toContain("DesktopInsightRail");
 
     for (const column of ["session", "type", "date", "shots", "action"]) {

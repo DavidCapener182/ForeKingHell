@@ -2599,6 +2599,23 @@ test.describe("desktop workbench", () => {
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Data Imports/i }),
     ).toHaveCount(0);
+    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
+      "aria-label",
+      "Rapsodo remote sessions table",
+    );
+    const rapsodoSessionsTable = page.locator(
+      'table[data-workbench-export-table="rapsodo-sessions"]',
+    );
+    await expect(rapsodoSessionsTable).toBeVisible();
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await page.getByRole("menuitemcheckbox", { name: /^Shots$/i }).click();
+    await expect(rapsodoSessionsTable.locator('th[data-column="shots"]')).toBeHidden();
+    await page.keyboard.press("Escape");
+    const [rapsodoDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: /^Export$/i }).click(),
+    ]);
+    expect(rapsodoDownload.suggestedFilename()).toBe("forekinghell-rapsodo-sessions.csv");
 
     await gotoAppRoute(page, "/providers");
     await expectPageReady(page, /Providers/i);
