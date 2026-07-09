@@ -16,6 +16,7 @@ import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   Table,
   TableBody,
@@ -77,6 +78,7 @@ export default async function PartnersPage() {
           eyebrow={<StatusPill tone="amber">Sponsored growth</StatusPill>}
           title="Sponsors and partner offers"
           description="Keep sponsored challenges and affiliate offers contextual, labelled and optional. This page is the lightweight partner dashboard foundation."
+          visual={<PageArtwork variant="partners" alt="" className="h-full min-h-36" priority />}
           metrics={[
             { label: "Sponsors", value: data.sponsors.length },
             { label: "Active offers", value: data.offers.length },

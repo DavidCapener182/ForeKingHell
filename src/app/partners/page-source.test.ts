@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/partners/page.tsx"), "utf8");
 
 describe("partners desktop operations board", () => {
+  it("uses the partners artwork variant on the actual operations page", () => {
+    expect(source).toContain('variant="partners"');
+    expect(source).toContain("visual={<PageArtwork");
+  });
+
   it("keeps the sponsor pipeline as an exportable desktop table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="partner-sponsors"');
