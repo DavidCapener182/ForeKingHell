@@ -235,10 +235,12 @@ const shortcutRows = [
   { keys: ["⌘", "K"], altKeys: ["Ctrl", "K"], action: "Open command palette" },
   { keys: ["G", "D"], action: "Dashboard" },
   { keys: ["G", "T"], action: "Latest practice" },
+  { keys: ["G", "P"], action: "Progress" },
   { keys: ["G", "B"], action: "Bag" },
   { keys: ["G", "S"], action: "Shots" },
   { keys: ["G", "R"], action: "Rounds" },
   { keys: ["G", "C"], action: "Coach" },
+  { keys: ["G", "H"], action: "Data Chat" },
   { keys: ["/"], action: "Focus page search or filter" },
   { keys: ["F"], action: "Focus filters" },
   { keys: ["E"], action: "Export current view" },
@@ -252,10 +254,12 @@ const shortcutRows = [
 const shortcutRoutes = new Map([
   ["d", "/dashboard"],
   ["t", "/today"],
+  ["p", "/progress"],
   ["b", "/bag"],
   ["s", "/shots"],
   ["r", "/rounds"],
   ["c", "/coach"],
+  ["h", "/data-chat"],
 ]);
 
 const workspaceCommandIcons: Record<WorkspaceCommandType, LucideIcon> = {

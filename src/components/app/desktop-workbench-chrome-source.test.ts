@@ -235,10 +235,12 @@ describe("desktop workbench chrome source", () => {
       "Open command palette",
       "Dashboard",
       "Latest practice",
+      "Progress",
       "Bag",
       "Shots",
       "Rounds",
       "Coach",
+      "Data Chat",
       "Focus page search or filter",
       "Focus filters",
       "Export current view",
@@ -263,10 +265,12 @@ describe("desktop workbench chrome source", () => {
     for (const route of [
       '["d", "/dashboard"]',
       '["t", "/today"]',
+      '["p", "/progress"]',
       '["b", "/bag"]',
       '["s", "/shots"]',
       '["r", "/rounds"]',
       '["c", "/coach"]',
+      '["h", "/data-chat"]',
     ]) {
       expect(shortcutRoutesBlock).toContain(route);
     }
