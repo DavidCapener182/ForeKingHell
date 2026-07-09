@@ -16,6 +16,7 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain('exportTableId="practice-blocks"');
     expect(source).toContain('data-workbench-export-table="practice-blocks"');
     expect(source).toContain('mainTableLabel="Practice block ledger table"');
+    expect(source).toContain('mainTableLabel="Practice block ledger table" stickyFirstColumn');
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 

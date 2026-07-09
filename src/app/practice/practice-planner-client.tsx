@@ -739,7 +739,7 @@ function PracticeBlockLedger({
         className="my-3"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Practice block ledger table">
+      <DataTableFrame mainTable mainTableLabel="Practice block ledger table" stickyFirstColumn>
         <Table
           data-workbench-export-table="practice-blocks"
           aria-describedby="practice-block-ledger-summary"
