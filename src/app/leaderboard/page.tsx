@@ -1056,7 +1056,12 @@ function PlayerLeaderboard({
             exportFileName="forekinghell-leaderboard-players-view.csv"
             className="mb-3"
           />
-          <DataTableFrame mainTable mainTableLabel="Leaderboard player table" stickyFirstColumn>
+          <DataTableFrame
+            mainTable
+            mainTableId="leaderboard-player-main-table"
+            mainTableLabel="Leaderboard player table"
+            stickyFirstColumn
+          >
             <Table
               className="min-w-[920px]"
               data-workbench-scope="leaderboard"
@@ -1646,7 +1651,12 @@ function ChallengeBoards({
           exportFileName="forekinghell-challenge-leaderboards-view.csv"
           className="mb-3"
         />
-        <DataTableFrame mainTable mainTableLabel="Challenge leaderboard table" stickyFirstColumn>
+        <DataTableFrame
+          mainTable
+          mainTableId="challenge-leaderboard-main-table"
+          mainTableLabel="Challenge leaderboard table"
+          stickyFirstColumn
+        >
           <Table
             className="min-w-[840px]"
             data-workbench-scope="leaderboard"

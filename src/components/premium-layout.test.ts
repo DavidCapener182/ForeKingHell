@@ -23,6 +23,8 @@ describe("PageShell layout contract", () => {
 
     expect(frameBlock).toContain("label,");
     expect(frameBlock).toContain("stickyFirstColumn = false,");
+    expect(frameBlock).toContain('mainTableId = "main-table",');
+    expect(frameBlock).toContain("mainTableId?: string;");
     expect(frameBlock).toContain(
       "const regionLabel = label ?? (mainTable ? mainTableLabel : undefined);",
     );

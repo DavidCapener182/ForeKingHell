@@ -1258,6 +1258,7 @@ export function DataTableFrame({
   className,
   label,
   mainTable = false,
+  mainTableId = "main-table",
   mainTableLabel = "Main data table",
   stickyFirstColumn = false,
 }: {
@@ -1266,6 +1267,7 @@ export function DataTableFrame({
   className?: string;
   label?: string;
   mainTable?: boolean;
+  mainTableId?: string;
   mainTableLabel?: string;
   stickyFirstColumn?: boolean;
 }) {
@@ -1274,7 +1276,7 @@ export function DataTableFrame({
   return (
     <>
       <div
-        id={mainTable ? "main-table" : undefined}
+        id={mainTable ? mainTableId : undefined}
         tabIndex={mainTable ? -1 : undefined}
         data-main-table-target={mainTable ? "true" : undefined}
         data-sticky-table-header="true"
