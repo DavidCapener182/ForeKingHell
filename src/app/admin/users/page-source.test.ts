@@ -32,8 +32,12 @@ describe("admin users desktop console source", () => {
     }
   });
 
-  it("keeps destructive admin access changes behind a confirmation", () => {
+  it("keeps high-impact admin access changes behind a confirmation", () => {
     expect(source).toContain("AdminConfirmSubmitButton");
+    expect(source).toContain('confirmTitle="Grant lifetime full access"');
+    expect(source).toContain("creates a permanent full-plan entitlement");
+    expect(source).toContain('confirmTitle="Grant admin access"');
+    expect(source).toContain("Owner and operator roles can change platform operations");
     expect(source).toContain("Deactivate admin access for");
     expect(source).toContain("writes an audit entry");
   });

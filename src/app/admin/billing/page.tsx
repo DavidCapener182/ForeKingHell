@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { grantLifetimeFullAction } from "@/app/admin/actions";
+import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -29,7 +30,6 @@ import {
 } from "@/app/admin/admin-components";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { DataTableFrame, PageShell } from "@/components/premium";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAdminBillingData } from "@/lib/admin";
 
@@ -163,10 +163,16 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                   className="h-10 rounded-xl bg-slate-50"
                   required
                 />
-                <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <AdminConfirmSubmitButton
+                  type="submit"
+                  className="rounded-xl bg-[#111827] text-white"
+                  confirmTitle="Grant lifetime full access"
+                  confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+                  confirmActionLabel="Grant full access"
+                >
                   <Zap className="size-4" />
                   Grant full access
-                </Button>
+                </AdminConfirmSubmitButton>
               </form>
             </AdminSection>
 

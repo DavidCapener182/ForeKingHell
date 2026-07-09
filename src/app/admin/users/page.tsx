@@ -167,10 +167,16 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   className="h-10 rounded-xl bg-slate-50"
                   required
                 />
-                <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <AdminConfirmSubmitButton
+                  type="submit"
+                  className="rounded-xl bg-[#111827] text-white"
+                  confirmTitle="Grant lifetime full access"
+                  confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+                  confirmActionLabel="Grant full access"
+                >
                   <Zap className="size-4" />
                   Grant full
-                </Button>
+                </AdminConfirmSubmitButton>
               </form>
             </AdminSection>
 
@@ -196,10 +202,16 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   <option value="operator">Operator</option>
                   <option value="owner">Owner</option>
                 </select>
-                <Button type="submit" variant="outline">
+                <AdminConfirmSubmitButton
+                  type="submit"
+                  variant="outline"
+                  confirmTitle="Grant admin access"
+                  confirmMessage="Grant admin access to this email? Owner and operator roles can change platform operations."
+                  confirmActionLabel="Grant admin"
+                >
                   <UserPlus className="size-4" />
                   Grant admin
-                </Button>
+                </AdminConfirmSubmitButton>
               </form>
             </AdminSection>
           </section>

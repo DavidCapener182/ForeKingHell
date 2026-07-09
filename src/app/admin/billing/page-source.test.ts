@@ -31,4 +31,11 @@ describe("admin billing desktop console source", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("keeps lifetime billing grants behind a confirmation", () => {
+    expect(source).toContain("AdminConfirmSubmitButton");
+    expect(source).toContain('confirmTitle="Grant lifetime full access"');
+    expect(source).toContain("creates a permanent full-plan entitlement");
+    expect(source).toContain('confirmActionLabel="Grant full access"');
+  });
 });
