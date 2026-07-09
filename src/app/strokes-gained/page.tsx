@@ -1882,6 +1882,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
     >
       <div className="max-h-[560px] overflow-auto">
         <Table
+          data-workbench-scope="strokes-gained"
           data-workbench-export-table="strokes-gained-events"
           aria-describedby="strokes-gained-events-summary"
         >
@@ -1891,7 +1892,10 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
           </TableCaption>
           <TableHeader>
             <TableRow>
-              <TableHead data-column="round" className="sticky top-0 z-10 bg-white">
+              <TableHead
+                data-column="round"
+                className="sticky left-0 top-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+              >
                 Round
               </TableHead>
               <TableHead data-column="hole" className="sticky top-0 z-10 bg-white">
@@ -1933,7 +1937,10 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
             {events.length > 0 ? (
               events.map((event) => (
                 <TableRow key={event.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell data-column="round" className="min-w-48">
+                  <TableCell
+                    data-column="round"
+                    className="sticky left-0 z-10 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
                     <Link
                       href={`/rounds/${event.sessionId}`}
                       className="font-medium text-emerald-700 hover:underline"
