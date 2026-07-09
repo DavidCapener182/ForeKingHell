@@ -171,9 +171,10 @@ function LongestShotEvidenceTable({ shots }: { shots: LongestShot[] }) {
         exportFileName="forekinghell-longest-shot-pbs.csv"
       />
 
-      <DataTableFrame mainTable mainTableLabel="Longest shot PB evidence table">
+      <DataTableFrame mainTable mainTableLabel="Longest shot PB evidence table" stickyFirstColumn>
         <Table
           className="min-w-[1120px]"
+          data-workbench-scope="longest-shots"
           data-workbench-export-table="longest-shot-pbs"
           aria-describedby="longest-shot-pb-summary"
         >

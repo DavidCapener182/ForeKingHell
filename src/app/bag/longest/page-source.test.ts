@@ -19,6 +19,7 @@ describe("longest shot desktop PB board", () => {
     expect(source).toContain('data-workbench-scope="longest-shots"');
     expect(source).toContain('data-workbench-export-table="longest-shot-pbs"');
     expect(source).toContain('mainTableLabel="Longest shot PB evidence table"');
+    expect(source).toContain('mainTableLabel="Longest shot PB evidence table" stickyFirstColumn');
     expect(source).toContain("PB evidence board");
     expect(source).toContain("tabIndex={0}");
   });

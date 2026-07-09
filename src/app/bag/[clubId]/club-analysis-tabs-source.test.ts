@@ -14,6 +14,7 @@ describe("club profile desktop shot evidence table", () => {
     expect(source).toContain('data-workbench-scope="club-shot-evidence"');
     expect(source).toContain('data-workbench-export-table="club-shot-evidence"');
     expect(source).toContain('mainTableLabel="Club shot evidence table"');
+    expect(source).toContain('mainTableLabel="Club shot evidence table" stickyFirstColumn');
     expect(source).toContain("Shot evidence table");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("onClick={() => onSelect(shot.id)}");

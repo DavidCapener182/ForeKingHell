@@ -306,9 +306,10 @@ function ShotEvidenceWorkbench({
         exportFileName={`forekinghell-${clubTypeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-shot-evidence.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Club shot evidence table">
+      <DataTableFrame mainTable mainTableLabel="Club shot evidence table" stickyFirstColumn>
         <Table
           className="min-w-[1180px]"
+          data-workbench-scope="club-shot-evidence"
           data-workbench-export-table="club-shot-evidence"
           aria-describedby="club-shot-evidence-summary"
         >
