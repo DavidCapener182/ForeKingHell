@@ -139,6 +139,7 @@ const notificationReadStorageKey = "fkh:desktop-notification-read-ids";
 const savedViewsStoragePrefix = "fkh:saved-views:";
 
 const assistantSupportedRoutePrefixes = [
+  "/dashboard",
   "/today",
   "/shots",
   "/compare",
@@ -2033,6 +2034,32 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
 function getAssistantContext(pathname: string): AssistantContext | null {
   if (!assistantSupportedRoutePrefixes.some((prefix) => pathname.startsWith(prefix))) {
     return null;
+  }
+
+  if (pathname.startsWith("/dashboard")) {
+    return assistantContext({
+      label: "Dashboard",
+      route: pathname,
+      summary:
+        "Use the command-centre brief, quick answers, practice plan, data confidence and latest signals before recommending the next action.",
+      evidence: [
+        "AI Caddie brief and quick answers",
+        "Practice planner and latest-practice signal",
+        "Data health, bag confidence and action centre",
+      ],
+      actionPrompt: {
+        label: "Build dashboard practice plan",
+        prompt:
+          "Build a dashboard practice plan from the visible ForeKingHell command-centre brief, quick answers, data confidence, bag confidence and latest-practice signals.",
+        icon: Target,
+      },
+      reportPrompt: {
+        label: "Generate dashboard report",
+        prompt:
+          "Generate a dashboard performance report from the visible ForeKingHell command-centre evidence, including next action, data confidence and low-confidence gaps.",
+        icon: Download,
+      },
+    });
   }
 
   if (pathname.startsWith("/today")) {

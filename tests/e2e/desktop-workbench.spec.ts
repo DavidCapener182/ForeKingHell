@@ -537,7 +537,7 @@ test.describe("desktop workbench", () => {
     await expectPageReady(page, /Quick answers/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Dashboard/i }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     expect(hydrationWarnings).toEqual([]);
   });
 
@@ -2466,7 +2466,12 @@ test.describe("desktop workbench", () => {
     await expect(page.getByText(/AI performance workbench/i)).toBeHidden();
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Dashboard/i }),
-    ).toHaveCount(0);
+    ).toBeVisible();
+    await page.getByRole("button", { name: /Open AI assistant for Dashboard/i }).click();
+    const dashboardAssistant = page.getByRole("dialog", { name: /Dashboard assistant/i });
+    await expect(dashboardAssistant).toBeVisible();
+    await expect(dashboardAssistant.getByText(/AI Caddie brief and quick answers/i)).toBeVisible();
+    await page.keyboard.press("Escape");
 
     await gotoAppRoute(page, "/today");
     await expectPageReady(page, /Best performer|Practice score/i);

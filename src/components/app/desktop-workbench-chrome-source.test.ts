@@ -12,6 +12,7 @@ describe("desktop workbench chrome source", () => {
       source.match(/const assistantSupportedRoutePrefixes = \[[\s\S]*?\];/)?.[0] ?? "";
 
     for (const route of [
+      "/dashboard",
       "/today",
       "/shots",
       "/bag",
@@ -28,7 +29,6 @@ describe("desktop workbench chrome source", () => {
       expect(prefixBlock).toContain(`"${route}"`);
     }
 
-    expect(prefixBlock).not.toContain('"/dashboard"');
     expect(prefixBlock).not.toContain('"/feed"');
     expect(prefixBlock).not.toContain('"/friends"');
     expect(prefixBlock).not.toContain('"/groups"');
@@ -112,7 +112,6 @@ describe("desktop workbench chrome source", () => {
       "";
 
     for (const route of [
-      "/dashboard",
       "/practice",
       "/speed",
       "/stats/training-over-time",
@@ -139,6 +138,7 @@ describe("desktop workbench chrome source", () => {
     }
 
     for (const route of [
+      "/dashboard",
       "/today",
       "/shots",
       "/compare",
@@ -155,6 +155,11 @@ describe("desktop workbench chrome source", () => {
       expect(contextBlock).toContain(`pathname.startsWith("${route}")`);
     }
 
+    expect(contextBlock).toContain('label: "Dashboard"');
+    expect(contextBlock).toContain("AI Caddie brief and quick answers");
+    expect(contextBlock).toContain("Practice planner and latest-practice signal");
+    expect(contextBlock).toContain('label: "Build dashboard practice plan"');
+    expect(contextBlock).toContain('label: "Generate dashboard report"');
     expect(contextBlock).toContain('label: "Latest practice"');
     expect(contextBlock).toContain("Clean scoring summary");
     expect(contextBlock).toContain("Raw shot rows and quality tags");
