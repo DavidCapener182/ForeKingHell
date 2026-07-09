@@ -540,6 +540,21 @@ export function DesktopWorkbenchControls({
           >
             {actionStatusMessage}
           </span>
+          <span
+            className="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground 2xl:inline-flex"
+            aria-label="Table row shortcuts: arrow keys move rows, Enter or Space selects the focused row"
+            data-table-row-shortcuts
+          >
+            <span className="font-semibold text-emerald-900">Rows</span>
+            <kbd className="rounded border border-border bg-white px-1.5 py-0.5 font-mono text-[11px]">
+              Up/Down
+            </kbd>
+            <span>move</span>
+            <kbd className="rounded border border-border bg-white px-1.5 py-0.5 font-mono text-[11px]">
+              Enter
+            </kbd>
+            <span>select</span>
+          </span>
         </div>
       </div>
 

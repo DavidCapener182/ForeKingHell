@@ -43,6 +43,17 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain("Current view link could not be copied.");
   });
 
+  it("advertises table row keyboard shortcuts inside the desktop toolbar", () => {
+    expect(source).toContain("data-table-row-shortcuts");
+    expect(source).toContain(
+      'aria-label="Table row shortcuts: arrow keys move rows, Enter or Space selects the focused row"',
+    );
+    expect(source).toContain("Rows");
+    expect(source).toContain("Up/Down");
+    expect(source).toContain("Enter");
+    expect(source).toContain("select");
+  });
+
   it("announces desktop table layout changes through the shared live region", () => {
     expect(source).toContain("layoutStatusMessage");
     expect(source).toContain("function announceLayoutStatus(message: string)");
