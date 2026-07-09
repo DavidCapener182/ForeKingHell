@@ -2550,19 +2550,16 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/courses");
     await expectPageReady(page, /AI course rail/i);
-    await expect(page.getByRole("complementary", { name: /AI course rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI course rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Courses/i }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Generate course report/i }).first()).toBeVisible();
 
     await gotoAppRoute(page, "/course-records");
     await expectAppText(page, /AI course records rail/i, 45_000);
+    await expectNoAiRail(page, /AI course records rail/i);
     await expect(
-      page.getByRole("complementary", { name: /AI course records rail/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /Generate records report/i }).first(),
+      page.getByRole("button", { name: /Open AI assistant for Courses/i }),
     ).toBeVisible();
 
     for (const route of [
@@ -2602,10 +2599,10 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/strokes-gained");
     await expectPageReady(page, /AI strokes-gained rail/i);
+    await expectNoAiRail(page, /AI strokes-gained rail/i);
     await expect(
-      page.getByRole("complementary", { name: /AI strokes-gained rail/i }),
+      page.getByRole("button", { name: /Open AI assistant for Progress/i }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /What cost strokes/i }).first()).toBeVisible();
     await expect(
       page.getByRole("region", { name: /Strokes gained waterfall chart accessibility/i }),
     ).toBeVisible();
@@ -2627,7 +2624,10 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/rounds");
     await expectPageReady(page, /AI round rail/i);
-    await expect(page.getByRole("complementary", { name: /AI round rail/i })).toBeVisible();
+    await expectNoAiRail(page, /AI round rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
+    ).toBeVisible();
 
     await gotoAppRoute(page, "/bag");
     await expectPageReady(page, /Bag|Gapping/i);
@@ -2635,8 +2635,10 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/coach");
     await expectPageReady(page, /AI coach rail/i);
-    await expect(page.getByRole("complementary", { name: /AI coach rail/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Make it 30 minutes/i }).first()).toBeVisible();
+    await expectNoAiRail(page, /AI coach rail/i);
+    await expect(
+      page.getByRole("button", { name: /Open AI assistant for Coach/i }),
+    ).toBeVisible();
   });
 
   test("dense AI rails defer until large desktop workspaces stay readable", async ({ page }) => {
@@ -2656,7 +2658,7 @@ test.describe("desktop workbench", () => {
         scope: "progress",
         ready: /Bag progress|Overall progress/i,
         rail: /AI progress rail/i,
-        railWidth: 2300,
+        railWidth: 2048,
       },
       {
         path: "/compare",
