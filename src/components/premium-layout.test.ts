@@ -63,8 +63,8 @@ describe("PageShell layout contract", () => {
     expect(railScopeBlock).toContain('"rounds"');
     expect(railScopeBlock).toContain('"admin"');
     expect(railScopeBlock).toContain('"today"');
+    expect(railScopeBlock).toContain('"progress"');
     expect(railScopeBlock).not.toContain('"dashboard"');
-    expect(railScopeBlock).not.toContain('"progress"');
     expect(railScopeBlock).not.toContain('"practice"');
     expect(railScopeBlock).not.toContain('"speed"');
     expect(railScopeBlock).not.toContain('"training-load"');
@@ -102,7 +102,6 @@ describe("PageShell layout contract", () => {
       "src/app/partners/page.tsx",
       "src/app/practice/page.tsx",
       "src/app/profile/page.tsx",
-      "src/app/progress/page.tsx",
       "src/app/providers/page.tsx",
       "src/app/rapsodo/rapsodo-sync-client.tsx",
       "src/app/settings/page.tsx",

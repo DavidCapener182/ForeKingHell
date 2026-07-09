@@ -50,8 +50,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  DesktopInsightRail,
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
+  type DesktopAiPrompt,
+  type DesktopInsightMetric,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
@@ -122,6 +125,39 @@ const progressBagMovementSavedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
+const progressWorkbenchPrompts: DesktopAiPrompt[] = [
+  {
+    label: "Explain progress trend",
+    prompt:
+      "Explain my ForeKingHell progress trend using only the visible progress score, club movement, trust, practice-plan and data-gap evidence. Do not invent missing numbers.",
+    icon: LineChart,
+  },
+  {
+    label: "Compare with last month",
+    prompt:
+      "Compare this progress readout with the previous useful period. Cite visible trust, clean-shot, movement and practice-plan evidence, and call out weak samples.",
+    icon: TrendingUp,
+  },
+  {
+    label: "Build practice plan",
+    prompt:
+      "Build a progress-focused practice plan from this ForeKingHell progress page. Prioritise the next scoring gate and label low-confidence club data.",
+    icon: Target,
+  },
+  {
+    label: "Save this insight",
+    prompt:
+      "Save the clearest progress insight with the exact visible metric, affected club, confidence caveat and next practice action.",
+    icon: Bookmark,
+  },
+  {
+    label: "Generate report",
+    prompt:
+      "Generate a progress report from this ForeKingHell workspace with overall progress, strongest improvement, main blocker, data confidence and next practice plan.",
+    icon: ClipboardCheck,
+  },
+];
+
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
   const userId = await requireCurrentUserId();
   const [params, data, featureData, practicePlannerSummary] = await Promise.all([
@@ -148,7 +184,33 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
         ]}
       />
 
-      <DesktopWorkbenchLayout scope="progress">
+      <DesktopWorkbenchLayout
+        scope="progress"
+        railBreakpoint="2xl"
+        rail={
+          <DesktopInsightRail
+            title="AI progress rail"
+            description="Explain what is improving, what is weak and which practice block moves the bag forward."
+            metrics={progressInsightMetrics(summary)}
+            evidence={progressInsightEvidence(summary)}
+            prompts={progressWorkbenchPrompts}
+            actions={[
+              {
+                label: "Open bag movement",
+                href: "/progress#bag-movement",
+                detail: "Review the club table behind the progress readout.",
+                icon: Table2,
+              },
+              {
+                label: "Open coach",
+                href: "/coach",
+                detail: "Turn the progress blocker into a coach plan.",
+                icon: MessageSquare,
+              },
+            ]}
+          />
+        }
+      >
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
@@ -299,6 +361,78 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function progressInsightMetrics(summary: ProgressSummary): DesktopInsightMetric[] {
+  const score = progressScore(summary);
+  const momentum = progressScoreMomentum(summary);
+  const readiness = break80Progress(summary);
+  const priority = summary.practicePlan[0];
+
+  return [
+    {
+      label: "Overall progress",
+      value: `${score}/100`,
+      detail: progressScoreReadout(summary, momentum),
+      tone: score >= 78 ? "green" : score >= 62 ? "amber" : "sky",
+    },
+    {
+      label: "Break 80 readiness",
+      value: `${readiness}%`,
+      detail: progressCoachSentence(summary),
+      tone: readiness >= 70 ? "green" : readiness >= 50 ? "amber" : "sky",
+    },
+    {
+      label: "Average trust",
+      value: `${summary.totals.averageTrust}%`,
+      detail: `${integerFormatter.format(summary.totals.clubs)} clubs and ${integerFormatter.format(
+        summary.totals.trackedCleanShots,
+      )} clean stock shots feed this readout.`,
+      tone: summary.totals.averageTrust >= 72 ? "green" : "amber",
+    },
+    {
+      label: "Next practice",
+      value: priority ? formatClubType(priority.clubType) : "Build baseline",
+      detail: priority?.reason ?? "Import clean stock shots before asking for a progress plan.",
+      tone: priority?.tone ?? "slate",
+    },
+  ];
+}
+
+function progressInsightEvidence(summary: ProgressSummary) {
+  const evidence = [
+    `${integerFormatter.format(summary.totals.trackedCleanShots)} clean stock shots across ${integerFormatter.format(
+      summary.totals.clubs,
+    )} clubs.`,
+    `${integerFormatter.format(
+      summary.totals.shots,
+    )} launch-monitor rows with average trust at ${summary.totals.averageTrust}%.`,
+    `Playable rate is ${formatRate(summary.totals.averagePlayableRate)} where direction data is available.`,
+  ];
+  const bestSignal = summary.bestSignal;
+  const strongest = strongestImprovementRow(summary);
+  const priority = summary.practicePlan[0];
+  const dataGap = summary.dataGaps[0];
+
+  if (bestSignal) {
+    evidence.push(`${bestSignal.value.replace(/\.$/, "")}: ${bestSignal.why}`);
+  }
+
+  if (strongest) {
+    evidence.push(
+      `${formatClubType(strongest.clubType)}: ${strongestImprovementDetail(strongest)}.`,
+    );
+  }
+
+  if (priority) {
+    evidence.push(`${priority.title}: ${priority.reason}`);
+  }
+
+  if (dataGap) {
+    evidence.push(`${formatClubType(dataGap.clubType)} data gap: ${dataGap.detail}`);
+  }
+
+  return evidence.slice(0, 6);
 }
 
 type ProgressSpan = 3 | 5 | 6 | 7 | 9 | 12;

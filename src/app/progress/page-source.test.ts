@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/progress/page.tsx"), "utf8");
 
 describe("progress desktop workbench source", () => {
-  it("keeps progress full width and practice split from crowding laptop workbenches", () => {
+  it("uses the optional desktop AI rail without crowding laptop workbenches", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
     const practicePanelBlock =
@@ -13,9 +13,16 @@ describe("progress desktop workbench source", () => {
       "";
 
     expect(layoutBlock).toContain('scope="progress"');
-    expect(layoutBlock).not.toContain("DesktopInsightRail");
-    expect(layoutBlock).not.toContain("rail={");
+    expect(layoutBlock).toContain("DesktopInsightRail");
+    expect(layoutBlock).toContain('title="AI progress rail"');
+    expect(layoutBlock).toContain('railBreakpoint="2xl"');
+    expect(layoutBlock).toContain("progressInsightMetrics(summary)");
+    expect(layoutBlock).toContain("progressInsightEvidence(summary)");
     expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(source).toContain("progressWorkbenchPrompts");
+    expect(source).toContain('label: "Explain progress trend"');
+    expect(source).toContain('label: "Compare with last month"');
+    expect(source).toContain('label: "Save this insight"');
 
     expect(practicePanelBlock).toContain(
       "min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]",
