@@ -596,9 +596,14 @@ function ClubShotEvidenceLedger({
             Import launch-monitor shots for this club to build the evidence ledger.
           </div>
         ) : (
-          <DataTableFrame mainTable mainTableLabel="Club analytics shot evidence table">
+          <DataTableFrame
+            mainTable
+            mainTableLabel="Club analytics shot evidence table"
+            stickyFirstColumn
+          >
             <Table
               className="min-w-[1120px]"
+              data-workbench-scope="club-analytics"
               data-workbench-export-table="club-analytics-shots"
               aria-describedby="club-analytics-shot-evidence-summary"
             >
@@ -654,11 +659,7 @@ function ClubShotEvidenceLedger({
                   const quality = tags.length > 0 ? tags.join(", ") : (shot.qualityTag ?? "Normal");
 
                   return (
-                    <TableRow
-                      key={shot.id}
-                      tabIndex={0}
-                      className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
+                    <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                       <TableCell
                         data-column="shot"
                         className="sticky left-0 z-10 bg-white font-medium text-slate-950 shadow-[1px_0_0_rgba(15,23,42,0.08)]"

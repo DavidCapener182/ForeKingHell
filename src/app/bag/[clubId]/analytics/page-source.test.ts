@@ -10,12 +10,15 @@ describe("club analytics desktop evidence ledger", () => {
     expect(source).toContain("clubShotEvidenceColumns");
     expect(source).toContain('scope="club-analytics"');
     expect(source).toContain('exportTableId="club-analytics-shots"');
+    expect(source).toContain('data-workbench-scope="club-analytics"');
     expect(source).toContain('data-workbench-export-table="club-analytics-shots"');
     expect(source).toContain('mainTableLabel="Club analytics shot evidence table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("forekinghell-");
     expect(source).toContain("analytics-shots.csv");
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("focus-aaa outline-none");
     expect(source).toContain("likelyMishitTags");
     expect(source).toContain("classifyShotShape");
 

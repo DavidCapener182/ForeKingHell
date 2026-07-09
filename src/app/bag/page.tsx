@@ -95,6 +95,7 @@ import {
   type ShotPatternOverlaySummary,
   type SmartBagBuilder,
   type WedgeMatrixClub,
+  type WedgeMatrixShot,
 } from "@/lib/bag-intelligence";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import {
@@ -192,6 +193,30 @@ const bagGappingSuggestedViews: DesktopSavedViewSuggestion[] = [
     title: "Equipment impact",
     href: "/equipment",
     detail: "Compare bag changes against carry, gap and recommended-number movement.",
+  },
+];
+const wedgeMatrixColumns: DesktopWorkbenchColumn[] = [
+  { id: "club", label: "Club", locked: true },
+  { id: "full", label: "Full" },
+  { id: "three-quarter", label: "3/4" },
+  { id: "half", label: "Half" },
+  { id: "status", label: "Status", locked: true },
+];
+const wedgeMatrixSuggestedViews: DesktopSavedViewSuggestion[] = [
+  {
+    title: "Shot explorer",
+    href: "/shots",
+    detail: "Filter wedge shots by club, shot type and quality before trusting the matrix.",
+  },
+  {
+    title: "Practice planner",
+    href: "/practice",
+    detail: "Build a scoring-end session from the weakest partial carry window.",
+  },
+  {
+    title: "Full bag gapping",
+    href: "/bag#reference-data",
+    detail: "Compare partial wedge windows against the full bag carry ladder.",
   },
 ];
 const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
@@ -1560,48 +1585,89 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
       />
       <CardContent>
         {matrix.length > 0 ? (
-          <DataTableFrame label="Wedge matrix carry table">
-            <Table className="min-w-[680px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Club</TableHead>
-                  <TableHead className="text-right">Full</TableHead>
-                  <TableHead className="text-right">3/4</TableHead>
-                  <TableHead className="text-right">Half</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {matrix.map((club) => (
-                  <TableRow key={club.id}>
-                    <TableCell>
-                      <div className="grid gap-0.5">
-                        <span className="font-semibold">{club.label}</span>
-                        <span className="max-w-56 truncate text-xs text-muted-foreground">
-                          {club.brandModel}
-                        </span>
-                      </div>
-                    </TableCell>
-                    {club.rows.map((row) => (
-                      <TableCell key={row.key} className="text-right">
-                        <span className="font-semibold">{formatCarryYards(row.carryYd)}</span>
-                        <span className="block text-xs text-muted-foreground">
-                          {row.sampleSize > 0 ? `${row.sampleSize} shots` : row.status}
-                        </span>
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                      <StatusPill
-                        tone={club.isSuggested ? "amber" : club.matrixScore >= 70 ? "green" : "sky"}
-                      >
-                        {club.isSuggested ? "Target" : `${club.matrixScore}%`}
-                      </StatusPill>
-                    </TableCell>
+          <div data-workbench-scope="bag-wedge-matrix">
+            <DesktopTableWorkbenchControls
+              viewKey="bag-wedge-matrix"
+              scope="bag-wedge-matrix"
+              currentViewLabel="Wedge matrix carry windows"
+              resultLabel={`${numberFormatter.format(matrix.length)} scoring clubs`}
+              columns={wedgeMatrixColumns}
+              suggestedViews={wedgeMatrixSuggestedViews}
+              exportTableId="bag-wedge-matrix"
+              exportFileName="forekinghell-wedge-matrix.csv"
+              className="mb-3"
+            />
+            <DataTableFrame label="Wedge matrix carry table" stickyFirstColumn>
+              <Table
+                className="min-w-[760px]"
+                data-workbench-scope="bag-wedge-matrix"
+                data-workbench-export-table="bag-wedge-matrix"
+                aria-describedby="wedge-matrix-carry-summary"
+              >
+                <TableCaption id="wedge-matrix-carry-summary" className="sr-only">
+                  Wedge matrix carry table showing club, full-shot carry, three-quarter carry, half
+                  carry and scoring-window status.
+                </TableCaption>
+                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                  <TableRow>
+                    <TableHead
+                      data-column="club"
+                      className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      Club
+                    </TableHead>
+                    <TableHead data-column="full" className="text-right">
+                      Full
+                    </TableHead>
+                    <TableHead data-column="three-quarter" className="text-right">
+                      3/4
+                    </TableHead>
+                    <TableHead data-column="half" className="text-right">
+                      Half
+                    </TableHead>
+                    <TableHead data-column="status" className="text-right">
+                      Status
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
+                </TableHeader>
+                <TableBody>
+                  {matrix.map((club) => {
+                    const full = wedgeMatrixRow(club, "full");
+                    const threeQuarter = wedgeMatrixRow(club, "threeQuarter");
+                    const half = wedgeMatrixRow(club, "half");
+
+                    return (
+                      <TableRow key={club.id} tabIndex={0} className="focus-aaa outline-none">
+                        <TableCell
+                          data-column="club"
+                          className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        >
+                          <div className="grid gap-0.5">
+                            <span className="font-semibold">{club.label}</span>
+                            <span className="max-w-56 truncate text-xs text-muted-foreground">
+                              {club.brandModel}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <WedgeMatrixCarryCell column="full" row={full} />
+                        <WedgeMatrixCarryCell column="three-quarter" row={threeQuarter} />
+                        <WedgeMatrixCarryCell column="half" row={half} />
+                        <TableCell data-column="status" className="text-right">
+                          <StatusPill
+                            tone={
+                              club.isSuggested ? "amber" : club.matrixScore >= 70 ? "green" : "sky"
+                            }
+                          >
+                            {club.isSuggested ? "Target" : `${club.matrixScore}%`}
+                          </StatusPill>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </DataTableFrame>
+          </div>
         ) : (
           <EmptyPanelMessage
             title="Wedge matrix building"
@@ -1611,6 +1677,27 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
       </CardContent>
     </DataPanel>
   );
+}
+
+function WedgeMatrixCarryCell({
+  column,
+  row,
+}: {
+  column: "full" | "three-quarter" | "half";
+  row: WedgeMatrixShot | null;
+}) {
+  return (
+    <TableCell data-column={column} className="text-right">
+      <span className="font-semibold">{formatCarryYards(row?.carryYd ?? null)}</span>
+      <span className="block text-xs text-muted-foreground">
+        {row === null ? "building" : row.sampleSize > 0 ? `${row.sampleSize} shots` : row.status}
+      </span>
+    </TableCell>
+  );
+}
+
+function wedgeMatrixRow(club: WedgeMatrixClub, key: WedgeMatrixShot["key"]) {
+  return club.rows.find((row) => row.key === key) ?? null;
 }
 
 function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
@@ -3550,9 +3637,10 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
               exportFileName="forekinghell-bag-gapping-view.csv"
               className="mb-3"
             />
-            <DataTableFrame mainTable mainTableLabel="Full bag gapping table">
+            <DataTableFrame mainTable mainTableLabel="Full bag gapping table" stickyFirstColumn>
               <Table
                 className="min-w-[1220px]"
+                data-workbench-scope="bag"
                 data-workbench-export-table="bag-gapping"
                 aria-describedby="bag-gapping-table-summary"
               >

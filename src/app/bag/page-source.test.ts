@@ -21,9 +21,33 @@ describe("bag desktop workbench source", () => {
 
     expect(gappingBlock).toContain("open");
     expect(gappingBlock).toContain("DesktopTableWorkbenchControls");
+    expect(gappingBlock).toContain('data-workbench-scope="bag"');
     expect(gappingBlock).toContain('data-workbench-export-table="bag-gapping"');
     expect(gappingBlock).toContain("mainTable");
     expect(gappingBlock).toContain('mainTableLabel="Full bag gapping table"');
+    expect(gappingBlock).toContain("stickyFirstColumn");
+  });
+
+  it("keeps the wedge matrix as an exportable desktop table", () => {
+    const wedgeBlock =
+      source.match(/function WedgeMatrixPanel[\s\S]*?function PathTrendPanel/)?.[0] ?? "";
+
+    expect(source).toContain("wedgeMatrixColumns");
+    expect(source).toContain("wedgeMatrixSuggestedViews");
+    expect(wedgeBlock).toContain("DesktopTableWorkbenchControls");
+    expect(wedgeBlock).toContain('viewKey="bag-wedge-matrix"');
+    expect(wedgeBlock).toContain('data-workbench-scope="bag-wedge-matrix"');
+    expect(wedgeBlock).toContain('data-workbench-export-table="bag-wedge-matrix"');
+    expect(wedgeBlock).toContain('exportFileName="forekinghell-wedge-matrix.csv"');
+    expect(wedgeBlock).toContain('label="Wedge matrix carry table" stickyFirstColumn');
+    expect(wedgeBlock).toContain("TableCaption");
+    expect(wedgeBlock).toContain('id="wedge-matrix-carry-summary"');
+    expect(wedgeBlock).toContain("tabIndex={0}");
+    expect(wedgeBlock).toContain("focus-aaa outline-none");
+
+    for (const column of ["club", "full", "three-quarter", "half", "status"]) {
+      expect(wedgeBlock).toContain(`data-column="${column}"`);
+    }
   });
 
   it("keeps bag pattern charts explainable with fallback tables", () => {
