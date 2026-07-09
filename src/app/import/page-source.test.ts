@@ -27,9 +27,14 @@ describe("import desktop file library", () => {
     expect(source).toContain('viewKey="import-library"');
     expect(source).toContain('scope="import"');
     expect(source).toContain('exportTableId="import-library"');
+    expect(source).toContain('data-workbench-scope="import"');
     expect(source).toContain('data-workbench-export-table="import-library"');
     expect(source).toContain('mainTableLabel="Import file library table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
+    expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("focus-aaa outline-none");
+    expect(source).toContain("sticky left-0 z-20");
 
     for (const column of ["file", "status", "session", "parse", "actions"]) {
       expect(source).toContain(`data-column="${column}"`);

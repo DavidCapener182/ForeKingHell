@@ -674,6 +674,7 @@ function ImportFileLibrary({
           <DataTableFrame
             mainTable
             mainTableLabel="Import file library table"
+            stickyFirstColumn
             mobile={
               <MobileDataList
                 empty={
@@ -705,6 +706,7 @@ function ImportFileLibrary({
             }
           >
             <Table
+              data-workbench-scope="import"
               data-workbench-export-table="import-library"
               aria-describedby="import-library-summary"
             >
@@ -714,7 +716,12 @@ function ImportFileLibrary({
               </TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead data-column="file">File</TableHead>
+                  <TableHead
+                    data-column="file"
+                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    File
+                  </TableHead>
                   <TableHead data-column="status">Status</TableHead>
                   <TableHead data-column="session">Session</TableHead>
                   <TableHead data-column="parse">Parse</TableHead>
@@ -726,8 +733,11 @@ function ImportFileLibrary({
               <TableBody>
                 {files.length > 0 ? (
                   files.map((file) => (
-                    <TableRow key={file.id}>
-                      <TableCell data-column="file">
+                    <TableRow key={file.id} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="file"
+                        className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      >
                         <div className="min-w-0">
                           <p className="truncate font-medium">{file.fileName}</p>
                           <p className="text-xs text-muted-foreground">
