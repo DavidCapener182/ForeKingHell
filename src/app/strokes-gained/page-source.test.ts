@@ -22,7 +22,9 @@ describe("strokes gained desktop workbench", () => {
     expect(source).toContain('exportTableId="strokes-gained-events"');
     expect(source).toContain('data-workbench-export-table="strokes-gained-events"');
     expect(source).toContain('mainTableLabel="Strokes gained event table"');
+    expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<TableCaption");
+    expect(source).toContain("tabIndex={0}");
     expect(source).toContain("strokesGainedSuggestedViews");
 
     for (const column of [

@@ -1840,6 +1840,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
     <DataTableFrame
       mainTable
       mainTableLabel="Strokes gained event table"
+      stickyFirstColumn
       mobile={
         <MobileDataList
           empty={
@@ -1931,7 +1932,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
           <TableBody>
             {events.length > 0 ? (
               events.map((event) => (
-                <TableRow key={event.id}>
+                <TableRow key={event.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell data-column="round" className="min-w-48">
                     <Link
                       href={`/rounds/${event.sessionId}`}
