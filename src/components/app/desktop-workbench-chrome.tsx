@@ -17,24 +17,30 @@ import {
   Bell,
   Bot,
   Brain,
+  CalendarDays,
   Check,
   Clock3,
+  CreditCard,
   Database,
   Download,
   FileText,
   Flag,
+  Gauge,
   Keyboard,
   MapPin,
   MessageCircle,
   PanelRightOpen,
   Pin,
   Search,
+  Settings,
   ShieldCheck as ShieldCheckIcon,
   SlidersHorizontal,
   Sparkles,
   Target,
+  Trophy,
   Upload,
   UserRound,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -1926,6 +1932,10 @@ function deepRouteLabel(pathname: string) {
 }
 
 function getPrimaryAction(pathname: string): { label: string; href: string; icon: LucideIcon } {
+  if (pathname === "/" || pathname.startsWith("/dashboard")) {
+    return { label: "Latest practice", href: "/today", icon: CalendarDays };
+  }
+
   if (pathname.startsWith("/today")) {
     return { label: "Shot rows", href: "/shots", icon: Database };
   }
@@ -1936,6 +1946,66 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
 
   if (pathname.startsWith("/courses")) {
     return { label: "New course", href: "/courses/new", icon: FileText };
+  }
+
+  if (pathname.startsWith("/tournaments")) {
+    return { label: "Add round", href: "/rounds/new", icon: Flag };
+  }
+
+  if (pathname.startsWith("/feed")) {
+    return { label: "Friends", href: "/friends", icon: Users };
+  }
+
+  if (pathname.startsWith("/friends")) {
+    return { label: "Find friends", href: "/friends", icon: UserRound };
+  }
+
+  if (pathname.startsWith("/groups")) {
+    return { label: "Challenges", href: "/challenges", icon: Trophy };
+  }
+
+  if (pathname.startsWith("/challenges")) {
+    return { label: "Leaderboards", href: "/leaderboard", icon: Trophy };
+  }
+
+  if (pathname.startsWith("/leaderboard")) {
+    return { label: "Challenges", href: "/challenges", icon: Trophy };
+  }
+
+  if (pathname.startsWith("/profile")) {
+    return { label: "Settings", href: "/settings", icon: Settings };
+  }
+
+  if (pathname.startsWith("/social-intelligence")) {
+    return { label: "Feed", href: "/feed", icon: MessageCircle };
+  }
+
+  if (pathname.startsWith("/settings")) {
+    return { label: "Billing", href: "/billing", icon: CreditCard };
+  }
+
+  if (pathname.startsWith("/billing")) {
+    return { label: "Settings", href: "/settings", icon: Settings };
+  }
+
+  if (pathname.startsWith("/providers")) {
+    return { label: "Rapsodo", href: "/rapsodo", icon: Upload };
+  }
+
+  if (pathname.startsWith("/rapsodo")) {
+    return { label: "Import CSV", href: "/import", icon: Upload };
+  }
+
+  if (pathname.startsWith("/import")) {
+    return { label: "Rapsodo", href: "/rapsodo", icon: Upload };
+  }
+
+  if (pathname.startsWith("/partners")) {
+    return { label: "Admin console", href: "/admin", icon: ShieldCheckIcon };
+  }
+
+  if (pathname.startsWith("/admin")) {
+    return { label: "User lookup", href: "/admin/users", icon: UserRound };
   }
 
   if (pathname.startsWith("/coach") || pathname.startsWith("/practice")) {
@@ -1950,12 +2020,18 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
     pathname.startsWith("/shots") ||
     pathname.startsWith("/bag") ||
     pathname.startsWith("/progress") ||
-    pathname.startsWith("/strokes-gained")
+    pathname.startsWith("/strokes-gained") ||
+    pathname.startsWith("/speed") ||
+    pathname.startsWith("/stats/training-over-time") ||
+    pathname.startsWith("/equipment") ||
+    pathname.startsWith("/handicap") ||
+    pathname.startsWith("/simulator-lab") ||
+    pathname.startsWith("/course-records")
   ) {
     return { label: "Import", href: "/import", icon: Upload };
   }
 
-  return { label: "Import", href: "/import", icon: Upload };
+  return { label: "Dashboard", href: "/dashboard", icon: Gauge };
 }
 
 function getAssistantContext(pathname: string): AssistantContext | null {

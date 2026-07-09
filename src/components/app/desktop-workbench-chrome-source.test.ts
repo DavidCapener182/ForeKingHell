@@ -64,7 +64,7 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain('return "Event leaderboard"');
   });
 
-  it("uses a latest-practice primary action instead of a generic import action", () => {
+  it("keeps desktop primary actions route-aware instead of falling back to import", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
@@ -72,6 +72,29 @@ describe("desktop workbench chrome source", () => {
     const primaryActionBlock =
       source.match(/function getPrimaryAction[\s\S]*?\n}\n\nfunction getAssistantContext/)?.[0] ??
       "";
+
+    for (const expected of [
+      'pathname.startsWith("/dashboard")',
+      'label: "Latest practice"',
+      'href: "/today"',
+      "icon: CalendarDays",
+      'pathname.startsWith("/feed")',
+      'label: "Friends"',
+      'href: "/friends"',
+      "icon: Users",
+      'pathname.startsWith("/settings")',
+      'label: "Billing"',
+      'href: "/billing"',
+      "icon: CreditCard",
+      'pathname.startsWith("/admin")',
+      'label: "User lookup"',
+      'href: "/admin/users"',
+      "icon: UserRound",
+      'label: "Dashboard"',
+      "icon: Gauge",
+    ]) {
+      expect(primaryActionBlock).toContain(expected);
+    }
 
     expect(primaryActionBlock).toContain('pathname.startsWith("/today")');
     expect(primaryActionBlock).toContain('label: "Shot rows"');
