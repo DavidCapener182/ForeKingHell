@@ -186,7 +186,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
 
       <DesktopWorkbenchLayout
         scope="progress"
-        railBreakpoint="2xl"
+        railBreakpoint="wide"
         rail={
           <DesktopInsightRail
             title="AI progress rail"

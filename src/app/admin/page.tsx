@@ -130,7 +130,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
       <DesktopWorkbenchLayout
         scope="admin"
-        railBreakpoint="2xl"
+        railBreakpoint="wide"
         rail={
           <DesktopInsightRail
             title="AI admin rail"

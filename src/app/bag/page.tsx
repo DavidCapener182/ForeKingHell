@@ -581,7 +581,7 @@ export default async function BagPage({ searchParams }: PageProps) {
       <DesktopWorkbenchLayout
         scope="bag"
         className="hidden sm:grid"
-        railBreakpoint="2xl"
+        railBreakpoint="wide"
         rail={
           <DesktopInsightRail
             title="AI bag rail"

@@ -10,7 +10,7 @@ describe("bag desktop workbench source", () => {
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="bag"');
-    expect(layoutBlock).toContain('railBreakpoint="2xl"');
+    expect(layoutBlock).toContain('railBreakpoint="wide"');
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI bag rail"');
   });

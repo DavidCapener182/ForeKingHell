@@ -32,8 +32,8 @@ describe("admin overview desktop console", () => {
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI admin rail"');
     expect(source).toContain("prompts={adminWorkbenchPrompts}");
-    expect(source).toContain('railBreakpoint="2xl"');
-    expect(source).not.toContain('railBreakpoint="wide"');
+    expect(source).toContain('railBreakpoint="wide"');
+    expect(source).not.toContain('railBreakpoint="2xl"');
     expect(source).toContain("rail={");
   });
 });

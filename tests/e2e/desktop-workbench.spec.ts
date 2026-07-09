@@ -662,7 +662,7 @@ test.describe("desktop workbench", () => {
       await expectNoAiRail(page, /AI admin rail/i);
       await expect(switcher).toContainText("Admin console");
 
-      await page.setViewportSize({ width: 2048, height: 1100 });
+      await page.setViewportSize({ width: 2200, height: 1100 });
       await gotoAppRoute(page, "/admin");
       await expectPageReady(page, /AI admin rail/i);
       await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();
@@ -2731,14 +2731,14 @@ test.describe("desktop workbench", () => {
         scope: "bag",
         ready: /Bag|Gapping/i,
         rail: /AI bag rail/i,
-        railWidth: 2048,
+        railWidth: 2200,
       },
       {
         path: "/progress",
         scope: "progress",
         ready: /Bag progress|Overall progress/i,
         rail: /AI progress rail/i,
-        railWidth: 2048,
+        railWidth: 2200,
       },
       {
         path: "/compare",
@@ -3074,7 +3074,7 @@ test.describe("desktop workbench", () => {
       "forekinghell-admin-system-checks.csv",
     );
 
-    await page.setViewportSize({ width: 2048, height: 1100 });
+    await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/admin");
     await expectAppText(page, /AI admin rail/i, 45_000);
     await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();

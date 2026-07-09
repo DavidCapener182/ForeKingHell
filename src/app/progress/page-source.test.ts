@@ -15,10 +15,10 @@ describe("progress desktop workbench source", () => {
     expect(layoutBlock).toContain('scope="progress"');
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI progress rail"');
-    expect(layoutBlock).toContain('railBreakpoint="2xl"');
+    expect(layoutBlock).toContain('railBreakpoint="wide"');
     expect(layoutBlock).toContain("progressInsightMetrics(summary)");
     expect(layoutBlock).toContain("progressInsightEvidence(summary)");
-    expect(layoutBlock).not.toContain('railBreakpoint="wide"');
+    expect(layoutBlock).not.toContain('railBreakpoint="2xl"');
     expect(source).toContain("progressWorkbenchPrompts");
     expect(source).toContain('label: "Explain progress trend"');
     expect(source).toContain('label: "Compare with last month"');
