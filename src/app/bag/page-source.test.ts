@@ -15,6 +15,22 @@ describe("bag desktop workbench source", () => {
     expect(layoutBlock).toContain('title="AI bag rail"');
   });
 
+  it("defers peer benchmark data until the user requests comparison context", () => {
+    expect(source).toContain("peers?: string | string[]");
+    expect(source).toContain(
+      "const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);",
+    );
+    expect(source).toContain("benchmarkRows.length > 0 && peerBenchmarksLoaded");
+    expect(source).toContain("? await getPeerBenchmarkSummary(benchmarkRows)");
+    expect(source).toContain(": emptyPeerSummary()");
+    expect(source).toContain("function shouldLoadPeerBenchmarks");
+    expect(source).toContain('rawValue === "1"');
+    expect(source).toContain('rawValue === "true"');
+    expect(source).toContain('rawValue === "yes"');
+    expect(source).toContain("peerBenchmarksLoaded={peerBenchmarksLoaded}");
+    expect(source).toContain('id="distance-benchmarks"');
+  });
+
   it("keeps the desktop gapping table open, exportable and reachable as the main table", () => {
     const gappingBlock =
       source.match(/<details[\s\S]*?data-bag-gapping-table[\s\S]*?<\/details>/)?.[0] ?? "";

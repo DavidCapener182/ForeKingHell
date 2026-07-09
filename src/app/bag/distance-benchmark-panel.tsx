@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Users } from "lucide-react";
 
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -203,9 +204,11 @@ const benchmarkSuggestedViews: DesktopSavedViewSuggestion[] = [
 export function DistanceBenchmarkPanel({
   rows,
   peerSummary,
+  peerBenchmarksLoaded,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
+  peerBenchmarksLoaded: boolean;
 }) {
   return (
     <DataPanel>
@@ -215,7 +218,11 @@ export function DistanceBenchmarkPanel({
         action={<BarChart3 className="size-5 text-emerald-500" aria-hidden="true" />}
       />
       <CardContent className="space-y-4">
-        <BenchmarkOverview rows={rows} peerSummary={peerSummary} />
+        <BenchmarkOverview
+          rows={rows}
+          peerSummary={peerSummary}
+          peerBenchmarksLoaded={peerBenchmarksLoaded}
+        />
         <Tabs defaultValue="carryYd" className="gap-4">
           <div className="-mx-1 overflow-x-auto px-1">
             <TabsList className="h-auto w-max justify-start rounded-lg border bg-white p-1 shadow-sm">
@@ -248,7 +255,11 @@ export function DistanceBenchmarkPanel({
           ))}
 
           <TabsContent value={PEER_TAB_VALUE} className="space-y-4">
-            <PeerComparisonContent rows={rows} peerSummary={peerSummary} />
+            <PeerComparisonContent
+              rows={rows}
+              peerSummary={peerSummary}
+              peerBenchmarksLoaded={peerBenchmarksLoaded}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -259,9 +270,11 @@ export function DistanceBenchmarkPanel({
 function BenchmarkOverview({
   rows,
   peerSummary,
+  peerBenchmarksLoaded,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
+  peerBenchmarksLoaded: boolean;
 }) {
   const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
   const strongestCarry =
@@ -325,16 +338,20 @@ function BenchmarkOverview({
         },
         {
           label: "Peer chase",
-          value: peerChase
-            ? `${formatClubType(peerChase.row.clubType)} · ${peerChase.metric.shortLabel}`
-            : "--",
-          detail: peerChase
-            ? `${formatMetricValue(
-                peerChase.peer.topQuartile - peerChase.actual,
-                peerChase.metric,
-              )} to top-25%`
-            : "No visible peer chase yet",
-          tone: peerChase ? "amber" : "slate",
+          value: !peerBenchmarksLoaded
+            ? "Optional"
+            : peerChase
+              ? `${formatClubType(peerChase.row.clubType)} · ${peerChase.metric.shortLabel}`
+              : "--",
+          detail: !peerBenchmarksLoaded
+            ? "Load peer percentiles when you need comparison context"
+            : peerChase
+              ? `${formatMetricValue(
+                  peerChase.peer.topQuartile - peerChase.actual,
+                  peerChase.metric,
+                )} to top-25%`
+              : "No visible peer chase yet",
+          tone: peerBenchmarksLoaded && peerChase ? "amber" : "slate",
           href: peerChase ? `/bag/${peerChase.row.clubId}` : undefined,
         },
       ]}
@@ -720,15 +737,42 @@ function BenchmarkTableColumns() {
 function PeerComparisonContent({
   rows,
   peerSummary,
+  peerBenchmarksLoaded,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
+  peerBenchmarksLoaded: boolean;
 }) {
   const peerRows = buildPeerDisplayRows(rows, peerSummary);
   const rowsWithRank = peerRows.filter((row) => row.peer?.percentile !== null);
   const bestRank = bestPeerRankRow(rowsWithRank);
   const bestRankPercentile = bestRank?.peer?.percentile ?? null;
   const closestTopQuartile = closestTopQuartilePeerRow(peerRows);
+
+  if (!peerBenchmarksLoaded) {
+    return (
+      <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
+              <Users className="size-4" aria-hidden="true" />
+              Peer benchmarks are on demand
+            </p>
+            <p className="mt-2 text-sm leading-6 text-emerald-900">
+              Carry, speed and flight benchmarks are loaded. Peer percentiles use social
+              visibility checks and recent public or friend-visible stock shots, so they are loaded
+              only when you ask for comparison context.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="w-fit border-emerald-700 text-emerald-900">
+            <Link href="/bag?peers=1#distance-benchmarks" prefetch={false}>
+              Load peer benchmarks
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

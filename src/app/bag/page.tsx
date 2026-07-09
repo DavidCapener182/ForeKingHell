@@ -231,6 +231,7 @@ const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
 type PageProps = {
   searchParams?: Promise<{
     pb?: string | string[];
+    peers?: string | string[];
   }>;
 };
 
@@ -269,6 +270,7 @@ const bagShotSelect = {
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
+  const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
   const [bag, profile, challengeData, featureData, personalStrokesGainedEvents, speedSummary] =
     await Promise.all([
       getBag(),
@@ -302,7 +304,9 @@ export default async function BagPage({ searchParams }: PageProps) {
   const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
   const benchmarkRows = buildBenchmarkRows(bag);
   const peerBenchmarkSummary =
-    benchmarkRows.length > 0 ? await getPeerBenchmarkSummary(benchmarkRows) : emptyPeerSummary();
+    benchmarkRows.length > 0 && peerBenchmarksLoaded
+      ? await getPeerBenchmarkSummary(benchmarkRows)
+      : emptyPeerSummary();
   const courseAdvice = buildCourseDecisionAdvice(bag);
   const totalShots = bag.reduce((total, club) => total + club.rawShotCount, 0);
   const stockConfidenceClubs = bag.filter(shouldShowInCarryGapping);
@@ -500,7 +504,11 @@ export default async function BagPage({ searchParams }: PageProps) {
               summary: benchmarkRows.length > 0 ? `${benchmarkRows.length} clubs` : "Building",
               children:
                 benchmarkRows.length > 0 ? (
-                  <DistanceBenchmarkPanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
+                  <DistanceBenchmarkPanel
+                    rows={benchmarkRows}
+                    peerSummary={peerBenchmarkSummary}
+                    peerBenchmarksLoaded={peerBenchmarksLoaded}
+                  />
                 ) : (
                   <NativeListSection title="Distance benchmarks">
                     <p className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#6B7280]">
@@ -734,7 +742,11 @@ export default async function BagPage({ searchParams }: PageProps) {
           <PersonalBestSnapshotPanel clubs={bag} />
           <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
           {benchmarkRows.length > 0 ? (
-            <BenchmarkReferencePanel rows={benchmarkRows} peerSummary={peerBenchmarkSummary} />
+            <BenchmarkReferencePanel
+              rows={benchmarkRows}
+              peerSummary={peerBenchmarkSummary}
+              peerBenchmarksLoaded={peerBenchmarksLoaded}
+            />
           ) : null}
           {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
           <CourseDecisionPanel advice={courseAdvice} />
@@ -1421,6 +1433,12 @@ function parsePersonalBestMetric(value: string | string[] | undefined): Personal
   const rawValue = Array.isArray(value) ? value[0] : value;
 
   return rawValue === "total" ? "total" : "carry";
+}
+
+function shouldLoadPeerBenchmarks(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+
+  return rawValue === "1" || rawValue === "true" || rawValue === "yes";
 }
 
 function visualCarryYd(row: GappingRow) {
@@ -3505,13 +3523,19 @@ function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
 function BenchmarkReferencePanel({
   rows,
   peerSummary,
+  peerBenchmarksLoaded,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
+  peerBenchmarksLoaded: boolean;
 }) {
   return (
-    <section id="levels" className="scroll-mt-28">
-      <DistanceBenchmarkPanel rows={rows} peerSummary={peerSummary} />
+    <section id="distance-benchmarks" className="scroll-mt-28">
+      <DistanceBenchmarkPanel
+        rows={rows}
+        peerSummary={peerSummary}
+        peerBenchmarksLoaded={peerBenchmarksLoaded}
+      />
     </section>
   );
 }

@@ -57,4 +57,13 @@ describe("distance benchmark panel source", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("keeps peer benchmark percentiles as an on-demand comparison branch", () => {
+    expect(source).toContain("peerBenchmarksLoaded");
+    expect(source).toContain("Peer benchmarks are on demand");
+    expect(source).toContain("Load peer benchmarks");
+    expect(source).toContain('href="/bag?peers=1#distance-benchmarks"');
+    expect(source).toContain("Carry, speed and flight benchmarks are loaded.");
+    expect(source).toContain("peerBenchmarksLoaded && peerChase");
+  });
 });
