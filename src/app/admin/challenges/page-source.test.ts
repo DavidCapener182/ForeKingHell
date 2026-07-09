@@ -22,6 +22,7 @@ describe("admin challenges desktop console source", () => {
     expect(source).toContain("mainTable");
     expect(source).toContain('mainTableLabel="Challenge boards table"');
     expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain('data-workbench-scope="admin-challenges"');
     expect(source).toContain('data-workbench-export-table="admin-challenges"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");

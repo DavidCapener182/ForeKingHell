@@ -210,6 +210,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
               >
                 <table
                   className="w-full min-w-[780px] text-left text-sm"
+                  data-workbench-scope="admin-billing"
                   data-workbench-export-table="admin-billing"
                   aria-describedby="admin-billing-table-summary"
                 >

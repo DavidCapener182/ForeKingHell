@@ -227,6 +227,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             >
               <table
                 className="w-full min-w-[900px] text-left text-sm"
+                data-workbench-scope="admin-users"
                 data-workbench-export-table="admin-users"
                 aria-describedby="admin-users-table-summary"
               >

@@ -22,6 +22,7 @@ describe("admin billing desktop console source", () => {
     expect(source).toContain("mainTable");
     expect(source).toContain('mainTableLabel="Subscriptions table"');
     expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain('data-workbench-scope="admin-billing"');
     expect(source).toContain('data-workbench-export-table="admin-billing"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");

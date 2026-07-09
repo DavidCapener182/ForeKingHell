@@ -11,6 +11,7 @@ describe("shared round page source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('aria-describedby="shared-scorecard-summary"');
     expect(source).toContain('id="shared-scorecard-summary"');
+    expect(source).toContain('data-workbench-scope="shared-scorecard"');
     expect(source).toContain("Shared round scorecard");
     expect(source).toContain("sticky left-0 z-20");
     expect(source).toContain("tabIndex={0}");

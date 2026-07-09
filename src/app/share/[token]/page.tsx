@@ -139,7 +139,11 @@ export default async function SharedRoundPage({ params }: PageProps) {
               label="Shared scorecard table"
               stickyFirstColumn
             >
-              <Table className="min-w-[720px]" aria-describedby="shared-scorecard-summary">
+              <Table
+                className="min-w-[720px]"
+                data-workbench-scope="shared-scorecard"
+                aria-describedby="shared-scorecard-summary"
+              >
                 <TableCaption id="shared-scorecard-summary" className="sr-only">
                   Shared round scorecard with hole, par, yards, score, putting, penalty, fairway and
                   green-in-regulation values.

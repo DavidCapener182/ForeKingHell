@@ -184,6 +184,7 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
               >
                 <table
                   className="w-full min-w-[860px] text-left text-sm"
+                  data-workbench-scope="admin-challenges"
                   data-workbench-export-table="admin-challenges"
                   aria-describedby="admin-challenges-table-summary"
                 >

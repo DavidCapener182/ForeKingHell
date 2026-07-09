@@ -22,6 +22,7 @@ describe("admin users desktop console source", () => {
     expect(source).toContain("mainTable");
     expect(source).toContain('mainTableLabel="Admin user accounts table"');
     expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain('data-workbench-scope="admin-users"');
     expect(source).toContain('data-workbench-export-table="admin-users"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
