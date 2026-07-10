@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAiCoachPayload, buildCoachPrompt, parseAiCoachSummary } from "@/lib/ai-coach-summary";
+import {
+  buildAiCoachPayload,
+  buildCoachPrompt,
+  parseAiCoachPayload,
+  parseAiCoachSummary,
+} from "@/lib/ai-coach-summary";
 import type { CoachSummary } from "@/lib/coach";
 
 describe("AI coach summary helpers", () => {
@@ -32,6 +37,22 @@ describe("AI coach summary helpers", () => {
 
     expect(parsed.confidence).toBe("high");
     expect(parsed.practicePlan).toHaveLength(3);
+  });
+
+  it("accepts a bounded generated coach payload", () => {
+    const payload = buildAiCoachPayload(fakeCoachSummary());
+    expect(parseAiCoachPayload(payload)).toEqual(payload);
+  });
+
+  it("rejects oversized or deeply invalid coach payloads", () => {
+    const payload = buildAiCoachPayload(fakeCoachSummary());
+    expect(parseAiCoachPayload({ ...payload, clubs: Array(9).fill(payload.clubs[0]) })).toBeNull();
+    expect(
+      parseAiCoachPayload({
+        ...payload,
+        trainingImpact: [{ ...payload.trainingImpact[0], detail: "x".repeat(401) }],
+      }),
+    ).toBeNull();
   });
 });
 

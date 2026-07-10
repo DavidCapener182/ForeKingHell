@@ -2678,6 +2678,7 @@ function DriverPathMarker({
         tone === "green" ? "bg-[#087A3D]" : "bg-[#B87500]",
       )}
       style={{ left: `${left}%` }}
+      role="img"
       aria-label={`${label}: ${formatSignedDegrees(value)}`}
       title={`${label}: ${formatSignedDegrees(value)}`}
     />

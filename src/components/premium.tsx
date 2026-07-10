@@ -56,7 +56,7 @@ export function PageShell({
       id="main-content"
       suppressHydrationWarning
       className={cn(
-        "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pb-8 sm:pt-6 lg:px-8",
+        "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pt-6 lg:px-8 lg:pb-8",
         className,
       )}
     >
@@ -108,44 +108,36 @@ export function PageHeader({
 
   return (
     <>
-      <header className={cn("premium-hero grid gap-3 p-3 sm:hidden", className)}>
+      <header className={cn("ios-page-header grid gap-3 lg:hidden", className)}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
           <div className="min-w-0">
             {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-            <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance text-foreground">
-              {title}
-            </h1>
-            {description && !primaryMetric && !actions ? (
-              <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
+            <h1 className="text-balance text-foreground">{title}</h1>
+            {description ? (
+              <p className="mt-1 line-clamp-2 text-[15px] leading-5 text-muted-foreground">
                 {description}
               </p>
             ) : null}
           </div>
         </div>
-        {primaryMetric || actions ? (
+        {primaryMetric ? (
           <div
             className={cn(
-              "premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-2.5 py-2",
+              "ios-page-header-action grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3",
               primaryMetric?.className,
             )}
           >
-            {primaryMetric ? (
-              <div className="min-w-0">
-                <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {primaryMetric.label}
+            <div className="min-w-0">
+              <p className="truncate text-[13px] text-muted-foreground">{primaryMetric.label}</p>
+              <p className="mt-0.5 truncate text-xl font-semibold tracking-tight tabular-nums">
+                {primaryMetric.value}
+              </p>
+              {primaryMetric.detail ? (
+                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                  {primaryMetric.detail}
                 </p>
-                <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">
-                  {primaryMetric.value}
-                </p>
-                {primaryMetric.detail ? (
-                  <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
-                    {primaryMetric.detail}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <span aria-hidden />
-            )}
+              ) : null}
+            </div>
             {actions ? (
               <div
                 data-primary-action
@@ -156,9 +148,17 @@ export function PageHeader({
             ) : null}
           </div>
         ) : null}
+        {!primaryMetric && actions ? (
+          <div
+            data-primary-action
+            className="ios-page-header-actions flex gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full"
+          >
+            {actions}
+          </div>
+        ) : null}
       </header>
 
-      <header className={cn("desktop-page-header hidden sm:block", className)}>
+      <header className={cn("desktop-page-header hidden lg:block", className)}>
         <div
           className={cn(
             "grid gap-4",
@@ -253,11 +253,11 @@ export function MobileCompactPageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("premium-hero grid gap-3 p-3 sm:hidden", className)}>
+    <header className={cn("premium-hero grid gap-3 p-3 lg:hidden", className)}>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <div className="min-w-0">
           {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-          <h1 className="text-xl font-semibold leading-tight tracking-normal text-balance text-foreground">
+          <h1 className="text-[2rem] font-semibold leading-[1.08] tracking-[-0.025em] text-balance text-foreground">
             {title}
           </h1>
           {description && !metricLabel && !action ? (
@@ -322,7 +322,7 @@ export function MobileSectionChips({
       aria-label="Page sections"
       tabIndex={0}
       className={cn(
-        "focus-aaa sticky top-[4.75rem] z-30 -mx-1 flex snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 scroll-px-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden",
+        "focus-aaa sticky top-[4.75rem] z-30 -mx-1 flex snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 scroll-px-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden",
         "premium-route-tabs rounded-lg",
         className,
       )}
@@ -352,7 +352,7 @@ export function StickyMobileAction({
       data-primary-action
       data-sticky-mobile-action
       className={cn(
-        "fixed inset-x-4 bottom-[calc(5.95rem+env(safe-area-inset-bottom))] z-40 sm:hidden",
+        "fixed inset-x-4 bottom-[calc(5.95rem+env(safe-area-inset-bottom))] z-40 lg:hidden",
         "pointer-events-none",
         className,
       )}
@@ -411,7 +411,7 @@ export function MobileFilterSheet({
   className?: string;
 }) {
   return (
-    <div className={cn("sm:hidden", className)}>
+    <div className={cn("lg:hidden", className)}>
       <Drawer>
         <DrawerTrigger
           type="button"
@@ -458,7 +458,7 @@ export function MobileFilterCommandSheet({
   const count = activeCount ?? chips?.length ?? 0;
 
   return (
-    <div className={cn("grid gap-3 sm:hidden", className)}>
+    <div className={cn("grid gap-3 lg:hidden", className)}>
       <MobileFilterSheet label={label} activeCount={count}>
         {children}
       </MobileFilterSheet>
@@ -489,7 +489,7 @@ export function MobileHorizontalRail({
   }
 
   return (
-    <section className={cn("grid min-w-0 max-w-full gap-3 overflow-hidden sm:hidden", className)}>
+    <section className={cn("grid min-w-0 max-w-full gap-3 overflow-hidden lg:hidden", className)}>
       {title || action ? (
         <div className="flex items-end justify-between gap-3">
           <div className="min-w-0">
@@ -541,46 +541,36 @@ export function MobileBentoSummary({
   }
 
   return (
-    <div className={cn("grid grid-cols-2 gap-2 sm:hidden", className)}>
+    <div className={cn("ios-grouped-list lg:hidden", className)}>
       {visibleItems.map((item, index) => {
         const tone = item.tone ?? "green";
         const content = (
-          <div
-            className={cn(
-              "apple-panel-strong grid min-h-20 content-between gap-2 p-3",
-              index === 0 ? "col-span-2 min-h-[5.5rem]" : "",
-            )}
-          >
+          <div className="ios-grouped-row grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
             <div className="min-w-0">
-              <div className="flex items-center justify-between gap-3">
-                <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {item.label}
-                </p>
-                <span className={cn("size-2 rounded-full ring-4", compactToneClasses[tone])} />
+              <div className="flex items-center gap-2">
+                <span className={cn("size-2 rounded-full", compactToneClasses[tone])} />
+                <p className="truncate text-[13px] text-muted-foreground">{item.label}</p>
               </div>
-              <p
-                className={cn(
-                  "mt-1 truncate font-semibold tracking-normal",
-                  index === 0 ? "text-xl" : "text-lg",
-                )}
-              >
-                {item.value}
-              </p>
               {item.detail ? (
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                <p className="mt-0.5 line-clamp-1 pl-4 text-xs leading-4 text-muted-foreground">
                   {item.detail}
                 </p>
               ) : null}
             </div>
-            {item.action ? (
-              <div className="[&_[data-slot=button]]:min-h-11">{item.action}</div>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-2">
+              <p className="max-w-36 truncate text-right text-[17px] font-semibold tabular-nums">
+                {item.value}
+              </p>
+              {item.action ? (
+                <div className="[&_[data-slot=button]]:min-h-11">{item.action}</div>
+              ) : null}
+            </div>
           </div>
         );
 
         if (item.href) {
           return (
-            <Link key={index} href={item.href} prefetch={false} className="block">
+            <Link key={index} href={item.href} prefetch={false} className="focus-aaa block">
               {content}
             </Link>
           );
@@ -614,24 +604,24 @@ export function MobileCompanionHero({
   className?: string;
 }) {
   return (
-    <section className={cn("premium-hero grid gap-3 rounded-lg p-3 sm:hidden", className)}>
-      <div className="min-w-0">
+    <section className={cn("ios-grouped-list lg:hidden", className)}>
+      <div className="ios-grouped-row min-w-0 px-4 py-4">
         {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-        <h2 className="text-2xl font-semibold leading-tight tracking-normal text-balance">
+        <h2 className="text-[22px] font-bold leading-tight tracking-[-0.02em] text-balance">
           {title}
         </h2>
         {description ? (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{description}</p>
+          <p className="mt-1 text-[15px] leading-5 text-muted-foreground">{description}</p>
         ) : null}
       </div>
       {metricLabel || action ? (
-        <div className="premium-command-surface grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg px-3 py-2.5">
+        <div className="ios-grouped-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
           {metricLabel ? (
             <div className="min-w-0">
-              <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                {metricLabel}
+              <p className="truncate text-[13px] text-muted-foreground">{metricLabel}</p>
+              <p className="mt-0.5 truncate text-[20px] font-semibold tracking-tight tabular-nums">
+                {metricValue}
               </p>
-              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">{metricValue}</p>
               {metricDetail ? (
                 <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
                   {metricDetail}
@@ -644,7 +634,7 @@ export function MobileCompanionHero({
           {action ? <div className="shrink-0">{action}</div> : null}
         </div>
       ) : null}
-      {children ? <div className="grid gap-2">{children}</div> : null}
+      {children ? <div className="grid gap-px p-3">{children}</div> : null}
     </section>
   );
 }
@@ -667,7 +657,7 @@ export function MobileQuickDecisionCard({
   className?: string;
 }) {
   const content = (
-    <div className={cn("apple-panel-strong grid gap-3 rounded-lg p-3 sm:hidden", className)}>
+    <div className={cn("apple-panel-strong grid gap-3 rounded-lg p-3 lg:hidden", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -709,7 +699,7 @@ export function MobilePrimaryActionCard({
   return (
     <section
       className={cn(
-        "premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:rounded-lg",
+        "premium-command-surface grid gap-3 rounded-lg p-3 lg:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full [&_[data-slot=button]]:rounded-lg",
         className,
       )}
     >
@@ -751,15 +741,15 @@ export function MobileCompanionAccordion({
       type="single"
       collapsible
       defaultValue={resolvedDefaultValue}
-      className={cn("grid gap-2 sm:hidden", className)}
+      className={cn("ios-grouped-list lg:hidden", className)}
     >
       {items.map((item) => (
         <AccordionItem
           key={item.value}
           value={item.value}
-          className="premium-card overflow-hidden rounded-lg border border-border/70"
+          className="ios-grouped-row overflow-hidden border-0"
         >
-          <AccordionTrigger className="min-h-12 px-3 py-2 text-left no-underline hover:no-underline">
+          <AccordionTrigger className="min-h-14 px-4 py-2.5 text-left no-underline hover:no-underline">
             <span className="grid min-w-0 gap-0.5">
               <span className="truncate text-sm font-semibold tracking-normal">{item.title}</span>
               {item.description ? (
@@ -774,7 +764,7 @@ export function MobileCompanionAccordion({
               </span>
             ) : null}
           </AccordionTrigger>
-          <AccordionContent className="border-t border-border/70 p-3">
+          <AccordionContent className="border-t border-border/70 bg-secondary/35 p-4">
             {item.children}
           </AccordionContent>
         </AccordionItem>
@@ -807,7 +797,7 @@ export function MobileAccordionSection({
       type="single"
       collapsible
       defaultValue={defaultOpen ? "mobile-section" : undefined}
-      className={cn("sm:hidden", className)}
+      className={cn("lg:hidden", className)}
     >
       <AccordionItem
         value="mobile-section"
@@ -852,7 +842,7 @@ export function MobileCurrentItemCard({
   className?: string;
 }) {
   return (
-    <section className={cn("grid gap-3 sm:hidden", className)}>
+    <section className={cn("grid gap-3 lg:hidden", className)}>
       {selector ? <div className="-mx-1 overflow-x-auto px-1 pb-1">{selector}</div> : null}
       <div className="premium-card p-4">
         <div className="flex items-start justify-between gap-3">
@@ -895,7 +885,7 @@ export function TopThreeDisclosure({
 
   return (
     <>
-      <div className={cn("sm:hidden", className)}>
+      <div className={cn("lg:hidden", className)}>
         {visibleItems.map(render)}
         <details className="contents">
           <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-white/80 px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
@@ -906,7 +896,7 @@ export function TopThreeDisclosure({
           </div>
         </details>
       </div>
-      <div className={cn("hidden sm:grid", className)}>{items.map(render)}</div>
+      <div className={cn("hidden lg:grid", className)}>{items.map(render)}</div>
     </>
   );
 }
@@ -1301,7 +1291,7 @@ export function DataTableFrame({
         role={regionLabel ? "region" : undefined}
         aria-label={regionLabel}
         className={cn(
-          mobile ? "hidden sm:block" : "block",
+          mobile ? "hidden lg:block" : "block",
           "apple-panel-strong overflow-hidden",
           mainTable &&
             "scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -1310,7 +1300,7 @@ export function DataTableFrame({
       >
         <div className="min-w-0">{children}</div>
       </div>
-      {mobile ? <div className="min-w-0 overflow-hidden sm:hidden">{mobile}</div> : null}
+      {mobile ? <div className="min-w-0 overflow-hidden lg:hidden">{mobile}</div> : null}
     </>
   );
 }

@@ -23,6 +23,7 @@ export function MobileTabBar({
   ariaLabel?: string;
 }) {
   const navRef = useRef<HTMLElement | null>(null);
+  const compact = tabs.length <= 4;
 
   useLayoutEffect(() => {
     const nav = navRef.current;
@@ -73,7 +74,8 @@ export function MobileTabBar({
       aria-label={ariaLabel ?? `Mobile ${activeKey} tabs`}
       tabIndex={0}
       className={cn(
-        "premium-route-tabs focus-aaa -mx-4 flex min-w-0 snap-x snap-proximity gap-1.5 overflow-x-auto overscroll-x-contain border-b px-4 py-1 scroll-px-4 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "ios-route-tabs focus-aaa flex min-w-0 snap-x snap-proximity overflow-x-auto overscroll-x-contain outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        compact ? "w-full" : "ios-scroll-tabs -mx-4 px-4 scroll-px-4",
         className,
       )}
     >
@@ -87,10 +89,8 @@ export function MobileTabBar({
             prefetch={false}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "focus-aaa min-h-11 shrink-0 snap-center touch-manipulation whitespace-nowrap rounded-md border px-3.5 py-2.5 text-sm font-semibold tracking-normal outline-none transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98]",
-              active
-                ? "premium-route-tab-active"
-                : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",
+              "ios-route-tab focus-aaa min-h-11 snap-center touch-manipulation whitespace-nowrap outline-none transition-[background-color,color,box-shadow,transform] duration-100 ease-out active:scale-[0.98]",
+              compact ? "min-w-0 flex-1" : "shrink-0",
             )}
           >
             {tab.label}

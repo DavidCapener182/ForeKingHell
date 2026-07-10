@@ -1362,7 +1362,13 @@ async function getCoursesData() {
           .from(courseRecords)
           .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
           .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-          .where(inArray(courseRecords.courseId, visibleCourseIds))
+          .where(
+            and(
+              inArray(courseRecords.courseId, visibleCourseIds),
+              eq(courseRecords.scope, "public"),
+              eq(courseRecords.status, "active"),
+            ),
+          )
       : [],
     visibleCourseIds.length > 0
       ? db

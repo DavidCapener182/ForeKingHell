@@ -121,7 +121,7 @@ export default async function SocialIntelligencePage() {
           ]}
         />
 
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
+        <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
           <section className="grid gap-4 lg:sticky lg:top-28">
             <section className="rounded-xl border bg-white p-4 shadow-sm">
               <p className="flex items-center gap-2 text-sm font-semibold">
@@ -205,8 +205,8 @@ export default async function SocialIntelligencePage() {
             </section>
           </section>
 
-          <section className="grid gap-4">
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
+          <section className="grid min-w-0 gap-4">
+            <section className="min-w-0 rounded-xl border bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold">Weekly and challenge recaps</p>
               <div className="mt-4 grid gap-3">
                 {data.summaries.length === 0 ? (
@@ -244,7 +244,7 @@ function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
     <section
       id="social-safety-ledger"
       data-workbench-scope="social-safety"
-      className="rounded-xl border bg-white p-4 shadow-sm"
+      className="min-w-0 overflow-hidden rounded-xl border bg-white p-4 shadow-sm"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>

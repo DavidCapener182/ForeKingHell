@@ -1,4 +1,5 @@
 import { isShortGameTouchClubType } from "@/lib/club-format";
+import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
 
 export type StockShot = {
   clubType?: string | null;
@@ -90,8 +91,8 @@ export type StockYardageOptions = {
   averageSampleSize?: number;
 };
 
-const EXCLUDED_STOCK_CATEGORIES = new Set(["chip", "pitch", "recovery", "bunker"]);
-const EXCLUDED_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
+const EXCLUDED_STOCK_CATEGORIES = new Set<string>(excludedRecordShotCategories);
+const EXCLUDED_QUALITY_TAGS = new Set<string>(excludedRecordQualityTags);
 const SCORING_WEDGE_CLUB_TYPES = new Set(["pw", "gw", "aw"]);
 export const SAND_WEDGE_STOCK_MIN_CARRY_YD = 75;
 const SAND_WEDGE_MIN_STOCK_CLUSTER_SHOTS = 5;
@@ -257,13 +258,13 @@ export function selectPersonalBestCarryShot<T extends StockShot>(
   maxShots = 50,
   options: StockYardageOptions = {},
 ) {
+  void maxShots;
+
   return (
     [...shots]
       .filter((shot): shot is T & { carryYd: number } =>
         isPersonalBestEligibleFullShot(shot, options),
       )
-      .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
-      .slice(0, maxShots)
       .sort(
         (left, right) =>
           right.carryYd - left.carryYd || dateValue(right.shotAt) - dateValue(left.shotAt),
@@ -286,14 +287,14 @@ export function selectPersonalBestTotalShot<T extends StockShot>(
   maxShots = 50,
   options: StockYardageOptions = {},
 ) {
+  void maxShots;
+
   return (
     [...shots]
       .filter(
         (shot): shot is T & { totalYd: number } =>
           isPersonalBestEligibleFullShot(shot, options) && isNumber(shot.totalYd),
       )
-      .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
-      .slice(0, maxShots)
       .sort(
         (left, right) =>
           right.totalYd - left.totalYd || dateValue(right.shotAt) - dateValue(left.shotAt),

@@ -50,6 +50,8 @@ describe("Stripe webhook handling", () => {
     const store = new FakeBillingWebhookStore();
     const userId = randomUUID();
     const event: StripeWebhookEvent = {
+      id: "evt_subscription_updated",
+      created: 1_700_000_100,
       type: "customer.subscription.updated",
       data: {
         object: {
@@ -111,6 +113,8 @@ describe("Stripe webhook handling", () => {
     });
 
     const event: StripeWebhookEvent = {
+      id: "evt_subscription_deleted",
+      created: 1_700_000_200,
       type: "customer.subscription.deleted",
       data: {
         object: {
@@ -163,6 +167,8 @@ describe("Stripe webhook handling", () => {
 
     const result = await handleStripeWebhookEvent(
       {
+        id: "evt_invoice_failed",
+        created: 1_700_000_300,
         type: "invoice.payment_failed",
         data: {
           object: {
@@ -183,11 +189,152 @@ describe("Stripe webhook handling", () => {
     expect(store.subscriptions.get("sub_failed")?.status).toBe("past_due");
     expect(store.entitlements.get(userId)).toEqual([]);
   });
+
+  it("does not grant access for a completed checkout until payment is paid", async () => {
+    const store = new FakeBillingWebhookStore();
+    const userId = randomUUID();
+
+    const result = await handleStripeWebhookEvent(
+      {
+        id: "evt_checkout_unpaid",
+        created: 1_700_000_400,
+        type: "checkout.session.completed",
+        data: {
+          object: {
+            id: "cs_unpaid",
+            customer: "cus_unpaid",
+            subscription: "sub_unpaid",
+            status: "complete",
+            payment_status: "unpaid",
+            metadata: { user_id: userId, plan_key: "coach" },
+          },
+        },
+      },
+      store,
+      {},
+    );
+
+    expect(result).toMatchObject({ handled: true, userId, planKey: "coach" });
+    expect(store.subscriptions.get("sub_unpaid")?.status).toBe("checkout_completed");
+    expect(store.entitlements.get(userId)).toEqual([]);
+  });
+
+  it("uses the current Stripe price before stale subscription metadata", async () => {
+    const store = new FakeBillingWebhookStore();
+    const userId = randomUUID();
+
+    const result = await handleStripeWebhookEvent(
+      {
+        id: "evt_subscription_downgraded",
+        created: 1_700_000_500,
+        type: "customer.subscription.updated",
+        data: {
+          object: {
+            id: "sub_downgraded",
+            customer: "cus_downgraded",
+            status: "active",
+            metadata: { user_id: userId, plan_key: "coach" },
+            items: { data: [{ price: { id: "price_plus_monthly" } }] },
+          },
+        },
+      },
+      store,
+      {
+        STRIPE_PLUS_MONTHLY_PRICE_ID: "price_plus_monthly",
+        STRIPE_COACH_MONTHLY_PRICE_ID: "price_coach_monthly",
+      },
+    );
+
+    expect(result).toMatchObject({ handled: true, userId, planKey: "plus" });
+    expect(store.subscriptions.get("sub_downgraded")?.planKey).toBe("plus");
+    expect(
+      store.entitlements.get(userId)?.some((row) => row.entitlementKey === "coach_dashboard"),
+    ).toBe(false);
+  });
+
+  it("deduplicates repeated deliveries before applying billing state twice", async () => {
+    const store = new FakeBillingWebhookStore();
+    const userId = randomUUID();
+    const event: StripeWebhookEvent = {
+      id: "evt_duplicate",
+      created: 1_700_001_000,
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_duplicate",
+          customer: "cus_duplicate",
+          status: "active",
+          metadata: { user_id: userId },
+          items: { data: [{ price: { id: "price_plus_monthly" } }] },
+        },
+      },
+    };
+
+    const first = await handleStripeWebhookEvent(event, store, {
+      STRIPE_PLUS_MONTHLY_PRICE_ID: "price_plus_monthly",
+    });
+    const duplicate = await handleStripeWebhookEvent(event, store, {
+      STRIPE_PLUS_MONTHLY_PRICE_ID: "price_plus_monthly",
+    });
+
+    expect(first).toMatchObject({ handled: true, planKey: "plus" });
+    expect(duplicate).toMatchObject({ handled: true, reason: "duplicate_event" });
+    expect(store.events.get(event.id)).toBe("processed");
+  });
+
+  it("ignores an older subscription event delivered after newer active state", async () => {
+    const store = new FakeBillingWebhookStore();
+    const userId = randomUUID();
+    const env = { STRIPE_PRO_MONTHLY_PRICE_ID: "price_pro_monthly" };
+
+    await handleStripeWebhookEvent(
+      {
+        id: "evt_newer_active",
+        created: 1_700_002_000,
+        type: "customer.subscription.updated",
+        data: {
+          object: {
+            id: "sub_ordered",
+            customer: "cus_ordered",
+            status: "active",
+            metadata: { user_id: userId },
+            items: { data: [{ price: { id: "price_pro_monthly" } }] },
+          },
+        },
+      },
+      store,
+      env,
+    );
+    const stale = await handleStripeWebhookEvent(
+      {
+        id: "evt_older_deleted",
+        created: 1_700_001_900,
+        type: "customer.subscription.deleted",
+        data: {
+          object: {
+            id: "sub_ordered",
+            customer: "cus_ordered",
+            status: "canceled",
+            metadata: { user_id: userId },
+            items: { data: [{ price: { id: "price_pro_monthly" } }] },
+          },
+        },
+      },
+      store,
+      env,
+    );
+
+    expect(stale).toMatchObject({ handled: true, reason: "stale_event_ignored" });
+    expect(store.subscriptions.get("sub_ordered")?.status).toBe("active");
+    expect(store.entitlements.get(userId)?.length).toBeGreaterThan(0);
+  });
 });
 
 type StoredEntitlement = ReturnType<typeof entitlementRowsForPlan>[number];
 
 class FakeBillingWebhookStore implements BillingWebhookStore {
+  events = new Map<string, "processing" | "processed" | "failed">();
+  subscriptionEvents = new Map<string, { eventId: string; eventCreatedAt: Date }>();
   customers = new Map<string, { id: string; userId: string; email: string | null }>();
   subscriptions = new Map<
     string,
@@ -204,6 +351,23 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
     }
   >();
   entitlements = new Map<string, StoredEntitlement[]>();
+
+  async claimEvent(input: Parameters<BillingWebhookStore["claimEvent"]>[0]) {
+    if (this.events.has(input.eventId)) {
+      return "duplicate" as const;
+    }
+
+    this.events.set(input.eventId, "processing");
+    return "claimed" as const;
+  }
+
+  async completeEvent(eventId: string) {
+    this.events.set(eventId, "processed");
+  }
+
+  async failEvent(eventId: string) {
+    this.events.set(eventId, "failed");
+  }
 
   async upsertBillingCustomer(input: {
     userId: string;
@@ -251,6 +415,45 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
         metadataJson: input.metadataJson,
       });
     }
+  }
+
+  async applySubscriptionState(
+    input: Parameters<BillingWebhookStore["applySubscriptionState"]>[0],
+  ) {
+    const previous = this.subscriptionEvents.get(input.stripeSubscriptionId);
+    const isNewer =
+      !previous ||
+      previous.eventCreatedAt < input.eventCreatedAt ||
+      (previous.eventCreatedAt.getTime() === input.eventCreatedAt.getTime() &&
+        previous.eventId < input.eventId);
+
+    if (!isNewer) {
+      return false;
+    }
+
+    this.subscriptionEvents.set(input.stripeSubscriptionId, {
+      eventId: input.eventId,
+      eventCreatedAt: input.eventCreatedAt,
+    });
+    this.subscriptions.set(input.stripeSubscriptionId, {
+      userId: input.userId,
+      billingCustomerId: input.billingCustomerId,
+      stripeSubscriptionId: input.stripeSubscriptionId,
+      planKey: input.planKey,
+      status: input.status,
+      currentPeriodStart: input.currentPeriodStart,
+      currentPeriodEnd: input.currentPeriodEnd,
+      cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+      metadataJson: input.metadataJson,
+    });
+    await this.replacePlanEntitlements({
+      userId: input.userId,
+      planKey: input.planKey,
+      active: input.active,
+      expiresAt: input.currentPeriodEnd,
+      source: input.source,
+    });
+    return true;
   }
 
   async replacePlanEntitlements(input: {

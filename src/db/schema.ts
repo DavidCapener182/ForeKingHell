@@ -20,7 +20,7 @@ export const users = pgTable("fkh_users", {
   email: varchar("email", { length: 320 }),
   name: varchar("name", { length: 160 }),
   preferredUnits: varchar("preferred_units", { length: 16 }).notNull().default("yards"),
-  theme: varchar("theme", { length: 16 }).notNull().default("light"),
+  theme: varchar("theme", { length: 16 }).notNull().default("system"),
   tableDensity: varchar("table_density", { length: 16 }).notNull().default("comfortable"),
   dashboardPins: jsonb("dashboard_pins").$type<string[]>().notNull().default([]),
   privacySettingsJson: jsonb("privacy_settings_json")
@@ -758,6 +758,8 @@ export const subscriptions = pgTable(
     currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
     currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
     cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+    lastStripeEventId: text("last_stripe_event_id"),
+    lastStripeEventCreatedAt: timestamp("last_stripe_event_created_at", { withTimezone: true }),
     metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -765,6 +767,26 @@ export const subscriptions = pgTable(
   (table) => [
     index("fkh_subscriptions_user_status_idx").on(table.userId, table.status),
     uniqueIndex("fkh_subscriptions_stripe_idx").on(table.stripeSubscriptionId),
+  ],
+);
+
+export const stripeWebhookEvents = pgTable(
+  "fkh_stripe_webhook_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    eventType: varchar("event_type", { length: 120 }).notNull(),
+    objectKey: varchar("object_key", { length: 220 }),
+    eventCreatedAt: timestamp("event_created_at", { withTimezone: true }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("processing"),
+    attempts: integer("attempts").notNull().default(1),
+    resultJson: jsonb("result_json").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: varchar("error_code", { length: 120 }),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_stripe_webhook_events_object_created_idx").on(table.objectKey, table.eventCreatedAt),
   ],
 );
 
@@ -1738,6 +1760,60 @@ export const equipmentSnapshots = pgTable(
   ],
 );
 
+export const analysisAnnotations = pgTable(
+  "fkh_analysis_annotations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    annotationType: varchar("annotation_type", { length: 40 }).notNull(),
+    title: varchar("title", { length: 180 }).notNull(),
+    body: text("body").notNull(),
+    rangeFrom: timestamp("range_from", { withTimezone: true }),
+    rangeTo: timestamp("range_to", { withTimezone: true }),
+    contextJson: jsonb("context_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_analysis_annotations_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_analysis_annotations_user_range_idx").on(
+      table.userId,
+      table.rangeFrom,
+      table.rangeTo,
+    ),
+    index("fkh_analysis_annotations_session_idx").on(table.sessionId),
+  ],
+);
+
+export const analysisSnapshots = pgTable(
+  "fkh_analysis_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 180 }).notNull(),
+    filtersJson: jsonb("filters_json").$type<Record<string, unknown>>().notNull().default({}),
+    chartStateJson: jsonb("chart_state_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    selectedMetricsJson: jsonb("selected_metrics_json").$type<string[]>().notNull().default([]),
+    notes: text("notes"),
+    summaryJson: jsonb("summary_json").$type<Record<string, unknown>>().notNull().default({}),
+    sourceDataThrough: timestamp("source_data_through", { withTimezone: true }),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_analysis_snapshots_user_captured_idx").on(table.userId, table.capturedAt),
+    index("fkh_analysis_snapshots_user_source_idx").on(table.userId, table.sourceDataThrough),
+  ],
+);
+
 export const strokesGainedBaselines = pgTable(
   "fkh_strokes_gained_baselines",
   {
@@ -2265,6 +2341,24 @@ export const courseRecordEvidence = pgTable(
     index("fkh_course_record_evidence_attempt_idx").on(table.attemptId),
     index("fkh_course_record_evidence_csv_hash_idx").on(table.csvHash),
     index("fkh_course_record_evidence_review_idx").on(table.reviewStatus),
+  ],
+);
+
+export const scorecardProofConsumptions = pgTable(
+  "fkh_scorecard_proof_consumptions",
+  {
+    proofId: uuid("proof_id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scopeType: varchar("scope_type", { length: 32 }).notNull(),
+    scopeId: varchar("scope_id", { length: 220 }).notNull(),
+    roundNumber: integer("round_number"),
+    imageHash: varchar("image_hash", { length: 64 }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_scorecard_proof_consumptions_user_idx").on(table.userId, table.consumedAt),
   ],
 );
 

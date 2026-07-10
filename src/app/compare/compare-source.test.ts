@@ -63,17 +63,19 @@ describe("compare desktop workbench", () => {
     expect(progressClientSource).toContain('exportTableId="compare-focus-clubs"');
     expect(progressClientSource).toContain('data-workbench-export-table="compare-focus-clubs"');
     expect(progressClientSource).toContain('label="Compare focus-club movement table"');
-    expect(progressClientSource).toContain('label="Compare focus-club movement table" stickyFirstColumn');
+    expect(progressClientSource).toContain(
+      'label="Compare focus-club movement table" stickyFirstColumn',
+    );
     expect(progressClientSource).toContain('id="compare-focus-clubs-summary"');
     expect(progressClientSource).toContain('viewKey="compare-period-history"');
     expect(progressClientSource).toContain('scope="compare-period-history"');
     expect(progressClientSource).toContain('data-workbench-scope="compare-period-history"');
     expect(progressClientSource).toContain('exportTableId="compare-period-history"');
-    expect(progressClientSource).toContain(
-      'data-workbench-export-table="compare-period-history"',
-    );
+    expect(progressClientSource).toContain('data-workbench-export-table="compare-period-history"');
     expect(progressClientSource).toContain('label="Compare period history table"');
-    expect(progressClientSource).toContain('label="Compare period history table" stickyFirstColumn');
+    expect(progressClientSource).toContain(
+      'label="Compare period history table" stickyFirstColumn',
+    );
     expect(progressClientSource).toContain('id="compare-period-history-summary"');
     expect(progressClientSource).toContain("tabIndex={0}");
 

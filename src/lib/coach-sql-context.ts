@@ -86,7 +86,7 @@ export async function buildCoachSqlContext(
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), eq(sessions.userId, userId)))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
       .limit(40),
     db

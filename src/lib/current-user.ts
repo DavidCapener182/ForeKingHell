@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -14,7 +14,7 @@ import {
   profileLabelFromIdentity,
 } from "@/lib/profile-label";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
-import type { ThemePreference } from "@/lib/user-settings";
+import { parseTheme, type ThemePreference } from "@/lib/user-settings";
 
 export type CurrentUser = {
   id: string;
@@ -31,7 +31,7 @@ export type CurrentUserPreferences = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "light",
+  theme: "system",
   tableDensity: "comfortable",
 };
 
@@ -97,6 +97,7 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
   const [profile] = await getDb()
     .select({
       preferredUnits: users.preferredUnits,
+      theme: users.theme,
       tableDensity: users.tableDensity,
     })
     .from(users)
@@ -105,7 +106,7 @@ export async function getCurrentUserPreferences(): Promise<CurrentUserPreference
 
   return {
     preferredUnits: profile?.preferredUnits === "metres" ? "metres" : "yards",
-    theme: "light",
+    theme: parseTheme(profile?.theme ?? null),
     tableDensity: profile?.tableDensity === "compact" ? "compact" : "comfortable",
   };
 }
@@ -223,6 +224,10 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
 });
 
 async function resolveLinkedCurrentUser(authUser: CurrentUser): Promise<CurrentUser> {
+  if (!authUser.email) {
+    return authUser;
+  }
+
   const [linkedUser] = await getDb()
     .select({
       id: users.id,
@@ -232,7 +237,11 @@ async function resolveLinkedCurrentUser(authUser: CurrentUser): Promise<CurrentU
     .from(userIdentityLinks)
     .innerJoin(users, eq(users.id, userIdentityLinks.canonicalUserId))
     .where(
-      and(eq(userIdentityLinks.linkedUserId, authUser.id), eq(userIdentityLinks.status, "active")),
+      and(
+        eq(userIdentityLinks.linkedUserId, authUser.id),
+        eq(userIdentityLinks.status, "active"),
+        sql`lower(coalesce(${users.email}, '')) = lower(${authUser.email})`,
+      ),
     )
     .limit(1);
 

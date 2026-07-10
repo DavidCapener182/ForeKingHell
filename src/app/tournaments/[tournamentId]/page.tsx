@@ -218,25 +218,18 @@ export default async function TournamentDetailPage({
                         placeholder="Linked imported round"
                         className="h-11 rounded-lg bg-white"
                       />
-                      <Input
-                        name="csvHash"
-                        placeholder="Import proof code (optional)"
-                        className="h-11 rounded-lg bg-white"
-                      />
                       <ScorecardProofUploader
+                        proofScopeType="tournament"
+                        proofScopeId={data.tournament.id}
                         screenshotFieldName="scorecardScreenshotPath"
                         extractedTotalFieldName="extractedScorecardTotal"
                         screenshotLabel="Scorecard image"
                         extractedTotalLabel="Extracted total"
                       />
-                      <label className="flex items-center gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          name="hasRapsodoDirect"
-                          className="size-4 accent-[#0B7A3B]"
-                        />
-                        Direct Rapsodo import
-                      </label>
+                      <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs leading-5 text-[#6B7280]">
+                        Manual scores remain pending until the server can match owned round
+                        evidence. Only verified submissions enter standings.
+                      </p>
                       <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
                         <Send className="size-4" />
                         Submit
@@ -621,42 +614,18 @@ export default async function TournamentDetailPage({
                         className="h-10 rounded-xl bg-white"
                       />
                     </label>
-                    <label className="grid gap-1 text-sm font-medium">
-                      Import proof code
-                      <Input
-                        name="csvHash"
-                        placeholder="Optional proof code from imported CSV"
-                        className="h-10 rounded-xl bg-white"
-                      />
-                      <span className="text-xs leading-5 text-muted-foreground">
-                        Used to detect duplicate uploads. Leave blank if you are entering a manual
-                        scorecard.
-                      </span>
-                    </label>
                     <ScorecardProofUploader
+                      proofScopeType="tournament"
+                      proofScopeId={data.tournament.id}
                       screenshotFieldName="scorecardScreenshotPath"
                       extractedTotalFieldName="extractedScorecardTotal"
                       screenshotLabel="Scorecard image"
                       extractedTotalLabel="Extracted total"
                     />
-                    <div className="grid gap-2 rounded-lg bg-[#F5F6F4] p-3 text-sm">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="hasRapsodoDirect"
-                          className="size-4 accent-[#0B7A3B]"
-                        />
-                        Direct Rapsodo import
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="manualEdit"
-                          className="size-4 accent-[#0B7A3B]"
-                        />
-                        Manual edit flagged
-                      </label>
-                    </div>
+                    <p className="rounded-lg bg-[#F5F6F4] p-3 text-xs leading-5 text-muted-foreground">
+                      Manual scores remain pending until the server can match owned round evidence.
+                      Only verified submissions enter standings.
+                    </p>
                     <Button
                       type="submit"
                       className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"

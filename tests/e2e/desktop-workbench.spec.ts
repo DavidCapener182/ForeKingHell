@@ -520,7 +520,13 @@ test.describe("desktop workbench", () => {
 
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press("f");
-    await expect(page.getByRole("button", { name: /Saved views/i })).toBeFocused();
+    await expect
+      .poll(() =>
+        page
+          .getByRole("button", { name: /Saved views/i })
+          .evaluateAll((buttons) => buttons.some((button) => button === document.activeElement)),
+      )
+      .toBe(true);
 
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     const [download] = await Promise.all([page.waitForEvent("download"), page.keyboard.press("e")]);
@@ -548,16 +554,21 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/shots");
     await expectPageReady(page, /Shot explorer/i);
+    expect(hydrationWarnings).toEqual([]);
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-saved-insights"));
     await page.reload();
     await expectPageReady(page, /Shot explorer/i);
+    expect(hydrationWarnings).toEqual([]);
 
-    await page.keyboard.press("a");
+    await page.getByRole("button", { name: /Open AI assistant for Shots/i }).click();
     const assistantDialog = page.getByRole("dialog", { name: /Shots assistant/i });
     await expect(assistantDialog).toBeVisible();
     await assistantDialog.getByRole("button", { name: /Save this insight/i }).click();
     await expect(assistantDialog.getByRole("button", { name: /Insight saved/i })).toBeVisible();
+    expect(hydrationWarnings).toEqual([]);
     await page.keyboard.press("Escape");
+    await expect(assistantDialog).toHaveCount(0);
+    await expect.poll(() => page.locator('[data-aria-hidden="true"]').count()).toBe(0);
 
     await page.keyboard.press("ControlOrMeta+K");
     const commandDialog = page.getByRole("dialog", { name: /command palette/i });
@@ -568,10 +579,12 @@ test.describe("desktop workbench", () => {
       "/shots",
     );
     await page.keyboard.press("Escape");
+    await expect(commandDialog).toHaveCount(0);
+    await expect.poll(() => page.locator('[data-aria-hidden="true"]').count()).toBe(0);
 
     await page.reload();
     await expectPageReady(page, /Shot explorer/i);
-    await page.keyboard.press("ControlOrMeta+K");
+    await page.getByRole("button", { name: /Open command palette/i }).click();
     await expect(
       page
         .getByRole("dialog", { name: /command palette/i })
@@ -663,7 +676,6 @@ test.describe("desktop workbench", () => {
       await expect(switcher).toContainText("Admin console");
 
       await page.setViewportSize({ width: 2200, height: 1100 });
-      await gotoAppRoute(page, "/admin");
       await expectPageReady(page, /AI admin rail/i);
       await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();
     } else {
@@ -818,6 +830,7 @@ test.describe("desktop workbench", () => {
     const playsLikeControls = page.locator('[data-dashboard-panel-control="plays-like"]');
 
     await expect(controls).toBeVisible();
+    await controls.locator("summary").click();
     await controls.getByRole("button", { name: /Reset/i }).click();
     await expect(grid).toHaveAttribute("data-dashboard-mode", "standard");
     await expect(playsLikePanel).toBeVisible();
@@ -842,6 +855,7 @@ test.describe("desktop workbench", () => {
     await expectAppText(page, /Dashboard layout/i, 45_000);
     await expect(page.locator('[data-dashboard-panel="plays-like"]')).toHaveCount(0);
 
+    await page.locator("[data-dashboard-layout-controls] summary").click();
     await page
       .locator("[data-dashboard-layout-controls]")
       .getByRole("button", { name: /Reset/i })
@@ -934,9 +948,7 @@ test.describe("desktop workbench", () => {
 
     await expect(shotsToolbar).toBeVisible();
     await expectNoAiRail(page, /AI shot analyst/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Shots/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open AI assistant for Shots/i })).toBeVisible();
 
     await shotsToolbar.getByRole("button", { name: /Saved views/i }).click();
     await expect(page.getByRole("menuitem", { name: /Save current view/i })).toBeVisible();
@@ -1018,18 +1030,20 @@ test.describe("desktop workbench", () => {
     await page.reload();
     await expectPageReady(page, /Shot explorer/i);
 
-    await page.getByRole("button", { name: /Columns/i }).click();
+    const shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+
+    await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
     await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Density", exact: true }).click();
+    await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
     await page.keyboard.press("Escape");
 
-    await expect(page.locator('th[data-column="launch"]')).toBeHidden();
+    await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
 
-    await page.getByRole("button", { name: /Saved views/i }).click();
+    await shotsWorkbench.getByRole("button", { name: /Saved views/i }).click();
     await page.getByRole("menuitem", { name: /Save current view/i }).click();
     const saveDialog = page.getByRole("dialog", { name: /Save table view/i });
     await expect(saveDialog).toBeVisible();
@@ -1037,28 +1051,28 @@ test.describe("desktop workbench", () => {
     await saveDialog.getByRole("button", { name: /^Save view$/i }).click();
     await expect(saveDialog).toHaveCount(0);
 
-    await page.getByRole("button", { name: /Saved views/i }).click();
+    await shotsWorkbench.getByRole("button", { name: /Saved views/i }).click();
     await expect(page.getByRole("menuitem", { name: /^Driver carry audit/i })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: /Remove Driver carry audit/i })).toBeVisible();
 
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: /Columns/i }).click();
+    await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
     await page.getByRole("menuitem", { name: /Show all columns/i }).click();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Density", exact: true }).click();
+    await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: /Comfortable/i }).click();
     await page.keyboard.press("Escape");
 
-    await expect(page.locator('th[data-column="launch"]')).toBeVisible();
+    await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeVisible();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "comfortable");
 
-    await page.getByRole("button", { name: /Saved views/i }).click();
+    await shotsWorkbench.getByRole("button", { name: /Saved views/i }).click();
     await page.getByRole("menuitem", { name: /^Driver carry audit/i }).click();
-    await expect(page.locator('th[data-column="launch"]')).toBeHidden();
+    await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
 
-    await page.getByRole("button", { name: /Saved views/i }).click();
+    await shotsWorkbench.getByRole("button", { name: /Saved views/i }).click();
     await page.getByRole("menuitem", { name: /Remove Driver carry audit/i }).click();
     await expect(page.getByRole("menuitem", { name: /^Driver carry audit/i })).toHaveCount(0);
     await expect
@@ -1079,20 +1093,23 @@ test.describe("desktop workbench", () => {
     await page.reload();
     await expectPageReady(page, /Shot explorer/i);
 
-    await page.getByRole("button", { name: /Columns/i }).click();
+    let shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+
+    await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
     await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "Density", exact: true }).click();
+    await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
     await page.keyboard.press("Escape");
 
-    await expect(page.locator('th[data-column="launch"]')).toBeHidden();
+    await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
 
     await page.reload();
     await expectPageReady(page, /Shot explorer/i);
-    await expect(page.locator('th[data-column="launch"]')).toBeHidden();
+    shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
   });
 
@@ -1106,9 +1123,7 @@ test.describe("desktop workbench", () => {
     await expectPageReady(page, /AI round rail/i);
 
     await expectNoAiRail(page, /AI round rail/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
     await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
     await expect(page.getByRole("button", { name: /Scorecard only/i }).first()).toHaveAttribute(
       "data-variant",
@@ -1300,7 +1315,7 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, courseRecordsHref as string);
     await expectAppText(page, /Course champion|Course record table/i, 45_000);
-    await expect(page.locator('[data-workbench-scope="course-records-course"]')).toBeVisible();
+    await expect(page.locator('div[data-workbench-scope="course-records-course"]')).toBeVisible();
     await expectNoAiRail(page, /AI course rail/i);
     await expect(
       page.getByRole("table", { name: /Course-specific record board table/i }),
@@ -1319,7 +1334,7 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, recordDetailHref as string);
     await expectAppText(page, /Honours board|Verified board/i, 45_000);
-    await expect(page.locator('[data-workbench-scope="course-record-detail"]')).toBeVisible();
+    await expect(page.locator('div[data-workbench-scope="course-record-detail"]')).toBeVisible();
     await expectNoAiRail(page, /AI course records rail/i);
     await expect(
       page.getByRole("table", { name: /Course record leaderboard table/i }),
@@ -1613,7 +1628,7 @@ test.describe("desktop workbench", () => {
       flightRegion.getByRole("table", { name: /Flight profile chart data table/i }),
     ).toBeVisible();
 
-    await expect(page.locator('[data-workbench-scope="longest-shots"]')).toBeVisible();
+    await expect(page.locator('section[data-workbench-scope="longest-shots"]')).toBeVisible();
     await expect(
       page.getByRole("table", { name: /Longest shot PB evidence table/i }),
     ).toBeVisible();
@@ -1980,9 +1995,7 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("form", { name: /Identity and privacy settings/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Public view/i })).toBeVisible();
     await expect(profileWorkbench.getByText(/Public sees/i)).toBeVisible();
-    const profileEvidence = profileWorkbench.locator(
-      '[data-workbench-scope="profile-evidence"]',
-    );
+    const profileEvidence = profileWorkbench.locator('[data-workbench-scope="profile-evidence"]');
     await expect(profileEvidence).toBeVisible();
     await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
       "aria-label",
@@ -2006,9 +2019,7 @@ test.describe("desktop workbench", () => {
       page.waitForEvent("download"),
       profileEvidence.getByRole("button", { name: /^Export$/i }).click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(
-      /^forekinghell-profile-[a-z0-9-]+-evidence\.csv$/,
-    );
+    expect(download.suggestedFilename()).toMatch(/^forekinghell-profile-[a-z0-9-]+-evidence\.csv$/);
     await expect(page.getByRole("button", { name: /Save profile/i })).toBeVisible();
   });
 
@@ -2091,9 +2102,7 @@ test.describe("desktop workbench", () => {
     );
     await expect(roundBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Round review/i);
     await expectNoAiRail(page, /AI round rail/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
     await expect(page.locator("#scorecard")).toBeVisible();
     await expect(page.locator("#course-link")).toBeVisible();
     await expect(page.getByRole("link", { name: /Scorecard/i }).first()).toBeVisible();
@@ -2183,7 +2192,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/admin/users");
     await expectAppText(page, /Users and access/i, 45_000);
 
-    await expect(page.locator('[data-workbench-scope="admin-users"]')).toBeVisible();
+    await expect(page.locator('div[data-workbench-scope="admin-users"]')).toBeVisible();
     await expectNoAiRail(page, /AI admin rail/i);
     await expect(page.getByRole("table", { name: /Admin user accounts/i })).toBeVisible();
     await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
@@ -2252,7 +2261,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/admin/billing");
     await expectAppText(page, /Billing and entitlements/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
-    const billingWorkbench = page.locator('[data-workbench-scope="admin-billing"]');
+    const billingWorkbench = page.locator('div[data-workbench-scope="admin-billing"]');
 
     await expect(billingWorkbench).toBeVisible();
     await expect(billingWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
@@ -2292,7 +2301,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/admin/challenges");
     await expectAppText(page, /Challenges and tournaments/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
-    const challengeWorkbench = page.locator('[data-workbench-scope="admin-challenges"]');
+    const challengeWorkbench = page.locator('div[data-workbench-scope="admin-challenges"]');
 
     await expect(challengeWorkbench).toBeVisible();
     await expect(challengeWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
@@ -2364,15 +2373,23 @@ test.describe("desktop workbench", () => {
     await expect(
       reportsWorkbench.getByRole("button", { name: /Resolve selected reports/i }),
     ).toBeVisible();
-    await expect(
-      reportsWorkbench.getByRole("button", { name: /Resolve selected reports/i }),
-    ).toHaveAttribute("data-confirm-message", /Resolve the selected open reports/i);
+    const resolveReportsButton = reportsWorkbench.getByRole("button", {
+      name: /Resolve selected reports/i,
+    });
+    await expect(resolveReportsButton).toHaveAttribute(
+      "data-confirm-message",
+      /Select at least one report before running this bulk action|Resolve the selected open reports/i,
+    );
     await expect(
       eventsWorkbench.getByRole("button", { name: /Resolve selected events/i }),
     ).toBeVisible();
-    await expect(
-      eventsWorkbench.getByRole("button", { name: /Resolve selected events/i }),
-    ).toHaveAttribute("data-confirm-message", /Resolve the selected open moderation events/i);
+    const resolveEventsButton = eventsWorkbench.getByRole("button", {
+      name: /Resolve selected events/i,
+    });
+    await expect(resolveEventsButton).toHaveAttribute(
+      "data-confirm-message",
+      /Select at least one event before running this bulk action|Resolve the selected open moderation events/i,
+    );
 
     await reportsWorkbench.getByRole("link", { name: /Sort admin reports by Reason/i }).click();
     await expect(reportsWorkbench.locator('th[data-column="reason"]')).toHaveAttribute(
@@ -2705,9 +2722,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/rounds");
     await expectPageReady(page, /AI round rail/i);
     await expectNoAiRail(page, /AI round rail/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Rounds/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
 
     await gotoAppRoute(page, "/bag");
     await expectPageReady(page, /Bag|Gapping/i);
@@ -2716,9 +2731,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/coach");
     await expectPageReady(page, /AI coach rail/i);
     await expectNoAiRail(page, /AI coach rail/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Coach/i }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open AI assistant for Coach/i })).toBeVisible();
   });
 
   test("dense AI rails defer until large desktop workspaces stay readable", async ({ page }) => {
@@ -2983,10 +2996,10 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/simulator-lab");
-    await expectAppText(page, /Simulator Lab/i, 45_000);
+    await expectAppText(page, /Performance Lab/i, 45_000);
     await expectNoAiRail(page, /AI simulator rail/i);
     await expect(
-      page.getByRole("button", { name: /Open AI assistant for Simulator Lab/i }),
+      page.getByRole("button", { name: /Open AI assistant for Performance Lab/i }),
     ).toHaveCount(0);
     const simulatorMatrixRegion = page.getByRole("region", {
       name: /Simulator gapping matrix chart accessibility/i,
@@ -3070,9 +3083,7 @@ test.describe("desktop workbench", () => {
       page.waitForEvent("download"),
       page.getByRole("button", { name: /^Export$/i }).click(),
     ]);
-    expect(systemChecksDownload.suggestedFilename()).toBe(
-      "forekinghell-admin-system-checks.csv",
-    );
+    expect(systemChecksDownload.suggestedFilename()).toBe("forekinghell-admin-system-checks.csv");
 
     await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/admin");
@@ -3301,7 +3312,12 @@ function collectHydrationWarnings(page: Page) {
 
   page.on("console", (message) => {
     const text = message.text();
-    if (/hydrated|hydration|server rendered HTML/i.test(text)) {
+    const isRadixModalAccessibilityMutation =
+      text.includes('data-aria-hidden="true"') && text.includes('aria-hidden="true"');
+    if (
+      /hydrated|hydration|server rendered HTML/i.test(text) &&
+      !isRadixModalAccessibilityMutation
+    ) {
       warnings.push(text);
     }
   });

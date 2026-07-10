@@ -109,7 +109,7 @@ export async function createManualRoundAction(formData: FormData) {
       .returning({ id: sessions.id });
   });
 
-  await evaluateRoundAchievementsForSessionWithFlash(session.id);
+  await evaluateRoundAchievementsForSessionWithFlash(session.id, userId);
   await recordRoundCompletedFeedItem({
     userId,
     sessionId: session.id,
@@ -242,7 +242,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
 
   await recalculateRoundAssignments(sessionId);
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId);
+  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
@@ -263,15 +263,20 @@ export async function updateShotClubAction(formData: FormData) {
     throw new Error("Club not found.");
   }
 
-  await db
+  const [updatedShot] = await db
     .update(shots)
     .set({
       clubId: club.id,
       clubType: club.type,
     })
-    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
+    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
+    .returning({ id: shots.id });
 
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId);
+  if (!updatedShot) {
+    throw new Error("Shot not found.");
+  }
+
+  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
@@ -285,6 +290,15 @@ export async function updateClubAction(formData: FormData) {
   const model = nullableString(formData, "model");
   const normalizedClubKey = buildClubKey(clubType, brand, model);
   const now = new Date();
+  const [session] = await db
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+
+  if (!session) {
+    throw new Error("Round not found.");
+  }
 
   const [currentClub] = await db
     .select({ id: clubs.id, userId: clubs.userId })
@@ -339,7 +353,7 @@ export async function updateClubAction(formData: FormData) {
     });
   }
 
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId);
+  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
@@ -402,7 +416,7 @@ export async function updateRoundHoleAction(formData: FormData) {
     .set({ scorecardJson: holes })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
   await recalculateRoundAssignments(sessionId);
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId);
+  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
@@ -462,12 +476,15 @@ export async function resplitRoundAction(formData: FormData) {
   }
 
   await recalculateRoundAssignments(sessionId);
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId);
+  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
-async function evaluateRoundAchievementsForSessionWithFlash(sessionId: string) {
-  const result = await evaluateRoundAchievementsForSession(sessionId);
+async function evaluateRoundAchievementsForSessionWithFlash(
+  sessionId: string,
+  actorUserId: string,
+) {
+  const result = await evaluateRoundAchievementsForSession(sessionId, actorUserId);
   await setAchievementUnlockFlash(result.unlockedAchievements);
   return result;
 }

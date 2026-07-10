@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { clubs, stockYardages } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
+import { rateLimitRequest, readBoundedJsonBody } from "@/lib/api-protection";
 import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
 import { courseStrategySchema } from "@/lib/ai/schemas";
 import { formatClubType } from "@/lib/club-format";
@@ -20,11 +20,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
-  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
-  if (sizeRejection) {
-    return sizeRejection;
-  }
-
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "ai-course-strategy",
     limit: 20,
@@ -34,7 +29,9 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const body = (await request.json().catch(() => null)) as {
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value as {
     hole?: unknown;
     goal?: unknown;
   } | null;

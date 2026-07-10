@@ -32,13 +32,7 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import {
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileStatusAction,
-  MobileTopBar,
-  NativeListSection,
-} from "@/components/mobile-sports";
+import { MobileAppShell, MobileTopBar, NativeListSection } from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -286,75 +280,55 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     loaded: socialLoaded,
     challenges: challengeData?.active ?? [],
   };
+  const reviewMode = parsePracticeReviewMode(first(params.evidence));
+  const selectedReviewOverall = reviewOverall(data, reviewMode);
+  const selectedReviewComparisons = reviewComparisons(data, reviewMode);
   const shotDatabaseHref = shotDatabaseLink(data);
-  const chartShots = toChartShots(data.shots);
-  const chartClubStatuses = toChartClubStatuses(data.clubComparisons);
-  const chartPatternInsight = shotPatternInsight(data);
+  const chartShots = toChartShots(reviewShots(data, reviewMode));
+  const chartClubStatuses = toChartClubStatuses(selectedReviewComparisons);
+  const chartPatternInsight = shotPatternInsight(selectedReviewComparisons);
   const clubSort = parseClubSort(first(params.clubSort));
-  const sortedClubComparisons = sortClubComparisons(data.clubComparisons, clubSort);
+  const sortedClubComparisons = sortClubComparisons(selectedReviewComparisons, clubSort);
   const activeFilterChips = buildTodayFilterChips(data);
 
   return (
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
       <TodayHoverStyles comparisons={data.clubComparisons} />
       <MobileAppShell className="min-h-0 pb-0">
-        <MobileTopBar
-          title="Today"
-          actions={
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-full text-[#050505]"
-            >
-              <Link href="/import" prefetch={false} aria-label="Import CSV">
-                <Upload className="size-5" />
-              </Link>
-            </Button>
-          }
+        <MobileTopBar title="Today" />
+        <TodayMobileVerdictCard
+          data={data}
+          reviewMode={reviewMode}
+          linkedPracticePlan={linkedPracticePlan}
         />
-        <MobileRouteTabs group="dashboard" activeKey="today" />
-        <MobileStatusAction
-          label="Latest practice"
-          value={heroVerdictTitle(data)}
-          detail={reviewNarrative(data, linkedPracticePlan)}
-          action={
-            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Link href={shotDatabaseHref} prefetch={false}>
-                Shot rows
-              </Link>
-            </Button>
-          }
-        />
-        <TodayMobileVerdictCard data={data} linkedPracticePlan={linkedPracticePlan} />
         <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
         <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-        <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} className="sm:hidden" />
+        <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} className="lg:hidden" />
         <MobileMetricStrip
           items={[
             {
               label: "Offline",
-              value: formatYards(data.overall.today.offlineAverageYd),
-              detail: offlineDeltaText(data.overall.offlineDeltaYd),
-              tone: deltaTone(data.overall.offlineDeltaYd, "lower"),
+              value: formatYards(selectedReviewOverall.today.offlineAverageYd),
+              detail: offlineDeltaText(selectedReviewOverall.offlineDeltaYd),
+              tone: deltaTone(selectedReviewOverall.offlineDeltaYd, "lower"),
             },
             {
               label: "Straight",
-              value: formatRate(data.overall.today.straightRate),
-              detail: deltaText(data.overall.straightRateDelta, "pp", true),
-              tone: deltaTone(data.overall.straightRateDelta, "higher"),
+              value: formatRate(selectedReviewOverall.today.straightRate),
+              detail: deltaText(selectedReviewOverall.straightRateDelta, "pp", true),
+              tone: deltaTone(selectedReviewOverall.straightRateDelta, "higher"),
             },
             {
               label: "Playable",
-              value: formatRate(data.overall.today.playableRate),
-              detail: deltaText(data.overall.playableRateDelta, "pp", true),
-              tone: deltaTone(data.overall.playableRateDelta, "higher"),
+              value: formatRate(selectedReviewOverall.today.playableRate),
+              detail: deltaText(selectedReviewOverall.playableRateDelta, "pp", true),
+              tone: deltaTone(selectedReviewOverall.playableRateDelta, "higher"),
             },
             {
               label: "Carry",
-              value: formatYards(data.overall.today.carryAverageYd),
-              detail: deltaText(data.overall.carryDeltaYd, "yd", true),
-              tone: deltaTone(data.overall.carryDeltaYd, "higher"),
+              value: formatYards(selectedReviewOverall.today.carryAverageYd),
+              detail: deltaText(selectedReviewOverall.carryDeltaYd, "yd", true),
+              tone: deltaTone(selectedReviewOverall.carryDeltaYd, "higher"),
             },
           ]}
         />
@@ -402,7 +376,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         ]}
       />
 
-      <div id="scope" className="grid scroll-mt-28 gap-3 sm:hidden">
+      <div id="scope" className="grid scroll-mt-28 gap-3 lg:hidden">
         <details className="group rounded-lg border border-[#E5E7EB] bg-white shadow-sm">
           <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
             <span>
@@ -438,6 +412,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           </form>
         </details>
         <ActiveFilterChips items={activeFilterChips} />
+        <TodayReviewControls data={data} mode={reviewMode} clubSort={clubSort} />
         <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
       </div>
 
@@ -445,7 +420,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         <EmptyToday />
       ) : (
         <>
-          <section id="charts" className="scroll-mt-28 sm:hidden">
+          <section id="charts" className="scroll-mt-28 lg:hidden">
             <MobileAccordionSection
               title="Charts"
               count={`${integerFormatter.format(chartShots.length)} shots`}
@@ -459,11 +434,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
             </MobileAccordionSection>
           </section>
 
-          <section id="clubs" className="scroll-mt-28 sm:hidden">
+          <section id="clubs" className="scroll-mt-28 lg:hidden">
             <ClubPerformancePanel data={data} comparisons={sortedClubComparisons} sort={clubSort} />
           </section>
 
-          <section id="pbs" className="scroll-mt-28 sm:hidden">
+          <section id="pbs" className="scroll-mt-28 lg:hidden">
             <TodayHighlightsPanel
               stats={data.clubStats}
               shots={data.shots}
@@ -512,10 +487,7 @@ function TodayPrescriptionCard({
   const focus = practiceFocus(data);
 
   return (
-    <section
-      id="focus"
-      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden"
-    >
+    <section id="focus" className="ios-grouped-list grid gap-3 p-4 lg:hidden">
       <div>
         <p className="text-sm font-semibold text-[#0B7A3B]">Latest practice prescription</p>
         <h2 className="mt-1 text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
@@ -545,78 +517,132 @@ function TodayPrescriptionCard({
 
 function TodayMobileVerdictCard({
   data,
+  reviewMode,
   linkedPracticePlan,
 }: {
   data: TodayPracticeData;
+  reviewMode: PracticeReviewMode;
   linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
 }) {
-  const score = practiceScoreSummary(data);
-  const best = bestClubComparison(data.clubComparisons);
-  const work = needsWorkComparison(data.clubComparisons);
+  const score = practiceScoreSummary(data, reviewMode);
+  const comparisons = reviewComparisons(data, reviewMode);
+  const best = bestClubComparison(comparisons);
+  const work = needsWorkComparison(comparisons);
   const planResult = buildPlanResultReadout(linkedPracticePlan);
 
   return (
-    <section
-      id="verdict"
-      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm sm:hidden"
-    >
-      <div className="flex items-start justify-between gap-3">
+    <section id="verdict" className="ios-grouped-list lg:hidden">
+      <div className="ios-grouped-row flex items-start justify-between gap-3 px-4 py-4">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
-            Session verdict
-          </p>
-          <h2 className="mt-1 text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
-            {heroVerdictTitle(data)}
+          <p className="text-[13px] text-muted-foreground">Latest session</p>
+          <h2 className="mt-1 text-[22px] font-bold leading-7 tracking-[-0.02em]">
+            {heroVerdictTitle(data, reviewMode)}
           </h2>
         </div>
-        <div className="shrink-0 rounded-lg border border-[#DDE7DF] bg-[#F5F9F6] px-3 py-2 text-right">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0B7A3B]">
-            Session quality
-          </p>
-          <p className="text-2xl font-semibold leading-none tracking-normal text-[#050505]">
+        <div className="shrink-0 text-right">
+          <p className="text-[13px] text-muted-foreground">Quality</p>
+          <p className="mt-0.5 text-[28px] font-semibold leading-none tracking-tight tabular-nums">
             {score.score}
           </p>
-          <p className="text-[11px] font-medium text-[#6B7280]">/100</p>
+          <p className="text-xs text-muted-foreground">out of 100</p>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MobileVerdictMetric label="Quality" value={score.sessionQualityLabel} tone={score.tone} />
-        <MobileVerdictMetric
-          label="Strike"
-          value={`${score.strikeScore}/10`}
-          tone={score.strikeScore >= 8 ? "green" : score.strikeScore >= 6.5 ? "amber" : "pink"}
-        />
-        <MobileVerdictMetric
-          label="Scoring"
-          value={score.scoringControlLabel}
-          tone={score.scoringScore >= 8 ? "green" : score.scoringScore >= 6.5 ? "amber" : "sky"}
-        />
-        {planResult ? (
-          <MobileVerdictMetric
-            label="Plan"
-            value={planResult.label}
-            tone={planResult.tone as ReviewTone}
-          />
-        ) : (
-          <MobileVerdictMetric label="Focus" value={work?.clubLabel ?? score.weak} tone="pink" />
-        )}
+      <TodayVerdictRow label="Session quality" value={score.sessionQualityLabel} />
+      <TodayVerdictRow
+        label="Control"
+        value={`${score.scoringControlLabel} · strike ${score.strikeScore}/10`}
+      />
+      <TodayVerdictRow label="Best performer" value={best?.clubLabel ?? score.strong} />
+      <TodayVerdictRow label="Practise first" value={work?.clubLabel ?? score.weak} />
+      {planResult ? <TodayVerdictRow label="Previous plan" value={planResult.label} /> : null}
+      <div className="bg-secondary/55 px-4 py-3">
+        <p className="text-[13px] text-muted-foreground">Recommendation</p>
+        <p className="mt-0.5 text-[15px] font-semibold leading-5">{score.recommendation}</p>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <MobileVerdictMetric
-          label="Best performer"
-          value={best?.clubLabel ?? score.strong}
-          tone="green"
-        />
-        <MobileVerdictMetric
-          label="First practice job"
-          value={work?.clubLabel ?? score.weak}
-          tone="pink"
-        />
-      </div>
-      <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold leading-5 text-emerald-950">
-        Recommendation: {score.recommendation}
-      </p>
     </section>
+  );
+}
+
+function TodayVerdictRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ios-grouped-row grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
+      <span className="text-[15px] text-muted-foreground">{label}</span>
+      <span className="max-w-48 truncate text-right text-[15px] font-semibold tabular-nums">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function TodayReviewControls({
+  data,
+  mode,
+  clubSort,
+}: {
+  data: TodayPracticeData;
+  mode: PracticeReviewMode;
+  clubSort: ClubSort;
+}) {
+  const sessionId =
+    data.sessions.find((session) => session.id === data.filters.sessionId)?.id ??
+    data.sessions[0]?.id ??
+    null;
+
+  return (
+    <section aria-labelledby="today-review-controls" className="ios-grouped-list lg:hidden">
+      <div className="ios-grouped-row px-4 py-3">
+        <h2 id="today-review-controls" className="text-[17px] font-semibold">
+          Review controls
+        </h2>
+        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+          Switch the evidence set without deleting imported shots.
+        </p>
+      </div>
+      <div className="ios-grouped-row px-4 py-3">
+        <p className="mb-2 text-[13px] text-muted-foreground">Evidence</p>
+        <nav aria-label="Session evidence view" className="ios-route-tabs flex">
+          {(["clean", "raw"] as const).map((value) => (
+            <Link
+              key={value}
+              href={todayReviewModeHref(data, clubSort, value)}
+              aria-current={mode === value ? "page" : undefined}
+              className="ios-route-tab focus-aaa inline-flex min-w-0 flex-1 items-center justify-center outline-none"
+            >
+              {value === "clean" ? "Trusted shots" : "All imported"}
+            </Link>
+          ))}
+        </nav>
+      </div>
+      <dl>
+        <TodayReviewControlRow label="Distance" value="Carry or total in Charts" />
+        <TodayReviewControlRow
+          label="Direction"
+          value="Centreline; no separate target offset was imported"
+        />
+        <TodayReviewControlRow
+          label="Values"
+          value="Provider rows normalised to the stored yard and mph schema"
+        />
+      </dl>
+      {sessionId ? (
+        <div className="px-4 py-3">
+          <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
+            <Link href={`/analyse/session-impact?sessionId=${encodeURIComponent(sessionId)}`}>
+              Simulate outlier exclusions
+            </Link>
+          </Button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TodayReviewControlRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ios-grouped-row grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3">
+      <dt className="text-[13px] text-muted-foreground">{label}</dt>
+      <dd className="text-right text-[13px] font-medium leading-5">{value}</dd>
+    </div>
   );
 }
 
@@ -672,7 +698,7 @@ function TodayDesktopDashboard({
   return (
     <DesktopWorkbenchLayout
       scope="today"
-      className="hidden sm:grid"
+      className="hidden lg:grid"
       railBreakpoint="wide"
       rail={
         <DesktopInsightRail
@@ -716,7 +742,7 @@ function TodayDesktopDashboard({
                 View shot rows
               </Link>
             </Button>
-            <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+            <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
                 Import CSV
@@ -1064,23 +1090,6 @@ function DataCleaningMetric({ label, value }: { label: string; value: string }) 
         {label}
       </p>
       <p className="mt-1 truncate text-base font-semibold text-slate-950">{value}</p>
-    </div>
-  );
-}
-
-function MobileVerdictMetric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: ReviewTone;
-}) {
-  return (
-    <div className={`min-h-20 rounded-lg border px-2.5 py-2 ${verdictCardClass(tone)}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
-      <p className="mt-1 text-sm font-semibold leading-5 text-[#050505]">{value}</p>
     </div>
   );
 }
@@ -1613,8 +1622,18 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
       .today-practice-plan {
         grid-area: plan;
       }
-      @media (min-width: 768px) {
+      @container today-highlight-list (min-width: 36rem) {
         .today-highlight-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @container today-highlight-list (min-width: 54rem) {
+        .today-highlight-card-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @container today-prescription (min-width: 36rem) {
+        .today-prescription-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
@@ -1664,9 +1683,6 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
         .today-mode-steps {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
-        .today-prescription-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
         .today-plan-grid {
           grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr) auto;
           grid-template-rows: none;
@@ -1674,9 +1690,6 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
         }
         .today-coaching-grid {
           grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-        .today-highlight-card-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
       }
       ${selectors}
@@ -1911,7 +1924,7 @@ function PracticeScoreHeroCard({
         <p className="text-5xl font-semibold leading-none tracking-normal text-slate-950">
           {score.score}
         </p>
-        <p className="pb-1 text-xl font-semibold text-slate-500">/100</p>
+        <p className="pb-1 text-xl font-semibold text-slate-700">/100</p>
       </div>
       <p className="mt-1 text-sm font-semibold text-slate-700">{score.sessionQualityLabel}</p>
       <div className={`mt-3 grid gap-2 ${planResult ? "grid-cols-2" : "grid-cols-3"}`}>
@@ -2218,7 +2231,7 @@ function VerdictReasonChip({ item }: { item: VerdictReasonItem }) {
       )}`}
     >
       <span>{item.label}</span>
-      <span className="font-medium opacity-80">{item.value}</span>
+      <span className="font-medium">{item.value}</span>
     </span>
   );
 }
@@ -3079,7 +3092,7 @@ function EmptyToday() {
             Import a Rapsodo CSV for the practice date, or clear the session and club filters.
           </p>
         </div>
-        <Button asChild className="bg-emerald-600 text-white hover:bg-emerald-700">
+        <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
           <Link href="/import" prefetch={false}>
             <Upload className="size-4" />
             Import CSV
@@ -4015,6 +4028,25 @@ function todaySocialHref(data: TodayPracticeData, sort: ClubSort) {
   return `/today?${params.toString()}#social-context`;
 }
 
+function todayReviewModeHref(data: TodayPracticeData, sort: ClubSort, mode: PracticeReviewMode) {
+  const params = new URLSearchParams({ date: data.dateKey });
+
+  if (data.filters.sessionId) {
+    params.set("session", data.filters.sessionId);
+  }
+  if (data.filters.club) {
+    params.set("club", data.filters.club);
+  }
+  if (sort !== "bag") {
+    params.set("clubSort", sort);
+  }
+  if (mode === "raw") {
+    params.set("evidence", "raw");
+  }
+
+  return `/today?${params.toString()}#today-review-controls`;
+}
+
 function buildTodayFilterChips(data: TodayPracticeData) {
   const chips: Array<{ label: string; href: string }> = [{ label: data.dateLabel, href: "/today" }];
   const session = data.sessions.find((item) => item.id === data.filters.sessionId);
@@ -4077,6 +4109,10 @@ function parseClubSort(value: string): ClubSort {
   return "bag";
 }
 
+function parsePracticeReviewMode(value: string): PracticeReviewMode {
+  return value === "raw" ? "raw" : "clean";
+}
+
 function sortClubComparisons(comparisons: ClubDayComparison[], sort: ClubSort) {
   if (sort === "best") {
     return [...comparisons].sort(compareBestClub);
@@ -4113,10 +4149,10 @@ function toChartClubStatuses(comparisons: ClubDayComparison[]): TodayChartClubSt
   }));
 }
 
-function shotPatternInsight(data: TodayPracticeData) {
-  const best = bestClubComparison(data.clubComparisons);
-  const work = needsWorkComparison(data.clubComparisons);
-  const reliable = reliableClubComparison(data.clubComparisons);
+function shotPatternInsight(comparisons: ClubDayComparison[]) {
+  const best = bestClubComparison(comparisons);
+  const work = needsWorkComparison(comparisons);
+  const reliable = reliableClubComparison(comparisons);
 
   if (!best && !work && !reliable) {
     return "Shot patterns will appear once this review has chartable club data.";
@@ -4131,9 +4167,9 @@ function shotPatternInsight(data: TodayPracticeData) {
   return `${sentenceJoin(parts)}.`;
 }
 
-function heroVerdictTitle(data: TodayPracticeData) {
-  if (data.shots.length > 0) {
-    const score = practiceScoreSummary(data);
+function heroVerdictTitle(data: TodayPracticeData, mode: PracticeReviewMode = "clean") {
+  if (reviewShots(data, mode).length > 0) {
+    const score = practiceScoreSummary(data, mode);
     return practiceHeadlineFromScore(score);
   }
 

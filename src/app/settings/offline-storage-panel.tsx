@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   OFFLINE_IMPORT_TTL_MS,
   clearOfflineActions,
+  currentOfflineAccountId,
   listOfflineActions,
   purgeExpiredOfflineActions,
   removeOfflineAction,
@@ -31,8 +32,13 @@ export function OfflineStoragePanel() {
 
   const refresh = useCallback(() => {
     setEnabled(isOfflineImportStorageEnabled());
+    const ownerUserId = currentOfflineAccountId();
+    if (!ownerUserId) {
+      setActions([]);
+      return;
+    }
     purgeExpiredOfflineActions()
-      .then(() => listOfflineActions())
+      .then(() => listOfflineActions(ownerUserId))
       .then(setActions)
       .catch(() => setActions([]));
   }, []);

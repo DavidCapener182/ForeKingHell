@@ -106,12 +106,24 @@ export async function requireAdminUser() {
   return admin;
 }
 
+export async function requireAdminOwner() {
+  const admin = await requireAdminUser();
+
+  if (admin.role !== "owner") {
+    throw new Error("Owner access is required.");
+  }
+
+  return admin;
+}
+
 export async function getAdminOverviewData() {
   await requireAdminUser();
 
-  const metrics = await getAdminOverviewMetrics();
-  const recentUsers = await getRecentAdminOverviewUsers(8);
-  const recentAuditRows = await getRecentAdminAuditRows(8);
+  const [metrics, recentUsers, recentAuditRows] = await Promise.all([
+    getAdminOverviewMetrics(),
+    getRecentAdminOverviewUsers(8),
+    getRecentAdminAuditRows(8),
+  ]);
 
   return {
     data: {
@@ -418,7 +430,7 @@ export async function getAdminOperationsSnapshot() {
 }
 
 export async function grantLifetimeFullAccessByEmail(email: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireAdminOwner();
   const target = await findUserByEmail(email);
 
   if (!target) {
@@ -430,7 +442,7 @@ export async function grantLifetimeFullAccessByEmail(email: string) {
 }
 
 export async function grantAdminAccessByEmail(email: string, role: AdminRole) {
-  const admin = await requireAdminUser();
+  const admin = role === "owner" ? await requireAdminOwner() : await requireAdminUser();
   const target = await findUserByEmail(email);
 
   if (!target) {
@@ -439,6 +451,10 @@ export async function grantAdminAccessByEmail(email: string, role: AdminRole) {
 
   const now = new Date();
   await getDb().transaction(async (tx) => {
+    if (role === "owner") {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('fkh_admin_owner_guard'))`);
+    }
+
     await tx
       .insert(adminUsers)
       .values({
@@ -473,17 +489,39 @@ export async function grantAdminAccessByEmail(email: string, role: AdminRole) {
 }
 
 export async function deactivateAdminAccess(targetUserId: string) {
-  const admin = await requireAdminUser();
+  const admin = await requireAdminOwner();
 
   if (targetUserId === admin.userId) {
     throw new Error("You cannot deactivate your own admin access.");
   }
 
   await getDb().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('fkh_admin_owner_guard'))`);
+    const [target] = await tx
+      .select({ role: adminUsers.role, status: adminUsers.status })
+      .from(adminUsers)
+      .where(eq(adminUsers.userId, targetUserId))
+      .limit(1);
+
+    if (!target || target.status !== "active") {
+      throw new Error("Active admin access was not found.");
+    }
+
+    if (target.role === "owner") {
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(adminUsers)
+        .where(and(eq(adminUsers.role, "owner"), eq(adminUsers.status, "active")));
+
+      if (Number(count ?? 0) <= 1) {
+        throw new Error("The last active owner cannot be deactivated.");
+      }
+    }
+
     await tx
       .update(adminUsers)
       .set({ status: "inactive", updatedAt: new Date() })
-      .where(eq(adminUsers.userId, targetUserId));
+      .where(and(eq(adminUsers.userId, targetUserId), eq(adminUsers.status, "active")));
 
     await tx.insert(adminAuditLog).values({
       actorUserId: admin.userId,

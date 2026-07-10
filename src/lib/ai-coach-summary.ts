@@ -102,6 +102,44 @@ export function buildAiCoachPayload(coach: CoachSummary): AiCoachPayload {
   };
 }
 
+export function parseAiCoachPayload(value: unknown): AiCoachPayload | null {
+  if (!isRecord(value) || value.productName !== BRAND_NAME) return null;
+
+  const headline = boundedString(value.headline, 220);
+  const subhead = boundedString(value.subhead, 320);
+  const totals = parseTotals(value.totals);
+  const clubs = parseBoundedArray(value.clubs, 8, parseClub);
+  const signals = parseBoundedArray(value.signals, 6, parseSignal);
+  const sessionPlan = parseBoundedArray(value.sessionPlan, 6, parseSessionBlock);
+  const trainingImpact = parseBoundedArray(value.trainingImpact, 4, parseTrainingImpact);
+  const focusClub = value.focusClub === null ? null : parseClub(value.focusClub);
+
+  if (
+    !headline ||
+    !subhead ||
+    !totals ||
+    !clubs ||
+    !signals ||
+    !sessionPlan ||
+    !trainingImpact ||
+    (value.focusClub !== null && !focusClub)
+  ) {
+    return null;
+  }
+
+  return {
+    productName: BRAND_NAME,
+    headline,
+    subhead,
+    totals,
+    focusClub,
+    clubs,
+    signals,
+    sessionPlan,
+    trainingImpact,
+  };
+}
+
 export function buildCoachPrompt(payload: AiCoachPayload) {
   return `You are the ${BRAND_NAME} golf coach.
 
@@ -178,4 +216,126 @@ function extractJson(text: string) {
   }
 
   return jsonText;
+}
+
+function parseTotals(value: unknown): AiCoachPayload["totals"] | null {
+  if (!isRecord(value)) return null;
+  const clubs = boundedNumber(value.clubs, 0, 50, true);
+  const averageTrust = boundedNumber(value.averageTrust, 0, 100);
+  const cleanShots = boundedNumber(value.cleanShots, 0, 1_000_000, true);
+  const playableRate = nullableBoundedNumber(value.playableRate, 0, 100);
+  return clubs === null ||
+    averageTrust === null ||
+    cleanShots === null ||
+    playableRate === undefined
+    ? null
+    : { clubs, averageTrust, cleanShots, playableRate };
+}
+
+function parseClub(value: unknown): AiCoachClubPayload | null {
+  if (!isRecord(value)) return null;
+  const clubName = boundedString(value.clubName, 120);
+  const issueLabel = boundedString(value.issueLabel, 120);
+  const trustIndex = boundedNumber(value.trustIndex, 0, 100);
+  const sampleSize = boundedNumber(value.sampleSize, 0, 1_000_000, true);
+  const stockCarryYd = nullableBoundedNumber(value.stockCarryYd, 0, 600);
+  const playableRate = nullableBoundedNumber(value.playableRate, 0, 100);
+  const usualMiss = boundedString(value.usualMiss, 120);
+  const reason = boundedString(value.reason, 400);
+  const drill = boundedString(value.drill, 400);
+
+  if (
+    !clubName ||
+    !issueLabel ||
+    trustIndex === null ||
+    sampleSize === null ||
+    stockCarryYd === undefined ||
+    playableRate === undefined ||
+    !usualMiss ||
+    !reason ||
+    !drill
+  ) {
+    return null;
+  }
+
+  return {
+    clubName,
+    issueLabel,
+    trustIndex,
+    sampleSize,
+    stockCarryYd,
+    playableRate,
+    usualMiss,
+    reason,
+    drill,
+  };
+}
+
+function parseSignal(value: unknown) {
+  if (!isRecord(value)) return null;
+  const label = boundedString(value.label, 120);
+  const signalValue = boundedString(value.value, 120);
+  const detail = boundedString(value.detail, 320);
+  return label && signalValue && detail ? { label, value: signalValue, detail } : null;
+}
+
+function parseSessionBlock(value: unknown) {
+  if (!isRecord(value)) return null;
+  const title = boundedString(value.title, 160);
+  const detail = boundedString(value.detail, 400);
+  const duration = boundedString(value.duration, 80);
+  return title && detail && duration ? { title, detail, duration } : null;
+}
+
+function parseTrainingImpact(value: unknown) {
+  if (!isRecord(value)) return null;
+  const clubName = boundedString(value.clubName, 120);
+  const issueLabel = boundedString(value.issueLabel, 120);
+  const status =
+    value.status === "better" ||
+    value.status === "worse" ||
+    value.status === "mixed" ||
+    value.status === "needs-data"
+      ? value.status
+      : null;
+  const headline = boundedString(value.headline, 220);
+  const detail = boundedString(value.detail, 400);
+  return clubName && issueLabel && status && headline && detail
+    ? { clubName, issueLabel, status, headline, detail }
+    : null;
+}
+
+function parseBoundedArray<T>(
+  value: unknown,
+  maxLength: number,
+  parser: (item: unknown) => T | null,
+) {
+  if (!Array.isArray(value) || value.length > maxLength) return null;
+  const parsed = value.map(parser);
+  return parsed.some((item) => item === null) ? null : (parsed as T[]);
+}
+
+function boundedString(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && trimmed.length <= maxLength ? trimmed : null;
+}
+
+function boundedNumber(value: unknown, min: number, max: number, integer = false) {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= min &&
+    value <= max &&
+    (!integer || Number.isInteger(value))
+    ? value
+    : null;
+}
+
+function nullableBoundedNumber(value: unknown, min: number, max: number) {
+  if (value === null) return null;
+  return boundedNumber(value, min, max) ?? undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

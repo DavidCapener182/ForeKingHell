@@ -130,6 +130,18 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("Clean scoring used");
   });
 
+  it("keeps session filtering reversible and honest about unavailable target offsets", () => {
+    expect(source).toContain("parsePracticeReviewMode(first(params.evidence))");
+    expect(source).toContain("TodayReviewControls");
+    expect(source).toContain("Trusted shots");
+    expect(source).toContain("All imported");
+    expect(source).toContain("Simulate outlier exclusions");
+    expect(source).toContain("no separate target offset was imported");
+    expect(source).toContain("Provider rows normalised to the stored yard and mph schema");
+    expect(source).toContain("reviewShots(data, reviewMode)");
+    expect(source).toContain("reviewComparisons(data, reviewMode)");
+  });
+
   it("uses scoring-trust language instead of generic confidence copy", () => {
     expect(source).toContain("Scoring trust");
     expect(source).toContain("Monitor start line");

@@ -759,9 +759,9 @@ function PeerComparisonContent({
               Peer benchmarks are on demand
             </p>
             <p className="mt-2 text-sm leading-6 text-emerald-900">
-              Carry, speed and flight benchmarks are loaded. Peer percentiles use social
-              visibility checks and recent public or friend-visible stock shots, so they are loaded
-              only when you ask for comparison context.
+              Carry, speed and flight benchmarks are loaded. Peer percentiles use social visibility
+              checks and recent public or friend-visible stock shots, so they are loaded only when
+              you ask for comparison context.
             </p>
           </div>
           <Button asChild variant="outline" className="w-fit border-emerald-700 text-emerald-900">

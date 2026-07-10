@@ -72,6 +72,7 @@ import {
   type DataGap,
   type JourneyEvent,
   type PracticePriority,
+  type ProgressClub,
   type ProgressClubRow,
   type ProgressSummary,
   type ProgressTrend,
@@ -309,6 +310,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
             <ProgressScorePanel summary={summary} />
             <GoalProgressPanel summary={summary} />
             <MobileProgressFirstCard summary={summary} />
+            <MobileProgressDimensions summary={summary} clubs={data.clubs} />
             <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
               <ProgressBentoItem span={12}>
                 <WeeklyRecapPanel data={featureData} summary={summary} />
@@ -1091,11 +1093,118 @@ function MobileProgressFirstCard({ summary }: { summary: ProgressSummary }) {
   );
 }
 
+function MobileProgressDimensions({
+  summary,
+  clubs,
+}: {
+  summary: ProgressSummary;
+  clubs: ProgressClub[];
+}) {
+  const mostImproved = summary.rankings.mostImproved;
+  const mostTrusted = summary.rankings.mostTrusted;
+  const strikeClub = [...clubs]
+    .filter((club) => club.analytics.sample.stockShots >= 3)
+    .sort(
+      (left, right) =>
+        right.analytics.consistency.strikeConsistencyScore -
+        left.analytics.consistency.strikeConsistencyScore,
+    )[0];
+  const directionClub = [...clubs]
+    .filter((club) => club.analytics.sample.stockShots >= 3)
+    .sort(
+      (left, right) =>
+        right.analytics.consistency.directionConsistencyScore -
+        left.analytics.consistency.directionConsistencyScore,
+    )[0];
+  const speedMover = [...summary.clubRows]
+    .filter((row) => row.sampleSize >= 6 && row.ballSpeedDeltaMph !== null)
+    .sort(
+      (left, right) =>
+        Math.abs(right.ballSpeedDeltaMph ?? 0) - Math.abs(left.ballSpeedDeltaMph ?? 0),
+    )[0];
+  const rows = [
+    {
+      label: "Performance",
+      value: mostImproved ? formatClubType(mostImproved.clubType) : "Building",
+      detail: mostImproved ? strongestImprovementDetail(mostImproved) : "No stable mover yet.",
+    },
+    {
+      label: "Consistency",
+      value: mostTrusted ? formatClubType(mostTrusted.clubType) : "Building",
+      detail: mostTrusted
+        ? `${mostTrusted.trustIndex}% trust from ${mostTrusted.sampleSize} clean shots.`
+        : "Needs a comparable clean sample.",
+    },
+    {
+      label: "Strike quality",
+      value: strikeClub
+        ? `${strikeClub.analytics.consistency.strikeConsistencyScore}/100`
+        : "No signal",
+      detail: strikeClub
+        ? `${formatClubType(strikeClub.clubType)} · ${strikeClub.analytics.sample.stockShots} clean shots.`
+        : "Smash and ball-speed evidence is still too thin.",
+    },
+    {
+      label: "Direction control",
+      value: directionClub
+        ? `${directionClub.analytics.consistency.directionConsistencyScore}/100`
+        : "No signal",
+      detail: directionClub
+        ? `${formatClubType(directionClub.clubType)} · ${formatRate(directionClub.analytics.accuracy.playableShotRate)} playable.`
+        : "Offline evidence is still too thin.",
+    },
+    {
+      label: "Speed",
+      value:
+        speedMover?.ballSpeedDeltaMph !== null && speedMover?.ballSpeedDeltaMph !== undefined
+          ? `${formatSigned(speedMover.ballSpeedDeltaMph)} mph`
+          : "No stable shift",
+      detail: speedMover
+        ? `${formatClubType(speedMover.clubType)} versus its personal baseline.`
+        : "Needs six comparable clean shots.",
+    },
+    {
+      label: "Training volume",
+      value: `${integerFormatter.format(summary.totals.trackedCleanShots)} clean shots`,
+      detail: "Evidence depth only; more shots is not automatic improvement.",
+    },
+    {
+      label: "Confidence / sample",
+      value: `${summary.totals.averageTrust}% average trust`,
+      detail: `${summary.totals.clubs} clubs · ${summary.dataGaps.length} current data gaps.`,
+    },
+  ];
+
+  return (
+    <section aria-labelledby="progress-dimensions" className="ios-grouped-list sm:hidden">
+      <div className="ios-grouped-row px-4 py-3">
+        <h2 id="progress-dimensions" className="text-[17px] font-semibold">
+          Progress dimensions
+        </h2>
+        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+          Improvement, repeatability and evidence depth are scored separately.
+        </p>
+      </div>
+      <dl>
+        {rows.map((row) => (
+          <div key={row.label} className="ios-grouped-row px-4 py-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-[13px] text-muted-foreground">{row.label}</dt>
+              <dd className="text-right text-[15px] font-semibold tabular-nums">{row.value}</dd>
+            </div>
+            <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{row.detail}</p>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 type Tone = "green" | "sky" | "pink" | "amber" | "slate";
 
 function ComparisonBar({ summary }: { summary: ProgressSummary }) {
   return (
-    <section className="grid gap-3 rounded-lg border border-[#D9DED8] bg-white px-4 py-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center">
+    <section className="grid gap-3 rounded-lg border border-[#D9DED8] bg-white px-4 py-3 sm:grid-cols-3 sm:items-start">
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Comparison
@@ -1120,7 +1229,7 @@ function ComparisonBar({ summary }: { summary: ProgressSummary }) {
       </div>
       <div
         aria-label="Progress period"
-        className="inline-flex w-fit items-center justify-center rounded-lg bg-muted p-[3px] text-sm text-muted-foreground sm:justify-self-end"
+        className="inline-flex w-fit max-w-full flex-wrap items-center justify-center rounded-lg bg-muted p-[3px] text-sm text-muted-foreground sm:col-span-3 sm:justify-self-start"
       >
         <span className="rounded-md bg-background px-2.5 py-1 font-medium text-foreground shadow-sm">
           All data

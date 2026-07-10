@@ -41,16 +41,6 @@ export async function saveEquipmentHistoryAction(formData: FormData) {
   const userId = await requireCurrentUserId();
   const clubId = requiredString(formData, "clubId");
   const db = getDb();
-  const [club] = await db
-    .select({ id: clubs.id })
-    .from(clubs)
-    .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
-    .limit(1);
-
-  if (!club) {
-    throw new Error("Club not found for this account.");
-  }
-
   const normalized = normalizeEquipmentHistory({
     effectiveFrom: nullableString(formData, "effectiveFrom"),
     effectiveTo: nullableString(formData, "effectiveTo"),
@@ -64,6 +54,28 @@ export async function saveEquipmentHistoryAction(formData: FormData) {
   const now = new Date();
 
   await db.transaction(async (tx) => {
+    const [club] = await tx
+      .select({ id: clubs.id })
+      .from(clubs)
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
+      .limit(1);
+
+    if (!club) {
+      throw new Error("Club not found for this account.");
+    }
+
+    if (ballModelId) {
+      const [ball] = await tx
+        .select({ id: ballModels.id })
+        .from(ballModels)
+        .where(and(eq(ballModels.id, ballModelId), eq(ballModels.userId, userId)))
+        .limit(1);
+
+      if (!ball) {
+        throw new Error("Ball model not found for this account.");
+      }
+    }
+
     await tx
       .update(clubEquipmentHistory)
       .set({

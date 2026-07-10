@@ -54,7 +54,7 @@ describe("production readiness gate", () => {
       const source = readFileSync(join(root, route), "utf8");
 
       expect(source).toContain("rateLimitRequest");
-      expect(source).toContain("rejectOversizedRequest");
+      expect(source).toContain("readBoundedJsonBody");
     }
 
     expect(readFileSync(join(root, "src/app/api/scorecard/extract/route.ts"), "utf8")).toContain(
@@ -217,9 +217,10 @@ describe("production readiness gate", () => {
     const navItemsSource = readFileSync(join(root, "src/components/app/nav-items.ts"), "utf8");
     const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
 
-    expect(navItemsSource).toContain('label: "Home"');
-    expect(navItemsSource).toContain('label: "Coach"');
-    expect(mobileNavSource).toContain("Search pages, clubs, rounds or friends");
+    expect(navItemsSource).toContain('label: "Today"');
+    expect(navItemsSource).toContain('label: "Sessions"');
+    expect(navItemsSource).toContain('label: "Profile"');
+    expect(mobileNavSource).toContain("Search analysis, sessions or settings");
     expect(mobileNavSource).toContain('href="/settings"');
     expect(mobileNavSource).toContain('href="/privacy"');
     expect(mobileNavSource).toContain('href="/profile"');

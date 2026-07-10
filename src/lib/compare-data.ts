@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray, or } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 
 import {
   clubs,
@@ -21,6 +21,7 @@ import {
   normaliseHandicapRoundInput,
 } from "@/lib/round-handicap";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
+import { getBlockedUserIds, getFriendIds } from "@/lib/social";
 
 export type CompareFocusMode =
   | "today"
@@ -603,11 +604,31 @@ export async function getPlayerCompareData(
 ): Promise<PlayerCompareData> {
   const db = getDb();
   const viewerUserId = await requireCurrentUserId();
-  const profileRows = await db
-    .select()
-    .from(userProfiles)
-    .where(or(eq(userProfiles.publicProfile, true), eq(userProfiles.userId, viewerUserId)))
-    .orderBy(asc(userProfiles.displayName));
+  const [publicProfiles, viewerProfiles, friendIds, blockedIds] = await Promise.all([
+    db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.publicProfile, true))
+      .orderBy(asc(userProfiles.displayName))
+      .limit(100),
+    db.select().from(userProfiles).where(eq(userProfiles.userId, viewerUserId)).limit(1),
+    getFriendIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+  ]);
+  const profileRows = [
+    ...new Map(
+      [...viewerProfiles, ...publicProfiles]
+        .filter((profile) =>
+          canUseProfileForPlayerCompare({
+            profile,
+            viewerUserId,
+            friendIds: new Set(friendIds),
+            blockedIds,
+          }),
+        )
+        .map((profile) => [profile.userId, profile] as const),
+    ).values(),
+  ].sort((left, right) => left.displayName.localeCompare(right.displayName));
 
   const players = profileRows
     .map((profile) => ({
@@ -726,7 +747,7 @@ export async function getPlayerCompareData(
       })
       .from(tournamentStandings)
       .innerJoin(tournaments, eq(tournamentStandings.tournamentId, tournaments.id))
-      .where(inArray(tournamentStandings.userId, playerIds))
+      .where(eq(tournamentStandings.userId, viewerUserId))
       .orderBy(desc(tournamentStandings.calculatedAt)),
     db
       .select({
@@ -739,7 +760,7 @@ export async function getPlayerCompareData(
       })
       .from(tournamentSubmissions)
       .innerJoin(tournaments, eq(tournamentSubmissions.tournamentId, tournaments.id))
-      .where(inArray(tournamentSubmissions.userId, playerIds))
+      .where(eq(tournamentSubmissions.userId, viewerUserId))
       .orderBy(desc(tournamentSubmissions.submittedAt)),
   ]);
 
@@ -762,17 +783,19 @@ export async function getPlayerCompareData(
   const submissionsByUser = groupBy(submissionRows, (submission) => submission.userId);
 
   const profileByUserId = new Map(profileRows.map((profile) => [profile.userId, profile]));
-  const playerSides = players.map((player) =>
-    buildPlayerCompareSide({
+  const playerSides = players.map((player) => {
+    const isViewer = player.userId === viewerUserId;
+
+    return buildPlayerCompareSide({
       profile: profileByUserId.get(player.userId),
       option: player,
       shots: shotRowsByUser.get(player.userId) ?? [],
       sessions: sessionsByUser.get(player.userId) ?? [],
       stockRows: stockByUser.get(player.userId) ?? [],
-      tournamentRows: tournamentsByUser.get(player.userId) ?? [],
-      submissionRows: submissionsByUser.get(player.userId) ?? [],
-    }),
-  );
+      tournamentRows: isViewer ? (tournamentsByUser.get(player.userId) ?? []) : [],
+      submissionRows: isViewer ? (submissionsByUser.get(player.userId) ?? []) : [],
+    });
+  });
   const playerA = playerSides.find((player) => player.userId === selectedA?.userId) ?? null;
   const playerB = playerSides.find((player) => player.userId === selectedB?.userId) ?? null;
 
@@ -796,6 +819,35 @@ export async function getPlayerCompareData(
     playerB,
     delta: playerA && playerB ? buildPlayerDelta(playerA, playerB) : emptyPlayerDelta(),
   };
+}
+
+type PlayerCompareProfile = typeof userProfiles.$inferSelect;
+
+export function canUseProfileForPlayerCompare(input: {
+  profile: PlayerCompareProfile;
+  viewerUserId: string;
+  friendIds: ReadonlySet<string>;
+  blockedIds: ReadonlySet<string>;
+}) {
+  if (input.profile.userId === input.viewerUserId) {
+    return true;
+  }
+
+  if (input.blockedIds.has(input.profile.userId) || !input.profile.publicProfile) {
+    return false;
+  }
+
+  const settings = input.profile.visibilitySettingsJson ?? {};
+
+  if (settings.allowCompare !== true) {
+    return false;
+  }
+
+  const isFriend = input.friendIds.has(input.profile.userId);
+  return (["exactShots", "rounds", "bag", "handicap"] as const).every((field) => {
+    const visibility = settings[field] ?? "private";
+    return visibility === "public" || (isFriend && visibility === "friends");
+  });
 }
 
 export function defaultCompareFilters(): CompareFilters {

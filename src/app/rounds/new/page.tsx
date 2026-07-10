@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, MapPinned } from "lucide-react";
-import { asc, eq, or } from "drizzle-orm";
+import { asc, eq, inArray, or } from "drizzle-orm";
 
 import { createManualRoundAction } from "@/app/rounds/actions";
 import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
@@ -129,15 +129,60 @@ export default async function NewRoundPage() {
 async function getRoundCourseOptions(): Promise<RoundCourseOption[]> {
   const db = getDb();
   const userId = await requireCurrentUserId();
-  const [courseRows, teeSetRows, holeRows] = await Promise.all([
-    db
-      .select()
-      .from(courses)
-      .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
-      .orderBy(asc(courses.name)),
-    db.select().from(teeSets).orderBy(asc(teeSets.name)),
-    db.select().from(holes).orderBy(asc(holes.holeNumber)),
-  ]);
+  const courseRows = await db
+    .select({
+      id: courses.id,
+      name: courses.name,
+      country: courses.country,
+    })
+    .from(courses)
+    .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
+    .orderBy(asc(courses.name))
+    .limit(200);
+
+  if (courseRows.length === 0) {
+    return [];
+  }
+
+  const teeSetRows = await db
+    .select({
+      id: teeSets.id,
+      courseId: teeSets.courseId,
+      name: teeSets.name,
+      par: teeSets.par,
+      courseRating: teeSets.courseRating,
+      slopeRating: teeSets.slopeRating,
+      yards: teeSets.yards,
+    })
+    .from(teeSets)
+    .where(
+      inArray(
+        teeSets.courseId,
+        courseRows.map((course) => course.id),
+      ),
+    )
+    .orderBy(asc(teeSets.name));
+
+  if (teeSetRows.length === 0) {
+    return [];
+  }
+
+  const holeRows = await db
+    .select({
+      teeSetId: holes.teeSetId,
+      holeNumber: holes.holeNumber,
+      par: holes.par,
+      yards: holes.yards,
+      strokeIndex: holes.strokeIndex,
+    })
+    .from(holes)
+    .where(
+      inArray(
+        holes.teeSetId,
+        teeSetRows.map((teeSet) => teeSet.id),
+      ),
+    )
+    .orderBy(asc(holes.holeNumber));
   const teeSetsByCourse = new Map<string, typeof teeSetRows>();
   const holesByTeeSet = new Map<string, typeof holeRows>();
 

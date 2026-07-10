@@ -2,10 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(
-  join(process.cwd(), "src/components/visuals/page-artwork.tsx"),
-  "utf8",
-);
+const source = readFileSync(join(process.cwd(), "src/components/visuals/page-artwork.tsx"), "utf8");
 
 describe("desktop page artwork variants", () => {
   it("keeps the desktop platform, practice, AI and social variants available", () => {

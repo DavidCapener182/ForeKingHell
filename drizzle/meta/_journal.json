@@ -253,6 +253,48 @@
       "when": 1782954000000,
       "tag": "0035_carry_on_feature_wave",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1782957600000,
+      "tag": "0036_practice_planner",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1782961200000,
+      "tag": "0037_practice_plan_matching",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1783675101000,
+      "tag": "0038_restore_theme_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783675500000,
+      "tag": "0039_security_boundary_repairs",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783689816000,
+      "tag": "0040_security_integrity_lockdown",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783692000000,
+      "tag": "0041_analysis_workspace",
+      "breakpoints": true
     }
   ]
 }

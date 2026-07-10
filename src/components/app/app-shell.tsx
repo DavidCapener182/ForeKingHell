@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   CreditCard,
@@ -10,7 +11,6 @@ import {
   PanelLeftIcon,
   Rows3,
   Settings,
-  Sun,
   Upload,
   UserRound,
   Zap,
@@ -18,12 +18,12 @@ import {
 
 import { BrandMark } from "@/components/brand-mark";
 import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome";
-import { MobileNav, type MobileNavProfile, getProfileInitials } from "@/components/app/mobile-nav";
+import type { MobileNavProfile } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { purgePrivateServiceWorkerCaches } from "@/lib/service-worker-cache";
+import { purgePrivateClientData } from "@/lib/service-worker-cache";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/sidebar";
 import { calculateUserLevel } from "@/lib/achievements/xp";
 import { BRAND_NAME } from "@/lib/brand";
+import { getProfileInitials } from "@/lib/profile-initials";
 import { cn } from "@/lib/utils";
 
 type AppShellProps = {
@@ -67,6 +68,10 @@ const sidebarDensityStorageKey = "fkh:desktop-sidebar-density";
 
 type SidebarDensity = "comfortable" | "compact" | "icon";
 type ExpandedSidebarDensity = Exclude<SidebarDensity, "icon">;
+
+const MobileNav = dynamic(() =>
+  import("@/components/app/mobile-nav").then((module) => module.MobileNav),
+);
 
 export function AppShell({ children, totalXp, isAdmin = false, profile = null }: AppShellProps) {
   const pathname = usePathname();
@@ -267,7 +272,6 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
           )}
         >
           <SidebarDensityMenu density={sidebarDensity} onDensityChange={updateSidebarDensity} />
-          <SunlightModeButton compact={isCompactSidebar} />
           <Button
             asChild
             className={cn(
@@ -292,12 +296,14 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         <SidebarRail />
       </Sidebar>
 
-      <div className="relative flex min-w-0 flex-1 flex-col bg-background pt-[calc(3.25rem+env(safe-area-inset-top))] sm:pt-0">
+      <div
+        data-mobile-platform="apple"
+        className="relative flex min-w-0 flex-1 flex-col overflow-x-clip bg-background pt-[calc(3.25rem+env(safe-area-inset-top))] lg:pt-0"
+      >
         <MobileNav
           pathname={pathname}
           totalXp={totalXp}
           level={level.level}
-          xpToNextLevel={xpToNextLevel}
           profile={profile}
           isAdmin={isAdmin}
         />
@@ -539,43 +545,6 @@ function SidebarDensityMenu({
   );
 }
 
-function SunlightModeButton({ compact = false }: { compact?: boolean }) {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setEnabled(window.localStorage.getItem("fkh:sunlight-mode") === "true");
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.sunlight = enabled ? "true" : "false";
-  }, [enabled]);
-
-  function toggleSunlightMode() {
-    const next = !enabled;
-    setEnabled(next);
-    window.localStorage.setItem("fkh:sunlight-mode", String(next));
-    document.documentElement.dataset.sunlight = next ? "true" : "false";
-  }
-
-  return (
-    <Button
-      type="button"
-      variant={enabled ? "default" : "outline"}
-      className={cn("w-full justify-start rounded-lg", compact && "h-8 px-2 text-xs")}
-      onClick={toggleSunlightMode}
-      aria-pressed={enabled}
-      data-haptic="strong"
-    >
-      <Sun className="size-4" />
-      <span className="group-data-[collapsible=icon]:hidden">Sunlight mode</span>
-    </Button>
-  );
-}
-
 function ProfileDropdown({
   totalXp,
   level,
@@ -675,11 +644,7 @@ function ProfileDropdown({
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuSeparator />
-        <form
-          action="/auth/sign-out"
-          method="post"
-          onSubmit={() => purgePrivateServiceWorkerCaches()}
-        >
+        <form action="/auth/sign-out" method="post" onSubmit={clearPrivateDataBeforeSignOut}>
           <DropdownMenuItem asChild variant="destructive">
             <button type="submit" className="w-full">
               <LogOut className="size-4" />
@@ -690,6 +655,13 @@ function ProfileDropdown({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+async function clearPrivateDataBeforeSignOut(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  await purgePrivateClientData();
+  form.submit();
 }
 
 function ProfileDropdownAvatarImage({ src }: { src: string }) {

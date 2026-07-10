@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export type RateLimitOptions = {
   keyPrefix: string;
   limit: number;
+  subject?: string;
   windowMs: number;
 };
 
@@ -26,6 +27,57 @@ export function rejectOversizedRequest(request: NextRequest, maxBytes: number) {
   return null;
 }
 
+export type BoundedJsonResult =
+  | { ok: true; value: unknown }
+  | { ok: false; response: NextResponse };
+
+/** Reads JSON while enforcing the byte limit on the consumed stream, even when
+ * Content-Length is absent or incorrect. Invalid JSON is returned as null so
+ * each route can keep its own payload-specific 400 response. */
+export async function readBoundedJsonBody(
+  request: Request,
+  maxBytes: number,
+): Promise<BoundedJsonResult> {
+  const declaredLength = request.headers.get("content-length");
+  if (declaredLength && Number(declaredLength) > maxBytes) {
+    return { ok: false, response: oversizedResponse(maxBytes) };
+  }
+
+  if (!request.body) return { ok: true, value: null };
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        return { ok: false, response: oversizedResponse(maxBytes) };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: true, value: null };
+  }
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(body)) };
+  } catch {
+    return { ok: true, value: null };
+  }
+}
+
 export function rejectOversizedDataUrl(dataUrl: string, maxBytes: number) {
   const estimatedBytes = estimateDataUrlBytes(dataUrl);
 
@@ -39,10 +91,10 @@ export function rejectOversizedDataUrl(dataUrl: string, maxBytes: number) {
   return null;
 }
 
-export function rateLimitRequest(request: NextRequest, options: RateLimitOptions) {
+export function rateLimitRequest(request: Request, options: RateLimitOptions) {
   const now = Date.now();
   const ip = clientIp(request);
-  const key = `${options.keyPrefix}:${ip}`;
+  const key = `${options.keyPrefix}:${options.subject ?? "anonymous"}:${ip}`;
   const current = buckets.get(key);
 
   if (!current || current.resetAt <= now) {
@@ -68,7 +120,7 @@ export function rateLimitRequest(request: NextRequest, options: RateLimitOptions
   return null;
 }
 
-function clientIp(request: NextRequest) {
+function clientIp(request: Request) {
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
@@ -91,4 +143,11 @@ function formatBytes(bytes: number) {
   }
 
   return `${bytes} bytes`;
+}
+
+function oversizedResponse(maxBytes: number) {
+  return NextResponse.json(
+    { message: `Request body is too large. Limit is ${formatBytes(maxBytes)}.` },
+    { status: 413 },
+  );
 }

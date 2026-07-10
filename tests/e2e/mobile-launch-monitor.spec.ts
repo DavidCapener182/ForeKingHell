@@ -71,6 +71,44 @@ test.describe("mobile launch monitor loop", () => {
     await expect(page.locator("#dispersion [data-media-container]").first()).toBeVisible();
   });
 
+  test("keeps five primary tabs clear of content and exposes the analysis loop", async ({
+    page,
+  }) => {
+    await gotoAuthenticatedOrSkip(page, "/analyse", /Evidence hub|Analyse/i);
+
+    const nav = page.getByRole("navigation", { name: "Mobile primary" });
+    await expect(nav.getByRole("link")).toHaveCount(5);
+    await expect(nav.getByRole("link", { name: "Today" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Sessions" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Analyse" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(nav.getByRole("link", { name: "Bag" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Profile" })).toBeVisible();
+
+    const bounds = await page.evaluate(() => {
+      const navRect = document
+        .querySelector('[aria-label="Mobile primary"]')
+        ?.getBoundingClientRect();
+      const main = document.querySelector("main");
+      const last = main?.lastElementChild?.getBoundingClientRect();
+      return {
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        bottomPadding: main ? Number.parseFloat(getComputedStyle(main).paddingBottom) : 0,
+        navHeight: navRect?.height ?? 0,
+        lastBottom: last?.bottom ?? 0,
+        navTop: navRect?.top ?? window.innerHeight,
+      };
+    });
+
+    expect(bounds.overflow).toBeLessThanOrEqual(2);
+    expect(bounds.bottomPadding).toBeGreaterThanOrEqual(bounds.navHeight);
+    expect(bounds.lastBottom <= bounds.navTop || bounds.bottomPadding >= bounds.navHeight).toBe(
+      true,
+    );
+  });
+
   test("starts practice with a mobile launch-monitor cockpit", async ({ page }) => {
     await gotoAuthenticatedOrSkip(page, "/practice", /Active session mode/i);
 
@@ -83,6 +121,54 @@ test.describe("mobile launch monitor loop", () => {
     await expect(cockpit.getByText("Spin", { exact: true })).toBeVisible();
     await expect(cockpit.getByText("Smash", { exact: true })).toBeVisible();
     await expect(cockpit.getByText("Readiness", { exact: true })).toBeVisible();
+  });
+
+  test("keeps the Apple mobile shell when an iPhone rotates to landscape", async ({ page }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today/i);
+
+    const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
+    await expect(mobileNav).toBeVisible();
+    await expect(mobileNav.getByRole("link")).toHaveCount(5);
+    await expect(page.locator(".ios-mobile-screen")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
+
+    const layout = await page.evaluate(() => {
+      const nav = document.querySelector('[aria-label="Mobile primary"]');
+      const main = document.querySelector("main");
+
+      return {
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        navHeight: nav?.getBoundingClientRect().height ?? 0,
+        bottomPadding: main ? Number.parseFloat(getComputedStyle(main).paddingBottom) : 0,
+      };
+    });
+    expect(layout.overflow).toBeLessThanOrEqual(2);
+    expect(layout.bottomPadding).toBeGreaterThanOrEqual(layout.navHeight);
+  });
+
+  test("restores each primary tab scroll position and reveals the compact title", async ({
+    page,
+  }) => {
+    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today/i);
+    await page.evaluate(() => window.sessionStorage.removeItem("fkh:mobile-tab-scroll:/today"));
+    await page.evaluate(() => window.scrollTo({ top: 700, behavior: "auto" }));
+    await expect(page.locator(".ios-inline-title")).toHaveCSS("opacity", "1");
+
+    await page
+      .getByRole("navigation", { name: "Mobile primary" })
+      .getByRole("link", {
+        name: "Sessions",
+      })
+      .click();
+    await expect(page).toHaveURL(/\/sessions$/);
+    expect(
+      await page.evaluate(() => window.sessionStorage.getItem("fkh:mobile-tab-scroll:/today")),
+    ).toBe("700");
+
+    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/today$/);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(700);
   });
 });
 

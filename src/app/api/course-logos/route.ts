@@ -7,6 +7,8 @@ import {
   remoteImageResponseFromUrl,
 } from "@/lib/remote-image-response";
 import { findWebsiteIconUrls, findWebsiteImageUrls } from "@/lib/website-icons";
+import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { rateLimitRequest } from "@/lib/api-protection";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,6 +19,16 @@ const COURSE_LOGO_MISS_CACHE_CONTROL = "public, max-age=300, s-maxage=900";
 const COURSE_LOGO_USER_AGENT = `Mozilla/5.0 (compatible; ${BRAND_NAME} course logo resolver; +${BRAND_PUBLIC_URL})`;
 
 export async function GET(request: Request) {
+  const userId = await getOptionalCurrentUserId();
+  if (!userId) return new Response(null, { status: 401 });
+  const rateLimitRejection = rateLimitRequest(request, {
+    keyPrefix: "course-logo-resolution",
+    subject: userId,
+    limit: 60,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (rateLimitRejection) return rateLimitRejection;
+
   const requestUrl = new URL(request.url);
   const name = requestUrl.searchParams.get("name");
   const country = requestUrl.searchParams.get("country");

@@ -11,7 +11,9 @@ test.describe("mobile density screenshots", () => {
 
   const mobileViewports = [
     { name: "mobile-320x568", width: 320, height: 568 },
+    { name: "mobile-375x667", width: 375, height: 667 },
     { name: "mobile-390x844", width: 390, height: 844 },
+    { name: "mobile-393x852", width: 393, height: 852 },
     { name: "mobile-430x932", width: 430, height: 932 },
   ];
 
@@ -26,6 +28,13 @@ test.describe("mobile density screenshots", () => {
       routes: [
         { name: "dashboard", path: "/dashboard", text: /Dashboard|Today/i },
         { name: "today", path: "/today", text: /Today/i },
+        { name: "sessions", path: "/sessions", text: /Sessions/i },
+        { name: "analyse", path: "/analyse", text: /Evidence hub|Analyse/i },
+        {
+          name: "session-impact",
+          path: "/analyse/session-impact",
+          text: /Session impact|Reversible analysis/i,
+        },
         { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
         { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
         { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
@@ -86,23 +95,48 @@ test.describe("mobile density screenshots", () => {
 
     let capturedRoutes = 0;
     let authenticatedCaptures = 0;
+    const allMobileRoutes = mobileRouteGroups.flatMap((group) => group.routes);
+    const coreMobilePaths = new Set(["/today", "/sessions", "/analyse", "/bag", "/profile"]);
+    const coreMobileRoutes = allMobileRoutes.filter((route) => coreMobilePaths.has(route.path));
+    const secondaryMobileRoutes = allMobileRoutes.filter(
+      (route) => !coreMobilePaths.has(route.path),
+    );
 
     for (const viewport of mobileViewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-      for (const group of mobileRouteGroups) {
-        for (const route of group.routes) {
-          if (!(await gotoRouteOrSkip(page, route.path, false))) {
-            continue;
-          }
-          if (!(await expectReadyOrSkip(page, route.text, false))) {
-            continue;
-          }
-          await capture(page, testInfo, `${route.name}-${viewport.name}`);
-          capturedRoutes += 1;
-          if (route.path !== "/rapsodo") {
-            authenticatedCaptures += 1;
-          }
+      for (const route of coreMobileRoutes) {
+        if (!(await gotoRouteOrSkip(page, route.path, false))) {
+          continue;
+        }
+        if (!(await expectReadyOrSkip(page, route.text, false))) {
+          continue;
+        }
+        await capture(page, testInfo, `${route.name}-${viewport.name}`);
+        capturedRoutes += 1;
+        authenticatedCaptures += 1;
+      }
+    }
+
+    const referenceMobileViewport = mobileViewports.find(
+      (viewport) => viewport.width === 390 && viewport.height === 844,
+    );
+    if (referenceMobileViewport) {
+      await page.setViewportSize({
+        width: referenceMobileViewport.width,
+        height: referenceMobileViewport.height,
+      });
+      for (const route of secondaryMobileRoutes) {
+        if (!(await gotoRouteOrSkip(page, route.path, false))) {
+          continue;
+        }
+        if (!(await expectReadyOrSkip(page, route.text, false))) {
+          continue;
+        }
+        await capture(page, testInfo, `${route.name}-${referenceMobileViewport.name}`);
+        capturedRoutes += 1;
+        if (route.path !== "/rapsodo") {
+          authenticatedCaptures += 1;
         }
       }
     }

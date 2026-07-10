@@ -1,7 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { createLocalBypassStorageState, localAuthBypassEnabled } from "./tests/e2e/local-auth";
+
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
+const localBypassStorageState = localAuthBypassEnabled(baseURL)
+  ? createLocalBypassStorageState(baseURL)
+  : undefined;
 const desktopViewportProjects = [
   { name: "desktop-1024x768", width: 1024, height: 768 },
   { name: "desktop-1280x720", width: 1280, height: 720 },
@@ -24,6 +29,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
     baseURL,
+    storageState: localBypassStorageState,
     serviceWorkers: "block",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
@@ -97,9 +103,14 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: `npm run dev -- --port ${port}`,
+        command: `npm run dev -- --webpack --port ${port}`,
         url: `${baseURL}/login`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          ...process.env,
+          DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX ?? "5",
+          NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=12288",
+        },
       },
 });

@@ -7,6 +7,13 @@ import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallb
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatClubType } from "@/lib/club-format";
+import {
+  formatStoredApexFeet,
+  formatStoredLateralYards,
+  formatStoredSpeedMph,
+  formatStoredYards,
+  type DistanceUnitPreference,
+} from "@/lib/units";
 import { cn } from "@/lib/utils";
 
 export type LongestShot = {
@@ -15,6 +22,13 @@ export type LongestShot = {
   clubType: string;
   brandModel: string;
   accent: string;
+  sessionId: string;
+  sessionSource: string;
+  sessionFileName: string | null;
+  qualityTag: string | null;
+  shotCategory: string | null;
+  recordTrust: "trusted" | "raw";
+  rawMaximumYd: number | null;
   shotNumber: number | null;
   shotAt: string;
   carryYd: number | null;
@@ -34,7 +48,13 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
+export function LongestShotsSection({
+  shots,
+  preferredUnits,
+}: {
+  shots: LongestShot[];
+  preferredUnits: DistanceUnitPreference;
+}) {
   const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
   const selectedShot = shots.find((shot) => shot.id === selectedShotId) ?? shots[0] ?? null;
 
@@ -52,7 +72,10 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
                 <Trophy className="size-5 text-amber-500" />
                 Longest shots
               </CardTitle>
-              <CardDescription>Best total-distance shot recorded for each club.</CardDescription>
+              <CardDescription>
+                Trusted all-time imported records, with any larger raw maximum called out rather
+                than silently promoted.
+              </CardDescription>
             </div>
             <Badge variant="outline">{shots.length} clubs</Badge>
           </div>
@@ -63,16 +86,17 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
               <LongestShotButton
                 key={shot.id}
                 shot={shot}
+                preferredUnits={preferredUnits}
                 selected={shot.id === selectedShot.id}
                 onClick={() => setSelectedShotId(shot.id)}
               />
             ))}
           </div>
 
-          <ShotSimulator shot={selectedShot} />
+          <ShotSimulator shot={selectedShot} preferredUnits={preferredUnits} />
           <ChartAccessibleFallback
             title="Longest shots"
-            summary={longestShotsSummary(shots, selectedShot)}
+            summary={longestShotsSummary(shots, selectedShot, preferredUnits)}
             columns={[
               { key: "club", label: "Club" },
               { key: "model", label: "Model" },
@@ -85,7 +109,7 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
               { key: "launch", label: "Launch" },
               { key: "apex", label: "Apex" },
             ]}
-            rows={longestShotsRows(shots, selectedShot.id)}
+            rows={longestShotsRows(shots, selectedShot.id, preferredUnits)}
           />
         </CardContent>
       </Card>
@@ -95,10 +119,12 @@ export function LongestShotsSection({ shots }: { shots: LongestShot[] }) {
 
 function LongestShotButton({
   shot,
+  preferredUnits,
   selected,
   onClick,
 }: {
   shot: LongestShot;
+  preferredUnits: DistanceUnitPreference;
   selected: boolean;
   onClick: () => void;
 }) {
@@ -131,17 +157,23 @@ function LongestShotButton({
       </span>
       <span className="shrink-0 text-right">
         <span className="block text-sm font-semibold text-foreground">
-          {formatMetric(shot.totalYd ?? shot.carryYd)} yd
+          {formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)}
         </span>
         <span className="block text-xs text-muted-foreground">
-          #{shot.shotNumber ?? "-"} / {formatDate(shot.shotAt)}
+          {shot.recordTrust === "trusted" ? "Trusted" : "Raw only"} / {formatDate(shot.shotAt)}
         </span>
       </span>
     </button>
   );
 }
 
-function ShotSimulator({ shot }: { shot: LongestShot }) {
+function ShotSimulator({
+  shot,
+  preferredUnits,
+}: {
+  shot: LongestShot;
+  preferredUnits: DistanceUnitPreference;
+}) {
   const geometry = useMemo(() => buildShotGeometry(shot), [shot]);
 
   return (
@@ -152,7 +184,7 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
           preserveAspectRatio="xMidYMid meet"
           className="h-full w-full"
           role="img"
-          aria-label="Course shot simulation on a 350 yard hole"
+          aria-label="Top-down longest-shot distance simulation"
         >
           <defs>
             <filter id="shotGlowLong" x="-40%" y="-40%" width="180%" height="180%">
@@ -216,7 +248,7 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
                   fontSize="18"
                   fontWeight="700"
                 >
-                  {yard}
+                  {formatStoredYards(yard, preferredUnits, 0)}
                 </text>
               </g>
             );
@@ -278,19 +310,19 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             x={geometry.carryLabel.x}
             y={geometry.carryLabel.y}
             title="Carry"
-            value={`${formatMetric(shot.carryYd)} yd`}
+            value={formatStoredYards(shot.carryYd, preferredUnits)}
           />
           <Label
             x={geometry.totalLabel.x}
             y={geometry.totalLabel.y}
             title="Total"
-            value={`${formatMetric(shot.totalYd ?? shot.carryYd)} yd`}
+            value={formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)}
           />
           <Label
             x={geometry.sideLabel.x}
             y={geometry.sideLabel.y}
             title="Offline"
-            value={formatSide(shot.sideCarryYd)}
+            value={formatStoredLateralYards(shot.sideCarryYd, preferredUnits)}
           />
         </svg>
       </div>
@@ -301,32 +333,53 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
             {formatClubType(shot.clubType)}
           </Badge>
           <h2 className="mt-3 text-2xl font-semibold tracking-normal">
-            {formatMetric(shot.totalYd ?? shot.carryYd)} yd longest total
+            {formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)} longest total
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Shot #{shot.shotNumber ?? "-"} on {formatDate(shot.shotAt)}
+            Shot #{shot.shotNumber ?? "-"} on {formatDate(shot.shotAt)} ·{" "}
+            {formatSessionSource(shot.sessionSource)}
           </p>
+          {shot.recordTrust === "raw" ? (
+            <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+              This is the raw maximum, not a trusted personal best. Its source or quality evidence
+              does not meet the verified-record rules.
+            </p>
+          ) : shot.rawMaximumYd !== null &&
+            shot.rawMaximumYd > (shot.totalYd ?? shot.carryYd ?? 0) ? (
+            <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-950">
+              Raw maximum {formatStoredYards(shot.rawMaximumYd, preferredUnits)} · excluded from the
+              trusted record by its quality, category, or source evidence.
+            </p>
+          ) : null}
         </div>
 
-        <FlightProfile shot={shot} />
+        <FlightProfile shot={shot} preferredUnits={preferredUnits} />
 
         <div className="grid grid-cols-2 gap-2">
           <SimulationMetric
             icon={Target}
             label="Carry"
-            value={`${formatMetric(shot.carryYd)} yd`}
+            value={formatStoredYards(shot.carryYd, preferredUnits)}
           />
           <SimulationMetric
             icon={Activity}
             label="Launch/loft"
             value={`${formatMetric(shot.launchAngleDeg)} deg`}
           />
-          <SimulationMetric icon={Gauge} label="Apex" value={`${formatMetric(shot.apexFt)} ft`} />
-          <SimulationMetric icon={Wind} label="Curve" value={formatSide(shot.sideCarryYd)} />
+          <SimulationMetric
+            icon={Gauge}
+            label="Apex"
+            value={formatStoredApexFeet(shot.apexFt, preferredUnits)}
+          />
+          <SimulationMetric
+            icon={Wind}
+            label="Curve"
+            value={formatStoredLateralYards(shot.sideCarryYd, preferredUnits)}
+          />
           <SimulationMetric
             icon={Gauge}
             label="Ball speed"
-            value={`${formatMetric(shot.ballSpeedMph)} mph`}
+            value={formatStoredSpeedMph(shot.ballSpeedMph, preferredUnits)}
           />
           <SimulationMetric
             icon={Activity}
@@ -339,7 +392,13 @@ function ShotSimulator({ shot }: { shot: LongestShot }) {
   );
 }
 
-function FlightProfile({ shot }: { shot: LongestShot }) {
+function FlightProfile({
+  shot,
+  preferredUnits,
+}: {
+  shot: LongestShot;
+  preferredUnits: DistanceUnitPreference;
+}) {
   const carry = Math.max(1, shot.carryYd ?? shot.totalYd ?? 1);
   const apex = Math.max(20, shot.apexFt ?? 80);
   const endX = 282;
@@ -367,7 +426,7 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
         />
         <circle cx={endX} cy="108" r="5" fill={shot.accent} />
         <text x={apexX + 8} y={Math.max(18, apexY - 8)} fill="#475569" fontSize="12">
-          apex {formatMetric(shot.apexFt)} ft
+          apex {formatStoredApexFeet(shot.apexFt, preferredUnits)}
         </text>
         <text x="34" y="28" fill="#475569" fontSize="12">
           launch {formatMetric(shot.launchAngleDeg)} deg
@@ -375,7 +434,7 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
       </svg>
       <ChartAccessibleFallback
         title="Flight profile"
-        summary={flightProfileSummary(shot)}
+        summary={flightProfileSummary(shot, preferredUnits)}
         columns={[
           { key: "club", label: "Club" },
           { key: "carry", label: "Carry" },
@@ -387,7 +446,7 @@ function FlightProfile({ shot }: { shot: LongestShot }) {
           { key: "ballSpeed", label: "Ball speed" },
           { key: "spin", label: "Spin" },
         ]}
-        rows={flightProfileRows(shot)}
+        rows={flightProfileRows(shot, preferredUnits)}
         className="mt-3"
       />
     </div>
@@ -467,58 +526,70 @@ function buildShotGeometry(shot: LongestShot) {
   };
 }
 
-function longestShotsSummary(shots: LongestShot[], selectedShot: LongestShot) {
+function longestShotsSummary(
+  shots: LongestShot[],
+  selectedShot: LongestShot,
+  preferredUnits: DistanceUnitPreference,
+) {
   const bestShot = shots.reduce((best, shot) =>
     shotDistanceValue(shot) > shotDistanceValue(best) ? shot : best,
   );
 
   return `${shots.length} clubs have longest-shot records. Selected ${formatClubType(
     selectedShot.clubType,
-  )} is ${formatMetric(shotDistance(selectedShot))} yd total, ${formatMetric(
+  )} is ${formatStoredYards(shotDistance(selectedShot), preferredUnits)} total, ${formatStoredYards(
     selectedShot.carryYd,
-  )} yd carry and ${formatSide(selectedShot.sideCarryYd)} offline. Best visible record is ${formatClubType(
+    preferredUnits,
+  )} carry and ${formatStoredLateralYards(selectedShot.sideCarryYd, preferredUnits)} offline. Best visible record is ${formatClubType(
     bestShot.clubType,
-  )} at ${formatMetric(shotDistance(bestShot))} yd total.`;
+  )} at ${formatStoredYards(shotDistance(bestShot), preferredUnits)} total.`;
 }
 
-function longestShotsRows(shots: LongestShot[], selectedShotId: string) {
+function longestShotsRows(
+  shots: LongestShot[],
+  selectedShotId: string,
+  preferredUnits: DistanceUnitPreference,
+) {
   return shots.map((shot) => ({
     _key: shot.id,
     club: `${formatClubType(shot.clubType)}${shot.id === selectedShotId ? " - selected" : ""}`,
     model: shot.brandModel,
     shot: `#${shot.shotNumber ?? "-"}`,
     date: formatDate(shot.shotAt),
-    total: `${formatMetric(shotDistance(shot))} yd`,
-    carry: `${formatMetric(shot.carryYd)} yd`,
-    offline: formatSide(shot.sideCarryYd),
-    ballSpeed: `${formatMetric(shot.ballSpeedMph)} mph`,
+    total: formatStoredYards(shotDistance(shot), preferredUnits),
+    carry: formatStoredYards(shot.carryYd, preferredUnits),
+    offline: formatStoredLateralYards(shot.sideCarryYd, preferredUnits),
+    ballSpeed: formatStoredSpeedMph(shot.ballSpeedMph, preferredUnits),
     launch: `${formatMetric(shot.launchAngleDeg)} deg`,
-    apex: `${formatMetric(shot.apexFt)} ft`,
+    apex: formatStoredApexFeet(shot.apexFt, preferredUnits),
   }));
 }
 
-function flightProfileSummary(shot: LongestShot) {
-  return `${formatClubType(shot.clubType)} flight profile for shot #${shot.shotNumber ?? "-"}: ${formatMetric(
+function flightProfileSummary(shot: LongestShot, preferredUnits: DistanceUnitPreference) {
+  return `${formatClubType(shot.clubType)} flight profile for shot #${shot.shotNumber ?? "-"}: ${formatStoredYards(
     shot.carryYd,
-  )} yd carry, ${formatMetric(shotDistance(shot))} yd total, ${formatMetric(
+    preferredUnits,
+  )} carry, ${formatStoredYards(shotDistance(shot), preferredUnits)} total, ${formatStoredApexFeet(
     shot.apexFt,
-  )} ft apex, ${formatMetric(shot.launchAngleDeg)} deg launch and ${formatSide(
+    preferredUnits,
+  )} apex, ${formatMetric(shot.launchAngleDeg)} deg launch and ${formatStoredLateralYards(
     shot.sideCarryYd,
+    preferredUnits,
   )} offline.`;
 }
 
-function flightProfileRows(shot: LongestShot) {
+function flightProfileRows(shot: LongestShot, preferredUnits: DistanceUnitPreference) {
   return [
     {
       _key: shot.id,
       club: formatClubType(shot.clubType),
-      carry: `${formatMetric(shot.carryYd)} yd`,
-      total: `${formatMetric(shotDistance(shot))} yd`,
-      apex: `${formatMetric(shot.apexFt)} ft`,
+      carry: formatStoredYards(shot.carryYd, preferredUnits),
+      total: formatStoredYards(shotDistance(shot), preferredUnits),
+      apex: formatStoredApexFeet(shot.apexFt, preferredUnits),
       launch: `${formatMetric(shot.launchAngleDeg)} deg`,
       descent: `${formatMetric(shot.descentAngleDeg)} deg`,
-      offline: formatSide(shot.sideCarryYd),
-      ballSpeed: `${formatMetric(shot.ballSpeedMph)} mph`,
+      offline: formatStoredLateralYards(shot.sideCarryYd, preferredUnits),
+      ballSpeed: formatStoredSpeedMph(shot.ballSpeedMph, preferredUnits),
       spin: `${formatMetric(shot.spinRate)} rpm`,
     },
   ];
@@ -549,28 +620,16 @@ function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
-function formatSide(value: number | null) {
-  if (value === null) {
-    return "--";
-  }
-
-  if (value < 0) {
-    return `${numberFormatter.format(Math.abs(value))}L`;
-  }
-
-  if (value > 0) {
-    return `${numberFormatter.format(value)}R`;
-  }
-
-  return "0";
-}
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatSessionSource(value: string) {
+  return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function clamp(value: number, min: number, max: number) {

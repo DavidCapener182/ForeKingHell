@@ -79,6 +79,10 @@ test.describe("course records and major-style tournaments", () => {
       },
       createScorecardProofToken({
         userId: authUserId!,
+        scopeType: "course_record",
+        scopeId: data.recordId,
+        roundNumber: null,
+        imageHash: "a".repeat(64),
         totalScore: 72,
         courseName: data.courseName,
         teeName: "White",

@@ -36,6 +36,7 @@ import {
 } from "@/lib/social";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
+import { consumeScorecardProofToken } from "@/lib/scorecard-proof-token";
 import {
   dailyTournamentCourseCount,
   getScheduledTournamentSet,
@@ -531,11 +532,7 @@ export async function submitTournamentRound(input: {
   csvHash?: string | null;
   scorecardScreenshotPath?: string | null;
   extractedScorecardTotal?: number | null;
-  hasRapsodoDirect?: boolean;
-  courseMatches?: boolean;
-  dateMatches?: boolean;
-  teeMatches?: boolean;
-  manualEdit?: boolean;
+  scorecardProofToken?: string | null;
 }) {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
@@ -545,20 +542,27 @@ export async function submitTournamentRound(input: {
   const roundSubmission = sessionId
     ? await getTournamentRoundSubmissionContext({ userId, sessionId, tournament })
     : null;
-  const grossScore = roundSubmission?.summary.totalScore ?? input.grossScore;
+  const scorecardProof = await consumeScorecardProofToken(input.scorecardProofToken, userId, {
+    scopeType: "tournament",
+    scopeId: tournament.id,
+  });
+  const grossScore =
+    roundSubmission?.summary.totalScore ?? scorecardProof?.totalScore ?? input.grossScore;
   const netScore = roundSubmission?.summary.totalNetScore ?? input.netScore ?? null;
   const stablefordPoints =
     roundSubmission?.summary.stablefordPoints ?? input.stablefordPoints ?? null;
-  const csvHash = input.csvHash ?? roundSubmission?.csvHash ?? null;
+  const csvHash = roundSubmission?.csvHash ?? null;
   const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
-  const scorecardScreenshotPath =
-    input.scorecardScreenshotPath ??
-    (roundSubmission ? `saved-round:${roundSubmission.session.id}` : null);
+  const scorecardScreenshotPath = roundSubmission
+    ? `saved-round:${roundSubmission.session.id}`
+    : scorecardProof
+      ? (input.scorecardScreenshotPath ?? `scorecard-proof:${scorecardProof.proofId}`)
+      : null;
   const extractedScorecardTotal =
-    input.extractedScorecardTotal ?? roundSubmission?.summary.totalScore ?? null;
-  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId) || Boolean(input.hasRapsodoDirect);
-  const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
-  const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
+    roundSubmission?.summary.totalScore ?? scorecardProof?.totalScore ?? null;
+  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId);
+  const courseMatches = roundSubmission?.courseMatches ?? false;
+  const teeMatches = roundSubmission?.teeMatches ?? false;
 
   if (!Number.isFinite(grossScore) || grossScore < 1) {
     throw new Error("Gross score is required.");
@@ -573,10 +577,10 @@ export async function submitTournamentRound(input: {
     hasCsvHash: Boolean(csvHash),
     hasScorecardScreenshot: Boolean(scorecardScreenshotPath),
     courseMatches,
-    dateMatches: input.dateMatches ?? true,
+    dateMatches: Boolean(roundSubmission),
     teeMatches,
     duplicateImport,
-    manualEdit: input.manualEdit,
+    manualEdit: !roundSubmission,
     screenshotRequired: tournament.screenshotRequired,
     directRapsodoRequired: tournament.directRapsodoRequired,
   });
@@ -731,11 +735,7 @@ export async function recalculateTournamentStandings(tournamentId: string) {
     .select()
     .from(tournamentSubmissions)
     .where(eq(tournamentSubmissions.tournamentId, tournamentId));
-  const accepted = submissions.filter(
-    (submission) =>
-      submission.verificationStatus === "verified" ||
-      submission.verificationStatus === "manual_only",
-  );
+  const accepted = submissions.filter((submission) => submission.verificationStatus === "verified");
   const byEntry = new Map<string, typeof accepted>();
 
   for (const submission of accepted) {
@@ -760,6 +760,11 @@ export async function recalculateTournamentStandings(tournamentId: string) {
   );
   const now = new Date();
   const standings: Array<typeof tournamentStandings.$inferSelect> = [];
+
+  await db
+    .update(tournamentStandings)
+    .set({ status: "inactive", updatedAt: now })
+    .where(eq(tournamentStandings.tournamentId, tournamentId));
 
   for (const row of ranked) {
     const [standing] = await db

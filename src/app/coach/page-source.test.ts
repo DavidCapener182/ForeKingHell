@@ -62,4 +62,17 @@ describe("coach desktop evidence workbench", () => {
       'className="block h-full transition-transform hover:-translate-y-0.5"',
     );
   });
+
+  it("shows deterministic recommendation evidence and measurable reassessment criteria", () => {
+    expect(source).toContain("MobileCoachRecommendationEvidence");
+    expect(source).toContain('label: "Observation"');
+    expect(source).toContain('label: "Evidence"');
+    expect(source).toContain('label: "Confidence"');
+    expect(source).toContain('label: "Why it matters"');
+    expect(source).toContain('label: "Suggested drill"');
+    expect(source).toContain('label: "Success measure"');
+    expect(source).toContain('label: "Reassess when"');
+    expect(source).toContain("coachEvidenceConfidence");
+    expect(source).not.toContain('label="Expected gain"');
+  });
 });

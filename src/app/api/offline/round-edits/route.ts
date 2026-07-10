@@ -13,15 +13,27 @@ import {
   parseOfflineRoundEditPayload,
 } from "@/lib/offline-round-edit-payload";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { readBoundedJsonBody } from "@/lib/api-protection";
 
 export const dynamic = "force-dynamic";
+const MAX_REQUEST_BYTES = 64 * 1024;
 
 export async function POST(request: NextRequest) {
-  if (!(await getOptionalCurrentUserId())) {
+  const userId = await getOptionalCurrentUserId();
+  if (!userId) {
     return Response.json({ ok: false, message: "Authentication required." }, { status: 401 });
   }
 
-  const payload = parseOfflineRoundEditPayload(await request.json().catch(() => null));
+  if (request.headers.get("x-fkh-offline-owner") !== userId) {
+    return Response.json(
+      { ok: false, message: "Offline action belongs to a different account." },
+      { status: 409 },
+    );
+  }
+
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const payload = parseOfflineRoundEditPayload(bodyResult.value);
 
   if (!payload) {
     return Response.json(

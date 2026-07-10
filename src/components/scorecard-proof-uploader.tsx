@@ -24,11 +24,15 @@ type ScorecardExtractResponse = {
 };
 
 export function ScorecardProofUploader({
+  proofScopeId,
+  proofScopeType,
   screenshotFieldName,
   extractedTotalFieldName,
   screenshotLabel = "Scorecard screenshot reference",
   extractedTotalLabel = "Extracted score total",
 }: {
+  proofScopeId: string;
+  proofScopeType: "course_record" | "tournament";
   screenshotFieldName: string;
   extractedTotalFieldName: string;
   screenshotLabel?: string;
@@ -61,7 +65,11 @@ export function ScorecardProofUploader({
       const response = await fetch("/api/scorecard/extract", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({
+          imageDataUrl,
+          proofScopeId,
+          proofScopeType,
+        }),
       });
       const payload = (await response.json()) as ScorecardExtractResponse;
 

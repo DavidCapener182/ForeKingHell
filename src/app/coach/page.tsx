@@ -29,6 +29,7 @@ import { CoachPracticeFeaturePanel } from "@/components/features/feature-panels"
 import {
   DataPanel,
   DataTableFrame,
+  MobileAccordionSection,
   MobileCompanionAccordion,
   MobileCompanionHero,
   PageShell,
@@ -38,7 +39,6 @@ import {
 } from "@/components/premium";
 import {
   MobileAppShell,
-  MobileRouteTabs,
   MobileTopBar,
   NativeListSection,
   PBCard,
@@ -200,8 +200,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
         }
       `}</style>
       <MobileAppShell>
-        <MobileTopBar title="Improve" />
-        <MobileRouteTabs group="improve" activeKey="coach" />
+        <MobileTopBar title="Coach" />
         <MobileCompanionHero
           eyebrow={<StatusPill tone={topClub?.tone ?? "slate"}>Do this next</StatusPill>}
           title={topClub ? `${topClub.clubName}: ${topClub.issueLabel}` : "Build a baseline"}
@@ -240,6 +239,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
             />
           </div>
         </MobileCompanionHero>
+        <MobileCoachRecommendationEvidence card={topClub} challenge={drillChallenges[0] ?? null} />
         <MobileCompanionAccordion
           items={[
             {
@@ -360,7 +360,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
 
       <DesktopWorkbenchLayout
         scope="coach"
-        className="hidden sm:grid"
+        className="hidden lg:grid"
         rail={
           <DesktopInsightRail
             title="AI coach rail"
@@ -805,7 +805,11 @@ function CoachPracticeHero({
           </div>
 
           <div className="grid gap-2 md:grid-cols-3">
-            <HeroStat label="Expected gain" value={expectedGainFor(topClub)} tone="green" />
+            <HeroStat
+              label="Evidence"
+              value={coachEvidenceConfidence(topClub)}
+              tone={topClub?.tone ?? "slate"}
+            />
             <HeroStat label="Session" value={shotTarget} tone={topClub?.tone ?? "slate"} />
             <HeroStat label="Main miss" value={topClub?.usualMiss ?? "Needs data"} tone="amber" />
           </div>
@@ -1675,15 +1679,79 @@ function TrustProgress({
   );
 }
 
-function expectedGainFor(card: CoachClubCard | null) {
+function MobileCoachRecommendationEvidence({
+  card,
+  challenge,
+}: {
+  card: CoachClubCard | null;
+  challenge: CoachDrillChallenge | null;
+}) {
   if (!card) {
-    return "Build baseline";
+    return (
+      <section className="ios-grouped-list p-4 lg:hidden">
+        <h2 className="text-[17px] font-semibold">Why this recommendation</h2>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          There is not enough clean club evidence for a recommendation yet. Import a measured
+          stock-shot session to build the baseline.
+        </p>
+      </section>
+    );
   }
 
-  const trustGap = Math.max(0, 85 - card.trustIndex);
-  const gain = Math.max(0.2, Math.min(0.9, Math.round((trustGap / 30) * 10) / 10));
+  const rows = [
+    { label: "Observation", value: `${card.clubName}: ${card.issueLabel}` },
+    { label: "Evidence", value: card.reason },
+    {
+      label: "Confidence",
+      value: `${coachEvidenceConfidence(card)} · ${card.sampleSize} clean shots`,
+    },
+    {
+      label: "Why it matters",
+      value: targetForCard(card),
+    },
+    { label: "Suggested drill", value: card.drill },
+    {
+      label: "Success measure",
+      value: challenge?.winCondition ?? "Complete a comparable clean stock-shot set.",
+    },
+    {
+      label: "Reassess when",
+      value: challenge
+        ? `${challenge.completionTarget} new clean ${card.clubName} shots are imported.`
+        : "A new comparable club session is imported.",
+    },
+  ];
 
-  return `+${gain.toFixed(1)} strokes`;
+  return (
+    <MobileAccordionSection
+      title="Why this recommendation"
+      description="Measured evidence, success criteria and the next reassessment point."
+      count={coachEvidenceConfidence(card)}
+    >
+      <dl className="ios-grouped-list">
+        {rows.map((row) => (
+          <div key={row.label} className="ios-grouped-row px-4 py-3">
+            <dt className="text-[13px] text-muted-foreground">{row.label}</dt>
+            <dd className="mt-1 text-[15px] font-medium leading-5">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </MobileAccordionSection>
+  );
+}
+
+function coachEvidenceConfidence(card: CoachClubCard | null) {
+  if (!card || card.sampleSize < 5 || card.trustIndex < 40) {
+    return "Early signal";
+  }
+  if (card.sampleSize < 12 || card.trustIndex < 60) {
+    return "Developing";
+  }
+  if (card.sampleSize < 25 || card.trustIndex < 80) {
+    return "Reliable";
+  }
+
+  return "Strong evidence";
 }
 
 function expectedTrustGainFor(card: CoachClubCard | null) {

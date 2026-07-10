@@ -9,6 +9,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { PageShell, StatusPill } from "@/components/premium";
 import { BRAND_NAME } from "@/lib/brand";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { safeNextPath } from "@/lib/safe-next-path";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
@@ -117,8 +118,4 @@ function GolfProof({ icon, label, value }: { icon: ReactNode; label: string; val
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function safeNextPath(value: string) {
-  return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }

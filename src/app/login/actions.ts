@@ -1,10 +1,11 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { BRAND_NAME } from "@/lib/brand";
 import { ensureUserProfile } from "@/lib/current-user";
+import { safeNextPath } from "@/lib/safe-next-path";
+import { getSiteOrigin } from "@/lib/site-origin";
 import {
   clearSupabaseAuthCookies,
   createSupabaseServerClient,
@@ -39,7 +40,7 @@ export async function sendMagicLinkAction(
 
   await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
-  const redirectTo = new URL("/auth/callback", await siteOrigin());
+  const redirectTo = new URL("/auth/callback", getSiteOrigin());
   redirectTo.searchParams.set("next", next);
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -148,7 +149,7 @@ export async function signInWithOAuthAction(formData: FormData) {
 
   await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
-  const redirectTo = new URL("/auth/callback", await siteOrigin());
+  const redirectTo = new URL("/auth/callback", getSiteOrigin());
   redirectTo.searchParams.set("next", next);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -164,23 +165,6 @@ export async function signInWithOAuthAction(formData: FormData) {
   redirect(data.url);
 }
 
-async function siteOrigin() {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) {
-    return explicit.replace(/\/$/, "");
-  }
-
-  const headerStore = await headers();
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3000";
-
-  return `${proto}://${host}`;
-}
-
 function stringMetadata(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function safeNextPath(value: string) {
-  return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }

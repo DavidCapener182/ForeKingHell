@@ -6,7 +6,10 @@ import { authStorageState } from "./helpers";
 
 const viewports = [
   { name: "mobile-small", width: 320, height: 568 },
+  { name: "mobile-375", width: 375, height: 667 },
   { name: "mobile", width: 390, height: 844 },
+  { name: "mobile-393", width: 393, height: 852 },
+  { name: "mobile-large", width: 430, height: 932 },
   { name: "desktop", width: 1728, height: 1117 },
 ] as const;
 
@@ -68,13 +71,23 @@ test.describe("layout audit", () => {
 });
 
 async function expectLayoutBounds(page: Page, route: string, viewport: (typeof viewports)[number]) {
-  const metrics = await page.evaluate(() => {
-    return {
+  const readMetrics = () =>
+    page.evaluate(() => ({
       path: location.pathname,
       scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
       viewportWidth: window.innerWidth,
-    };
-  });
+    }));
+  let metrics;
+
+  try {
+    metrics = await readMetrics();
+  } catch (error) {
+    if (!String(error).includes("Execution context was destroyed")) {
+      throw error;
+    }
+    await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
+    metrics = await readMetrics();
+  }
 
   expect(
     metrics.scrollWidth,

@@ -32,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { csvCell } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
 export type DesktopWorkbenchColumn = {
@@ -620,11 +621,6 @@ function tableToCsv(table: HTMLTableElement) {
       return cells.map((cell) => csvCell(cell.innerText)).join(",");
     })
     .join("\n");
-}
-
-function csvCell(value: string) {
-  const normalised = value.replace(/\s+/g, " ").trim();
-  return `"${normalised.replace(/"/g, '""')}"`;
 }
 
 function cssAttribute(value: string) {

@@ -1503,6 +1503,7 @@ function PracticeBlockEditControls({
             </Button>
             <Input
               type="number"
+              aria-label="Balls in this practice block"
               min={1}
               max={200}
               inputMode="numeric"

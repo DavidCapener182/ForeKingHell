@@ -5,6 +5,7 @@ import {
   parsePreferredUnits,
   parsePrivacySettings,
   parseTableDensity,
+  parseTheme,
 } from "@/lib/user-settings";
 
 describe("user settings parsing", () => {
@@ -13,6 +14,10 @@ describe("user settings parsing", () => {
     expect(parsePreferredUnits("feet")).toBe("yards");
     expect(parseTableDensity("compact")).toBe("compact");
     expect(parseTableDensity("dense")).toBe("comfortable");
+    expect(parseTheme("light")).toBe("light");
+    expect(parseTheme("dark")).toBe("dark");
+    expect(parseTheme("system")).toBe("system");
+    expect(parseTheme("sunlight")).toBe("system");
   });
 
   it("filters dashboard pins to known values", () => {

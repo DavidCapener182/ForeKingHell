@@ -204,7 +204,12 @@ export async function getBillingPageData() {
     .where(eq(billingCustomers.userId, userId))
     .limit(1);
   const [latestSubscription] = await db
-    .select()
+    .select({
+      id: subscriptions.id,
+      planKey: subscriptions.planKey,
+      status: subscriptions.status,
+      createdAt: subscriptions.createdAt,
+    })
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))
@@ -257,7 +262,10 @@ function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {
 
 export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> {
   const [latestSubscription] = await getDb()
-    .select()
+    .select({
+      planKey: subscriptions.planKey,
+      status: subscriptions.status,
+    })
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))

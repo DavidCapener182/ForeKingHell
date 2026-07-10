@@ -93,4 +93,20 @@ describe("progress desktop workbench source", () => {
     expect(bentoCss).toContain(".progress-analysis-grid");
     expect(bentoCss).toContain(".progress-main-rail");
   });
+
+  it("separates mobile progress dimensions without rewarding volume as improvement", () => {
+    expect(source).toContain("MobileProgressDimensions");
+    for (const label of [
+      "Performance",
+      "Consistency",
+      "Strike quality",
+      "Direction control",
+      "Speed",
+      "Training volume",
+      "Confidence / sample",
+    ]) {
+      expect(source).toContain(`label: "${label}"`);
+    }
+    expect(source).toContain("more shots is not automatic improvement");
+  });
 });

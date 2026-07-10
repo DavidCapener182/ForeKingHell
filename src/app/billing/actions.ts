@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -10,18 +9,19 @@ import {
   type BillingInterval,
   type PlanKey,
 } from "@/lib/billing";
+import { getSiteOrigin } from "@/lib/site-origin";
 
 export async function createCheckoutAction(formData: FormData) {
   const planKey = parsePlanKey(formData.get("planKey"));
   const interval = parseInterval(formData.get("interval"));
-  const origin = await requestOrigin();
+  const origin = getSiteOrigin();
   const result = await createCheckoutSession({ planKey, interval, origin });
 
   redirect(result.url);
 }
 
 export async function openCustomerPortalAction() {
-  const result = await createCustomerPortalSession(await requestOrigin());
+  const result = await createCustomerPortalSession(getSiteOrigin());
   redirect(result.url);
 }
 
@@ -33,18 +33,4 @@ function parseInterval(value: FormDataEntryValue | null): BillingInterval {
   return billingIntervals.includes(value as BillingInterval)
     ? (value as BillingInterval)
     : "monthly";
-}
-
-async function requestOrigin() {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) {
-    return explicit.replace(/\/$/, "");
-  }
-
-  const requestHeaders = await headers();
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol =
-    requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  return `${protocol}://${host}`;
 }

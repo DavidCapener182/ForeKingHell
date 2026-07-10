@@ -53,6 +53,10 @@ test.describe("authenticated app flows", () => {
   test("queues a CSV import while offline and shows retry status", async ({ context, page }) => {
     skipWhenNoAuth();
 
+    await page.addInitScript(() => {
+      window.localStorage.setItem("forekinghell:offline-import-storage-enabled", "1");
+    });
+
     await gotoAppRoute(page, "/import");
     await expectPageReady(page, /Import launch monitor shots/i);
     await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
@@ -87,10 +91,11 @@ test.describe("authenticated app flows", () => {
     skipWhenNoAuth();
 
     await gotoAppRoute(page, "/coach");
-    await expectPageReady(page, /AI coach chat/i);
+    await expectPageReady(page, /AI coach tools|Ask from your shot data/i);
+    await page.getByText("AI coach tools", { exact: true }).first().click();
     const chatCard = page.locator('[data-coach-chat-ready="true"]').filter({ visible: true });
     await expect(chatCard).toBeVisible();
-    const coachQuestion = chatCard.locator("#coach-question");
+    const coachQuestion = chatCard.getByLabel("Ask from your shot data");
     await coachQuestion.fill("How can I improve my 7 iron dispersion?");
     await expect(chatCard.getByRole("button", { name: /ask coach/i })).toBeEnabled();
   });

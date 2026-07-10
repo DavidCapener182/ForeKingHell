@@ -281,14 +281,8 @@ function PartnerOperationsSummary({
             label="Sponsor assets"
             value={`${sponsorAssetCount} / ${sponsorCount} contactable`}
           />
-          <DataPair
-            label="Plan requirements"
-            value="Owner + label"
-          />
-          <DataPair
-            label="Recent clicks"
-            value={`${recentClickCount} recent`}
-          />
+          <DataPair label="Plan requirements" value="Owner + label" />
+          <DataPair label="Recent clicks" value={`${recentClickCount} recent`} />
         </div>
       </div>
     </DataPanel>

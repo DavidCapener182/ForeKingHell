@@ -44,6 +44,8 @@ function isStripeWebhookEvent(
   return (
     value !== null &&
     typeof value === "object" &&
+    typeof (value as { id?: unknown }).id === "string" &&
+    typeof (value as { created?: unknown }).created === "number" &&
     typeof (value as { type?: unknown }).type === "string" &&
     Boolean((value as { data?: { object?: unknown } }).data?.object)
   );

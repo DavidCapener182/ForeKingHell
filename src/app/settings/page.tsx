@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import { headers } from "next/headers";
 import {
   ChevronDown,
   Download,
@@ -44,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageArtwork } from "@/components/visuals/page-artwork";
+import { ThemePreferenceSelect } from "@/components/theme-preference-select";
 import {
   Table,
   TableBody,
@@ -58,6 +58,7 @@ import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { collaborationRoles } from "@/lib/collaboration";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getSiteOrigin } from "@/lib/site-origin";
 import {
   dashboardPinOptions,
   preferredUnitOptions,
@@ -130,13 +131,12 @@ const settingsAccessSuggestedViews: DesktopSavedViewSuggestion[] = [
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
-  const requestHeaders = await headers();
   const [settingsData, featureData] = await Promise.all([getSettingsData(), getFeatureIdeasData()]);
   const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } =
     settingsData;
   const privacy = normalizePrivacy(profile.privacySettingsJson);
   const inviteUrl = params?.invite
-    ? `${getRequestOrigin(requestHeaders)}/settings/invitations/${encodeURIComponent(params.invite)}`
+    ? `${getSiteOrigin()}/settings/invitations/${encodeURIComponent(params.invite)}`
     : null;
   const accessRows: SettingsAccessRow[] = [
     ...ownedInvitations.map((invitation) => ({
@@ -363,6 +363,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <div className="mt-3 grid gap-2 text-sm">
               <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
               <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
+              <SettingsPreviewRow label="Theme" value={titleCase(profile.theme)} />
               <SettingsPreviewRow label="Tables" value={profile.tableDensity} />
             </div>
           </section>
@@ -401,7 +402,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   <ReadonlyField label="Email" value={profile.email ?? "No email on profile"} />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <SelectField
                     label="Preferred units"
                     name="preferredUnits"
@@ -414,6 +415,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     defaultValue={profile.tableDensity}
                     values={tableDensityOptions}
                   />
+                  <ThemePreferenceSelect defaultValue={parseStoredTheme(profile.theme)} />
                 </div>
 
                 <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
@@ -993,6 +995,10 @@ function normalizePrivacy(value: unknown): PrivacySettings {
   };
 }
 
+function parseStoredTheme(value: string) {
+  return value === "light" || value === "dark" ? value : "system";
+}
+
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -1016,11 +1022,4 @@ function formatInviteError(value: string) {
     default:
       return "The invite could not be completed.";
   }
-}
-
-function getRequestOrigin(requestHeaders: Headers) {
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  return `${proto}://${host}`;
 }

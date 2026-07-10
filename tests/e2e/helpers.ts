@@ -2,9 +2,14 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 
+import { localAuthBypassEnabled } from "./local-auth";
+
 const axePath = path.join(process.cwd(), "node_modules", "axe-core", "axe.min.js");
 
 export const authStorageState = process.env.PLAYWRIGHT_AUTH_STATE;
+export const hasLocalAuthBypass = localAuthBypassEnabled(
+  process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100",
+);
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/*", async (route) => {
@@ -46,13 +51,32 @@ test.afterEach(async ({ page }, testInfo) => {
 
 export function skipWhenNoAuth() {
   test.skip(
-    !authStorageState || !existsSync(authStorageState),
+    !hasLocalAuthBypass && (!authStorageState || !existsSync(authStorageState)),
     "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.",
   );
 }
 
 export async function expectPageReady(page: Page, expectedText: RegExp | string) {
   await expectWithOneReload(page, expectedText, 45_000);
+  const desktopChrome = page.locator("[data-desktop-workbench-hydrated]");
+  if ((await desktopChrome.count()) > 0) {
+    try {
+      await expect(desktopChrome).toHaveAttribute("data-desktop-workbench-hydrated", "true", {
+        timeout: 45_000,
+      });
+    } catch (error) {
+      if (page.isClosed()) {
+        throw error;
+      }
+      await page.reload({ waitUntil: "commit", timeout: 45_000 });
+      await expectWithOneReload(page, expectedText, 45_000);
+      await expect(page.locator("[data-desktop-workbench-hydrated]")).toHaveAttribute(
+        "data-desktop-workbench-hydrated",
+        "true",
+        { timeout: 45_000 },
+      );
+    }
+  }
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 }
 
@@ -84,7 +108,15 @@ export async function expectNoCriticalAxeViolations(page: Page) {
             context?: unknown,
             options?: unknown,
           ) => Promise<{
-            violations: Array<{ id: string; impact: string | null; nodes: unknown[] }>;
+            violations: Array<{
+              id: string;
+              impact: string | null;
+              nodes: Array<{
+                target: string[];
+                html: string;
+                failureSummary?: string;
+              }>;
+            }>;
           }>;
         };
       }
@@ -101,8 +133,55 @@ export async function expectNoCriticalAxeViolations(page: Page) {
       .map((violation) => ({
         id: violation.id,
         impact: violation.impact,
-        nodes: violation.nodes.length,
+        nodes: violation.nodes.map((node) => ({
+          target: node.target,
+          html: node.html,
+          failureSummary: node.failureSummary,
+        })),
       }));
+  });
+
+  expect(violations).toEqual([]);
+}
+
+export async function expectNoWcagAaAxeViolations(page: Page) {
+  await injectAxe(page);
+  const violations = await page.evaluate(async () => {
+    const axe = (
+      window as typeof window & {
+        axe: {
+          run: (
+            context?: unknown,
+            options?: unknown,
+          ) => Promise<{
+            violations: Array<{
+              id: string;
+              impact: string | null;
+              help: string;
+              nodes: Array<{ target: string[]; html: string; failureSummary?: string }>;
+            }>;
+          }>;
+        };
+      }
+    ).axe;
+    const result = await axe.run(document, {
+      resultTypes: ["violations"],
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+      },
+    });
+
+    return result.violations.map((violation) => ({
+      id: violation.id,
+      impact: violation.impact,
+      help: violation.help,
+      nodes: violation.nodes.map((node) => ({
+        target: node.target,
+        html: node.html,
+        failureSummary: node.failureSummary,
+      })),
+    }));
   });
 
   expect(violations).toEqual([]);

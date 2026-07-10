@@ -14,7 +14,10 @@ vi.mock("@/lib/current-user", () => ({
 }));
 
 vi.mock("@/lib/api-protection", () => ({
-  rejectOversizedRequest: vi.fn(() => null),
+  readBoundedJsonBody: vi.fn(async (request: Request) => ({
+    ok: true,
+    value: await request.json().catch(() => null),
+  })),
   rateLimitRequest: vi.fn(() => null),
 }));
 

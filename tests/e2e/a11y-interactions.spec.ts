@@ -1,0 +1,86 @@
+import { expect, test } from "@playwright/test";
+
+import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+
+test.describe("accessible mobile interactions", () => {
+  test.use(authStorageState ? { storageState: authStorageState } : {});
+
+  test.beforeEach(async ({ page }) => {
+    skipWhenNoAuth();
+    await page.setViewportSize({ width: 390, height: 844 });
+  });
+
+  test("primary tabs expose current state, 44px targets and a visible keyboard focus ring", async ({
+    page,
+  }) => {
+    await page.goto("/analyse");
+    await expectPageReady(page, /Evidence hub|Analyse/i);
+
+    const navigation = page.getByRole("navigation", { name: "Mobile primary" });
+    const tabs = navigation.getByRole("link");
+    await expect(tabs).toHaveCount(5);
+    await expect(navigation.getByRole("link", { name: "Analyse" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await tabs.nth(0).focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    const focusEvidence = await page.evaluate(() => {
+      const element = document.activeElement as HTMLElement;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return {
+        activeClass: element.className,
+        focusVisible: element.matches(":focus-visible"),
+        height: rect.height,
+        width: rect.width,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        outlineStyle: style.outlineStyle,
+      };
+    });
+
+    expect(focusEvidence).toMatchObject({
+      focusVisible: true,
+      outlineStyle: "solid",
+      outlineWidth: 3,
+    });
+    expect(focusEvidence.activeClass).toContain("ios-tab-item");
+    expect(focusEvidence.height).toBeGreaterThanOrEqual(44);
+    expect(focusEvidence.width).toBeGreaterThanOrEqual(44);
+  });
+
+  test("reduced motion removes navigation and segmented-control transitions", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/analyse/session-impact");
+    await expectPageReady(page, /Session impact/i);
+
+    const transitionDurations = await page.evaluate(() => {
+      const elements = [
+        document.querySelector(".ios-tab-item"),
+        document.querySelector('[role="group"] button'),
+      ].filter(Boolean) as HTMLElement[];
+      return elements.map((element) => getComputedStyle(element).transitionDuration);
+    });
+
+    expect(transitionDurations.every((duration) => Number.parseFloat(duration) <= 0.001)).toBe(
+      true,
+    );
+  });
+
+  test("flight paths expose a labelled visual and plain-language non-chart summary", async ({
+    page,
+  }) => {
+    await page.goto("/analyse/session-impact");
+    await expectPageReady(page, /Session impact/i);
+
+    const chart = page.getByRole("img", { name: /Top-down summary of .* shot paths/i });
+    await expect(chart).toBeVisible();
+    await expect(chart).toHaveAttribute("aria-describedby", "flight-path-summary");
+    await expect(page.locator("[data-flight-path-summary]")).toContainText(/included paths/i);
+    await expect(page.locator("[data-flight-path-summary]")).toContainText(
+      /left|right|centred on the target line/i,
+    );
+  });
+});

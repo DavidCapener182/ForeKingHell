@@ -106,7 +106,7 @@ export function DesktopWorkbenchLayout({
       data-workbench-scope={scope}
       className={cn("grid min-w-0 gap-5", railLayoutClass, className)}
     >
-      <div className="grid min-w-0 gap-5 overflow-hidden">{children}</div>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 overflow-hidden">{children}</div>
       {railContent ? (
         <div
           className={cn(

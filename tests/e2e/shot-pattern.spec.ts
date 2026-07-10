@@ -28,7 +28,7 @@ test.describe("shot pattern overlay", () => {
 
     await expectPageReady(page, /shot pattern/i);
     await expect(page.getByText("Shot Pattern Overlay")).toBeVisible();
-    await expect(page.getByText("Target line")).toBeVisible();
+    await expect(page.getByText("Target line", { exact: true })).toBeVisible();
     await expect(page.getByRole("spinbutton", { name: "Playing length yards" })).toBeVisible();
     await expect(page.getByRole("slider", { name: "Target distance" })).toBeVisible();
     await expect(page.getByRole("slider", { name: "Aim offset" })).toBeVisible();

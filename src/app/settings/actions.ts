@@ -41,7 +41,6 @@ import {
   importMappings,
   importRows,
   importSourceFiles,
-  moderationEvents,
   offerClicks,
   partnerOffers,
   providerAccounts,
@@ -50,7 +49,6 @@ import {
   sessions,
   shareLinks,
   shots,
-  socialReports,
   sponsors,
   stockYardages,
   strokesGainedShotEvents,
@@ -148,33 +146,52 @@ export async function acceptInvitationAction(formData: FormData) {
     redirect("/settings?inviteError=email");
   }
 
-  await db.transaction(async (tx) => {
+  const invitationAccepted = await db.transaction(async (tx) => {
+    const claimNow = new Date();
+    const claimedInvitations = await tx
+      .update(accountInvitations)
+      .set({
+        status: "accepted",
+        acceptedByUserId: currentUser.id,
+        acceptedAt: claimNow,
+        updatedAt: claimNow,
+      })
+      .where(
+        and(
+          eq(accountInvitations.id, invitation.id),
+          eq(accountInvitations.tokenHash, tokenHash),
+          eq(accountInvitations.status, "pending"),
+          gt(accountInvitations.expiresAt, claimNow),
+        ),
+      )
+      .returning({ id: accountInvitations.id });
+
+    if (claimedInvitations.length === 0) {
+      return false;
+    }
+
     await tx
       .insert(accountMemberships)
       .values({
         ownerUserId: invitation.ownerUserId,
         memberUserId: currentUser.id,
         role: invitation.role,
-        updatedAt: now,
+        updatedAt: claimNow,
       })
       .onConflictDoUpdate({
         target: [accountMemberships.ownerUserId, accountMemberships.memberUserId],
         set: {
           role: invitation.role,
-          updatedAt: now,
+          updatedAt: claimNow,
         },
       });
 
-    await tx
-      .update(accountInvitations)
-      .set({
-        status: "accepted",
-        acceptedByUserId: currentUser.id,
-        acceptedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(accountInvitations.id, invitation.id));
+    return true;
   });
+
+  if (!invitationAccepted) {
+    redirect("/settings?inviteError=invalid");
+  }
 
   revalidatePath("/settings");
   redirect("/settings?inviteAccepted=1");
@@ -226,7 +243,7 @@ export async function updateUserSettingsAction(formData: FormData) {
     .set({
       name: nullableString(formData, "name"),
       preferredUnits: parsePreferredUnits(formData.get("preferredUnits")),
-      theme: parseTheme(),
+      theme: parseTheme(formData.get("theme")),
       tableDensity: parseTableDensity(formData.get("tableDensity")),
       dashboardPins: parseDashboardPins(formData.getAll("dashboardPins")),
       privacySettingsJson: parsePrivacySettings(formData),
@@ -263,14 +280,6 @@ export async function deleteAccountDataAction(formData: FormData) {
       .where(eq(sponsors.ownerUserId, userId));
     const ownedSponsorIds = ownedSponsorRows.map((sponsor) => sponsor.id);
 
-    await tx
-      .delete(socialReports)
-      .where(
-        or(eq(socialReports.reporterUserId, userId), eq(socialReports.reportedUserId, userId)),
-      );
-    await tx
-      .delete(moderationEvents)
-      .where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId)));
     await tx.delete(aiGenerationCache).where(eq(aiGenerationCache.userId, userId));
     await tx.delete(aiUsageEvents).where(eq(aiUsageEvents.userId, userId));
     await tx.delete(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId));

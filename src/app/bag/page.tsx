@@ -59,7 +59,6 @@ import {
 } from "@/components/premium";
 import {
   MobileAppShell,
-  MobileRouteTabs,
   MobileTabBar,
   MobileTopBar,
   NativeListSection,
@@ -134,6 +133,7 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-training-data";
 import { formatSpeed } from "@/lib/speed-training";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
+import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
 import {
   SAND_WEDGE_STOCK_MIN_CARRY_YD,
   calculateStockCarryTrend,
@@ -369,8 +369,7 @@ export default async function BagPage({ searchParams }: PageProps) {
   return (
     <PageShell contentClassName="overflow-x-clip pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
       <MobileAppShell>
-        <MobileTopBar title="Analyse" />
-        <MobileRouteTabs group="analyse" activeKey="bag" />
+        <MobileTopBar title="Bag" />
         <MobileTabBar
           activeKey="gapping"
           className="-mt-4 text-sm"
@@ -601,7 +600,7 @@ export default async function BagPage({ searchParams }: PageProps) {
 
       <DesktopWorkbenchLayout
         scope="bag"
-        className="hidden sm:grid"
+        className="hidden lg:grid"
         railBreakpoint="wide"
         rail={
           <DesktopInsightRail
@@ -694,7 +693,7 @@ export default async function BagPage({ searchParams }: PageProps) {
 
         <BagStickySummary rows={gappingRows} />
 
-        <section id="core-intelligence" className="grid scroll-mt-28 gap-4">
+        <section id="core-intelligence" className="grid min-w-0 scroll-mt-28 gap-4">
           <BagZoneHeader
             eyebrow="Core bag intelligence"
             title="How healthy is the bag?"
@@ -713,7 +712,7 @@ export default async function BagPage({ searchParams }: PageProps) {
           initialClubId={bestClub?.id ?? bag[0]?.id}
         />
 
-        <section id="advanced-analytics" className="grid scroll-mt-28 gap-4">
+        <section id="advanced-analytics" className="grid min-w-0 scroll-mt-28 gap-4">
           <BagZoneHeader
             eyebrow="Advanced analytics"
             title="Why does the bag behave like this?"
@@ -729,7 +728,7 @@ export default async function BagPage({ searchParams }: PageProps) {
           </div>
         </section>
 
-        <section id="equipment-development" className="grid scroll-mt-28 gap-4">
+        <section id="equipment-development" className="grid min-w-0 scroll-mt-28 gap-4">
           <BagZoneHeader
             eyebrow="Equipment development"
             title="What should change next?"
@@ -746,7 +745,7 @@ export default async function BagPage({ searchParams }: PageProps) {
           {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
         </section>
 
-        <section id="reference-data" className="grid scroll-mt-28 gap-4">
+        <section id="reference-data" className="grid min-w-0 scroll-mt-28 gap-4">
           <BagZoneHeader
             eyebrow="Reference data"
             title="Useful detail, kept out of the first read"
@@ -877,6 +876,15 @@ async function getBag() {
     return [];
   }
 
+  const excludedRecordQualityValues = sql.join(
+    excludedRecordQualityTags.map((tag) => sql`${tag}`),
+    sql`, `,
+  );
+  const excludedRecordCategoryValues = sql.join(
+    excludedRecordShotCategories.map((category) => sql`${category}`),
+    sql`, `,
+  );
+
   const personalBestRows =
     allClubMemberIds.length > 0
       ? await db
@@ -893,8 +901,9 @@ async function getBag() {
               eq(sessions.userId, userId),
               inArray(shots.clubId, allClubMemberIds),
               isNotNull(shots.carryYd),
-              sql`(${shots.qualityTag} is null or lower(${shots.qualityTag}) not in ('mishit', 'top', 'thin', 'fat', 'bad_data'))`,
-              sql`(${shots.shotCategory} is null or lower(${shots.shotCategory}) not in ('chip', 'pitch', 'recovery', 'bunker'))`,
+              sql`lower(coalesce(${shots.qualityTag}, '')) not in (${excludedRecordQualityValues})`,
+              sql`lower(coalesce(${shots.shotCategory}, '')) not in (${excludedRecordCategoryValues})`,
+              sql`lower(${sessions.source}) not in ('manual', 'manual_edit')`,
               sql`(lower(${shots.clubType}) not in ('sw', 'lw', 'wedge') or ${shots.carryYd} >= ${SAND_WEDGE_STOCK_MIN_CARRY_YD})`,
               sql`(lower(${shots.clubType}) not in ('pw', 'gw', 'aw') or ${shots.carryYd} > 30)`,
             ),
@@ -2271,9 +2280,9 @@ function BagConfidenceLadder({
   return (
     <section
       id="bag-confidence"
-      className="grid scroll-mt-28 gap-4 overflow-x-clip xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
+      className="grid min-w-0 scroll-mt-28 gap-4 overflow-x-clip xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
     >
-      <DataPanel className="overflow-x-clip">
+      <DataPanel className="min-w-0 overflow-x-clip">
         <SectionHeader
           title="Bag confidence ladder"
           description="Recommended is the primary course number. Best Stock stays visible as potential."

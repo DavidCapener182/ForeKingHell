@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { InteractionFeedback } from "@/components/interaction-feedback";
 import { PwaRegister } from "@/components/pwa-register";
 import { SocialFeedRail } from "@/components/social/social-feed-rail";
+import { ThemeController } from "@/components/theme-controller";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { adminUsers, userProfiles, users, xpLedger } from "@/db/schema";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
@@ -14,7 +15,10 @@ import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 import { getDb } from "@/db/client";
 import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
 import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
+import { themeColourByMode } from "@/lib/theme";
+import { parseTheme } from "@/lib/user-settings";
 import "./globals.css";
+import "./mobile-apple.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -40,7 +44,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: BRAND_SHORT_NAME,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   icons: {
     icon: [
@@ -53,10 +57,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f8fa",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: themeColourByMode.light },
+    { media: "(prefers-color-scheme: dark)", color: themeColourByMode.dark },
+  ],
 };
 
 type AppShellData = {
+  userId: string | null;
   totalXp: number;
   achievementNotifications: Awaited<ReturnType<typeof getAchievementUnlockFlash>>;
   preferences: CurrentUserPreferences;
@@ -70,7 +78,7 @@ type AppShellData = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "light",
+  theme: "system",
   tableDensity: "comfortable",
 };
 
@@ -79,23 +87,27 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile } =
+  const { userId, totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile } =
     await getAppShellData();
 
   return (
     <html
       lang="en"
       className={["h-full", plusJakarta.variable, barlowCondensed.variable].join(" ")}
-      data-theme="light"
+      data-theme={preferences.theme === "dark" ? "dark" : "light"}
+      data-theme-preference={preferences.theme}
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
+      data-offline-account-id={userId ?? undefined}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col antialiased">
+        <ThemeBootstrapScript preference={preferences.theme} />
+        <ThemeController />
         <PlausibleScript />
         <InteractionFeedback />
         <TooltipProvider delayDuration={200}>
-          <PwaRegister />
+          <PwaRegister activeUserId={userId} />
           <AppShell totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile}>
             <AchievementNotificationProvider initialNotifications={achievementNotifications}>
               {children}
@@ -119,11 +131,15 @@ async function getAppShellData(): Promise<AppShellData> {
   }
 
   if (!process.env.DATABASE_URL?.trim()) {
-    return defaultAppShellData(achievementNotifications, {
-      displayName: profileLabelFromIdentity(user.name, user.email),
-      username: "",
-      avatarUrl: null,
-    });
+    return defaultAppShellData(
+      achievementNotifications,
+      {
+        displayName: profileLabelFromIdentity(user.name, user.email),
+        username: "",
+        avatarUrl: null,
+      },
+      user.id,
+    );
   }
 
   try {
@@ -134,6 +150,7 @@ async function getAppShellData(): Promise<AppShellData> {
       db
         .select({
           preferredUnits: users.preferredUnits,
+          theme: users.theme,
           tableDensity: users.tableDensity,
           displayName: userProfiles.displayName,
           username: userProfiles.username,
@@ -161,11 +178,12 @@ async function getAppShellData(): Promise<AppShellData> {
       cleanProfileLabel(accountRow?.displayName) ?? profileLabelFromIdentity(user.name, user.email);
 
     return {
+      userId: user.id,
       totalXp: Number(xpRow[0]?.totalXp ?? 0),
       achievementNotifications,
       preferences: {
         preferredUnits: accountRow?.preferredUnits === "metres" ? "metres" : "yards",
-        theme: "light",
+        theme: parseTheme(accountRow?.theme ?? null),
         tableDensity: accountRow?.tableDensity === "compact" ? "compact" : "comfortable",
       },
       isAdmin: Boolean(admin[0]),
@@ -176,19 +194,49 @@ async function getAppShellData(): Promise<AppShellData> {
       },
     };
   } catch {
-    return defaultAppShellData(achievementNotifications, {
-      displayName: profileLabelFromIdentity(user.name, user.email),
-      username: "",
-      avatarUrl: null,
-    });
+    return defaultAppShellData(
+      achievementNotifications,
+      {
+        displayName: profileLabelFromIdentity(user.name, user.email),
+        username: "",
+        avatarUrl: null,
+      },
+      user.id,
+    );
   }
+}
+
+function ThemeBootstrapScript({ preference }: { preference: CurrentUserPreferences["theme"] }) {
+  const script = `(() => {
+    const root = document.documentElement;
+    const preference = ${JSON.stringify(preference)};
+    const theme = preference === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preference;
+    root.dataset.themePreference = preference;
+    root.dataset.theme = theme;
+    root.classList.toggle("dark", theme === "dark");
+    root.style.colorScheme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? ${JSON.stringify(
+      themeColourByMode.dark,
+    )} : ${JSON.stringify(themeColourByMode.light)});
+  })();`;
+
+  return (
+    <Script id="fkh-theme-bootstrap" strategy="beforeInteractive">
+      {script}
+    </Script>
+  );
 }
 
 function defaultAppShellData(
   achievementNotifications: AppShellData["achievementNotifications"],
   mobileNavProfile: AppShellData["mobileNavProfile"] = null,
+  userId: string | null = null,
 ): AppShellData {
   return {
+    userId,
     totalXp: 0,
     achievementNotifications,
     preferences: defaultPreferences,

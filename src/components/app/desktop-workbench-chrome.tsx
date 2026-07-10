@@ -312,6 +312,7 @@ export function DesktopWorkbenchChrome({
   const [savedViewCommands, setSavedViewCommands] = useState<SavedViewCommandItem[]>([]);
   const [workspaceCommands, setWorkspaceCommands] = useState<WorkspaceCommandItem[]>([]);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+  const [hydrated, setHydrated] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
   const gSequenceTimerRef = useRef<number | null>(null);
   const awaitingGoRef = useRef(false);
@@ -338,6 +339,11 @@ export function DesktopWorkbenchChrome({
   );
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setHydrated(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!assistantContext && assistantOpen) {
       const timer = window.setTimeout(() => setAssistantOpen(false), 0);
       return () => window.clearTimeout(timer);
@@ -348,6 +354,7 @@ export function DesktopWorkbenchChrome({
 
   const openCommandPalette = useCallback(() => {
     setSavedViewCommands(readSavedViewCommands());
+    setSavedInsightLinks(readStoredLinks(savedInsightStorageKey));
     setQuery("");
     setActiveCommandIndex(0);
     setCommandOpen(true);
@@ -692,7 +699,12 @@ export function DesktopWorkbenchChrome({
 
   return (
     <>
-      <header className="sticky top-0 z-40 hidden min-h-14 border-b border-emerald-950/10 bg-[#FFFDF8]/92 px-4 py-2 shadow-[0_8px_24px_rgba(31,49,39,0.06)] backdrop-blur supports-[backdrop-filter]:bg-[#FFFDF8]/82 sm:block">
+      <header
+        className="sticky top-0 z-40 hidden min-h-14 border-b border-emerald-950/10 bg-[#FFFDF8]/92 px-4 py-2 shadow-[0_8px_24px_rgba(31,49,39,0.06)] backdrop-blur supports-[backdrop-filter]:bg-[#FFFDF8]/82 lg:block"
+        data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
+        inert={!hydrated}
+        aria-busy={hydrated ? undefined : true}
+      >
         <div className="flex min-w-0 items-center gap-2 2xl:gap-3">
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
             <Link
@@ -755,8 +767,8 @@ export function DesktopWorkbenchChrome({
             variant="outline"
             className="hidden size-8 px-0 xl:inline-flex 2xl:w-auto 2xl:px-2.5"
           >
-            <Link href={pageAction.href}>
-              <PageActionIcon className="size-4" />
+            <Link href={pageAction.href} aria-label={pageAction.label}>
+              <PageActionIcon className="size-4" aria-hidden />
               <span className="hidden 2xl:inline">{pageAction.label}</span>
             </Link>
           </Button>

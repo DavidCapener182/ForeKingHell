@@ -73,7 +73,11 @@ export function calculateRoundDifferential({
   const slope =
     typeof input.slopeRating === "number" && input.slopeRating > 0 ? input.slopeRating : 113;
 
-  if (typeof input.totalScore !== "number" || typeof rating !== "number") {
+  if (
+    typeof input.totalScore !== "number" ||
+    typeof rating !== "number" ||
+    (typeof input.holesPlayed === "number" && input.holesPlayed !== 18)
+  ) {
     return null;
   }
 

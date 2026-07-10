@@ -1,7 +1,11 @@
 import "server-only";
 
 import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
-import { fetchWithTimeout, safeRemoteResourceUrl } from "@/lib/remote-image-response";
+import {
+  fetchWithTimeout,
+  isSafeResolvedRemoteUrl,
+  safeRemoteResourceUrl,
+} from "@/lib/remote-image-response";
 
 const WEBSITE_ICON_TIMEOUT_MS = 3500;
 const WEBSITE_ICON_MAX_HTML_BYTES = 1024 * 1024;
@@ -57,6 +61,8 @@ async function fetchWebsiteHtml(initialUrl: URL) {
 
   for (let redirects = 0; redirects < 3; redirects += 1) {
     try {
+      if (!(await isSafeResolvedRemoteUrl(currentUrl))) return null;
+
       const response = await fetchWithTimeout(currentUrl, WEBSITE_ICON_TIMEOUT_MS, {
         headers: {
           Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.5",

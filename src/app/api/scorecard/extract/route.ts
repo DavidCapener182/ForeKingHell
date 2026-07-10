@@ -1,15 +1,16 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
   rejectOversizedDataUrl,
-  rejectOversizedRequest,
   rateLimitRequest,
+  readBoundedJsonBody,
 } from "@/lib/api-protection";
 import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
 import { scorecardExtractionSchema } from "@/lib/ai/schemas";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
-import { createScorecardProofToken } from "@/lib/scorecard-proof-token";
+import { createScorecardProofToken, type ScorecardProofScope } from "@/lib/scorecard-proof-token";
 
 export const runtime = "nodejs";
 
@@ -60,11 +61,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
-  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
-  if (sizeRejection) {
-    return sizeRejection;
-  }
-
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "scorecard-extract",
     limit: 6,
@@ -74,10 +70,18 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const body = (await request.json().catch(() => null)) as { imageDataUrl?: unknown } | null;
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value as {
+    imageDataUrl?: unknown;
+    proofScopeType?: unknown;
+    proofScopeId?: unknown;
+    proofRoundNumber?: unknown;
+  } | null;
   const imageDataUrl = typeof body?.imageDataUrl === "string" ? body.imageDataUrl : "";
+  const proofScope = normalizeProofScope(body);
 
-  if (!imageDataUrl.startsWith("data:image/")) {
+  if (!imageDataUrl.startsWith("data:image/") || !proofScope) {
     return NextResponse.json({ message: "Send a scorecard image data URL." }, { status: 400 });
   }
 
@@ -116,6 +120,10 @@ export async function POST(request: NextRequest) {
 
     const proofToken = createScorecardProofToken({
       userId,
+      scopeType: proofScope.scopeType,
+      scopeId: proofScope.scopeId,
+      roundNumber: proofScope.roundNumber ?? null,
+      imageHash: createHash("sha256").update(imageDataUrl).digest("hex"),
       totalScore: scorecard.totalScore,
       courseName: scorecard.courseName,
       teeName: scorecard.teeName,
@@ -135,6 +143,32 @@ export async function POST(request: NextRequest) {
     const { body, status } = aiErrorPayload(error);
     return NextResponse.json(body, { status });
   }
+}
+
+function normalizeProofScope(
+  body: {
+    proofScopeType?: unknown;
+    proofScopeId?: unknown;
+    proofRoundNumber?: unknown;
+  } | null,
+): ScorecardProofScope | null {
+  const scopeType =
+    body?.proofScopeType === "course_record" || body?.proofScopeType === "tournament"
+      ? body.proofScopeType
+      : null;
+  const scopeId =
+    typeof body?.proofScopeId === "string" && /^[a-z0-9_-]{1,220}$/i.test(body.proofScopeId)
+      ? body.proofScopeId
+      : null;
+  const roundNumber =
+    typeof body?.proofRoundNumber === "number" &&
+    Number.isInteger(body.proofRoundNumber) &&
+    body.proofRoundNumber >= 1 &&
+    body.proofRoundNumber <= 20
+      ? body.proofRoundNumber
+      : null;
+
+  return scopeType && scopeId ? { scopeType, scopeId, roundNumber } : null;
 }
 
 function estimateDataUrlBytes(dataUrl: string) {

@@ -115,19 +115,26 @@ export async function getCourseFollowFeatureData(): Promise<CourseFollowFeatureD
       .limit(30),
   );
   const followedCourseIds = courseFollowRows.map((follow) => follow.courseId);
-  const [followedCourses, followedAliases] = await Promise.all([
-    followedCourseIds.length
-      ? db.select().from(courses).where(inArray(courses.id, followedCourseIds))
-      : Promise.resolve([]),
-    followedCourseIds.length
-      ? optionalFeatureRows(
-          db
-            .select()
-            .from(courseProviderAliases)
-            .where(inArray(courseProviderAliases.courseId, followedCourseIds)),
+  const followedCourses = followedCourseIds.length
+    ? await db
+        .select()
+        .from(courses)
+        .where(
+          and(
+            inArray(courses.id, followedCourseIds),
+            or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+          ),
         )
-      : Promise.resolve([]),
-  ]);
+    : [];
+  const visibleFollowedCourseIds = followedCourses.map((course) => course.id);
+  const followedAliases = visibleFollowedCourseIds.length
+    ? await optionalFeatureRows(
+        db
+          .select()
+          .from(courseProviderAliases)
+          .where(inArray(courseProviderAliases.courseId, visibleFollowedCourseIds)),
+      )
+    : [];
 
   return {
     courseFollows: buildCourseFollows(courseFollowRows, followedCourses, followedAliases),
@@ -366,14 +373,35 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     groupChallengeRows,
   ] = await Promise.all([
     followedCourseIds.length
-      ? db.select().from(courses).where(inArray(courses.id, followedCourseIds))
+      ? db
+          .select()
+          .from(courses)
+          .where(
+            and(
+              inArray(courses.id, followedCourseIds),
+              or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+            ),
+          )
       : Promise.resolve([]),
     followedCourseIds.length
       ? optionalFeatureRows(
           db
             .select()
             .from(courseProviderAliases)
-            .where(inArray(courseProviderAliases.courseId, followedCourseIds)),
+            .where(
+              and(
+                inArray(courseProviderAliases.courseId, followedCourseIds),
+                inArray(
+                  courseProviderAliases.courseId,
+                  db
+                    .select({ id: courses.id })
+                    .from(courses)
+                    .where(
+                      or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+                    ),
+                ),
+              ),
+            ),
         )
       : Promise.resolve([]),
     recordIds.length
@@ -751,6 +779,21 @@ export async function followCourse(input: {
     }))
     .filter((alias) => alias.alias);
 
+  const [visibleCourse] = await getDb()
+    .select({ id: courses.id })
+    .from(courses)
+    .where(
+      and(
+        eq(courses.id, input.courseId),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+      ),
+    )
+    .limit(1);
+
+  if (!visibleCourse) {
+    throw new Error("Course not found or unavailable.");
+  }
+
   await getDb()
     .insert(courseFollows)
     .values({
@@ -778,39 +821,6 @@ export async function followCourse(input: {
         updatedAt: now,
       },
     });
-
-  for (const alias of aliases) {
-    await getDb()
-      .insert(courseProviderAliases)
-      .values({
-        courseId: input.courseId,
-        providerKind: alias.provider,
-        providerCourseId:
-          alias.providerCourseId ??
-          `feature:${input.courseId}:${alias.provider}:${normaliseCourseName(alias.alias)}`,
-        providerCourseName: alias.alias,
-        providerTeeName: alias.teeName,
-        normalisedName: normaliseCourseName(alias.alias),
-        confidenceScore: 0.85,
-        metadataJson: { source: "course_follow_feature" },
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [
-          courseProviderAliases.providerKind,
-          courseProviderAliases.providerCourseId,
-          courseProviderAliases.providerCourseName,
-          courseProviderAliases.providerTeeName,
-        ],
-        set: {
-          courseId: input.courseId,
-          normalisedName: normaliseCourseName(alias.alias),
-          confidenceScore: 0.85,
-          metadataJson: { source: "course_follow_feature" },
-          updatedAt: now,
-        },
-      });
-  }
 
   revalidatePath("/courses");
   revalidatePath("/course-records");
@@ -1983,8 +1993,10 @@ function buildCourseFollows(
     aliasesByCourse.set(alias.courseId, (aliasesByCourse.get(alias.courseId) ?? 0) + 1);
   }
 
-  return follows.length
-    ? follows.map((follow) => ({
+  const visibleFollows = follows.filter((follow) => courseById.has(follow.courseId));
+
+  return visibleFollows.length
+    ? visibleFollows.map((follow) => ({
         title: courseById.get(follow.courseId)?.name ?? "Followed course",
         metric: follow.notifyRecords ? "Record alerts" : "Following",
         detail: `${integerFormatter.format(aliasesByCourse.get(follow.courseId) ?? follow.providerAliasesJson.length)} provider aliases saved.`,
@@ -2449,15 +2461,6 @@ function arrayOfStringsFromRecord(value: Record<string, unknown>, key: string) {
   return Array.isArray(item)
     ? item.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
     : [];
-}
-
-function normaliseCourseName(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\b(the|golf|club|course|links)\b/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
 }
 
 function titleCase(value: string) {

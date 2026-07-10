@@ -4,9 +4,11 @@ import { readAiGenerationCache, hashAiRequest, writeAiGenerationCache } from "@/
 import { getAiFeature, resolveAiModel, type AiFeatureKey } from "@/lib/ai/features";
 import {
   AiAccessError,
+  finalizeAiCreditReservation,
   logAiUsageEvent,
   requireAiCredits,
   requireAiFeaturePlan,
+  reserveAiCredits,
   type AiFeatureEntitlement,
   type AiUsageTokenStats,
 } from "@/lib/ai/usage";
@@ -133,37 +135,61 @@ async function callOpenAiJson<T extends object>(input: {
     });
   }
 
-  const upstream = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: input.model,
-      input: input.messages,
-      text: {
-        format: {
-          type: "json_schema",
-          name: input.schemaName,
-          schema: input.schema,
-          strict: true,
-        },
-      },
-      max_output_tokens: input.maxOutputTokens,
-    }),
+  const creditsCharged = getAiFeature(input.featureKey).creditCost;
+  const reservation = await reserveAiCredits({
+    userId: input.userId,
+    featureKey: input.featureKey,
+    planKeySnapshot: input.entitlement.planKey,
+    model: input.model,
+    creditCost: creditsCharged,
+    monthlyLimit: input.entitlement.monthlyLimit,
+    requestHash: input.requestHash,
+    metadataJson: input.metadataJson,
   });
+
+  let upstream: Response;
+
+  try {
+    upstream = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: input.model,
+        input: input.messages,
+        text: {
+          format: {
+            type: "json_schema",
+            name: input.schemaName,
+            schema: input.schema,
+            strict: true,
+          },
+        },
+        max_output_tokens: input.maxOutputTokens,
+      }),
+    });
+  } catch (error) {
+    await finalizeAiCreditReservation({
+      eventId: reservation.eventId,
+      status: "error",
+      releaseCredits: true,
+      metadataJson: {
+        ...input.metadataJson,
+        failure: "upstream_unreachable",
+      },
+    });
+    throw error;
+  }
+
   const responsePayload = (await upstream.json().catch(() => null)) as unknown;
 
   if (!upstream.ok) {
-    await logAiUsageEvent({
-      userId: input.userId,
-      featureKey: input.featureKey,
-      planKeySnapshot: input.entitlement.planKey,
-      model: input.model,
+    await finalizeAiCreditReservation({
+      eventId: reservation.eventId,
       status: "error",
-      aiCredits: 0,
-      requestHash: input.requestHash,
+      releaseCredits: true,
       responseId: readResponseId(responsePayload),
       tokenStats: readTokenStats(responsePayload),
       metadataJson: {
@@ -180,8 +206,24 @@ async function callOpenAiJson<T extends object>(input: {
     });
   }
 
-  const output = parseResponseJson<T>(responsePayload);
-  const creditsCharged = getAiFeature(input.featureKey).creditCost;
+  let output: T;
+
+  try {
+    output = parseResponseJson<T>(responsePayload);
+  } catch (error) {
+    await finalizeAiCreditReservation({
+      eventId: reservation.eventId,
+      status: "error",
+      releaseCredits: true,
+      responseId: readResponseId(responsePayload),
+      tokenStats: readTokenStats(responsePayload),
+      metadataJson: {
+        ...input.metadataJson,
+        failure: "invalid_structured_response",
+      },
+    });
+    throw error;
+  }
 
   if (input.cacheTtlMs) {
     await writeAiGenerationCache({
@@ -192,17 +234,12 @@ async function callOpenAiJson<T extends object>(input: {
       responseJson: output as Record<string, unknown>,
       metadataJson: input.metadataJson,
       ttlMs: input.cacheTtlMs,
-    });
+    }).catch((error) => console.error("[ai] Failed to persist generation cache", error));
   }
 
-  await logAiUsageEvent({
-    userId: input.userId,
-    featureKey: input.featureKey,
-    planKeySnapshot: input.entitlement.planKey,
-    model: input.model,
+  await finalizeAiCreditReservation({
+    eventId: reservation.eventId,
     status: "success",
-    aiCredits: creditsCharged,
-    requestHash: input.requestHash,
     responseId: readResponseId(responsePayload),
     tokenStats: readTokenStats(responsePayload),
     metadataJson: input.metadataJson,
@@ -214,7 +251,7 @@ async function callOpenAiJson<T extends object>(input: {
     model: input.model,
     featureKey: input.featureKey,
     creditsCharged,
-    creditsRemaining: Math.max(0, input.entitlement.monthlyRemaining - creditsCharged),
+    creditsRemaining: reservation.creditsRemaining,
     cached: false,
     requestHash: input.requestHash,
   } satisfies AiJsonResult<T>;

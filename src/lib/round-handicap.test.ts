@@ -44,6 +44,18 @@ describe("round handicap", () => {
     ).toBeCloseTo(17.9, 1);
   });
 
+  it("does not calculate a differential for an incomplete non-standard scorecard", () => {
+    expect(
+      calculateRoundDifferential({
+        totalScore: 41,
+        totalPar: 36,
+        courseRating: null,
+        slopeRating: null,
+        holesPlayed: 8,
+      }),
+    ).toBeNull();
+  });
+
   it("doubles 9-hole score, par, and rating for handicap display inputs", () => {
     expect(
       normaliseHandicapRoundInput({

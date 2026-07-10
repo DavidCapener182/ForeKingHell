@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import {
   ArrowLeft,
   Award,
@@ -55,6 +54,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getFriendsPageData, type SocialProfileSummary } from "@/lib/social";
+import { getSiteOrigin } from "@/lib/site-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -110,10 +110,10 @@ type FriendsPageProps = {
 };
 
 export default async function FriendsPage({ searchParams }: FriendsPageProps) {
-  const [params, requestHeaders] = await Promise.all([searchParams, headers()]);
+  const params = await searchParams;
   const query = params?.q?.trim() ?? "";
   const data = await getFriendsPageData(query);
-  const profileUrl = `${getRequestOrigin(requestHeaders)}/profile/${data.profile.username}`;
+  const profileUrl = `${getSiteOrigin()}/profile/${data.profile.username}`;
   const friendGraphRows = buildFriendGraphRows({
     friends: data.friends,
     incomingRequests: data.incomingRequests,
@@ -933,13 +933,6 @@ function SocialStat({
       <p className="text-xs text-muted-foreground">{detail}</p>
     </div>
   );
-}
-
-function getRequestOrigin(requestHeaders: Headers) {
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  return `${proto}://${host}`;
 }
 
 function profileHeaderBackground(imageUrl: string) {

@@ -1840,10 +1840,10 @@ function lineFromAngle(x: number, y: number, angleDeg: number, length: number) {
   const radians = degToRad(angleDeg);
 
   return {
-    x1: x,
-    y1: y,
-    x2: x + Math.cos(radians) * length,
-    y2: y - Math.sin(radians) * length,
+    x1: svgCoordinate(x),
+    y1: svgCoordinate(y),
+    x2: svgCoordinate(x + Math.cos(radians) * length),
+    y2: svgCoordinate(y - Math.sin(radians) * length),
   };
 }
 
@@ -1853,11 +1853,15 @@ function centeredLine(x: number, y: number, angleDeg: number, length: number) {
   const dy = Math.sin(radians) * (length / 2);
 
   return {
-    x1: x - dx,
-    y1: y - dy,
-    x2: x + dx,
-    y2: y + dy,
+    x1: svgCoordinate(x - dx),
+    y1: svgCoordinate(y - dy),
+    x2: svgCoordinate(x + dx),
+    y2: svgCoordinate(y + dy),
   };
+}
+
+function svgCoordinate(value: number) {
+  return Math.round(value * 10_000) / 10_000;
 }
 
 function degToRad(value: number) {

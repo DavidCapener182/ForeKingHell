@@ -240,7 +240,7 @@ function ClubIntelligenceMetric({
 }) {
   return (
     <div className={cn("rounded-lg border px-3 py-2", metricToneClass(tone))}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
       <p className="mt-1 text-lg font-semibold leading-6 tracking-normal text-slate-950">{value}</p>
       {detail ? <p className="mt-0.5 truncate text-xs text-slate-600">{detail}</p> : null}
     </div>
@@ -250,7 +250,7 @@ function ClubIntelligenceMetric({
 function ClubSignal({ label, signal }: { label: string; signal: ClubIntelligenceSignal }) {
   return (
     <div className={cn("min-h-28 rounded-lg border px-3 py-3", metricToneClass(signal.tone))}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
       <p className="mt-1 text-base font-semibold leading-5 text-slate-950">{signal.label}</p>
       <p className="mt-1 text-xs leading-4 text-slate-600">{signal.detail}</p>
       {label === "Health" ? (

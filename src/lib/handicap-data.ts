@@ -104,8 +104,8 @@ export async function getHandicapRoundsForUser(userId: string) {
 
   return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
-    const rawTotalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
-    const rawTotalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
+    const rawTotalScore = sumComplete(scorecard.map((hole) => hole.score ?? null));
+    const rawTotalPutts = sumComplete(scorecard.map((hole) => hole.putts ?? null));
     const rawTotalPar =
       scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
     const handicapInput = normaliseHandicapRoundInput({
@@ -134,9 +134,10 @@ export async function getHandicapRoundsForUser(userId: string) {
   });
 }
 
-function sumNullable(values: Array<number | null>) {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+function sumComplete(values: Array<number | null>) {
+  return values.length > 0 && values.every((value): value is number => typeof value === "number")
+    ? values.reduce((total, value) => total + value, 0)
+    : null;
 }
 
 function doubleNullable(value: number | null) {

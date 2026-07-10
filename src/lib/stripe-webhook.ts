@@ -1,14 +1,15 @@
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt, or, sql } from "drizzle-orm";
 
-import { billingCustomers, entitlements, subscriptions } from "@/db/schema";
+import { billingCustomers, entitlements, stripeWebhookEvents, subscriptions } from "@/db/schema";
 import { getDb } from "@/db/client";
 import type { PlanKey } from "@/lib/billing";
 
 export type StripeWebhookEvent = {
-  id?: string;
+  id: string;
+  created: number;
   type: StripeWebhookEventType;
   data: {
     object: StripeObject;
@@ -28,6 +29,14 @@ type StripeObject = Record<string, unknown>;
 type StripeWebhookEnv = Record<string, string | undefined>;
 
 export type BillingWebhookStore = {
+  claimEvent(input: {
+    eventId: string;
+    eventType: string;
+    objectKey: string | null;
+    eventCreatedAt: Date;
+  }): Promise<"claimed" | "duplicate">;
+  completeEvent(eventId: string, result: StripeWebhookResult): Promise<void>;
+  failEvent(eventId: string, errorCode: string): Promise<void>;
   upsertBillingCustomer(input: {
     userId: string;
     stripeCustomerId: string | null;
@@ -50,6 +59,7 @@ export type BillingWebhookStore = {
     status: string;
     metadataJson: Record<string, unknown>;
   }): Promise<void>;
+  applySubscriptionState(input: SubscriptionStateInput): Promise<boolean>;
   replacePlanEntitlements(input: {
     userId: string;
     planKey: PlanKey;
@@ -57,6 +67,27 @@ export type BillingWebhookStore = {
     expiresAt: Date | null;
     source: string;
   }): Promise<void>;
+};
+
+type SubscriptionStateInput = {
+  userId: string;
+  billingCustomerId: string | null;
+  stripeSubscriptionId: string;
+  planKey: PlanKey;
+  status: string;
+  currentPeriodStart: Date | null;
+  currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd: boolean;
+  metadataJson: Record<string, unknown>;
+  active: boolean;
+  source: string;
+  eventId: string;
+  eventCreatedAt: Date;
+};
+
+type WebhookContext = {
+  eventId: string;
+  eventCreatedAt: Date;
 };
 
 export type StripeWebhookResult = {
@@ -189,25 +220,153 @@ export async function handleStripeWebhookEvent(
   store: BillingWebhookStore = createDrizzleBillingWebhookStore(),
   env: StripeWebhookEnv = process.env,
 ): Promise<StripeWebhookResult> {
-  switch (event.type) {
-    case "checkout.session.completed":
-      return handleCheckoutSessionCompleted(event.data.object, store, env, event.type);
-    case "customer.subscription.created":
-    case "customer.subscription.updated":
-      return handleSubscriptionUpdated(event.data.object, store, env, event.type);
-    case "customer.subscription.deleted":
-      return handleSubscriptionDeleted(event.data.object, store, env, event.type);
-    case "invoice.paid":
-      return handleInvoicePaid(event.data.object, store, env, event.type);
-    case "invoice.payment_failed":
-      return handleInvoicePaymentFailed(event.data.object, store, env, event.type);
-    default:
-      return { handled: false, type: event.type, reason: "ignored_event_type" };
+  if (!isHandledStripeEventType(event.type)) {
+    return { handled: false, type: event.type, reason: "ignored_event_type" };
+  }
+
+  if (!event.id || !Number.isFinite(event.created) || event.created <= 0) {
+    return { handled: false, type: event.type, reason: "invalid_event_identity" };
+  }
+
+  const context: WebhookContext = {
+    eventId: event.id,
+    eventCreatedAt: new Date(event.created * 1000),
+  };
+  const claimed = await store.claimEvent({
+    eventId: context.eventId,
+    eventType: event.type,
+    objectKey: stripeId(event.data.object.subscription) ?? stripeId(event.data.object.id),
+    eventCreatedAt: context.eventCreatedAt,
+  });
+
+  if (claimed === "duplicate") {
+    return { handled: true, type: event.type, reason: "duplicate_event" };
+  }
+
+  try {
+    let result: StripeWebhookResult;
+
+    switch (event.type) {
+      case "checkout.session.completed":
+        result = await handleCheckoutSessionCompleted(
+          event.data.object,
+          store,
+          env,
+          event.type,
+          context,
+        );
+        break;
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+        result = await handleSubscriptionUpdated(
+          event.data.object,
+          store,
+          env,
+          event.type,
+          context,
+        );
+        break;
+      case "customer.subscription.deleted":
+        result = await handleSubscriptionDeleted(
+          event.data.object,
+          store,
+          env,
+          event.type,
+          context,
+        );
+        break;
+      case "invoice.paid":
+        result = await handleInvoicePaid(event.data.object, store, env, event.type, context);
+        break;
+      case "invoice.payment_failed":
+        result = await handleInvoicePaymentFailed(
+          event.data.object,
+          store,
+          env,
+          event.type,
+          context,
+        );
+        break;
+    }
+
+    await store.completeEvent(context.eventId, result);
+    return result;
+  } catch (error) {
+    await store.failEvent(context.eventId, errorCodeForWebhookFailure(error));
+    throw error;
   }
 }
 
 export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
   return {
+    async claimEvent(input) {
+      const now = new Date();
+      const [inserted] = await getDb()
+        .insert(stripeWebhookEvents)
+        .values({
+          eventId: input.eventId,
+          eventType: input.eventType,
+          objectKey: input.objectKey,
+          eventCreatedAt: input.eventCreatedAt,
+          status: "processing",
+          receivedAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing()
+        .returning({ eventId: stripeWebhookEvents.eventId });
+
+      if (inserted) {
+        return "claimed";
+      }
+
+      const staleBefore = new Date(now.getTime() - 10 * 60 * 1000);
+      const [reclaimed] = await getDb()
+        .update(stripeWebhookEvents)
+        .set({
+          status: "processing",
+          attempts: sql`${stripeWebhookEvents.attempts} + 1`,
+          errorCode: null,
+          processedAt: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(stripeWebhookEvents.eventId, input.eventId),
+            or(
+              eq(stripeWebhookEvents.status, "failed"),
+              and(
+                eq(stripeWebhookEvents.status, "processing"),
+                lt(stripeWebhookEvents.updatedAt, staleBefore),
+              ),
+            ),
+          ),
+        )
+        .returning({ eventId: stripeWebhookEvents.eventId });
+
+      return reclaimed ? "claimed" : "duplicate";
+    },
+    async completeEvent(eventId, result) {
+      await getDb()
+        .update(stripeWebhookEvents)
+        .set({
+          status: "processed",
+          resultJson: { ...result },
+          errorCode: null,
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(stripeWebhookEvents.eventId, eventId));
+    },
+    async failEvent(eventId, errorCode) {
+      await getDb()
+        .update(stripeWebhookEvents)
+        .set({
+          status: "failed",
+          errorCode,
+          updatedAt: new Date(),
+        })
+        .where(eq(stripeWebhookEvents.eventId, eventId));
+    },
     async upsertBillingCustomer(input) {
       const [customer] = await getDb()
         .insert(billingCustomers)
@@ -278,6 +437,72 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
         })
         .where(eq(subscriptions.stripeSubscriptionId, input.stripeSubscriptionId));
     },
+    async applySubscriptionState(input) {
+      return getDb().transaction(async (tx) => {
+        const now = new Date();
+        const [applied] = await tx
+          .insert(subscriptions)
+          .values({
+            userId: input.userId,
+            billingCustomerId: input.billingCustomerId,
+            stripeSubscriptionId: input.stripeSubscriptionId,
+            planKey: input.planKey,
+            status: input.status,
+            currentPeriodStart: input.currentPeriodStart,
+            currentPeriodEnd: input.currentPeriodEnd,
+            cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+            lastStripeEventId: input.eventId,
+            lastStripeEventCreatedAt: input.eventCreatedAt,
+            metadataJson: input.metadataJson,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: subscriptions.stripeSubscriptionId,
+            set: {
+              userId: input.userId,
+              billingCustomerId: input.billingCustomerId,
+              planKey: input.planKey,
+              status: input.status,
+              currentPeriodStart: input.currentPeriodStart,
+              currentPeriodEnd: input.currentPeriodEnd,
+              cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+              lastStripeEventId: input.eventId,
+              lastStripeEventCreatedAt: input.eventCreatedAt,
+              metadataJson: input.metadataJson,
+              updatedAt: now,
+            },
+            setWhere: sql`
+              ${subscriptions.lastStripeEventCreatedAt} IS NULL
+              OR ${subscriptions.lastStripeEventCreatedAt} < ${input.eventCreatedAt}
+              OR (
+                ${subscriptions.lastStripeEventCreatedAt} = ${input.eventCreatedAt}
+                AND COALESCE(${subscriptions.lastStripeEventId}, '') < ${input.eventId}
+              )
+            `,
+          })
+          .returning({ id: subscriptions.id });
+
+        if (!applied) {
+          return false;
+        }
+
+        await tx
+          .delete(entitlements)
+          .where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, input.source)));
+
+        if (input.active) {
+          await tx.insert(entitlements).values(
+            entitlementRowsForPlan(input.userId, input.planKey, {
+              source: input.source,
+              expiresAt: input.currentPeriodEnd,
+              now,
+            }),
+          );
+        }
+
+        return true;
+      });
+    },
     async replacePlanEntitlements(input) {
       const now = new Date();
 
@@ -325,15 +550,27 @@ function handleCheckoutSessionCompleted(
   store: BillingWebhookStore,
   env: StripeWebhookEnv,
   type: string,
+  context: WebhookContext,
 ): Promise<StripeWebhookResult> {
   const metadata = objectMetadata(object);
   const userId = stringFrom(metadata.user_id) ?? stringFrom(object.client_reference_id);
   const customerId = stripeId(object.customer);
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
   const subscriptionId = stripeId(object.subscription);
+  const paid = object.payment_status === "paid";
 
   if (!userId) {
     return Promise.resolve({ handled: false, type, planKey, reason: "missing_user_id" });
+  }
+
+  if (!subscriptionId) {
+    return Promise.resolve({
+      handled: false,
+      type,
+      userId,
+      planKey,
+      reason: "missing_subscription_id",
+    });
   }
 
   return upsertCustomerSubscriptionAndEntitlements({
@@ -344,14 +581,11 @@ function handleCheckoutSessionCompleted(
     email: stringFrom(object.customer_email),
     subscriptionId,
     planKey,
-    status:
-      object.payment_status === "paid" || object.status === "complete"
-        ? "active"
-        : "checkout_completed",
+    status: paid ? "active" : "checkout_completed",
     currentPeriodStart: null,
     currentPeriodEnd: null,
     cancelAtPeriodEnd: false,
-    active: object.payment_status === "paid" || object.status === "complete",
+    active: paid,
     metadataJson: {
       stripeEvent: type,
       checkoutSessionId: stringFrom(object.id),
@@ -359,6 +593,7 @@ function handleCheckoutSessionCompleted(
       paymentStatus: stringFrom(object.payment_status),
       metadata,
     },
+    ...context,
   });
 }
 
@@ -367,6 +602,7 @@ async function handleSubscriptionUpdated(
   store: BillingWebhookStore,
   env: StripeWebhookEnv,
   type: string,
+  context: WebhookContext,
 ): Promise<StripeWebhookResult> {
   const metadata = objectMetadata(object);
   const customerId = stripeId(object.customer);
@@ -375,9 +611,15 @@ async function handleSubscriptionUpdated(
     (customerId ? await store.findUserIdByStripeCustomerId(customerId) : null);
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
   const status = stringFrom(object.status) ?? "unknown";
+  const subscriptionId = stripeId(object.id);
 
-  if (!userId) {
-    return { handled: false, type, planKey, reason: "missing_user_id" };
+  if (!userId || !subscriptionId) {
+    return {
+      handled: false,
+      type,
+      planKey,
+      reason: !userId ? "missing_user_id" : "missing_subscription_id",
+    };
   }
 
   return upsertCustomerSubscriptionAndEntitlements({
@@ -386,7 +628,7 @@ async function handleSubscriptionUpdated(
     userId,
     customerId,
     email: null,
-    subscriptionId: stripeId(object.id),
+    subscriptionId,
     planKey,
     status,
     currentPeriodStart: dateFromUnixSeconds(numberFrom(object.current_period_start)),
@@ -398,6 +640,7 @@ async function handleSubscriptionUpdated(
       metadata,
       priceId: firstPriceId(object),
     },
+    ...context,
   });
 }
 
@@ -406,6 +649,7 @@ async function handleSubscriptionDeleted(
   store: BillingWebhookStore,
   env: StripeWebhookEnv,
   type: string,
+  context: WebhookContext,
 ): Promise<StripeWebhookResult> {
   const result = await handleSubscriptionUpdated(
     {
@@ -415,9 +659,12 @@ async function handleSubscriptionDeleted(
     store,
     env,
     type,
+    context,
   );
 
-  return result.handled ? { ...result, reason: "revoked_plan_entitlements" } : result;
+  return result.handled && result.reason !== "stale_event_ignored"
+    ? { ...result, reason: "revoked_plan_entitlements" }
+    : result;
 }
 
 async function handleInvoicePaid(
@@ -425,6 +672,7 @@ async function handleInvoicePaid(
   store: BillingWebhookStore,
   env: StripeWebhookEnv,
   type: string,
+  context: WebhookContext,
 ): Promise<StripeWebhookResult> {
   const customerId = stripeId(object.customer);
   const userId = customerId ? await store.findUserIdByStripeCustomerId(customerId) : null;
@@ -461,6 +709,7 @@ async function handleInvoicePaid(
       priceId: firstPriceId(object),
       metadata,
     },
+    ...context,
   });
 }
 
@@ -469,6 +718,7 @@ async function handleInvoicePaymentFailed(
   store: BillingWebhookStore,
   env: StripeWebhookEnv,
   type: string,
+  context: WebhookContext,
 ): Promise<StripeWebhookResult> {
   const customerId = stripeId(object.customer);
   const userId = customerId ? await store.findUserIdByStripeCustomerId(customerId) : null;
@@ -485,25 +735,28 @@ async function handleInvoicePaymentFailed(
     };
   }
 
-  await store.markSubscriptionStatus({
-    stripeSubscriptionId: subscriptionId,
+  return upsertCustomerSubscriptionAndEntitlements({
+    store,
+    type,
+    userId,
+    customerId,
+    email: stringFrom(object.customer_email),
+    subscriptionId,
+    planKey,
     status: "past_due",
+    currentPeriodStart: dateFromUnixSeconds(invoicePeriodUnix(object, "start")),
+    currentPeriodEnd: dateFromUnixSeconds(invoicePeriodUnix(object, "end")),
+    cancelAtPeriodEnd: false,
+    active: false,
     metadataJson: {
       stripeEvent: type,
       invoiceId: stringFrom(object.id),
       hostedInvoiceUrl: stringFrom(object.hosted_invoice_url),
       metadata,
     },
+    successReason: "payment_failed_revoked_entitlements",
+    ...context,
   });
-  await store.replacePlanEntitlements({
-    userId,
-    planKey,
-    active: false,
-    expiresAt: null,
-    source: "plan",
-  });
-
-  return { handled: true, type, userId, planKey, reason: "payment_failed_revoked_entitlements" };
 }
 
 async function upsertCustomerSubscriptionAndEntitlements(input: {
@@ -520,6 +773,9 @@ async function upsertCustomerSubscriptionAndEntitlements(input: {
   cancelAtPeriodEnd: boolean;
   active: boolean;
   metadataJson: Record<string, unknown>;
+  eventId: string;
+  eventCreatedAt: Date;
+  successReason?: string;
 }): Promise<StripeWebhookResult> {
   const customer = input.customerId
     ? await input.store.upsertBillingCustomer({
@@ -529,26 +785,30 @@ async function upsertCustomerSubscriptionAndEntitlements(input: {
       })
     : null;
 
-  if (input.subscriptionId) {
-    await input.store.upsertSubscription({
+  if (!input.subscriptionId) {
+    return {
+      handled: false,
+      type: input.type,
       userId: input.userId,
-      billingCustomerId: customer?.id ?? null,
-      stripeSubscriptionId: input.subscriptionId,
       planKey: input.planKey,
-      status: input.status,
-      currentPeriodStart: input.currentPeriodStart,
-      currentPeriodEnd: input.currentPeriodEnd,
-      cancelAtPeriodEnd: input.cancelAtPeriodEnd,
-      metadataJson: input.metadataJson,
-    });
+      reason: "missing_subscription_id",
+    };
   }
 
-  await input.store.replacePlanEntitlements({
+  const applied = await input.store.applySubscriptionState({
     userId: input.userId,
+    billingCustomerId: customer?.id ?? null,
+    stripeSubscriptionId: input.subscriptionId,
     planKey: input.planKey,
+    status: input.status,
+    currentPeriodStart: input.currentPeriodStart,
+    currentPeriodEnd: input.currentPeriodEnd,
+    cancelAtPeriodEnd: input.cancelAtPeriodEnd,
+    metadataJson: input.metadataJson,
     active: input.active,
-    expiresAt: input.currentPeriodEnd,
     source: "plan",
+    eventId: input.eventId,
+    eventCreatedAt: input.eventCreatedAt,
   });
 
   return {
@@ -556,6 +816,7 @@ async function upsertCustomerSubscriptionAndEntitlements(input: {
     type: input.type,
     userId: input.userId,
     planKey: input.planKey,
+    reason: applied ? input.successReason : "stale_event_ignored",
   };
 }
 
@@ -564,6 +825,16 @@ function resolvePlanKey(
   priceId: string | null,
   env: StripeWebhookEnv,
 ): PlanKey {
+  if (priceId) {
+    for (const [planKey, envKeys] of Object.entries(priceEnvByPlan) as Array<
+      [PlanKey, readonly string[]]
+    >) {
+      if (envKeys.some((envKey) => env[envKey] === priceId)) {
+        return planKey;
+      }
+    }
+  }
+
   const metadataPlan = stringFrom(metadata.plan_key);
 
   if (
@@ -573,16 +844,6 @@ function resolvePlanKey(
     metadataPlan === "full"
   ) {
     return metadataPlan;
-  }
-
-  if (priceId) {
-    for (const [planKey, envKeys] of Object.entries(priceEnvByPlan) as Array<
-      [PlanKey, readonly string[]]
-    >) {
-      if (envKeys.some((envKey) => env[envKey] === priceId)) {
-        return planKey;
-      }
-    }
   }
 
   return "free";
@@ -678,6 +939,33 @@ function numberFrom(value: unknown) {
 
 function stringFrom(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isHandledStripeEventType(
+  type: string,
+): type is
+  | "checkout.session.completed"
+  | "customer.subscription.created"
+  | "customer.subscription.updated"
+  | "customer.subscription.deleted"
+  | "invoice.paid"
+  | "invoice.payment_failed" {
+  return (
+    type === "checkout.session.completed" ||
+    type === "customer.subscription.created" ||
+    type === "customer.subscription.updated" ||
+    type === "customer.subscription.deleted" ||
+    type === "invoice.paid" ||
+    type === "invoice.payment_failed"
+  );
+}
+
+function errorCodeForWebhookFailure(error: unknown) {
+  if (error instanceof Error && error.name) {
+    return error.name.slice(0, 120);
+  }
+
+  return "webhook_processing_failed";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

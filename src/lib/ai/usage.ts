@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 
 import { aiUsageEvents, planLimits } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -131,6 +131,99 @@ export async function logAiUsageEvent(input: {
       outputTokens: input.tokenStats?.outputTokens ?? null,
       metadataJson: input.metadataJson ?? {},
     });
+}
+
+export async function reserveAiCredits(input: {
+  userId: string;
+  featureKey: AiFeatureKey;
+  planKeySnapshot: PlanKey;
+  model: string;
+  creditCost: number;
+  monthlyLimit: number;
+  requestHash?: string | null;
+  metadataJson?: Record<string, unknown>;
+}) {
+  return getDb().transaction(async (tx) => {
+    const monthStart = monthStartUtc();
+    const lockKey = `ai-credits:${input.userId}:${monthStart.toISOString().slice(0, 7)}`;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`);
+    await tx
+      .update(aiUsageEvents)
+      .set({
+        status: "error",
+        aiCredits: 0,
+        metadataJson: { failure: "stale_credit_reservation_released" },
+      })
+      .where(
+        and(
+          eq(aiUsageEvents.userId, input.userId),
+          eq(aiUsageEvents.status, "reserved"),
+          lt(aiUsageEvents.createdAt, new Date(Date.now() - 15 * 60 * 1000)),
+        ),
+      );
+    const [usage] = await tx
+      .select({ value: sql<number>`coalesce(sum(${aiUsageEvents.aiCredits}), 0)::int` })
+      .from(aiUsageEvents)
+      .where(and(eq(aiUsageEvents.userId, input.userId), gte(aiUsageEvents.createdAt, monthStart)));
+    const monthlyUsed = Number(usage?.value ?? 0);
+    const creditCost = Math.max(0, Math.floor(input.creditCost));
+
+    if (monthlyUsed + creditCost > input.monthlyLimit) {
+      throw new AiAccessError({
+        message: "Monthly AI credits are exhausted for this plan.",
+        status: 429,
+        code: "ai_quota_exhausted",
+        details: {
+          featureKey: input.featureKey,
+          planKey: input.planKeySnapshot,
+          creditCost,
+          monthlyLimit: input.monthlyLimit,
+          monthlyUsed,
+          monthlyRemaining: Math.max(0, input.monthlyLimit - monthlyUsed),
+        },
+      });
+    }
+
+    const [reservation] = await tx
+      .insert(aiUsageEvents)
+      .values({
+        userId: input.userId,
+        featureKey: input.featureKey,
+        planKeySnapshot: input.planKeySnapshot,
+        model: input.model,
+        status: "reserved",
+        aiCredits: creditCost,
+        requestHash: input.requestHash ?? null,
+        metadataJson: input.metadataJson ?? {},
+      })
+      .returning({ id: aiUsageEvents.id });
+
+    return {
+      eventId: reservation.id,
+      creditsRemaining: Math.max(0, input.monthlyLimit - monthlyUsed - creditCost),
+    };
+  });
+}
+
+export async function finalizeAiCreditReservation(input: {
+  eventId: string;
+  status: "success" | "error";
+  releaseCredits?: boolean;
+  responseId?: string | null;
+  tokenStats?: AiUsageTokenStats;
+  metadataJson?: Record<string, unknown>;
+}) {
+  await getDb()
+    .update(aiUsageEvents)
+    .set({
+      status: input.status,
+      aiCredits: input.releaseCredits ? 0 : undefined,
+      responseId: input.responseId ?? null,
+      inputTokens: input.tokenStats?.inputTokens ?? null,
+      outputTokens: input.tokenStats?.outputTokens ?? null,
+      metadataJson: input.metadataJson ?? {},
+    })
+    .where(and(eq(aiUsageEvents.id, input.eventId), eq(aiUsageEvents.status, "reserved")));
 }
 
 export async function getMonthlyAiCreditsUsed(userId: string) {

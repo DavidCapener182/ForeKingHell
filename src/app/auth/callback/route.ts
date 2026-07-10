@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ensureUserProfile } from "@/lib/current-user";
+import { safeNextPath } from "@/lib/safe-next-path";
 import { clearSupabaseAuthCookies, createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
@@ -80,10 +81,6 @@ function loginErrorRedirect(requestUrl: URL, message: string, next: string) {
     url.searchParams.set("next", next);
   }
   return NextResponse.redirect(url);
-}
-
-function safeNextPath(value: string) {
-  return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
 function stringMetadata(value: unknown) {

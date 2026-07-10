@@ -2,9 +2,101 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildProgressCompareData,
+  canUseProfileForPlayerCompare,
   type CompareClubOption,
   type CompareShot,
 } from "@/lib/compare-data";
+
+describe("canUseProfileForPlayerCompare", () => {
+  const viewerUserId = "viewer";
+  const subjectUserId = "subject";
+
+  it("requires explicit comparison consent and every exposed category", () => {
+    expect(
+      canUseProfileForPlayerCompare({
+        profile: compareProfile({
+          allowCompare: true,
+          exactShots: "public",
+          rounds: "public",
+          bag: "public",
+          handicap: "public",
+        }),
+        viewerUserId,
+        friendIds: new Set(),
+        blockedIds: new Set(),
+      }),
+    ).toBe(true);
+
+    expect(
+      canUseProfileForPlayerCompare({
+        profile: compareProfile({
+          allowCompare: false,
+          exactShots: "public",
+          rounds: "public",
+          bag: "public",
+          handicap: "public",
+        }),
+        viewerUserId,
+        friendIds: new Set(),
+        blockedIds: new Set(),
+      }),
+    ).toBe(false);
+  });
+
+  it("allows friend-only categories only for a current friend", () => {
+    const profile = compareProfile({
+      allowCompare: true,
+      exactShots: "friends",
+      rounds: "friends",
+      bag: "friends",
+      handicap: "friends",
+    });
+
+    expect(
+      canUseProfileForPlayerCompare({
+        profile,
+        viewerUserId,
+        friendIds: new Set([subjectUserId]),
+        blockedIds: new Set(),
+      }),
+    ).toBe(true);
+    expect(
+      canUseProfileForPlayerCompare({
+        profile,
+        viewerUserId,
+        friendIds: new Set(),
+        blockedIds: new Set(),
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects either-direction blocked profiles while preserving self access", () => {
+    const profile = compareProfile({
+      allowCompare: true,
+      exactShots: "public",
+      rounds: "public",
+      bag: "public",
+      handicap: "public",
+    });
+
+    expect(
+      canUseProfileForPlayerCompare({
+        profile,
+        viewerUserId,
+        friendIds: new Set([subjectUserId]),
+        blockedIds: new Set([subjectUserId]),
+      }),
+    ).toBe(false);
+    expect(
+      canUseProfileForPlayerCompare({
+        profile: { ...profile, userId: viewerUserId },
+        viewerUserId,
+        friendIds: new Set(),
+        blockedIds: new Set([viewerUserId]),
+      }),
+    ).toBe(true);
+  });
+});
 
 const clubs: CompareClubOption[] = [
   { id: "driver-club", type: "driver", label: "Driver", shotCount: 0 },
@@ -320,5 +412,32 @@ function shot(input: ShotInput): CompareShot {
     qualityTag: null,
     clubDataEstType: null,
     courseHoleNumber: null,
+  };
+}
+
+function compareProfile(
+  visibilitySettingsJson: NonNullable<
+    Parameters<typeof canUseProfileForPlayerCompare>[0]["profile"]["visibilitySettingsJson"]
+  >,
+): Parameters<typeof canUseProfileForPlayerCompare>[0]["profile"] {
+  return {
+    userId: "subject",
+    username: "subject",
+    displayName: "Subject",
+    avatarUrl: null,
+    headerImageUrl: null,
+    bio: null,
+    homeCourse: null,
+    primaryLaunchMonitor: null,
+    handicapBand: null,
+    publicProfile: true,
+    friendProfile: false,
+    feedVisibilityDefault: "private",
+    leaderboardVisibility: "private",
+    visibilitySettingsJson,
+    achievementShowcaseJson: [],
+    pbShowcaseJson: [],
+    createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   };
 }

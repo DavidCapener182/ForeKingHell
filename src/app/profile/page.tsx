@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import { headers } from "next/headers";
 import {
   ArrowLeft,
   Award,
@@ -22,7 +21,6 @@ import { DataHealthFeaturePanel, ProfileFeaturePanel } from "@/components/featur
 import {
   MobileAppShell,
   MobileIconButton,
-  MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
@@ -74,6 +72,7 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { buildProfileHonoursRecords } from "@/lib/profile-honours";
 import { getProgressData } from "@/lib/progress-data";
 import { buildProgressSummary } from "@/lib/progress-summary";
+import { getSiteOrigin } from "@/lib/site-origin";
 import {
   defaultProfileVisibilitySettings,
   ensureCurrentSocialProfile,
@@ -122,19 +121,17 @@ const profileEvidenceSavedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
-  const [params, requestHeaders, profile, challenges, progressData, featureData] =
-    await Promise.all([
-      searchParams,
-      headers(),
-      ensureCurrentSocialProfile(),
-      getChallengesPageData(),
-      getProgressData(),
-      getFeatureIdeasData(),
-    ]);
+  const [params, profile, challenges, progressData, featureData] = await Promise.all([
+    searchParams,
+    ensureCurrentSocialProfile(),
+    getChallengesPageData(),
+    getProgressData(),
+    getFeatureIdeasData(),
+  ]);
   const honours = await getProfileHonoursData(profile.userId);
   const progressSummary = buildProgressSummary(progressData.clubs);
   const activeTab = parseYouTab(params?.tab);
-  const origin = getRequestOrigin(requestHeaders);
+  const origin = getSiteOrigin();
   const profileUrl = `${origin}/profile/${profile.username}`;
   const visibility = {
     ...defaultProfileVisibilitySettings(),
@@ -176,7 +173,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </>
           }
         />
-        <MobileRouteTabs group="social" activeKey="profile" />
         <MobileStatusAction
           label={`@${profile.username}`}
           value={profile.displayName}
@@ -194,7 +190,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         />
         <MobileTabBar
           activeKey={activeTab}
-          className="-mt-4"
           tabs={[
             { key: "progress", label: "Progress", href: "/profile" },
             { key: "records", label: "Records", href: "/profile?tab=records" },
@@ -318,7 +313,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
       </MobileAppShell>
 
       <DesktopWorkbenchLayout scope="profile">
-        <div className="hidden items-center justify-between gap-3 sm:flex">
+        <div className="hidden items-center justify-between gap-3 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -333,7 +328,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           </Button>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <PageHeader
             eyebrow={<StatusPill tone="sky">Social profile</StatusPill>}
             title="Profile"
@@ -524,6 +519,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                       name="friendProfile"
                       label="Let friends view my profile details"
                       defaultChecked={profile.friendProfile}
+                    />
+                    <CheckboxField
+                      name="allowCompare"
+                      label="Allow eligible golfers to compare with my shared analysis"
+                      defaultChecked={profile.visibilitySettingsJson?.allowCompare === true}
                     />
                   </fieldset>
 
@@ -720,9 +720,7 @@ function ProfileEvidenceLedger({
                     className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
                   >
                     <p className="font-semibold">{row.title}</p>
-                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                      {row.detail}
-                    </p>
+                    <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{row.detail}</p>
                   </TableCell>
                   <TableCell data-column="type">
                     <Badge variant={row.type === "Course record" ? "secondary" : "outline"}>
@@ -761,28 +759,32 @@ function buildProfileEvidenceRows(
   tournaments: ProfileEvidenceTournament[],
 ): ProfileEvidenceRow[] {
   return [
-    ...records.map((record): ProfileEvidenceRow => ({
-      id: `record-${record.id}`,
-      type: "Course record",
-      title: record.courseName,
-      detail: record.categoryName,
-      result: record.scoreLabel,
-      visibility: "Public all-time board",
-      proof: record.rank === 1 ? "Champion" : `Rank #${record.rank ?? "--"}`,
-      href: `/course-records/${record.recordId}`,
-      actionLabel: "Open record",
-    })),
-    ...tournaments.map((event): ProfileEvidenceRow => ({
-      id: `tournament-${event.id}`,
-      type: "Tournament",
-      title: event.title,
-      detail: `${event.roundsCompleted} rounds completed`,
-      result: `#${event.rank ?? "--"} - ${event.grossTotal ?? "--"} gross`,
-      visibility: "Event board",
-      proof: `${event.roundsCompleted} scored rounds`,
-      href: `/tournaments/${event.tournamentId}`,
-      actionLabel: "Open event",
-    })),
+    ...records.map(
+      (record): ProfileEvidenceRow => ({
+        id: `record-${record.id}`,
+        type: "Course record",
+        title: record.courseName,
+        detail: record.categoryName,
+        result: record.scoreLabel,
+        visibility: "Public all-time board",
+        proof: record.rank === 1 ? "Champion" : `Rank #${record.rank ?? "--"}`,
+        href: `/course-records/${record.recordId}`,
+        actionLabel: "Open record",
+      }),
+    ),
+    ...tournaments.map(
+      (event): ProfileEvidenceRow => ({
+        id: `tournament-${event.id}`,
+        type: "Tournament",
+        title: event.title,
+        detail: `${event.roundsCompleted} rounds completed`,
+        result: `#${event.rank ?? "--"} - ${event.grossTotal ?? "--"} gross`,
+        visibility: "Event board",
+        proof: `${event.roundsCompleted} scored rounds`,
+        href: `/tournaments/${event.tournamentId}`,
+        actionLabel: "Open event",
+      }),
+    ),
   ];
 }
 
@@ -965,11 +967,4 @@ function parseYouTab(value?: string) {
   }
 
   return "progress";
-}
-
-function getRequestOrigin(requestHeaders: Headers) {
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
-  const host =
-    requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  return `${proto}://${host}`;
 }

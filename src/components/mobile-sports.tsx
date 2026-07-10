@@ -35,7 +35,7 @@ export function MobileAppShell({ children, className }: MobileAppShellProps) {
   return (
     <section
       className={cn(
-        "-mx-4 -mt-4 grid min-h-dvh content-start gap-4 overflow-x-clip px-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] pt-2 text-foreground sm:hidden [&>*]:min-w-0",
+        "ios-mobile-screen -mx-4 -mt-4 grid min-h-0 content-start overflow-x-clip px-4 pb-0 pt-3 text-foreground sm:-mx-6 sm:px-6 lg:hidden [&>*]:min-w-0",
         className,
       )}
     >
@@ -53,22 +53,14 @@ type MobileTopBarProps = {
 
 export function MobileTopBar({ title, leading, actions, className }: MobileTopBarProps) {
   return (
-    <header
-      className={cn(
-        "premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mb-4 -mt-2 h-[calc(2.75rem+1px)] w-auto min-w-0 overflow-hidden border-b px-4",
-        className,
-      )}
-    >
-      <div className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t border-border/70 px-4">
-        <div className="flex min-w-0 items-center justify-start gap-1.5">{leading}</div>
-        <div
-          className="max-w-[12rem] truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground"
-          data-mobile-route-label
-        >
+    <header className={cn("ios-large-title min-w-0", className)}>
+      <div className="min-w-0">
+        {leading ? <div className="mb-1 flex min-w-0 items-center gap-1.5">{leading}</div> : null}
+        <div className="truncate" data-mobile-route-label>
           {title}
         </div>
-        <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
       </div>
+      <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
     </header>
   );
 }
@@ -161,10 +153,7 @@ export function MobileRouteTabs({
     <SharedMobileTabBar
       tabs={mobileRouteGroups[group]}
       activeKey={activeKey}
-      className={cn(
-        sticky ? "sticky top-[calc(6rem+env(safe-area-inset-top)+1px)] z-40" : "",
-        className,
-      )}
+      className={cn(sticky ? "ios-route-tabs-primary" : "", className)}
     />
   );
 }
@@ -183,21 +172,11 @@ export function MobileRouteHeader({
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        "premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid min-w-0 gap-0 px-4 sm:hidden",
-        className,
-      )}
-    >
-      <header className="-mx-4 grid h-11 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
-        <span aria-hidden="true" />
-        <div
-          className="truncate text-center text-[1.25rem] font-semibold leading-7 tracking-normal text-foreground"
-          data-mobile-route-label
-        >
+    <section className={cn("grid min-w-0 gap-3 lg:hidden", className)}>
+      <header className="ios-large-title">
+        <div className="truncate" data-mobile-route-label>
           {title}
         </div>
-        <span aria-hidden="true" />
       </header>
       <MobileRouteTabs group={group} activeKey={activeKey} sticky={false} />
     </section>
@@ -284,7 +263,7 @@ export function BottomSheet({
   triggerClassName?: string;
 }) {
   return (
-    <div className="sm:hidden">
+    <div className="lg:hidden">
       <Drawer>
         <DrawerTrigger
           className={cn(
@@ -752,7 +731,7 @@ export function ProgressCard({
   children?: ReactNode;
 }) {
   return (
-    <article className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <article className="ios-progress-card grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-[#6B7280]">{title}</p>

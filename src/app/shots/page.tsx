@@ -665,6 +665,9 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                         </Badge>
                       }
                     >
+                      <DataPair label="Offline" value={formatSignedYards(shot.sideCarryYd)} />
+                      <DataPair label="Ball speed" value={formatSpeed(shot.ballSpeedMph)} />
+                      <DataPair label="Outcome" value={shotOutcomeLabel(shot.sideCarryYd)} />
                       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2 rounded-lg bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
                         <span
                           className={`size-2.5 rounded-full ring-4 ${shotQualityDot(shot.sideCarryYd)}`}
@@ -679,14 +682,12 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       </div>
                       <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                       <DataPair label="Total" value={formatMetric(shot.totalYd)} />
-                      <DataPair label="Side" value={formatMetric(shot.sideCarryYd)} />
                       <details className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                         <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
                           Advanced
                         </summary>
                         <div className="mt-2 grid gap-2">
                           <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
-                          <DataPair label="Ball mph" value={formatMetric(shot.ballSpeedMph)} />
                           <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
                           <DataPair label="Apex" value={formatMetric(shot.apexFt)} />
                           <DataPair label="Attack" value={formatMetric(shot.attackAngleDeg)} />
@@ -1719,6 +1720,26 @@ function formatSignedYards(value: number | null) {
   }
 
   return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} yd`;
+}
+
+function formatSpeed(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} mph`;
+}
+
+function shotOutcomeLabel(sideCarryYd: number | null) {
+  if (sideCarryYd === null) {
+    return "Not measured";
+  }
+
+  const offline = Math.abs(sideCarryYd);
+  if (offline <= 8) {
+    return "Target window";
+  }
+  if (offline <= 20) {
+    return "Playable";
+  }
+
+  return sideCarryYd < 0 ? "Miss left" : "Miss right";
 }
 
 function isFiniteShotMetric(value: number | null): value is number {

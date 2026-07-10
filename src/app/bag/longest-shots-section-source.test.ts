@@ -13,8 +13,8 @@ describe("longest shots simulator source", () => {
     expect(flightProfileBlock).toContain("flight profile chart");
     expect(flightProfileBlock).toContain("<ChartAccessibleFallback");
     expect(flightProfileBlock).toContain('title="Flight profile"');
-    expect(flightProfileBlock).toContain("summary={flightProfileSummary(shot)}");
-    expect(flightProfileBlock).toContain("rows={flightProfileRows(shot)}");
+    expect(flightProfileBlock).toContain("summary={flightProfileSummary(shot, preferredUnits)}");
+    expect(flightProfileBlock).toContain("rows={flightProfileRows(shot, preferredUnits)}");
     expect(source).toContain("function flightProfileSummary");
     expect(source).toContain("function flightProfileRows");
     expect(source).toContain("shot.descentAngleDeg");

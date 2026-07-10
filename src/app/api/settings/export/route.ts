@@ -1,7 +1,6 @@
-import { eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, or } from "drizzle-orm";
 
 import {
-  accountInvitations,
   accountMemberships,
   achievementProgress,
   achievementSyncState,
@@ -40,15 +39,11 @@ import {
   importMappings,
   importRows,
   importSourceFiles,
-  leaderboardSnapshots,
-  moderationEvents,
   offerClicks,
   partnerOffers,
   providerAccounts,
   providerSessions,
   rapsodoSyncSessions,
-  rivalryPairings,
-  rivalryWindows,
   sessions,
   shareLinks,
   shots,
@@ -69,15 +64,21 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { createPersonalDataExport } from "@/lib/personal-data-export";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const SHOT_PAGE_LIMIT = 5_000;
+
+export async function GET(request?: Request) {
   const userId = await getOptionalCurrentUserId();
 
   if (!userId) {
     return Response.json({ error: "Authentication required." }, { status: 401 });
   }
+
+  const shotCursor = parseShotCursor(request);
+  const exportedAt = new Date();
 
   const db = getDb();
   const [
@@ -86,7 +87,6 @@ export async function GET() {
     sessionRows,
     importRowRows,
     importFileRows,
-    shotRows,
     stockYardageRows,
     ballModelRows,
     clubEquipmentRows,
@@ -101,7 +101,6 @@ export async function GET() {
     weatherSnapshotRows,
     equipmentSnapshotRows,
     membershipRows,
-    invitationRows,
     socialProfileRows,
     friendRequestRows,
     friendshipRows,
@@ -137,7 +136,6 @@ export async function GET() {
     aiGenerationCacheRows,
     aiSocialSummaryRows,
     socialReportRows,
-    moderationEventRows,
     createdCourseRows,
   ] = await Promise.all([
     db.select().from(users).where(eq(users.id, userId)),
@@ -145,7 +143,6 @@ export async function GET() {
     db.select().from(sessions).where(eq(sessions.userId, userId)),
     db.select().from(importRows).where(eq(importRows.userId, userId)),
     db.select().from(importFiles).where(eq(importFiles.userId, userId)),
-    db.select().from(shots).where(eq(shots.userId, userId)),
     db.select().from(stockYardages).where(eq(stockYardages.userId, userId)),
     db.select().from(ballModels).where(eq(ballModels.userId, userId)),
     db.select().from(clubEquipmentHistory).where(eq(clubEquipmentHistory.userId, userId)),
@@ -159,8 +156,7 @@ export async function GET() {
     db.select().from(contentExports).where(eq(contentExports.userId, userId)),
     db.select().from(weatherSnapshots).where(eq(weatherSnapshots.userId, userId)),
     db.select().from(equipmentSnapshots).where(eq(equipmentSnapshots.userId, userId)),
-    db.select().from(accountMemberships).where(orOwnerOrMember(userId)),
-    db.select().from(accountInvitations).where(eq(accountInvitations.ownerUserId, userId)),
+    db.select().from(accountMemberships).where(eq(accountMemberships.memberUserId, userId)),
     db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
     db
       .select()
@@ -172,14 +168,8 @@ export async function GET() {
       .select()
       .from(friendships)
       .where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId))),
-    db
-      .select()
-      .from(userBlocks)
-      .where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId))),
-    db
-      .select()
-      .from(userFollows)
-      .where(or(eq(userFollows.followerUserId, userId), eq(userFollows.followedUserId, userId))),
+    db.select().from(userBlocks).where(eq(userBlocks.blockerUserId, userId)),
+    db.select().from(userFollows).where(eq(userFollows.followerUserId, userId)),
     db.select().from(feedItems).where(eq(feedItems.userId, userId)),
     db.select().from(feedReactions).where(eq(feedReactions.userId, userId)),
     db.select().from(feedCommentReactions).where(eq(feedCommentReactions.userId, userId)),
@@ -217,134 +207,52 @@ export async function GET() {
     db.select().from(aiUsageEvents).where(eq(aiUsageEvents.userId, userId)),
     db.select().from(aiGenerationCache).where(eq(aiGenerationCache.userId, userId)),
     db.select().from(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId)),
-    db
-      .select()
-      .from(socialReports)
-      .where(
-        or(eq(socialReports.reporterUserId, userId), eq(socialReports.reportedUserId, userId)),
-      ),
-    db
-      .select()
-      .from(moderationEvents)
-      .where(or(eq(moderationEvents.actorUserId, userId), eq(moderationEvents.targetId, userId))),
+    db.select().from(socialReports).where(eq(socialReports.reporterUserId, userId)),
     db.select().from(courses).where(eq(courses.createdByUserId, userId)),
   ]);
 
+  const shotPageRows = await db
+    .select()
+    .from(shots)
+    .where(
+      shotCursor
+        ? and(eq(shots.userId, userId), gt(shots.id, shotCursor))
+        : eq(shots.userId, userId),
+    )
+    .orderBy(asc(shots.id))
+    .limit(SHOT_PAGE_LIMIT + 1);
+  const hasMoreShots = shotPageRows.length > SHOT_PAGE_LIMIT;
+  const shotRows = shotPageRows.slice(0, SHOT_PAGE_LIMIT);
+  const nextShotCursor = hasMoreShots ? (shotRows.at(-1)?.id ?? null) : null;
+
   const courseIds = createdCourseRows.map((course) => course.id);
-  const groupIds = groupRows.map((group) => group.id);
   const challengeIds = challengeRows.map((challenge) => challenge.id);
   const sponsorIds = sponsorRows.map((sponsor) => sponsor.id);
-  const [
-    teeSetRows,
-    holeRows,
-    ownedGroupMembershipRows,
-    ownedGroupInviteRows,
-    ownedGroupPostRows,
-    ownedGroupChallengeLinkRows,
-    rivalryWindowRows,
-    rivalryPairingRows,
-    leaderboardSnapshotRows,
-    challengeRewardRows,
-    sponsorChallengeRewardRows,
-    partnerOfferRows,
-  ] =
-    courseIds.length > 0
-      ? await Promise.all([
-          db.select().from(teeSets).where(inArray(teeSets.courseId, courseIds)),
-          db.select().from(holes).where(inArray(holes.courseId, courseIds)),
-          groupIds.length > 0
-            ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db
-                .select()
-                .from(groupChallengeLinks)
-                .where(inArray(groupChallengeLinks.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(rivalryWindows).where(inArray(rivalryWindows.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(rivalryPairings).where(inArray(rivalryPairings.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db
-                .select()
-                .from(leaderboardSnapshots)
-                .where(inArray(leaderboardSnapshots.groupId, groupIds))
-            : Promise.resolve([]),
-          challengeIds.length > 0
-            ? db
-                .select()
-                .from(challengeRewards)
-                .where(inArray(challengeRewards.challengeId, challengeIds))
-            : Promise.resolve([]),
-          sponsorIds.length > 0
-            ? db
-                .select()
-                .from(challengeRewards)
-                .where(inArray(challengeRewards.sponsorId, sponsorIds))
-            : Promise.resolve([]),
-          sponsorIds.length > 0
-            ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
-            : Promise.resolve([]),
-        ])
-      : await Promise.all([
-          Promise.resolve([]),
-          Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(groupMemberships).where(inArray(groupMemberships.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(groupInvites).where(inArray(groupInvites.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(groupPosts).where(inArray(groupPosts.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db
-                .select()
-                .from(groupChallengeLinks)
-                .where(inArray(groupChallengeLinks.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(rivalryWindows).where(inArray(rivalryWindows.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db.select().from(rivalryPairings).where(inArray(rivalryPairings.groupId, groupIds))
-            : Promise.resolve([]),
-          groupIds.length > 0
-            ? db
-                .select()
-                .from(leaderboardSnapshots)
-                .where(inArray(leaderboardSnapshots.groupId, groupIds))
-            : Promise.resolve([]),
-          challengeIds.length > 0
-            ? db
-                .select()
-                .from(challengeRewards)
-                .where(inArray(challengeRewards.challengeId, challengeIds))
-            : Promise.resolve([]),
-          sponsorIds.length > 0
-            ? db
-                .select()
-                .from(challengeRewards)
-                .where(inArray(challengeRewards.sponsorId, sponsorIds))
-            : Promise.resolve([]),
-          sponsorIds.length > 0
-            ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
-            : Promise.resolve([]),
-        ]);
+  const [teeSetRows, holeRows, challengeRewardRows, sponsorChallengeRewardRows, partnerOfferRows] =
+    await Promise.all([
+      courseIds.length > 0
+        ? db.select().from(teeSets).where(inArray(teeSets.courseId, courseIds))
+        : Promise.resolve([]),
+      courseIds.length > 0
+        ? db.select().from(holes).where(inArray(holes.courseId, courseIds))
+        : Promise.resolve([]),
+      challengeIds.length > 0
+        ? db
+            .select()
+            .from(challengeRewards)
+            .where(inArray(challengeRewards.challengeId, challengeIds))
+        : Promise.resolve([]),
+      sponsorIds.length > 0
+        ? db.select().from(challengeRewards).where(inArray(challengeRewards.sponsorId, sponsorIds))
+        : Promise.resolve([]),
+      sponsorIds.length > 0
+        ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
+        : Promise.resolve([]),
+    ]);
 
-  const payload = {
-    exportedAt: new Date().toISOString(),
+  const payload = createPersonalDataExport({
     userId,
+    exportedAt,
     profile: profileRows[0] ?? null,
     data: {
       clubs: clubRows,
@@ -366,7 +274,6 @@ export async function GET() {
       weatherSnapshots: weatherSnapshotRows,
       equipmentSnapshots: equipmentSnapshotRows,
       accountMemberships: membershipRows,
-      accountInvitations: invitationRows,
       socialProfile: socialProfileRows[0] ?? null,
       friendRequests: friendRequestRows,
       friendships: friendshipRows,
@@ -384,13 +291,10 @@ export async function GET() {
       challengeInvites: challengeInviteRows,
       challengeRewards: uniqueById([...challengeRewardRows, ...sponsorChallengeRewardRows]),
       groups: groupRows,
-      groupMemberships: uniqueById([...groupMembershipRows, ...ownedGroupMembershipRows]),
-      groupInvites: uniqueById([...groupInviteRows, ...ownedGroupInviteRows]),
-      groupPosts: uniqueById([...groupPostRows, ...ownedGroupPostRows]),
-      groupChallengeLinks: uniqueById([...groupChallengeLinkRows, ...ownedGroupChallengeLinkRows]),
-      rivalryWindows: rivalryWindowRows,
-      rivalryPairings: rivalryPairingRows,
-      leaderboardSnapshots: leaderboardSnapshotRows,
+      groupMemberships: groupMembershipRows,
+      groupInvites: groupInviteRows,
+      groupPosts: groupPostRows,
+      groupChallengeLinks: groupChallengeLinkRows,
       billingCustomers: billingCustomerRows,
       subscriptions: subscriptionRows,
       entitlements: entitlementRows,
@@ -407,25 +311,43 @@ export async function GET() {
       aiGenerationCache: aiGenerationCacheRows,
       aiSocialSummaries: aiSocialSummaryRows,
       socialReports: socialReportRows,
-      moderationEvents: moderationEventRows,
       courses: createdCourseRows,
       teeSets: teeSetRows,
       holes: holeRows,
     },
+  });
+
+  const paginatedPayload = {
+    ...payload,
+    pagination: {
+      shots: {
+        limit: SHOT_PAGE_LIMIT,
+        cursor: shotCursor,
+        nextCursor: nextShotCursor,
+        hasMore: hasMoreShots,
+        nextPath: nextShotCursor
+          ? `/api/settings/export?shotCursor=${encodeURIComponent(nextShotCursor)}`
+          : null,
+      },
+    },
   };
 
-  return Response.json(payload, {
+  return Response.json(paginatedPayload, {
     headers: {
-      "Content-Disposition": `attachment; filename="lm-world-tour-export-${new Date().toISOString().slice(0, 10)}.json"`,
+      "Cache-Control": "private, no-store",
+      "Content-Disposition": `attachment; filename="forekinghell-personal-export-${exportedAt.toISOString().slice(0, 10)}.json"`,
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }
 
-function orOwnerOrMember(userId: string) {
-  return or(
-    eq(accountMemberships.ownerUserId, userId),
-    eq(accountMemberships.memberUserId, userId),
-  );
+function parseShotCursor(request?: Request) {
+  if (!request) return null;
+
+  const value = new URL(request.url).searchParams.get("shotCursor")?.trim() ?? "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null;
 }
 
 function uniqueById<T extends { id: string }>(rows: T[]) {

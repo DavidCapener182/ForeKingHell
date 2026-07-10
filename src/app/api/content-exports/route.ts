@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
-import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
+import { rateLimitRequest, readBoundedJsonBody } from "@/lib/api-protection";
 import { buildFeedItemContentExportSnapshot } from "@/lib/content-exports";
 import { getDb } from "@/db/client";
 import { contentExports, feedItems, userProfiles } from "@/db/schema";
@@ -18,11 +18,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
-  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
-  if (sizeRejection) {
-    return sizeRejection;
-  }
-
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "content-export",
     limit: 40,
@@ -32,7 +27,9 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const body = (await request.json().catch(() => null)) as {
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value as {
     sourceId?: unknown;
     sourceType?: unknown;
     templateKey?: unknown;

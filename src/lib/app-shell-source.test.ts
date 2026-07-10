@@ -77,7 +77,24 @@ describe("app shell account data", () => {
     expect(source).toContain('if (key === "ArrowUp")');
     expect(source).toContain('if (key === "Home")');
     expect(source).toContain('if (key === "End")');
-    expect(source).toContain("const [enabled, setEnabled] = useState(false)");
-    expect(source).toContain('window.localStorage.getItem("fkh:sunlight-mode") === "true"');
+    expect(source).not.toContain("SunlightModeButton");
+    expect(source).not.toContain("fkh:sunlight-mode");
+  });
+
+  it("boots the stored theme before paint and delegates live changes to one controller", () => {
+    const layoutSource = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+    const controllerSource = readFileSync(
+      join(root, "src/components/theme-controller.tsx"),
+      "utf8",
+    );
+
+    expect(layoutSource).toContain('strategy="beforeInteractive"');
+    expect(layoutSource).toContain("data-theme-preference={preferences.theme}");
+    expect(layoutSource).toContain("theme: users.theme");
+    expect(controllerSource).toContain('window.matchMedia("(prefers-color-scheme: dark)")');
+    expect(controllerSource).toContain(
+      'colourScheme.addEventListener("change", handleSystemChange)',
+    );
+    expect(controllerSource).toContain('root.classList.toggle("dark", theme === "dark")');
   });
 });

@@ -9,6 +9,7 @@ import {
   countOfflineActions,
   incrementOfflineActionRetry,
   listOfflineActions,
+  purgeOfflineActionsForOtherAccounts,
   removeOfflineAction,
 } from "@/lib/offline-queue";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-export function PwaRegister() {
+export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
   const pathname = usePathname();
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [updateReady, setUpdateReady] = useState<ServiceWorkerRegistration | null>(null);
@@ -38,17 +39,23 @@ export function PwaRegister() {
       return;
     }
 
-    countOfflineActions()
-      .then(setPendingOfflineActions)
-      .catch(() => setPendingOfflineActions(0));
-  }, []);
-
-  const replayOfflineActions = useCallback(async () => {
-    if (!navigator.onLine || !("indexedDB" in window)) {
+    if (!activeUserId) {
+      setPendingOfflineActions(0);
       return;
     }
 
-    const actions = await listOfflineActions().catch(() => []);
+    countOfflineActions(activeUserId)
+      .then(setPendingOfflineActions)
+      .catch(() => setPendingOfflineActions(0));
+  }, [activeUserId]);
+
+  const replayOfflineActions = useCallback(async () => {
+    if (!activeUserId || !navigator.onLine || !("indexedDB" in window)) {
+      return;
+    }
+
+    await purgeOfflineActionsForOtherAccounts(activeUserId).catch(() => 0);
+    const actions = await listOfflineActions(activeUserId).catch(() => []);
     const syncableActions = actions.filter(
       (action) => action.kind === "import-csv" || action.kind === "round-edit",
     );
@@ -62,6 +69,8 @@ export function PwaRegister() {
     setSyncMessage(
       `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}…`,
     );
+    let synced = 0;
+    let retained = 0;
 
     for (const action of syncableActions) {
       try {
@@ -69,25 +78,36 @@ export function PwaRegister() {
           action.kind === "import-csv" ? "/api/offline/imports" : "/api/offline/round-edits",
           {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: {
+              "content-type": "application/json",
+              "x-fkh-offline-owner": action.ownerUserId,
+              "x-fkh-offline-operation": action.id,
+            },
             body: JSON.stringify(action.payload),
           },
         );
 
         if (response.ok) {
           await removeOfflineAction(action.id);
+          synced += 1;
         } else {
           await incrementOfflineActionRetry(action);
+          retained += 1;
         }
       } catch {
         await incrementOfflineActionRetry(action);
+        retained += 1;
       }
     }
 
     refreshOfflineCount();
-    setSyncMessage("Offline import sync finished.");
+    setSyncMessage(
+      retained > 0
+        ? `${synced} synced; ${retained} retained for retry. No queued data was discarded.`
+        : `${synced} offline action${synced === 1 ? "" : "s"} synced successfully.`,
+    );
     window.setTimeout(() => setSyncMessage(null), 5000);
-  }, [refreshOfflineCount]);
+  }, [activeUserId, refreshOfflineCount]);
 
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
@@ -232,7 +252,7 @@ export function PwaRegister() {
     : pendingOfflineActions > 0
       ? `${pendingOfflineActions} pending offline action${pendingOfflineActions === 1 ? "" : "s"} will sync when available.`
       : !isOnline
-        ? "Offline mode is active. Previously loaded screens remain available."
+        ? "Private analysis needs a connection. Queued imports and round edits stay on this device until sync succeeds."
         : updateReady
           ? `A ${BRAND_NAME} update is ready.`
           : `Install ${BRAND_NAME} for faster access on this device.`;
@@ -251,7 +271,9 @@ export function PwaRegister() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">{message}</p>
+            <p className="text-sm font-medium" role="status" aria-live="polite">
+              {message}
+            </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {canInstall ? (
                 <Button

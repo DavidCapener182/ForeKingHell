@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
+import { rateLimitRequest, readBoundedJsonBody } from "@/lib/api-protection";
 import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
 import { challengeCopySchema } from "@/lib/ai/schemas";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
@@ -16,11 +16,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
-  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
-  if (sizeRejection) {
-    return sizeRejection;
-  }
-
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "ai-challenge-copy",
     limit: 25,
@@ -30,7 +25,9 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value as Record<string, unknown> | null;
   const context = {
     focusArea: stringValue(body?.focusArea, "practice").slice(0, 80),
     club: stringValue(body?.club, "mixed bag").slice(0, 80),

@@ -160,6 +160,8 @@ export default async function CourseRecordDetailPage({
                     </p>
                   </div>
                   <ScorecardProofUploader
+                    proofScopeType="course_record"
+                    proofScopeId={data.record.id}
                     screenshotFieldName="screenshotPath"
                     extractedTotalFieldName="extractedScorecardTotal"
                   />
@@ -399,6 +401,8 @@ export default async function CourseRecordDetailPage({
                   </p>
                 </div>
                 <ScorecardProofUploader
+                  proofScopeType="course_record"
+                  proofScopeId={data.record.id}
                   screenshotFieldName="screenshotPath"
                   extractedTotalFieldName="extractedScorecardTotal"
                 />

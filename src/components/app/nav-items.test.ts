@@ -1,39 +1,72 @@
 import { describe, expect, it } from "vitest";
 
-import { buildDesktopNavGroups, mobilePrimaryItems } from "@/components/app/nav-items";
+import {
+  buildDesktopNavGroups,
+  mobilePageTitle,
+  mobilePrimaryItems,
+} from "@/components/app/nav-items";
 
-describe("desktop navigation groups", () => {
-  it("keeps account routes in Platform and admin routes in a separate Admin group", () => {
+describe("application navigation hierarchy", () => {
+  it("keeps five analysis-first mobile destinations", () => {
+    expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
+      ["Today", "/today"],
+      ["Sessions", "/sessions"],
+      ["Analyse", "/analyse"],
+      ["Bag", "/bag"],
+      ["Profile", "/profile"],
+    ]);
+
+    expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/progress")).toBe(
+      true,
+    );
+    expect(mobilePrimaryItems.find((item) => item.label === "Profile")?.isActive("/feed")).toBe(
+      true,
+    );
+  });
+
+  it("gives mobile chrome a stable route title", () => {
+    expect(mobilePageTitle("/today")).toBe("Today");
+    expect(mobilePageTitle("/rounds/round-1")).toBe("Rounds");
+    expect(mobilePageTitle("/progress")).toBe("Progress");
+    expect(mobilePageTitle("/analyse/session-impact")).toBe("Session impact");
+    expect(mobilePageTitle("/unknown-route")).toBe("Golf analytics");
+  });
+
+  it("groups desktop routes by Review, Improve, Compete and Manage", () => {
     const playerGroups = buildDesktopNavGroups(false);
     const adminGroups = buildDesktopNavGroups(true);
 
     expect(playerGroups.map((group) => group.label)).toEqual([
-      "Home",
-      "Analyse",
-      "Play",
+      "Review",
       "Improve",
-      "Social",
-      "Platform",
+      "Compete",
+      "Manage",
     ]);
     expect(adminGroups.map((group) => group.label)).toEqual([
-      "Home",
-      "Analyse",
-      "Play",
+      "Review",
       "Improve",
-      "Social",
-      "Platform",
+      "Compete",
+      "Manage",
       "Admin",
     ]);
 
-    expect(
-      playerGroups.find((group) => group.label === "Improve")?.items.map((item) => item.href),
-    ).not.toContain("/settings");
-    expect(
-      playerGroups.find((group) => group.label === "Platform")?.items.map((item) => item.href),
-    ).toEqual(["/settings", "/billing", "/providers"]);
-    expect(
-      adminGroups.find((group) => group.label === "Platform")?.items.map((item) => item.href),
-    ).toEqual(["/settings", "/billing", "/providers"]);
+    const playerRoutes = playerGroups.flatMap((group) => group.items.map((item) => item.href));
+    for (const route of [
+      "/today",
+      "/sessions",
+      "/analyse",
+      "/shots",
+      "/bag",
+      "/practice",
+      "/rounds",
+      "/feed",
+      "/settings",
+      "/billing",
+      "/providers",
+    ]) {
+      expect(playerRoutes).toContain(route);
+    }
+
     expect(
       adminGroups.find((group) => group.label === "Admin")?.items.map((item) => item.href),
     ).toEqual([
@@ -45,56 +78,5 @@ describe("desktop navigation groups", () => {
       "/admin/billing",
       "/admin/challenges",
     ]);
-  });
-
-  it("matches the desktop route-group order from the command-centre plan", () => {
-    const groups = buildDesktopNavGroups(false);
-    const itemHrefsByGroup = Object.fromEntries(
-      groups.map((group) => [group.label, group.items.map((item) => item.href)]),
-    );
-
-    expect(itemHrefsByGroup.Home).toEqual(["/dashboard", "/today", "/progress", "/strokes-gained"]);
-    expect(itemHrefsByGroup.Analyse).toEqual([
-      "/simulator-lab",
-      "/compare",
-      "/bag",
-      "/speed",
-      "/stats/training-over-time",
-      "/equipment",
-      "/shots",
-      "/rapsodo",
-    ]);
-    expect(itemHrefsByGroup.Play).toEqual([
-      "/rounds",
-      "/courses",
-      "/course-records",
-      "/tournaments",
-      "/handicap",
-    ]);
-    expect(
-      groups.find((group) => group.label === "Play")?.items.map((item) => item.label),
-    ).toContain("Course records");
-    expect(itemHrefsByGroup.Improve).toEqual([
-      "/practice",
-      "/coach",
-      "/data-chat",
-      "/achievements",
-    ]);
-    expect(itemHrefsByGroup.Social).toEqual([
-      "/feed",
-      "/friends",
-      "/groups",
-      "/challenges",
-      "/leaderboard",
-      "/profile",
-      "/social-intelligence",
-    ]);
-  });
-
-  it("keeps Performance Lab inside the primary Analyse active state", () => {
-    const analyseItem = mobilePrimaryItems.find((item) => item.label === "Analyse");
-
-    expect(analyseItem?.isActive("/simulator-lab")).toBe(true);
-    expect(analyseItem?.isActive("/simulator-lab/session-1")).toBe(true);
   });
 });

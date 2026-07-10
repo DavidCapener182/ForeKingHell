@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -88,7 +88,11 @@ export async function createGoogleCourseAction(formData: FormData) {
     importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
   const teeSetYards =
     importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
-  const existingCourse = await findGoogleImportTargetCourse(details, importedHoles.length > 0);
+  const existingCourse = await findGoogleImportTargetCourse(
+    details,
+    importedHoles.length > 0,
+    userId,
+  );
   const courseValues = {
     address: details.address,
     country: details.country,
@@ -117,7 +121,7 @@ export async function createGoogleCourseAction(formData: FormData) {
     ? await db
         .update(courses)
         .set(courseValues)
-        .where(eq(courses.id, existingCourse.id))
+        .where(and(eq(courses.id, existingCourse.id), importTargetAccess(userId)))
         .returning({ id: courses.id })
     : await db
         .insert(courses)
@@ -130,9 +134,16 @@ export async function createGoogleCourseAction(formData: FormData) {
         })
         .onConflictDoUpdate({
           target: [courses.provider, courses.externalId],
+          setWhere: importTargetAccess(userId),
           set: courseValues,
         })
         .returning({ id: courses.id });
+
+  if (!course) {
+    throw new Error(
+      "The course could not be imported safely. Create a manual course or try again later.",
+    );
+  }
 
   const [teeSet] = await db
     .insert(teeSets)
@@ -168,6 +179,7 @@ export async function createGoogleCourseAction(formData: FormData) {
 async function findGoogleImportTargetCourse(
   details: GoogleCourseDetails,
   canReplaceDuplicateGeometry: boolean,
+  userId: string,
 ) {
   const db = getDb();
   const rows = await db
@@ -176,8 +188,11 @@ async function findGoogleImportTargetCourse(
       googlePlaceId: courses.googlePlaceId,
       id: courses.id,
       name: courses.name,
+      createdByUserId: courses.createdByUserId,
+      visibility: courses.visibility,
     })
-    .from(courses);
+    .from(courses)
+    .where(importTargetAccess(userId));
   const exactGoogleMatch = rows.find((course) => course.googlePlaceId === details.placeId);
   const detailsName = normalisedCourseName(details.name);
   const detailsCountry = normalisedCountry(details.country);
@@ -192,7 +207,7 @@ async function findGoogleImportTargetCourse(
   if (seededMatch && exactGoogleMatch && seededMatch.id !== exactGoogleMatch.id) {
     const removedDuplicate =
       canReplaceDuplicateGeometry &&
-      (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id));
+      (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id, userId));
 
     return removedDuplicate ? seededMatch : exactGoogleMatch;
   }
@@ -266,7 +281,7 @@ async function deleteLegacyGoogleOsmTeeSet(courseId: string) {
     .where(and(eq(teeSets.courseId, courseId), eq(teeSets.name, "Google Places + OSM")));
 }
 
-async function deleteUnreferencedGoogleDuplicateCourse(courseId: string) {
+async function deleteUnreferencedGoogleDuplicateCourse(courseId: string, userId: string) {
   const db = getDb();
   const [usage] = await db
     .select({
@@ -277,7 +292,7 @@ async function deleteUnreferencedGoogleDuplicateCourse(courseId: string) {
       tournaments: sql<number>`(select count(*)::int from fkh_tournaments where course_id = ${courseId})`,
     })
     .from(courses)
-    .where(eq(courses.id, courseId))
+    .where(and(eq(courses.id, courseId), importTargetAccess(userId)))
     .limit(1);
 
   if (
@@ -291,9 +306,19 @@ async function deleteUnreferencedGoogleDuplicateCourse(courseId: string) {
     return false;
   }
 
-  await db.delete(courses).where(eq(courses.id, courseId));
+  const removed = await db
+    .delete(courses)
+    .where(and(eq(courses.id, courseId), importTargetAccess(userId)))
+    .returning({ id: courses.id });
 
-  return true;
+  return removed.length > 0;
+}
+
+function importTargetAccess(userId: string) {
+  return or(
+    eq(courses.createdByUserId, userId),
+    and(eq(courses.visibility, "shared"), isNull(courses.createdByUserId)),
+  );
 }
 
 function normalisedCountry(country: string | null) {
@@ -417,6 +442,15 @@ export async function upsertHoleAction(formData: FormData) {
   }
 
   await requireEditableCourse(courseId, userId);
+  const [teeSet] = await db
+    .select({ id: teeSets.id })
+    .from(teeSets)
+    .where(and(eq(teeSets.id, teeSetId), eq(teeSets.courseId, courseId)))
+    .limit(1);
+
+  if (!teeSet) {
+    throw new Error("Tee set not found for this course.");
+  }
 
   const centerlineGeojson = {
     type: "LineString" as const,

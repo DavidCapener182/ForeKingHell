@@ -26,7 +26,7 @@ const privacySections = [
   {
     title: "AI coaching",
     icon: MessageCircle,
-    body: "Coach summaries and chat responses use SQL-retrieved golf context from your account. Prompts may include relevant shot, round, club, handicap, and goal summaries so the answer can cite the underlying app data.",
+    body: "OpenAI-backed coach and Data Chat responses use question-relevant, SQL-retrieved golf evidence from your account. Prompts may include measured shot, round, bag, speed, practice or record summaries when that subject is requested. Free-text notes, challenge descriptions and challenge rules are omitted from Data Chat prompts; AI responses cannot edit your data.",
   },
   {
     title: "Analytics",

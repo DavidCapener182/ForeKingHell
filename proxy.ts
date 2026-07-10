@@ -9,6 +9,7 @@ const PUBLIC_PATHS = new Set([
   "/manifest.webmanifest",
   "/offline",
   "/privacy",
+  "/api/stripe/webhook",
   "/sw.js",
 ]);
 

@@ -30,6 +30,7 @@ export async function updateSocialProfileAction(formData: FormData) {
       handicap: parseVisibility(formData.get("handicapVisibility"), "private"),
       practice: parseVisibility(formData.get("practiceVisibility"), "friends"),
       exactShots: parseVisibility(formData.get("exactShotsVisibility"), "private"),
+      allowCompare: formData.get("allowCompare") === "on",
     },
   });
 

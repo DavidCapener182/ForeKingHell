@@ -31,7 +31,7 @@ import {
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Input } from "@/components/ui/input";
-import { getAdminBillingData } from "@/lib/admin";
+import { getAdminBillingData, requireAdminUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +99,8 @@ const adminBillingSortDefaultDirections: Record<AdminBillingSortMetric, AdminBil
 export default async function AdminBillingPage({ searchParams }: AdminBillingPageProps) {
   const params = await searchParams;
   const sortState = parseAdminBillingSort(params?.sort, params?.dir);
-  const data = await getAdminBillingData();
+  const [actor, data] = await Promise.all([requireAdminUser(), getAdminBillingData()]);
+  const canGrantLifetime = actor.role === "owner";
   const sortedSubscriptions = sortAdminBillingSubscriptions(data.subscriptions, sortState);
   const lifetimeEntitlements = data.entitlements.filter(
     (row) => row.entitlementKey === "lifetime_full" && row.valueJson?.value === true,
@@ -150,31 +151,33 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
 
         <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
           <section className="grid gap-4 lg:sticky lg:top-28">
-            <AdminSection
-              title="Grant lifetime full"
-              description="Use this for owner, tester and permanent internal accounts."
-            >
-              <form action={grantLifetimeFullAction} className="grid gap-3">
-                <input type="hidden" name="returnTo" value="/admin/billing" />
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="user@example.com"
-                  className="h-10 rounded-xl bg-slate-50"
-                  required
-                />
-                <AdminConfirmSubmitButton
-                  type="submit"
-                  className="rounded-xl bg-[#111827] text-white"
-                  confirmTitle="Grant lifetime full access"
-                  confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
-                  confirmActionLabel="Grant full access"
-                >
-                  <Zap className="size-4" />
-                  Grant full access
-                </AdminConfirmSubmitButton>
-              </form>
-            </AdminSection>
+            {canGrantLifetime ? (
+              <AdminSection
+                title="Grant lifetime full"
+                description="Use this for owner, tester and permanent internal accounts."
+              >
+                <form action={grantLifetimeFullAction} className="grid gap-3">
+                  <input type="hidden" name="returnTo" value="/admin/billing" />
+                  <Input
+                    name="email"
+                    type="email"
+                    placeholder="user@example.com"
+                    className="h-10 rounded-xl bg-slate-50"
+                    required
+                  />
+                  <AdminConfirmSubmitButton
+                    type="submit"
+                    className="rounded-xl bg-[#111827] text-white"
+                    confirmTitle="Grant lifetime full access"
+                    confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+                    confirmActionLabel="Grant full access"
+                  >
+                    <Zap className="size-4" />
+                    Grant full access
+                  </AdminConfirmSubmitButton>
+                </form>
+              </AdminSection>
+            ) : null}
 
             <AdminSection title="Full plan limits">
               <div className="grid gap-2 text-sm">

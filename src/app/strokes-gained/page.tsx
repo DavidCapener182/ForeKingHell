@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, lte, type SQL } from "drizzle-orm";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -202,7 +202,7 @@ const strokesGainedSuggestedViews: DesktopSavedViewSuggestion[] = [
 
 export default async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
   const filters = parseFilters(await searchParams);
-  const data = await getStrokesGainedData();
+  const data = await getStrokesGainedData(filters);
   const analysis = buildStrokesGainedAnalysis(data.events);
   const activeCategory =
     analysis.categories.find((category) => category.category === filters.category) ?? null;
@@ -396,9 +396,36 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
   );
 }
 
-async function getStrokesGainedData() {
+async function getStrokesGainedData(filters: StrokesGainedFilters) {
   const userId = await requireCurrentUserId();
   const db = getDb();
+  const conditions: SQL[] = [eq(strokesGainedShotEvents.userId, userId)];
+
+  if (filters.sessionId) conditions.push(eq(strokesGainedShotEvents.sessionId, filters.sessionId));
+  if (filters.category) conditions.push(eq(strokesGainedShotEvents.category, filters.category));
+  if (filters.hole) conditions.push(eq(strokesGainedShotEvents.holeNumber, Number(filters.hole)));
+  if (filters.startLie) conditions.push(eq(strokesGainedShotEvents.startLie, filters.startLie));
+  if (filters.endLie) conditions.push(eq(strokesGainedShotEvents.endLie, filters.endLie));
+  if (filters.from) conditions.push(gte(sessions.date, new Date(`${filters.from}T00:00:00.000Z`)));
+  if (filters.to) conditions.push(lte(sessions.date, new Date(`${filters.to}T23:59:59.999Z`)));
+  if (filters.sg === "gain") conditions.push(gt(strokesGainedShotEvents.strokesGained, 0));
+  if (filters.sg === "loss") conditions.push(lt(strokesGainedShotEvents.strokesGained, 0));
+  if (filters.sg === "pending") conditions.push(isNull(strokesGainedShotEvents.strokesGained));
+
+  const orderBy =
+    filters.sort === "gains"
+      ? [desc(strokesGainedShotEvents.strokesGained), desc(strokesGainedShotEvents.createdAt)]
+      : filters.sort === "losses"
+        ? [asc(strokesGainedShotEvents.strokesGained), desc(strokesGainedShotEvents.createdAt)]
+        : filters.sort === "hole"
+          ? [
+              asc(strokesGainedShotEvents.holeNumber),
+              asc(strokesGainedShotEvents.strokeNumber),
+              desc(strokesGainedShotEvents.createdAt),
+            ]
+          : filters.sort === "category"
+            ? [asc(strokesGainedShotEvents.category), asc(strokesGainedShotEvents.strokesGained)]
+            : [desc(strokesGainedShotEvents.createdAt)];
   const events = await db
     .select({
       id: strokesGainedShotEvents.id,
@@ -418,8 +445,8 @@ async function getStrokesGainedData() {
     })
     .from(strokesGainedShotEvents)
     .innerJoin(sessions, eq(sessions.id, strokesGainedShotEvents.sessionId))
-    .where(eq(strokesGainedShotEvents.userId, userId))
-    .orderBy(desc(strokesGainedShotEvents.createdAt))
+    .where(and(...conditions))
+    .orderBy(...orderBy)
     .limit(ANALYSIS_LIMIT);
 
   return { events };
@@ -2393,7 +2420,7 @@ function parseFilters(params: Awaited<SearchParams>): StrokesGainedFilters {
   const sg = first(params.sg);
 
   return {
-    sessionId: first(params.sessionId),
+    sessionId: uuidParam(first(params.sessionId)),
     category: first(params.category),
     hole: integerParam(first(params.hole)),
     startLie: first(params.startLie),
@@ -2647,6 +2674,12 @@ function dateParam(value: string) {
 
 function integerParam(value: string) {
   return /^\d+$/.test(value) ? value : "";
+}
+
+function uuidParam(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : "";
 }
 
 function pluralise(count: number, singular: string) {

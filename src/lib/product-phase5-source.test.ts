@@ -1,0 +1,103 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+function source(path: string) {
+  return readFileSync(join(process.cwd(), path), "utf8");
+}
+
+describe("Phase 5 product-page contract", () => {
+  it("keeps Today focused on the latest evidence, next action and reversible review controls", () => {
+    const today = source("src/app/today/page.tsx");
+
+    expect(today.indexOf("<TodayMobileVerdictCard")).toBeLessThan(
+      today.indexOf("<TodayPrescriptionCard"),
+    );
+    expect(today).toContain("TodayReviewControls");
+    expect(today).toContain("Trusted shots");
+    expect(today).toContain("All imported");
+    expect(today).toContain("Simulate outlier exclusions");
+    expect(today).toContain("Data cleaning impact");
+  });
+
+  it("keeps Shots compact, URL-filtered and progressively disclosed on mobile", () => {
+    const shots = source("src/app/shots/page.tsx");
+
+    expect(shots).toContain("MobileFilterSheet");
+    expect(shots).toContain("buildActiveFilterChips");
+    expect(shots).toContain("SavedShotViewsPanel");
+    expect(shots).toContain('label="Offline"');
+    expect(shots).toContain('label="Ball speed"');
+    expect(shots).toContain('label="Outcome"');
+    expect(shots).toContain("Advanced");
+    expect(shots).toContain('params.set("club"');
+  });
+
+  it("keeps Bag centred on stock, dependable ranges, gapping and sample trust", () => {
+    const bag = source("src/app/bag/page.tsx");
+
+    expect(bag).toContain("Bag confidence ladder");
+    expect(bag).toContain("Full gapping ladder");
+    expect(bag).toContain("stock carry");
+    expect(bag).toContain("latestReliableCarryP25Yd");
+    expect(bag).toContain("latestReliableCarryP75Yd");
+    expect(bag).toContain("personal best");
+    expect(bag).toContain("sample size");
+  });
+
+  it("requires Coach recommendations to expose evidence and success criteria", () => {
+    const coach = source("src/app/coach/page.tsx");
+
+    for (const label of [
+      "Observation",
+      "Evidence",
+      "Confidence",
+      "Why it matters",
+      "Suggested drill",
+      "Success measure",
+      "Reassess when",
+    ]) {
+      expect(coach).toContain(`label: "${label}"`);
+    }
+    expect(coach).not.toContain('label="Expected gain"');
+  });
+
+  it("separates progress dimensions and does not equate volume with improvement", () => {
+    const progress = source("src/app/progress/page.tsx");
+
+    for (const label of [
+      "Performance",
+      "Consistency",
+      "Strike quality",
+      "Direction control",
+      "Speed",
+      "Training volume",
+      "Confidence / sample",
+    ]) {
+      expect(progress).toContain(`label: "${label}"`);
+    }
+    expect(progress).toContain("more shots is not automatic improvement");
+  });
+
+  it("labels Handicap as unofficial and explains eligibility failures", () => {
+    const handicap = source("src/app/handicap/page.tsx");
+    const calculations = source("src/lib/round-handicap.ts");
+
+    expect(handicap).toContain("not an official Handicap Index");
+    expect(handicap).toContain("Eligible with defaults");
+    expect(handicap).toContain("Needs 9 or 18 holes");
+    expect(handicap).toContain("hole score");
+    expect(calculations).toContain('typeof input.holesPlayed === "number"');
+  });
+
+  it("keeps social secondary, proof-labelled and privacy-aware", () => {
+    const feed = source("src/app/feed/page.tsx");
+    const today = source("src/app/today/page.tsx");
+
+    expect(feed).toContain('{ id: "proof", label: "Proof" }');
+    expect(feed).toContain('{ id: "privacy", label: "Privacy" }');
+    expect(feed).toContain("Post after proof and privacy look right.");
+    expect(feed).toContain("item.verificationLabel");
+    expect(today).toContain("Social comparison is on demand");
+  });
+});

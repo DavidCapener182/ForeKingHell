@@ -1,5 +1,5 @@
 export const preferredUnitOptions = ["yards", "metres"] as const;
-export const themeOptions = ["light"] as const;
+export const themeOptions = ["system", "light", "dark"] as const;
 export const tableDensityOptions = ["comfortable", "compact"] as const;
 export const dashboardPinOptions = [
   "shots",
@@ -27,8 +27,8 @@ export function parsePreferredUnits(value: FormDataEntryValue | null): Preferred
   return value === "metres" ? "metres" : "yards";
 }
 
-export function parseTheme(): ThemePreference {
-  return "light";
+export function parseTheme(value: FormDataEntryValue | null): ThemePreference {
+  return value === "light" || value === "dark" ? value : "system";
 }
 
 export function parseTableDensity(value: FormDataEntryValue | null): TableDensity {

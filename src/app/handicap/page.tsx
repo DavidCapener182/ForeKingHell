@@ -77,6 +77,7 @@ const handicapRoundColumns: DesktopWorkbenchColumn[] = [
   { id: "rating", label: "Rating" },
   { id: "slope", label: "Slope" },
   { id: "differential", label: "Diff" },
+  { id: "eligibility", label: "Eligibility" },
   { id: "holes", label: "Holes" },
   { id: "shots", label: "Shots" },
 ];
@@ -473,6 +474,10 @@ export default async function HandicapPage() {
                     label="Differential"
                     value={formatHandicapValue(round.handicapDifferential)}
                   />
+                  <DataPair
+                    label="Eligibility"
+                    value={`${round.eligibility.label} · ${round.eligibility.reason}`}
+                  />
                   <DataPair label="Holes" value={formatHolesPlayed(round)} />
                 </MobileDataCard>
               ))
@@ -503,7 +508,7 @@ export default async function HandicapPage() {
               />
               <DataTableFrame mainTable mainTableLabel="Score differential table" stickyFirstColumn>
                 <Table
-                  className="min-w-[1040px]"
+                  className="min-w-[1180px]"
                   data-workbench-export-table="handicap-rounds"
                   aria-describedby="handicap-rounds-summary"
                 >
@@ -532,6 +537,7 @@ export default async function HandicapPage() {
                       <TableHead data-column="differential" className="text-right">
                         Diff
                       </TableHead>
+                      <TableHead data-column="eligibility">Eligibility</TableHead>
                       <TableHead data-column="holes" className="text-right">
                         Holes
                       </TableHead>
@@ -573,6 +579,12 @@ export default async function HandicapPage() {
                         <TableCell data-column="differential" className="text-right font-semibold">
                           {formatHandicapValue(round.handicapDifferential)}
                         </TableCell>
+                        <TableCell data-column="eligibility" className="max-w-72 whitespace-normal">
+                          <span className="font-medium">{round.eligibility.label}</span>
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
+                            {round.eligibility.reason}
+                          </span>
+                        </TableCell>
                         <TableCell data-column="holes" className="text-right">
                           {formatHolesPlayed(round)}
                         </TableCell>
@@ -583,7 +595,7 @@ export default async function HandicapPage() {
                     ))}
                     {rounds.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                           No scorecards yet. Import a simulated course or add a real round.
                         </TableCell>
                       </TableRow>
@@ -642,8 +654,8 @@ async function getHandicapRounds() {
 
   return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
-    const rawTotalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
-    const rawTotalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
+    const rawTotalScore = sumComplete(scorecard.map((hole) => hole.score ?? null));
+    const rawTotalPutts = sumComplete(scorecard.map((hole) => hole.putts ?? null));
     const rawTotalPar =
       scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
     const handicapInput = normaliseHandicapRoundInput({
@@ -654,6 +666,13 @@ async function getHandicapRounds() {
       holesPlayed: scorecard.length,
     });
     const handicapDifferential = calculateRoundDifferential(handicapInput);
+    const eligibility = handicapRoundEligibility({
+      type: session.type,
+      scorecard,
+      handicapDifferential,
+      courseRating: session.courseRating,
+      slopeRating: session.slopeRating,
+    });
 
     return {
       ...session,
@@ -664,6 +683,7 @@ async function getHandicapRounds() {
         : rawTotalPutts,
       totalPar: handicapInput.totalPar ?? null,
       handicapDifferential,
+      eligibility,
       holesPlayed: handicapInput.holesPlayed ?? null,
       originalHolesPlayed: handicapInput.originalHolesPlayed,
       isNineHoleEquivalent: handicapInput.isNineHoleEquivalent,
@@ -1049,9 +1069,66 @@ function trendSentence(summary: HandicapSummary) {
   return `${summary.trend.direction === "down" ? "Improving" : "Drifting up"} ${formatHandicapDelta(summary.trend.delta)}`;
 }
 
-function sumNullable(values: Array<number | null>) {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length > 0 ? present.reduce((total, value) => total + value, 0) : null;
+function sumComplete(values: Array<number | null>) {
+  return values.length > 0 && values.every((value): value is number => typeof value === "number")
+    ? values.reduce((total, value) => total + value, 0)
+    : null;
+}
+
+function handicapRoundEligibility({
+  type,
+  scorecard,
+  handicapDifferential,
+  courseRating,
+  slopeRating,
+}: {
+  type: string;
+  scorecard: Array<{ score?: number | null }>;
+  handicapDifferential: number | null;
+  courseRating: number | null;
+  slopeRating: number | null;
+}) {
+  if (scorecard.length !== 9 && scorecard.length !== 18) {
+    return {
+      eligible: false,
+      label: "Excluded",
+      reason: `Needs 9 or 18 holes; ${scorecard.length} saved.`,
+    };
+  }
+
+  const missingScores = scorecard.filter((hole) => typeof hole.score !== "number").length;
+  if (missingScores > 0) {
+    return {
+      eligible: false,
+      label: "Excluded",
+      reason: `${missingScores} hole score${missingScores === 1 ? " is" : "s are"} missing.`,
+    };
+  }
+
+  if (handicapDifferential === null) {
+    return {
+      eligible: false,
+      label: "Excluded",
+      reason: "Scoring or par data is incomplete.",
+    };
+  }
+
+  if (courseRating === null || slopeRating === null) {
+    return {
+      eligible: true,
+      label: "Eligible with defaults",
+      reason:
+        type === "real_round"
+          ? "Rating or slope is missing; the estimate falls back to par and slope 113."
+          : "Simulator estimate uses par and slope 113 where rating data is missing.",
+    };
+  }
+
+  return {
+    eligible: true,
+    label: "Eligible",
+    reason: "Complete scorecard with course rating and slope.",
+  };
 }
 
 function doubleNullable(value: number | null) {

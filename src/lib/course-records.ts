@@ -11,6 +11,7 @@ import {
   courseRecordResults,
   courseRecords,
   courses,
+  groupMemberships,
   moderationEvents,
   rapsodoSyncSessions,
   sessions,
@@ -24,7 +25,7 @@ import { getDb } from "@/db/client";
 import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
-import { verifyScorecardProofToken } from "@/lib/scorecard-proof-token";
+import { consumeScorecardProofToken } from "@/lib/scorecard-proof-token";
 import {
   areFriends,
   createFeedItem,
@@ -504,7 +505,16 @@ export async function getCourseRecordsHubData() {
   const [recordRows, resultRows, teeRows] =
     visibleCourseIds.length > 0
       ? await Promise.all([
-          db.select().from(courseRecords).where(inArray(courseRecords.courseId, visibleCourseIds)),
+          db
+            .select()
+            .from(courseRecords)
+            .where(
+              and(
+                inArray(courseRecords.courseId, visibleCourseIds),
+                eq(courseRecords.scope, "public"),
+                eq(courseRecords.status, "active"),
+              ),
+            ),
           db
             .select({
               result: courseRecordResults,
@@ -518,12 +528,21 @@ export async function getCourseRecordsHubData() {
               and(
                 inArray(courseRecords.courseId, visibleCourseIds),
                 eq(courseRecordResults.rank, 1),
+                eq(courseRecords.scope, "public"),
+                eq(courseRecords.status, "active"),
               ),
             ),
           db.select().from(teeSets).where(inArray(teeSets.courseId, visibleCourseIds)),
         ])
       : [[], [], []];
-  const uniqueRecordRows = dedupeCourseRecords(recordRows);
+  const visibleRecordRows = (
+    await Promise.all(
+      recordRows.map(async (record) =>
+        (await canViewRecord(viewerUserId, record)) ? record : null,
+      ),
+    )
+  ).filter((record): record is (typeof recordRows)[number] => Boolean(record));
+  const uniqueRecordRows = dedupeCourseRecords(visibleRecordRows);
   const recordsByCourse = countBy(uniqueRecordRows.map((record) => record.courseId));
   const teeByCourse = countBy(teeRows.map((teeSet) => teeSet.courseId));
   const leaderByCourse = new Map<string, (typeof resultRows)[number]>();
@@ -565,13 +584,23 @@ export async function getCourseRecordCourseData(
 ) {
   const viewerUserId = await requireCurrentUserId();
   await ensureDefaultCourseRecordCategories();
-  await ensureCourseRecordBoards(courseId, viewerUserId);
   const db = getDb();
-  const [course] = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
+  const [course] = await db
+    .select()
+    .from(courses)
+    .where(
+      and(
+        eq(courses.id, courseId),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, viewerUserId)),
+      ),
+    )
+    .limit(1);
 
   if (!course) {
     return null;
   }
+
+  await ensureCourseRecordBoards(courseId, viewerUserId);
 
   const [teeRows, categoryRows, recordRows, previousRoundRows, friendIds] = await Promise.all([
     db.select().from(teeSets).where(eq(teeSets.courseId, courseId)).orderBy(asc(teeSets.name)),
@@ -603,7 +632,14 @@ export async function getCourseRecordCourseData(
     viewerUserId,
     previousRoundRows.map((row) => row.session.id),
   );
-  const uniqueRecordRows = dedupeCourseRecords(recordRows);
+  const visibleRecordRows = (
+    await Promise.all(
+      recordRows.map(async (record) =>
+        (await canViewRecord(viewerUserId, record)) ? record : null,
+      ),
+    )
+  ).filter((record): record is (typeof recordRows)[number] => Boolean(record));
+  const uniqueRecordRows = dedupeCourseRecords(visibleRecordRows);
   await syncVerifiedRoundRecordAttempts({
     userId: viewerUserId,
     courseId,
@@ -612,18 +648,21 @@ export async function getCourseRecordCourseData(
     rounds: previousRoundRows,
     shotRowsBySession,
   });
+  const visibleRecordIds = uniqueRecordRows.map((record) => record.id);
   const [resultRows, viewerAttemptRows] = await Promise.all([
-    db
-      .select({
-        result: courseRecordResults,
-        record: courseRecords,
-        profile: userProfiles,
-      })
-      .from(courseRecordResults)
-      .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
-      .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-      .where(eq(courseRecords.courseId, courseId))
-      .orderBy(asc(courseRecordResults.rank)),
+    visibleRecordIds.length > 0
+      ? db
+          .select({
+            result: courseRecordResults,
+            record: courseRecords,
+            profile: userProfiles,
+          })
+          .from(courseRecordResults)
+          .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+          .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+          .where(inArray(courseRecords.id, visibleRecordIds))
+          .orderBy(asc(courseRecordResults.rank))
+      : [],
     db
       .select()
       .from(courseRecordAttempts)
@@ -769,7 +808,12 @@ export async function getCourseRecordDetailData(recordId: string) {
     .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
     .innerJoin(courses, eq(courseRecords.courseId, courses.id))
     .leftJoin(teeSets, eq(courseRecords.teeSetId, teeSets.id))
-    .where(eq(courseRecords.id, recordId))
+    .where(
+      and(
+        eq(courseRecords.id, recordId),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, viewerUserId)),
+      ),
+    )
     .limit(1);
 
   if (!row || !(await canViewRecord(viewerUserId, row.record))) {
@@ -913,9 +957,12 @@ export async function submitCourseRecordAttempt(input: {
   const grossScore = roundSubmission?.grossScore ?? input.grossScore ?? null;
   const netScore = roundSubmission?.netScore ?? input.netScore ?? null;
   const stablefordPoints = roundSubmission?.stablefordPoints ?? input.stablefordPoints ?? null;
-  const csvHash = input.csvHash ?? roundSubmission?.csvHash ?? null;
+  const csvHash = roundSubmission?.csvHash ?? null;
   const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
-  const scorecardProof = verifyScorecardProofToken(input.scorecardProofToken, userId);
+  const scorecardProof = await consumeScorecardProofToken(input.scorecardProofToken, userId, {
+    scopeType: "course_record",
+    scopeId: recordRow.record.id,
+  });
   const extractedScorecardTotal =
     scorecardProof?.totalScore ?? input.extractedScorecardTotal ?? null;
   const hasScorecardProof =
@@ -924,8 +971,7 @@ export async function submitCourseRecordAttempt(input: {
     (input.extractedScorecardTotal === null ||
       input.extractedScorecardTotal === undefined ||
       input.extractedScorecardTotal === scorecardProof.totalScore);
-  const hasRapsodoDirect =
-    Boolean(rapsodoSyncSessionId) || (!roundSubmission && Boolean(input.hasRapsodoDirect));
+  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId);
   const manualEdit =
     input.manualEdit || (roundSubmission ? roundSubmission.session.source !== "rapsodo" : false);
   const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
@@ -1025,7 +1071,7 @@ export async function submitCourseRecordAttempt(input: {
           updatedAt: now,
         }
       : null,
-    input.screenshotPath
+    scorecardProof && input.screenshotPath
       ? {
           attemptId: attempt.id,
           evidenceType: "scorecard_screenshot",
@@ -1369,6 +1415,22 @@ async function canViewRecord(viewerUserId: string, record: typeof courseRecords.
     (await areFriends(viewerUserId, record.createdByUserId))
   ) {
     return true;
+  }
+
+  if (record.scope === "group" && record.groupId) {
+    const [membership] = await getDb()
+      .select({ id: groupMemberships.id })
+      .from(groupMemberships)
+      .where(
+        and(
+          eq(groupMemberships.groupId, record.groupId),
+          eq(groupMemberships.userId, viewerUserId),
+          eq(groupMemberships.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    return Boolean(membership);
   }
 
   return false;

@@ -199,6 +199,17 @@ describe("calculateStockYardage", () => {
     expect(calculatePersonalBestTotalYd(shots, shots.length, { clubType: "driver" })).toBe(241);
   });
 
+  it("keeps personal bests all-time even when the record is older than the latest 50 shots", () => {
+    const allTimeBest = { ...shot(230, 252, 0, dateForSequence(0)), id: "all-time-best" };
+    const recentShots = Array.from({ length: 60 }, (_, index) => ({
+      ...shot(205 + (index % 5), 225 + (index % 5), 0, dateForSequence(index + 1)),
+      id: `recent-${index}`,
+    }));
+
+    expect(selectPersonalBestCarryShot([allTimeBest, ...recentShots])?.id).toBe("all-time-best");
+    expect(selectPersonalBestTotalShot([allTimeBest, ...recentShots])?.id).toBe("all-time-best");
+  });
+
   it("uses latest reliable carry from recent chronological shots, not longest shots", () => {
     const olderBest = Array.from({ length: 20 }, (_, index) =>
       shot(220, 235, 0, dateForSequence(index)),

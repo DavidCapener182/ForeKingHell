@@ -33,23 +33,19 @@ export function MobileMetricStrip({
       aria-label="Mobile summary metrics"
       tabIndex={0}
       className={cn(
-        "-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden",
+        "ios-grouped-list -mx-4 flex overflow-x-auto px-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden",
         className,
       )}
     >
       {items.map((item, index) => (
         <div
           key={`${String(item.label)}-${index}`}
-          className="grid min-w-36 shrink-0 grid-cols-[auto_1fr] gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          className="ios-grouped-row grid min-w-32 shrink-0 grid-cols-[auto_1fr] gap-2.5 border-r px-3.5 py-3"
         >
-          <span
-            className={cn("mt-1 size-2.5 rounded-full ring-4", dotTone[item.tone ?? "green"])}
-          />
+          <span className={cn("mt-1.5 size-2 rounded-full", dotTone[item.tone ?? "green"])} />
           <span className="min-w-0">
-            <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              {item.label}
-            </span>
-            <span className="mt-0.5 block truncate text-lg font-semibold tracking-normal">
+            <span className="block truncate text-xs text-muted-foreground">{item.label}</span>
+            <span className="mt-0.5 block truncate text-[17px] font-semibold tabular-nums">
               {item.value}
             </span>
             {item.detail ? (

@@ -28,7 +28,7 @@ import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAdminUsers } from "@/lib/admin";
+import { getAdminUsers, requireAdminUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +96,8 @@ const adminUserSuggestedViews: DesktopSavedViewSuggestion[] = [
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const params = await searchParams;
   const sortState = parseAdminUserSort(params?.sort, params?.dir);
-  const users = await getAdminUsers({ q: params?.q });
+  const [actor, users] = await Promise.all([requireAdminUser(), getAdminUsers({ q: params?.q })]);
+  const canManageOwners = actor.role === "owner";
   const sortedUsers = sortAdminUsers(users, sortState);
   const adminCount = users.filter((user) => user.adminRole).length;
   const lifetimeCount = users.filter((user) => user.activePlan === "full").length;
@@ -154,31 +155,33 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               </form>
             </AdminSection>
 
-            <AdminSection
-              title="Grant lifetime full"
-              description="Creates a lifetime plan row and all full entitlements."
-            >
-              <form action={grantLifetimeFullAction} className="grid gap-3">
-                <input type="hidden" name="returnTo" value="/admin/users" />
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="user@example.com"
-                  className="h-10 rounded-xl bg-slate-50"
-                  required
-                />
-                <AdminConfirmSubmitButton
-                  type="submit"
-                  className="rounded-xl bg-[#111827] text-white"
-                  confirmTitle="Grant lifetime full access"
-                  confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
-                  confirmActionLabel="Grant full access"
-                >
-                  <Zap className="size-4" />
-                  Grant full
-                </AdminConfirmSubmitButton>
-              </form>
-            </AdminSection>
+            {canManageOwners ? (
+              <AdminSection
+                title="Grant lifetime full"
+                description="Creates a lifetime plan row and all full entitlements."
+              >
+                <form action={grantLifetimeFullAction} className="grid gap-3">
+                  <input type="hidden" name="returnTo" value="/admin/users" />
+                  <Input
+                    name="email"
+                    type="email"
+                    placeholder="user@example.com"
+                    className="h-10 rounded-xl bg-slate-50"
+                    required
+                  />
+                  <AdminConfirmSubmitButton
+                    type="submit"
+                    className="rounded-xl bg-[#111827] text-white"
+                    confirmTitle="Grant lifetime full access"
+                    confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+                    confirmActionLabel="Grant full access"
+                  >
+                    <Zap className="size-4" />
+                    Grant full
+                  </AdminConfirmSubmitButton>
+                </form>
+              </AdminSection>
+            ) : null}
 
             <AdminSection
               title="Add admin operator"
@@ -200,7 +203,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   className="h-10 rounded-xl border bg-slate-50 px-3 text-sm"
                 >
                   <option value="operator">Operator</option>
-                  <option value="owner">Owner</option>
+                  {canManageOwners ? <option value="owner">Owner</option> : null}
                 </select>
                 <AdminConfirmSubmitButton
                   type="submit"
@@ -310,7 +313,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                         {user.sessionCount} sessions · {user.feedCount} cards
                       </td>
                       <td data-column="admin" className="px-3 py-3">
-                        {user.adminRole ? (
+                        {user.adminRole && canManageOwners && user.id !== actor.userId ? (
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="secondary">{label(user.adminRole)}</Badge>
                             <Badge variant="outline">{label(user.adminStatus ?? "active")}</Badge>

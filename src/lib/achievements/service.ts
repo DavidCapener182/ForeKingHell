@@ -246,12 +246,12 @@ export async function evaluateAchievementsAfterImport(userId: string) {
   return result;
 }
 
-export async function evaluateRoundAchievementsForSession(sessionId: string) {
+export async function evaluateRoundAchievementsForSession(sessionId: string, actorUserId: string) {
   const db = getDb();
   const [session] = await db
     .select({ userId: sessions.userId })
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, actorUserId)))
     .limit(1);
 
   if (!session) {
@@ -262,7 +262,7 @@ export async function evaluateRoundAchievementsForSession(sessionId: string) {
     };
   }
 
-  const result = await syncAchievementsForUser(session.userId);
+  const result = await syncAchievementsForUser(actorUserId);
   revalidateAchievementPages();
   return result;
 }

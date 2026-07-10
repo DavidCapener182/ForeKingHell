@@ -100,11 +100,7 @@ export async function submitTournamentRoundAction(formData: FormData) {
     csvHash: formString(formData, "csvHash"),
     scorecardScreenshotPath: formString(formData, "scorecardScreenshotPath"),
     extractedScorecardTotal: formNumber(formData, "extractedScorecardTotal"),
-    hasRapsodoDirect: formData.get("hasRapsodoDirect") === "on",
-    courseMatches: formData.get("courseMatches") !== "off",
-    dateMatches: formData.get("dateMatches") !== "off",
-    teeMatches: formData.get("teeMatches") !== "off",
-    manualEdit: formData.get("manualEdit") === "on",
+    scorecardProofToken: formString(formData, "scorecardProofToken"),
   });
 
   redirect(`/tournaments/${tournamentId}?submission=${submissionId}`);

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("authentication", () => {
+  test.beforeEach(async ({ context }) => {
+    await context.clearCookies();
+  });
+
   test("redirects protected pages to login", async ({ page }) => {
     await page.goto("/dashboard");
 

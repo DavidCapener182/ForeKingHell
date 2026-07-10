@@ -1,5 +1,5 @@
-const CACHE_NAME = "forekinghell-pwa-v5";
-const PAGE_CACHE_NAME = "forekinghell-pwa-pages-v2";
+const CACHE_NAME = "forekinghell-pwa-v6";
+const PAGE_CACHE_NAME = "forekinghell-pwa-pages-v3";
 const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [
   "/offline",
@@ -115,10 +115,17 @@ async function networkFirstPage(request) {
 
   try {
     const response = await fetch(request);
+    const responseUrl = new URL(response.url);
+    const cacheControl = response.headers.get("cache-control")?.toLowerCase() ?? "";
 
     if (
       response.ok &&
       OFFLINE_SAFE_PAGE_PATHS.has(url.pathname) &&
+      !response.redirected &&
+      responseUrl.origin === url.origin &&
+      responseUrl.pathname === url.pathname &&
+      !cacheControl.includes("private") &&
+      !cacheControl.includes("no-store") &&
       !request.headers.get("cookie") &&
       !response.headers.has("set-cookie") &&
       response.headers.get("content-type")?.includes("text/html")

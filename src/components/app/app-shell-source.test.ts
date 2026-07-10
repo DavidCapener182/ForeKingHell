@@ -14,7 +14,7 @@ describe("app shell desktop accessibility", () => {
     expect(source).toContain("Skip to main table");
     expect(source).toContain("resolveMainTableTarget()");
     expect(source).toContain('document.querySelector<HTMLElement>("[data-main-table-target');
-    expect(source).toContain('table[data-workbench-export-table]');
+    expect(source).toContain("table[data-workbench-export-table]");
   });
 
   it("clears stale main-table skip state when routes change", () => {
@@ -26,11 +26,19 @@ describe("app shell desktop accessibility", () => {
     expect(source).toContain('type SidebarDensity = "comfortable" | "compact" | "icon"');
     expect(source).toContain('const sidebarDensityStorageKey = "fkh:desktop-sidebar-density"');
     expect(source).toContain("window.localStorage.setItem(sidebarDensityStorageKey, nextDensity)");
-    expect(source).toContain('data-sidebar-density={sidebarDensity}');
+    expect(source).toContain("data-sidebar-density={sidebarDensity}");
     expect(source).toContain("<SidebarDensityMenu");
-    expect(source).toContain('aria-label={`Sidebar density: ${densityLabel}`}');
+    expect(source).toContain("aria-label={`Sidebar density: ${densityLabel}`}");
     expect(source).toContain("Comfortable");
     expect(source).toContain("Compact");
     expect(source).toContain("Icon-only");
+  });
+
+  it("defers private mobile navigation on public routes", () => {
+    expect(source).toContain('import("@/components/app/mobile-nav")');
+    expect(source).toContain(
+      'import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome"',
+    );
+    expect(source).toContain("if (isPublicRoute(pathname))");
   });
 });

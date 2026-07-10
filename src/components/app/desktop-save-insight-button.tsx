@@ -27,6 +27,7 @@ export function DesktopSaveInsightButton({
   className?: string;
 }) {
   const [saved, setSaved] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     function syncSavedState() {
@@ -34,7 +35,10 @@ export function DesktopSaveInsightButton({
       setSaved(readSavedInsights().some((link) => link.href === href));
     }
 
-    const timer = window.setTimeout(syncSavedState, 0);
+    const timer = window.setTimeout(() => {
+      setHydrated(true);
+      syncSavedState();
+    }, 0);
     window.addEventListener(savedInsightUpdatedEvent, syncSavedState);
 
     return () => {
@@ -72,6 +76,8 @@ export function DesktopSaveInsightButton({
     <button
       type="button"
       onClick={saveInsight}
+      disabled={!hydrated}
+      data-save-insight-hydrated={hydrated ? "true" : "false"}
       className={cn(
         "focus-aaa grid min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none",
         saved

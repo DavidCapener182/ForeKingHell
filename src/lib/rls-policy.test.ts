@@ -48,6 +48,14 @@ const practicePlannerMigration = readFileSync(
   join(process.cwd(), "drizzle/0036_practice_planner.sql"),
   "utf8",
 );
+const securityBoundaryMigration = readFileSync(
+  join(process.cwd(), "drizzle/0039_security_boundary_repairs.sql"),
+  "utf8",
+);
+const integrityLockdownMigration = readFileSync(
+  join(process.cwd(), "drizzle/0040_security_integrity_lockdown.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
   it("enables RLS on user-owned roadmap tables", () => {
@@ -370,5 +378,108 @@ describe("RLS migration", () => {
     );
     expect(trainingOverTimeMigration).toContain('"user_id" = auth.uid()');
     expect(trainingOverTimeMigration).toContain("WITH (security_invoker = true)");
+  });
+
+  it("prevents client-created billing, friendship and group-admin trust", () => {
+    expect(securityBoundaryMigration).toContain(
+      'DROP POLICY IF EXISTS "fkh_subscriptions_owner_insert"',
+    );
+    expect(securityBoundaryMigration).toContain(
+      "REVOKE INSERT, UPDATE, DELETE ON TABLE public.fkh_subscriptions FROM anon, authenticated",
+    );
+    expect(securityBoundaryMigration).toContain(
+      'DROP POLICY IF EXISTS "fkh_friendships_insert_participant"',
+    );
+    expect(securityBoundaryMigration).toContain(
+      'DROP POLICY IF EXISTS "fkh_group_memberships_insert_self_or_manager"',
+    );
+    expect(securityBoundaryMigration).toContain(
+      'CREATE POLICY "fkh_group_memberships_insert_manager"',
+    );
+  });
+
+  it("binds relationship helpers to the authenticated actor", () => {
+    for (const helper of [
+      "fkh_are_friends",
+      "fkh_has_social_block",
+      "fkh_is_group_member",
+      "fkh_can_manage_group",
+    ]) {
+      expect(securityBoundaryMigration).toContain(`FUNCTION public.${helper}`);
+    }
+
+    expect(securityBoundaryMigration).toContain("target_user_id = (SELECT auth.uid())");
+    expect(securityBoundaryMigration).toContain(
+      "viewer_id = (SELECT auth.uid()) OR subject_id = (SELECT auth.uid())",
+    );
+  });
+
+  it("keeps editor-owned and relationship scope columns immutable", () => {
+    expect(securityBoundaryMigration).toContain(
+      "CREATE OR REPLACE FUNCTION public.fkh_reject_scope_reassignment()",
+    );
+
+    for (const trigger of [
+      "fkh_shots_owner_immutable",
+      "fkh_sessions_owner_immutable",
+      "fkh_friend_requests_scope_immutable",
+      "fkh_challenge_entries_scope_immutable",
+      "fkh_challenge_invites_scope_immutable",
+      "fkh_group_memberships_scope_immutable",
+    ]) {
+      expect(securityBoundaryMigration).toContain(`CREATE TRIGGER ${trigger}`);
+    }
+  });
+
+  it("makes canonical identity, quota, reward, provenance and practice state server maintained", () => {
+    expect(integrityLockdownMigration).toContain(
+      "ALTER TABLE public.fkh_user_identity_links ENABLE ROW LEVEL SECURITY",
+    );
+    expect(integrityLockdownMigration).toContain(
+      "REVOKE ALL PRIVILEGES ON TABLE public.fkh_user_identity_links",
+    );
+
+    for (const table of [
+      "public.fkh_usage_events",
+      "public.fkh_ai_usage_events",
+      "public.fkh_ai_generation_cache",
+      "public.fkh_user_achievements",
+      "public.fkh_xp_ledger",
+      "public.fkh_achievement_progress",
+      "public.fkh_achievement_sync_state",
+      "public.fkh_rapsodo_sync_sessions",
+      "public.fkh_challenge_attempts",
+      "public.fkh_challenge_results",
+      "public.fkh_practice_blocks",
+      "public.fkh_practice_results",
+      "public.fkh_practice_plan_matches",
+      "public.fkh_practice_block_results",
+    ]) {
+      expect(integrityLockdownMigration).toContain(table);
+    }
+
+    expect(integrityLockdownMigration).toContain("fkh_ai_usage_events_credits_nonnegative");
+  });
+
+  it("enforces parent ownership for course, equipment, and practice relations", () => {
+    for (const trigger of [
+      "fkh_holes_validate_tee_course",
+      "fkh_equipment_history_validate_ownership",
+      "fkh_practice_plans_validate_relations",
+      "fkh_practice_blocks_validate_relations",
+      "fkh_practice_results_validate_relations",
+      "fkh_practice_matches_validate_relations",
+      "fkh_practice_block_results_validate_relations",
+    ]) {
+      expect(integrityLockdownMigration).toContain("CREATE TRIGGER " + trigger);
+    }
+
+    expect(integrityLockdownMigration).toContain("tee_set.id = NEW.tee_set_id");
+    expect(integrityLockdownMigration).toContain(
+      "ball.id = NEW.ball_model_id AND ball.user_id = NEW.user_id",
+    );
+    expect(integrityLockdownMigration).toContain(
+      "block.practice_plan_id = result.practice_plan_id",
+    );
   });
 });

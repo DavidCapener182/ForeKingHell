@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const allowedDevOrigins = parseAllowedDevOrigins(process.env.NEXT_ALLOWED_DEV_ORIGINS);
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   ...(process.env.NODE_ENV === "development" && allowedDevOrigins.length > 0
     ? { allowedDevOrigins }
     : {}),

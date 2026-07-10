@@ -1,9 +1,11 @@
 "use client";
 
-export function purgePrivateServiceWorkerCaches() {
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-    return;
-  }
+import { clearOfflineActions } from "@/lib/offline-queue";
+
+export async function purgePrivateClientData() {
+  await clearOfflineActions().catch(() => undefined);
+
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
 
   navigator.serviceWorker.controller?.postMessage({ type: "FKH_PURGE_PRIVATE_CACHES" });
 

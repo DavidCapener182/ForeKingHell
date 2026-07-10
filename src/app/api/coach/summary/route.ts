@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { rejectOversizedRequest, rateLimitRequest } from "@/lib/api-protection";
-import { buildCoachPrompt, parseAiCoachSummary, type AiCoachPayload } from "@/lib/ai-coach-summary";
+import { rateLimitRequest, readBoundedJsonBody } from "@/lib/api-protection";
+import { buildCoachPrompt, parseAiCoachPayload, parseAiCoachSummary } from "@/lib/ai-coach-summary";
 import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
 import { aiCoachSummarySchema } from "@/lib/ai/schemas";
-import { BRAND_NAME, LEGACY_BRAND_NAME } from "@/lib/brand";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 
 export const runtime = "nodejs";
@@ -18,11 +17,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
 
-  const sizeRejection = rejectOversizedRequest(request, MAX_REQUEST_BYTES);
-  if (sizeRejection) {
-    return sizeRejection;
-  }
-
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "coach-summary",
     limit: 20,
@@ -32,10 +26,12 @@ export async function POST(request: NextRequest) {
     return rateLimitRejection;
   }
 
-  const body = (await request.json().catch(() => null)) as { payload?: unknown } | null;
-  const payload = body?.payload;
+  const bodyResult = await readBoundedJsonBody(request, MAX_REQUEST_BYTES);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.value as { payload?: unknown } | null;
+  const payload = parseAiCoachPayload(body?.payload);
 
-  if (!isAiCoachPayload(payload)) {
+  if (!payload) {
     return NextResponse.json({ message: "Send a valid coach payload." }, { status: 400 });
   }
 
@@ -70,26 +66,4 @@ export async function POST(request: NextRequest) {
     const { body, status } = aiErrorPayload(error);
     return NextResponse.json(body, { status });
   }
-}
-
-function isAiCoachPayload(value: unknown): value is AiCoachPayload {
-  if (
-    !isRecord(value) ||
-    (value.productName !== BRAND_NAME && value.productName !== LEGACY_BRAND_NAME) ||
-    !isRecord(value.totals)
-  ) {
-    return false;
-  }
-
-  return (
-    typeof value.headline === "string" &&
-    typeof value.subhead === "string" &&
-    Array.isArray(value.clubs) &&
-    Array.isArray(value.signals) &&
-    Array.isArray(value.sessionPlan)
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

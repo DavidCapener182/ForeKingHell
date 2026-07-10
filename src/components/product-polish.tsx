@@ -185,9 +185,12 @@ export function PublicSharePreviewPanel({
           </Button>
         }
       />
-      <div className="grid gap-3 p-4 md:grid-cols-3">
+      <div className="ios-share-audiences grid gap-3 p-4 md:grid-cols-3">
         {audiences.map((audience, index) => (
-          <div key={audience.label} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div
+            key={audience.label}
+            className="ios-share-audience rounded-lg border border-slate-200 bg-white p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">{audience.label}</p>
               {index === 0 ? (

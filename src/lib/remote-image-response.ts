@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { LookupAddress } from "node:dns";
+import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 
 import { BRAND_NAME, BRAND_PUBLIC_URL } from "@/lib/brand";
@@ -63,6 +65,8 @@ export async function fetchRemoteImage(
 
   for (let redirects = 0; redirects < maxRedirects; redirects += 1) {
     try {
+      if (!(await isSafeResolvedRemoteUrl(currentUrl))) return null;
+
       const response = await fetchWithTimeout(
         currentUrl,
         options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS,
@@ -172,6 +176,22 @@ export function safeRemoteResourceUrl(
     return url;
   } catch {
     return null;
+  }
+}
+
+export async function isSafeResolvedRemoteUrl(
+  url: URL,
+  resolver: (hostname: string) => Promise<LookupAddress[]> = (hostname) =>
+    lookup(hostname, { all: true, verbatim: true }),
+) {
+  if (isBlockedHost(url.hostname)) return false;
+  if (isIP(url.hostname.replace(/^\[|\]$/g, ""))) return true;
+
+  try {
+    const addresses = await resolver(url.hostname);
+    return addresses.length > 0 && addresses.every((entry) => !isBlockedHost(entry.address));
+  } catch {
+    return false;
   }
 }
 

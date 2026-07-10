@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import { SegmentedControl } from "@/components/app/segmented-control";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -1035,7 +1036,7 @@ export function ShotPatternMap({
 
         <SegmentedControl
           label="Distance"
-          items={[
+          options={[
             { label: "Total", value: "total" },
             { label: "Carry", value: "carry" },
           ]}
@@ -1045,7 +1046,7 @@ export function ShotPatternMap({
 
         <SegmentedControl
           label="Filter"
-          items={[
+          options={[
             { label: "Best 90%", value: "best90" },
             { label: "Best 80%", value: "best80" },
             { label: "All shots", value: "all" },
@@ -1311,41 +1312,6 @@ function formatOutlierMode(mode: ShotPatternOutlierMode) {
     default:
       return "all-shot";
   }
-}
-
-function SegmentedControl({
-  label,
-  items,
-  value,
-  onChange,
-}: {
-  label: string;
-  items: Array<{ label: string; value: string }>;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="grid gap-2 text-sm font-medium">
-      {label}
-      <div
-        className="grid gap-1 rounded-xl border bg-white/92 p-1"
-        style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-      >
-        {items.map((item) => (
-          <Button
-            key={item.value}
-            type="button"
-            size="sm"
-            variant={value === item.value ? "default" : "ghost"}
-            className={cn("h-9 rounded-lg", value === item.value && "bg-[#0B7A3B] text-white")}
-            onClick={() => onChange(item.value)}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function TargetMetric({ label, value }: { label: string; value: string }) {
