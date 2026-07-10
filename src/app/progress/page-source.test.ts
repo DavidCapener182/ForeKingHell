@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/progress/page.tsx"), "utf8");
+const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 describe("progress desktop workbench source", () => {
   it("uses the optional desktop AI rail without crowding laptop workbenches", () => {
@@ -60,5 +61,36 @@ describe("progress desktop workbench source", () => {
     expect(trendsBlock).toContain("rows={trendRows}");
     expect(trendsBlock).toContain('{ key: "trend", label: "Trend" }');
     expect(trendsBlock).toContain('{ key: "readout", label: "Readout" }');
+  });
+
+  it("uses an independent progress main column and supporting rail instead of forced-height peers", () => {
+    expect(source).toContain(
+      'className="progress-analysis-grid grid min-w-0 items-stretch gap-4 lg:gap-5"',
+    );
+    expect(source).toContain(
+      'className="progress-main-rail grid min-w-0 items-stretch gap-4 lg:gap-5"',
+    );
+    expect(source).toContain(
+      'className="progress-supporting-rail grid h-full min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 lg:gap-5"',
+    );
+    expect(source).toContain("<PracticePlanPanel priorities={summary.practicePlan} />");
+    expect(source).toContain("<CoachReadoutPanel");
+    expect(source).toContain("<PracticeCalendarPanel calendar={featureData.practiceCalendar} />");
+    expect(source).toContain("<TrustLadderPanel items={summary.trustLadder} />");
+    expect(source).toContain('<DataPanel stretch className="h-full">');
+    expect(source).toContain('<CardContent className="grid flex-1 content-between gap-2">');
+    expect(source).toContain(
+      "<BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />",
+    );
+    expect(source).toContain('<div id="journey" className="scroll-mt-28">');
+
+    const bentoCss =
+      globalStyles.match(
+        /@media \(min-width: 1024px\) \{[\s\S]*?\.mobile-nav-primary-active/,
+      )?.[0] ?? "";
+    expect(bentoCss).toContain("align-items: start");
+    expect(bentoCss).not.toContain(".progress-bento-item > *");
+    expect(bentoCss).toContain(".progress-analysis-grid");
+    expect(bentoCss).toContain(".progress-main-rail");
   });
 });

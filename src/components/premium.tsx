@@ -322,7 +322,7 @@ export function MobileSectionChips({
       aria-label="Page sections"
       tabIndex={0}
       className={cn(
-        "focus-aaa sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none sm:hidden",
+        "focus-aaa sticky top-[4.75rem] z-30 -mx-1 flex snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 scroll-px-1 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:hidden",
         "premium-route-tabs rounded-lg",
         className,
       )}
@@ -331,7 +331,7 @@ export function MobileSectionChips({
         <a
           key={`${item.label}-${item.href}-${index}`}
           href={item.href}
-          className="focus-aaa min-h-11 shrink-0 rounded-md border border-transparent px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground active:scale-[0.98]"
+          className="focus-aaa min-h-11 shrink-0 snap-start rounded-md border border-transparent px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground active:scale-[0.98]"
         >
           {item.label}
         </a>
@@ -349,16 +349,15 @@ export function StickyMobileAction({
 }) {
   return (
     <div
+      data-primary-action
+      data-sticky-mobile-action
       className={cn(
         "fixed inset-x-4 bottom-[calc(5.95rem+env(safe-area-inset-bottom))] z-40 sm:hidden",
         "pointer-events-none",
         className,
       )}
     >
-      <div
-        data-sticky-mobile-action
-        className="premium-mobile-action-bar pointer-events-auto rounded-lg p-2 [&_[data-slot=button]]:min-h-11 [&_a]:min-h-11 [&_button]:min-h-11"
-      >
+      <div className="premium-mobile-action-bar pointer-events-auto rounded-lg p-2 [&_[data-slot=button]]:min-h-11 [&_a]:min-h-11 [&_button]:min-h-11">
         {children}
       </div>
     </div>
@@ -919,6 +918,7 @@ type MetricCardProps = {
   href?: string;
   icon?: LucideIcon;
   tone?: "green" | "sky" | "pink" | "amber" | "slate";
+  stretch?: boolean;
   className?: string;
 };
 
@@ -966,12 +966,15 @@ export function MetricCard({
   href,
   icon: Icon,
   tone = "green",
+  stretch = true,
   className,
 }: MetricCardProps) {
   const card = (
     <Card
+      data-stretch={stretch ? "true" : undefined}
       className={cn(
-        "premium-card luxury-metric-card h-full transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
+        "premium-card luxury-metric-card transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
+        stretch ? "h-full self-stretch" : "self-start",
         className,
       )}
     >
@@ -1003,7 +1006,11 @@ export function MetricCard({
   }
 
   return (
-    <Link href={href} prefetch={false} className="group block">
+    <Link
+      href={href}
+      prefetch={false}
+      className={cn("group block self-start", stretch && "h-full self-stretch")}
+    >
       {card}
     </Link>
   );
@@ -1013,13 +1020,23 @@ export function DataPanel({
   children,
   className,
   id,
+  stretch = false,
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
+  stretch?: boolean;
 }) {
   return (
-    <Card id={id} className={cn("premium-card desktop-data-panel", className)}>
+    <Card
+      id={id}
+      data-stretch={stretch ? "true" : undefined}
+      className={cn(
+        "premium-card desktop-data-panel",
+        stretch ? "h-full self-stretch" : "self-start",
+        className,
+      )}
+    >
       {children}
     </Card>
   );

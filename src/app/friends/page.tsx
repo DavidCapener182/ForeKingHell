@@ -25,13 +25,14 @@ import {
   unblockUserAction,
 } from "@/app/friends/actions";
 import {
+  DataPair,
   DataPanel,
   DataTableFrame,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileRouteHeader, NativeListSection } from "@/components/mobile-sports";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -389,106 +390,161 @@ function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: stri
         <div>
           <h2 className="text-xl font-semibold tracking-normal">Friend manager</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            One desktop table for requests, friends, suggestions, blocked users and profile search.
+            Requests, friends, suggestions, blocked users and profile search in one responsive view.
           </p>
         </div>
         <StatusPill tone={rows.length > 0 ? "green" : "slate"}>{rows.length} profiles</StatusPill>
       </div>
-      <DesktopTableWorkbenchControls
-        viewKey={`friend-graph-${query || "all"}`}
-        scope="friend-graph"
-        currentViewLabel={query ? `Search: ${query}` : "Friend graph"}
-        resultLabel={`${rows.length} profiles`}
-        columns={friendGraphColumns}
-        suggestedViews={friendGraphSuggestedViews}
-        exportTableId="friend-graph"
-        exportFileName="forekinghell-friend-graph.csv"
-      />
-      <DataTableFrame mainTable mainTableLabel="Friend graph table" stickyFirstColumn>
-        <Table data-workbench-export-table="friend-graph" aria-describedby="friend-graph-summary">
-          <TableCaption id="friend-graph-summary" className="sr-only">
-            Friend graph table showing golfer, relationship status, visibility, home course, launch
-            monitor, handicap band and available social action.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="golfer"
-                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                Golfer
-              </TableHead>
-              <TableHead data-column="status">Status</TableHead>
-              <TableHead data-column="visibility">Visibility</TableHead>
-              <TableHead data-column="home-course">Home course</TableHead>
-              <TableHead data-column="monitor">Monitor</TableHead>
-              <TableHead data-column="handicap">Handicap</TableHead>
-              <TableHead data-column="action" className="text-right">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length > 0 ? (
-              rows.map((row) => (
-                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="golfer"
-                    className="sticky left-0 z-10 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <SocialAvatar
-                        displayName={row.profile.displayName}
-                        username={row.profile.username}
-                        avatarUrl={row.profile.avatarUrl}
+      <NativeListSection
+        title="Golfer list"
+        description={`${rows.length} profiles across the current friend graph.`}
+        className="sm:hidden"
+      >
+        {rows.length > 0 ? (
+          rows.map((row) => (
+            <article key={row.id} className="apple-panel-strong p-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <SocialAvatar
+                  displayName={row.profile.displayName}
+                  username={row.profile.username}
+                  avatarUrl={row.profile.avatarUrl}
+                  href={`/profile/${row.profile.username}`}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link
                         href={`/profile/${row.profile.username}`}
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/profile/${row.profile.username}`}
-                          prefetch={false}
-                          className="truncate text-sm font-semibold text-emerald-700 hover:underline"
-                        >
-                          {row.profile.displayName}
-                        </Link>
-                        <p className="truncate text-xs text-muted-foreground">
-                          @{row.profile.username}
-                        </p>
-                      </div>
+                        prefetch={false}
+                        className="block truncate text-sm font-semibold text-emerald-700"
+                      >
+                        {row.profile.displayName}
+                      </Link>
+                      <p className="truncate text-xs text-muted-foreground">
+                        @{row.profile.username}
+                      </p>
                     </div>
-                  </TableCell>
-                  <TableCell data-column="status">
                     <Badge variant={row.status === "friend" ? "secondary" : "outline"}>
                       {friendGraphStatusLabel(row.status)}
                     </Badge>
-                  </TableCell>
-                  <TableCell data-column="visibility">
-                    {row.profile.publicProfile
-                      ? "Public"
-                      : row.profile.friendProfile
-                        ? "Friends"
-                        : "Private"}
-                  </TableCell>
-                  <TableCell data-column="home-course">{row.profile.homeCourse ?? "--"}</TableCell>
-                  <TableCell data-column="monitor">
-                    {row.profile.primaryLaunchMonitor ?? "--"}
-                  </TableCell>
-                  <TableCell data-column="handicap">{row.profile.handicapBand ?? "--"}</TableCell>
-                  <TableCell data-column="action" className="text-right">
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <DataPair label="Home course" value={row.profile.homeCourse ?? "Not set"} />
+                    <DataPair label="Handicap" value={row.profile.handicapBand ?? "Not set"} />
+                  </div>
+                  <div className="mt-3 flex justify-end">
                     <FriendGraphRowAction row={row} />
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))
+        ) : (
+          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            No friend graph rows yet. Search for a public username or share your invite link.
+          </p>
+        )}
+      </NativeListSection>
+      <div className="hidden sm:grid sm:gap-3">
+        <DesktopTableWorkbenchControls
+          viewKey={`friend-graph-${query || "all"}`}
+          scope="friend-graph"
+          currentViewLabel={query ? `Search: ${query}` : "Friend graph"}
+          resultLabel={`${rows.length} profiles`}
+          columns={friendGraphColumns}
+          suggestedViews={friendGraphSuggestedViews}
+          exportTableId="friend-graph"
+          exportFileName="forekinghell-friend-graph.csv"
+        />
+        <DataTableFrame mainTable mainTableLabel="Friend graph table" stickyFirstColumn>
+          <Table data-workbench-export-table="friend-graph" aria-describedby="friend-graph-summary">
+            <TableCaption id="friend-graph-summary" className="sr-only">
+              Friend graph table showing golfer, relationship status, visibility, home course,
+              launch monitor, handicap band and available social action.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableRow>
+                <TableHead
+                  data-column="golfer"
+                  className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                >
+                  Golfer
+                </TableHead>
+                <TableHead data-column="status">Status</TableHead>
+                <TableHead data-column="visibility">Visibility</TableHead>
+                <TableHead data-column="home-course">Home course</TableHead>
+                <TableHead data-column="monitor">Monitor</TableHead>
+                <TableHead data-column="handicap">Handicap</TableHead>
+                <TableHead data-column="action" className="text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length > 0 ? (
+                rows.map((row) => (
+                  <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="golfer"
+                      className="sticky left-0 z-10 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <SocialAvatar
+                          displayName={row.profile.displayName}
+                          username={row.profile.username}
+                          avatarUrl={row.profile.avatarUrl}
+                          href={`/profile/${row.profile.username}`}
+                        />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/profile/${row.profile.username}`}
+                            prefetch={false}
+                            className="truncate text-sm font-semibold text-emerald-700 hover:underline"
+                          >
+                            {row.profile.displayName}
+                          </Link>
+                          <p className="truncate text-xs text-muted-foreground">
+                            @{row.profile.username}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell data-column="status">
+                      <Badge variant={row.status === "friend" ? "secondary" : "outline"}>
+                        {friendGraphStatusLabel(row.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell data-column="visibility">
+                      {row.profile.publicProfile
+                        ? "Public"
+                        : row.profile.friendProfile
+                          ? "Friends"
+                          : "Private"}
+                    </TableCell>
+                    <TableCell data-column="home-course">
+                      {row.profile.homeCourse ?? "--"}
+                    </TableCell>
+                    <TableCell data-column="monitor">
+                      {row.profile.primaryLaunchMonitor ?? "--"}
+                    </TableCell>
+                    <TableCell data-column="handicap">{row.profile.handicapBand ?? "--"}</TableCell>
+                    <TableCell data-column="action" className="text-right">
+                      <FriendGraphRowAction row={row} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
+                    No friend graph rows yet. Search for a public username or share your invite
+                    link.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                  No friend graph rows yet. Search for a public username or share your invite link.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </div>
     </section>
   );
 }

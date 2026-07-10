@@ -4,7 +4,6 @@ import { desc, eq } from "drizzle-orm";
 import {
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BarChart3,
   Brain,
   ChevronDown,
@@ -324,7 +323,6 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
           description={heroDescription(analysis, activeCategory)}
           metrics={heroMetrics(analysis, data.events.length, activeCategory)}
-          visualSize="wide"
           visual={
             <PageArtwork
               variant="strokesGained"
@@ -596,7 +594,7 @@ function CategoryCard({
     <Link href={href} prefetch={false} className="block">
       <Card
         className={cn(
-          "premium-card grid min-h-52 content-between gap-4 border p-4 transition-colors",
+          "premium-card grid min-h-44 content-between gap-3 border p-3 transition-colors",
           categoryCardClassName(category),
           active ? "ring-2 ring-sky-300" : "hover:border-sky-300",
         )}
@@ -606,7 +604,7 @@ function CategoryCard({
             <p className="text-sm font-semibold text-slate-950">{category.label}</p>
             <p
               className={cn(
-                "mt-2 text-3xl font-semibold tracking-normal tabular-nums",
+                "mt-1.5 text-2xl font-semibold tracking-normal tabular-nums",
                 sgTextClassName(category.total),
               )}
             >
@@ -622,7 +620,7 @@ function CategoryCard({
             <Target className="size-5" />
           </div>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <p
             className={cn(
               "text-sm font-semibold",
@@ -631,11 +629,11 @@ function CategoryCard({
           >
             {categoryStatus(category, bestCategory, weakestCategory)}
           </p>
-          <p className="text-sm leading-5 text-muted-foreground">{categoryCardDetail(category)}</p>
+          <p className="text-xs leading-4 text-muted-foreground">{categoryCardDetail(category)}</p>
           {category.pendingCount > 0 ? (
             <p
               className={cn(
-                "text-xs",
+                "text-[11px] leading-4",
                 highPending ? "font-medium text-amber-800" : "text-muted-foreground",
               )}
             >
@@ -643,7 +641,9 @@ function CategoryCard({
               {highPending ? " - check coverage before over-reading" : ""}
             </p>
           ) : null}
-          <p className="text-xs font-medium text-slate-700">{categoryRecommendation(category)}</p>
+          <p className="text-[11px] font-medium leading-4 text-slate-700">
+            {categoryRecommendation(category)}
+          </p>
         </div>
       </Card>
     </Link>
@@ -663,11 +663,11 @@ function CalculationCoverageStrip({
   const puttingMissing = !putting || putting.sampleSize === 0;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <section className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-950">Calculation coverage</p>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
             {integerFormatter.format(analysis.totals.sampleSize)} /{" "}
             {integerFormatter.format(totalEvents)} events calculated ·{" "}
             {integerFormatter.format(analysis.pendingCount)} pending or unmapped
@@ -721,7 +721,7 @@ function CategoryNavTabs({
           prefetch={false}
           aria-current={item.active ? "page" : undefined}
           className={cn(
-            "relative min-h-10 shrink-0 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950",
+            "relative min-h-9 shrink-0 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950",
             item.active
               ? "text-slate-950 after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:bg-slate-950"
               : "",
@@ -756,26 +756,12 @@ function CategoryBreakdown({
 
   return (
     <DataPanel>
-      <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-            <BarChart3 className="size-6" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
-              Category breakdown
-            </h2>
-            <p className="mt-1 text-sm leading-5 text-[#667085]">
-              Where the mapped shot events are gaining and losing value against the expected-strokes
-              baseline.
-            </p>
-          </div>
-        </div>
-        <span className="hidden size-11 shrink-0 place-items-center rounded-lg border border-emerald-100 bg-white text-emerald-700 sm:grid">
-          <BarChart3 className="size-5" />
-        </span>
-      </div>
-      <CardContent className="grid gap-4 p-5">
+      <SectionHeader
+        title="Category breakdown"
+        description="Where mapped shot events are gaining or losing value against the expected-strokes baseline."
+        action={<BarChart3 className="size-5 text-emerald-700" />}
+      />
+      <CardContent className="grid gap-3 p-4">
         <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">
           <span>← Losing strokes</span>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[#475467] shadow-sm">
@@ -783,12 +769,12 @@ function CategoryBreakdown({
           </span>
           <span>Gaining strokes →</span>
         </div>
-        <div className="grid gap-4">
+        <div className="grid gap-2.5 md:grid-cols-2">
           {categories.map((category) => (
             <CategoryBarRow key={category.category} category={category} maxAbsTotal={maxAbsTotal} />
           ))}
         </div>
-        <div className="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
+        <div className="grid gap-2.5 border-t border-slate-200 pt-3 sm:grid-cols-3">
           <CategorySummaryTile
             icon={CheckCircle2}
             tone="green"
@@ -827,31 +813,35 @@ function CategoryBarRow({
   const visual = categoryVisual(category.category);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-[3.25rem_12rem_minmax(0,1fr)_5rem] sm:items-center">
-      <span
-        className={cn(
-          "grid size-11 place-items-center rounded-lg border",
-          visual.iconTileClassName,
-        )}
-      >
-        <Target className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-base font-bold leading-6 text-[#111827]">{category.label}</p>
-        <p className="text-sm leading-5 text-[#667085]">
-          {category.sampleSize > 0
-            ? `${integerFormatter.format(category.sampleSize)} calculated · ${integerFormatter.format(category.pendingCount)} pending`
-            : "No calculated events"}
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-lg border",
+              visual.iconTileClassName,
+            )}
+          >
+            <Target className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-[#111827]">{category.label}</p>
+            <p className="truncate text-xs leading-4 text-[#667085]">
+              {category.sampleSize > 0
+                ? `${integerFormatter.format(category.sampleSize)} calculated · ${integerFormatter.format(category.pendingCount)} pending`
+                : "No calculated events"}
+            </p>
+          </div>
+        </div>
+        <p className={cn("shrink-0 text-base font-bold tabular-nums", sgTextClassName(total))}>
+          {formatSg(total, "No data")}
         </p>
-        {hasHighPendingCount(category) ? (
-          <p className="text-sm font-semibold leading-5 text-amber-800">High pending count</p>
-        ) : null}
       </div>
-      <div className="grid h-9 grid-cols-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50 shadow-inner">
+      <div className="mt-2 grid h-2.5 grid-cols-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-inner">
         <div className="flex items-center justify-end border-r border-[#667085]">
           {total !== null && total < 0 ? (
             <span
-              className="h-full rounded-l-md bg-[linear-gradient(90deg,#E5483F,#B42318)]"
+              className="h-full rounded-l-full bg-[linear-gradient(90deg,#E5483F,#B42318)]"
               style={{ width: `${width}%` }}
             />
           ) : null}
@@ -859,15 +849,15 @@ function CategoryBarRow({
         <div className="flex items-center justify-start">
           {total !== null && total >= 0 ? (
             <span
-              className="h-full rounded-r-md bg-[linear-gradient(90deg,#087A3D,#0B8F4A)]"
+              className="h-full rounded-r-full bg-[linear-gradient(90deg,#087A3D,#0B8F4A)]"
               style={{ width: `${width}%` }}
             />
           ) : null}
         </div>
       </div>
-      <p className={cn("text-right text-base font-bold tabular-nums", sgTextClassName(total))}>
-        {formatSg(total, "No data")}
-      </p>
+      {hasHighPendingCount(category) ? (
+        <p className="mt-1.5 text-xs font-semibold leading-4 text-amber-800">High pending count</p>
+      ) : null}
     </div>
   );
 }
@@ -961,19 +951,19 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
       />
       <CardContent>
         {calculated.length > 0 ? (
-          <div className="grid gap-3 overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-4">
+          <div className="grid gap-3 overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-3 md:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)] md:items-stretch">
             <svg
-              viewBox="0 0 760 260"
+              viewBox="0 0 760 150"
               role="img"
               aria-label="Strokes gained waterfall"
-              className="h-64 w-full"
+              className="h-32 w-full self-center"
             >
-              <line x1="40" x2="720" y1="130" y2="130" stroke="#B8C8B7" strokeWidth="2" />
+              <line x1="40" x2="720" y1="68" y2="68" stroke="#B8C8B7" strokeWidth="2" />
               {calculated.map((category, index) => {
                 const value = category.total ?? 0;
-                const height = Math.max(8, (Math.abs(value) / maxAbs) * 82);
+                const height = Math.max(8, (Math.abs(value) / maxAbs) * 38);
                 const x = 48 + index * barWidth;
-                const y = value >= 0 ? 130 - height : 130;
+                const y = value >= 0 ? 68 - height : 68;
                 const fill = value >= 0 ? "#087A3D" : "#DC2626";
 
                 return (
@@ -989,7 +979,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                     />
                     <text
                       x={x + Math.max(48, barWidth - 28) / 2}
-                      y={value >= 0 ? y - 12 : y + height + 24}
+                      y={value >= 0 ? y - 10 : y + height + 22}
                       textAnchor="middle"
                       fill="#111827"
                       fontSize="22"
@@ -999,7 +989,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                     </text>
                     <text
                       x={x + Math.max(48, barWidth - 28) / 2}
-                      y="232"
+                      y="132"
                       textAnchor="middle"
                       fill="#667085"
                       fontSize="18"
@@ -1022,6 +1012,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                 { key: "pendingEvents", label: "Pending events" },
               ]}
               rows={waterfallRows}
+              className="h-full"
             />
           </div>
         ) : (
@@ -1041,15 +1032,15 @@ function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null })
 
   return (
     <DataPanel>
-      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)_auto] lg:items-center">
+      <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)_auto] md:items-center">
         <div>
           <StatusPill tone={total !== null && total < 0 ? "pink" : "amber"}>
             Scoring priority
           </StatusPill>
-          <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+          <h2 className="mt-2 text-xl font-bold leading-7 tracking-normal text-[#111827]">
             {title}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">
+          <p className="mt-1 text-sm leading-5 text-[#667085]">
             {practiceRecommendation(summary?.category)}
           </p>
         </div>
@@ -1102,11 +1093,11 @@ function MainScoringLeak({
 
   return (
     <DataPanel>
-      <div className="flex items-start justify-between gap-4 border-b border-[#E5E7EB] px-5 py-4">
-        <div className="flex min-w-0 items-start gap-4">
+      <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-4 py-3">
+        <div className="flex min-w-0 items-start gap-3">
           <span
             className={cn(
-              "grid size-12 shrink-0 place-items-center rounded-xl border",
+              "grid size-10 shrink-0 place-items-center rounded-lg border",
               hasLeak
                 ? "border-red-100 bg-red-50 text-[#B42318]"
                 : hasGain
@@ -1114,10 +1105,10 @@ function MainScoringLeak({
                   : "border-amber-100 bg-amber-50 text-amber-700",
             )}
           >
-            <AlertTriangle className="size-6" />
+            <AlertTriangle className="size-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xl font-bold leading-7 tracking-normal text-[#111827]">
+            <h2 className="text-lg font-bold leading-6 tracking-normal text-[#111827]">
               {sectionTitle}
             </h2>
             <p className="mt-1 text-sm leading-5 text-[#667085]">{sectionDescription}</p>
@@ -1136,11 +1127,23 @@ function MainScoringLeak({
           <AlertTriangle className="size-5" />
         </span>
       </div>
-      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.8fr)_minmax(320px,0.66fr)]">
-        <div className="overflow-hidden rounded-lg border border-red-100 bg-[linear-gradient(135deg,#FFF5F5_0%,#FFFFFF_58%,#FFF8F8_100%)]">
-          <div className="p-5">
+      <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <div className="grid overflow-hidden rounded-lg border border-red-100 bg-[linear-gradient(135deg,#FFF5F5_0%,#FFFFFF_58%,#FFF8F8_100%)] sm:grid-cols-[minmax(15rem,0.85fr)_minmax(0,1.15fr)]">
+          {artwork ? (
+            <div className="relative aspect-[3/2] min-h-44 overflow-hidden border-b border-red-100 bg-[#77944C] sm:border-r sm:border-b-0">
+              <Image
+                src={artwork.src}
+                alt=""
+                fill
+                sizes="(min-width: 1024px) 24vw, (min-width: 640px) 42vw, 100vw"
+                className={cn("object-cover", artwork.className)}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/8 via-transparent to-white/10" />
+            </div>
+          ) : null}
+          <div className="p-4 sm:self-center">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#B42318]">Verdict</p>
-            <p className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
+            <p className="mt-2 text-xl font-bold leading-7 tracking-normal text-[#111827]">
               {summary && summary.sampleSize === 0
                 ? `${summary.label} cannot be judged yet.`
                 : hasLeak && summary
@@ -1156,7 +1159,7 @@ function MainScoringLeak({
               ) : null}
               {summary && (hasLeak || hasGain) ? "." : null}
             </p>
-            <p className="mt-3 text-sm leading-6 text-[#667085]">
+            <p className="mt-2 text-sm leading-5 text-[#667085]">
               {hasData && summary
                 ? `${integerFormatter.format(summary.eventCount)} ${summary.label.toLowerCase()} events were analysed. ${integerFormatter.format(lossCount)} calculated shots lost value and ${integerFormatter.format(gainCount)} gained value.`
                 : summary?.category === "putting"
@@ -1164,24 +1167,12 @@ function MainScoringLeak({
                   : "Keep mapping complete rounds so the next scoring leak is based on enough calculated events."}
             </p>
           </div>
-          {artwork ? (
-            <div className="relative h-40 overflow-hidden border-t border-red-100 bg-slate-100 sm:h-48">
-              <Image
-                src={artwork.src}
-                alt=""
-                fill
-                sizes="(min-width: 1024px) 42vw, 100vw"
-                className={cn("object-cover", artwork.className)}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/8 via-transparent to-white/10" />
-            </div>
-          ) : null}
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
+        <div className="h-full rounded-lg border border-slate-200 bg-white p-4">
           <p className="text-base font-bold leading-6 text-[#111827]">Likely causes</p>
-          <div className="mt-3">
+          <div className="mt-2">
             {summary && hasData ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <CauseStat
                   icon={Users}
                   value={summary.eventCount}
@@ -1222,23 +1213,6 @@ function MainScoringLeak({
             )}
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-5">
-          <p className="text-base font-bold leading-6 text-[#111827]">Recommended practice</p>
-          <p className="mt-3 text-sm leading-6 text-[#667085]">
-            {practiceRecommendation(summary?.category)}
-          </p>
-          <Button
-            asChild
-            className="mt-6 h-10 rounded-lg bg-[#087A3D] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
-            size="sm"
-          >
-            <Link href="/coach#more-drills" prefetch={false}>
-              <Target className="size-4" />
-              {scoringLeakCtaLabel(summary?.category)}
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
       </CardContent>
     </DataPanel>
   );
@@ -1268,28 +1242,8 @@ function scoringLeakArtwork(category: string) {
 
   return {
     src: "/assets/generated/strokes-leak-tee-v3.png",
-    className: "object-[50%_58%]",
+    className: "object-center",
   };
-}
-
-function scoringLeakCtaLabel(category: string | undefined) {
-  if (category === "tee") {
-    return "Start tee-shot drill";
-  }
-
-  if (category === "approach") {
-    return "Start approach ladder";
-  }
-
-  if (category === "short_game") {
-    return "Start short-game drill";
-  }
-
-  if (category === "putting") {
-    return "Start putting gates";
-  }
-
-  return "Create practice task";
 }
 
 function CauseStat({
@@ -1315,12 +1269,12 @@ function CauseStat({
   return (
     <div
       className={cn(
-        "grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-4 py-3",
+        "grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border px-3 py-2",
         toneClassName,
       )}
     >
       <div className="min-w-0">
-        <p className="text-xl font-bold leading-none tracking-normal tabular-nums text-[#111827]">
+        <p className="text-lg font-bold leading-none tracking-normal tabular-nums text-[#111827]">
           {integerFormatter.format(value)}
         </p>
         <p className="mt-1 truncate text-xs leading-4 text-[#667085]">{label}</p>
@@ -1342,7 +1296,7 @@ function ShotHighlights({
   const prefix = focusCategory ? `${focusCategory.label} ` : "";
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2">
+    <section className="grid items-start gap-4 md:grid-cols-2">
       <ShotHighlightPanel
         title={`${prefix}Biggest gains`}
         description="The shots that created the most scoring value."
@@ -1408,13 +1362,18 @@ function ShotHighlightPanel({
                       Hole {event.holeNumber ?? "?"}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                  <p
+                    className="mt-1 truncate text-sm leading-5 text-muted-foreground"
+                    title={
+                      shotCostNote(event)
+                        ? `${formatPosition(event.startDistanceYd, event.startLie)} -> ${formatPosition(event.endDistanceYd, event.endLie)} · ${shotCostNote(event)}`
+                        : undefined
+                    }
+                  >
                     {formatPosition(event.startDistanceYd, event.startLie)} -&gt;{" "}
                     {formatPosition(event.endDistanceYd, event.endLie)}
+                    {shotCostNote(event) ? ` · ${shotCostNote(event)}` : null}
                   </p>
-                  {shotCostNote(event) ? (
-                    <p className="mt-1 text-xs font-medium text-slate-600">{shotCostNote(event)}</p>
-                  ) : null}
                 </div>
                 <SgValue value={event.strokesGained} className="text-lg" />
               </div>
@@ -1455,7 +1414,7 @@ function RoundTrendPanel({
         <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 text-muted-foreground">
           {roundSignal(rounds, bestCategory, weakestCategory, focusCategory)}
         </p>
-        <div className="grid gap-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {displayedRounds.map((round) => (
             <Link
               key={round.sessionId}

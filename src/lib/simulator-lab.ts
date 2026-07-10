@@ -12,6 +12,7 @@ import {
   isScoringEndGap,
 } from "@/lib/gapping-windows";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
+import { getRangeRealityHandicapData, type RangeRealityHandicapData } from "@/lib/reality-handicap";
 
 export type SimulatorLabTone = "green" | "sky" | "amber" | "pink" | "slate";
 
@@ -100,6 +101,7 @@ export type SessionRoastFact = {
 export type SimulatorLabData = {
   latestSession: SimulatorLabSession | null;
   dataIssues?: string[];
+  rangeReality: RangeRealityHandicapData;
   totals: {
     activeClubs: number;
     gappingRows: number;
@@ -217,7 +219,7 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
   const baselineStart = latestSession
     ? new Date(latestSession.date.getTime() - BASELINE_DAYS * 24 * 60 * 60 * 1000)
     : null;
-  const [stockShotRows, latestShotRows, baselineShotRows] = await Promise.all([
+  const [stockShotRows, latestShotRows, baselineShotRows, rangeReality] = await Promise.all([
     fetchLabShots(db, userId, clubIds, { limit: MAX_STOCK_SHOTS }),
     latestSession ? fetchLabShots(db, userId, clubIds, { sessionId: latestSession.id }) : [],
     latestSession && baselineStart
@@ -227,6 +229,7 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
           excludeSessionId: latestSession.id,
         })
       : [],
+    getRangeRealityHandicapData(userId),
   ]);
   const gappingRows = buildGappingMatrixRows({
     clubs: activeClubs,
@@ -241,6 +244,7 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
   return {
     latestSession,
     dataIssues: equipmentHistoryIssue ? [equipmentHistoryIssue] : [],
+    rangeReality,
     totals: {
       activeClubs: activeClubs.length,
       gappingRows: gappingRows.length,
@@ -617,6 +621,39 @@ function emptySimulatorLabData(latestSession: SimulatorLabSession | null): Simul
   return {
     latestSession,
     dataIssues: [],
+    rangeReality: {
+      estimate: {
+        value: null,
+        label: "--",
+        expectedRangeLabel: "--",
+        confidenceScore: 0,
+        confidence: "building",
+        confidenceLabel: "Building",
+        trend: {
+          direction: "building",
+          delta: null,
+          label: "Trend building",
+          detail: "Needs enough newer and previous range shots before calling improvement.",
+        },
+        sampleSize: 0,
+        clubCount: 0,
+        sessionCount: 0,
+        usableShotCount: 0,
+        modelShotCount: 0,
+        latestShotAt: null,
+        methodLabel: "Import range shots to build a range reality estimate.",
+        disclaimer:
+          "Range reality is a launch-monitor estimate for practice benchmarking, not an official Handicap Index.",
+        caveats: ["No active clubs are available for range reality analysis."],
+        timeline: [],
+      },
+      costlyShots: [],
+      costlyShotGroups: [],
+      disasterScenarios: [],
+      prescriptions: [],
+      flightLines: [],
+      bagTruth: [],
+    },
     totals: {
       activeClubs: 0,
       gappingRows: 0,

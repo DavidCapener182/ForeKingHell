@@ -18,12 +18,37 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain('label: "Open planner"');
   });
 
-  it("does not split compact practice cards until very wide screens", () => {
-    expect(source).toContain("min-[1900px]:grid-cols-2");
-    expect(source).toContain("min-[1900px]:flex-row");
-    expect(source).not.toContain("2xl:flex-row");
-    expect(source).toContain("md:grid-cols-2 2xl:grid-cols-3");
-    expect(source).not.toContain("md:grid-cols-2 xl:grid-cols-3");
+  it("uses component-sized container layouts for desktop practice cards", () => {
+    expect(source).toContain("today-practice-grid-has-prescription");
+    expect(source).toContain('"prescription mode"');
+    expect(source).toContain('"plan plan"');
+    expect(source).not.toContain('grid-template-areas: "prescription mode plan"');
+    expect(source).toContain("today-mode-header");
+    expect(source).toContain("today-prescription-grid");
+    expect(source).toContain("today-plan-grid");
+    expect(source).toContain("today-coaching-grid");
+    expect(source).not.toContain("today-practice-plan-wide");
+    expect(source).not.toContain("today-practice-plan-rail");
+  });
+
+  it("keeps every paired desktop region on a shared row edge", () => {
+    for (const row of [
+      "today-top",
+      "today-signal",
+      "today-practice",
+      "today-highlights",
+      "today-highlight-cards",
+      "today-footer",
+    ]) {
+      expect(source).toContain(`data-equal-height-row="${row}"`);
+    }
+
+    expect(source).toContain("today-top-grid grid items-stretch");
+    expect(source).toContain("today-signal-grid grid items-stretch");
+    expect(source).toContain("today-practice-grid grid items-stretch");
+    expect(source).toContain("today-highlights-grid grid items-stretch");
+    expect(source).toContain("auto-rows-fr items-stretch");
+    expect(source).toContain("grid items-stretch gap-4 lg:grid-cols-2");
   });
 
   it("keeps embedded latest-practice tables captioned and keyboardable", () => {

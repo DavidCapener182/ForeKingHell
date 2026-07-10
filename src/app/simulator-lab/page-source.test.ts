@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/simulator-lab/page.tsx"), "utf8");
+const gappingSource = readFileSync(
+  join(process.cwd(), "src/app/simulator-lab/gapping-matrix-client.tsx"),
+  "utf8",
+);
 
 describe("simulator lab desktop workbench", () => {
   it("keeps simulator session deltas as an exportable desktop workbench table", () => {
@@ -53,5 +57,31 @@ describe("simulator lab desktop workbench", () => {
   it("keeps simulator lab table and tool focused without a persistent AI rail", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
+  });
+
+  it("uses independent compact rails instead of stretching mismatched panels", () => {
+    expect(source).toContain('className="grid items-start gap-5 xl:grid-cols-[0.68fr_1.32fr]"');
+    expect(source).toContain('className="grid items-start gap-4 xl:grid-cols-[0.92fr_1.08fr]"');
+    expect(source).toContain('className="grid items-start gap-5 xl:grid-cols-[0.9fr_1.1fr]"');
+    expect(source).toContain('className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]"');
+    expect(source).toContain('columnsClassName="grid-cols-1"');
+  });
+
+  it("keeps the handicap timeline wide and shallow", () => {
+    const timelineBlock =
+      source.match(/function ConfidenceTimeline[\s\S]*?function FlightLineMap/)?.[0] ?? "";
+
+    expect(timelineBlock).toContain("const chartWidth = 1100");
+    expect(timelineBlock).toContain("const chartHeight = 220");
+    expect(timelineBlock).toContain('className="block h-auto min-w-[48rem] w-full"');
+  });
+
+  it("puts selected-club context above the full gapping matrix", () => {
+    expect(gappingSource).toContain('<div className="grid gap-4">');
+    expect(gappingSource).toContain(
+      "xl:grid-cols-[minmax(12rem,0.65fr)_minmax(28rem,1.25fr)_minmax(16rem,0.8fr)]",
+    );
+    expect(gappingSource).not.toContain("xl:grid-cols-[minmax(0,1fr)_320px]");
+    expect(gappingSource).not.toContain('className="xl:col-span-2"');
   });
 });

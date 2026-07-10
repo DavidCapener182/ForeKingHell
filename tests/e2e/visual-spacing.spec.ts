@@ -13,11 +13,22 @@ test.describe("visual spacing audit", () => {
     { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
     { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
     { name: "bag", path: "/bag", text: /Bag health|Bag confidence ladder|Bag score trend/i },
+    { name: "bag-longest", path: "/bag/longest", text: /Longest/i },
+    { name: "simulator-lab", path: "/simulator-lab", text: /Performance Lab/i },
+    { name: "compare", path: "/compare", text: /Compare/i },
+    { name: "speed", path: "/speed", text: /Speed Centre|Athletic speed/i },
+    { name: "training-load", path: "/stats/training-over-time", text: /Training Load/i },
     { name: "coach", path: "/coach", text: /Coach/i },
+    { name: "coach-diagnosis", path: "/coach/diagnosis", text: /Diagnosis|Coach/i },
+    { name: "practice", path: "/practice", text: /Practice Planner|start-line/i },
+    { name: "data-chat", path: "/data-chat", text: /Data Chat/i },
     { name: "progress", path: "/progress", text: /Progress/i },
+    { name: "strokes-gained", path: "/strokes-gained", text: /Strokes gained/i },
     { name: "rounds", path: "/rounds", text: /Rounds/i },
+    { name: "rounds-new", path: "/rounds/new", text: /New round|Add round/i },
     { name: "handicap", path: "/handicap", text: /Handicap/i },
     { name: "courses", path: "/courses", text: /Courses/i },
+    { name: "courses-new", path: "/courses/new", text: /New course|Add course/i },
     { name: "course-records", path: "/course-records", text: /Course records|Course Champion/i },
     { name: "challenges", path: "/challenges", text: /Challenges/i },
     { name: "tournaments", path: "/tournaments", text: /Tournaments|Daily, weekly/i },
@@ -26,29 +37,41 @@ test.describe("visual spacing audit", () => {
     { name: "friends", path: "/friends", text: /Friends/i },
     { name: "groups", path: "/groups", text: /Groups/i },
     { name: "profile", path: "/profile", text: /Profile|You/i },
+    { name: "social-intelligence", path: "/social-intelligence", text: /Recaps|Safety/i },
     { name: "achievements", path: "/achievements", text: /Achievements/i },
     { name: "equipment", path: "/equipment", text: /Equipment/i },
     { name: "billing", path: "/billing", text: /Pricing|Current plan/i },
     { name: "providers", path: "/providers", text: /Launch monitor providers|Providers/i },
     { name: "settings", path: "/settings", text: /Settings/i },
+    // Representative linked detail/setup states from the seeded member workspace.
+    { name: "bag-club-detail", path: "/bag/club-8i", text: /Club|Bag|8i/i },
+    { name: "bag-club-analytics", path: "/bag/club-8i/analytics", text: /Analytics|Club|8i/i },
+    { name: "round-detail", path: "/rounds/round-winter", text: /Round|Winter|Saved rounds/i },
+    { name: "course-holes", path: "/courses/course-aintree/holes", text: /Aintree|Holes|Course/i },
+    {
+      name: "course-shot-pattern",
+      path: "/courses/course-aintree/shot-pattern",
+      text: /Aintree|Shot pattern|Course/i,
+    },
+    {
+      name: "course-records-detail",
+      path: "/courses/course-aintree/records",
+      text: /Aintree|Course records|Records/i,
+    },
+    {
+      name: "challenge-detail",
+      path: "/challenges/challenge-1",
+      text: /Challenge|Leaderboard|Target/i,
+    },
+    { name: "profile-detail", path: "/profile/alex-smith", text: /Profile|Alex|You/i },
   ];
 
-  const desktopRoutes = routes.filter((item) =>
-    [
-      "dashboard",
-      "today",
-      "shots",
-      "bag",
-      "coach",
-      "rounds",
-      "handicap",
-      "course-records",
-      "challenges",
-      "tournaments",
-      "feed",
-      "providers",
-      "settings",
-    ].includes(item.name),
+  const desktopRoutes = routes;
+
+  const familyRoutes = routes.filter((item) =>
+    ["dashboard", "practice", "bag", "rounds", "courses", "friends", "settings"].includes(
+      item.name,
+    ),
   );
 
   test("all target routes have controlled mobile and desktop spacing", async ({ page }) => {
@@ -77,6 +100,35 @@ test.describe("visual spacing audit", () => {
 
     expect(failures).toEqual([]);
   });
+
+  test("route families fit phone, tablet, laptop and ultrawide canvases", async ({ page }) => {
+    skipWhenNoAuth();
+    const failures: string[] = [];
+    const viewports = [
+      { width: 320, height: 568 },
+      { width: 430, height: 932 },
+      { width: 744, height: 1133 },
+      { width: 1024, height: 768 },
+      { width: 1728, height: 1117 },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+
+      for (const route of familyRoutes) {
+        await gotoReady(page, route.path, route.text);
+        const audit = await auditViewport(page, viewport.width < 640);
+
+        if (audit.issues.length > 0) {
+          failures.push(
+            `${route.name} ${viewport.width}x${viewport.height}: ${audit.issues.join("; ")}`,
+          );
+        }
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
 });
 
 async function gotoReady(page: Page, routePath: string, expectedText: RegExp | string) {
@@ -98,10 +150,14 @@ async function auditViewport(page: Page, isMobile: boolean) {
       }
 
       if (mobile) {
-        const firstActionTop = firstActionPosition();
+        const firstAction = firstActionPosition();
         const firstActionLimit = Math.min(viewportHeight - 48, 360);
-        if (firstActionTop !== null && firstActionTop > firstActionLimit) {
-          issues.push(`first primary action starts at ${Math.round(firstActionTop)}px`);
+        if (
+          firstAction !== null &&
+          firstAction.top > firstActionLimit &&
+          !firstAction.viewportPinned
+        ) {
+          issues.push(`first primary action starts at ${Math.round(firstAction.top)}px`);
         }
 
         for (const header of visibleElements("main header").slice(0, 2)) {
@@ -165,6 +221,18 @@ async function auditViewport(page: Page, isMobile: boolean) {
         if (visibleTables.length > 0) {
           issues.push("full table visible above mobile fold");
         }
+      } else {
+        for (const card of sparseDesktopCards()) {
+          issues.push(
+            `desktop card reserves ${Math.round(card.unused)}px blank space near y=${Math.round(card.top)}`,
+          );
+        }
+
+        for (const row of unevenDesktopRows()) {
+          issues.push(
+            `desktop row ends ${Math.round(row.difference)}px apart near y=${Math.round(row.top)}`,
+          );
+        }
       }
 
       for (const media of visibleElements("[data-media-container]")) {
@@ -187,7 +255,91 @@ async function auditViewport(page: Page, isMobile: boolean) {
           .filter((item) => item.rect.height >= 32 && item.rect.width >= 48);
         const candidates = preferred.length > 0 ? preferred : fallback;
         const action = candidates.sort((left, right) => left.rect.top - right.rect.top)[0];
-        return action ? action.rect.top : null;
+        if (!action) {
+          return null;
+        }
+
+        const stickyContainer = action.node.closest("[data-sticky-mobile-action]");
+        const stickyRect = stickyContainer?.getBoundingClientRect();
+        const stickyStyle = stickyContainer ? window.getComputedStyle(stickyContainer) : null;
+
+        return {
+          top: action.rect.top,
+          viewportPinned: Boolean(
+            stickyRect &&
+            stickyStyle?.position === "fixed" &&
+            stickyRect.top >= 0 &&
+            stickyRect.bottom <= viewportHeight,
+          ),
+        };
+      }
+
+      function sparseDesktopCards() {
+        return visibleElements("main [data-slot='card'], main .premium-card")
+          .filter((item) => item.rect.top < Math.min(1400, viewportHeight + 500))
+          .filter((item) => item.rect.height > 280)
+          .filter((item) => !item.node.closest("[data-allow-tall-desktop-card]"))
+          .filter((item) => !item.node.querySelector("img,canvas,video,[data-media-container]"))
+          .map((item) => {
+            const childBottom = Array.from(item.node.children)
+              .map((child) => ({ child, rect: child.getBoundingClientRect() }))
+              .filter(({ child, rect }) => {
+                const style = window.getComputedStyle(child);
+                return rect.height > 1 && style.position !== "absolute" && style.display !== "none";
+              })
+              .reduce((bottom, child) => Math.max(bottom, child.rect.bottom), item.rect.top);
+
+            return {
+              top: item.rect.top,
+              unused: item.rect.bottom - childBottom,
+            };
+          })
+          .filter((item) => item.unused > 120);
+      }
+
+      function unevenDesktopRows() {
+        const candidates = visibleElements("main .grid")
+          .filter((item) => item.rect.top < Math.min(1800, viewportHeight + 900))
+          .filter((item) => !item.node.closest("[data-allow-uneven-grid]"))
+          .flatMap((item) => {
+            const children = Array.from(item.node.children)
+              .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+              .filter(({ node, rect }) => {
+                const style = window.getComputedStyle(node);
+                return (
+                  rect.width >= 140 &&
+                  rect.height >= 72 &&
+                  style.display !== "none" &&
+                  style.visibility !== "hidden" &&
+                  style.position !== "absolute"
+                );
+              });
+
+            const rows = new Map<number, typeof children>();
+            for (const child of children) {
+              const rowTop = Math.round(child.rect.top / 8) * 8;
+              rows.set(rowTop, [...(rows.get(rowTop) ?? []), child]);
+            }
+
+            return Array.from(rows.entries())
+              .filter(([, row]) => row.length >= 2)
+              .map(([top, row]) => {
+                const bottoms = row.map((child) => child.rect.bottom);
+                return {
+                  top,
+                  difference: Math.max(...bottoms) - Math.min(...bottoms),
+                };
+              })
+              .filter((row) => row.difference > 96);
+          })
+          .sort((left, right) => left.top - right.top || right.difference - left.difference);
+
+        return candidates.filter(
+          (candidate, index) =>
+            !candidates
+              .slice(0, index)
+              .some((earlier) => Math.abs(earlier.top - candidate.top) < 16),
+        );
       }
 
       function largestVerticalGap() {

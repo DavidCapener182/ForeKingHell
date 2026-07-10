@@ -41,4 +41,15 @@ describe("feature panel source", () => {
     expect(socialPanelBlock).toContain("min-[1500px]:grid-cols-2");
     expect(socialPanelBlock).not.toContain("lg:grid-cols-[minmax(0,1fr)_360px]");
   });
+
+  it("keeps saved-view cards equal height while the form stays collapsed", () => {
+    const savedViewsBlock =
+      source.match(
+        /export function SavedShotViewsPanel[\s\S]*?export function CoachPracticeFeaturePanel/,
+      )?.[0] ?? "";
+
+    expect(savedViewsBlock).toContain("grid auto-rows-fr items-stretch gap-2 md:grid-cols-3");
+    expect(savedViewsBlock).toContain("h-full rounded-lg border border-slate-200 bg-white p-3");
+    expect(savedViewsBlock).toContain("<details");
+  });
 });

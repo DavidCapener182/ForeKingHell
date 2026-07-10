@@ -1972,7 +1972,7 @@ function DashboardSummaryHero({
           />
         </div>
 
-        <div className="grid self-start gap-3">
+        <div className="grid h-full grid-rows-[minmax(0,1fr)_auto] items-stretch gap-3">
           <RoundReadinessCard readiness={readiness} />
           <SinceLastSessionCard insights={whatChanged} />
         </div>
@@ -2593,7 +2593,7 @@ function DriverStatusPanel({
         </Button>
       }
     >
-      <div className="grid min-w-0 gap-4">
+      <div className="grid h-full min-w-0 content-between gap-4">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
@@ -2861,7 +2861,7 @@ function TodayCommandBrief({
         </div>
         <StatusPill className="bg-background text-muted-foreground ring-border">Context</StatusPill>
       </div>
-      <div className="grid gap-3 xl:grid-cols-2 min-[1900px]:grid-cols-4">
+      <div className="grid gap-3 xl:grid-cols-4">
         {items.map((item) => {
           const Icon = item.icon;
 
@@ -2870,7 +2870,7 @@ function TodayCommandBrief({
               key={item.question}
               href={item.href}
               prefetch={false}
-              className="group grid min-h-[9.75rem] grid-rows-[auto_1fr_auto] rounded-lg border border-border bg-white/70 p-3.5 transition-colors hover:border-primary/30 hover:bg-white"
+              className="group grid min-h-[8.5rem] grid-rows-[auto_1fr_auto] rounded-lg border border-border bg-white/70 p-3 transition-colors hover:border-primary/30 hover:bg-white"
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-semibold leading-5 text-foreground">{item.question}</p>
@@ -2883,7 +2883,7 @@ function TodayCommandBrief({
                   <Icon className="size-4" />
                 </span>
               </div>
-              <div className="mt-4 min-w-0">
+              <div className="mt-3 min-w-0">
                 <p className="text-lg font-bold leading-6 tracking-normal text-foreground">
                   {item.answer}
                 </p>
@@ -2891,7 +2891,7 @@ function TodayCommandBrief({
                   {item.detail}
                 </p>
               </div>
-              <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+              <span className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
                 {item.action}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </span>
@@ -2933,40 +2933,10 @@ function LatestPracticeSignalPanel({
         </Button>
       }
     >
-      {compact ? (
-        <div className="grid gap-2">
-          <CompactSignalRow
-            label="Latest session"
-            value={latestSession ? formatDate(latestSession.date) : "No import yet"}
-            detail={
-              latestSession
-                ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
-                : "Import a CSV to start the practice signal."
-            }
-          />
-          <CompactSignalRow
-            label="Your game"
-            value={`${integerFormatter.format(stats.shotCount)} shots`}
-            detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
-          />
-          <CompactSignalRow
-            label="Strongest insight"
-            value={
-              latestRound
-                ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
-                : (firstSignal?.value ?? "Building")
-            }
-            detail={
-              latestRound
-                ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
-                : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
-            }
-          />
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-3 md:grid-cols-3">
-            <SignalTile
+      <div className="flex h-full flex-col">
+        {compact ? (
+          <div className="grid gap-2">
+            <CompactSignalRow
               label="Latest session"
               value={latestSession ? formatDate(latestSession.date) : "No import yet"}
               detail={
@@ -2974,16 +2944,14 @@ function LatestPracticeSignalPanel({
                   ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
                   : "Import a CSV to start the practice signal."
               }
-              tone="sky"
             />
-            <SignalTile
+            <CompactSignalRow
               label="Your game"
               value={`${integerFormatter.format(stats.shotCount)} shots`}
               detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
-              tone="green"
             />
-            <SignalTile
-              label="Best insight"
+            <CompactSignalRow
+              label="Strongest insight"
               value={
                 latestRound
                   ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
@@ -2994,23 +2962,59 @@ function LatestPracticeSignalPanel({
                   ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
                   : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
               }
-              tone={latestRound ? "amber" : (firstSignal?.tone ?? "slate")}
             />
           </div>
-          <ShotTraceMotif className="mt-4 hidden h-8 w-full md:block" />
-        </>
-      )}
-      <div className="mt-4 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3 text-sm leading-6 text-[#667085]">
-        <span className="font-semibold text-[#111827]">Data quality:</span>{" "}
-        {latestSession
-          ? "Latest session imported cleanly."
-          : "Import a session to unlock quality checks."}{" "}
-        <span className="font-semibold text-[#111827]">Strongest insight:</span>{" "}
-        {latestRound
-          ? `latest round ${formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)}.`
-          : firstSignal
-            ? `${firstSignal.label.toLowerCase()} · ${firstSignal.value}.`
-            : "No major movement yet."}
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-3">
+              <SignalTile
+                label="Latest session"
+                value={latestSession ? formatDate(latestSession.date) : "No import yet"}
+                detail={
+                  latestSession
+                    ? `${integerFormatter.format(latestSession.shotCount)} shots · ${formatSessionType(latestSession.type)}`
+                    : "Import a CSV to start the practice signal."
+                }
+                tone="sky"
+              />
+              <SignalTile
+                label="Your game"
+                value={`${integerFormatter.format(stats.shotCount)} shots`}
+                detail={`${integerFormatter.format(stats.sessionCount)} sessions · ${integerFormatter.format(stats.clubCount)} active clubs`}
+                tone="green"
+              />
+              <SignalTile
+                label="Best insight"
+                value={
+                  latestRound
+                    ? formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)
+                    : (firstSignal?.value ?? "Building")
+                }
+                detail={
+                  latestRound
+                    ? (latestRound.courseName ?? latestRound.fileName ?? "Latest round")
+                    : (firstSignal?.detail ?? "Keep adding shots to surface trend changes.")
+                }
+                tone={latestRound ? "amber" : (firstSignal?.tone ?? "slate")}
+              />
+            </div>
+            <ShotTraceMotif className="mt-4 hidden h-8 w-full md:block" />
+          </>
+        )}
+        <div className="mt-auto pt-4">
+          <div className="rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] px-4 py-3 text-sm leading-6 text-[#667085]">
+            <span className="font-semibold text-[#111827]">Data quality:</span>{" "}
+            {latestSession
+              ? "Latest session imported cleanly."
+              : "Import a session to unlock quality checks."}{" "}
+            <span className="font-semibold text-[#111827]">Strongest insight:</span>{" "}
+            {latestRound
+              ? `latest round ${formatScoreVsPar(latestRound.totalScore, latestRound.totalPar)}.`
+              : firstSignal
+                ? `${firstSignal.label.toLowerCase()} · ${firstSignal.value}.`
+                : "No major movement yet."}
+          </div>
+        </div>
       </div>
     </DashboardPanel>
   );
@@ -3266,10 +3270,13 @@ function PracticeRecommendationCard({
   return (
     <section
       id="practice"
-      className={cn("premium-card scroll-mt-28 rounded-lg p-5 lg:p-6", className)}
+      className={cn(
+        "premium-card flex h-full scroll-mt-28 flex-col rounded-lg p-5 lg:p-6",
+        className,
+      )}
     >
       {coachPreview ? (
-        <div className="grid gap-5">
+        <div className="grid h-full content-between gap-5">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <span className="grid size-11 place-items-center rounded-xl bg-[#E8F7EE] text-[#087A3D] shadow-[inset_0_0_0_1px_rgba(8,122,61,0.06)]">
@@ -3368,7 +3375,7 @@ function PracticePlannerDashboardCard({
 
   return (
     <DataPanel className={className}>
-      <CardContent className="grid gap-4 p-4">
+      <CardContent className="grid h-full content-between gap-4 p-4">
         <div className="min-w-0">
           <div className="flex items-center justify-between gap-3">
             <StatusPill
@@ -3515,7 +3522,7 @@ function PerformanceSnapshot({
           "grid auto-rows-fr gap-4 px-5 pb-5",
           paired
             ? "grid-cols-2"
-            : "@[42rem]/dashboard-panel:grid-cols-2 @[72rem]/dashboard-panel:grid-cols-4",
+            : "@[42rem]/dashboard-panel:grid-cols-2 @[64rem]/dashboard-panel:grid-cols-4",
         )}
       >
         {metrics.map((metric) => {
@@ -3897,7 +3904,7 @@ function LatestRoundPanel({
   const holeHighlights = latestRound ? getRoundHoleHighlights(latestRound) : null;
 
   return (
-    <section className={cn("premium-card scroll-mt-28 rounded-lg", className)}>
+    <section className={cn("premium-card flex scroll-mt-28 flex-col rounded-lg", className)}>
       <div className="flex items-start justify-between gap-4 border-b border-border/70 bg-white/30 px-5 py-5">
         <div className="flex min-w-0 items-start gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
@@ -3917,7 +3924,7 @@ function LatestRoundPanel({
         </span>
       </div>
       {latestRound ? (
-        <div className="px-5 py-5">
+        <div className="flex flex-1 flex-col px-5 py-5">
           <div className="flex flex-wrap items-center gap-2 text-[15px] font-semibold leading-6 text-[#111827]">
             <CalendarDays className="size-4 text-[#111827]" />
             <span>{formatDate(latestRound.date)}</span>
@@ -3955,7 +3962,7 @@ function LatestRoundPanel({
               ) : null}
             </div>
           ) : null}
-          <div className="mt-5">
+          <div className="mt-auto pt-5">
             <Button asChild className="premium-action h-11 w-full rounded-lg text-sm font-semibold">
               <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
                 <Flag className="size-4" />
@@ -4104,7 +4111,7 @@ function CourseDecisionPanel({
         </Button>
       }
     >
-      <div className="grid auto-rows-fr gap-3 @[42rem]/dashboard-card:grid-cols-2 @[72rem]/dashboard-card:grid-cols-4">
+      <div className="grid auto-rows-fr gap-3 @[42rem]/dashboard-card:grid-cols-2 @[64rem]/dashboard-card:grid-cols-4">
         {items.map((item, index) => (
           <Link
             key={item.label}
@@ -4202,10 +4209,10 @@ function DashboardActionGroup({
   empty: string;
 }) {
   return (
-    <section className="grid content-start gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] p-3">
+    <section className="grid h-full grid-rows-[auto_1fr] gap-3 rounded-lg border border-[#DFE7DF] bg-[#F8FAF8] p-3">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">{title}</p>
       {items.length > 0 ? (
-        <div className="grid gap-2">
+        <div className="grid h-full auto-rows-fr gap-2">
           {items.map((item, index) => (
             <DashboardActionCard key={`${item.title}-${item.href ?? index}`} item={item} />
           ))}

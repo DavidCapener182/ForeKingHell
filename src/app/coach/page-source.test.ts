@@ -52,4 +52,14 @@ describe("coach desktop evidence workbench", () => {
     expect(source).toContain("Social comparison is on demand");
     expect(source).toContain("Load challenge context");
   });
+
+  it("keeps bento cards and movement tiles aligned to their rows", () => {
+    expect(source).toContain('className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"');
+    expect(source).toContain('cn("min-w-0 h-full", className)');
+    expect(source).toContain('<DataPanel className="h-full gap-0 py-0">');
+    expect(source).toContain('className="grid flex-1 auto-rows-fr gap-3 p-3 md:grid-cols-2"');
+    expect(source).toContain(
+      'className="block h-full transition-transform hover:-translate-y-0.5"',
+    );
+  });
 });

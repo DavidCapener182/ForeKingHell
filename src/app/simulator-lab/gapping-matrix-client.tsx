@@ -42,7 +42,45 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4">
+      {selected ? (
+        <aside className="apple-panel-strong grid gap-4 rounded-lg p-4 xl:grid-cols-[minmax(12rem,0.65fr)_minmax(28rem,1.25fr)_minmax(16rem,0.8fr)] xl:items-center">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Selected club
+              </p>
+              <h3 className="mt-1 text-xl font-semibold tracking-normal">{selected.clubLabel}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{selected.brandModel}</p>
+            </div>
+            {selected.gapStatus === "danger" || selected.gapStatus === "overlap" ? (
+              <AlertTriangle className="size-5 text-amber-600" />
+            ) : selected.gapStatus === "ok" || selected.gapStatus === "top-ok" ? (
+              <CheckCircle2 className="size-5 text-emerald-600" />
+            ) : (
+              <CircleDot className="size-5 text-slate-500" />
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <Metric label="Recommended" value={formatYards(selected.recommendedCarryYd)} />
+            <Metric label="Best stock" value={formatYards(selected.bestStockCarryYd)} />
+            <Metric label="Latest reliable" value={formatYards(selected.latestReliableCarryYd)} />
+            <Metric label="Confidence" value={`${selected.confidenceScore}%`} />
+          </div>
+          <div className="rounded-lg border border-emerald-950/10 bg-white/70 p-3 text-sm">
+            <p className="font-medium">{selected.gapLabel}</p>
+            <p className="mt-1 leading-5 text-muted-foreground">{selected.gapDetail}</p>
+            {selected.latestReliableCarryP25Yd !== null &&
+            selected.latestReliableCarryP75Yd !== null ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Latest reliable range: {formatYards(selected.latestReliableCarryP25Yd)}-
+                {formatYards(selected.latestReliableCarryP75Yd)}
+              </p>
+            ) : null}
+          </div>
+        </aside>
+      ) : null}
+
       <div className="space-y-2">
         {rows.map((row) => {
           const carry = row.recommendedCarryYd ?? row.bestStockCarryYd;
@@ -84,44 +122,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
         })}
       </div>
 
-      {selected ? (
-        <aside className="apple-panel-strong h-fit rounded-lg p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Selected club
-              </p>
-              <h3 className="mt-1 text-xl font-semibold tracking-normal">{selected.clubLabel}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{selected.brandModel}</p>
-            </div>
-            {selected.gapStatus === "danger" || selected.gapStatus === "overlap" ? (
-              <AlertTriangle className="size-5 text-amber-600" />
-            ) : selected.gapStatus === "ok" || selected.gapStatus === "top-ok" ? (
-              <CheckCircle2 className="size-5 text-emerald-600" />
-            ) : (
-              <CircleDot className="size-5 text-slate-500" />
-            )}
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <Metric label="Recommended" value={formatYards(selected.recommendedCarryYd)} />
-            <Metric label="Best stock" value={formatYards(selected.bestStockCarryYd)} />
-            <Metric label="Latest reliable" value={formatYards(selected.latestReliableCarryYd)} />
-            <Metric label="Confidence" value={`${selected.confidenceScore}%`} />
-          </div>
-          <div className="mt-4 rounded-lg border border-emerald-950/10 bg-white/70 p-3 text-sm">
-            <p className="font-medium">{selected.gapLabel}</p>
-            <p className="mt-1 leading-5 text-muted-foreground">{selected.gapDetail}</p>
-            {selected.latestReliableCarryP25Yd !== null &&
-            selected.latestReliableCarryP75Yd !== null ? (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Latest reliable range: {formatYards(selected.latestReliableCarryP25Yd)}-
-                {formatYards(selected.latestReliableCarryP75Yd)}
-              </p>
-            ) : null}
-          </div>
-        </aside>
-      ) : null}
-      <div className="xl:col-span-2">
+      <div>
         <ChartAccessibleFallback
           title="Simulator gapping matrix"
           summary={gappingMatrixSummary(rows)}
@@ -166,7 +167,7 @@ function gappingMatrixRows(rows: GappingMatrixRow[]): ChartFallbackRow[] {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-emerald-950/10 bg-white/75 p-3">
+    <div className="rounded-lg border border-emerald-950/10 bg-white/75 p-2.5">
       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Brain, Flag, Info, Trophy, Upload } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Flag, Info, Radar, Trophy, Upload } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
@@ -60,6 +60,7 @@ import {
 } from "@/lib/round-handicap";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getRangeRealityHandicapData, type RangeRealityHandicapData } from "@/lib/reality-handicap";
 
 export const dynamic = "force-dynamic";
 
@@ -99,10 +100,11 @@ const handicapSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export default async function HandicapPage() {
-  const [rounds, progressData, featureData] = await Promise.all([
+  const [rounds, progressData, featureData, rangeReality] = await Promise.all([
     getHandicapRounds(),
     getProgressData(),
     getFeatureIdeasData(),
+    getRangeRealityHandicapData(),
   ]);
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
@@ -190,9 +192,9 @@ export default async function HandicapPage() {
               detail: playingHandicap.methodLabel,
             },
             {
-              label: "Range performance",
-              value: `${coach.summary.totals.averageTrust}%`,
-              detail: "Club-trust index from launch monitor data, not a handicap.",
+              label: "Range reality",
+              value: rangeReality.estimate.label,
+              detail: `${rangeReality.estimate.expectedRangeLabel} / ${rangeReality.estimate.confidenceLabel}`,
             },
           ]}
         />
@@ -200,6 +202,7 @@ export default async function HandicapPage() {
         <MobileSectionChips
           items={[
             { label: "Estimate", href: "#estimate" },
+            { label: "Range", href: "#range-reality" },
             { label: "Trend", href: "#trend" },
             { label: "Tasks", href: "#tasks" },
             { label: "Rounds", href: "#rounds" },
@@ -232,10 +235,15 @@ export default async function HandicapPage() {
                     : "slate",
             },
             {
-              label: "Ratings",
-              value: missingRatingRounds.length.toString(),
-              detail: "Need data",
-              tone: missingRatingRounds.length > 0 ? "pink" : "sky",
+              label: "Range reality",
+              value: rangeReality.estimate.label,
+              detail: rangeReality.estimate.confidenceLabel,
+              tone:
+                rangeReality.estimate.confidence === "high"
+                  ? "green"
+                  : rangeReality.estimate.confidence === "medium"
+                    ? "sky"
+                    : "amber",
             },
           ]}
         />
@@ -268,11 +276,7 @@ export default async function HandicapPage() {
             />
           </div>
           <div className="min-w-[82vw] md:min-w-0">
-            <RangePerformancePanel
-              trust={coach.summary.totals.averageTrust}
-              clubs={coach.summary.totals.clubs}
-              cleanShots={coach.summary.totals.trackedCleanShots}
-            />
+            <RangeRealityPanel reality={rangeReality} />
           </div>
           <div className="min-w-[82vw] md:min-w-0">
             <HandicapPanel
@@ -282,6 +286,10 @@ export default async function HandicapPage() {
               tone="amber"
             />
           </div>
+        </section>
+
+        <section id="range-reality" className="scroll-mt-28">
+          <RangeRealityDetailPanel reality={rangeReality} />
         </section>
 
         <section id="trend" className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
@@ -743,32 +751,137 @@ function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) 
   );
 }
 
-function RangePerformancePanel({
-  trust,
-  clubs,
-  cleanShots,
-}: {
-  trust: number;
-  clubs: number;
-  cleanShots: number;
-}) {
+function RangeRealityPanel({ reality }: { reality: RangeRealityHandicapData }) {
+  const estimate = reality.estimate;
+
   return (
-    <DataPanel>
+    <DataPanel id="range-reality-card">
       <SectionHeader
-        title="Range performance"
-        action={<StatusPill tone="pink">{clubs} clubs</StatusPill>}
+        title="Range reality"
+        action={
+          <StatusPill tone={rangeRealityTone(estimate.confidence)}>
+            {estimate.confidenceLabel}
+          </StatusPill>
+        }
       />
       <CardContent>
-        <p className="text-6xl font-semibold tracking-normal">{trust}%</p>
+        <p className="text-6xl font-semibold tracking-normal">{estimate.label}</p>
         <div className="mt-4 grid gap-3">
-          <MiniMetric label="Index type" value="Club trust, not handicap" />
-          <MiniMetric label="Clean shots" value={integerFormatter.format(cleanShots)} />
+          <MiniMetric label="Index type" value="Range session estimate" />
+          <MiniMetric label="Expected range" value={estimate.expectedRangeLabel} />
+          <MiniMetric
+            label="Usable shots"
+            value={integerFormatter.format(estimate.usableShotCount)}
+          />
+          <MiniMetric label="Clubs" value={integerFormatter.format(estimate.clubCount)} />
+          <MiniMetric label="Recent trend" value={estimate.trend.label} />
           <Button asChild variant="outline" className="rounded-xl">
-            <Link href="/coach" prefetch={false}>
-              <Brain className="size-4" />
-              Open coach
+            <Link href="/simulator-lab#range-reality" prefetch={false}>
+              <Radar className="size-4" />
+              Open lab
             </Link>
           </Button>
+        </div>
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function RangeRealityDetailPanel({ reality }: { reality: RangeRealityHandicapData }) {
+  const estimate = reality.estimate;
+  const topCost = reality.costlyShots[0] ?? null;
+  const topPractice = reality.prescriptions[0] ?? null;
+
+  return (
+    <DataPanel className="border-emerald-200 bg-emerald-50/50">
+      <SectionHeader
+        title="Range reality handicap"
+        description={estimate.disclaimer}
+        action={
+          <StatusPill tone={rangeRealityTone(estimate.confidence)}>
+            {estimate.confidenceLabel}
+          </StatusPill>
+        }
+      />
+      <CardContent className="grid gap-4 lg:grid-cols-[0.72fr_1.28fr]">
+        <div className="apple-panel-strong p-4">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Range estimate
+          </p>
+          <p className="mt-2 text-6xl font-semibold tracking-normal">
+            {estimate.label}
+            {estimate.value !== null ? (
+              <span className="ml-2 align-baseline text-xl font-semibold text-muted-foreground">
+                Handicap
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-2 text-sm leading-6">
+            Expected range <span className="font-semibold">{estimate.expectedRangeLabel}</span>
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{estimate.methodLabel}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              asChild
+              size="sm"
+              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
+              <Link href="/simulator-lab#range-reality" prefetch={false}>
+                <Radar className="size-4" />
+                Open Performance Lab
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/import?source=csv#csv-import" prefetch={false}>
+                <Upload className="size-4" />
+                Import CSV
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-3">
+          <CompactReadoutGrid
+            columnsClassName="md:grid-cols-3"
+            items={[
+              {
+                label: "Sample",
+                value: `${estimate.usableShotCount} shots`,
+                detail: `${estimate.clubCount} clubs / ${estimate.sessionCount} sessions`,
+                tone: estimate.usableShotCount >= 45 ? "green" : "amber",
+              },
+              {
+                label: "Costliest miss",
+                value: topCost?.clubLabel ?? "Building",
+                detail: topCost?.reason ?? "Needs more range shots with carry and side data.",
+                tone: topCost ? topCost.tone : "slate",
+              },
+              {
+                label: "Next practice",
+                value: topPractice?.title ?? "Build signal",
+                detail:
+                  topPractice?.detail ?? "Import another range session to create a prescription.",
+                tone: topPractice?.tone ?? "slate",
+              },
+              {
+                label: "Recent trend",
+                value: estimate.trend.label,
+                detail: estimate.trend.detail,
+                tone: rangeRealityTrendTone(estimate.trend.direction),
+              },
+            ]}
+          />
+          {estimate.caveats.length > 0 ? (
+            <div className="grid gap-2 text-sm leading-6 text-amber-950/80">
+              {estimate.caveats.slice(0, 3).map((caveat) => (
+                <p
+                  key={caveat}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                >
+                  {caveat}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </DataPanel>
@@ -957,6 +1070,22 @@ function handicapMethodDetail(summary: HandicapSummary) {
   return summary.sampleSize === 0
     ? "No eligible scorecards"
     : `${summary.usedDifferentialCount} of ${summary.sampleSize} differentials used`;
+}
+
+function rangeRealityTone(confidence: RangeRealityHandicapData["estimate"]["confidence"]) {
+  if (confidence === "high") return "green";
+  if (confidence === "medium") return "sky";
+  if (confidence === "low") return "amber";
+  return "slate";
+}
+
+function rangeRealityTrendTone(
+  direction: RangeRealityHandicapData["estimate"]["trend"]["direction"],
+) {
+  if (direction === "improving") return "green";
+  if (direction === "worse") return "pink";
+  if (direction === "flat") return "sky";
+  return "slate";
 }
 
 function formatDate(value: Date) {

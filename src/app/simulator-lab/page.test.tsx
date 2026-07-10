@@ -38,7 +38,7 @@ describe("/simulator-lab page", () => {
 
     const html = renderToStaticMarkup(await Page());
 
-    expect(html).toContain("Simulator Data Lab");
+    expect(html).toContain("Performance Lab");
     expect(html).toContain("Gapping rows: 0");
     expect(html).toContain("Import a simulator session to unlock 30-day deltas.");
     expect(html).toContain("Log a club setup and retest to prove the change.");
@@ -53,6 +53,14 @@ describe("/simulator-lab page", () => {
     expect(html).toContain("trackman / 30 May 2026");
     expect(html).toContain("Gapping rows: 1");
     expect(html).toContain("Roast facts: 1");
+    expect(html).toContain("Performance Lab");
+    expect(html).toContain("AI coach summary");
+    expect(html).toContain("Today&#x27;s readiness");
+    expect(html).toContain("Playing profile");
+    expect(html).toContain("Score killers");
+    expect(html).toContain("What if?");
+    expect(html).toContain("Four rounds");
+    expect(html).toContain("Handicap confidence timeline");
     expect(html).toContain("Latest simulator block beat the 30-day baseline.");
     expect(html).toContain("9 deg loft / Sleeve down");
   });
@@ -73,6 +81,7 @@ function emptyData() {
     sessionDeltas: [],
     equipmentImpacts: [],
     roastFacts: [],
+    rangeReality: rangeRealityData(),
   };
 }
 
@@ -159,5 +168,98 @@ function populatedData() {
         severity: "spicy",
       },
     ],
+    rangeReality: rangeRealityData({
+      label: "12.4",
+      confidenceLabel: "Medium confidence",
+      usableShotCount: 48,
+      clubCount: 3,
+      sessionCount: 2,
+    }),
+  };
+}
+
+function rangeRealityData(
+  overrides: Partial<{
+    label: string;
+    confidenceLabel: string;
+    usableShotCount: number;
+    clubCount: number;
+    sessionCount: number;
+  }> = {},
+) {
+  return {
+    estimate: {
+      value: overrides.label ? Number(overrides.label) : null,
+      label: overrides.label ?? "--",
+      expectedRangeLabel: overrides.label ? "11.0-13.8" : "--",
+      confidenceScore: overrides.label ? 61 : 0,
+      confidence: overrides.label ? "medium" : "building",
+      confidenceLabel: overrides.confidenceLabel ?? "Building",
+      trend: {
+        direction: overrides.label ? "improving" : "building",
+        delta: overrides.label ? -1.2 : null,
+        label: overrides.label ? "Improving 1.2" : "Trend building",
+        detail: "Test trend detail",
+      },
+      sampleSize: overrides.usableShotCount ?? 0,
+      clubCount: overrides.clubCount ?? 0,
+      sessionCount: overrides.sessionCount ?? 0,
+      usableShotCount: overrides.usableShotCount ?? 0,
+      modelShotCount: overrides.usableShotCount ?? 0,
+      latestShotAt: null,
+      methodLabel: "Range model from test shots",
+      disclaimer:
+        "Range reality is a launch-monitor estimate for practice benchmarking, not an official Handicap Index.",
+      caveats: [],
+      timeline: overrides.label
+        ? [
+            {
+              id: "2026-05",
+              label: "May",
+              value: 12.4,
+              valueLabel: "12.4",
+              confidenceScore: 61,
+            },
+          ]
+        : [],
+    },
+    costlyShots: [],
+    costlyShotGroups: overrides.label
+      ? [
+          {
+            id: "driver",
+            clubType: "driver",
+            clubLabel: "Driver",
+            scoreLossSharePct: 42,
+            potentialGain: 2.1,
+            occurrenceCount: 18,
+            averageOfflineYd: 31,
+            mainMisses: ["Right miss"],
+            detail: "18 scored misses in the latest usable range sample.",
+            tone: "pink",
+          },
+        ]
+      : [],
+    disasterScenarios: [
+      {
+        id: "range-number",
+        title: "Range number",
+        value: overrides.label ?? "--",
+        detail: "Test detail",
+        tone: "slate",
+      },
+    ],
+    prescriptions: [
+      {
+        id: "transfer",
+        title: "Nine-ball course transfer",
+        clubType: null,
+        detail: "Test practice detail",
+        drill: "Reset before every ball.",
+        tone: "green",
+      },
+    ],
+    flightLines: [],
+    bagTruth: [],
   };
 }

@@ -809,7 +809,7 @@ function MobileShotDispersionMap({
       <ShotShapeMapField
         model={model}
         className="apple-panel-strong overflow-hidden rounded-lg"
-        mediaClassName="aspect-[4/5] min-h-[24rem]"
+        mediaClassName="aspect-[4/3] min-h-[14rem] max-h-[15rem]"
         metricClassName="bottom-[4.5rem]"
         imageSizes="calc(100vw - 2rem)"
       />

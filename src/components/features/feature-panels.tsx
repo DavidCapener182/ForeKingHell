@@ -425,67 +425,72 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
         description="Fast filters for driver misses, wedge windows, recent form and user-defined shot groups."
         action={<StatusPill tone="sky">{data.savedViews.length} views</StatusPill>}
       />
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-2 md:grid-cols-2">
+      <div className="grid gap-3 p-4">
+        <div className="grid auto-rows-fr items-stretch gap-2 md:grid-cols-3">
           {data.savedViews.map((view) => (
             <Link
               key={view.id}
               href={view.href}
               prefetch={false}
-              className="rounded-lg border border-slate-200 bg-white p-3"
+              className="h-full rounded-lg border border-slate-200 bg-white p-3"
             >
               <p className="font-semibold">{view.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">{view.description}</p>
             </Link>
           ))}
         </div>
-        <form
-          action={saveShotViewAction}
-          className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
-        >
-          <p className="text-sm font-semibold">Save current view</p>
-          <div className="mt-3 grid gap-2">
-            <Input name="name" placeholder="My tournament attempts" required />
-            <Input name="description" placeholder="What this view is for" />
-            <select
-              aria-label="Saved view club filter"
-              name="club"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-            >
-              <option value="">All clubs</option>
-              {data.savedViewOptions.clubs.map((club) => (
-                <option key={club.value} value={club.value}>
-                  {club.label}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Saved view category filter"
-              name="category"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-            >
-              <option value="">All categories</option>
-              {data.savedViewOptions.categories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-            <div className="grid grid-cols-2 gap-2">
+        <details className="apple-panel-strong group overflow-hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            <span>Save the current filters as a view</span>
+            <span className="text-xs font-medium text-muted-foreground group-open:hidden">
+              Open
+            </span>
+            <span className="hidden text-xs font-medium text-muted-foreground group-open:inline">
+              Close
+            </span>
+          </summary>
+          <form action={saveShotViewAction} className="border-t border-border/70 p-3">
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <Input name="name" placeholder="My tournament attempts" required />
+              <Input name="description" placeholder="What this view is for" />
+              <select
+                aria-label="Saved view club filter"
+                name="club"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              >
+                <option value="">All clubs</option>
+                {data.savedViewOptions.clubs.map((club) => (
+                  <option key={club.value} value={club.value}>
+                    {club.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Saved view category filter"
+                name="category"
+                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
+              >
+                <option value="">All categories</option>
+                {data.savedViewOptions.categories.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
               <Input name="from" type="date" aria-label="Saved view start date" />
               <Input name="to" type="date" aria-label="Saved view end date" />
+              <Input name="q" placeholder="Search term or note" />
+              <label className="flex min-h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm text-muted-foreground">
+                <Checkbox name="pinned" />
+                Pin view
+              </label>
             </div>
-            <Input name="q" placeholder="Search term or note" />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox name="pinned" />
-              Pin view
-            </label>
-            <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button type="submit" className="mt-3 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
               <ListFilter className="size-4" />
               Save view
             </Button>
-          </div>
-        </form>
+          </form>
+        </details>
       </div>
     </DataPanel>
   );

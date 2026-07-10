@@ -15,6 +15,7 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   Columns3,
   Eye,
   EyeOff,
@@ -210,153 +211,165 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
 
   return (
     <DashboardWorkspaceModeContext.Provider value={settings.mode}>
-      <section
-        aria-labelledby="dashboard-layout-controls-title"
-        className="premium-card grid gap-3 rounded-lg border border-emerald-900/10 bg-white/82 p-3 shadow-sm"
+      <details
+        className="premium-card group rounded-lg border border-emerald-900/10 bg-white/82 shadow-sm"
         data-dashboard-layout-controls
       >
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-                <LayoutDashboard className="size-4" aria-hidden />
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+              <LayoutDashboard className="size-4" aria-hidden />
+            </span>
+            <span className="min-w-0">
+              <span id="dashboard-layout-controls-title" className="block text-sm font-semibold">
+                Dashboard layout
               </span>
-              <div className="min-w-0">
-                <h2 id="dashboard-layout-controls-title" className="text-sm font-semibold">
-                  Dashboard layout
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {visiblePanelCount} visible panels
-                  {hydrated && customHiddenCount > 0 ? ` · ${customHiddenCount} hidden` : ""}
-                  {modeHiddenCount > 0 ? ` · ${modeHiddenCount} folded into executive mode` : ""}
-                </p>
-              </div>
-              <Badge variant="outline" className="ml-auto capitalize sm:ml-0">
-                {settings.mode.replace("-", " ")}
-              </Badge>
+              <span className="block truncate text-xs text-muted-foreground">
+                {visiblePanelCount} visible panels
+                {hydrated && customHiddenCount > 0 ? ` · ${customHiddenCount} hidden` : ""}
+                {modeHiddenCount > 0 ? ` · ${modeHiddenCount} folded into executive mode` : ""}
+              </span>
+            </span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            <Badge variant="outline" className="capitalize">
+              {settings.mode.replace("-", " ")}
+            </Badge>
+            <span className="text-xs font-semibold text-muted-foreground">Customise</span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+          </span>
+        </summary>
+
+        <div className="grid gap-3 border-t border-emerald-900/10 p-3">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Workspace mode</p>
+              <p className="text-xs text-muted-foreground">
+                Choose the dashboard density, then reorder or hide individual panels.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <ButtonGroup>
+                <Button
+                  type="button"
+                  variant={settings.mode === "standard" ? "default" : "outline"}
+                  size="sm"
+                  aria-pressed={settings.mode === "standard"}
+                  onClick={() => setMode("standard")}
+                >
+                  <Columns3 className="size-4" aria-hidden />
+                  Standard
+                </Button>
+                <Button
+                  type="button"
+                  variant={settings.mode === "executive" ? "default" : "outline"}
+                  size="sm"
+                  aria-pressed={settings.mode === "executive"}
+                  onClick={() => setMode("executive")}
+                >
+                  <Eye className="size-4" aria-hidden />
+                  Executive
+                </Button>
+                <Button
+                  type="button"
+                  variant={settings.mode === "analysis-wall" ? "default" : "outline"}
+                  size="sm"
+                  aria-pressed={settings.mode === "analysis-wall"}
+                  onClick={() => setMode("analysis-wall")}
+                >
+                  <MonitorUp className="size-4" aria-hidden />
+                  Wall
+                </Button>
+              </ButtonGroup>
+              <Button type="button" variant="outline" size="sm" onClick={resetLayout}>
+                <RotateCcw className="size-4" aria-hidden />
+                Reset
+              </Button>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <ButtonGroup>
-              <Button
-                type="button"
-                variant={settings.mode === "standard" ? "default" : "outline"}
-                size="sm"
-                aria-pressed={settings.mode === "standard"}
-                onClick={() => setMode("standard")}
-              >
-                <Columns3 className="size-4" aria-hidden />
-                Standard
-              </Button>
-              <Button
-                type="button"
-                variant={settings.mode === "executive" ? "default" : "outline"}
-                size="sm"
-                aria-pressed={settings.mode === "executive"}
-                onClick={() => setMode("executive")}
-              >
-                <Eye className="size-4" aria-hidden />
-                Executive
-              </Button>
-              <Button
-                type="button"
-                variant={settings.mode === "analysis-wall" ? "default" : "outline"}
-                size="sm"
-                aria-pressed={settings.mode === "analysis-wall"}
-                onClick={() => setMode("analysis-wall")}
-              >
-                <MonitorUp className="size-4" aria-hidden />
-                Wall
-              </Button>
-            </ButtonGroup>
-            <Button type="button" variant="outline" size="sm" onClick={resetLayout}>
-              <RotateCcw className="size-4" aria-hidden />
-              Reset
-            </Button>
-          </div>
-        </div>
+          <div
+            className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5"
+            data-dashboard-panel-controls
+          >
+            {controlPanelIds.map((panelId, controlIndex) => {
+              const panel = panelById.get(panelId);
+              if (!panel) {
+                return null;
+              }
 
-        <div
-          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5"
-          data-dashboard-panel-controls
-        >
-          {controlPanelIds.map((panelId, controlIndex) => {
-            const panel = panelById.get(panelId);
-            if (!panel) {
-              return null;
-            }
+              const hidden = hiddenIds.has(panelId);
+              const folded = settings.mode === "executive" && !panel.executive && !hidden;
+              const firstPanel = controlIndex === 0;
+              const lastPanel = controlIndex === controlPanelIds.length - 1;
 
-            const hidden = hiddenIds.has(panelId);
-            const folded = settings.mode === "executive" && !panel.executive && !hidden;
-            const firstPanel = controlIndex === 0;
-            const lastPanel = controlIndex === controlPanelIds.length - 1;
-
-            return (
-              <div
-                key={panelId}
-                className={cn(
-                  "grid min-h-20 gap-2 rounded-lg border bg-white/72 p-2 text-sm shadow-sm",
-                  hidden || folded ? "border-dashed text-muted-foreground" : "border-emerald-100",
-                )}
-                data-dashboard-panel-control={panelId}
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-foreground">{panel.label}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {hidden ? "Hidden" : folded ? "Executive folded" : panel.detail}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1">
+              return (
+                <div
+                  key={panelId}
+                  className={cn(
+                    "grid min-h-20 gap-2 rounded-lg border bg-white/72 p-2 text-sm shadow-sm",
+                    hidden || folded ? "border-dashed text-muted-foreground" : "border-emerald-100",
+                  )}
+                  data-dashboard-panel-control={panelId}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{panel.label}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {hidden ? "Hidden" : folded ? "Executive folded" : panel.detail}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => movePanel(panelId, -1)}
+                        disabled={firstPanel}
+                        aria-label={`Move ${panel.label} earlier`}
+                      >
+                        <ArrowUp className="size-4" aria-hidden />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => movePanel(panelId, 1)}
+                        disabled={lastPanel}
+                        aria-label={`Move ${panel.label} later`}
+                      >
+                        <ArrowDown className="size-4" aria-hidden />
+                      </Button>
+                    </div>
                     <Button
                       type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => movePanel(panelId, -1)}
-                      disabled={firstPanel}
-                      aria-label={`Move ${panel.label} earlier`}
+                      variant={hidden ? "outline" : "secondary"}
+                      size="sm"
+                      onClick={() => togglePanel(panelId)}
+                      aria-pressed={!hidden}
                     >
-                      <ArrowUp className="size-4" aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      onClick={() => movePanel(panelId, 1)}
-                      disabled={lastPanel}
-                      aria-label={`Move ${panel.label} later`}
-                    >
-                      <ArrowDown className="size-4" aria-hidden />
+                      {hidden ? (
+                        <Eye className="size-4" aria-hidden />
+                      ) : (
+                        <EyeOff className="size-4" aria-hidden />
+                      )}
+                      {hidden ? "Show" : "Hide"}
                     </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant={hidden ? "outline" : "secondary"}
-                    size="sm"
-                    onClick={() => togglePanel(panelId)}
-                    aria-pressed={!hidden}
-                  >
-                    {hidden ? (
-                      <Eye className="size-4" aria-hidden />
-                    ) : (
-                      <EyeOff className="size-4" aria-hidden />
-                    )}
-                    {hidden ? "Show" : "Hide"}
-                  </Button>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+          <span className="sr-only" aria-live="polite" aria-atomic="true">
+            {layoutStatusMessage}
+          </span>
         </div>
-        <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {layoutStatusMessage}
-        </span>
-      </section>
+      </details>
 
       <div
         className={cn(
-          "@container/dashboard-workspace grid auto-rows-auto items-start",
+          "@container/dashboard-workspace grid auto-rows-auto items-stretch",
           settings.mode === "executive" ? "gap-3" : "gap-5",
           settings.mode === "analysis-wall" ? "2xl:gap-6" : null,
         )}
@@ -382,7 +395,7 @@ export function DashboardWorkspacePanel({
   return (
     <div
       className={cn(
-        "@container/dashboard-panel col-span-12 min-w-0",
+        "@container/dashboard-panel col-span-12 h-full min-w-0 [&>*]:h-full",
         dashboardPanelSpanClass(span),
         mode === "executive" ? "[&_[data-slot=card]]:shadow-sm" : null,
         mode === "analysis-wall" ? "2xl:[&_[data-slot=card]]:min-h-full" : null,

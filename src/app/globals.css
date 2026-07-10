@@ -345,16 +345,23 @@ html[data-sunlight="true"] {
   @media (min-width: 1024px) {
     .progress-bento-grid {
       grid-template-columns: repeat(12, minmax(0, 1fr));
-      align-items: stretch;
+      align-items: start;
     }
 
     .progress-bento-item {
       min-width: 0;
-      height: 100%;
     }
 
-    .progress-bento-item > * {
-      height: 100%;
+    .progress-main-rail {
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+    }
+
+    .progress-analysis-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .progress-supporting-rail {
+      align-content: start;
     }
 
     .progress-span-3 {

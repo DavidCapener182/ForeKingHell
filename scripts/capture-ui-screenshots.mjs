@@ -7,11 +7,14 @@ const storageState = process.env.PLAYWRIGHT_AUTH_STATE;
 const outputDir = process.argv[2] ?? "output/ui-screenshots";
 
 const mobileViewports = [
+  { name: "mobile-320x568", width: 320, height: 568 },
   { name: "mobile-390x844", width: 390, height: 844 },
   { name: "mobile-430x932", width: 430, height: 932 },
+  { name: "tablet-744x1133", width: 744, height: 1133 },
 ];
 
 const desktopViewports = [
+  { name: "laptop-1024x768", width: 1024, height: 768 },
   { name: "desktop-1440x900", width: 1440, height: 900 },
   { name: "desktop-1728x1117", width: 1728, height: 1117 },
 ];
@@ -23,8 +26,15 @@ const routes = [
   { name: "rapsodo", path: "/rapsodo", text: /Rapsodo|cloud sync/i },
   { name: "shots", path: "/shots", text: /Shot database|Shot explorer/i },
   { name: "bag", path: "/bag", text: /Stock yardages|Gapping ladder|Bag/i },
+  { name: "simulator-lab", path: "/simulator-lab", text: /Performance Lab/i },
+  { name: "compare", path: "/compare", text: /Compare/i },
+  { name: "speed", path: "/speed", text: /Speed Centre|Athletic speed/i },
+  { name: "training-load", path: "/stats/training-over-time", text: /Training Load/i },
   { name: "coach", path: "/coach", text: /Coach/i },
+  { name: "practice", path: "/practice", text: /Practice Planner|start-line/i },
+  { name: "data-chat", path: "/data-chat", text: /Data Chat/i },
   { name: "progress", path: "/progress", text: /Progress/i },
+  { name: "strokes-gained", path: "/strokes-gained", text: /Strokes gained/i },
   { name: "rounds", path: "/rounds", text: /Rounds/i },
   { name: "handicap", path: "/handicap", text: /Handicap/i },
   { name: "courses", path: "/courses", text: /Courses/i },
@@ -36,6 +46,7 @@ const routes = [
   { name: "friends", path: "/friends", text: /Friends/i },
   { name: "groups", path: "/groups", text: /Groups/i },
   { name: "profile", path: "/profile", text: /Profile|You/i },
+  { name: "social-intelligence", path: "/social-intelligence", text: /Recaps|Safety/i },
   { name: "achievements", path: "/achievements", text: /Achievements/i },
   { name: "equipment", path: "/equipment", text: /Equipment/i },
   { name: "billing", path: "/billing", text: /Pricing|Current plan/i },

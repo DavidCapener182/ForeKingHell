@@ -323,37 +323,35 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
                 />
               </ProgressBentoItem>
               <ProgressBentoItem span={12}>
-                <ComparisonBar summary={summary} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={6}>
-                <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={6}>
-                <ProgressTrendsPanel summary={summary} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={6}>
-                <PracticePlanPanel priorities={summary.practicePlan} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={6}>
-                <CoachReadoutPanel
-                  signal={summary.bestSignal}
-                  groups={summary.coachSummary}
-                  gaps={summary.dataGaps}
-                />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={9}>
-                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={3}>
-                <TrustLadderPanel items={summary.trustLadder} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <div id="journey" className="h-full scroll-mt-28">
-                  <CoachTimelinePanel summary={summary} />
+                <div className="progress-analysis-grid grid min-w-0 items-stretch gap-4 lg:gap-5">
+                  <div className="grid h-full min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:gap-5">
+                    <ComparisonBar summary={summary} />
+                    <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
+                  </div>
+                  <ProgressTrendsPanel summary={summary} />
                 </div>
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <div className="progress-main-rail grid min-w-0 items-stretch gap-4 lg:gap-5">
+                  <div className="grid h-full min-w-0 content-start gap-4 lg:gap-5">
+                    <PracticePlanPanel priorities={summary.practicePlan} />
+                    <div id="journey" className="scroll-mt-28">
+                      <CoachTimelinePanel summary={summary} />
+                    </div>
+                  </div>
+                  <div className="progress-supporting-rail grid h-full min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 lg:gap-5">
+                    <CoachReadoutPanel
+                      signal={summary.bestSignal}
+                      groups={summary.coachSummary}
+                      gaps={summary.dataGaps}
+                    />
+                    <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
+                    <TrustLadderPanel items={summary.trustLadder} />
+                  </div>
+                </div>
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
               </ProgressBentoItem>
             </div>
           </>
@@ -481,20 +479,23 @@ function ProgressHeroPanel({
 
   return (
     <section className="overflow-hidden rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]">
-      <div className="grid gap-5 px-5 py-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:px-7">
+      <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:px-7">
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">
               Personal baseline
             </span>
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
-              Progress verdict: {progressVerdictChip(summary)}
+              <span className="sm:hidden">{progressVerdictLabel(summary)}</span>
+              <span className="hidden sm:inline">
+                Progress verdict: {progressVerdictChip(summary)}
+              </span>
             </span>
           </div>
-          <h1 className="mt-4 text-[26px] font-bold leading-8 tracking-normal text-[#111827] sm:text-3xl sm:leading-10">
+          <h1 className="mt-3 text-[26px] font-bold leading-8 tracking-normal text-[#111827] sm:mt-4 sm:text-3xl sm:leading-10">
             Bag progress
           </h1>
-          <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-[#667085]">
+          <p className="mt-2 hidden max-w-3xl text-sm font-medium leading-6 text-[#667085] sm:block">
             {heroVerdict(summary)}
           </p>
         </div>
@@ -503,6 +504,7 @@ function ProgressHeroPanel({
             <Button
               asChild
               variant="outline"
+              data-primary-action
               className="h-11 rounded-lg border-[#087A3D] bg-white px-5 text-sm font-semibold text-[#087A3D] shadow-sm hover:bg-emerald-50 hover:text-[#065F32]"
             >
               <Link
@@ -861,7 +863,7 @@ function WeeklyRecapCard({
 
 function PracticeCalendarPanel({ calendar }: { calendar: FeatureIdeasData["practiceCalendar"] }) {
   return (
-    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="@container/progress-calendar rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
@@ -878,7 +880,7 @@ function PracticeCalendarPanel({ calendar }: { calendar: FeatureIdeasData["pract
       <div
         aria-label="Practice plan calendar"
         tabIndex={0}
-        className="mt-4 grid gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid-cols-2 xl:grid-cols-4"
+        className="mt-4 grid gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring @md/progress-calendar:grid-cols-2"
       >
         {calendar.length > 0 ? (
           calendar.slice(0, 4).map((item) => (
@@ -900,7 +902,7 @@ function PracticeCalendarPanel({ calendar }: { calendar: FeatureIdeasData["pract
             </div>
           ))
         ) : (
-          <p className="rounded-xl border border-dashed border-[#CFE1D2] bg-white px-4 py-4 text-sm leading-6 text-[#667085] md:col-span-2 xl:col-span-4">
+          <p className="rounded-xl border border-dashed border-[#CFE1D2] bg-white px-4 py-4 text-sm leading-6 text-[#667085] @md/progress-calendar:col-span-2">
             Save a weekly recap or practice plan to pin the next calendar block.
           </p>
         )}
@@ -1145,7 +1147,7 @@ function ProgressSignalsPanel({
   const currentForm = summary.rankings.currentForm;
 
   return (
-    <section className="rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       <ProgressSectionHeader
         icon={TrendingUp}
         title="Progress signals"
@@ -1593,7 +1595,7 @@ function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
   const visiblePriorityCount = Math.min(priorities.length, 5);
 
   return (
-    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="flex flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       {topPriority ? (
         <div className="grid min-h-0 items-start gap-4 min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
           <PracticePriorityFeatureCard priority={topPriority} />
@@ -1851,7 +1853,7 @@ function CoachReadoutPanel({
   gaps: DataGap[];
 }) {
   return (
-    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
+    <section className="@container/progress-coach flex flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -1869,7 +1871,7 @@ function CoachReadoutPanel({
         </div>
         <CheckCircle2 className="mt-1 size-5 shrink-0 text-emerald-600" />
       </div>
-      <div className="mt-5 grid flex-1 gap-4">
+      <div className="mt-5 grid gap-4">
         {signal ? (
           <BestSignalBanner signal={signal} />
         ) : (
@@ -1877,7 +1879,7 @@ function CoachReadoutPanel({
             No best signal has separated yet. Keep importing comparable stock-shot sessions.
           </div>
         )}
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 @lg/progress-coach:grid-cols-2">
           {groups.map((group) => (
             <div
               key={group.title}
@@ -2077,7 +2079,7 @@ function BagMovementPanel({
   const filters = buildBagMovementFilters(rows);
 
   return (
-    <DataPanel id="bag-movement" className="h-full scroll-mt-28">
+    <DataPanel id="bag-movement" className="scroll-mt-28">
       <SectionHeader
         title="Bag movement"
         description={bagMovementSummary(filteredRows.length > 0 ? filteredRows : rows)}
@@ -2259,13 +2261,13 @@ function MovementMetricPill({ item }: { item: MovementItem }) {
 
 function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
   return (
-    <DataPanel className="h-full">
+    <DataPanel stretch className="h-full">
       <SectionHeader
         title="Trust ladder"
         description="Trust considers distance, direction, strike quality, and clean-shot sample depth."
         action={<Gauge className="size-5 text-emerald-600" />}
       />
-      <CardContent className="grid gap-2">
+      <CardContent className="grid flex-1 content-between gap-2">
         {items.map((item) => (
           <Link
             key={item.clubId}
@@ -2292,7 +2294,7 @@ function CoachTimelinePanel({ summary }: { summary: ProgressSummary }) {
   const items = coachTimelineItems(summary);
 
   return (
-    <DataPanel className="h-full">
+    <DataPanel>
       <SectionHeader
         title="AI Coach timeline"
         description="A running coaching narrative from current progress, next focus and recent milestones."
@@ -2544,6 +2546,15 @@ function progressVerdictChip(summary: ProgressSummary) {
   const parts = ["Improving", standout?.text, opportunity].filter(Boolean);
 
   return `${parts.join(". ")}.`;
+}
+
+function progressVerdictLabel(summary: ProgressSummary) {
+  if (summary.totals.trackedCleanShots === 0) {
+    return "Baseline needed";
+  }
+
+  const needsWork = summary.rankings.needsWork;
+  return needsWork ? `Improving · ${formatClubType(needsWork.clubType)} next` : "Improving";
 }
 
 function progressVerdictStandout(summary: ProgressSummary) {

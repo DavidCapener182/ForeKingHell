@@ -638,7 +638,7 @@ function TodayBentoItem({
   span: TodayBentoSpan;
 }) {
   return (
-    <div id={id} className={`min-w-0 h-full ${className}`} style={todayBentoSpan(span)}>
+    <div id={id} className={`min-w-0 self-start ${className}`} style={todayBentoSpan(span)}>
       {children}
     </div>
   );
@@ -699,7 +699,7 @@ function TodayDesktopDashboard({
       }
     >
       <div
-        className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
+        className="grid auto-rows-auto items-start gap-4 lg:gap-5"
         style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
       >
         <div className="flex items-center justify-between gap-4" style={todayBentoSpan(12)}>
@@ -725,17 +725,29 @@ function TodayDesktopDashboard({
           </div>
         </div>
 
-        <TodayBentoItem span={8}>
-          <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
+        <TodayBentoItem span={12}>
+          <div className="@container/today-top">
+            <div
+              data-equal-height-row="today-top"
+              className="today-top-grid grid items-stretch gap-4 lg:gap-5"
+            >
+              <div className="today-summary-stack @container/today-summary grid min-w-0 gap-4 lg:gap-5">
+                <TodayVerdictHero
+                  data={data}
+                  linkedPracticePlan={linkedPracticePlan}
+                  className="h-full"
+                />
+                <WhatChangedCard items={whatChangedItems(data)} className="h-full" />
+              </div>
+              <TodayScoreStack
+                data={data}
+                linkedPracticePlan={linkedPracticePlan}
+                className="h-full"
+              />
+            </div>
+          </div>
         </TodayBentoItem>
-        <TodayBentoItem span={4}>
-          <TodayScoreStack data={data} linkedPracticePlan={linkedPracticePlan} />
-        </TodayBentoItem>
-
-        <TodayBentoItem span={7}>
-          <WhatChangedCard items={whatChangedItems(data)} />
-        </TodayBentoItem>
-        <TodayBentoItem span={5}>
+        <TodayBentoItem span={12}>
           <DriverHealthCard summary={driverHealthSummary(data)} />
         </TodayBentoItem>
         <TodayBentoItem span={12}>
@@ -745,16 +757,29 @@ function TodayDesktopDashboard({
           <TodayKpiStrip data={data} />
         </TodayBentoItem>
 
-        {hasShots ? (
-          <TodayBentoItem id="focus" span={4} className="scroll-mt-28">
-            <TodayPracticePrescription data={data} />
-          </TodayBentoItem>
-        ) : null}
-        <TodayBentoItem span={hasShots ? 4 : 8} className="scroll-mt-28">
-          <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-        </TodayBentoItem>
-        <TodayBentoItem span={4} className="scroll-mt-28">
-          <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+        <TodayBentoItem id="focus" span={12} className="scroll-mt-28">
+          <div className="@container/today-practice">
+            <div
+              data-equal-height-row="today-practice"
+              className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
+                hasShots
+                  ? "today-practice-grid-has-prescription"
+                  : "today-practice-grid-no-prescription"
+              }`}
+            >
+              {hasShots ? (
+                <div className="today-practice-prescription min-w-0">
+                  <TodayPracticePrescription data={data} />
+                </div>
+              ) : null}
+              <div className="today-practice-mode min-w-0">
+                <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+              </div>
+              <div className="today-practice-plan min-w-0">
+                <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+              </div>
+            </div>
+          </div>
         </TodayBentoItem>
 
         <TodayBentoItem span={12}>
@@ -786,7 +811,10 @@ function TodayDesktopDashboard({
               />
             </TodayBentoItem>
             <TodayBentoItem span={12}>
-              <div className="grid h-full items-stretch gap-4 lg:grid-cols-2">
+              <div
+                data-equal-height-row="today-footer"
+                className="grid items-stretch gap-4 lg:grid-cols-2"
+              >
                 <TodaySocialLine
                   data={data}
                   socialContext={socialContext}
@@ -1128,9 +1156,9 @@ function TodayPracticeModePanel({
   const progress = Math.round((readyCount / steps.length) * 100);
 
   return (
-    <DataPanel className="h-full gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
-      <div className="grid gap-3 p-3 lg:p-4">
-        <div className="flex flex-col gap-3 min-[1900px]:flex-row min-[1900px]:items-start min-[1900px]:justify-between">
+    <DataPanel className="@container/today-mode h-full self-stretch gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+      <div className="grid h-full content-between gap-3 p-3 lg:p-4">
+        <div className="today-mode-header flex flex-col gap-3">
           <div className="flex min-w-0 gap-3">
             <PracticeCardIllustration kind="target" tone="green" size="sm" />
             <div className="min-w-0">
@@ -1156,7 +1184,7 @@ function TodayPracticeModePanel({
           </Button>
         </div>
 
-        <div className="grid gap-2 min-[1900px]:grid-cols-2">
+        <div className="today-mode-steps grid gap-2">
           <PracticeLoopRow label="Current drill" step={currentStep} index={0} />
           <PracticeLoopRow label="Next action" step={nextStep} index={1} />
         </div>
@@ -1210,21 +1238,23 @@ function PracticePlanFollowedCard({
   if (!plan) {
     return (
       <section
-        className={`grid h-full gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 ${className}`}
+        className={`@container/today-plan h-full rounded-lg border border-[#E5E7EB] bg-white p-3 ${className}`}
       >
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[#050505]">Practice plan link</p>
-          <StatusPill tone="slate">Waiting</StatusPill>
+        <div className="today-plan-grid grid h-full grid-rows-[auto_1fr_auto] gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-[#050505]">Practice plan link</p>
+            <StatusPill tone="slate">Waiting</StatusPill>
+          </div>
+          <p className="text-sm leading-5 text-[#6B7280]">
+            Complete a saved Practice Planner session and link the import to compare plan against
+            actual results.
+          </p>
+          <Button asChild variant="outline" className="rounded-lg @3xl/today-plan:min-w-36">
+            <Link href="/practice" prefetch={false}>
+              Open planner
+            </Link>
+          </Button>
         </div>
-        <p className="text-sm leading-5 text-[#6B7280]">
-          Complete a saved Practice Planner session and link the import to compare plan against
-          actual results.
-        </p>
-        <Button asChild variant="outline" className="rounded-lg">
-          <Link href="/practice" prefetch={false}>
-            Open planner
-          </Link>
-        </Button>
       </section>
     );
   }
@@ -1235,40 +1265,40 @@ function PracticePlanFollowedCard({
 
   return (
     <section
-      className={`grid h-full gap-3 rounded-lg border p-3 ${practicePlanResultCardClass(
-        planTone,
-      )} ${className}`}
+      className={`@container/today-plan h-full rounded-lg border p-3 ${practicePlanResultCardClass(planTone)} ${className}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className={`text-sm font-semibold ${practicePlanResultHeadingClass(planTone)}`}>
-          Plan result
-        </p>
-        <StatusPill tone={planTone}>{planResult?.label ?? "Linked"}</StatusPill>
-      </div>
-      <div>
-        <p
-          className={`text-xl font-semibold tracking-normal ${practicePlanResultHeadingClass(planTone)}`}
-        >
-          {plan.title}
-        </p>
-        <p className={`mt-1 text-sm leading-5 ${practicePlanResultBodyClass(planTone)}`}>
-          {planResult ? `${planResult.scoreLabel} - ${planResult.detail}` : plan.verdict}
-        </p>
-        {cleanSampleNote ? (
-          <p className="mt-2 rounded-lg border border-white/65 bg-white/70 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
-            {cleanSampleNote}
+      <div className="today-plan-grid grid h-full grid-rows-[auto_1fr_auto] gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className={`text-sm font-semibold ${practicePlanResultHeadingClass(planTone)}`}>
+            Plan result
           </p>
-        ) : null}
+          <StatusPill tone={planTone}>{planResult?.label ?? "Linked"}</StatusPill>
+        </div>
+        <div>
+          <p
+            className={`text-xl font-semibold tracking-normal ${practicePlanResultHeadingClass(planTone)}`}
+          >
+            {plan.title}
+          </p>
+          <p className={`mt-1 text-sm leading-5 ${practicePlanResultBodyClass(planTone)}`}>
+            {planResult ? `${planResult.scoreLabel} - ${planResult.detail}` : plan.verdict}
+          </p>
+          {cleanSampleNote ? (
+            <p className="mt-2 rounded-lg border border-white/65 bg-white/70 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+              {cleanSampleNote}
+            </p>
+          ) : null}
+        </div>
+        <Button
+          asChild
+          variant={planTone === "green" ? "default" : "outline"}
+          className={`rounded-lg @3xl/today-plan:min-w-36 ${planTone === "green" ? "premium-action" : practicePlanResultButtonClass(planTone)}`}
+        >
+          <Link href={plan.href} prefetch={false}>
+            Review plan
+          </Link>
+        </Button>
       </div>
-      <Button
-        asChild
-        variant={planTone === "green" ? "default" : "outline"}
-        className={`rounded-lg ${planTone === "green" ? "premium-action" : practicePlanResultButtonClass(planTone)}`}
-      >
-        <Link href={plan.href} prefetch={false}>
-          Review plan
-        </Link>
-      </Button>
     </section>
   );
 }
@@ -1563,6 +1593,92 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
       .today-review-page [data-club-hover]:hover td:first-child {
         color: #334155;
       }
+      .today-practice-grid-has-prescription {
+        grid-template-areas:
+          "prescription"
+          "mode"
+          "plan";
+      }
+      .today-practice-grid-no-prescription {
+        grid-template-areas:
+          "mode"
+          "plan";
+      }
+      .today-practice-prescription {
+        grid-area: prescription;
+      }
+      .today-practice-mode {
+        grid-area: mode;
+      }
+      .today-practice-plan {
+        grid-area: plan;
+      }
+      @media (min-width: 768px) {
+        .today-highlight-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1000px) {
+        .today-top-grid {
+          grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
+        }
+        .today-summary-stack {
+          grid-template-rows: minmax(0, 1fr) auto;
+        }
+        .today-signal-grid {
+          grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+        }
+        .today-practice-grid-has-prescription {
+          grid-template-columns: minmax(20rem, 5fr) minmax(0, 7fr);
+          grid-template-areas:
+            "prescription mode"
+            "plan plan";
+        }
+        .today-practice-grid-no-prescription {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-areas: "mode plan";
+        }
+        .today-highlights-grid {
+          grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+        .today-highlights-list {
+          grid-column: span 8 / span 8;
+        }
+        .today-highlights-rail {
+          grid-column: span 4 / span 4;
+        }
+        .today-summary-grid {
+          grid-template-columns: 8rem minmax(0, 1fr);
+          align-items: center;
+        }
+      }
+      @media (min-width: 1280px) {
+        .today-summary-grid {
+          grid-template-columns: 12rem minmax(0, 1fr);
+        }
+        .today-mode-header {
+          flex-direction: row;
+          align-items: flex-start;
+          justify-content: space-between;
+        }
+        .today-mode-steps {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .today-prescription-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .today-plan-grid {
+          grid-template-columns: minmax(10rem, 0.35fr) minmax(0, 1fr) auto;
+          grid-template-rows: none;
+          align-items: center;
+        }
+        .today-coaching-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        .today-highlight-card-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
       ${selectors}
     `}</style>
   );
@@ -1587,7 +1703,7 @@ function TodayVerdictHero({
 
   return (
     <section
-      className={`h-full overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6 ${className}`}
+      className={`@container/today-hero overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6 ${className}`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
@@ -1595,7 +1711,7 @@ function TodayVerdictHero({
           {data.dateLabel}
         </span>
       </div>
-      <h1 className="mt-3 max-w-4xl text-4xl font-semibold uppercase leading-[1.04] tracking-normal text-slate-950 xl:text-5xl">
+      <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-slate-950 @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
         {heroVerdictTitle(data)}
       </h1>
       {storyChips.length > 0 ? (
@@ -1661,7 +1777,9 @@ function TodayScoreStack({
   className?: string;
 }) {
   return (
-    <section className={`grid min-w-0 gap-4 lg:h-full lg:grid-rows-[auto_1fr] ${className}`}>
+    <section
+      className={`grid min-w-0 grid-rows-[auto_minmax(0,1fr)] items-stretch gap-4 ${className}`}
+    >
       <PracticeScoreHeroCard
         score={practiceScoreSummary(data)}
         reliable={reliableClubComparison(data.clubComparisons)}
@@ -1719,11 +1837,14 @@ function SessionSignalStrip({
   className?: string;
 }) {
   return (
-    <section
-      className={`grid items-stretch gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] ${className}`}
-    >
-      <SessionCoachingCard summary={sessionCoachingSummary(data)} />
-      <ConfidenceMeterCard items={confidenceMeterItems(data)} />
+    <section className={`@container/today-signal ${className}`}>
+      <div
+        data-equal-height-row="today-signal"
+        className="today-signal-grid grid items-stretch gap-3"
+      >
+        <SessionCoachingCard summary={sessionCoachingSummary(data)} />
+        <ConfidenceMeterCard items={confidenceMeterItems(data)} />
+      </div>
     </section>
   );
 }
@@ -1829,33 +1950,33 @@ function WhatChangedCard({
   className?: string;
 }) {
   return (
-    <div
-      className={`h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm ${className}`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-            Compared to last session
-          </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
-            What changed
-          </h2>
-        </div>
-        <Route className="size-5 text-sky-600" />
-      </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
-        {items.map((item) => (
-          <div
-            key={`${item.label}-${item.value}`}
-            className={`rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
-          >
-            <p className="text-sm font-semibold text-slate-950">{item.label}</p>
-            <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
-              {item.value}
+    <div className={`rounded-lg border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
+      <div className="today-summary-grid grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+              Compared to last session
             </p>
-            <p className="mt-1 text-xs font-medium leading-4 text-slate-600">{item.detail}</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+              What changed
+            </h2>
           </div>
-        ))}
+          <Route className="size-5 text-sky-600 @sm/today-summary:hidden" />
+        </div>
+        <div className="grid gap-2 md:grid-cols-3">
+          {items.map((item) => (
+            <div
+              key={`${item.label}-${item.value}`}
+              className={`rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
+            >
+              <p className="text-sm font-semibold text-slate-950">{item.label}</p>
+              <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+                {item.value}
+              </p>
+              <p className="mt-1 text-xs font-medium leading-4 text-slate-600">{item.detail}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1870,7 +1991,7 @@ function DriverHealthCard({
 }) {
   return (
     <div
-      className={`h-full rounded-lg border p-3 shadow-sm ${verdictCardClass(summary.tone)} ${className}`}
+      className={`rounded-lg border p-3 shadow-sm ${verdictCardClass(summary.tone)} ${className}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -1919,7 +2040,7 @@ function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
   const opportunityTone = deltaTone(opportunityEffect, "higher");
 
   return (
-    <div className="h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="@container/session-coaching h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
@@ -1937,7 +2058,7 @@ function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
           Effect {formatSignedDecimal(opportunityEffect)}
         </span>
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
+      <div className="today-coaching-grid mt-3 grid gap-2 md:grid-cols-2">
         <QualityReadoutCard
           label="Strike quality"
           value={`${summary.strikeScore}/10`}
@@ -1952,8 +2073,6 @@ function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
             summary.scoringScore >= 8 ? "green" : summary.scoringScore >= 6.5 ? "amber" : "pink"
           }
         />
-      </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
         <CoachingReadoutBlock
           label="Biggest gain"
           value={summary.biggestGain?.clubLabel ?? "Building signal"}
@@ -2039,7 +2158,7 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
         </div>
         <ShieldCheck className="size-5 text-emerald-700" />
       </div>
-      <div className="mt-3 grid gap-2 md:grid-cols-3">
+      <div className="mt-3 grid gap-2">
         {items.length > 0 ? (
           visibleItems.map((item) => (
             <div
@@ -2106,7 +2225,7 @@ function VerdictReasonChip({ item }: { item: VerdictReasonItem }) {
 
 function HeroShotSpotlight({ shot }: { shot: TodayPracticeShot | undefined }) {
   return (
-    <div className="grid h-full min-h-[190px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-2 text-white shadow-sm lg:min-h-[220px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+    <div className="grid h-full min-h-[190px] overflow-hidden rounded-lg border border-emerald-100 bg-[#083524] p-2 text-white shadow-sm lg:min-h-[270px] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <div className="flex h-full flex-col justify-between gap-3 rounded-md border border-white/15 bg-white/95 px-3 py-3 text-slate-950 shadow-sm">
         {shot ? (
           <>
@@ -2521,7 +2640,7 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
   const focus = practiceFocus(data);
 
   return (
-    <DataPanel className="h-full gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <DataPanel className="@container/today-prescription flex h-full flex-col self-stretch gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between lg:px-4">
         <div className="flex min-w-0 gap-3">
           <PracticeCardIllustration kind="target" tone="green" size="sm" />
@@ -2549,7 +2668,7 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
         </div>
       </div>
       <CardContent className="flex-1 px-3 pb-3 pt-0 lg:px-4">
-        <div className="grid h-full auto-rows-fr gap-2 min-[1900px]:grid-cols-2">
+        <div className="today-prescription-grid grid h-full auto-rows-fr gap-2">
           <PrescriptionBlock label="Problem" value={focus.problem} tone="pink" icon="alert" />
           <PrescriptionBlock
             label="Cause to check"
@@ -3205,11 +3324,10 @@ function TodayHighlightsPanel({
   const highlights = buildClubHighlights(stats, buildClubEquipmentMap(shots));
   const records = highlights.filter((highlight) => highlight.kind !== "close");
   const closeCalls = highlights.filter((highlight) => highlight.kind === "close").slice(0, 6);
-  const bestNearMiss = closeCalls[0] ?? null;
   const bestShot = bestStraightShots[0] ?? null;
 
   return (
-    <DataPanel>
+    <DataPanel className="@container/today-highlights">
       <SectionHeader
         title="Latest practice highlights"
         description={`${records.length} PB moments · ${closeCalls.length} close to PB`}
@@ -3221,8 +3339,11 @@ function TodayHighlightsPanel({
             No PBs or close calls for this selection.
           </div>
         ) : (
-          <div className="grid items-stretch gap-3 lg:grid-cols-12">
-            <div className="h-full lg:col-span-8">
+          <div
+            data-equal-height-row="today-highlights"
+            className="today-highlights-grid grid items-stretch gap-3"
+          >
+            <div className="today-highlights-list @container/today-highlight-list h-full">
               {records.length > 0 ? (
                 <HighlightGroup title="PB moments" highlights={records.slice(0, 6)} />
               ) : (
@@ -3232,7 +3353,7 @@ function TodayHighlightsPanel({
               )}
             </div>
 
-            <aside className="grid h-full grid-rows-[1fr_auto] gap-3 lg:col-span-4">
+            <aside className="today-highlights-rail @container/today-highlight-rail grid h-full auto-rows-fr gap-3">
               <section className="flex h-full flex-col gap-2 rounded-lg border border-sky-100 bg-sky-50/45 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -3246,7 +3367,19 @@ function TodayHighlightsPanel({
                   <Crosshair className="size-4 text-sky-600" />
                 </div>
                 {bestShot ? (
-                  <StraightShotCard shot={bestShot} featured />
+                  <div className="grid min-h-0 flex-1 gap-2 @sm/today-highlight-rail:grid-cols-[minmax(0,1fr)_12rem]">
+                    <StraightShotCard
+                      shot={bestShot}
+                      featured
+                      className="flex h-full flex-col justify-between"
+                    />
+                    <div
+                      data-media-container
+                      className="relative min-h-28 overflow-hidden rounded-lg border border-sky-200 bg-emerald-950"
+                    >
+                      <HeroFairwayVisual shot={bestShot} />
+                    </div>
+                  </div>
                 ) : (
                   <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">
                     No directional shot data for this selection.
@@ -3254,23 +3387,38 @@ function TodayHighlightsPanel({
                 )}
               </section>
 
-              <div>
+              <div className="h-full">
                 {closeCalls.length > 0 ? (
-                  <details className="group rounded-lg border border-amber-100 bg-amber-50/35">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-                      <span>
-                        <span className="block text-sm font-semibold text-amber-950">
-                          Close to PB
+                  <details className="group h-full rounded-lg border border-amber-100 bg-amber-50/35">
+                    <summary className="grid h-full min-h-36 cursor-pointer list-none content-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
+                      <span className="flex min-w-0 items-center justify-between gap-3">
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-amber-950">
+                            Close to PB
+                          </span>
+                          <span className="block text-xs text-amber-800">
+                            {closeCalls.length} near misses from this practice.
+                          </span>
                         </span>
-                        <span className="block text-xs text-amber-800">
-                          {bestNearMiss
-                            ? `${closeCalls.length} near misses. Best: ${bestNearMiss.clubLabel} ${bestNearMiss.metricLabel.toLowerCase()}, ${bestNearMiss.detail}`
-                            : `${closeCalls.length} near misses`}
+                        <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-amber-900">
+                          View all
+                          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
                         </span>
                       </span>
-                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
-                        View all
-                        <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+                      <span className="grid gap-1.5 @sm/today-highlight-rail:grid-cols-2">
+                        {closeCalls.slice(0, 4).map((highlight) => (
+                          <span
+                            key={`summary-${highlight.id}`}
+                            className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-amber-100 bg-white/70 px-2 py-1.5"
+                          >
+                            <span className="min-w-0 truncate text-xs font-medium text-amber-900">
+                              {highlight.clubLabel} · {highlight.metricLabel}
+                            </span>
+                            <span className="shrink-0 text-sm font-semibold text-amber-950">
+                              {highlight.value}
+                            </span>
+                          </span>
+                        ))}
                       </span>
                     </summary>
                     <div className="grid gap-2 border-t border-amber-100 p-3">
@@ -3296,13 +3444,13 @@ function TodayHighlightsPanel({
 function HighlightGroup({ title, highlights }: { title: string; highlights: ClubHighlight[] }) {
   const gridClass =
     title === "Close to PB"
-      ? "grid auto-rows-fr gap-2 sm:grid-cols-2 lg:grid-cols-3"
+      ? "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-2"
       : highlights.length <= 4
-        ? "grid auto-rows-fr gap-3 md:grid-cols-2"
-        : "grid auto-rows-fr gap-3 md:grid-cols-2 2xl:grid-cols-3";
+        ? "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-3"
+        : "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-3";
 
   return (
-    <section className="h-full space-y-2">
+    <section className="flex h-full flex-col gap-2">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
           {title}
@@ -3311,7 +3459,7 @@ function HighlightGroup({ title, highlights }: { title: string; highlights: Club
           {highlights.length}
         </Badge>
       </div>
-      <div className={gridClass}>
+      <div data-equal-height-row="today-highlight-cards" className={gridClass}>
         {highlights.map((highlight) => (
           <HighlightCard key={highlight.id} highlight={highlight} />
         ))}
@@ -3769,17 +3917,19 @@ function RateDeltaCell({
 function StraightShotCard({
   shot,
   featured = false,
+  className = "",
 }: {
   shot: TodayPracticeShot;
   featured?: boolean;
+  className?: string;
 }) {
   return (
     <article
-      className={
+      className={`${
         featured
           ? "rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 shadow-sm"
           : "rounded-lg border border-slate-200/80 bg-white px-3 py-2"
-      }
+      } ${className}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <h4 className="text-sm font-semibold leading-tight text-slate-950">

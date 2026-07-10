@@ -841,21 +841,38 @@ export function RapsodoSyncClient({
             onPreviewSession={previewSession}
           />
 
-          <header className="premium-hero hidden p-5 sm:block sm:p-7">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl space-y-2">
-                <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                  Experimental R-Cloud connector
-                </Badge>
-                <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                  Rapsodo cloud sync
-                </h1>
-                <p className="text-base leading-7 text-muted-foreground">
-                  Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
-                  World Tour.
-                </p>
+          <header className="premium-hero hidden p-5 sm:block">
+            <div className="grid gap-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-2xl space-y-2">
+                  <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                    Experimental R-Cloud connector
+                  </Badge>
+                  <h1 className="text-3xl font-semibold tracking-normal text-balance">
+                    Rapsodo cloud sync
+                  </h1>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
+                    World Tour.
+                  </p>
+                </div>
+                <div data-primary-action className="shrink-0">
+                  {status.connected ? (
+                    <Button type="button" onClick={() => void loadSessions()} disabled={isPending}>
+                      <RefreshCw className="size-4" />
+                      Load sessions
+                    </Button>
+                  ) : (
+                    <Button asChild>
+                      <a href="#rapsodo-sessions">
+                        <Cloud className="size-4" />
+                        Connect R-Cloud
+                      </a>
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4 lg:min-w-[640px]">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <StatusTile
                   label="Connection"
                   value={status.connected ? "Connected" : "Signed out"}
@@ -2021,8 +2038,6 @@ function RapsodoInboxPrimaryCard({
   onLoadSessions: () => void;
   onPreviewSession: (session: RapsodoSessionListItem) => void;
 }) {
-  const sessionCountCopy =
-    availableCount === 1 ? "1 session ready" : `${availableCount} sessions ready`;
   const latestCopy = session
     ? `Latest: ${session.title} · ${
         session.shotCount === null ? "shots pending preview" : `${session.shotCount} shots`
@@ -2032,16 +2047,14 @@ function RapsodoInboxPrimaryCard({
       : "Connect R-Cloud to open the inbox";
 
   return (
-    <section className="premium-hero grid gap-3 p-3 sm:hidden">
+    <section className="premium-hero grid gap-2 p-2.5 sm:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">Inbox</Badge>
           <h1 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">
             Rapsodo Inbox
           </h1>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            Review sessions from R-Cloud.
-          </p>
+          <p className="sr-only">Review sessions from R-Cloud.</p>
         </div>
         <div className="premium-command-surface min-w-20 rounded-lg px-2.5 py-2 text-right">
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -2054,39 +2067,30 @@ function RapsodoInboxPrimaryCard({
         </div>
       </div>
 
-      <div className="premium-command-surface grid gap-3 rounded-lg p-3">
+      <div className="premium-command-surface grid gap-2 rounded-lg p-2.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-primary">Newest unimported session</p>
-            <h2 className="mt-1 line-clamp-2 text-2xl font-semibold leading-tight tracking-normal">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+              Newest unimported
+            </p>
+            <h2 className="mt-1 line-clamp-1 text-xl font-semibold leading-tight tracking-normal">
               {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
             </h2>
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
               {session
-                ? `${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(
-                    session,
-                  )} · ${
-                    session.shotCount === null
-                      ? "shots pending preview"
-                      : `${session.shotCount} shots`
-                  }`
+                ? latestCopy
                 : connected
-                  ? "Load Rapsodo after practice to pull the newest unimported session into this inbox."
-                  : "Sign in once, then the newest practice session can be reviewed and imported here."}
+                  ? latestCopy
+                  : "Sign in once, then review the latest practice session."}
             </p>
           </div>
           {session?.isNew ? (
             <Badge className="shrink-0 bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
           ) : null}
         </div>
-        <div className="rounded-lg border border-border bg-white/70 px-3 py-2">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            {sessionCountCopy}
-          </p>
-          <p className="mt-1 line-clamp-1 text-sm font-semibold">{latestCopy}</p>
-        </div>
         <Button
           type="button"
+          data-primary-action
           className="premium-action w-full rounded-lg"
           disabled={isPending}
           onClick={

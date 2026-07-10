@@ -14,6 +14,26 @@ describe("PageShell layout contract", () => {
     expect(source).toContain('"!max-w-none"');
   });
 
+  it("keeps panels content-sized while metric rows continue to stretch", () => {
+    const premiumSource = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
+    const appMetricSource = readFileSync(
+      join(process.cwd(), "src/components/app/metric-card.tsx"),
+      "utf8",
+    );
+
+    const metricBlock =
+      premiumSource.match(/export function MetricCard[\s\S]*?export function DataPanel/)?.[0] ?? "";
+    const panelBlock =
+      premiumSource.match(/export function DataPanel[\s\S]*?export function SectionHeader/)?.[0] ??
+      "";
+
+    expect(metricBlock).toContain("stretch = true,");
+    expect(panelBlock).toContain("stretch = false,");
+    expect(appMetricSource).toContain("stretch = true,");
+    expect(premiumSource).toContain('stretch ? "h-full self-stretch" : "self-start"');
+    expect(appMetricSource).toContain('stretch ? "h-full self-stretch" : "self-start"');
+  });
+
   it("lets desktop table frames expose labelled regions", () => {
     const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
     const frameBlock =

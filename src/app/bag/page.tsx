@@ -569,6 +569,19 @@ export default async function BagPage({ searchParams }: PageProps) {
             },
           ]}
         />
+        <StickyMobileAction>
+          <Button asChild className="premium-action w-full rounded-lg">
+            <Link
+              href={
+                currentGapRisk.href ?? "/practice?source=bag&intent=latest_weakness#practice-plan"
+              }
+              prefetch={false}
+            >
+              <Target className="size-4" aria-hidden />
+              Review next bag move
+            </Link>
+          </Button>
+        </StickyMobileAction>
       </MobileAppShell>
 
       <div className="hidden items-center justify-between gap-4 sm:flex">

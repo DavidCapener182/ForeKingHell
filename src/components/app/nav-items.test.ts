@@ -55,9 +55,9 @@ describe("desktop navigation groups", () => {
 
     expect(itemHrefsByGroup.Home).toEqual(["/dashboard", "/today", "/progress", "/strokes-gained"]);
     expect(itemHrefsByGroup.Analyse).toEqual([
+      "/simulator-lab",
       "/compare",
       "/bag",
-      "/simulator-lab",
       "/speed",
       "/stats/training-over-time",
       "/equipment",
@@ -91,7 +91,7 @@ describe("desktop navigation groups", () => {
     ]);
   });
 
-  it("keeps Simulator Lab inside the primary Analyse active state", () => {
+  it("keeps Performance Lab inside the primary Analyse active state", () => {
     const analyseItem = mobilePrimaryItems.find((item) => item.label === "Analyse");
 
     expect(analyseItem?.isActive("/simulator-lab")).toBe(true);

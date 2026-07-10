@@ -31,6 +31,7 @@ type AppMetricCardProps = {
   tone?: keyof typeof toneClasses;
   badge?: ReactNode;
   progress?: number;
+  stretch?: boolean;
   className?: string;
 };
 
@@ -43,12 +44,15 @@ export function AppMetricCard({
   tone = "green",
   badge,
   progress,
+  stretch = true,
   className,
 }: AppMetricCardProps) {
   const content = (
     <Card
+      data-stretch={stretch ? "true" : undefined}
       className={cn(
-        "premium-card luxury-metric-card h-full transition-colors hover:border-primary/40",
+        "premium-card luxury-metric-card transition-colors hover:border-primary/40",
+        stretch ? "h-full self-stretch" : "self-start",
         className,
       )}
     >
@@ -80,7 +84,11 @@ export function AppMetricCard({
   );
 
   return href ? (
-    <Link href={href} prefetch={false} className="group block h-full">
+    <Link
+      href={href}
+      prefetch={false}
+      className={cn("group block self-start", stretch && "h-full self-stretch")}
+    >
       {content}
     </Link>
   ) : (
