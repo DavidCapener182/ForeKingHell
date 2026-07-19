@@ -7,7 +7,17 @@ import type { TooltipValueType } from "recharts";
 import { cn } from "@/lib/utils";
 
 // Format: { THEME_NAME: CSS_SELECTOR }
-const THEMES = { light: "", dark: ".dark" } as const;
+const THEMES = {
+  light: "",
+  dark: ".dark",
+  clubhouse: 'html[data-theme="clubhouse"]',
+} as const;
+
+type ChartTheme = {
+  light: string;
+  dark: string;
+  clubhouse?: string;
+};
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
 type TooltipNameType = number | string;
@@ -17,10 +27,7 @@ export type ChartConfig = Record<
   {
     label?: React.ReactNode;
     icon?: React.ComponentType;
-  } & (
-    | { color?: string; theme?: never }
-    | { color?: never; theme: Record<keyof typeof THEMES, string> }
-  )
+  } & ({ color?: string; theme?: never } | { color?: never; theme: ChartTheme })
 >;
 
 type ChartContextProps = {
@@ -93,7 +100,11 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ?? itemConfig.color;
+    const themeColor = itemConfig.theme?.[theme as keyof typeof THEMES];
+    const color =
+      themeColor ??
+      (theme === "clubhouse" ? itemConfig.theme?.light : undefined) ??
+      itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
   })
   .join("\n")}
@@ -167,6 +178,7 @@ function ChartTooltipContent({
 
   return (
     <div
+      data-slot="chart-tooltip"
       className={cn(
         "grid min-w-32 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
         className,
@@ -267,6 +279,7 @@ function ChartLegendContent({
 
   return (
     <div
+      data-slot="chart-legend"
       className={cn(
         "flex items-center justify-center gap-4",
         verticalAlign === "top" ? "pb-3" : "pt-3",

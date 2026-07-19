@@ -4153,25 +4153,32 @@ function PatternOverlaySvg({ overlay }: { overlay: ShotPatternOverlaySummary }) 
       viewBox="0 0 240 140"
       role="img"
       aria-label={`${overlay.label} shot pattern overlay`}
-      className="mt-3 h-36 w-full rounded-lg border border-slate-200 bg-white"
+      className="clubhouse-chart-plot mt-3 h-36 w-full rounded-lg border border-border bg-card"
     >
-      <rect width="240" height="140" fill="#F8FAFC" />
-      <line x1="120" x2="120" y1="16" y2="126" stroke="#CBD5E1" strokeDasharray="4 4" />
-      <line x1="28" x2="212" y1="122" y2="122" stroke="#E2E8F0" />
+      <rect width="240" height="140" fill="var(--chart-plot-background, #F8FAFC)" />
+      <line
+        x1="120"
+        x2="120"
+        y1="16"
+        y2="126"
+        stroke="var(--chart-grid-strong, #CBD5E1)"
+        strokeDasharray="4 4"
+      />
+      <line x1="28" x2="212" y1="122" y2="122" stroke="var(--chart-grid, #E2E8F0)" />
       <polygon
         points={`${xLeft},${yNear} ${xRight},${yNear} ${xRight},${yFar} ${xLeft},${yFar}`}
-        fill="#DCFCE7"
+        fill="var(--chart-zone-fill, #DCFCE7)"
         opacity="0.75"
-        stroke="#16A34A"
+        stroke="var(--chart-positive, #16A34A)"
       />
-      <circle cx="120" cy={yMiddle} r="5" fill="#0F766E" />
-      <text x="12" y="24" fill="#64748B" fontSize="10">
+      <circle cx="120" cy={yMiddle} r="5" fill="var(--chart-comparison, #0F766E)" />
+      <text x="12" y="24" fill="var(--chart-axis, #64748B)" fontSize="10">
         left
       </text>
-      <text x="210" y="24" textAnchor="end" fill="#64748B" fontSize="10">
+      <text x="210" y="24" textAnchor="end" fill="var(--chart-axis, #64748B)" fontSize="10">
         right
       </text>
-      <text x="120" y="136" textAnchor="middle" fill="#64748B" fontSize="10">
+      <text x="120" y="136" textAnchor="middle" fill="var(--chart-axis, #64748B)" fontSize="10">
         {formatCarryYards(carryP50)} median
       </text>
     </svg>

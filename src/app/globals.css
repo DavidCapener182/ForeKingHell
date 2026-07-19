@@ -8,10 +8,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: var(--font-display), var(--font-ui), ui-sans-serif, system-ui, sans-serif;
-  --font-score: var(--font-display), var(--font-ui), sans-serif;
+  --font-heading:
+    var(--font-display-source), var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
+  --font-score: var(--font-display-source), var(--font-ui-source), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -59,6 +60,292 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Clubhouse Manager is deliberately scoped outside the shared component layer so the established
+   light and dark treatments remain in control outside this explicit fourth theme. */
+html[data-theme="clubhouse"] :where(.premium-card, [data-slot="card"], .desktop-data-panel),
+html[data-theme="clubhouse"] :where(.soft-panel, .apple-panel, .apple-panel-strong),
+html[data-theme="clubhouse"] :where(.metric-tile, .luxury-metric-card),
+html[data-theme="clubhouse"] :where(.premium-glass, .premium-surface, .premium-rail-card) {
+  border-color: var(--surface-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--surface-shadow-soft);
+}
+
+html[data-theme="clubhouse"] :where(.premium-card, [data-slot="card"]):hover {
+  border-color: var(--surface-border-strong);
+  box-shadow: var(--surface-shadow-soft);
+}
+
+html[data-theme="clubhouse"] .premium-hero {
+  border: 1px solid var(--surface-border);
+  border-top: 3px solid var(--clubhouse-oxblood);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--surface-shadow-soft);
+}
+
+html[data-theme="clubhouse"] .premium-command-surface {
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+html[data-theme="clubhouse"] :where(.premium-hero, .hero-glow)::after {
+  background: linear-gradient(110deg, rgba(18, 58, 41, 0.035), transparent 28%);
+  opacity: 0.5;
+  mix-blend-mode: normal;
+}
+
+html[data-theme="clubhouse"] .desktop-page-header {
+  border: 1px solid #365746;
+  border-top: 3px solid var(--clubhouse-oxblood);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(135deg, #09271b 0%, #123a29 68%, #194b37 100%);
+  background-size:
+    28px 100%,
+    100% 100%;
+  box-shadow: var(--surface-shadow-lift);
+  color: #fbf7ec;
+}
+
+html[data-theme="clubhouse"]
+  .desktop-page-header
+  [data-page-header-copy]
+  :where(h1, .text-foreground) {
+  color: #fbf7ec !important;
+}
+
+html[data-theme="clubhouse"]
+  .desktop-page-header
+  [data-page-header-copy]
+  :where(p, .text-muted-foreground) {
+  color: #d7d2c3 !important;
+}
+
+html[data-theme="clubhouse"]
+  :where(.desktop-page-header, .premium-hero, .ios-large-title, .ios-page-header)
+  h1,
+html[data-theme="clubhouse"]
+  :where(.premium-card, .desktop-data-panel, .apple-panel, .apple-panel-strong)
+  [data-slot="card-title"] {
+  font-family: var(--font-editorial-source), Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+html[data-theme="clubhouse"] :where(.font-score, .tabular-nums) {
+  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.golf-loading-progress {
+  background: conic-gradient(var(--primary) 70deg, var(--muted) 0deg);
+}
+
+html[data-theme="clubhouse"] [data-slot="card-header"],
+html[data-theme="clubhouse"] [data-slot="card-footer"] {
+  background: transparent;
+}
+
+html[data-theme="clubhouse"] :where(.premium-action, [data-slot="button"][data-variant="default"]) {
+  border-color: #09271b;
+  border-radius: var(--radius);
+  background: var(--primary);
+  box-shadow: none;
+  color: var(--primary-foreground);
+}
+
+html[data-theme="clubhouse"]
+  :where(.premium-action, [data-slot="button"][data-variant="default"]):hover {
+  background: #09271b;
+  color: var(--primary-foreground);
+}
+
+html[data-theme="clubhouse"] [data-slot="button"][data-variant="outline"] {
+  border-color: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--foreground);
+}
+
+html[data-theme="clubhouse"] [data-slot="button"][data-variant="outline"]:hover {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+html[data-theme="clubhouse"] [data-slot="button"][data-variant="secondary"] {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  color: var(--primary);
+}
+
+html[data-theme="clubhouse"] [data-slot="button"][data-variant="ghost"]:hover {
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+  color: var(--primary);
+}
+
+html[data-theme="clubhouse"] [data-slot="button"][data-variant="destructive"] {
+  border-color: color-mix(in srgb, var(--destructive) 42%, transparent);
+  background: color-mix(in srgb, var(--destructive) 10%, var(--surface));
+  color: var(--destructive);
+}
+
+html[data-theme="clubhouse"] [data-slot="button"]:disabled {
+  opacity: 0.58;
+}
+
+html[data-theme="clubhouse"]
+  :where(input, select, textarea, [data-slot="select-trigger"], [data-slot="input"]) {
+  border-color: var(--input);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+html[data-theme="clubhouse"] :where(input, textarea)::placeholder {
+  color: var(--muted-foreground);
+}
+
+html[data-theme="clubhouse"] :where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--primary);
+}
+
+html[data-theme="clubhouse"]
+  :where(input, select, textarea, button, a, summary, [role="button"]):focus-visible {
+  outline: 3px solid var(--clubhouse-focus);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+html[data-theme="clubhouse"] :where(.premium-route-tabs, .premium-mobile-bar) {
+  border-color: var(--surface-border);
+  border-radius: var(--radius);
+  background: var(--surface-glass);
+  box-shadow: var(--surface-shadow-soft);
+  backdrop-filter: none;
+}
+
+html[data-theme="clubhouse"] :where([data-slot="sidebar-header"], [data-slot="sidebar-footer"]) {
+  border-color: var(--sidebar-border);
+  background: var(--sidebar) !important;
+}
+
+html[data-theme="clubhouse"]
+  :where([data-slot="sidebar-header"], [data-slot="sidebar-footer"])
+  :where(a, button, [data-slot="sidebar-menu-button"]) {
+  transition-property: none;
+}
+
+html[data-theme="clubhouse"]
+  [data-slot="sidebar-header"]
+  :where([data-slot="sidebar-menu-button"], [data-slot="sidebar-trigger"]) {
+  color: var(--sidebar-foreground) !important;
+}
+
+html[data-theme="clubhouse"]
+  :where([data-slot="sidebar-header"], [data-slot="sidebar-footer"])
+  .text-muted-foreground {
+  color: #d7d2c3 !important;
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-footer"] button {
+  border-color: #526f60;
+  background: var(--sidebar-accent);
+  color: var(--sidebar-foreground);
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-group-label"] {
+  color: #bfc9c0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-menu-button"]:not([data-active="true"]):hover {
+  background: var(--sidebar-accent);
+  color: var(--sidebar-accent-foreground);
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-menu-button"][data-active="true"] {
+  border-radius: 2px;
+  background: #fbf7ec;
+  box-shadow: inset 3px 0 0 var(--clubhouse-cobalt);
+  color: #09271b;
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-rail"]::after {
+  background: color-mix(in srgb, var(--sidebar-foreground) 34%, transparent);
+}
+
+html[data-theme="clubhouse"] [data-slot="sidebar-rail"]:hover::after {
+  width: 2px;
+  background: var(--clubhouse-live);
+}
+
+html[data-theme="clubhouse"] .premium-route-tab-active {
+  border-color: var(--border);
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--clubhouse-cobalt);
+  color: var(--primary);
+}
+
+html[data-theme="clubhouse"]
+  :where(.mobile-nav-primary-active, .ios-tab-item[aria-current="page"]) {
+  color: var(--primary) !important;
+  box-shadow: inset 0 -3px 0 var(--clubhouse-live);
+}
+
+html[data-theme="clubhouse"] :where(.data-table-scroll, .chart-frame) {
+  border-color: var(--surface-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: none;
+}
+
+html[data-theme="clubhouse"] .chart-frame {
+  background:
+    linear-gradient(90deg, rgba(21, 85, 214, 0.035) 1px, transparent 1px), var(--surface-strong);
+  background-size:
+    32px 100%,
+    100% 100%;
+}
+
+html[data-theme="clubhouse"] .data-table-scroll th {
+  border-color: var(--border);
+  background: var(--background);
+  color: #575f56;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+html[data-theme="clubhouse"] .data-table-scroll td {
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+html[data-theme="clubhouse"] .data-table-scroll tbody tr:nth-child(even),
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  tbody
+  tr:nth-child(even)
+  td:first-child {
+  background: color-mix(in srgb, var(--background) 58%, var(--surface));
+}
+
+html[data-theme="clubhouse"] .data-table-scroll tbody tr[data-state="selected"] {
+  background: color-mix(in srgb, var(--clubhouse-cobalt) 8%, var(--surface));
+  box-shadow: inset 4px 0 0 var(--clubhouse-cobalt);
 }
 
 .text-muted-foreground {
@@ -177,6 +464,91 @@ html[data-theme="dark"] {
   --sidebar-border: #294334;
 }
 
+html[data-theme="clubhouse"] {
+  color-scheme: light;
+  --background: #f1ead9;
+  --foreground: #18251e;
+  --card: #fbf7ec;
+  --card-foreground: #18251e;
+  --popover: #fbf7ec;
+  --popover-foreground: #18251e;
+  --primary: #123a29;
+  --primary-foreground: #fbf7ec;
+  --secondary: #ede5d5;
+  --secondary-foreground: #123a29;
+  --muted: #ede5d5;
+  --muted-foreground: #666d64;
+  --accent: #e8deca;
+  --accent-foreground: #75342e;
+  --destructive: #b42318;
+  --border: #b9aa8c;
+  --input: #a99879;
+  --ring: #ff5a1f;
+  --chart-1: #123a29;
+  --chart-2: #1555d6;
+  --chart-3: #75342e;
+  --chart-4: #ad8a48;
+  --chart-5: #ff5a1f;
+  --radius: 0.3125rem;
+  --lux-emerald-950: #09271b;
+  --lux-emerald-900: #123a29;
+  --lux-emerald-800: #194b37;
+  --lux-emerald-700: #245d46;
+  --lux-emerald-600: #32765a;
+  --lux-ivory: #fbf7ec;
+  --lux-ivory-soft: #f1ead9;
+  --lux-charcoal: #18251e;
+  --lux-champagne: #ad8a48;
+  --lux-champagne-soft: #e3d4b5;
+  --lux-sky: #1555d6;
+  --surface: #fbf7ec;
+  --surface-strong: #fbf7ec;
+  --surface-soft: #f1ead9;
+  --surface-glass: rgba(251, 247, 236, 0.96);
+  --surface-border: rgba(117, 83, 48, 0.34);
+  --surface-border-strong: rgba(117, 52, 46, 0.58);
+  --surface-shadow: 0 2px 5px rgba(24, 37, 30, 0.06);
+  --surface-shadow-soft: 0 1px 2px rgba(24, 37, 30, 0.045);
+  --surface-shadow-lift: 0 3px 8px rgba(24, 37, 30, 0.07);
+  --mobile-bar-shadow: 0 -4px 12px rgba(9, 39, 27, 0.12);
+  --sidebar: #09271b;
+  --sidebar-foreground: #fbf7ec;
+  --sidebar-primary: #d6f356;
+  --sidebar-primary-foreground: #09271b;
+  --sidebar-accent: #123a29;
+  --sidebar-accent-foreground: #fbf7ec;
+  --sidebar-border: #365746;
+  --sidebar-ring: #ff5a1f;
+  --clubhouse-muted: #6f756c;
+  --clubhouse-oxblood: #75342e;
+  --clubhouse-gold: #ad8a48;
+  --clubhouse-live: #d6f356;
+  --clubhouse-cobalt: #1555d6;
+  --clubhouse-focus: #ff5a1f;
+  --chart-plot-background: #f7f0df;
+  --chart-grid: #cbbd9f;
+  --chart-grid-strong: #ad9b77;
+  --chart-axis: var(--muted-foreground);
+  --chart-zone-fill: #e1e8c7;
+  --chart-positive: #123a29;
+  --chart-comparison: #1555d6;
+  --chart-marker: #75342e;
+  --chart-series-green: #123a29;
+  --chart-series-sky: #1555d6;
+  --chart-series-pink: #75342e;
+  --chart-series-amber: #ad8a48;
+  --chart-series-slate: #6f756c;
+  --delivery-chart-background: #f7f0df;
+  --delivery-face: #1555d6;
+  --delivery-path: #75342e;
+  --delivery-target: #8e8067;
+  --delivery-centre: #fbf7ec;
+  --training-load-critical: #b42318;
+  --training-load-high: #ff5a1f;
+  --training-load-active: #123a29;
+  --training-load-empty: #cbbd9f;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -224,6 +596,14 @@ html[data-theme="dark"] {
       100% 100%;
   }
 
+  html[data-theme="clubhouse"] body {
+    background:
+      repeating-linear-gradient(0deg, rgba(117, 83, 48, 0.014) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(90deg, rgba(117, 83, 48, 0.01) 0 1px, transparent 1px 6px),
+      var(--background);
+    background-attachment: fixed;
+  }
+
   @media (max-width: 640px) {
     body {
       background:
@@ -246,6 +626,13 @@ html[data-theme="dark"] {
         36px 36px,
         36px 36px,
         100% 100%;
+    }
+
+    html[data-theme="clubhouse"] body {
+      background:
+        repeating-linear-gradient(0deg, rgba(117, 83, 48, 0.012) 0 1px, transparent 1px 6px),
+        var(--background);
+      background-attachment: scroll;
     }
   }
   html {
@@ -305,6 +692,311 @@ html[data-theme="dark"] .border-slate-300,
 html[data-theme="dark"] .border-emerald-100,
 html[data-theme="dark"] .border-emerald-200 {
   border-color: var(--border) !important;
+}
+
+/* Clubhouse compatibility for legacy literal-light utilities. New shared surfaces should use
+   semantic tokens; these exact utilities remain until their owning routes are migrated. */
+html[data-theme="clubhouse"] .bg-white,
+html[data-theme="clubhouse"] .bg-\[\#F5F6F4\],
+html[data-theme="clubhouse"] .bg-\[\#F8FAF8\],
+html[data-theme="clubhouse"] .bg-\[\#F8FCF9\],
+html[data-theme="clubhouse"] .bg-slate-50,
+html[data-theme="clubhouse"] .bg-slate-100 {
+  background-color: var(--surface-strong) !important;
+}
+
+html[data-theme="clubhouse"] [class*="bg-white/"] {
+  background-color: var(--surface-glass) !important;
+}
+
+html[data-theme="clubhouse"] [class*="bg-white"] th,
+html[data-theme="clubhouse"] [class*="bg-white"] td {
+  background-color: var(--surface-strong) !important;
+}
+
+html[data-theme="clubhouse"]
+  :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-emerald-950, .text-emerald-900) {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="clubhouse"] :is(.text-slate-700, .text-slate-600, .text-slate-500) {
+  color: var(--muted-foreground) !important;
+}
+
+html[data-theme="clubhouse"] :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="clubhouse"]
+  :where(.desktop-data-panel, .premium-card)
+  > [data-slot="card-header"]
+  [data-slot="card-description"] {
+  max-width: 72ch;
+}
+
+/* Scorecard tables use paper rows, aged rules and broadcast-blue analytical figures. */
+html[data-theme="clubhouse"] .data-table-scroll table {
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-theme="clubhouse"] .data-table-scroll thead th {
+  border-bottom: 1px solid var(--primary);
+  border-bottom-color: var(--primary);
+  background: var(--background) !important;
+  font-family: var(--font-ui-source), sans-serif;
+  font-weight: 700;
+}
+
+html[data-theme="clubhouse"] .data-table-scroll :where(th, td) + :where(th, td) {
+  border-left: 1px solid color-mix(in srgb, var(--border) 56%, transparent);
+}
+
+html[data-theme="clubhouse"] .data-table-scroll tbody tr {
+  transition: background-color 120ms ease-out;
+}
+
+html[data-theme="clubhouse"] .data-table-scroll tbody tr:hover,
+html[data-theme="clubhouse"] .data-table-scroll tbody tr:focus-within {
+  background: color-mix(in srgb, var(--clubhouse-cobalt) 7%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--clubhouse-cobalt);
+}
+
+html[data-theme="clubhouse"] .data-table-scroll td.text-right {
+  color: var(--clubhouse-cobalt);
+  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-size: 1.02em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* These declarations intentionally outrank documented legacy bg-white table utilities. */
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  :where(th, td):first-child {
+  border-right: 1px solid var(--border);
+  background: var(--surface) !important;
+  box-shadow: 2px 0 0 color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  thead
+  th:first-child {
+  background: var(--background) !important;
+}
+
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  tbody
+  tr:nth-child(even)
+  td:first-child {
+  background: color-mix(in srgb, var(--background) 58%, var(--surface)) !important;
+}
+
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  tbody
+  tr:hover
+  td:first-child,
+html[data-theme="clubhouse"]
+  [data-sticky-first-column="true"]
+  .data-table-scroll
+  tbody
+  tr:focus-within
+  td:first-child {
+  background: color-mix(in srgb, var(--clubhouse-cobalt) 7%, var(--surface)) !important;
+}
+
+/* Plot areas read as tournament analysis sheets; maps retain their own visual treatment. */
+html[data-theme="clubhouse"] :where([data-slot="chart"], .clubhouse-chart-plot) {
+  border-color: var(--border);
+  border-radius: var(--radius);
+  background-color: var(--chart-plot-background);
+  background-image:
+    linear-gradient(90deg, rgba(21, 85, 214, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(117, 83, 48, 0.045) 1px, transparent 1px);
+  background-size:
+    32px 100%,
+    100% 24px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+html[data-theme="clubhouse"] [data-slot="chart"] {
+  padding: 0.75rem 0.5rem 0.25rem;
+}
+
+html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-grid line {
+  stroke: var(--chart-grid);
+  stroke-opacity: 0.72;
+}
+
+html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-axis-tick text {
+  fill: var(--chart-axis);
+  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-theme="clubhouse"] [data-slot="chart-tooltip"] {
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--clubhouse-cobalt);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--surface-shadow);
+}
+
+html[data-theme="clubhouse"] [data-slot="chart-tooltip"] .tabular-nums {
+  color: var(--clubhouse-cobalt);
+  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-size: 1.05em;
+}
+
+html[data-theme="clubhouse"] [data-slot="chart-legend"] {
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+html[data-theme="clubhouse"] [data-slot="chart-legend"] > div > div {
+  border-radius: 1px;
+}
+
+html[data-theme="clubhouse"] [data-delivery-series="face"] {
+  background: color-mix(in srgb, var(--clubhouse-cobalt) 9%, var(--surface));
+  color: var(--clubhouse-cobalt) !important;
+}
+
+html[data-theme="clubhouse"] [data-delivery-series="path"] {
+  background: color-mix(in srgb, var(--clubhouse-oxblood) 9%, var(--surface));
+  color: var(--clubhouse-oxblood) !important;
+}
+
+html[data-theme="clubhouse"] [data-delivery-series="delta"] {
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  color: var(--primary) !important;
+}
+
+html[data-theme="clubhouse"] [data-target-tone="green"] {
+  color: var(--primary) !important;
+}
+
+html[data-theme="clubhouse"] [data-target-tone="amber"] {
+  color: var(--clubhouse-focus) !important;
+}
+
+html[data-theme="clubhouse"] [data-target-tone="slate"] {
+  color: var(--muted-foreground) !important;
+}
+
+html[data-theme="clubhouse"] [data-operational-value] {
+  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-theme="clubhouse"] [data-tone-role="surface"] {
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+  background: color-mix(in srgb, currentColor 8%, var(--surface));
+  --tw-ring-color: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+html[data-theme="clubhouse"] [data-tone="green"] {
+  color: var(--primary);
+}
+
+html[data-theme="clubhouse"] [data-tone="sky"] {
+  color: var(--clubhouse-cobalt);
+}
+
+html[data-theme="clubhouse"] [data-tone="pink"] {
+  color: var(--clubhouse-oxblood);
+}
+
+html[data-theme="clubhouse"] [data-tone="amber"] {
+  color: var(--clubhouse-focus);
+}
+
+html[data-theme="clubhouse"] [data-tone="slate"] {
+  color: var(--muted-foreground);
+}
+
+html[data-theme="clubhouse"] [data-tone-role="dot"] {
+  background: currentColor;
+  --tw-ring-color: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+html[data-theme="clubhouse"] [data-workflow-status="current"] {
+  border-color: color-mix(in srgb, var(--clubhouse-cobalt) 42%, var(--border));
+  background: color-mix(in srgb, var(--clubhouse-cobalt) 5%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--clubhouse-cobalt);
+}
+
+html[data-theme="clubhouse"] [data-workflow-status="complete"] {
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  background: var(--surface);
+}
+
+html[data-theme="clubhouse"] [data-clubhouse-state="live"] {
+  border-color: color-mix(in srgb, var(--clubhouse-live) 64%, var(--primary));
+  box-shadow: inset 3px 0 0 var(--clubhouse-live);
+}
+
+html[data-theme="clubhouse"] [data-live-status="ready"] {
+  border-color: var(--clubhouse-live);
+  background: var(--clubhouse-live);
+  color: #09271b;
+}
+
+html[data-theme="clubhouse"] [data-current="true"] {
+  border-color: var(--clubhouse-cobalt);
+  box-shadow: inset 3px 0 0 var(--clubhouse-cobalt);
+}
+
+[data-theme-swatch="system"] span:nth-child(1) {
+  background: linear-gradient(135deg, #edf3ec 50%, #07110b 50%);
+}
+
+[data-theme-swatch="system"] span:nth-child(2),
+[data-theme-swatch="light"] span:nth-child(1) {
+  background: #fffdf4;
+}
+
+[data-theme-swatch="system"] span:nth-child(3),
+[data-theme-swatch="light"] span:nth-child(2) {
+  background: #075f36;
+}
+
+[data-theme-swatch="light"] span:nth-child(3) {
+  background: #c7972b;
+}
+
+[data-theme-swatch="dark"] span:nth-child(1) {
+  background: #07110b;
+}
+
+[data-theme-swatch="dark"] span:nth-child(2) {
+  background: #69d694;
+}
+
+[data-theme-swatch="dark"] span:nth-child(3) {
+  background: #e1b957;
+}
+
+[data-theme-swatch="clubhouse"] span:nth-child(1) {
+  background: #fbf7ec;
+}
+
+[data-theme-swatch="clubhouse"] span:nth-child(2) {
+  background: #123a29;
+}
+
+[data-theme-swatch="clubhouse"] span:nth-child(3) {
+  background: #1555d6;
 }
 
 @media (prefers-reduced-transparency: reduce) {

@@ -362,7 +362,7 @@ export function DesktopWorkbenchControls({
     <>
       <div
         className={cn(
-          "hidden min-w-0 flex-wrap items-center justify-start gap-3 rounded-lg border border-emerald-950/10 bg-[#FFFDF8]/88 px-3 py-2 shadow-sm sm:flex",
+          "hidden min-w-0 flex-wrap items-center justify-start gap-3 rounded-lg border border-primary/10 bg-card/88 px-3 py-2 shadow-sm sm:flex",
           className,
         )}
         data-desktop-workbench-toolbar
@@ -370,8 +370,8 @@ export function DesktopWorkbenchControls({
       >
         <div className="min-w-0 flex-[1_1_14rem]">
           <div className="flex min-w-0 items-center gap-2">
-            <LayoutDashboard className="size-4 text-emerald-700" aria-hidden />
-            <p className="truncate text-sm font-semibold text-emerald-950">{currentViewLabel}</p>
+            <LayoutDashboard className="size-4 text-primary" aria-hidden />
+            <p className="truncate text-sm font-semibold text-foreground">{currentViewLabel}</p>
             <Badge variant="secondary" className="hidden lg:inline-flex">
               {resultLabel}
             </Badge>
@@ -547,12 +547,12 @@ export function DesktopWorkbenchControls({
             aria-label="Table row shortcuts: arrow keys move rows, Enter or Space selects the focused row"
             data-table-row-shortcuts
           >
-            <span className="font-semibold text-emerald-900">Rows</span>
-            <kbd className="rounded border border-border bg-white px-1.5 py-0.5 font-mono text-[11px]">
+            <span className="font-semibold text-foreground">Rows</span>
+            <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px]">
               Up/Down
             </kbd>
             <span>move</span>
-            <kbd className="rounded border border-border bg-white px-1.5 py-0.5 font-mono text-[11px]">
+            <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px]">
               Enter
             </kbd>
             <span>select</span>

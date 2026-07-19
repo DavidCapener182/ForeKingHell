@@ -1200,11 +1200,15 @@ function MobileImportStatusStrip({
   return (
     <section
       className="premium-command-surface grid gap-2 rounded-lg p-3 sm:hidden"
+      data-clubhouse-state={canSave ? "live" : "current"}
       aria-label="Import status"
     >
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold">Import status</p>
-        <Badge className="bg-background/80 text-muted-foreground ring-1 ring-border hover:bg-background">
+        <Badge
+          data-live-status={canSave ? "ready" : undefined}
+          className="bg-background/80 text-muted-foreground ring-1 ring-border hover:bg-background"
+        >
           {canSave ? "Ready" : "Review"}
         </Badge>
       </div>
@@ -1214,6 +1218,8 @@ function MobileImportStatusStrip({
             <button
               type="button"
               onClick={() => onStepChange(item.id)}
+              data-current={currentStep === item.id ? "true" : undefined}
+              data-status-state={item.state}
               className={cn(
                 "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-background/80 px-2.5 text-xs font-semibold shadow-sm transition-colors",
                 currentStep === item.id

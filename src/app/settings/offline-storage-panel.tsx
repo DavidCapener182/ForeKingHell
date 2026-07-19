@@ -59,7 +59,7 @@ export function OfflineStoragePanel() {
   const fileCount = actions.reduce((total, action) => total + offlineFileCount(action), 0);
 
   return (
-    <section id="offline-storage" className="scroll-mt-28 rounded-lg border bg-white p-4">
+    <section id="offline-storage" className="scroll-mt-28 rounded-lg border bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold">
@@ -71,11 +71,11 @@ export function OfflineStoragePanel() {
             shared devices.
           </p>
         </div>
-        <label className="flex min-h-10 items-center gap-2 rounded-lg border bg-[#F5F6F4] px-3 text-sm font-medium">
+        <label className="flex min-h-11 items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm font-medium">
           <input
             type="checkbox"
             checked={enabled}
-            className="size-4 accent-[#0B7A3B]"
+            className="size-4 accent-primary"
             onChange={(event) => {
               setOfflineImportStorageEnabled(event.target.checked);
               setMessage(
@@ -99,7 +99,11 @@ export function OfflineStoragePanel() {
       </div>
 
       {message ? (
-        <p className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+        <p
+          className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary"
+          data-tone="green"
+          data-tone-role="surface"
+        >
           <ShieldCheck className="size-4" />
           {message}
         </p>
@@ -143,7 +147,7 @@ export function OfflineStoragePanel() {
           actions.map((action) => (
             <div
               key={action.id}
-              className="grid gap-1 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"
+              className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">
@@ -185,7 +189,7 @@ export function OfflineStoragePanel() {
 
 function OfflineStorageMetric({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg border bg-[#F5F6F4] px-3 py-2">
+    <div className="rounded-lg border bg-muted/40 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>

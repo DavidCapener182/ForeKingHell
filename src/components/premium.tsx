@@ -129,7 +129,10 @@ export function PageHeader({
           >
             <div className="min-w-0">
               <p className="truncate text-[13px] text-muted-foreground">{primaryMetric.label}</p>
-              <p className="mt-0.5 truncate text-xl font-semibold tracking-tight tabular-nums">
+              <p
+                data-operational-value
+                className="mt-0.5 truncate text-xl font-semibold tracking-tight tabular-nums"
+              >
                 {primaryMetric.value}
               </p>
               {primaryMetric.detail ? (
@@ -168,7 +171,10 @@ export function PageHeader({
               : "",
           )}
         >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div
+            data-page-header-copy
+            className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
+          >
             <div className="max-w-3xl space-y-1.5">
               {eyebrow ? <div>{eyebrow}</div> : null}
               <div className="space-y-1.5">
@@ -216,7 +222,10 @@ export function PageHeader({
                 <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                   {metric.label}
                 </p>
-                <p className="mt-1 truncate text-2xl font-semibold tracking-normal sm:text-[1.5rem]">
+                <p
+                  data-operational-value
+                  className="mt-1 truncate text-2xl font-semibold tracking-normal sm:text-[1.5rem]"
+                >
                   {metric.value}
                 </p>
                 {metric.detail ? (
@@ -331,7 +340,7 @@ export function MobileSectionChips({
         <a
           key={`${item.label}-${item.href}-${index}`}
           href={item.href}
-          className="focus-aaa min-h-11 shrink-0 snap-start rounded-md border border-transparent px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out hover:border-emerald-800/20 hover:bg-white/60 hover:text-foreground active:scale-[0.98]"
+          className="focus-aaa min-h-11 shrink-0 snap-start rounded-md border border-transparent px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out hover:border-primary/20 hover:bg-card/60 hover:text-foreground active:scale-[0.98]"
         >
           {item.label}
         </a>
@@ -382,7 +391,7 @@ export function ActiveFilterChips({
     >
       {items.map((item) => {
         const content = (
-          <span className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-emerald-900/10 bg-white/80 px-3.5 text-sm font-semibold text-slate-700 shadow-sm">
+          <span className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-primary/10 bg-card/80 px-3.5 text-sm font-semibold text-foreground shadow-sm">
             {item.label}
           </span>
         );
@@ -548,7 +557,11 @@ export function MobileBentoSummary({
           <div className="ios-grouped-row grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className={cn("size-2 rounded-full", compactToneClasses[tone])} />
+                <span
+                  data-tone={tone}
+                  data-tone-role="dot"
+                  className={cn("size-2 rounded-full", compactToneClasses[tone])}
+                />
                 <p className="truncate text-[13px] text-muted-foreground">{item.label}</p>
               </div>
               {item.detail ? (
@@ -668,7 +681,11 @@ export function MobileQuickDecisionCard({
             <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{detail}</p>
           ) : null}
         </div>
-        <span className={cn("mt-1 size-2.5 rounded-full ring-4", compactToneClasses[tone])} />
+        <span
+          data-tone={tone}
+          data-tone-role="dot"
+          className={cn("mt-1 size-2.5 rounded-full ring-4", compactToneClasses[tone])}
+        />
       </div>
       {action ? <div data-primary-action>{action}</div> : null}
     </div>
@@ -847,7 +864,7 @@ export function MobileCurrentItemCard({
       <div className="premium-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold tracking-normal text-[#111611]">
+            <h2 className="truncate text-lg font-semibold tracking-normal text-foreground">
               {title}
             </h2>
             {subtitle ? (
@@ -888,7 +905,7 @@ export function TopThreeDisclosure({
       <div className={cn("lg:hidden", className)}>
         {visibleItems.map(render)}
         <details className="contents">
-          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-white/80 px-3 text-sm font-semibold text-slate-700 [&::-webkit-details-marker]:hidden">
+          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-card/80 px-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
             {moreLabel}
           </summary>
           <div className="contents">
@@ -963,7 +980,7 @@ export function MetricCard({
     <Card
       data-stretch={stretch ? "true" : undefined}
       className={cn(
-        "premium-card luxury-metric-card transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-[#0B7A3B]",
+        "premium-card luxury-metric-card transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:-translate-y-0.5 group-hover:border-primary/40",
         stretch ? "h-full self-stretch" : "self-start",
         className,
       )}
@@ -973,10 +990,14 @@ export function MetricCard({
           <CardDescription className="font-medium uppercase tracking-[0.12em]">
             {label}
           </CardDescription>
-          <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>
+          <CardTitle data-operational-value className="text-2xl font-semibold tracking-normal">
+            {value}
+          </CardTitle>
         </div>
         {Icon ? (
           <div
+            data-tone={tone}
+            data-tone-role="surface"
             className={cn("grid size-8 place-items-center rounded-md ring-1", toneClasses[tone])}
           >
             <Icon className="size-5" />
@@ -1042,9 +1063,9 @@ export function SectionHeader({
   action?: ReactNode;
 }) {
   return (
-    <CardHeader className="gap-1 border-b border-border/70 bg-white/35 px-4 py-3">
+    <CardHeader className="gap-1 border-b border-border/70 bg-card/35 px-4 py-3">
       <div>
-        <CardTitle className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
+        <CardTitle className="text-lg font-semibold tracking-normal text-foreground sm:text-xl">
           {title}
         </CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
@@ -1065,6 +1086,8 @@ export function StatusPill({
 }) {
   return (
     <Badge
+      data-tone={tone}
+      data-tone-role="surface"
       variant="outline"
       className={cn(
         "w-fit border-0 px-2.5 py-1 text-xs font-medium ring-1 hover:bg-transparent",
@@ -1094,7 +1117,11 @@ export function InsightBlock({
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </p>
-        <span className={cn("size-2 rounded-full ring-4", toneClasses[tone])} />
+        <span
+          data-tone={tone}
+          data-tone-role="dot"
+          className={cn("size-2 rounded-full ring-4", toneClasses[tone])}
+        />
       </div>
       <p className="mt-3 text-lg font-semibold tracking-normal sm:text-xl">{value}</p>
       {detail ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
@@ -1127,13 +1154,18 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
   const content = (
     <>
       <span
+        data-tone={tone}
+        data-tone-role="dot"
         className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-4", compactToneClasses[tone])}
       />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {item.label}
         </span>
-        <span className="mt-1 block truncate text-base font-semibold tracking-normal text-slate-950">
+        <span
+          data-operational-value
+          className="mt-1 block truncate text-base font-semibold tracking-normal text-foreground"
+        >
           {item.value}
         </span>
         {item.detail ? (
@@ -1142,7 +1174,7 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
       </span>
       {item.href ? (
         <ArrowRight
-          className="mt-5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700"
+          className="mt-5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
           aria-hidden
         />
       ) : null}
@@ -1202,7 +1234,7 @@ export function CompactLinkGrid({
             prefetch={false}
             title={item.description}
             aria-label={item.description ? `${item.title}: ${item.description}` : item.title}
-            className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-border/70 px-3 py-2 transition-colors hover:bg-emerald-50/70 sm:border-r"
+            className="group flex min-h-12 min-w-0 items-center gap-3 border-b border-border/70 px-3 py-2 transition-colors hover:bg-accent/40 sm:border-r"
           >
             <span className={cn("grid size-8 shrink-0 place-items-center rounded-md", item.accent)}>
               <item.icon className="size-4" aria-hidden />
@@ -1210,13 +1242,13 @@ export function CompactLinkGrid({
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span className="truncate font-semibold">{item.title}</span>
               {item.metric ? (
-                <Badge variant="outline" className="shrink-0 bg-white/70 px-1.5 py-0 text-[11px]">
+                <Badge variant="outline" className="shrink-0 bg-card/70 px-1.5 py-0 text-[11px]">
                   {item.metric}
                 </Badge>
               ) : null}
             </span>
             <ArrowRight
-              className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700"
+              className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
               aria-hidden
             />
           </Link>
@@ -1352,7 +1384,7 @@ export function MobileDataCard({
   );
 
   const cardClassName = cn(
-    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-emerald-300",
+    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-primary/40",
     className,
   );
 

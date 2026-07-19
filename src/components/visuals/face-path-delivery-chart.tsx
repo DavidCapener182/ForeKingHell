@@ -61,7 +61,12 @@ export function FacePathDeliveryChart({
 
   return (
     <div className={cn("grid gap-2.5", className)}>
-      <div className={cn("rounded-[16px] bg-white px-3 py-3", chartClassName)}>
+      <div
+        className={cn(
+          "clubhouse-chart-plot rounded-[16px] bg-[var(--delivery-chart-background,#ffffff)] px-3 py-3",
+          chartClassName,
+        )}
+      >
         <svg
           aria-label={`${datum.label} ${datum.patternLabel} club face and club path direction`}
           role="img"
@@ -79,7 +84,7 @@ export function FacePathDeliveryChart({
               refY="3.5"
               viewBox="0 0 7 7"
             >
-              <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#B91C1C" />
+              <path d="M 0 0 L 7 3.5 L 0 7 z" fill="var(--delivery-path, #B91C1C)" />
             </marker>
             <marker
               id={faceArrowId}
@@ -91,7 +96,7 @@ export function FacePathDeliveryChart({
               refY="3.5"
               viewBox="0 0 7 7"
             >
-              <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#111827" />
+              <path d="M 0 0 L 7 3.5 L 0 7 z" fill="var(--delivery-face, #111827)" />
             </marker>
           </defs>
           <line
@@ -99,11 +104,18 @@ export function FacePathDeliveryChart({
             y1="66"
             x2="22"
             y2="66"
-            stroke="#A7B0A8"
+            stroke="var(--delivery-target, #A7B0A8)"
             strokeDasharray="10 8"
             strokeWidth="2"
           />
-          <text x="230" y="56" fill="#667085" fontSize="11" fontWeight="700" textAnchor="end">
+          <text
+            x="230"
+            y="56"
+            fill="var(--chart-axis, #667085)"
+            fontSize="11"
+            fontWeight="700"
+            textAnchor="end"
+          >
             Target
           </text>
           {pathLine ? (
@@ -113,7 +125,7 @@ export function FacePathDeliveryChart({
               x2={pathLine.x2}
               y2={pathLine.y2}
               markerEnd={`url(#${pathArrowId})`}
-              stroke="#B91C1C"
+              stroke="var(--delivery-path, #B91C1C)"
               strokeLinecap="round"
               strokeWidth="3.75"
             />
@@ -125,33 +137,49 @@ export function FacePathDeliveryChart({
               x2={faceLine.x2}
               y2={faceLine.y2}
               markerEnd={`url(#${faceArrowId})`}
-              stroke="#111827"
+              stroke="var(--delivery-face, #111827)"
               strokeLinecap="round"
               strokeWidth="3.75"
             />
           ) : null}
-          <circle cx="130" cy="66" r="7" fill="#F8FAF8" stroke="#111827" strokeWidth="2" />
+          <circle
+            cx="130"
+            cy="66"
+            r="7"
+            fill="var(--delivery-centre, #F8FAF8)"
+            stroke="var(--delivery-face, #111827)"
+            strokeWidth="2"
+          />
         </svg>
       </div>
 
       {showMetricPills ? (
         <div className="grid gap-2 text-[11px] font-bold leading-4 md:grid-cols-3">
-          <span className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg bg-[#F9FAFB] px-2.5 py-2 text-[#111827]">
-            <span className="h-0.5 w-5 shrink-0 rounded-full bg-[#111827]" />
-            <span>Black = Club Face {formatSignedDegrees(datum.faceDeg)}</span>
+          <span
+            data-delivery-series="face"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg bg-[#F9FAFB] px-2.5 py-2 text-[#111827]"
+          >
+            <span className="h-0.5 w-5 shrink-0 rounded-full bg-[var(--delivery-face,#111827)]" />
+            <span>Club Face {formatSignedDegrees(datum.faceDeg)}</span>
           </span>
-          <span className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg bg-[#FEF2F2] px-2.5 py-2 text-[#B91C1C]">
-            <span className="h-0.5 w-5 shrink-0 rounded-full bg-[#B91C1C]" />
-            <span>Red = Club Path {formatSignedDegrees(datum.pathDeg)}</span>
+          <span
+            data-delivery-series="path"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-lg bg-[#FEF2F2] px-2.5 py-2 text-[#B91C1C]"
+          >
+            <span className="h-0.5 w-5 shrink-0 rounded-full bg-[var(--delivery-path,#B91C1C)]" />
+            <span>Club Path {formatSignedDegrees(datum.pathDeg)}</span>
           </span>
-          <span className="inline-flex min-w-0 items-center justify-center rounded-lg bg-[#F7FBF8] px-2.5 py-2 text-[#087A3D]">
+          <span
+            data-delivery-series="delta"
+            className="inline-flex min-w-0 items-center justify-center rounded-lg bg-[#F7FBF8] px-2.5 py-2 text-[#087A3D]"
+          >
             <span>Face-to-path {formatSignedDegrees(datum.faceToPathDeg)}</span>
           </span>
         </div>
       ) : null}
 
       {targetWindow ? (
-        <div className="grid gap-1.5 rounded-xl bg-[#F8FAF8] px-2.5 py-2 text-[11px] leading-4">
+        <div className="grid gap-1.5 rounded-xl bg-muted/40 px-2.5 py-2 text-[11px] leading-4">
           <p className="font-bold uppercase tracking-normal text-[#667085]">Target window</p>
           <TargetWindowRow
             label={targetWindow.path.label}
@@ -217,11 +245,12 @@ function TargetWindowRow({
   state: TargetWindowState;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg bg-white/74 px-2 py-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg bg-card/74 px-2 py-1.5">
       <span className="min-w-0 text-[#667085]">
         {label}: <span className="font-semibold text-[#111827]">{windowLabel}</span>
       </span>
       <span
+        data-target-tone={state.tone}
         className={cn(
           "shrink-0 font-bold",
           state.tone === "green"

@@ -34,6 +34,15 @@ describe("app shell desktop accessibility", () => {
     expect(source).toContain("Icon-only");
   });
 
+  it("uses sidebar semantic colours for every header and footer control", () => {
+    expect(source).not.toContain("bg-[linear-gradient(180deg,var(--lux-ivory),#f4f7ef)]");
+    expect(source).not.toContain("bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]");
+    expect(source).toContain('"border-b border-sidebar-border bg-sidebar text-sidebar-foreground"');
+    expect(source).toContain('"border-t border-sidebar-border bg-sidebar text-sidebar-foreground"');
+    expect(source).toContain("text-sidebar-accent-foreground");
+    expect(source).toContain("text-sidebar-foreground/70");
+  });
+
   it("defers private mobile navigation on public routes", () => {
     expect(source).toContain('import("@/components/app/mobile-nav")');
     expect(source).toContain(

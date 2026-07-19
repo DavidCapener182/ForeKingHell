@@ -1,5 +1,5 @@
 export const preferredUnitOptions = ["yards", "metres"] as const;
-export const themeOptions = ["system", "light", "dark"] as const;
+export const themeOptions = ["system", "light", "dark", "clubhouse"] as const;
 export const tableDensityOptions = ["comfortable", "compact"] as const;
 export const dashboardPinOptions = [
   "shots",
@@ -28,7 +28,7 @@ export function parsePreferredUnits(value: FormDataEntryValue | null): Preferred
 }
 
 export function parseTheme(value: FormDataEntryValue | null): ThemePreference {
-  return value === "light" || value === "dark" ? value : "system";
+  return value === "light" || value === "dark" || value === "clubhouse" ? value : "system";
 }
 
 export function parseTableDensity(value: FormDataEntryValue | null): TableDensity {

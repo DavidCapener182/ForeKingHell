@@ -61,6 +61,7 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getSiteOrigin } from "@/lib/site-origin";
 import {
   dashboardPinOptions,
+  parseTheme,
   preferredUnitOptions,
   tableDensityOptions,
   type PrivacySettings,
@@ -208,11 +209,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
           visual={<PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />}
           actions={
-            <Button
-              asChild
-              size="sm"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
+            <Button asChild size="sm" className="rounded-lg">
               <a href="#profile-settings">
                 <UserCog className="size-4" />
                 Profile
@@ -300,31 +297,28 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <nav className="mt-2 grid gap-1 text-sm">
               <a
                 href="#profile-settings"
-                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-muted"
               >
                 Profile
               </a>
               <a
                 href="#sharing-settings"
-                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-muted"
               >
                 Sharing
               </a>
               <a
                 href="#visibility-simulator"
-                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-muted"
               >
                 Visibility
               </a>
-              <a
-                href="#data-export"
-                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
-              >
+              <a href="#data-export" className="rounded-lg px-2 py-2 font-medium hover:bg-muted">
                 Data export
               </a>
               <a
                 href="#offline-storage"
-                className="rounded-lg px-2 py-2 font-medium hover:bg-[#F5F6F4]"
+                className="rounded-lg px-2 py-2 font-medium hover:bg-muted"
               >
                 Offline storage
               </a>
@@ -392,7 +386,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <DataPanel>
             <SectionHeader
               title="Profile and preferences"
-              description="These settings are stored with your user profile and control dashboard pins, units, and table density."
+              description="These settings are stored with your user profile and control appearance, dashboard pins, units, and table density."
               action={<SlidersHorizontal className="size-5 text-sky-600" />}
             />
             <CardContent>
@@ -415,10 +409,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     defaultValue={profile.tableDensity}
                     values={tableDensityOptions}
                   />
-                  <ThemePreferenceSelect defaultValue={parseStoredTheme(profile.theme)} />
+                  <ThemePreferenceSelect defaultValue={parseTheme(profile.theme)} />
                 </div>
 
-                <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                <fieldset className="grid gap-3 rounded-lg border bg-muted/40 p-4">
                   <legend className="px-1 text-sm font-semibold">Dashboard pins</legend>
                   <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
                     {dashboardPinOptions.map((pin) => (
@@ -433,7 +427,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   </div>
                 </fieldset>
 
-                <fieldset className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
+                <fieldset className="grid gap-3 rounded-lg border bg-muted/40 p-4">
                   <legend className="px-1 text-sm font-semibold">Privacy defaults</legend>
                   <div className="grid gap-2">
                     <CheckboxField
@@ -454,10 +448,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   </div>
                 </fieldset>
 
-                <Button
-                  type="submit"
-                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                >
+                <Button type="submit" className="w-full rounded-lg sm:w-fit">
                   <UserCog className="size-4" />
                   Save settings
                 </Button>
@@ -480,7 +471,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <CardContent className="grid gap-5">
               <form
                 action={createInvitationAction}
-                className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4 md:grid-cols-[1fr_180px_auto] md:items-end"
+                className="grid gap-3 rounded-lg border bg-muted/40 p-4 md:grid-cols-[1fr_180px_auto] md:items-end"
               >
                 <FormField
                   label="Invite email"
@@ -495,10 +486,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   defaultValue="viewer"
                   values={collaborationRoles}
                 />
-                <Button
-                  type="submit"
-                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
+                <Button type="submit" className="rounded-lg">
                   <UserPlus className="size-4" />
                   Create invite
                 </Button>
@@ -624,14 +612,14 @@ function VisibilitySimulatorPanel({
         />
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {rows.map((row) => (
-            <div key={row.label} className="rounded-lg border bg-[#F5F6F4] p-3">
+            <div key={row.label} className="rounded-lg border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">{row.label}</p>
               <p className="mt-1 text-sm font-semibold">{row.value}</p>
               <p className="mt-2 text-sm leading-5 text-muted-foreground">{row.detail}</p>
             </div>
           ))}
         </CardContent>
-        <div className="border-t border-slate-200 px-4 py-3 text-sm leading-6 text-muted-foreground">
+        <div className="border-t border-border px-4 py-3 text-sm leading-6 text-muted-foreground">
           Private by default. Friends do not get account access. Coach, viewer and editor access is
           separate from social friendship.
         </div>
@@ -688,14 +676,14 @@ function DataControlStatusPanel({
         />
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {rows.map((row) => (
-            <div key={row.label} className="rounded-lg border bg-[#F5F6F4] p-3">
+            <div key={row.label} className="rounded-lg border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">{row.label}</p>
               <p className="mt-1 text-sm font-semibold">{row.value}</p>
               <p className="mt-2 text-sm leading-5 text-muted-foreground">{row.detail}</p>
             </div>
           ))}
         </CardContent>
-        <div className="flex flex-col gap-2 border-t border-slate-200 p-4 sm:flex-row">
+        <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row">
           <Button asChild variant="outline" className="rounded-xl">
             <Link href="/api/settings/export" prefetch={false}>
               <Download className="size-4" />
@@ -753,11 +741,11 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
             Account access table showing invitation and membership scope, person or account, role,
             status, detail and action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="scope"
-                className="sticky left-0 z-20 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Scope
               </TableHead>
@@ -776,7 +764,7 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
                 <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="scope"
-                    className="sticky left-0 z-10 min-w-48 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     {row.scope}
                   </TableCell>
@@ -811,7 +799,7 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
 
 function SettingsPreviewRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="min-w-0 rounded-lg border bg-[#F5F6F4] px-3 py-2">
+    <div className="min-w-0 rounded-lg border bg-muted/40 px-3 py-2">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 min-w-0 truncate text-sm font-semibold">{value}</p>
     </div>
@@ -833,7 +821,7 @@ function SettingsMobileDisclosure({
 }) {
   return (
     <details id={id} className="group scroll-mt-28 sm:contents" open={defaultOpen}>
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-border bg-card/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">
           <span className="block truncate font-semibold tracking-normal">{title}</span>
           {description ? (
@@ -911,7 +899,7 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-10 rounded-xl bg-white" {...props} />
+      <Input name={name} className="h-10 rounded-xl bg-card" {...props} />
     </label>
   );
 }
@@ -944,7 +932,7 @@ function SelectField<T extends string>({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
+        className="h-10 rounded-xl border bg-card px-3 text-sm"
       >
         {values.map((value) => (
           <option key={value} value={value}>
@@ -968,13 +956,13 @@ function CheckboxField({
   defaultChecked?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm">
+    <label className="flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm">
       <input
         type="checkbox"
         name={name}
         value={value}
         defaultChecked={defaultChecked}
-        className="size-4 rounded border-input accent-[#0B7A3B]"
+        className="size-4 rounded border-input accent-primary"
       />
       <span>{label}</span>
     </label>
@@ -993,10 +981,6 @@ function normalizePrivacy(value: unknown): PrivacySettings {
     allowLeaderboard: settings.allowLeaderboard === true,
     publicProfile: settings.publicProfile === true,
   };
-}
-
-function parseStoredTheme(value: string) {
-  return value === "light" || value === "dark" ? value : "system";
 }
 
 function titleCase(value: string) {

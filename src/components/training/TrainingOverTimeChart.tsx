@@ -28,19 +28,35 @@ const DISPLAY_FORM_SETBACK_RESPONSE = 0.7;
 const chartConfig = {
   displayForm: {
     label: "Golf Form",
-    color: "#2563EB",
+    theme: {
+      light: "#2563EB",
+      dark: "#2563EB",
+      clubhouse: "#1555D6",
+    },
   },
   fitness: {
     label: "Training Fitness",
-    color: "#087A3D",
+    theme: {
+      light: "#087A3D",
+      dark: "#087A3D",
+      clubhouse: "#123A29",
+    },
   },
   fatigue: {
     label: "Recent Load",
-    color: "#D97706",
+    theme: {
+      light: "#D97706",
+      dark: "#D97706",
+      clubhouse: "#AD8A48",
+    },
   },
   sessionQuality: {
     label: "Session Quality",
-    color: "#BE123C",
+    theme: {
+      light: "#BE123C",
+      dark: "#BE123C",
+      clubhouse: "#75342E",
+    },
   },
 } satisfies ChartConfig;
 
@@ -86,7 +102,7 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
               key={`${marker.date}-${marker.sessionCount}`}
               x={marker.date}
               yAxisId="workload"
-              stroke="#475569"
+              stroke="var(--chart-marker, #475569)"
               strokeDasharray="2 4"
               strokeOpacity={marker.sessionCount > 1 ? 0.36 : 0.22}
               strokeWidth={marker.sessionCount > 1 ? 1.5 : 1}

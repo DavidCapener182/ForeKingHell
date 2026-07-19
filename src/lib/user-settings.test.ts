@@ -16,6 +16,7 @@ describe("user settings parsing", () => {
     expect(parseTableDensity("dense")).toBe("comfortable");
     expect(parseTheme("light")).toBe("light");
     expect(parseTheme("dark")).toBe("dark");
+    expect(parseTheme("clubhouse")).toBe("clubhouse");
     expect(parseTheme("system")).toBe("system");
     expect(parseTheme("sunlight")).toBe("system");
   });

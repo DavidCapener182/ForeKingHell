@@ -88,7 +88,11 @@ describe("app shell account data", () => {
       "utf8",
     );
 
-    expect(layoutSource).toContain('strategy="beforeInteractive"');
+    expect(layoutSource).toContain("<head>");
+    expect(layoutSource).toContain(
+      '<script id="fkh-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />',
+    );
+    expect(layoutSource).not.toContain('strategy="beforeInteractive"');
     expect(layoutSource).toContain("data-theme-preference={preferences.theme}");
     expect(layoutSource).toContain("theme: users.theme");
     expect(controllerSource).toContain('window.matchMedia("(prefers-color-scheme: dark)")');

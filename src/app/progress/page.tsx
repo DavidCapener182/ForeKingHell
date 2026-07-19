@@ -1585,7 +1585,7 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
   ];
 
   return (
-    <div className="mt-3 rounded-lg bg-white px-2 py-1">
+    <div className="clubhouse-chart-plot mt-3 rounded-lg bg-card px-2 py-1">
       <svg
         className="h-16 w-full overflow-visible"
         viewBox={`0 0 ${width} ${height}`}
@@ -1598,7 +1598,7 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
           x2={width}
           y1={height * 0.35}
           y2={height * 0.35}
-          stroke="#D9E1E7"
+          stroke="var(--chart-grid, #D9E1E7)"
           strokeDasharray="4 7"
           strokeWidth="1"
         />
@@ -1607,7 +1607,7 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
           x2={width}
           y1={height * 0.72}
           y2={height * 0.72}
-          stroke="#D9E1E7"
+          stroke="var(--chart-grid, #D9E1E7)"
           strokeDasharray="4 7"
           strokeWidth="1"
         />
@@ -3360,11 +3360,11 @@ const compactToneClasses: Record<Tone, string> = {
 
 function strokeForTone(tone: Tone) {
   const strokes: Record<Tone, string> = {
-    green: "#0B7A3B",
-    sky: "#0284C7",
-    pink: "#BE185D",
-    amber: "#B45309",
-    slate: "#64748B",
+    green: "var(--chart-series-green, #0B7A3B)",
+    sky: "var(--chart-series-sky, #0284C7)",
+    pink: "var(--chart-series-pink, #BE185D)",
+    amber: "var(--chart-series-amber, #B45309)",
+    slate: "var(--chart-series-slate, #64748B)",
   };
 
   return strokes[tone];

@@ -195,12 +195,17 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
       >
         <SidebarHeader
           className={cn(
-            "border-b border-sidebar-border bg-[linear-gradient(180deg,var(--lux-ivory),#f4f7ef)]",
+            "border-b border-sidebar-border bg-sidebar text-sidebar-foreground",
             isCompactSidebar && "gap-1 p-1.5",
           )}
         >
           <div className={cn("flex items-center gap-2 px-1 py-1", isCompactSidebar && "py-0.5")}>
-            <SidebarMenuButton asChild size="lg" tooltip="Dashboard">
+            <SidebarMenuButton
+              asChild
+              size="lg"
+              tooltip="Dashboard"
+              className="text-sidebar-foreground hover:text-sidebar-accent-foreground"
+            >
               <Link href="/dashboard">
                 <BrandMark
                   className={cn("size-9 rounded-lg shadow-sm", isCompactSidebar && "size-8")}
@@ -208,11 +213,13 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
                 />
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
                   <span className="truncate font-semibold">{BRAND_NAME}</span>
-                  <span className="truncate text-xs text-muted-foreground">Golf analytics</span>
+                  <span className="truncate text-xs text-sidebar-foreground/70">
+                    Golf analytics
+                  </span>
                 </span>
               </Link>
             </SidebarMenuButton>
-            <SidebarTrigger className="ml-auto hidden size-8 sm:inline-flex" />
+            <SidebarTrigger className="ml-auto hidden size-8 text-sidebar-foreground hover:text-sidebar-accent-foreground sm:inline-flex" />
           </div>
         </SidebarHeader>
 
@@ -267,7 +274,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         <SidebarSeparator />
         <SidebarFooter
           className={cn(
-            "border-t border-sidebar-border bg-[linear-gradient(180deg,#f8fbf3,var(--lux-ivory))]",
+            "border-t border-sidebar-border bg-sidebar text-sidebar-foreground",
             isCompactSidebar && "gap-1 p-1.5",
           )}
         >
@@ -498,7 +505,7 @@ function SidebarDensityMenu({
         <Button
           type="button"
           variant="outline"
-          className="w-full justify-start rounded-lg px-2 group-data-[collapsible=icon]:justify-center"
+          className="w-full justify-start rounded-lg border-sidebar-border bg-sidebar-accent px-2 text-sidebar-accent-foreground hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center"
           aria-label={`Sidebar density: ${densityLabel}`}
         >
           {density === "icon" ? (
@@ -575,7 +582,7 @@ function ProfileDropdown({
           className={cn(
             isTopbar
               ? "focus-aaa h-9 w-auto shrink-0 justify-start gap-2 rounded-lg border-emerald-950/10 bg-white/76 px-2 shadow-sm outline-none hover:border-emerald-300 hover:bg-white"
-              : "h-auto w-full justify-start gap-2 px-2 py-2",
+              : "h-auto w-full justify-start gap-2 border border-sidebar-border bg-sidebar-accent px-2 py-2 text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             compact && "gap-1.5 py-1.5",
           )}
           aria-label={isTopbar ? "Open desktop account menu" : "Open account menu"}
@@ -594,7 +601,12 @@ function ProfileDropdown({
             )}
           >
             <span className="truncate text-sm font-medium">{profileLabel}</span>
-            <span className="truncate text-xs text-muted-foreground">
+            <span
+              className={cn(
+                "truncate text-xs",
+                isTopbar ? "text-muted-foreground" : "text-sidebar-foreground/70",
+              )}
+            >
               {isTopbar ? `Level ${level}` : `Level ${level} · ${xpFormatter.format(totalXp)} XP`}
             </span>
           </span>

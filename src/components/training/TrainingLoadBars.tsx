@@ -18,7 +18,11 @@ type TrainingLoadBarsProps = {
 const chartConfig = {
   load: {
     label: "Session load",
-    color: "#087A3D",
+    theme: {
+      light: "#087A3D",
+      dark: "#087A3D",
+      clubhouse: "#123A29",
+    },
   },
 } satisfies ChartConfig;
 
@@ -97,18 +101,18 @@ function trainingLoadBarsSummary(data: FitnessFreshnessPoint[]) {
 
 function loadColor(load: number) {
   if (load >= 500) {
-    return "#DC2626";
+    return "var(--training-load-critical, #DC2626)";
   }
 
   if (load >= 300) {
-    return "#D97706";
+    return "var(--training-load-high, #D97706)";
   }
 
   if (load > 0) {
-    return "#087A3D";
+    return "var(--training-load-active, #087A3D)";
   }
 
-  return "#CBD5E1";
+  return "var(--training-load-empty, #CBD5E1)";
 }
 
 function formatAxisNumber(value: number) {

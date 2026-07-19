@@ -59,12 +59,19 @@ export function AppMetricCard({
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <CardDescription className="truncate">{label}</CardDescription>
-          <CardTitle className="truncate text-2xl font-semibold tracking-normal">{value}</CardTitle>
+          <CardTitle
+            data-operational-value
+            className="truncate text-2xl font-semibold tracking-normal"
+          >
+            {value}
+          </CardTitle>
         </div>
         <CardAction className="flex items-center gap-2">
           {badge ? <Badge variant="secondary">{badge}</Badge> : null}
           {Icon ? (
             <span
+              data-tone={tone}
+              data-tone-role="surface"
               className={cn("grid size-8 place-items-center rounded-md ring-1", toneClasses[tone])}
             >
               <Icon className="size-4" />

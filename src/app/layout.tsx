@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Barlow_Condensed, Plus_Jakarta_Sans } from "next/font/google";
+import { Barlow_Condensed, Libre_Baskerville, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import { and, eq, sql } from "drizzle-orm";
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
@@ -15,21 +15,28 @@ import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 import { getDb } from "@/db/client";
 import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
 import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
-import { themeColourByMode } from "@/lib/theme";
-import { parseTheme } from "@/lib/user-settings";
+import { themeColourByMode, themePreviewStorageKey } from "@/lib/theme";
+import { parseTheme, themeOptions } from "@/lib/user-settings";
 import "./globals.css";
 import "./mobile-apple.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-ui",
+  variable: "--font-ui-source",
   display: "swap",
 });
 
 const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
   weight: ["500", "600", "700", "800"],
-  variable: "--font-display",
+  variable: "--font-display-source",
+  display: "swap",
+});
+
+const libreBaskerville = Libre_Baskerville({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  variable: "--font-editorial-source",
   display: "swap",
 });
 
@@ -93,16 +100,27 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={["h-full", plusJakarta.variable, barlowCondensed.variable].join(" ")}
-      data-theme={preferences.theme === "dark" ? "dark" : "light"}
+      className={[
+        "h-full",
+        plusJakarta.variable,
+        barlowCondensed.variable,
+        libreBaskerville.variable,
+      ].join(" ")}
+      data-theme={
+        preferences.theme === "dark" || preferences.theme === "clubhouse"
+          ? preferences.theme
+          : "light"
+      }
       data-theme-preference={preferences.theme}
       data-table-density={preferences.tableDensity}
       data-preferred-units={preferences.preferredUnits}
       data-offline-account-id={userId ?? undefined}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col antialiased">
+      <head>
         <ThemeBootstrapScript preference={preferences.theme} />
+      </head>
+      <body className="min-h-full flex flex-col antialiased">
         <ThemeController />
         <PlausibleScript />
         <InteractionFeedback />
@@ -209,25 +227,32 @@ async function getAppShellData(): Promise<AppShellData> {
 function ThemeBootstrapScript({ preference }: { preference: CurrentUserPreferences["theme"] }) {
   const script = `(() => {
     const root = document.documentElement;
-    const preference = ${JSON.stringify(preference)};
+    const savedPreference = ${JSON.stringify(preference)};
+    const themePreviewStorageKey = ${JSON.stringify(themePreviewStorageKey)};
+    const themeOptions = ${JSON.stringify(themeOptions)};
+    let preference = savedPreference;
+    try {
+      const previewPreference = sessionStorage.getItem(themePreviewStorageKey);
+      if (themeOptions.includes(previewPreference)) {
+        preference = previewPreference;
+      } else if (previewPreference !== null) {
+        sessionStorage.removeItem(themePreviewStorageKey);
+      }
+    } catch {}
     const theme = preference === "system"
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : preference;
+    root.dataset.savedThemePreference = savedPreference;
     root.dataset.themePreference = preference;
     root.dataset.theme = theme;
     root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme;
+    root.style.colorScheme = theme === "dark" ? "dark" : "light";
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "dark" ? ${JSON.stringify(
-      themeColourByMode.dark,
-    )} : ${JSON.stringify(themeColourByMode.light)});
+    const colours = ${JSON.stringify(themeColourByMode)};
+    if (meta) meta.setAttribute("content", colours[theme]);
   })();`;
 
-  return (
-    <Script id="fkh-theme-bootstrap" strategy="beforeInteractive">
-      {script}
-    </Script>
-  );
+  return <script id="fkh-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />;
 }
 
 function defaultAppShellData(

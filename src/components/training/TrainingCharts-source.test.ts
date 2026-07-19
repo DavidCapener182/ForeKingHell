@@ -19,6 +19,8 @@ describe("training chart accessibility source", () => {
     expect(barsSource).toContain("data.slice(-12).map");
     expect(barsSource).toContain('{ key: "load", label: "Load" }');
     expect(barsSource).toContain('{ key: "readiness", label: "Readiness" }');
+    expect(barsSource).toContain('clubhouse: "#123A29"');
+    expect(barsSource).toContain("var(--training-load-active, #087A3D)");
   });
 
   it("adds a visible summary and fallback table to the training-over-time line chart", () => {
@@ -33,5 +35,7 @@ describe("training chart accessibility source", () => {
     expect(overTimeSource).toContain('{ key: "sessionQuality", label: "Session quality" }');
     expect(overTimeSource).toContain('{ key: "fitness", label: "Fitness" }');
     expect(overTimeSource).toContain('{ key: "fatigue", label: "Recent load" }');
+    expect(overTimeSource).toContain('clubhouse: "#1555D6"');
+    expect(overTimeSource).toContain('clubhouse: "#75342E"');
   });
 });

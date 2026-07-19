@@ -165,13 +165,14 @@ export function DesktopWorkflowLayout({
               return (
                 <div
                   key={`${step.title}-${index}`}
+                  data-workflow-status={status}
                   className={cn(
                     "rounded-lg border p-3",
                     status === "current"
-                      ? "border-emerald-300 bg-emerald-50/70"
+                      ? "border-primary/30 bg-primary/5"
                       : status === "complete"
-                        ? "border-emerald-100 bg-white/86"
-                        : "border-border bg-white/60",
+                        ? "border-primary/15 bg-card/85"
+                        : "border-border bg-card/60",
                   )}
                 >
                   <div className="flex items-start gap-2">
@@ -179,7 +180,7 @@ export function DesktopWorkflowLayout({
                       className={cn(
                         "mt-0.5 size-4 shrink-0",
                         status === "current" || status === "complete"
-                          ? "text-emerald-700"
+                          ? "text-primary"
                           : "text-muted-foreground",
                       )}
                       aria-hidden
@@ -189,7 +190,7 @@ export function DesktopWorkflowLayout({
                         {step.title}
                       </p>
                       {step.value ? (
-                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-emerald-800">
+                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-primary">
                           {step.value}
                         </p>
                       ) : null}
@@ -210,7 +211,7 @@ export function DesktopWorkflowLayout({
           <SectionHeader title={helpTitle} description={helpDescription} />
           <CardContent className="grid gap-2 p-3">
             {helpItems.map((item) => (
-              <div key={item.title} className="rounded-lg border border-border bg-white/78 p-3">
+              <div key={item.title} className="rounded-lg border border-border bg-card/78 p-3">
                 <p className="text-sm font-semibold leading-5 text-foreground">{item.title}</p>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
               </div>
@@ -249,7 +250,7 @@ export function DesktopWorkbenchHeader({
       <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 max-w-4xl">
           {eyebrow}
-          <h1 className="mt-3 text-4xl font-semibold tracking-normal text-balance text-emerald-950 xl:text-5xl">
+          <h1 className="mt-3 text-4xl font-semibold tracking-normal text-balance text-foreground xl:text-5xl">
             {title}
           </h1>
           <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">{description}</p>
@@ -276,10 +277,13 @@ export function DesktopWorkbenchHeader({
           {metrics.map((metric) => (
             <div
               key={metric.label}
-              className="rounded-lg border border-emerald-950/10 bg-white/72 p-3 shadow-sm"
+              className="metric-tile rounded-lg border border-primary/10 bg-card/72 p-3"
             >
               <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
-              <p className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground">
+              <p
+                data-operational-value
+                className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground"
+              >
                 {metric.value}
               </p>
               <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
@@ -349,7 +353,7 @@ export function DesktopInsightRail({
         <SectionHeader
           title={title}
           description={description}
-          action={<Bot className="size-5 text-emerald-700" aria-hidden />}
+          action={<Bot className="size-5 text-primary" aria-hidden />}
         />
         <CardContent className="grid gap-3 p-3">
           {metrics?.length ? (
@@ -357,7 +361,7 @@ export function DesktopInsightRail({
               {metrics.map((metric) => (
                 <div
                   key={metric.label}
-                  className="rounded-lg border border-border/80 bg-white/78 p-3"
+                  className="rounded-lg border border-border/80 bg-card/78 p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
@@ -370,12 +374,12 @@ export function DesktopInsightRail({
           ) : null}
 
           {evidence?.length ? (
-            <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-3">
-              <p className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
+            <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+              <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <CheckCircle2 className="size-4" aria-hidden />
                 Evidence to cite
               </p>
-              <ul className="mt-2 grid gap-1.5 text-sm leading-5 text-emerald-950/80">
+              <ul className="mt-2 grid gap-1.5 text-sm leading-5 text-foreground/80">
                 {evidence.map((item) => (
                   <li key={item} className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
                     <span aria-hidden>-</span>
@@ -408,9 +412,9 @@ export function DesktopInsightRail({
                     key={`${action.label}-${action.href}`}
                     href={action.href}
                     prefetch={false}
-                    className="focus-aaa grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-white/78 px-3 py-2 outline-none hover:border-emerald-300 hover:bg-white"
+                    className="focus-aaa grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/78 px-3 py-2 outline-none hover:border-primary/40 hover:bg-card"
                   >
-                    <Icon className="size-4 text-emerald-700" aria-hidden />
+                    <Icon className="size-4 text-primary" aria-hidden />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold">{action.label}</span>
                       <span className="block truncate text-xs text-muted-foreground">

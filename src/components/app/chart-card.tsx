@@ -33,7 +33,7 @@ export function ChartCard({
 }: ChartCardProps) {
   return (
     <Card className={cn("premium-card desktop-data-panel", className)}>
-      <CardHeader>
+      <CardHeader className="clubhouse-chart-header border-b border-border/70 bg-card/35">
         <div className="min-w-0">
           <CardTitle>{title}</CardTitle>
           {description ? <CardDescription>{description}</CardDescription> : null}
@@ -41,7 +41,10 @@ export function ChartCard({
         {action ? <CardAction>{action}</CardAction> : null}
       </CardHeader>
       <CardContent>
-        <ChartContainer config={config} className={cn("min-h-52 w-full", chartClassName)}>
+        <ChartContainer
+          config={config}
+          className={cn("chart-frame min-h-52 w-full", chartClassName)}
+        >
           {children}
         </ChartContainer>
       </CardContent>
